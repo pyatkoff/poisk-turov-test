@@ -49,6 +49,7 @@ async function run(browser, width, previous) {
   try {
     assert.equal((await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' })).status(), 200);
     await page.waitForFunction(() => window.V2Results && window.V2TourController && document.querySelector('#tourSearch')?.dataset.search3Ready === '1');
+    assert.equal(await page.locator('#resultsSearchSummary').count(), 0, 'Search3 does not render the retired placeholder summary');
     const logo = page.locator('.at-global-header__logo img');
     assert.equal(await logo.isVisible(), true, 'canonical logo remains visible');
     const logoSource = await logo.getAttribute('src');
@@ -59,6 +60,12 @@ async function run(browser, width, previous) {
     assert.equal(await menu.evaluate(node => node.open), false, 'native header closes');
     await page.evaluate(items => window.V2Results.render(items), hotels);
     await page.waitForSelector('#results .direct-tour');
+    const parameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
+    assert.equal(await page.locator('#resultsTools #resultsSearchEdit').count(), 1, 'native results tools retain one search edit action');
+    await page.locator('#resultsSearchEdit').click();
+    assert.equal(await page.locator('#tourSearch').isVisible(), true, 'results edit action reveals the canonical search form');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), parameters, 'editing preserves all current search parameters');
+    await page.evaluate(items => window.V2Results.render(items), hotels);
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'cheap', 'price sorting retained');
     const card = page.locator('#results [data-hotel-id=expensive].hotel-card');
     assert.equal(await card.locator('.tour-row').count(), 1, 'representative tour shown immediately');
@@ -72,6 +79,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
     const expanded = await snapshot(page);
     assert.equal(expanded.overflow, false, width + ': expanded results fit viewport');
+    assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').click();
     assert.equal(await card.locator('.tour-row').count(), 1, 'actual toggle collapses');

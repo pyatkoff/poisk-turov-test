@@ -2,10 +2,10 @@
   "schema_version": 1,
   "task": "Deferred exact lead owner and retired duplicate selected review block",
   "date": "2026-09-08",
-  "status": "SOURCE_READY_AWAITING_CI",
+  "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_FOLLOWUP_VISUAL_REPAIR",
   "baseline_release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
-  "source_sha": null,
-  "release_sha": null,
+  "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+  "release_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
   "baseline_source_pr": 1623,
   "baseline_source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
   "baseline_security_run": 34269579797,
@@ -79,21 +79,70 @@
     "Existing selected-flow scheduler source check passed: native handoff, no duplicate CTA, observer settles, retry and decimal tradeoffs",
     "Loader/browser syntax check"
   ],
-  "ci": {},
-  "visual_checks": [],
-  "preview_updated": false,
-  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "ci": {
+    "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "conclusion": "success",
+    "security_run": 34271269892,
+    "exact_run": 34271270024,
+    "selected_artifact": {
+      "id": 10073949493,
+      "digest": "sha256:bb57e5dbae33d4c1a959e8a7db78658a63f20ca04ff17aa5b223aa0ee1312faf"
+    },
+    "results_artifact": {
+      "id": 10073949996,
+      "digest": "sha256:8e95c1a344756bf9213e13105e4d00df64957836813c3a6c5af5ee96fada7506"
+    },
+    "first_attempt": {
+      "source_sha": "5bcc3125df763b6d415ec2c58716b960a70e98ca",
+      "security_run": 34270924349,
+      "security": "success",
+      "exact_run": 34270925550,
+      "exact": "failure",
+      "reason": "Added tour retry fixture used obsolete selector; corrected to canonical .retry-tour, no source/assets rebuild."
+    }
+  },
+  "visual_checks": {
+    "ci": {
+      "selected_geometry": "8 states at375/760/1000/1440",
+      "lazy_selected": "3 scenarios: chunk retry, reset cancellation, canonical tour retry; phone validity, stale event lock, decimal150001.2, nativehandoff, return focus",
+      "native_entry": "30states at375/700/701/760/761/1440",
+      "results": "12states at375/760/761/999/1000/1440; raw served parity",
+      "entry_owner": "375/1440",
+      "flight": "empty/retry/recovery and decimal90049.6",
+      "real_leads_sent": 0
+    },
+    "live": {
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+      "date": "2026-09-08",
+      "viewport_width": 1363,
+      "search": "Moscow/Turkey, Sep9–22,7–10nights,2adults;100hotels",
+      "first_tour": "KLEOPATRA AYTUR APART HOTEL; selected phase appears only after choice",
+      "flights": "20variants; initial selected price59438rubles",
+      "native_cta": "click Оставить заявку focused phone; upper canonicalCTA scrolled to form",
+      "return": "100results retained, focus returned to selected button",
+      "screenshots_inspected": [
+        "selected flights",
+        "native lead form/footer"
+      ],
+      "confirmed_findings": [
+        "Dead result summary shows direction placeholder and dates/nights/guests dashes",
+        "Hidden results expose repeated Вылет pseudo text in accessibility snapshot",
+        "Native form/flight design is stripped back; visual acceptance is not green"
+      ],
+      "lead_sent": 0,
+      "full_visual_acceptance": false
+    }
+  },
+  "preview_updated": true,
+  "published_preview_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
   "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
   "production_modified": false,
   "deferred": [
-    "Final source CI/browser checks pending",
-    "Physical Safari",
-    "Manual screenshot inspection",
-    "Current-source live preview",
-    "Owner visual acceptance",
-    "Full lead/site/SEO journey"
+    "physical Safari/safe-area",
+    "owner visual acceptance",
+    "full lead/site/SEO/responsive journey"
   ],
-  "next_action": "Complete Security and exact source artifact, integrate release, then assess justified reuse of the accumulated artifact for existing isolated whole-site preview; no repeat asset build. Do not count deferral as deletion.",
+  "next_action": "Remove confirmed empty results summary and its old desktop/stale presentation in one follow-up package, preserving legacy summary and native edit-search action. No duplicate lead/runtime work.",
   "failed_runs": [
     {
       "source_sha": "5bcc3125df763b6d415ec2c58716b960a70e98ca",
@@ -101,5 +150,47 @@
       "result": "failure",
       "reason": "Selected8 and lazy download/reset/phone/race assertions passed; added tour retry scenario awaited obsolete guard decorator .tour-load-retry. Canonical controller already owns .retry-tour; fixture now clicks that actual action. No production code or asset rebuild for this fixture correction."
     }
-  ]
+  ],
+  "source_tree": "921c0e33a5ee4cf80a0d4daf02a30d41ede90fc4",
+  "source_pr": 1625,
+  "artifact": {
+    "id": 10073950483,
+    "run": 34271270024,
+    "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "source_tree": "921c0e33a5ee4cf80a0d4daf02a30d41ede90fc4",
+    "digest": "sha256:7e45cf0eb4068674d7222cea297017fbebf139c96c34568f54cb5ea9add69058",
+    "archive_sha256": "35eb6030525936399246eb12ae5c2e8815ae6d3bc932f3070d54fa3a675a650b",
+    "manifest_sha256": "cc5d1f65c7c3f1c3e768f0f2310164a9d239529d82bed0749496b74f704c0586",
+    "payload_sha256": "dd7015ad0df3669afa8313678b6e4d439724e74951661fd9e48ce7fdee96d338",
+    "payload_file_count": 717
+  },
+  "publication": {
+    "artifact_id": 10073950483,
+    "artifact_run": 34271270024,
+    "http_status": 200,
+    "internal_php_denied": true,
+    "lead_probe_status": 403,
+    "metrika_counter": 0,
+    "payload_file_count": 717,
+    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+    "production_fingerprint_unchanged": true,
+    "production_lead_delivery": false,
+    "robots": "noindex,follow",
+    "rollback_backup_retained": true,
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "route_count": 9,
+    "schema_version": 1,
+    "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "source_tree": "921c0e33a5ee4cf80a0d4daf02a30d41ede90fc4",
+    "published": true,
+    "published_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "control_sha": "f2079a3c4f7b29e2f05f33af11fa3ea22bc528dd",
+    "control_pr": 1628,
+    "deploy_run": 34272077289,
+    "deployment_artifact": 10074220224,
+    "deployment_artifact_digest": "sha256:7e5a4fd1b931f2298e5b845a8ec50f3c48c96f1ae9dde38bdf9b696658eef175",
+    "release_pin_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
+    "published_at": "2026-09-08T19:58:53Z",
+    "control_closed_without_merge": true
+  }
 }
