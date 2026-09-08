@@ -114,7 +114,7 @@ async function verifyLocalizedFlightTradeoff(browser) {
     priceNote: document.querySelector('#selectedTour .search3-booking-summary__price-note')?.textContent,
     prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
-    parsedDecimal: window.Search3CandidateFlightTradeoffV1.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
+    parsedDecimal: window.Search3SelectedFlowV2.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
     wrongDigitCollapse: document.body.textContent.includes('+827 664 ₽ к минимальной'),
     leadRequests: window.__fallbackTest.leadRequests
   }));

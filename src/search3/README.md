@@ -87,13 +87,13 @@ separate cascade evidence.
 | --- | --- |
 | Primary form and field placement | `behavior/search-form.js` |
 | Responsive entry and existing price-calendar adapter | `behavior/search-form/entry-presentation.js` inside `behavior/search-form.js`, `styles/entry-v1.css` |
-| Desktop local result-filter rail | Existing `v2/ds2-results-filters.js`, `styles/results-layout.css`; `behavior/filter-rail.js` is the zero-result bridge |
+| Desktop local result-filter rail | Existing `v2/ds2-results-filters.js`, `styles/results-layout.css`; `behavior/results-presentation.js` owns the bounded zero-result bridge |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
 | Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
-| Flight labels and display-only price parsing | `behavior/booking/format.js` inside `booking-summary.js`, `behavior/flight-price-presentation.js` |
+| Flight labels and display-only price parsing | `behavior/booking/format.js` inside `booking-summary.js`, `behavior/selected-flow-v2.js` |
 | Summary and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
 | Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
@@ -270,7 +270,7 @@ property, value, important priority and operation order. The existing summary
 regression executes the compiled owner and covers all eight layout states.
 
 The already loaded `v2/ds2-results-filters.js` is the single desktop local-filter
-owner. Search3's `filter-rail.js` retains only the local zero-result shell bridge;
+owner. Search3's `results-presentation.js` retains only the local zero-result shell bridge;
 `filter-rail/availability.js` and `filter-rail/render.js` are provenance-only
 manifest slots. The results-layout owner styles the live DS2 budget, meal,
 category, rating and sea-distance controls. Presentation for the retired Search3

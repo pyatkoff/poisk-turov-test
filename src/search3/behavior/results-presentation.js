@@ -11,6 +11,14 @@
   var tools = document.getElementById('resultsTools');
   var sort = document.getElementById('sortResults');
   var selected = document.getElementById('selectedTour');
+  var rail = window.DS2ResultsFilters && document.querySelector('.results-filter-rail');
+  if (rail) {
+    window.addEventListener('v2:results-rendered', function (event) {
+      var items = event && event.detail && Array.isArray(event.detail.items) ? event.detail.items : [];
+      rail.dataset.s3EmptyResults = window.__DS2ResultsRailApplying && !items.length ? '1' : '';
+    });
+    window.addEventListener('v2:search-reset', function () { rail.dataset.s3EmptyResults = ''; });
+  }
   if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
 
   var form = document.getElementById('tourSearch');
