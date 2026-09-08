@@ -1,7 +1,11 @@
 {
   "schema_version": 1,
   "date": "2026-09-08",
-  "stage": "SOURCE_PACKAGE_PREPARED_CI_PENDING",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "source_pr": 1643,
+  "source_sha": "937c343d00b379414074ee5632298543054a5935",
+  "source_tree": "dd53455b1a6e5d4e394bdf9a0ad7d3ba48a00cf7",
+  "release_integration_sha": "3003788b8096d7eae161ed8ad98769c7e0da3a42",
   "baseline_release_sha": "0f62674722787bf3b1156f2fa708e0d3a5b5fb3d",
   "scope": "Retire the whole Search3 results-top state bridge. Canonical renderer/lifecycle owners retain result and tool rendering; compact native form state keeps only aria-busy, result-shell visibility and edit focus. Selected visibility uses the existing selected-open class.",
   "retired_whole_sources": [
@@ -43,8 +47,24 @@
   ],
   "verification": {
     "source_build": "SEARCH3_SOURCE_BUILD_OK assets=8 in write and check modes",
-    "security_ci": "pending",
-    "exact_artifact_ci": "pending"
+    "security_ci": {
+      "run": 34290099786,
+      "conclusion": "success"
+    },
+    "exact_artifact_ci": {
+      "run": 34290099807,
+      "conclusion": "success",
+      "artifact_id": 10081029313,
+      "artifact_digest": "sha256:54425f1aaeee6158d43ee35b13f42c08251499af9f554154eb7f4f92c6bfc964",
+      "archive_sha256": "b9f8b43e29a0e7acbef5ab125566475ed82155733544586c0b8eaaf6ec788ac4",
+      "file_count": 717,
+      "results_evidence_id": 10081028950,
+      "results_evidence_digest": "sha256:aaa6fe3e506b9f069d27a142fd9fec7fcddf7cf82c747cf4f6435a8033a2e396",
+      "entry_evidence_id": 10081028561,
+      "entry_evidence_digest": "sha256:69650889f2527bb8b4ce73996b162b2b467b90b08df94ed449a3853be8987abf"
+    },
+    "browser": "Current results12 at375/760/761/999/1000/1440 with raw/served parity, native header, edit and empty state; native entry at375/1440. External calls0, real leads0.",
+    "selected_return_current_source": "deferred; the exact workflow path guard did not run selected geometry for this results/entry-owned package"
   },
   "publication": {
     "published": false,
@@ -53,5 +73,10 @@
     "main_changed": false
   },
   "rollback": "Revert this package independently to restore results-top.js.",
-  "next_action": "Build once and keep the package only if the eight public assets save at least approximately 1KB after the compact state salvage."
+  "deferred": [
+    "current-source selected/return browser and live/manual screenshots",
+    "physical Safari and safe-area verification",
+    "owner visual acceptance and full lead/site/SEO journey"
+  ],
+  "next_action": "Resume the owner roadmap's coherent native-form grouping/footer/lead-summary readability package. Useful current-owner growth is allowed; do not restore results-top.js or stack another state bridge."
 }

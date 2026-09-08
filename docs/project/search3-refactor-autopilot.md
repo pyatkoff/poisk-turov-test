@@ -14,7 +14,49 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Last checked code checkpoint — eager selected runtime retirement #1640 — 2026-09-08
+## Last checked code checkpoint — results-top bridge retirement #1643 — 2026-09-08
+
+Exact source `937c343d00b379414074ee5632298543054a5935`, tree
+`dd53455b1a6e5d4e394bdf9a0ad7d3ba48a00cf7`; checked release
+`3003788b8096d7eae161ed8ad98769c7e0da3a42`. The whole
+`src/search3/behavior/results-top.js` state bridge is retired. Canonical renderer
+and lifecycle still own results/tools; the native form owner keeps only
+`aria-busy`, edit/focus and editing reset. Existing `search3-selected-open` plus
+native `:has()` replace duplicate result/selected/return state listeners.
+
+Eight public assets are **10097→9073 raw B (−1024, −10.14%)**. Results JS is
+4720→3625 B and results CSS4573→4644 B. The retired bridge contributed1556 built
+bytes; compact JS salvage adds461 B and CSS salvage71 B, so the net reduction is
+real and no code moved to shared assets. All eight public URLs remain.
+
+Security `34290099786` and exact artifact `34290099807` passed. Reuse artifact
+`10081029313`, digest
+`sha256:54425f1aaeee6158d43ee35b13f42c08251499af9f554154eb7f4f92c6bfc964`,
+archive `b9f8b43e29a0e7acbef5ab125566475ed82155733544586c0b8eaaf6ec788ac4`,
+717 files. Results evidence `10081028950`, digest
+`sha256:aaa6fe3e506b9f069d27a142fd9fec7fcddf7cf82c747cf4f6435a8033a2e396`;
+entry evidence `10081028561`, digest
+`sha256:69650889f2527bb8b4ce73996b162b2b467b90b08df94ed449a3853be8987abf`.
+
+Exact Chromium passed12 results states at375/760/761/999/1000/1440 with
+raw/served parity, native header, edit and empty state, plus native entry at
+375/1440. External calls0 and real leads0. The workflow path guard did not run
+selected geometry, so current-source selected/return browser and live/manual
+screenshots are deferred, not called green. Physical Safari/safe-area, owner
+visual acceptance and the full lead/site/SEO journey also remain deferred.
+
+**Checked release is not published preview.** Preview remains source
+`89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1`; main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; main and production are unchanged.
+Rollback: revert #1643. Audit:
+`docs/project/search3-results-top-bridge-retirement.json`.
+
+Next: resume the owner roadmap's coherent native-form grouping/footer/lead-summary
+readability package. Useful current-owner growth is allowed; remove superseded
+rules in the same package, do not restore `results-top.js` or stack another state
+bridge, and keep all protected business contracts.
+
+## Historical checkpoint — eager selected runtime retirement #1640 — 2026-09-08
 
 Exact source `d123a1d8b7cae29c39d7c2678445238d3763ae96`, tree
 `8d76145840c17c6cb9ffbf2051fe80719423ee45`; checked release
