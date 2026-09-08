@@ -52,6 +52,7 @@ class FakeElement {
     this.hidden = false;
     this._text = '';
     this._html = '';
+    this.listeners = new Map();
     this.classList = {
       add: (...names) => { this.className += ' ' + names.join(' '); },
       remove: (...names) => { this.className = this.className.split(/\s+/).filter(name => !names.includes(name)).join(' '); },
@@ -78,6 +79,7 @@ class FakeElement {
   }
   get nextSibling() { return this.parentNode?.children[this.parentNode.children.indexOf(this) + 1] || null; }
   get parentElement() { return this.parentNode; }
+  get firstElementChild() { return this.children[0] || null; }
   remove() {
     if (this.parentNode) this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1);
     this.parentNode = null;
@@ -104,7 +106,11 @@ class FakeElement {
     if (name.startsWith('data-')) return this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] ?? null;
     return this.attributes[name] ?? null;
   }
-  addEventListener() {}
+  addEventListener(name, listener) {
+    if (!this.listeners.has(name)) this.listeners.set(name, []);
+    this.listeners.get(name).push(listener);
+  }
+  dispatchEvent(event) { (this.listeners.get(event.type) || []).forEach(listener => listener(event)); }
   matches(selector) {
     const attribute = selector.match(/\[([^\]]+)\]$/);
     if (attribute) return this.getAttribute(attribute[1]) !== null
@@ -126,6 +132,15 @@ function preview() {
   const listeners = new Map();
   const requests = [];
   const body = new FakeElement('body');
+  const tools = body.appendChild(new FakeElement('div'));
+  tools.id = 'resultsTools';
+  tools.appendChild(new FakeElement('strong')).textContent = 'Найдено 0 туров';
+  const summary = tools.appendChild(new FakeElement('span'));
+  summary.id = 'resultSummary';
+  summary.textContent = 'Актуальные варианты';
+  const sort = tools.appendChild(new FakeElement('select'));
+  sort.id = 'sortResults';
+  sort.value = 'price';
   const layout = body.appendChild(new FakeElement('div'));
   layout.className = 'results-layout';
   const results = layout.appendChild(new FakeElement('div'));
@@ -177,7 +192,7 @@ function preview() {
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } }
   }, { filename });
   return {
-    window, document, body, layout, results, tvCard, lifecycle, requests,
+    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort,
     reset(generation, snapshot) {
       Object.assign(lifecycle, { generation, snapshot, dirty: false });
       window.dispatchEvent({ type: 'v2:search-reset', detail: { generation } });
@@ -336,8 +351,8 @@ test('mapped offers coexist with original TV cards and untrusted IDs never rende
   await tick();
   assert.equal(page.results.children[0], page.tvCard);
   assert.match(page.tvCard.textContent, /Existing Tourvisor hotel/);
-  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
-  assert.equal(page.tvCard.querySelectorAll('[data-anex-search3-row]').length, 1);
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
+  assert.equal(page.tvCard.querySelectorAll('.anex-search3-offers').length, 1);
   assert.match(page.body.textContent, /Separate mapped hotel/);
   assert.doesNotMatch(page.body.textContent, /Unmapped supplier hotel|String ID hotel|Zero ID hotel|Duplicate local hotel/);
   const separate = page.document.getElementById('anexSearch3Results');
@@ -348,11 +363,11 @@ test('mapped offers coexist with original TV cards and untrusted IDs never rende
   page.window.dispatchEvent({ type: 'v2:results-rendered', detail: {} });
   page.window.dispatchEvent({ type: 'v2:results-rendered', detail: {} });
   assert.equal(page.results.children[0], page.tvCard);
-  assert.equal(page.tvCard.querySelectorAll('[data-anex-search3-row]').length, 1);
+  assert.equal(page.tvCard.querySelectorAll('.anex-search3-offers').length, 1);
   assert.equal(page.body.querySelectorAll('#anexSearch3Results').length, 1);
 });
 
-test('standalone ANEX panel mounts after the complete results layout', async () => {
+test('source summary precedes the layout while ANEX-only cards join the common list', async () => {
   const page = preview();
   page.reset(1, snapshot());
   page.requests[0].respond(response(1, [hotel({ local_id: 900 })]));
@@ -360,8 +375,10 @@ test('standalone ANEX panel mounts after the complete results layout', async () 
   const panel = page.document.getElementById('anexSearch3Results');
   assert.equal(page.results.closest('.results-layout'), page.layout);
   assert.equal(panel.parentNode, page.layout.parentNode);
-  assert.equal(panel, page.layout.nextSibling);
+  assert.equal(panel.nextSibling, page.layout);
   assert.equal(panel.closest('.results-layout'), null);
+  assert.equal(page.results.querySelectorAll('.anex-search3-hotel').length, 1);
+  assert.equal(panel.querySelectorAll('.hotel-card').length, 0);
 });
 
 test('local result filters hide ANEX offers until cleared without a new request', async () => {
@@ -380,7 +397,7 @@ test('local result filters hide ANEX offers until cleared without a new request'
   }
   page.window.DS2ResultsFilters.state = {};
   rerender();
-  assert.equal(page.body.querySelectorAll('[data-anex-search3-row]').length, 2);
+  assert.equal(page.body.querySelectorAll('.anex-search3-offers').length, 2);
   assert.equal(page.results.children[0], page.tvCard);
   assert.equal(page.requests.length, 1);
 });
@@ -392,7 +409,7 @@ test('changed form parameters hide ANEX even before lifecycle becomes dirty', as
   page.reset(1, snapshot());
   page.requests[0].respond(response(1, [hotel(), hotel({ local_id: 900 })]));
   await tick();
-  assert.equal(page.body.querySelectorAll('[data-anex-search3-row]').length, 2);
+  assert.equal(page.body.querySelectorAll('.anex-search3-offers').length, 2);
   current = { ...current, childs: [5, 11] };
   page.window.dispatchEvent({ type: 'v2:results-rendered', detail: {} });
   assert.equal(page.lifecycle.dirty, false);
@@ -409,4 +426,113 @@ test('supplier rejection, timeout and rate limit have distinct safe messages', (
   assert.match(api.errorMessage('supplier_timeout'), /слишком много времени/);
   assert.match(api.errorMessage('invalid_request'), /Проверьте даты/);
   assert.doesNotMatch(api.errorMessage('secret <script>'), /secret|script/);
+});
+
+test('one mapped card retains TV controls and groups both sources inside its disclosure', async () => {
+  const page = preview();
+  const body = page.tvCard.appendChild(new FakeElement('div'));
+  body.className = 'hotel-body';
+  const best = body.appendChild(new FakeElement('div'));
+  best.className = 'hotel-best-offer';
+  const label = best.appendChild(new FakeElement('small'));
+  label.textContent = 'За весь тур';
+  const copy = body.appendChild(new FakeElement('div'));
+  copy.className = 'search3-hotel-action__copy';
+  const count = copy.appendChild(new FakeElement('strong'));
+  count.textContent = '2 тура';
+  const box = page.tvCard.appendChild(new FakeElement('div'));
+  box.className = 'hotel-tours';
+  box.hidden = true;
+  const button = box.appendChild(new FakeElement('button'));
+  button.className = 'direct-tour';
+  button.setAttribute('data-tid', 'tv-original');
+  const items = [{ id: 245, price: 2000, category: 4, rating: 4.5, tours: [{ id: 'a' }, { id: 'b' }] }];
+  const before = plain(items);
+  page.reset(1, snapshot());
+  page.window.dispatchEvent({ type: 'v2:results-rendered', detail: { items } });
+  page.requests[0].respond(response(1, [hotel()]));
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
+  assert.equal(box.querySelector('.direct-tour'), button);
+  assert.equal(button.getAttribute('data-tid'), 'tv-original');
+  assert.equal(box.hidden, true);
+  assert.equal(box.querySelector('.anex-search3-offers').tagName, 'SECTION');
+  assert.match(box.textContent, /через Tourvisor.*ANEX API/);
+  assert.match(label.textContent, /Через Tourvisor/);
+  assert.equal(count.textContent, '3 предложений · 2 источника');
+  assert.deepEqual(items, before, 'source results remain untouched');
+  box.hidden = false;
+  page.sort.dispatchEvent({ type: 'change' });
+  assert.equal(box.hidden, false, 'rerender preserves the original disclosure');
+  assert.equal(box.querySelector('.direct-tour'), button);
+  assert.equal(box.querySelectorAll('.anex-search3-offers').length, 1);
+  page.window.DS2ResultsFilters = { state: { stars: 5 } };
+  page.sort.dispatchEvent({ type: 'change' });
+  assert.equal(label.textContent, 'За весь тур');
+  assert.equal(count.textContent, '2 тура');
+  assert.equal(box.querySelector('.anex-search3-offers'), null);
+  assert.equal(page.requests.length, 1);
+});
+
+test('combined sorting uses source minima and catalog rating, preserving open ANEX details', async () => {
+  const page = preview();
+  page.reset(1, snapshot());
+  page.window.dispatchEvent({ type: 'v2:results-rendered', detail: { items: [
+    { id: 245, price: 5000, rating: 5, category: 4, seaDistance: 100 }
+  ] } });
+  const cheap = hotel({ local_id: 900, rating: 3, category: 3 });
+  const mapped = hotel({ tours: [{ ...hotel().tours[0], price: { amount: '3000', currency: 'RUB' } }] });
+  page.requests[0].respond(response(1, [mapped, cheap]));
+  await tick();
+  const ids = () => page.results.querySelectorAll('.hotel-card').map(card => card.dataset.hotelId);
+  assert.deepEqual(ids(), ['900', '245']);
+  page.results.querySelector('.anex-search3-hotel').querySelector('details').open = true;
+  page.sort.value = 'rating';
+  page.sort.dispatchEvent({ type: 'change' });
+  assert.deepEqual(ids(), ['245', '900']);
+  assert.equal(page.results.querySelector('.anex-search3-hotel').querySelector('details').open, true);
+  assert.equal(page.requests.length, 1);
+  const compare = helpers().compareCards;
+  assert.ok(compare({ id: 1, seaDistance: 0 }, { id: 2, seaDistance: null }, 'sea') < 0);
+  assert.ok(compare({ id: 1, price: 0 }, { id: 2, price: 100 }, 'price') > 0);
+});
+
+test('ANEX-only results clear the TV empty state and merge once when the TV card arrives later', async () => {
+  const page = preview();
+  page.tvCard.remove();
+  page.tools.hidden = true;
+  const empty = page.results.appendChild(new FakeElement('div'));
+  empty.className = 'empty';
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, [hotel()]));
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
+  assert.equal(empty.hidden, true);
+  assert.equal(page.tools.hidden, false);
+  assert.equal(page.tools.querySelector('strong').textContent, 'Найдено отелей: 1');
+  page.window.DS2ResultsFilters = { state: { stars: 5 } };
+  page.sort.dispatchEvent({ type: 'change' });
+  assert.equal(empty.hidden, false);
+  assert.equal(page.tools.hidden, true);
+  assert.equal(page.body.classList.contains('search3-has-results'), false);
+  page.window.DS2ResultsFilters.state = {};
+  page.sort.dispatchEvent({ type: 'change' });
+  page.results.replaceChildren(page.tvCard);
+  page.window.dispatchEvent({ type: 'v2:results-rendered', detail: { items: [{ id: 245, price: 2000 }] } });
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
+  assert.equal(page.results.querySelectorAll('.anex-search3-hotel').length, 0);
+  assert.equal(page.tvCard.querySelectorAll('.anex-search3-offers').length, 1);
+  assert.equal(page.requests.length, 1);
+});
+
+test('duplicate TV identities are not silently merged', async () => {
+  const page = preview();
+  const duplicate = page.results.appendChild(new FakeElement('article'));
+  duplicate.className = 'hotel-card';
+  duplicate.dataset.hotelId = '245';
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, [hotel()]));
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
+  assert.equal(page.results.querySelectorAll('.anex-search3-offers').length, 0);
 });

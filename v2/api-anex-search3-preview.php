@@ -105,6 +105,7 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
             || (!empty($params['priceTo']) && (float) $price['amount'] > (float) $params['priceTo'])) continue;
         if (!isset($hotels[$id])) {
             $hotels[$id] = ['local_id' => $id, 'name' => (string) $row['name'], 'category' => (int) ($row['category'] ?? 0),
+                'rating' => (float) ($row['rating'] ?? 0),
                 'country' => (string) $row['country_name'], 'region' => (string) ($row['region_name'] ?? ''), 'tours' => []];
         }
         $hotels[$id]['tours'][] = ['price' => $price, 'checkin' => $offer['checkin'], 'nights' => $offer['nights'],

@@ -44,6 +44,7 @@ $metadata = [999 => ['id' => 999, 'name' => 'Local catalog hotel', 'country_id' 
     'region_id' => 33, 'region_name' => 'Region', 'category' => 4, 'rating' => '4.5']];
 $hotels = anytour_anex_search3_project($normalized['offers'], $metadata, $params);
 search3_check(count($hotels) === 1 && $hotels[0]['local_id'] === 999, 'only mapped catalog IDs are rendered, no numeric namespace fallback');
+search3_check($hotels[0]['rating'] === 4.5, 'shared sorting receives the catalog rating');
 search3_check($hotels[0]['name'] === 'Local catalog hotel', 'hotel name comes from own catalog');
 search3_check(count($hotels[0]['tours']) === 1 && $hotels[0]['tours'][0]['price']['amount'] === '12345.50', 'unmapped offer excluded even when external ID equals local ID');
 $json = json_encode($hotels);
