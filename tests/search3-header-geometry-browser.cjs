@@ -13,7 +13,7 @@ const searchNames = JSON.parse(execFileSync('php', ['-r',
 const searchScripts = JSON.parse(execFileSync('php', ['-r',
   'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'
 ], { cwd: root, encoding: 'utf8' }));
-assert.ok(searchNames.includes('site-header-v2.css'), 'current header CSS missing');
+assert.ok(!searchNames.includes('site-header-v2.css'), 'retired header CSS leaked into Search3');
 assert.ok(!searchNames.includes('header-current-site.css'), 'legacy header CSS leaked into Search3');
 assert.ok(!searchScripts.includes('header-current-site.js'), 'legacy header runtime leaked into Search3');
 const css = searchNames.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n');
@@ -34,7 +34,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
         await page.setContent(html);
         await page.addStyleTag({ content: css });
         await page.evaluate(() => document.fonts && document.fonts.ready);
-        if (width <= 1024) await page.locator('.at-global-header__mobile > summary').click();
+        await page.locator('.at-global-header__mobile > summary').click();
         const state = await page.evaluate(() => {
           const box = selector => document.querySelector(selector).getBoundingClientRect();
           const visible = selector => {
@@ -54,29 +54,20 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
             mobile: visible('.at-global-header__mobile'),
             panel: visible('.at-global-header__mobile-panel'),
             menuButton: box('.at-global-header__mobile summary'),
-            panelTargets: [...document.querySelectorAll('.at-global-header__mobile-panel a')]
-              .map(node => node.getBoundingClientRect().height)
           };
         });
         assert.ok(state.overflow <= 1, `${width}: header overflow ${state.overflow}`);
         assert.equal(state.headers, 1, `${width}: current header count`);
         assert.equal(state.legacy, 0, `${width}: legacy header markup leaked`);
         assert.ok(state.header.width > 0 && state.header.height > 0 && state.logo.width > 0, `${width}: header geometry missing`);
-        if (width <= 1024) {
-          assert.equal(state.nav, false, `${width}: desktop nav visible`);
-          assert.equal(state.actions, width > 768, `${width}: phone action breakpoint drifted`);
-          assert.equal(state.mobile, true, `${width}: mobile menu missing`);
-          assert.equal(state.panel, true, `${width}: open mobile panel missing`);
-          assert.ok(state.menuButton.height >= 39.5, `${width}: mobile menu target collapsed`);
-          assert.ok(state.panelTargets.every(height => height >= 43.5), `${width}: mobile panel target below 44px`);
-          await page.locator('.at-global-header__mobile > summary').click();
-          assert.equal(await page.locator('.at-global-header__mobile').evaluate(node => node.open), false,
-            `${width}: native menu did not close without legacy runtime`);
-        } else {
-          assert.equal(state.nav, true, `${width}: desktop nav missing`);
-          assert.equal(state.actions, true, `${width}: desktop actions missing`);
-          assert.equal(state.mobile, false, `${width}: mobile menu visible`);
-        }
+        assert.equal(state.nav, true, `${width}: native navigation missing`);
+        assert.equal(state.actions, true, `${width}: native header actions missing`);
+        assert.equal(state.mobile, true, `${width}: native menu missing`);
+        assert.equal(state.panel, true, `${width}: open native menu panel missing`);
+        assert.ok(state.menuButton.height > 0, `${width}: native menu target collapsed`);
+        await page.locator('.at-global-header__mobile > summary').click();
+        assert.equal(await page.locator('.at-global-header__mobile').evaluate(node => node.open), false,
+          `${width}: native menu did not close without header runtime`);
         if (output) await page.screenshot({ path: path.join(output, `header-${width}.png`), fullPage: true, animations: 'disabled' });
         states += 1;
       } finally {
