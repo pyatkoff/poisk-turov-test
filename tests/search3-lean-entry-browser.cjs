@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const base = process.env.SEARCH3_VISUAL_BASE;
-const baseline = process.env.SEARCH3_RUNTIME_BASE;
+const baseline = process.env.SEARCH3_ENTRY_BASE || process.env.SEARCH3_RUNTIME_BASE;
 assert.equal(new URL(base).hostname, '127.0.0.1');
 assert.match(baseline, /^[0-9a-f]{40}$/);
 const oldFile = name => execFileSync('git', ['show', `${baseline}:v2/${name}`]);
@@ -77,8 +77,9 @@ async function inspect(browser, width, previous) {
     const resized = await state();
     assert.ok(resized.visible && !resized.overflow, 'crossing the collapse breakpoint restores a usable form');
     if (!previous) {
-      await page.locator('[name="food"]').dispatchEvent('focus');
-      await page.waitForFunction(() => document.querySelector('[name="food"]').value === 'AI');
+      await page.locator('#tourSearch details.extras > summary').click();
+      await page.locator('[name="food"]').focus();
+      await page.waitForFunction(() => [...document.querySelector('[name="food"]').options].some(option => option.value === 'BB'));
       const meal = await page.locator('[name="food"]').evaluate(select => ({
         value: select.value,
         options: [...select.options].map(option => option.value),
