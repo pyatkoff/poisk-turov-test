@@ -290,6 +290,18 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(legacy_contract, legacy)
             self.assertIn(current_contract, current)
 
+    def test_room_details_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/room-details.css').read_text()
+        current = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
+        self.assertIn("'room-details.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'room-details.css'", scoped)
+        self.assertIn("@import url('/poisk-turov-test/v2/selected-tour-ux.css?v=1')", legacy)
+        for contract in ['.room-detail-card', '.room-gallery-main', '.room-gallery-thumb', '.room-facts', '.room-comment']:
+            self.assertIn(contract, legacy)
+            self.assertIn(contract, current)
+
     def test_hotel_details_design_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
