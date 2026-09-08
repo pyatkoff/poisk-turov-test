@@ -389,13 +389,16 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("'selected-tour-ux.css'", scoped)
         for marker in ('.selected-choice-summary', '.lead-success-panel', '.selected-lead-cta-note'):
             self.assertIn(marker, legacy)
-        for marker in ('position:relative!important;max-width:var(--at-shell)', '.hotel-desc.is-collapsed', '.room-details-host.is-expanded'):
+        for marker in ('position:relative!important;max-width:var(--at-shell)', '.selected-head .eyebrow{min-height:0!important;padding:0!important;display:inline-flex;align-items:center', '.hotel-desc.is-collapsed', '.room-details-host.is-expanded'):
             self.assertIn(marker, detail)
-        for marker in ('.flight-variant {position:relative!important', '.flight-segment+.flight-segment', '.flight-arrow{transform:rotate(90deg)'):
+        for marker in ('.tour-flights {position:relative;scroll-margin-top:18px}', '.flight-variant {position:relative!important', '.flight-route {position:relative;display:grid!important', '.flight-route>div:not(.flight-arrow) span {margin-top:2px}', '.flight-baggage {padding-top:8px}', '.flight-segment+.flight-segment', '.flight-arrow{transform:rotate(90deg)'):
             self.assertIn(marker, flights)
         self.assertIn('.selected-loading[data-v2-friendly-error="1"]', flow)
         self.assertIn('.tour-load-retry{min-height:44px', flow)
         self.assertIn('#selectedTour .lead-form{position:relative!important}', lead)
+        self.assertIn('#selectedTour .lead-selection-summary{display:flex;flex-wrap:wrap', lead)
+        self.assertIn('& .lead-form{display:grid;grid-template-columns:1fr}', lead)
+        self.assertIn('& .lead-form input{min-height:46px;font-size:16px}', lead)
         self.assertIn('#selectedTour .lead-phone-hint{display:block', lead)
 
     def test_legacy_header_css_is_not_a_search3_owner(self):
