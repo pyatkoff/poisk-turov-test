@@ -319,6 +319,17 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(contract, legacy)
             self.assertIn(contract, current)
 
+    def test_current_price_calendar_css_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/current-price-calendar-v1.css').read_text()
+        current = (ROOT / 'src/search3/styles/entry-calendar.css').read_text()
+        self.assertIn("'current-price-calendar-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'current-price-calendar-v1.css'", scoped)
+        for contract in ['.current-price-calendar__days', '.current-price-calendar__day', '.current-price-calendar__note']:
+            self.assertIn(contract, legacy)
+            self.assertIn(contract, current)
+
     def test_results_experience_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
