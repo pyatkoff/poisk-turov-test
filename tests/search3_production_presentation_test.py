@@ -929,18 +929,21 @@ class Search3HalfSizeResetTest(unittest.TestCase):
 
     def test_reset_css_allowlist_and_empty_public_slots(self):
         assets = self.source['assets']
-        self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/results-layout.css'])
+        self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/results-native.css'])
         self.assertEqual(assets['search3-entry-v1.css'], ['styles/entry-native-controls.css'])
         self.assertEqual(assets['search3-results-cards-v2.css'], ['styles/result-cards.css'])
         self.assertEqual(assets['search3-selected-flow-v2.css'], ['styles/selected-tour.css'])
         self.assertFalse((ROOT / 'src/search3/styles/base.css').exists())
-        self.assertLessEqual((ROOT / 'v2/search3-results-filters-v1.css').stat().st_size, 5490)
+        self.assertFalse((ROOT / 'src/search3/styles/results-layout.css').exists())
+        self.assertFalse((ROOT / 'src/search3/behavior/results-top.js').exists())
+        self.assertIn('behavior/results-native-state.js', assets['search3-results-filters-v1.js'])
+        self.assertLessEqual((ROOT / 'v2/search3-results-filters-v1.css').stat().st_size, 4000)
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertLessEqual((ROOT / 'v2/search3-selected-flow-v2.css').stat().st_size, 1)
 
     def test_native_controls_and_isolation_remain(self):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
-        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        results = (ROOT / 'src/search3/styles/results-native.css').read_text()
         for marker in ('input:not([type=checkbox])', 'font-size:16px!important', 'min-height:44px!important'):
             self.assertIn(marker, native)
         self.assertNotIn('search3-direct-control', native)

@@ -95,10 +95,10 @@ separate cascade evidence.
 | --- | --- |
 | Primary form and field placement | `behavior/search-form.js` |
 | Responsive entry and existing price-calendar adapter | `behavior/search-form/entry-presentation.js` inside `behavior/search-form.js`, `styles/entry-v1.css` |
-| Desktop local result-filter rail | Existing `v2/ds2-results-filters.js`, `styles/results-layout.css`; `behavior/results-presentation.js` owns the bounded zero-result bridge |
+| Native results shell | `styles/results-native.css`; `behavior/results-native-state.js` owns visibility, edit return and busy semantics |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
-| Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
+| Results header and summary | `behavior/results-native-state.js`, `styles/results-native.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/booking/format.js` inside `booking-summary.js`, `behavior/selected-flow-v2.js` |
@@ -108,7 +108,7 @@ separate cascade evidence.
 | Lead heading and fields | Native controller form; duplicate note injector retired |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, shared `v2/lead-form-guard-v1.js` / `v2/lead-ui-race-guard-v1.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
-| Accepted isolation/readability/hidden contracts | Current `results-layout.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
+| Accepted isolation/readability/hidden contracts | Current `results-native.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
 
 ## Smaller source owners
 

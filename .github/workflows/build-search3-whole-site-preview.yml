@@ -275,7 +275,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-current-results-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-native.css src/search3/behavior/results-top.js src/search3/behavior/results-native-state.js src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-current-results-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
