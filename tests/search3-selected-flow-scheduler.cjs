@@ -114,6 +114,17 @@ const facts = {
 };
 const eyebrow = { textContent: 'ВЫБРАННЫЙ ТУР' };
 let flightDataPresent = true;
+let flightErrorPresent = false;
+let flightRetry = null;
+let flightRetryInsertions = 0;
+const emptyFlightMessage = {
+  textContent: 'Данные по рейсам пока не получены.',
+  insertAdjacentElement(position, node) {
+    assert.equal(position, 'afterend');
+    flightRetry = node;
+    flightRetryInsertions += 1;
+  }
+};
 let fallbackDataWrites = 0;
 let fallbackDataValue;
 const selectedDataset = {};
@@ -132,8 +143,9 @@ const fallbackAction = {
 };
 const flights = {
   querySelector(selector) {
-    if (selector === '.flight-variant,.flight-error') return flightDataPresent ? {} : null;
-    if (selector === '.selected-loading') return { textContent: 'Данные по рейсам пока не получены.' };
+    if (selector === '.flight-variant,.flight-error') return flightDataPresent || flightErrorPresent ? {} : null;
+    if (selector === '.selected-loading') return emptyFlightMessage;
+    if (selector === '.load-flights') return flightRetry;
     if (selector === '.search3-flight-continue') return fallbackAction;
     if (selector === '.flight-variants' || selector === '.search3-flight-show-all') return null;
     return null;
@@ -193,6 +205,7 @@ const document = {
       type: '',
       className: '',
       textContent: '',
+      dataset: {},
       style: { display: '' },
       getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },
       setAttribute(name, value) { attributes.set(name, value); },
@@ -263,7 +276,7 @@ priceWrites = 0;
 priceAttributeWrites = 0;
 priceAriaLabel = '';
 
-events.get('v2:tour-selected')({ detail: { tour: { price: 100000, adults: 2, childs: 1, date: '2026-09-07' } } });
+events.get('v2:tour-selected')({ detail: { tour: { id: 'tour-1', price: 100000, adults: 2, childs: 1, date: '2026-09-07' } } });
 events.get('v2:tour-price-updated')({ detail: { price: 100000 } });
 events.get('v2:tour-price-updated')({ detail: { price: 120000 } });
 
@@ -378,6 +391,18 @@ window.Search3SelectedFlowV2.sync();
 window.Search3SelectedFlowV2.sync();
 assert.equal(flightRootReads, 2, 'each no-flight sync reuses one flight root for all fallback work');
 assert.equal(fallbackDataWrites, 1, 'stable fallback dataset marker is written only once');
+assert.equal(flightRetryInsertions, 1, 'empty-flight recovery creates exactly one delegated retry action');
+assert.equal(flightRetry.getAttribute('data-tid'), 'tour-1', 'retry action keeps the current tour id');
+assert.equal(flightRetry.textContent, 'Проверить рейсы ещё раз');
+assert.match(emptyFlightMessage.textContent, /менеджер уточнит перелёт по заявке/);
+
+flightRetry = null;
+flightErrorPresent = true;
+emptyFlightMessage.textContent = 'Не удалось загрузить рейсы';
+assert.equal(window.Search3SelectedFlowV2.ensureEmptyFlightRecovery(flights), null,
+  'flight errors keep the controller-owned error and retry presentation');
+assert.equal(flightRetry, null, 'empty-flight owner does not add a second error retry');
+flightErrorPresent = false;
 
 documentClick({
   target: { closest(selector) { return selector === '[data-s3-selected-lead]' ? mobileButton : null; } },
