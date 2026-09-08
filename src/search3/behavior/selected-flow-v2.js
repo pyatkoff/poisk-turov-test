@@ -99,6 +99,10 @@
     if (node && node.hasAttribute(name)) node.removeAttribute(name);
   }
 
+  function addClass(node, name) {
+    if (node && node.classList) node.classList.add(name);
+  }
+
   function setHidden(node, value) {
     if (node && node.hidden !== value) node.hidden = value;
   }
@@ -199,6 +203,75 @@
     });
   }
 
+  function ensureOptionalLeadFields(form) {
+    if (!form || form.querySelector('.lead-optional-toggle')) return;
+    var fields = form.querySelector('.lead-fields');
+    var name = form.querySelector('input[name="name"]');
+    var comment = form.querySelector('textarea[name="comment"]');
+    var nameLabel = name && name.closest('label');
+    var commentLabel = comment && comment.closest('label');
+    if (!nameLabel && !commentLabel) return;
+    if (fields) fields.style.gridTemplateColumns = 'minmax(0,1fr)';
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'secondary lead-optional-toggle';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.textContent = 'Дополнить заявку · имя и комментарий';
+    var optional = document.createElement('div');
+    optional.className = 'lead-optional-fields';
+    optional.hidden = true;
+    optional.style.display = 'grid';
+    optional.style.gap = '12px';
+    if (nameLabel) optional.appendChild(nameLabel);
+    if (commentLabel) optional.appendChild(commentLabel);
+    toggle.addEventListener('click', function () {
+      var expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      toggle.textContent = expanded ? 'Дополнить заявку · имя и комментарий' : 'Скрыть дополнительные поля';
+      optional.hidden = expanded;
+    });
+    var anchor = fields || form.querySelector('.section-heading');
+    if (anchor) {
+      anchor.insertAdjacentElement('afterend', toggle);
+      toggle.insertAdjacentElement('afterend', optional);
+    } else {
+      form.prepend(toggle, optional);
+    }
+  }
+
+  function hideOptionalLeadFields() {
+    var toggle = selected.querySelector('.lead-optional-toggle');
+    var optional = selected.querySelector('.lead-optional-fields');
+    if (toggle) toggle.hidden = true;
+    if (optional) optional.hidden = true;
+  }
+
+  function ensureCheckoutPresentation(flights) {
+    var head = selected.querySelector('.selected-head');
+    var picture = selected.querySelector('.selected-picture');
+    var description = selected.querySelector('.hotel-desc');
+    var facts = selected.querySelector('.facts');
+    var form = selected.querySelector('.lead-form');
+    addClass(head, 'checkout-head');
+    addClass(picture, 'checkout-picture');
+    addClass(description, 'checkout-description');
+    if (facts) {
+      addClass(facts, 'checkout-facts');
+      if (facts.getAttribute && facts.setAttribute) setAttribute(facts, 'role', 'list');
+      Array.from(facts.children || []).forEach(function (item) {
+        if (item.getAttribute && item.setAttribute) setAttribute(item, 'role', 'listitem');
+      });
+    }
+    if (flights) {
+      addClass(flights, 'checkout-flights');
+      if (flights.getAttribute && flights.setAttribute) setAttribute(flights, 'aria-label', 'Выбор перелёта');
+    }
+    if (form) {
+      addClass(form, 'checkout-lead');
+      ensureOptionalLeadFields(form);
+    }
+  }
+
   function continueFlow() {
     if (selected.classList.contains('search3-lead-entry')) return;
     if (selected.classList.contains('search3-final-review')) {
@@ -272,6 +345,8 @@
   function sync() {
     var visible = !selected.hidden && getComputedStyle(selected).display !== 'none' && selected.children.length > 0;
     body.classList.toggle('search3-selected-open', visible);
+    var flights = selected.querySelector('.tour-flights');
+    ensureCheckoutPresentation(flights);
     var leadEntry = selected.classList.contains('search3-lead-entry');
     var finalReview = selected.classList.contains('search3-final-review');
     setHidden(mobileBar, !visible || leadEntry || finalReview);
@@ -282,7 +357,6 @@
       setText(mobileBar.querySelector('[data-s3-selected-price]'), selectedAmount(selectedPrice) || '—');
       setText(mobileBar.querySelector('[data-s3-selected-lead]'), flowLabel('flight'));
     }
-    var flights = selected.querySelector('.tour-flights');
     syncPresentation();
     syncDisplayedPrice();
     syncLeadCopy();
@@ -330,8 +404,12 @@
     currentTotal = normalizedTotal(event && event.detail, currentTour);
     schedule();
   });
+  window.addEventListener('v2:lead-success', function () {
+    hideOptionalLeadFields();
+    schedule();
+  });
   ['v2:flight-selected', 'v2:selected-tour-opened', 'v2:selected-tour-closed', 'v2:results-rendered',
-    'v2:booking-review', 'search3:lead-entry', 'v2:lead-started', 'v2:lead-success', 'v2:lead-error'].forEach(function (name) {
+    'v2:booking-review', 'search3:lead-entry', 'v2:lead-started', 'v2:lead-error'].forEach(function (name) {
     window.addEventListener(name, schedule);
   });
 
