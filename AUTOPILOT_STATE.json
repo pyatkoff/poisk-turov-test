@@ -1,4 +1,55 @@
 {
+  "latest_entry_owner_retirement": {
+    "source_pr": 1610,
+    "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
+    "release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+    "before_bytes": 60811,
+    "after_bytes": 54605,
+    "newly_removed_bytes": 6206,
+    "ci": {
+      "artifact_digest": "sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38",
+      "artifact_id": 10063598031,
+      "artifact_rebuilt_for_docs": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_run": 34244914086,
+      "checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+      "conclusion": "success",
+      "evidence_digest": "sha256:90572d15f4f4a850fd73393fc5af6aeaa6e5a66e355b2a72582866d328bffd24",
+      "evidence_id": 10063597221,
+      "preview_published": false,
+      "required_passed": 2,
+      "security_run": 34244914013,
+      "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055"
+    },
+    "visual": {
+      "widths": [
+        375,
+        1440
+      ],
+      "states": [
+        "native entry",
+        "URL guest hydration",
+        "changed adults/children/child ages",
+        "night range FormData"
+      ],
+      "external_requests_blocked": true,
+      "lead_sent": 0,
+      "overflow": false,
+      "tap_targets_min_px": 44,
+      "screenshots_inspected": [
+        "entry-375",
+        "entry-1440"
+      ],
+      "visual_scope": "Native form controls and labels visible; intentionally unstyled shell remains from prior reset. Catalog/image requests blocked; not live or owner visual acceptance."
+    },
+    "deferred": [
+      "owner visual acceptance",
+      "physical Safari/safe-area",
+      "published-preview current-source smoke",
+      "full lead/responsive/site/SEO matrix"
+    ],
+    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures."
+  },
   "blocked": [
     {
       "blocks": [
@@ -53,29 +104,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1607 retired the duplicate Search3 results presentation, cards and labels owners after #1604's half-size reset. Eight public assets are 78454→60811 raw (-17643 B); the loaded route is 197067→179424. Against the original 665247-byte route this is -485823 B (-73.03%, 3.71x smaller). Security, exact PHP/path/isolation and a real renderer-driven 375/1440 core journey passed.",
+    "last_material_progress": "PR #1610 retired the full entry-presentation owner, popup and obsolete mobile wrappers: eight assets 60811→54605 raw (new saving 6206 B); loaded route 179424→173218. Security and one exact artifact/native-entry pass succeeded; no publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the retained selected-flow JavaScript as one coarse owner package; replace only optional presentation state while preserving price, pending, URL, lead and analytics contracts.",
+    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_RESULTS_PRESENTATION_RESET",
-    "title": "Retire duplicate Search3 results presentation owners",
+    "id": "S3_ENTRY_OWNER_RETIREMENT",
+    "title": "Retire entry decorators and expose canonical guest controls",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1607,
+    "source_pr": 1610,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "e15d9e67feb0e08d97dfd0255a75a8e89b245980",
-    "release_sha": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
-    "last_fully_checked_release_sha": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
-    "security_run": 34243761242,
-    "exact_run": 34243761739,
-    "checked_release_asset_bytes": 60811,
-    "release_loaded_bytes": 179424,
+    "implementation_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
+    "release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+    "last_fully_checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+    "security_run": 34244914013,
+    "exact_run": 34244914086,
+    "checked_release_asset_bytes": 54605,
+    "release_loaded_bytes": 173218,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "One coarse selected-flow JavaScript owner audit; no micro-trims, preview deploy, or broad browser matrix."
+    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -127,6 +178,21 @@
     "visual_ci": 33934082023
   },
   "last_ci": {
+    "entry_owner_retirement": {
+      "artifact_digest": "sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38",
+      "artifact_id": 10063598031,
+      "artifact_rebuilt_for_docs": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_run": 34244914086,
+      "checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+      "conclusion": "success",
+      "evidence_digest": "sha256:90572d15f4f4a850fd73393fc5af6aeaa6e5a66e355b2a72582866d328bffd24",
+      "evidence_id": 10063597221,
+      "preview_published": false,
+      "required_passed": 2,
+      "security_run": 34244914013,
+      "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055"
+    },
     "app_presentation_layer_retirement": {
       "artifact_digest": "sha256:8248e14765ed95dce5f84ff16799e893a16a1dd479aebb07910e7282a7bdbb4f",
       "artifact_id": 10057632192,
@@ -1470,8 +1536,8 @@
       "preview_published": false
     }
   },
-  "last_verified_commit": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
-  "last_verified_commit_scope": "Checked release after #1607: eight Search3 assets 60811 raw; complete loaded route 179424, down 485823 B (-73.03%) from 665247. Security and exact artifact/core renderer journey passed. Published preview remains c9ba7952; main observed 47d6ccd0 and production unchanged.",
+  "last_verified_commit": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+  "last_verified_commit_scope": "Checked release after #1610: 54605 raw bytes across eight assets, 173218 loaded route; native entry at375/1440 and Security/exact source/PHP/path/presentation/isolation guards passed. No current-source preview, main or production change.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -1878,80 +1944,65 @@
   },
   "presentation_refactor_checkpoint": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
-    "baseline": "eb8729e17dd3c8ee88f96f9143bcd936b01db78a",
-    "implementation_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
-    "release_integration_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
-    "audit": "docs/project/search3-selected-geometry-repair.json",
-    "scope": "Repair measured phone geometry regression after selected-tour donor retirement and retain focused evidence in the existing exact-artifact job.",
+    "implementation_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
+    "release_integration_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+    "audit": "docs/project/search3-entry-owner-retirement.json",
+    "source_pr": 1610,
     "ci": {
-      "security_run": 34122423681,
-      "artifact_run": 34122423688,
-      "artifact_id": 10018756721,
-      "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
-      "archive_sha256": "810b9486ab6c3121ba33915ff8eb8d5c7df200df9f3719f397c6bce179530ae4",
-      "conclusion": "success",
-      "required_passed": 2,
+      "artifact_digest": "sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38",
+      "artifact_id": 10063598031,
+      "artifact_rebuilt_for_docs": false,
       "artifact_rebuilt_on_release": false,
-      "artifact_rebuilt_for_docs": false
+      "artifact_run": 34244914086,
+      "checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+      "conclusion": "success",
+      "evidence_digest": "sha256:90572d15f4f4a850fd73393fc5af6aeaa6e5a66e355b2a72582866d328bffd24",
+      "evidence_id": 10063597221,
+      "preview_published": false,
+      "required_passed": 2,
+      "security_run": 34244914013,
+      "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055"
     },
     "public_assets": {
-      "before_bytes": 163740,
-      "after_bytes": 164174,
-      "css_bytes": 93518,
-      "js_bytes": 70656,
-      "delta_bytes": 434,
-      "scope": "Eight raw served assets; seven byte-identical; no page-speed claim."
+      "before_bytes": 60811,
+      "after_bytes": 54605,
+      "newly_removed_bytes": 6206
     },
-    "run_delta": {
-      "newly_removed_bytes": 0,
-      "css_bytes": 434,
-      "js_bytes": 0,
-      "bytes": 434,
-      "reason": "This invocation repairs a previously prepared retirement; no new removal is claimed."
+    "loaded_route": {
+      "before_bytes": 179424,
+      "after_bytes": 173218
     },
     "preview_updated": false,
     "production_updated": false,
-    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "visual_verification": {
-      "baseline_source": "0f1efa2b22cd7069a0d96adbbdca1bcfa694f309",
-      "artifact_id": 10018755973,
-      "artifact_digest": "sha256:bd135bc0b83f5f3d0055e9454173176a401cc51f87b4cb6916b9ab21d84b8a01",
-      "states": 12,
       "widths": [
         375,
-        760,
-        1000,
         1440
       ],
-      "phases": [
-        "detail",
-        "review",
-        "lead"
+      "states": [
+        "native entry",
+        "URL guest hydration",
+        "changed adults/children/child ages",
+        "night range FormData"
       ],
-      "differences": [],
+      "external_requests_blocked": true,
+      "lead_sent": 0,
       "overflow": false,
-      "api_calls_per_journey": {
-        "tour": 1,
-        "flights": 1,
-        "other": 0
-      },
-      "lead_submitted": false,
+      "tap_targets_min_px": 44,
       "screenshots_inspected": [
-        "375-detail",
-        "375-lead",
-        "760-review",
-        "1000-lead",
-        "1440-review"
+        "entry-375",
+        "entry-1440"
       ],
-      "scope": "Chromium fixed-tour fixture; responsive geometry preservation, not live or physical Safari acceptance"
+      "visual_scope": "Native form controls and labels visible; intentionally unstyled shell remains from prior reset. Catalog/image requests blocked; not live or owner visual acceptance."
     },
     "deferred": [
-      "physical Safari and device safe-area",
-      "live current-source verification",
-      "full results/editor matrix",
-      "pre-existing11px mobile-bar button touch target"
+      "owner visual acceptance",
+      "physical Safari/safe-area",
+      "published-preview current-source smoke",
+      "full lead/responsive/site/SEO matrix"
     ],
-    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
+    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures."
   },
   "presentation_refactor_history": [
     {
@@ -7815,7 +7866,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T15:00:00Z",
+  "updated_at": "2026-09-08T15:31:10Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
