@@ -535,7 +535,7 @@ def clean_report(report):
         return clean_hotel_report(report)
     if not isinstance(report, dict) or not isinstance(report.get("checks"), list):
         raise ValueError("invalid report")
-    if not 1 <= len(report["checks"]) <= (13 if report.get("mode") == "prices" else 4):
+    if not 1 <= len(report["checks"]) <= (13 if report.get("mode") in ("prices", "price_evidence") else 4):
         raise ValueError("invalid checks")
     checks = []
     for item in report["checks"]:
@@ -548,6 +548,37 @@ def clean_report(report):
                 clean[key] = value
         checks.append(clean)
     result = {"ok": all(item["status"] == "ok" for item in checks), "checks": checks}
+    if report.get("mode") == "price_evidence":
+        result["mode"] = "price_evidence"
+        search = report.get("search", {})
+        result["search"] = {key: safe_label(search[key]) for key in (
+            "departure", "destination", "currency", "checkin_begin", "checkin_end") if key in search}
+        for key in ("adults", "children", "nights_from", "nights_till", "requested_hotels"):
+            if type(search.get(key)) is int and 0 <= search[key] <= 100:
+                result["search"][key] = search[key]
+        for key in ("requested_hotel_ids", "returned_hotel_ids", "missing_hotel_ids"):
+            values = report.get(key, [])
+            if not isinstance(values, list) or len(values) > 30 or any(
+                    type(value) is not int or not 1 <= value <= 999_999_999 for value in values):
+                raise ValueError("invalid price evidence ids")
+            result[key] = values
+        value = report.get("unexpected_offer_count", 0)
+        result["unexpected_offer_count"] = value if type(value) is int and 0 <= value <= 10000 else 0
+        result["external_results_not_loaded"] = report.get("external_results_not_loaded") is True
+        result["evidence"] = []
+        for item in report.get("evidence", [])[:30]:
+            if not isinstance(item, dict) or item.get("external_id") not in result["requested_hotel_ids"]:
+                raise ValueError("invalid price evidence")
+            clean = {"external_id": item["external_id"]}
+            offers = item.get("offer_count")
+            clean["offer_count"] = offers if type(offers) is int and 0 <= offers <= 10000 else 0
+            for key in ("hotel", "star"):
+                clean[key] = safe_label(item.get(key))
+            for key in ("rooms", "meals"):
+                values = item.get(key, [])
+                clean[key] = [safe_label(value) for value in values[:5]] if isinstance(values, list) else []
+            result["evidence"].append(clean)
+        return result
     if report.get("mode") == "prices":
         result["mode"] = "prices"
         search = report.get("search", {})
