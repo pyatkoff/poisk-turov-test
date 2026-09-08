@@ -25,7 +25,7 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
         'css' => ['sales-leader-ui-v1.css', 'conversion-confidence-v1.css', 'checkout-experience-v1.css', 'primary-meal-ux-v1.css', 'mobile-search-summary-v1.css', 'search-dirty-ux-v1.css', 'search-params-filter-rail-v1.css', 'search-shell-grid-v1.css', 'results-layout-guard-v1.css', 'search-header-layout-guard-v1.css', 'search-footer-rhythm-v1.css', 'ds2-search-tablet-filters-v1.css'],
         // Current Search3 owners retain summary, tour CTA, selected trust and checkout disclosure.
         // Compare, decision badges and agency inserts are hidden in Search3.
-        'js' => ['search-redesign-v2.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'checkout-experience-v1.js', 'mobile-search-summary-v1.js', 'primary-meal-ux-v1.js', 'search-dirty-ux-v1.js', 'search-params-filter-rail-v1.js'],
+        'js' => ['search-redesign-v2.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'checkout-experience-v1.js', 'mobile-search-summary-v1.js', 'primary-meal-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'search-params-filter-rail-v1.js'],
     ];
     return array_values(array_diff($manifest[$type], $excluded[$type]));
 }
