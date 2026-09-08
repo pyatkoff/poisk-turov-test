@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1580 retires br3-control-consistency-v1.css and selected-tour-layout-guard-v1.css from Search3 while keeping both unchanged on the old route. Exact Chromium caught and then verified the repaired review cascade. Loaded route payload falls 472663 to 470476 raw (-2187 net).",
+    "last_material_progress": "PR #1584 retires search-filters-ux-v1.css from Search3. Native tourist selects are restored from legacy hidden/ARIA/tab state; old search keeps the complete layer. Loaded CSS/JS falls 470476 to 458693 raw (-11783 net).",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit search-filters-ux-v1.css and selected-tour-ux.css as the next whole-owner candidates; retire only a substantial owner whose active Search3 slice can be kept compactly in current modules.",
+    "next_action": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_CONTROL_GUARDS_LAYER",
-    "title": "Retire two legacy control/layout guard layers from Search3",
+    "id": "S3_LEAN_SEARCH_FILTER_SKIN",
+    "title": "Retire legacy search filter presentation from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1580
+      1584
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "5b07409fdacb9b5cd8912f0c117eabd9e5378172"
+      "a201f645bc614bdab65ee3008ebfd152a70b78af"
     ],
-    "release_sha": "4a8b279deda40075817013653bf03dcd51f927eb",
-    "artifact_run": 34220737644,
-    "artifact_id": 10053671415,
-    "artifact_digest": "sha256:101937e4872190abb5126f9280f6103596918ceb1d20def4d2de5afaf2516d08",
-    "checked_release_asset_bytes": 178176,
-    "checked_release_loaded_bytes": 470476,
+    "release_sha": "f1a7fe122d878918157cb27f4c83165569f0638e",
+    "artifact_run": 34222910847,
+    "artifact_id": 10054529522,
+    "artifact_digest": "sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd",
+    "checked_release_asset_bytes": 178418,
+    "checked_release_loaded_bytes": 458693,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit search-filters-ux-v1.css and selected-tour-ux.css; keep exact filter lifecycle and selected detail/review/lead behavior before excluding another whole owner."
+    "next_action": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1384,10 +1384,18 @@
       "selected_geometry_states": "12 detail/review/lead states at 375/760/1000/1440",
       "source_pr": 1580,
       "source_sha": "5b07409fdacb9b5cd8912f0c117eabd9e5378172"
+    },
+    "search_filter_skin_retirement": {
+      "security_run": 34222910866,
+      "exact_run": 34222910847,
+      "conclusion": "SUCCESS",
+      "checks": "Security owner validators plus exact source/PHP/path/presentation/isolation and browser geometry",
+      "artifact_id": 10054529522,
+      "artifact_digest": "sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd"
     }
   },
-  "last_verified_commit": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
-  "last_verified_commit_scope": "Checked Search3 release after #1573; search-header-shared-shell-v1.css is excluded only from Search3, current .at-global-header remains owned by site-header-v2.css, and the old route retains the full legacy layer. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "f1a7fe122d878918157cb27f4c83165569f0638e",
+  "last_verified_commit_scope": "Checked Search3 release after #1584; search-filters-ux-v1.css is excluded only from Search3, current native form/tourist owners are preserved, and the old route retains the full legacy layer. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7731,7 +7739,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T09:32:00Z",
+  "updated_at": "2026-09-08T11:54:30Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -8918,5 +8926,41 @@
     "preview_published": false,
     "audit": "docs/project/search3-lean-control-guards-layer.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_search_filter_skin_retirement": {
+    "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1584,
+    "source_sha": "a201f645bc614bdab65ee3008ebfd152a70b78af",
+    "release_sha": "f1a7fe122d878918157cb27f4c83165569f0638e",
+    "removed_search3_layers": [
+      "search-filters-ux-v1.css"
+    ],
+    "raw_before": 470476,
+    "raw_after": 458693,
+    "raw_saved": 11783,
+    "shared_css_before": 108560,
+    "shared_css_after": 96535,
+    "shared_js_before": 183740,
+    "shared_js_after": 183740,
+    "eight_assets_before": 178176,
+    "eight_assets_after": 178418,
+    "security_run": 34222910866,
+    "exact_run": 34222910847,
+    "final_artifact_id": 10054529522,
+    "final_artifact_digest": "sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd",
+    "results_geometry_artifact": 10054528862,
+    "results_geometry_digest": "sha256:d94e1bbd8346c7f1ed5a81b017cfd8e6ca7d896bd083b39cc4408c26f68d0fd4",
+    "selected_geometry_artifact": 10054528235,
+    "selected_geometry_digest": "sha256:5894f02f87fb9c79d3a75dc897af259508f4702d13b4f257ff5a1b329b584066",
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "deferred": [
+      "live current-source interaction",
+      "physical Safari/safe-area",
+      "manual screenshot inspection"
+    ],
+    "next": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners."
   }
 }

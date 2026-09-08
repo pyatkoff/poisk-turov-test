@@ -2524,3 +2524,16 @@ Exact source/PHP/path/presentation/isolation guards passed. Chromium retained al
 Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; this source was not published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, representative manual screenshot inspection, physical Safari/safe-area and owner acceptance remain deferred. Audit: `docs/project/search3-lean-control-guards-layer.json`.
 
 Next: audit `search-filters-ux-v1.css` and `selected-tour-ux.css` as whole-owner candidates. Retire only the stronger substantial candidate after compactly preserving active Search3 lifecycle/geometry in current owners; keep the old route unchanged.
+
+
+### S3_LEAN_SEARCH_FILTER_SKIN — checked release, not published
+
+[#1584](https://github.com/pyatkoff/poisk-turov-test/pull/1584) removes the complete legacy `search-filters-ux-v1.css` layer from the Search3 scope while leaving the file unchanged in the full manifest for `/poisk-turov-old/`. The current Search3 form retains native date/night controls, quality controls, mobile advanced filters and the tourist popover. The only retained dependencies are a scoped pre-init hidden-wrapper rule and child-age spacing; the two tourist selects now explicitly shed the legacy visually-hidden class, `aria-hidden` and negative tab order.
+
+Loaded shared CSS + shared JS + eight public Search3 assets: **470,476 → 458,693 raw bytes (−11,783 B)**. Shared CSS: 108,560 → 96,535 B; shared JS: 183,740 B unchanged; eight public assets: 178,176 → 178,418 B (+242 B retained current ownership).
+
+Implementation source `a201f645bc614bdab65ee3008ebfd152a70b78af`; checked release `f1a7fe122d878918157cb27f4c83165569f0638e`. Security run [34222910866](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34222910866) and exact artifact/browser run [34222910847](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34222910847) passed. Artifact `10054529522`, digest `sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd`; results/entry geometry `10054528862`; selected geometry `10054528235`. No external API or lead request was made.
+
+Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; this source was not published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, physical Safari/safe-area and manual screenshot inspection remain deferred.
+
+Next: retire `selected-tour-ux.css` as one reversible Search3-only package, retaining only confirmed detail, flight, room-disclosure and lead-state contracts in current owners. Following the owner’s test-branch guidance, use one Security + exact artifact/smoke pass per substantial package and do not repeat the same CI after ready transition.
