@@ -8,7 +8,8 @@ body.search3-candidate{
 & #selectedTour{max-width:var(--at-shell)!important;margin:24px auto 56px!important;padding:0!important;background:transparent!important}
 & #selectedTour{
 & .back-results{min-height:40px!important;margin:0 0 14px!important;padding:0 12px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-brand)!important;font:800 11px/1 var(--at-font)!important}
-& .selected-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:24px!important;align-items:end!important;padding:22px 24px!important;border:1px solid var(--at-line)!important;border-radius:18px 18px 0 0!important;background:#fff!important}
+& .selected-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:24px!important;align-items:end!important;margin:0 0 var(--at-space-5)!important;padding:22px 24px!important;border:1px solid var(--at-line)!important;border-radius:18px 18px 0 0!important;background:#fff!important}
+& .selected-head .eyebrow{min-height:0!important;padding:0!important;background:transparent!important;color:var(--at-accent)!important;font-size:12px!important;letter-spacing:.08em!important}
 & .selected-head h2{margin:0!important;color:var(--at-ink)!important;font-size:28px!important;font-weight:800!important;line-height:1.08!important;letter-spacing:-.025em!important}
 & .selected-head p{margin:7px 0 0!important;color:var(--at-muted)!important}
 & .selected-price{min-width:190px!important;text-align:right!important;color:var(--at-ink)!important;font-size:27px!important;font-weight:900!important}

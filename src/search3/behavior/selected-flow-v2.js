@@ -294,6 +294,7 @@
     var description = selected.querySelector('.hotel-desc');
     var facts = selected.querySelector('.facts');
     var form = selected.querySelector('.lead-form');
+    addClass(selected, 'v2-approved-selected-tour');
     addClass(head, 'checkout-head');
     addClass(picture, 'checkout-picture');
     addClass(description, 'checkout-description');
