@@ -339,6 +339,21 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for current_contract in ['.v2-shell', '#tourSearch', '#results', '#selectedTour', '.search3-candidate']:
             self.assertNotIn(current_contract, legacy)
 
+    def test_ds2_selected_convergence_is_retired_from_search3_only(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/ds2-selected-tour-convergence-v1.css').read_text()
+        current = ''.join((ROOT / 'src/search3/styles' / name).read_text() for name in [
+            'tour-detail.css', 'flights.css', 'review-layout.css',
+            'selected-flow-v2.css', 'tour-detail-convergence.css'
+        ])
+        self.assertIn("'ds2-selected-tour-convergence-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'ds2-selected-tour-convergence-v1.css'", scoped)
+        for contract in ['.selected-tour', '.selected-head', '.selected-picture', '.checkout-facts', '.checkout-flights', '.checkout-lead']:
+            self.assertIn(contract, legacy)
+        for contract in ['#selectedTour', '.selected-head', '.selected-picture', '.facts', '.tour-flights', '.lead-form']:
+            self.assertIn(contract, current)
+
     def test_tablet_legacy_extras_are_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
