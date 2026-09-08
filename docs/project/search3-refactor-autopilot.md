@@ -2347,3 +2347,18 @@ Exact Chromium retained 12 selected detail/review/lead states, 30 entry states, 
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-design-v1-layer.json`.
 
 Next: audit the complete `enhancements.css` presentation layer. Keep it unchanged on the old route and attempt only a whole-layer, reversible Search3 exclusion with focused geometry-driven repair; do not create micro-removal PRs.
+## S3_LEAN_TOUR_DESIGN_LAYER — checked release, 2026-09-08
+
+Source PR #1556 / `87190b028bb628c7b831c65e11d5ea8d54d8639c`; checked code release `74bb11cca818e111503f888a99b3a61e306c1186`. Search3 no longer loads the complete 5269-byte `tour-design-v1.css` presentation layer. The unchanged layer remains in the full manifest used by `/poisk-turov-old/`.
+
+Exact Chromium drove the repair. Three red runs (`34198929535`, `34199068139`, `34199526115`) exposed malformed literal line breaks and then the genuinely live selected-tour/mobile-flight geometry. Only a 670-byte slice was retained in the current `selected-tour-ux.css` owner: selected overflow and price alignment, selected/lead positioning and rhythm, and mobile flight segment/title/route/baggage presentation. The red runs remain recorded as red.
+
+Loaded raw is **523917 → 519318 bytes (−4599)**: scoped shared CSS 166900→162301, shared JavaScript remains 183740, and the eight generated Search3 assets are 173330→174000 after retaining current-owner geometry. Carried same-method gzip is **117126 → 116431 (−695)**.
+
+Security `34199833477` and exact artifacts `34199833496` / `34200268121` passed. Reusable final artifact `10045565727`, digest `sha256:738136f729747089b59cb65d9e61a018b53f6c46737959d62990baf18ed21a23`; selected evidence `10045564964`, digest `sha256:903a62215194e12a3bb5bf7394d0552d0aca62aea855cd74f791c8b1815a1e48`; results evidence `10045565347`, digest `sha256:95af06173ab0262b92f0d25bc54eed81be45f52ac45a931adf0156e7cf97a821`.
+
+Exact Chromium retained selected detail/review/lead, result and entry geometry without external API or lead requests. Eight public paths and Tourvisor/API, URL/payload, price arithmetic, lead transport/mapping, analytics/goals, logo/native/nesting contracts are unchanged.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-tour-design-layer.json`.
+
+Next: audit the complete `hotel-details-design.css` presentation layer. Keep it unchanged on the old route and exclude it from Search3 only if focused result/selected coverage proves the inline-detail owner is obsolete.
