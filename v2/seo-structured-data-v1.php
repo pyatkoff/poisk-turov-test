@@ -58,6 +58,36 @@ function v2_seo_breadcrumb_schema(array $items,string $currentPath): array
     ];
 }
 
+/** Structured catalog for visible, canonical on-site destination links. */
+function v2_seo_item_list_schema(array $items,string $name): array
+{
+    $name=trim($name);
+    if($name==='')return [];
+    $elements=[];$seen=[];
+    foreach($items as $item){
+        if(!is_array($item))continue;
+        $label=trim((string)($item['name']??$item['label']??''));
+        $path=trim((string)($item['path']??$item['href']??''));
+        $url=v2_seo_schema_absolute_url($path);
+        if($label===''||$url===null||isset($seen[$url]))continue;
+        $seen[$url]=true;
+        $elements[]=[
+            '@type'=>'ListItem',
+            'position'=>count($elements)+1,
+            'name'=>$label,
+            'item'=>$url,
+        ];
+    }
+    if(!$elements)return [];
+    return [
+        '@context'=>'https://schema.org',
+        '@type'=>'ItemList',
+        'name'=>$name,
+        'numberOfItems'=>count($elements),
+        'itemListElement'=>$elements,
+    ];
+}
+
 function v2_seo_json_ld(array $schema): string
 {
     if(!$schema)return '';

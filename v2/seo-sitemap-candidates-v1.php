@@ -32,7 +32,19 @@ function v2_seo_sitemap_candidate_urls(array $catalog, bool $launchEnabled, arra
 
 function v2_seo_sitemap_candidate_xml(array $catalog, bool $launchEnabled, array $allowedPaths = []): string
 {
-    $urls = v2_seo_sitemap_candidate_urls($catalog, $launchEnabled, $allowedPaths);
+    return v2_seo_sitemap_urls_xml(v2_seo_sitemap_candidate_urls($catalog, $launchEnabled, $allowedPaths));
+}
+
+/** Serialize an already-gated URL set without changing its membership. */
+function v2_seo_sitemap_urls_xml(array $urls): string
+{
+    $normalized = [];
+    foreach ($urls as $url) {
+        if (!is_string($url) || !str_starts_with($url, 'https://anytoour.ru/')) continue;
+        $normalized[$url] = true;
+    }
+    $urls = array_keys($normalized);
+    sort($urls, SORT_STRING);
     $lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'];
     foreach ($urls as $url) {
         $lines[] = '  <url><loc>' . htmlspecialchars($url, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</loc></url>';

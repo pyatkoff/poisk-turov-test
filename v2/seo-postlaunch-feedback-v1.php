@@ -28,6 +28,7 @@ function v2_seo_postlaunch_feedback_cohort(): array
     sort($paths,SORT_STRING);
     $current=v2_seo_controlled_launch_paths();
     sort($current,SORT_STRING);
+    $baselinePreserved=array_diff($paths,$current)===[];
     return [
         'cohort_id'=>'controlled_country_resort_seasonal_v3',
         'domain'=>'anytoour.ru',
@@ -37,7 +38,10 @@ function v2_seo_postlaunch_feedback_cohort(): array
         'launch_identity_observed_at_epoch'=>1788394228,
         'paths'=>$paths,
         'path_count'=>count($paths),
-        'current_launch_scope_matches_baseline'=>$current===$paths,
+        // The measurement cohort stays pinned while the controlled launch may
+        // grow additively. Removing a measured path still invalidates feedback.
+        'current_launch_scope_matches_baseline'=>$baselinePreserved,
+        'current_launch_scope_contains_baseline'=>$baselinePreserved,
         'hotel_tours_in_cohort'=>false,
     ];
 }
@@ -57,7 +61,7 @@ function v2_seo_postlaunch_feedback_validate(array $input, ?int $nowEpoch=null):
     $domain=trim((string)($input['domain']??''));
     $cohortId=trim((string)($input['cohort_id']??''));
     $launchSha=trim((string)($input['launch_source_sha']??''));
-    if(($cohort['current_launch_scope_matches_baseline']??false)!==true)$errors[]='launch_cohort_baseline_drift';
+    if(($cohort['current_launch_scope_contains_baseline']??false)!==true)$errors[]='launch_cohort_baseline_drift';
     if($domain!==$cohort['domain'])$errors[]='domain_mismatch';
     if($cohortId!==$cohort['cohort_id'])$errors[]='cohort_mismatch';
     if($launchSha!==$cohort['launch_source_sha'])$errors[]='launch_source_sha_mismatch';

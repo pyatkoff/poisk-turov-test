@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/site-header-v2.php';
+require_once __DIR__ . '/seo-launch-slice-v1.php';
 $homeSiteParams = is_array($params ?? null) ? $params : [];
+$homeSiteParams = v2_seo_controlled_launch_site_params(
+    $homeSiteParams,
+    v2_seo_controlled_launch_enabled($homeSiteParams)
+);
 $homeForm = v2_form_defaults($_GET, $homeSiteParams);
 $homePhone = v2_site_phone($homeSiteParams, '8 (800) 100 - 61 - 50');
 $homePhoneHref = v2_phone_href($homePhone);

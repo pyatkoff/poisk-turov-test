@@ -10,7 +10,8 @@ if(($cohort['launch_source_sha']??'')!=='9a721eb387bbdeae28e9979dcebde8959dd31bb
 if(($cohort['launch_baseline_sha256']??'')!=='515921b352d69c9b57b37d45605ec1c3751f5deb587744e8e757c1605939c043')feedback_fail('baseline_sha');
 if(($cohort['launch_identity_registry_sha256']??'')!=='df2679a82e43043b46daadffa6d3a216bc8fc09b82a4e43152ea7203b882a024')feedback_fail('identity_sha');
 if(($cohort['current_launch_scope_matches_baseline']??false)!==true)feedback_fail('launch_scope_drift');
-$current=v2_seo_controlled_launch_paths();sort($current,SORT_STRING);if($current!==$cohort['paths'])feedback_fail('pinned_paths_mismatch');
+$current=v2_seo_controlled_launch_paths();sort($current,SORT_STRING);if(array_diff($cohort['paths'],$current)!==[])feedback_fail('pinned_paths_missing');
+if(($cohort['current_launch_scope_contains_baseline']??false)!==true)feedback_fail('launch_scope_subset_drift');
 foreach($cohort['paths'] as $path)if(str_contains($path,'/hotel/'))feedback_fail('hotel_in_cohort');
 
 $base=['domain'=>'anytoour.ru','cohort_id'=>$cohort['cohort_id'],'launch_source_sha'=>$cohort['launch_source_sha']];
