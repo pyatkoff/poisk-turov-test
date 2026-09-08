@@ -179,6 +179,8 @@ cp -R "$work/payload" "$stage"
 find "$stage" -type d -exec chmod 755 {} +
 find "$stage" -type f -exec chmod 644 {} +
 chmod 600 "$work/search3-preview.php"
+php -d display_errors=0 -d log_errors=0 "$work/observations-setup.php" > "$work/observations-setup-result.txt"
+test "$(cat "$work/observations-setup-result.txt")" = ANEX_OBSERVATION_SCHEMA_READY
 if test -f "$private/search3-preview.php"; then
   cp -p "$private/search3-preview.php" "$work/previous-search3-preview.php"
 fi
@@ -217,6 +219,7 @@ def ssh_deploy(payload: Path, manifest: dict) -> dict:
         with tarfile.open(archive, "w:gz") as tar:
             tar.add(payload, arcname="payload")
             tar.add(config, arcname="search3-preview.php")
+            tar.add(Path(__file__).with_name("anex_search3_observations_setup.php"), arcname="observations-setup.php")
         archive.chmod(0o600)
         command = ["ssh", "-T", "-i", str(key), "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
                    "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=" + str(temp / "known_hosts"),

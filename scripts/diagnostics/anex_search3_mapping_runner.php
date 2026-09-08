@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** One broad initial search against the deployed isolated preview; no DB writes. */
+/** Initial preview searches; only authorized hotel-observation aggregates are written. */
 $report = ['schema_version' => 1, 'ok' => false, 'status' => 'ANEX_SEARCH3_PROBE_ERROR',
     'scope' => 'preview', 'first_page_only' => true, 'mapping_coverage_observed' => false];
 $pdo = null;
@@ -22,6 +22,7 @@ try {
     $report['source_sha'] = ANEX_PREVIEW_SOURCE_SHA;
     require_once $preview . '/app/integrations/anex-search.php';
     require_once $preview . '/app/integrations/anex-search-mapping-registry.php';
+    require_once $preview . '/app/integrations/anex-search-observations.php';
     // Loading the endpoint as a module does not enter its HTTP handler.
     $_SERVER['SCRIPT_FILENAME'] = '';
     require_once $preview . '/api-anex-search3-preview.php';
@@ -40,6 +41,29 @@ try {
     $counts->execute(['owner_exact_and_strong_20260908']);
     $report['local_mappings'] = array_map('intval', $counts->fetch(PDO::FETCH_ASSOC));
     $report['local_mappings']['effective_after_manual_decisions'] = AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->count();
+    $pdo->rollBack();
+    $observer = static function (array $offers, array $context) use ($pdo): array {
+        $rows = AnyTourAnexSearchObservations::rows($offers, $context);
+        if (!$rows) return AnyTourAnexSearchObservations::record($pdo, $offers, $context);
+        $ids = array_column($rows, 'anex_hotel_id');
+        $read = $pdo->prepare('SELECT anex_hotel_id,search_count,first_seen_utc,last_seen_utc FROM anex_search_hotel_observations WHERE anex_hotel_id IN ('
+            . implode(',', array_fill(0, count($ids), '?')) . ')');
+        $read->execute($ids);
+        $before = [];
+        foreach ($read->fetchAll(PDO::FETCH_ASSOC) as $row) $before[(int)$row['anex_hotel_id']] = $row;
+        $result = AnyTourAnexSearchObservations::record($pdo, $offers, $context);
+        $read->execute($ids);
+        $after = $read->fetchAll(PDO::FETCH_ASSOC);
+        if (count($after) !== count($ids)) throw new RuntimeException('ANEX_OBSERVATION_VERIFY_FAILED');
+        foreach ($after as $row) {
+            $old = $before[(int)$row['anex_hotel_id']] ?? null;
+            if ((int)$row['search_count'] < ($old ? (int)$old['search_count'] : 0) + 1
+                || ($old && ($row['first_seen_utc'] !== $old['first_seen_utc'] || $row['last_seen_utc'] < $old['last_seen_utc']))) {
+                throw new RuntimeException('ANEX_OBSERVATION_VERIFY_FAILED');
+            }
+        }
+        return $result + ['persisted_hotels' => count($after), 'previously_observed' => count($before), 'verified' => true];
+    };
     $lookup = $pdo->prepare('SELECT d.id AS departure_id,d.name AS departure_name,c.id AS country_id,c.name AS country_name'
         . ' FROM catalog_departures d CROSS JOIN catalog_countries c WHERE d.is_active=1 AND c.is_active=1'
         . ' AND d.name IN (?,?) AND c.name IN (?,?) LIMIT 2');
@@ -91,7 +115,9 @@ try {
     $report['criteria'] = $params + ['anex_departure_id' => $departure, 'anex_country_id' => $country,
         'anex_currency_id' => $currency, 'hotel_filter' => false];
     $diagnostics = [];
-    $result = anytour_anex_search3_run(['generation' => 1, 'params' => $params], $pdo, $client, $cache, $diagnostics);
+    $result = anytour_anex_search3_run(['generation' => 1, 'params' => $params], $pdo, $client, $cache, $diagnostics, $observer);
+    $report['observation'] = $diagnostics['observation'];
+    if (!in_array($report['observation']['status'], ['stored', 'empty'], true)) throw new RuntimeException('ANEX_OBSERVATION_VERIFY_FAILED');
     foreach (['supplier_offers', 'mapped_offers', 'rejected_count', 'samples', 'unmapped_hotel_ids'] as $field) {
         if (!array_key_exists($field, $diagnostics)) throw new RuntimeException('ANEX_DIAGNOSTICS_UNAVAILABLE');
         $report[$field] = $diagnostics[$field];
@@ -119,7 +145,9 @@ try {
         $started = microtime(true);
         try {
             $defaultDiagnostics = [];
-            $defaultResult = anytour_anex_search3_run(['generation' => 2, 'params' => $defaultParams], $pdo, $client, $cache, $defaultDiagnostics);
+            $defaultResult = anytour_anex_search3_run(['generation' => 2, 'params' => $defaultParams], $pdo, $client, $cache, $defaultDiagnostics, $observer);
+            $defaultProbe['observation'] = $defaultDiagnostics['observation'];
+            if (!in_array($defaultProbe['observation']['status'], ['stored', 'empty'], true)) throw new RuntimeException('ANEX_OBSERVATION_VERIFY_FAILED');
             $defaultProbe['ok'] = true;
             $defaultProbe['status'] = 'ok';
             $defaultProbe['projected_hotels'] = count($defaultResult['hotels']);
@@ -134,7 +162,10 @@ try {
     }
     $report['default_form_probe'] = $defaultProbe;
     $report['supplier_requests_total'] = $client->requestsMade();
+    $report['hotel_observations'] = AnyTourAnexSearchObservations::snapshot($pdo);
+    if (($defaultProbe['status'] ?? '') === 'ANEX_OBSERVATION_VERIFY_FAILED') $report['ok'] = false;
 } catch (Throwable $error) {
+    $report['ok'] = false;
     $code = $error->getMessage();
     $report['status'] = preg_match('/\AANEX_[A-Z_]{1,70}\z/D', $code) ? $code : 'ANEX_SEARCH3_PROBE_ERROR';
 } finally {

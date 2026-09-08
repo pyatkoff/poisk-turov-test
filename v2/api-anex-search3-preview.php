@@ -133,7 +133,7 @@ function anytour_anex_search3_prices($client, callable $resolver, array $criteri
     return (new AnyTourAnexSearch($client, $resolver))->search(anytour_anex_search3_week($criteria));
 }
 
-function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null): array
+function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null, ?callable $observer = null): array
 {
     if (!is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
         || !is_array($request['params'] ?? null) || count($request['params']) > 40) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
@@ -193,8 +193,22 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         $hydrate->execute(array_keys($ids));
         foreach ($hydrate->fetchAll(PDO::FETCH_ASSOC) as $row) $metadata[(int) $row['id']] = $row;
     }
+    $projected = anytour_anex_search3_project($result['offers'], $metadata, $params);
+    // Capture only successful normalized supplier responses, before local filters discard unmapped hotels.
+    // A storage problem must not turn available tours into a search error.
+    if ($observer !== null) {
+        try {
+            $observation = $observer($result['offers'], ['country_id' => (int)$params['countryId'],
+                'anex_country_id' => $criteria['destination_id'], 'checkin_from' => $criteria['checkin_begin'],
+                'checkin_to' => $criteria['checkin_end']]);
+        } catch (Throwable $ignored) {
+            $observation = ['status' => 'storage_unavailable'];
+            error_log('ANEX_OBSERVATION_WRITE_FAILED');
+        }
+        if ($diagnostics !== null) $diagnostics['observation'] = $observation;
+    }
     return ['generation' => $request['generation'], 'provider' => 'anex',
-        'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => anytour_anex_search3_project($result['offers'], $metadata, $params),
+        'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => $projected,
         'external_search_pending' => $result['external_search_pending'], 'first_page_only' => true];
 }
 
@@ -252,12 +266,18 @@ function anytour_anex_search3_http(): void
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
         require_once $app . '/anex-search.php';
         require_once $app . '/anex-search-mapping-registry.php';
+        require_once $app . '/anex-search-observations.php';
         $root = realpath((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''));
         if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException('ANEX_DATABASE_UNAVAILABLE');
         $helper = is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php';
         require_once $helper;
         $client = new AnyTourAnexClient($token);
-        $data = anytour_anex_search3_run($request, v2_data_db(), $client, $_SESSION['dictionaries']);
+        $pdo = v2_data_db();
+        $diagnostics = null;
+        $observer = static function (array $offers, array $context) use ($pdo): array {
+            return AnyTourAnexSearchObservations::record($pdo, $offers, $context);
+        };
+        $data = anytour_anex_search3_run($request, $pdo, $client, $_SESSION['dictionaries'], $diagnostics, $observer);
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
     } catch (InvalidArgumentException $error) {

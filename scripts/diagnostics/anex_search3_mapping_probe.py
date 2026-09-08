@@ -2,6 +2,7 @@
 """Run one initial supplier search through the deployed ANEX preview mapping path."""
 
 import json
+import csv
 import os
 from pathlib import Path
 import re
@@ -31,7 +32,7 @@ def run_probe():
         completed = subprocess.run(command, capture_output=True, timeout=240,
                                    env={k: v for k, v in os.environ.items()
                                         if k not in names + ("ANEX_API_TOKEN", "ANEX_REFERENCE_TOKEN")})
-    if len(completed.stdout) > 100000:
+    if len(completed.stdout) > 4000000:
         raise ValueError("invalid probe output")
     report = json.loads(completed.stdout)
     if (not isinstance(report, dict) or report.get("schema_version") != 1 or report.get("scope") != "preview"
@@ -51,6 +52,19 @@ def main():
         report = {"schema_version": 1, "scope": "preview", "ok": False,
                   "status": "ANEX_SEARCH3_PROBE_ERROR", "mapping_coverage_observed": False}
     output.parent.mkdir(parents=True, exist_ok=True)
+    observations = report.pop('hotel_observations', None)
+    if observations is not None:
+        queue_path = output.parent / 'anex-observed-hotel-queue.json'
+        queue_path.write_text(json.dumps(observations, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+        for status in ('pending', 'manual_review'):
+            with (output.parent / ('anex-observed-hotel-' + status + '.csv')).open('w', newline='', encoding='utf-8') as handle:
+                fields = ['anex_hotel_id', 'hotel_name', 'country_id', 'anex_country_id', 'first_seen_utc', 'last_seen_utc', 'search_count', 'status']
+                writer = csv.DictWriter(handle, fieldnames=fields, extrasaction='ignore')
+                writer.writeheader()
+                for row in observations[status]:
+                    writer.writerow({key: ("'" + value if isinstance(value, str) and value.startswith(('=', '+', '-', '@', '\t', '\r')) else value)
+                                     for key, value in row.items()})
+        report['hotel_observations'] = {key: value for key, value in observations.items() if key not in ('pending', 'manual_review')}
     output.write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0 if report.get("ok") is True else 1
