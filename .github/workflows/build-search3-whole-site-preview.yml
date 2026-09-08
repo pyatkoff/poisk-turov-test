@@ -349,7 +349,7 @@ jobs:
         env:
           SEARCH3_GEOMETRY_BASE: 7eadf95d1164f51530fe545a5e42fb1ea977096e # checked current route after selected owner retirement
           SEARCH3_RUNTIME_BASE: 7eadf95d1164f51530fe545a5e42fb1ea977096e # exact current route closure for protected-content and entry comparison
-          SEARCH3_ENTRY_BASE: fa9917bf35b88f548bbea44baf26785dc5a1aa93 # merged native entry #1619; compare lazy loading to its actual pre-change form
+          SEARCH3_ENTRY_BASE: 454d4def6615cea2995ea23358a67429f5621e70 # exact checked release before selected-flow retirement
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
           SEARCH3_GEOMETRY_OUTPUT: ${{ runner.temp }}/search3-selected-geometry
         run: |

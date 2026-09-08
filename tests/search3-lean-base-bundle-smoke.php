@@ -12,7 +12,7 @@ $search3Js = v2_bundle_files('js', 'search3');
 $fullCss = v2_bundle_files('css', 'full');
 $search3Css = v2_bundle_files('css', 'search3');
 
-$excludedJs = ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'flight-empty-recovery-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'current-price-calendar-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
+$excludedJs = ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'current-price-calendar-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
 foreach ($excludedJs as $excluded) {
     if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
@@ -41,7 +41,12 @@ if (!in_array('selected-tour-ux.css', $fullCss, true)) lean_bundle_fail('legacy 
 if (!in_array('header-current-site.css', $fullCss, true)) lean_bundle_fail('legacy header CSS missing');
 if (!in_array('header-current-site.js', $fullJs, true)) lean_bundle_fail('legacy header runtime missing');
 if (!in_array('selected-tour-return-v1.js', $fullJs, true)) lean_bundle_fail('legacy selected return runtime missing');
-if (!in_array('flight-empty-recovery-v1.js', $fullJs, true)) lean_bundle_fail('legacy flight recovery runtime missing');
+if (!in_array('flight-empty-recovery-v1.js', $fullJs, true)) lean_bundle_fail('canonical flight recovery runtime missing');
+if (!in_array('flight-empty-recovery-v1.js', $search3Js, true)) lean_bundle_fail('canonical flight recovery runtime missing from Search3');
+$initialJs = v2_bundle_phase_files('js', 'search3', 'initial');
+$selectedJs = v2_bundle_phase_files('js', 'search3', 'selected');
+if (in_array('flight-empty-recovery-v1.js', $initialJs, true)) lean_bundle_fail('flight recovery leaked into initial phase');
+if (count(array_keys($selectedJs, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery selected owner is not exact');
 if (!in_array('price-confidence-v1.js', $fullJs, true)) lean_bundle_fail('legacy price confidence runtime missing');
 if (!in_array('results-filter-autorefresh-v1.js', $fullJs, true)) lean_bundle_fail('legacy filter autorefresh runtime missing');
 if (!in_array('results-depth-v1.js', $fullJs, true)) lean_bundle_fail('legacy results depth runtime missing');

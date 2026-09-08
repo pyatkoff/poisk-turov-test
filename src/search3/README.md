@@ -100,14 +100,14 @@ separate cascade evidence.
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
 | Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
-| Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
-| Flight labels and display-only price parsing | `behavior/booking/format.js` inside `booking-summary.js`, `behavior/selected-flow-v2.js` |
+| Selected tour and mobile action | Shared `v2/tour-controller-v4.js`, `behavior/summary-cta.js`, `styles/selected-flow-v2.css` |
+| Flight labels and display-only price parsing | Shared `v2/flight-price-sync-v1.js`; decimal-safe Search3 correction in `behavior/summary-cta.js` |
 | Compact total and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
 | Selected services and tourists | Original selected-tour facts; duplicate booking services card retired |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
 | Lead heading and fields | Native controller form; duplicate note injector retired |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, shared `v2/lead-form-guard-v1.js` / `v2/lead-ui-race-guard-v1.js`, `styles/lead-state.css` |
-| Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
+| Selected price and empty-flight recovery | Shared `v2/flight-price-sync-v1.js`, `v2/flight-empty-recovery-v1.js`, plus the native handoff in `behavior/summary-cta.js` |
 | Accepted isolation/readability/hidden contracts | Current `results-layout.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
 
 ## Smaller source owners
@@ -142,10 +142,10 @@ replace physical Safari acceptance or the production approval gate.
 `behavior/results-presentation.js` keeps its guard, shared state, subscriptions
 and public adapter. Its private `results/labels.js`, `results/cards.js` and
 `results/toolbar.js` parts own complete function groups. Distinct formatter
-contracts remain local. `behavior/selected-flow-v2.js` likewise includes private
-`selected/flight-fallback.js` and `selected/flight-disclosure.js` parts; price
-helpers and lifecycle remain in the enclosing owner. Both extractions preserve
-their compiled IIFE bytes. Regression tests exercise the generated adapters.
+contracts remain local. The duplicate `behavior/selected-flow-v2.js` boundary
+and its private fallback are retired: the selected phase loads the existing
+shared recovery and price owners, while `summary-cta.js` retains only Search3's
+selected-state, decimal-label and native lead-handoff glue.
 
 Include paths are relative to `src/search3/`, must have the enclosing asset's
 extension and must occur exactly once in the build. Cycles, duplicate parts,
@@ -174,9 +174,9 @@ Final-review presentation now has one linked owner in `styles/review-layout.css`
 the source/build tests keep the private CSS-string compiler covered with isolated
 fixtures, without restoring a runtime style injector.
 
-`styles/selected-tour.css` is also a provenance-only slot. The retained selected
-tour shell lives with the current desktop owner in `styles/tour-detail.css`; its
-mobile bar and narrow-state rules live in `styles/selected-flow-v2.css`.
+The legacy selected-tour shell is retired. `styles/selected-tour.css` retains
+only the native selected-picture width bound, so remote hotel images cannot
+overflow the viewport; no card, mobile-bar or narrow-state presentation remains.
 
 Repeated ancestor prefixes in 74 CSS selector lists now use `:is()` for plain
 class alternatives with equal specificity. Declarations and media boundaries are
