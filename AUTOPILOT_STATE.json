@@ -53,38 +53,36 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1516/#1517/#1520 retire three complete legacy CSS owners from Search3 only. Current invocation loaded raw 605488 to 594063 (-11425), gzip estimate -1693. Required CI and exact browser geometry passed without repair; no publication.",
+    "last_material_progress": "PRs #1523/#1524 retire three complete legacy CSS owners from Search3 only. This invocation loaded raw 594063 to 584536 (-9527), gzip -1793. Exact CI identified and retained 653 bytes of live current-owner geometry; no publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Combine the remaining small Search3-only legacy guards (`selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css`, `search-shell-grid-v1.css`) into one >=1 KB audit packet. Remove only if current selected/shell/footer owners preserve exact geometry. Keep full legacy manifest unchanged; do not open separate micro PRs.",
+    "next_action": "Audit the complete checkout-experience-v1.js presentation runtime. Retain optional lead-field disclosure and any required classes/ARIA in current Search3 owners, while keeping lead transport and the full legacy route unchanged. Exclude the whole runtime only after focused lifecycle and exact browser CI pass.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_LEGACY_GUARDS",
-    "title": "Retire obsolete results, shared-header and tablet-extras CSS guards",
+    "id": "S3_LEAN_SHELL_CHECKOUT_OWNERS",
+    "title": "Retire obsolete shell/footer guards and checkout presentation CSS",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1516,
-      1517,
-      1520
+      1523,
+      1524
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "93e7cfbd685d32cf0a377262a5b29c1e3e6f5dbb",
-      "56345ec59e08808336d0bdfbc0449b31c27ff44c",
-      "2230920eb0a96c16d3eced698dcbdc4b420b6120"
+      "802f2a222864d54e7bafacbf348ea6b7422583a7",
+      "56c2c1d5bdda7747d705c036ac6722f9ec991b19"
     ],
-    "release_sha": "26fc0efbe8b306fbaca87b2d5330bc3311d97c6b",
-    "artifact_run": 34168312060,
-    "artifact_id": 10034902803,
-    "artifact_digest": "sha256:9420a39c0a653f38de70e6f0300dc5126e2cca3c7b0d398f91312ce55833b61f",
-    "checked_release_asset_bytes": 151125,
-    "checked_release_loaded_bytes": 594063,
+    "release_sha": "3d083e5d19a5dd434a61f394f8959370fd29d0d5",
+    "artifact_run": 34171462972,
+    "artifact_id": 10035859121,
+    "artifact_digest": "sha256:bb28f0a059b5170d59d5bcdd320c52ba9387a39f046876ff508daf6f210ee409",
+    "checked_release_asset_bytes": 151778,
+    "checked_release_loaded_bytes": 584536,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Combine the remaining small Search3-only legacy guards (`selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css`, `search-shell-grid-v1.css`) into one >=1 KB audit packet. Remove only if current selected/shell/footer owners preserve exact geometry. Keep full legacy manifest unchanged; do not open separate micro PRs."
+    "next_action": "Audit the complete checkout-experience-v1.js presentation runtime. Retain optional lead-field disclosure and any required classes/ARIA in current Search3 owners, while keeping lead transport and the full legacy route unchanged. Exclude the whole runtime only after focused lifecycle and exact browser CI pass."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1046,10 +1044,36 @@
       "preview_published": false,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
+    },
+    "lean_shell_checkout_owners": {
+      "source_prs": [
+        1523,
+        1524
+      ],
+      "source_shas": [
+        "802f2a222864d54e7bafacbf348ea6b7422583a7",
+        "56c2c1d5bdda7747d705c036ac6722f9ec991b19"
+      ],
+      "security_runs": [
+        34169904203,
+        34171462978
+      ],
+      "artifact_runs": [
+        34170067115,
+        34171462972
+      ],
+      "artifact_id": 10035859121,
+      "artifact_digest": "sha256:bb28f0a059b5170d59d5bcdd320c52ba9387a39f046876ff508daf6f210ee409",
+      "selected_geometry_artifact": 10035858365,
+      "selected_geometry_digest": "sha256:fbcae3c325493bd9aa23329534ac033c8292ec5237240cfd13c5f40a71b88fc6",
+      "results_geometry_artifact": 10035858746,
+      "results_geometry_digest": "sha256:088160b734e832690068c9657b18375b9268f7e4b5adceff5f0eaf7266acfbcf",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "26fc0efbe8b306fbaca87b2d5330bc3311d97c6b",
-  "last_verified_commit_scope": "Checked Search3 release after #1516/#1517/#1520; three Search3-only legacy CSS owners retired with exact geometry. Main independently advanced via #1519 after this code checkpoint. Published preview remains c9ba7952.",
+  "last_verified_commit": "3d083e5d19a5dd434a61f394f8959370fd29d0d5",
+  "last_verified_commit_scope": "Checked Search3 release after #1523/#1524; three legacy CSS owners retired, exact geometry retained in current owners. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7393,7 +7417,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T23:05:00Z",
+  "updated_at": "2026-09-07T23:57:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -8049,5 +8073,34 @@
     "audit": "docs/project/search3-lean-legacy-guards.json",
     "main_sha_observed_after_checkpoint": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
     "main_change_scope": "Independent PR #1519 changed only .github/workflows/deploy-anytoour.yml; Search3 source PRs did not target main."
+  },
+  "latest_lean_shell_checkout_owners": {
+    "source_prs": [
+      1523,
+      1524
+    ],
+    "source_shas": [
+      "802f2a222864d54e7bafacbf348ea6b7422583a7",
+      "56c2c1d5bdda7747d705c036ac6722f9ec991b19"
+    ],
+    "checked_code_release_sha": "3d083e5d19a5dd434a61f394f8959370fd29d0d5",
+    "retired_search3_owners": [
+      "search-shell-grid-v1.css",
+      "search-footer-rhythm-v1.css",
+      "checkout-experience-v1.css"
+    ],
+    "raw_before": 594063,
+    "raw_after": 584536,
+    "raw_saved": 9527,
+    "gzip_before": 131441,
+    "gzip_after": 129648,
+    "gzip_saved": 1793,
+    "eight_assets_before": 151125,
+    "eight_assets_after": 151778,
+    "retained_current_owner_bytes": 653,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-shell-checkout-owners.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
