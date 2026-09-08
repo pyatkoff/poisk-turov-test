@@ -13,6 +13,7 @@ Replace superseded implementations in the same packet; no stacked override layer
 **Do not stop after one PR if this invocation has time for the next safe step.**
 Finish applicable CI/integration, record evidence, then continue the next product task.
 A blocked item or production visual-approval wait does not block independent safe work.
+Owner-authorized packets in the active plan may be implemented autonomously within existing DS2 and isolated preview; production visual approval remains separate.
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 

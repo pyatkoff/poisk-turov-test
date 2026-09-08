@@ -38,12 +38,12 @@
     }
   ],
   "continuation_policy": {
+    "active_roadmap": "docs/project/search3-product-development-plan.md",
+    "after_completed_pr": "Record exact checked/published state, then immediately execute next safe independent roadmap task in this invocation while time remains; completed PR is not a stop condition.",
     "on_blocker": "Record exact blocker and continue independent safe product work; never bypass tool denial, required gate or protected contract.",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > confirmed_search_and_mobile_defects > shared_header_navigation_footer_and_buttons_ds2 > whole_site_preview_and_search_handoff > truthful_content_working_links_and_offer_freshness > phone_desktop_journey_acceptance > owner_approved_migration_with_legacy_and_rollback > technical_refactor_deferred > mass_seo_expansion_deferred",
     "runtime_signal": "Issue #2 is a machine-maintained CI signal; issue #996 and this state own the product queue. An enabled hourly scheduled task resumes actual development; a completed PR is not a stop condition.",
-    "active_roadmap": "docs/project/search3-product-development-plan.md",
-    "after_completed_pr": "Record exact checked/published state, then immediately execute next safe independent roadmap task in this invocation while time remains; completed PR is not a stop condition.",
     "stop_only_for": [
       "execution_resource_exhausted",
       "current_queue_complete",
@@ -67,17 +67,34 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_FORM_READABILITY",
-    "title": "Group native form; footer/lead-summary spacing",
-    "status": "QUEUED_OWNER_AUTHORIZED",
-    "issue": 996,
-    "pr": 1334,
-    "branch": "release/search3-production-ready-v1",
-    "roadmap": "docs/project/search3-product-development-plan.md",
     "baseline_release_sha": "0f62674722787bf3b1156f2fa708e0d3a5b5fb3d",
+    "branch": "release/search3-production-ready-v1",
+    "id": "S3_PRODUCT_FORM_READABILITY",
+    "issue": 996,
     "last_fully_checked_release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "next_action": "Implement one coherent native-form grouping/footer/lead-summary readability package in current owners. Useful CSS/JS growth is authorized; remove superseded rules/handlers in the same packet. Refresh release/open PRs; continue results, selected-tour and site work beyond one PR while time remains.",
+    "pr": 1334,
     "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "next_action": "Implement one coherent native-form grouping/footer/lead-summary readability package in current owners. Useful CSS/JS growth is authorized; remove superseded rules/handlers in the same packet. Refresh release/open PRs; continue results, selected-tour and site work beyond one PR while time remains."
+    "roadmap": "docs/project/search3-product-development-plan.md",
+    "status": "QUEUED_OWNER_AUTHORIZED",
+    "title": "Group native form; footer/lead-summary spacing"
+  },
+  "current_task_before_product_plan_20260908": {
+    "branch": "release/search3-production-ready-v1",
+    "checked_release_asset_bytes": 10097,
+    "exact_run": 34287754975,
+    "id": "S3_EAGER_SELECTED_RUNTIME_RETIREMENT",
+    "implementation_sha": "d123a1d8b7cae29c39d7c2678445238d3763ae96",
+    "issue": 996,
+    "last_fully_checked_release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "next_action": "Audit a new coarse results-state boundary; proceed only for a complete owner and material eight-asset savings. Preserve protected business behavior and all retired layers.",
+    "pr": 1334,
+    "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
+    "release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "security_run": 34287755060,
+    "source_pr": 1640,
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "title": "Retire selected-runtime lazy proxy"
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -5163,6 +5180,22 @@
     "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
     "verification": "Existing four-width browser coverage adds real viewport resizing with open editor, exact form-value retention, disabled/enabled result-label recovery and busy loading/ready transitions."
   },
+  "owner_direction_20260908": {
+    "continue_after_one_pr": true,
+    "duplicate_layers": "Replace superseded implementation in the same packet; no stacked override skins or duplicate handlers.",
+    "hard_12kb_ceiling": false,
+    "per_byte_owner_approval_required": false,
+    "production_approval": "still_required",
+    "roadmap": "docs/project/search3-product-development-plan.md",
+    "source": "explicit_owner_chat_2026_09_08",
+    "stop_conditions": [
+      "execution_resource_exhausted",
+      "current_queue_complete",
+      "no_independent_safe_task_available"
+    ],
+    "useful_css_js_growth": "allowed_for_real_visual_usability_accessibility_or_functional_improvement",
+    "zero_growth_required": false
+  },
   "owner_priority_lock": {
     "active": true,
     "planned_phase": "search_ux_ds2",
@@ -8111,15 +8144,15 @@
   ],
   "preview_verification_policy": {
     "batch_execution": {
-      "budget_rule": "The manual-check timebox is not acceptance. If relevant evidence cannot be completed, record it as deferred and keep the uncertain change out of the verified batch; continue independent safe reductions.",
+      "budget_rule": "Manual-check timebox is not acceptance. Record incomplete evidence as deferred; fix/revert confirmed regressions and continue independent safe product work.",
       "ci": "Retain the two existing mandatory working-source jobs, successful on the final source SHA. Do not disable security, owner validators, protected paths or preview isolation. Reuse the successful artifact.",
       "local_checks": "Build generated assets once after the source batch and measure the eight served files. Run the narrow existing equivalence or affected-behavior check. Do not repeat the artifact workflow's full check set locally.",
       "manual_check_budget_minutes": 5,
       "production": "Production approval, protected contracts, ready_for_review restoration and actual deployment guards remain unchanged. Owner explicitly resumed hourly Search3 development.",
       "publication": "A checked technical batch may remain unpublished in release; no deploy-control PR, artifact download or browser session is required merely because another source PR completed. Reuse the final checked source artifact at the next justified publication.",
-      "reduction_priority": "Prefer measured elimination of large duplicate CSS/JS source blocks. Include small reductions opportunistically; do not spend a separate PR/deploy/browser cycle on a micro-saving.",
-      "reporting": "Report net generated CSS/JS bytes and whether the checked batch is published. Do not count moved code or line-count reduction as payload savings.",
-      "working_draft": "Keep multiple useful reductions in one release-based draft; use separate logical commits where practical, then one final push/CI cycle per completed batch."
+      "reduction_priority": "Prioritize current Search3 product/site roadmap and visible/functional benefit. Useful CSS/JS growth is authorized; remove duplicate layers in the affected component. No separate micro-saving PR/deploy/browser cycles.",
+      "reporting": "Lead with user-visible benefit; disclose new packet CSS/JS growth/deletion and initial/complete load delta. Do not count code movement or prior work as new savings; do not repeat historical totals as progress.",
+      "working_draft": "Keep one coherent useful product packet plus related duplicate removal in a release-based draft; one final push/CI cycle per completed packet."
     },
     "ci_execution": {
       "artifact_reuse": "Keep the successful working-PR source artifact after release fast-forward and documentation checkpoints; do not rebuild or redeploy docs.",
@@ -8159,6 +8192,7 @@
     },
     "working_pr_base": "release/search3-production-ready-v1"
   },
+  "product_roadmap": "docs/project/search3-product-development-plan.md",
   "project": "pyatkoff/poisk-turov-test",
   "protected": {
     "anytour_logo": "PRESERVE",
@@ -8180,51 +8214,51 @@
   "queue": [
     {
       "id": "S3_PRODUCT_FORM_READABILITY",
-      "title": "Group native form; footer/lead-summary spacing",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Group native form; footer/lead-summary spacing"
     },
     {
       "id": "S3_PRODUCT_RESULTS_CLARITY",
-      "title": "Clear result cards and truthful search states",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Clear result cards and truthful search states"
     },
     {
       "id": "S3_PRODUCT_SELECTED_LEAD",
-      "title": "Flight options, selected total and contact handoff",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Flight options, selected total and contact handoff"
     },
     {
       "id": "S3_PRODUCT_SHARED_SITE",
-      "title": "Shared DS2 site components",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Shared DS2 site components"
     },
     {
       "id": "S3_PRODUCT_PAGES_HANDOFF",
-      "title": "Whole-site content and parameter-preserving handoff",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Whole-site content and parameter-preserving handoff"
     },
     {
       "id": "S3_PRODUCT_USEFUL_FEATURES",
-      "title": "Useful calendar/facets and separately ready ANEX integration",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Useful calendar/facets and separately ready ANEX integration"
     },
     {
       "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-      "title": "Current whole-site/mobile/Safari acceptance",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "QUEUED",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Current whole-site/mobile/Safari acceptance"
     },
     {
       "id": "S3_PRODUCT_APPROVED_MIGRATION",
-      "title": "Owner-approved concrete production migration",
+      "roadmap": "docs/project/search3-product-development-plan.md",
       "status": "GATED_OWNER_VISUAL_APPROVAL",
-      "roadmap": "docs/project/search3-product-development-plan.md"
+      "title": "Owner-approved concrete production migration"
     },
     {
       "id": "S3_OBSERVER_SCOPE_REFACTOR",
@@ -8614,8 +8648,8 @@
     }
   },
   "reporting_preference": {
-    "source": "explicit_owner_chat_2026_09_08",
-    "routine_user_reports": "Lead with user-visible benefit; disclose new packet CSS/JS growth/deletion and initial/complete load delta. Do not count code movement or prior work as new savings; do not repeat historical totals as progress."
+    "routine_user_reports": "Lead with user-visible benefit; disclose new packet CSS/JS growth/deletion and initial/complete load delta. Do not count code movement or prior work as new savings; do not repeat historical totals as progress.",
+    "source": "explicit_owner_chat_2026_09_08"
   },
   "results_geometry_queue": {
     "artifact_id": 9972524166,
@@ -8662,14 +8696,14 @@
     },
     "mode": "development_not_monitoring_only",
     "note": "Existing hourly automation identified and enabled. Its prompt is to be updated to this roadmap after integration; historical reduction-only prompts and PAUSED notes do not define current queue.",
+    "roadmap": "docs/project/search3-product-development-plan.md",
     "rrule": "FREQ=HOURLY",
     "rule": "Develop the product/site roadmap, allow useful CSS/JS growth without duplicate layers and continue beyond one PR while safe work and time remain. Preserve hourly cadence, production approval and protected contracts; no duplicate work/deploys.",
     "schedule": "BEGIN:VEVENT\nDTSTART:20260906T233240Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
     "status": "ENABLED",
     "timezone": "Europe/Kaliningrad",
     "title": "Уменьшать CSS/JS Search3",
-    "verified_at": "2026-09-06T23:34:01.651Z",
-    "roadmap": "docs/project/search3-product-development-plan.md"
+    "verified_at": "2026-09-06T23:34:01.651Z"
   },
   "schema_version": 29,
   "site_preview_publication_history": [
@@ -11644,39 +11678,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-08T23:12:19.404Z",
-  "product_roadmap": "docs/project/search3-product-development-plan.md",
-  "owner_direction_20260908": {
-    "source": "explicit_owner_chat_2026_09_08",
-    "roadmap": "docs/project/search3-product-development-plan.md",
-    "useful_css_js_growth": "allowed_for_real_visual_usability_accessibility_or_functional_improvement",
-    "hard_12kb_ceiling": false,
-    "zero_growth_required": false,
-    "per_byte_owner_approval_required": false,
-    "duplicate_layers": "Replace superseded implementation in the same packet; no stacked override skins or duplicate handlers.",
-    "continue_after_one_pr": true,
-    "stop_conditions": [
-      "execution_resource_exhausted",
-      "current_queue_complete",
-      "no_independent_safe_task_available"
-    ],
-    "production_approval": "still_required"
-  },
-  "current_task_before_product_plan_20260908": {
-    "branch": "release/search3-production-ready-v1",
-    "checked_release_asset_bytes": 10097,
-    "exact_run": 34287754975,
-    "id": "S3_EAGER_SELECTED_RUNTIME_RETIREMENT",
-    "implementation_sha": "d123a1d8b7cae29c39d7c2678445238d3763ae96",
-    "issue": 996,
-    "last_fully_checked_release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
-    "next_action": "Audit a new coarse results-state boundary; proceed only for a complete owner and material eight-asset savings. Preserve protected business behavior and all retired layers.",
-    "pr": 1334,
-    "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
-    "security_run": 34287755060,
-    "source_pr": 1640,
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
-    "title": "Retire selected-runtime lazy proxy"
-  }
+  "updated_at": "2026-09-08T23:12:19.404Z"
 }
