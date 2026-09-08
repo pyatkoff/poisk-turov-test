@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "SOURCE_READY_CI_PENDING_NOT_PUBLISHED_NOT_PRODUCTION",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
   "base_release_sha": "789f4cdb200ca19bab9967aad5f64edbe60014da",
   "owner_direction": "halve Search3 CSS/JS quickly with one final CI pass",
   "eight_public_paths_preserved": true,
@@ -72,5 +72,40 @@
     "intentional reset visual acceptance",
     "manual current-source journey",
     "physical Safari and safe-area verification"
-  ]
+  ],
+  "source_pr": 1604,
+  "source_sha": "a25fb7d4492ffa3c7308bc5ac92fadd8b91f9017",
+  "release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+  "ci": {
+    "security_run": 34241546821,
+    "security": "success",
+    "exact_run": 34241546778,
+    "exact": "success",
+    "artifact_id": 10062216567,
+    "artifact_digest": "sha256:4f694ae0a1b0bba75193f5be0cccb1b7e230e5c99dfe5d6af9480dd674cd6eeb",
+    "evidence_id": 10062216044,
+    "evidence_digest": "sha256:e114b9d49421d63f1c9ea1e2c8d9850a1b9d0914cf8b7c9954eccf32c2984ad8"
+  },
+  "actual_browser_checks": {
+    "widths": [
+      375,
+      1440
+    ],
+    "states": [
+      "entry",
+      "detail",
+      "review",
+      "lead"
+    ],
+    "external_requests_blocked": true,
+    "lead_sent": 0,
+    "horizontal_overflow": false,
+    "screenshots_retained_not_manually_inspected": true
+  },
+  "confirmed_repairs": [
+    "search submit restored to >=44px",
+    "selected-tour mobile overflow contained",
+    "tour media constrained"
+  ],
+  "next_step": "Audit retained results/selected JavaScript as one coarse owner package; no micro-trimming."
 }

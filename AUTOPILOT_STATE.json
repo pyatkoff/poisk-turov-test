@@ -53,42 +53,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1602/#1603 cut loaded Search3 CSS/JS from 419167 to 324836 raw (-94331 in this package). Against the original 665247-byte route this is -340411 bytes / 51.17%. Twelve legacy-only CSS/JS owners were removed from Search3, the hidden live selected-tour focus slice was retained in the current owner, and two unused footer generations were deleted. Final Security and exact artifact/geometry checks are green.",
+    "last_material_progress": "PR #1604 removed 42 Search3 CSS modules, the standalone progress presentation, all shared CSS and seven optional shared runtime owners. Eight public assets are 178349→78454 raw (-56.01%); the loaded route is 412027→197067 (-52.17%). Security, exact PHP/path/isolation and focused 375/1440 core-journey smoke passed.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit remaining required JavaScript as one coarse dependency package; do not split or micro-trim it. Prefer removal of an entire optional owner only when core search, Tourvisor, price, routing, analytics and lead contracts remain intact.",
+    "next_action": "Audit the retained results/selected JavaScript as one coarse owner package; remove only a whole optional presentation owner while preserving the protected API, URL, price, lead and analytics core.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_HALF_BUNDLE_AND_DEAD_FOOTER",
-    "title": "Halve the loaded Search3 CSS/JS and remove unused footer generations",
+    "id": "S3_HALF_SIZE_RESET",
+    "title": "Owner-authorized whole-layer Search3 reset",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [
-      1602,
-      1603
-    ],
+    "source_pr": 1604,
     "branch": "release/search3-production-ready-v1",
-    "implementation_shas": [
-      "ba53409864d25d44f6900e83d0095d03fe155d33",
-      "7c509cdd9f8c8073c30383445029f5b7a6273731"
-    ],
-    "release_sha": "789f4cdb200ca19bab9967aad5f64edbe60014da",
-    "last_fully_checked_release_sha": "789f4cdb200ca19bab9967aad5f64edbe60014da",
-    "security_runs": [
-      34238161870,
-      34239017232
-    ],
-    "exact_runs": [
-      34238161854,
-      34239017211
-    ],
-    "checked_release_asset_bytes": 177313,
-    "release_loaded_bytes": 324836,
+    "implementation_sha": "a25fb7d4492ffa3c7308bc5ac92fadd8b91f9017",
+    "release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+    "last_fully_checked_release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+    "security_run": 34241546821,
+    "exact_run": 34241546778,
+    "checked_release_asset_bytes": 78454,
+    "release_loaded_bytes": 197067,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "published_preview_asset_bytes": 147378,
-    "next_action": "Audit remaining required JavaScript as one coarse dependency package; avoid micro-PRs and preserve core search, price, routing, analytics and lead contracts."
+    "next_action": "One coarse retained-JavaScript owner audit; no micro-trims, preview deploy, or broad browser matrix."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1450,10 +1437,24 @@
       "eight_asset_raw_saved": 571,
       "required_passed": 2,
       "preview_published": false
+    },
+    "half_size_reset": {
+      "source_pr": 1604,
+      "source_sha": "a25fb7d4492ffa3c7308bc5ac92fadd8b91f9017",
+      "checked_release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+      "security_run": 34241546821,
+      "artifact_run": 34241546778,
+      "required_passed": 2,
+      "artifact_id": 10062216567,
+      "artifact_digest": "sha256:4f694ae0a1b0bba75193f5be0cccb1b7e230e5c99dfe5d6af9480dd674cd6eeb",
+      "geometry_artifact": 10062216044,
+      "geometry_digest": "sha256:e114b9d49421d63f1c9ea1e2c8d9850a1b9d0914cf8b7c9954eccf32c2984ad8",
+      "geometry_states": "entry/detail/review/lead at375/1440; external blocked; lead sent0",
+      "preview_published": false
     }
   },
-  "last_verified_commit": "789f4cdb200ca19bab9967aad5f64edbe60014da",
-  "last_verified_commit_scope": "Checked release after #1602/#1603: loaded Search3 CSS/JS is 324836 raw bytes, 51.17% below the original 665247-byte route. Final source Security and exact artifact checks passed. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "9d0d29f21033414fe86ee8179a9027f922d98896",
+  "last_verified_commit_scope": "Checked release after #1604: eight Search3 assets 78454 raw (-56.01% base-aware), complete loaded route 197067 (-52.17%). Security and exact artifact/core smoke passed. Published preview remains c9ba7952; main observed 47d6ccd0 and production unchanged.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7797,7 +7798,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T14:36:00Z",
+  "updated_at": "2026-09-08T15:00:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -9184,5 +9185,46 @@
     ],
     "audit": "docs/project/search3-half-bundle-reduction.json",
     "next": "Audit remaining required JavaScript only as a coarse dependency package; no micro-trimming or repeated ready-transition CI."
+  },
+  "latest_half_size_reset": {
+    "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1604,
+    "source_sha": "a25fb7d4492ffa3c7308bc5ac92fadd8b91f9017",
+    "release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+    "eight_assets_before": 178349,
+    "eight_assets_after": 78454,
+    "eight_assets_saved": 99895,
+    "eight_assets_percent_saved": 56.01,
+    "route_before": 412027,
+    "route_after": 197067,
+    "route_saved": 214960,
+    "route_percent_saved": 52.17,
+    "retired_css_modules": 42,
+    "retired_js_modules": [
+      "behavior/search-progress.js"
+    ],
+    "security_run": 34241546821,
+    "exact_run": 34241546778,
+    "artifact_id": 10062216567,
+    "artifact_digest": "sha256:4f694ae0a1b0bba75193f5be0cccb1b7e230e5c99dfe5d6af9480dd674cd6eeb",
+    "geometry_artifact": 10062216044,
+    "geometry_digest": "sha256:e114b9d49421d63f1c9ea1e2c8d9850a1b9d0914cf8b7c9954eccf32c2984ad8",
+    "actual_visual_checks": "Focused Chromium entry/detail/review/lead at375/1440; no horizontal overflow after repair; external requests blocked; lead sent0. Screenshots retained as CI evidence but not manually inspected.",
+    "confirmed_repairs": [
+      "search submit restored to >=44px",
+      "selected-tour mobile overflow contained",
+      "tour media constrained"
+    ],
+    "published_preview": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "deferred": [
+      "manual screenshot inspection",
+      "live current-source journey",
+      "physical Safari and safe-area",
+      "full responsive/site/SEO matrix"
+    ],
+    "audit": "docs/project/search3-half-size-reset.json",
+    "next": "Audit retained results/selected JavaScript as one coarse owner package; no micro-trimming."
   }
 }

@@ -2606,3 +2606,13 @@ Across these two PRs, loaded Search3 CSS/JS is **419167 → 324836 raw bytes (�
 Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; neither source was published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, manual screenshot inspection and physical Safari/safe-area are deferred. Audit: `docs/project/search3-half-bundle-reduction.json`.
 
 Next: audit remaining required JavaScript only as a coarse dependency package. Do not micro-trim or repeat CI on ready transition; preserve the core search, Tourvisor/API, price, routing, analytics and lead contracts.
+
+## 2026-09-08 — whole-layer half-size reset (#1604)
+
+[#1604](https://github.com/pyatkoff/poisk-turov-test/pull/1604), exact source `a25fb7d4492ffa3c7308bc5ac92fadd8b91f9017`, removed 42 obsolete/duplicate Search3 CSS modules, the standalone progress presentation module, all shared CSS and seven optional shared runtime owners. The eight public paths remain stable. Base-aware eight-asset raw size is **178349 → 78454 B (−99895 B / 56.01%)**; complete loaded Search3 CSS/JS is **412027 → 197067 B (−214960 B / 52.17%)**.
+
+Security `34241546821` and exact artifact build `34241546778` passed. Reusable artifact `10062216567`, digest `sha256:4f694ae0a1b0bba75193f5be0cccb1b7e230e5c99dfe5d6af9480dd674cd6eeb`; focused reset evidence `10062216044`, digest `sha256:e114b9d49421d63f1c9ea1e2c8d9850a1b9d0914cf8b7c9954eccf32c2984ad8`. The one focused browser pass covered entry/detail/review/lead at 375/1440, blocked all external requests and sent zero leads. It caught and repaired a sub-44px search submit and mobile selected-tour overflow before merge. Release is `9d0d29f21033414fe86ee8179a9027f922d98896`.
+
+Preview was not published: published source remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Manual screenshot inspection, live current-source interaction, physical Safari/safe-area and the broad responsive/site/SEO matrix are deferred, not passed.
+
+Next: audit retained results/selected JavaScript as one coarse owner package. Do not return to micro-trims or per-layer browser/deploy cycles; preserve API/Tourvisor, URL/payload, price, lead and analytics contracts.
