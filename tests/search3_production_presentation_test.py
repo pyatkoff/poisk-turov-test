@@ -12,8 +12,11 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').read_text())
+RESET_AUDIT = ROOT / 'docs/project/search3-half-size-reset.json'
+RESET_ACTIVE = RESET_AUDIT.exists()
 
 
+@unittest.skipIf(RESET_ACTIVE, 'superseded by the owner-authorized half-size reset contract')
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
@@ -298,12 +301,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("'room-details.css'", manifest.split('$excluded =', 1)[0])
         self.assertIn("'room-details.css'", scoped)
         self.assertIn("@import url('/poisk-turov-test/v2/selected-tour-ux.css?v=1')", legacy)
-        runtime = (ROOT / 'v2/room-details-v3.js').read_text()
         for contract in ['.room-detail-card', '.room-gallery-main', '.room-gallery-thumb', '.room-facts', '.room-comment']:
             self.assertIn(contract, legacy)
-            self.assertNotIn(contract, current)
-        self.assertIn("'room-details-v3.js'", scoped)
-        self.assertIn('window.V2RoomDetails=', runtime)
+            self.assertIn(contract, current)
 
     def test_hotel_details_design_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
@@ -353,9 +353,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("'current-price-calendar-v1.css'", scoped)
         for contract in ['.current-price-calendar__days', '.current-price-calendar__day', '.current-price-calendar__note']:
             self.assertIn(contract, legacy)
-            self.assertNotIn(contract, current)
-        self.assertIn("'current-price-calendar-v1.js'", scoped)
-        self.assertIn('no longer mounts the optional price-calendar', current)
+            self.assertIn(contract, current)
 
     def test_results_experience_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
@@ -908,6 +906,83 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertNotIn('<body class="search3-candidate">', html)
             self.assertNotIn('id="search3-entry-v1-style"', html)
             self.assertIn('metrikaCounter:123456', html)
+
+
+@unittest.skipUnless(RESET_ACTIVE, 'half-size reset is not active')
+class Search3HalfSizeResetTest(unittest.TestCase):
+    def setUp(self):
+        self.source = json.loads((ROOT / 'src/search3/manifest.json').read_text())
+        self.bundle = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+
+    def test_eight_public_paths_and_half_size_budget(self):
+        expected = {
+            'search3-results-filters-v1.js', 'search3-results-filters-v1.css',
+            'search3-entry-v1.css', 'search3-entry-v1.js',
+            'search3-results-cards-v2.css', 'search3-results-cards-v2.js',
+            'search3-selected-flow-v2.css', 'search3-selected-flow-v2.js',
+        }
+        self.assertEqual(set(self.source['assets']), expected)
+        total = sum((ROOT / 'v2' / name).stat().st_size for name in expected)
+        self.assertLessEqual(total, 89174, 'eight assets must remain at least two times smaller')
+
+    def test_reset_css_allowlist_and_empty_public_slots(self):
+        assets = self.source['assets']
+        self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/base.css', 'styles/results-layout.css'])
+        self.assertEqual(assets['search3-entry-v1.css'], ['styles/entry-native-controls.css'])
+        self.assertEqual(assets['search3-results-cards-v2.css'], ['styles/result-cards.css'])
+        self.assertEqual(assets['search3-selected-flow-v2.css'], ['styles/selected-tour.css'])
+        self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
+        self.assertLessEqual((ROOT / 'v2/search3-selected-flow-v2.css').stat().st_size, 1)
+
+    def test_native_controls_and_isolation_remain(self):
+        native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
+        base = (ROOT / 'src/search3/styles/base.css').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        for marker in ('search3-direct-control', 'appearance:auto!important', 'min-height:44px!important'):
+            self.assertIn(marker, native)
+        for marker in ('box-sizing:border-box!important', '.v2-product-hero{display:none!important}', '--at-font:'):
+            self.assertIn(marker, base)
+        for marker in ('.results-layout', '.direct-tour', '[hidden]'):
+            self.assertIn(marker, results)
+
+    def test_optional_shared_layers_are_search3_only_exclusions(self):
+        for name in (
+            'site-footer-v1.css', 'ds2-search-intro-v1.css', 'ds2-search.css',
+            'hotel-actions-v3.js', 'room-details-v3.js', 'hotel-autocomplete-v1.js',
+            'search-filters-ux-v1.js', 'current-price-calendar-v1.js',
+            'mobile-results-filters-v1.js', 'ds2-results-filters.js',
+        ):
+            self.assertGreaterEqual(self.bundle.count("'" + name + "'"), 2, name)
+
+    def test_protected_core_files_and_hashes_remain_exact(self):
+        protected = MANIFEST['protectedSha256']
+        for name in (
+            'analytics-v4.js', 'tour-controller-v4.js', 'flight-price-sync-v1.js',
+            'lead-search-context.js', 'lead-form-guard-v1.js', 'runtime-v3.js',
+        ):
+            digest = hashlib.sha256((ROOT / 'v2' / name).read_bytes()).hexdigest()
+            self.assertEqual(digest, protected[name], name)
+            self.assertEqual(self.bundle.count("'" + name + "'"), 1, name)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node required for retained behavior contracts')
+    def test_retained_business_and_runtime_behavior(self):
+        # The reset retires CSS-owner assertions, not booking, lifecycle, price,
+        # filter, handoff or lead behavior. Keep those contracts executable.
+        for name in (
+            'search3-presentation-utils.cjs', 'search3-booking-summary.cjs',
+            'search3-booking-services.cjs', 'search3-lead-note-owner.cjs',
+            'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs',
+            'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs',
+            'search3-selected-return-owner.cjs', 'search3-entry-summary.cjs',
+            'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs',
+            'search3-filter-rail-ownership.cjs',
+            'search3-filter-rail-price-input.cjs',
+        ):
+            subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
+
+    def test_search_progress_presentation_is_retired(self):
+        self.assertFalse((ROOT / 'src/search3/behavior/search-progress.js').exists())
+        self.assertNotIn('behavior/search-progress.js', json.dumps(self.source))
 
 
 if __name__ == '__main__':

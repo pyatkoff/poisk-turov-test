@@ -241,6 +241,17 @@ jobs:
           trap - EXIT
           echo SEARCH3_SITE_LOCAL_PREVIEW_SMOKE_OK
 
+      - name: Detect owner-authorized half-size reset
+        id: half-size-reset
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- docs/project/search3-half-size-reset.json; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Detect selected-tour geometry changes
         id: selected-geometry
         shell: bash
@@ -248,7 +259,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -259,16 +270,39 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install browser geometry tooling
-        if: steps.selected-geometry.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        if: steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
           "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Verify half-size reset core journey
+        if: steps.half-size-reset.outputs.active == 'true'
+        shell: bash
+        env:
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          SEARCH3_RESET_OUTPUT: ${{ runner.temp }}/search3-half-size-reset
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          cat > "$RUNNER_TEMP/search3-reset-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-reset-router.php" >"$RUNNER_TEMP/search3-reset-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-half-size-reset-browser.cjs
 
       - name: Verify selected-tour retirement geometry only
         if: steps.selected-geometry.outputs.required == 'true'
@@ -315,6 +349,15 @@ jobs:
         with:
           name: search3-selected-geometry-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
           path: ${{ runner.temp }}/search3-selected-geometry/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain half-size reset evidence
+        if: always() && steps.half-size-reset.outputs.active == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-half-size-reset-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-half-size-reset/
           if-no-files-found: warn
           retention-days: 30
 
