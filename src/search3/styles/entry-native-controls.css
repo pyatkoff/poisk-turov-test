@@ -1,6 +1,7 @@
 
 /* Real form controls receive the tap directly, including on mobile Safari. */
 html body.search3-candidate{
+& #tourSearch .search-submit{min-height:44px!important}
 & #tourSearch :is(.search3-dates,.search3-nights) .search3-composite__control{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:center!important;gap:5px!important;height:auto!important;min-height:46px!important;padding:0 4px!important;overflow:visible!important}
 & #tourSearch .search3-nights .search3-composite__control{grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr)!important;gap:4px!important;padding:0 6px!important}
 & #tourSearch .search3-nights .search3-composite__dash{width:12px!important;text-align:center!important}

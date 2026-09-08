@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "status": "SOURCE_READY_CI_PENDING_NOT_PUBLISHED_NOT_PRODUCTION",
-  "base_release_sha": "0c3ec5daa6dd1bb487aa403acb1db1ae0a0e79f8",
+  "base_release_sha": "789f4cdb200ca19bab9967aad5f64edbe60014da",
   "owner_direction": "halve Search3 CSS/JS quickly with one final CI pass",
   "eight_public_paths_preserved": true,
   "eight_assets": {
     "before_raw_bytes": 178349,
-    "after_raw_bytes": 88797,
-    "saved_raw_bytes": 89552,
-    "reduction_percent": 50.21
+    "after_raw_bytes": 78175,
+    "saved_raw_bytes": 100174,
+    "reduction_percent": 56.17
   },
   "loaded_route": {
-    "before_raw_bytes": 419167,
-    "after_raw_bytes": 207410,
-    "saved_raw_bytes": 211757,
-    "reduction_percent": 50.52
+    "before_raw_bytes": 412027,
+    "after_raw_bytes": 196788,
+    "saved_raw_bytes": 215239,
+    "reduction_percent": 52.24
   },
   "active_search3_css_sources": [
     "styles/base.css",
@@ -24,6 +24,9 @@
     "styles/selected-tour.css"
   ],
   "retired_current_css_modules": 42,
+  "retired_current_js_modules": [
+    "behavior/search-progress.js"
+  ],
   "search3_shared_css_raw_bytes": {
     "before": 57078,
     "after": 0

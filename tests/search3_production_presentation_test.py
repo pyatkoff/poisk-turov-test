@@ -975,10 +975,14 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs',
             'search3-selected-return-owner.cjs', 'search3-entry-summary.cjs',
             'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs',
-            'search3-progress-owner.cjs', 'search3-filter-rail-ownership.cjs',
+            'search3-filter-rail-ownership.cjs',
             'search3-filter-rail-price-input.cjs',
         ):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
+
+    def test_search_progress_presentation_is_retired(self):
+        self.assertFalse((ROOT / 'src/search3/behavior/search-progress.js').exists())
+        self.assertNotIn('behavior/search-progress.js', json.dumps(self.source))
 
 
 if __name__ == '__main__':
