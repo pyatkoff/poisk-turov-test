@@ -64,26 +64,29 @@ class RequestBoundaryTest(unittest.TestCase):
                              ("https", "parser.anextour.ru", "/export/default.php"))
             self.assertEqual(urllib.parse.parse_qs(parsed.query)["oauth_token"], [REFERENCE_TOKEN])
 
-    def test_hotel_details_rate_floor(self):
-        probe._next_hotel_details_request_at = 0.0
-        with mock.patch.object(probe.time, "monotonic", side_effect=[100.0, 100.25]), \
+    def test_request_rate_floor_is_per_token(self):
+        probe._next_request_at = {}
+        with mock.patch.object(probe.time, "monotonic",
+                               side_effect=[100.0, 100.25, 100.25]), \
                 mock.patch.object(probe.time, "sleep") as sleep:
-            probe.wait_for_hotel_details_slot()
-            probe.wait_for_hotel_details_slot()
+            probe.wait_for_request_slot("api-token")
+            probe.wait_for_request_slot("api-token")
+            probe.wait_for_request_slot("reference-token")
         sleep.assert_called_once()
         self.assertAlmostEqual(sleep.call_args.args[0], 0.8)
-        self.assertAlmostEqual(probe._next_hotel_details_request_at, 102.1)
+        self.assertAlmostEqual(probe._next_request_at["api-token"], 102.1)
+        self.assertAlmostEqual(probe._next_request_at["reference-token"], 101.3)
 
-    def test_hotel_details_api_waits_before_transport(self):
-        checks = []
-        payload = json.dumps({"Hotels_DETAILS": {"id": 469, "name": "Hotel"}}).encode()
-        with mock.patch.object(probe, "wait_for_hotel_details_slot") as wait, \
-                mock.patch.object(probe, "request", return_value=response(payload)) as request:
-            result = probe.api_data(API_TOKEN, "Hotels_DETAILS", {"HOTELINC": 469}, checks)
-        wait.assert_called_once_with()
-        request.assert_called_once()
-        self.assertEqual(result["id"], 469)
-        self.assertEqual(checks[0]["check"], "api_hotel_details")
+    def test_network_request_waits_before_transport(self):
+        opener = mock.MagicMock()
+        reply = opener.open.return_value.__enter__.return_value
+        reply.status = 200
+        reply.read.return_value = b"{}"
+        with mock.patch.object(probe, "wait_for_request_slot") as wait, \
+                mock.patch.object(probe.urllib.request, "build_opener", return_value=opener):
+            probe.request({}, API_TOKEN)
+        wait.assert_called_once_with(API_TOKEN)
+        opener.open.assert_called_once()
 
     def test_redirects_never_forward_credentials(self):
         self.assertIsNone(probe.NoRedirect().redirect_request(

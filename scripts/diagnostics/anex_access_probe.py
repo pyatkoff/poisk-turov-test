@@ -42,20 +42,20 @@ CHECKS = {"api_townfroms", "reference_currentstamp", "reference_states",
           "api_states", "api_checkin", "api_currencies", "api_nights",
           "api_prices", "api_prices_expanded"}
 SENSITIVE_VALUES = ()
-# A single diagnostic process deliberately stays below both token limits:
-# 10 requests/second and 60 requests/minute.
-HOTEL_DETAILS_REQUEST_INTERVAL = 1.05
-_next_hotel_details_request_at = 0.0
+# Pace every request for the same token below both supplier limits:
+# 10 requests/second and 60 requests/minute. Separate API/reference tokens
+# keep independent clocks without storing them outside this short-lived process.
+REQUEST_INTERVAL_SECONDS = 1.05
+_next_request_at = {}
 
 
-def wait_for_hotel_details_slot():
-    global _next_hotel_details_request_at
+def wait_for_request_slot(token):
     now = time.monotonic()
-    delay = _next_hotel_details_request_at - now
+    delay = _next_request_at.get(token, 0.0) - now
     if delay > 0:
         time.sleep(delay)
         now += delay
-    _next_hotel_details_request_at = now + HOTEL_DETAILS_REQUEST_INTERVAL
+    _next_request_at[token] = now + REQUEST_INTERVAL_SECONDS
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -66,6 +66,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def request(params, token, post=False):
+    wait_for_request_slot(token)
     values = dict(params, oauth_token=token)
     # Keep the API dispatch parameters in the documented URL; credentials and
     # method parameters can use the POST body, including on legacy dispatchers.
@@ -226,8 +227,6 @@ def api_data(token, action, params, checks, expanded=False):
                "SearchTour_PRICES": "api_prices_expanded" if expanded else "api_prices"}
     if action not in allowed or len(checks) >= (38 if action == "Hotels_DETAILS" else 12):
         raise ValueError("invalid read method or request budget")
-    if action == "Hotels_DETAILS":
-        wait_for_hotel_details_slot()
     result, body = request(dict(params, samo_action="api", version="1.0",
                                 type="json", action=action), token)
     result["check"] = allowed[action]
