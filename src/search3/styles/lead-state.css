@@ -1,9 +1,15 @@
 /* Lead lifecycle foundations retained from the retired full-cycle layer. */
 body.search3-candidate{
 & #selectedTour .lead-form{position:relative!important}
+& #selectedTour .lead-form h3{margin-top:0}
 & #selectedTour .lead-form label{min-width:0;margin-bottom:13px}
+& #selectedTour .lead-form input{width:100%;box-sizing:border-box}
 & #selectedTour .lead-message{min-height:20px;padding:0 2px}
 & #selectedTour .lead-phone-hint{display:block;margin:5px 0 0;color:#7a8599;font-size:10px;line-height:1.35}
+& #selectedTour .lead-selection-summary{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 12px}
+& #selectedTour .lead-selection-summary span{display:grid;gap:2px;min-width:0;padding:9px 11px;border:1px solid #dfe6f5;border-radius:12px;background:#fff}
+& #selectedTour .lead-selection-summary small{color:#778198;font-size:10px}
+& #selectedTour .lead-selection-summary b{color:#151b24;font-size:12px;line-height:1.3;overflow-wrap:anywhere}
 & #selectedTour .lead-form[data-search3-lead-state]>*:not(.search3-lead-status){display:none!important}
 & .search3-lead-status{display:grid;grid-template-columns:54px minmax(0,1fr);gap:16px;align-items:start;padding:8px 0}
 & .search3-lead-status[hidden]{display:none!important}
@@ -24,6 +30,15 @@ body.search3-candidate{
 & .search3-msg-btn--disabled{border:1px solid #d8deea;background:#f5f7fb;color:#9aa3b7;cursor:not-allowed}
 & .search3-stay-site{border:0;background:transparent;color:#075cff}
 }
+@media(max-width:700px){body.search3-candidate #selectedTour{
+& .lead-form{display:grid;grid-template-columns:1fr}
+& .lead-selection-summary{display:grid;grid-template-columns:1fr 1fr}
+}}
+@media(max-width:430px){body.search3-candidate #selectedTour{
+& .lead-selection-summary{grid-template-columns:1fr}
+& .lead-selection-summary span{padding:9px 10px}
+& .lead-form input{min-height:46px;font-size:16px}
+}}
 /* Compact contact/lifecycle essentials retained from the retired lead-review layer. */
 body.search3-candidate #selectedTour{
 & .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;padding:11px 12px!important;border:1px solid #edf0f5!important}
