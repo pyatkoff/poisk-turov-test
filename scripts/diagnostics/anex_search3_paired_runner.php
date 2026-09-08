@@ -100,12 +100,12 @@ function anex_paired_metrics(array $data, array $secrets): array
 /** Validate the fixed supplier paths before any transport operation. */
 function anex_paired_tv_path(string $path): string
 {
-    if (!in_array($path, ['/operators','/tours/search'], true)
+    if (!in_array($path, ['/operators','/regions','/tours/search'], true)
         && !preg_match('~\A/tours/search/[1-9][0-9]{0,17}(?:/status)?\z~D', $path)) {
         throw new RuntimeException('PAIRED_TV_PATH');
     }
-    return $path === '/operators' ? 'operators' : ($path === '/tours/search' ? 'search_start'
-        : (preg_match('~/status\z~', $path) ? 'search_status' : 'search_results'));
+    return $path === '/regions' ? 'regions' : ($path === '/operators' ? 'operators' : ($path === '/tours/search' ? 'search_start'
+        : (preg_match('~/status\z~', $path) ? 'search_status' : 'search_results')));
 }
 
 /** Single attempt, including search creation. No continuation, redirects or retries. */

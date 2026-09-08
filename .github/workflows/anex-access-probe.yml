@@ -44,9 +44,9 @@ on:
     inputs:
       operation:
         type: choice
-        options: [observed, gaps, preview, paired]
+        options: [observed, gaps, preview, paired, segments]
         default: observed
-        description: Focused hotel queue, isolated preview, or reserved paired-search experiment
+        description: Focused hotel queue, isolated preview, or reserved search experiment
 
 permissions:
   contents: read
@@ -78,8 +78,9 @@ jobs:
           else:
               paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
               paired = any(p.startswith('scripts/diagnostics/anex_search3_paired_') for p in paths)
-              mode = 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
-          if mode not in ('observed', 'gaps', 'preview', 'paired'): raise SystemExit('Invalid ANEX operation')
+              segments = any(p.startswith('scripts/diagnostics/anex_search3_segment_') for p in paths)
+              mode = 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
+          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments'): raise SystemExit('Invalid ANEX operation')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
           print('ANEX operation:', mode)
           PYTHON
@@ -108,6 +109,9 @@ jobs:
           python3 -B tests/anex_search3_paired_experiment_test.py
           php -l scripts/diagnostics/anex_search3_paired_runner.php
           php tests/anex-search3-paired-runner-smoke.php
+          python3 -B tests/anex_search3_segment_experiment_test.py
+          php -l scripts/diagnostics/anex_search3_segment_runner.php
+          php tests/anex-search3-segment-runner-smoke.php
           php -l scripts/diagnostics/anex_search3_owner_decisions.php
           node --check v2/anex-search3-preview-v1.js
           node --test tests/anex-search3-preview.test.js
@@ -158,6 +162,11 @@ jobs:
         env:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_paired_experiment.py --prepare
+      - name: Reserve the three owner-requested Tourvisor segments
+        if: steps.operation.outputs.mode == 'segments'
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_segment_experiment.py --prepare
       - name: Prepare and reserve the independent initial-search queue
         if: steps.operation.outputs.mode == 'gaps'
         env:
@@ -172,7 +181,7 @@ jobs:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_observed_queue.py --prepare
       - name: Preserve reservation before any hotel requests
-        if: steps.operation.outputs.mode == 'gaps' || steps.operation.outputs.mode == 'observed' || steps.operation.outputs.mode == 'paired'
+        if: steps.operation.outputs.mode == 'gaps' || steps.operation.outputs.mode == 'observed' || steps.operation.outputs.mode == 'paired' || steps.operation.outputs.mode == 'segments'
         uses: actions/upload-artifact@v4
         with:
           name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}-reserved
@@ -199,6 +208,26 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_paired_experiment.py --finalize
+      - name: Search three ANEX-only Tourvisor segments sequentially
+        if: steps.operation.outputs.mode == 'segments'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          # Three fixed initial filters; saved ANEX baseline requires zero ANEX calls.
+          for segment_case in tv_alanya tv_5star tv_alanya_5star; do
+            python3 -B scripts/diagnostics/anex_search3_segment_experiment.py --case "$segment_case"
+          done
+      - name: Save segment coverage and refresh observations without supplier calls
+        if: always() && steps.operation.outputs.mode == 'segments'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_segment_experiment.py --finalize
       - name: Enrich at most 30 new initial-search gaps
         if: steps.operation.outputs.mode == 'gaps'
         env:

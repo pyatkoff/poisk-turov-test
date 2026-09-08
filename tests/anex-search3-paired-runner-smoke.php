@@ -18,7 +18,7 @@ paired_rejected(static function () use ($input) { anex_paired_input($input+['ope
 paired_check(anex_paired_operator([['id'=>90,'name'=>' Anex-Tour '],['id'=>91,'name'=>'NOT ANEX']])['id']===90,'exact normalized dictionary identity');
 paired_rejected(static function () { anex_paired_operator([['id'=>90,'name'=>'ANEX'],['id'=>91,'name'=>'ANEX TOUR']]); },'PAIRED_TV_OPERATOR_NOT_UNIQUE');
 paired_rejected(static function () { anex_paired_operator([['id'=>90,'name'=>'ANEX Premium']]); },'PAIRED_TV_OPERATOR_NOT_UNIQUE');
-foreach (['/operators'=>'operators','/tours/search'=>'search_start','/tours/search/123/status'=>'search_status',
+foreach (['/operators'=>'operators','/regions'=>'regions','/tours/search'=>'search_start','/tours/search/123/status'=>'search_status',
           '/tours/search/123'=>'search_results'] as $path=>$action) {
     paired_check(anex_paired_tv_path($path)===$action,'valid fixed Tourvisor path ' . $path);
 }
