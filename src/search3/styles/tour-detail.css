@@ -26,6 +26,8 @@ body.search3-candidate{
 & :is(.hotel-desc,.tour-flights,.lead-form){margin-top:18px!important;padding:20px!important;border:1px solid var(--at-line)!important;border-radius:18px!important;background:#fff!important;box-shadow:none!important}
 & .hotel-desc{color:var(--at-text)!important}
 & .hotel-desc-toggle{min-height:44px!important}
+& .hotel-desc-toggle{color:#3154cf!important;text-decoration-thickness:1px;text-underline-offset:3px}
+& .hotel-desc-toggle:hover{color:#1f3d9f!important}
 & .section-heading{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:16px!important;margin-bottom:var(--at-space-3)!important}
 & .section-heading strong{color:var(--at-ink)!important;font-size:18px!important;font-weight:900!important;line-height:1.2!important}
 & .section-heading span{max-width:48ch!important;color:var(--at-muted)!important;font-weight:700!important}
@@ -40,6 +42,12 @@ body.search3-candidate{
 & #selectedTour .facts>div,& #selectedTour .facts>div:nth-child(n){border-top:1px solid var(--at-line-soft)!important;border-right:1px solid var(--at-line-soft)!important}
 & #selectedTour .facts>div:nth-child(-n+2){border-top:0!important}
 & #selectedTour .facts>div:nth-child(2n){border-right:0!important}
+}}
+/* Tablet detail geometry retained from the retired selected-tour layout guard. */
+@media(max-width:820px){body.search3-candidate #selectedTour.selected-tour .selected-head.checkout-head{
+&{align-items:start!important;gap:var(--at-space-3)!important}
+&>div:first-child{min-width:0!important}
+& .selected-price{justify-self:start!important;width:min(100%,240px)!important;min-width:0!important;margin-top:0!important;text-align:left!important}
 }}
 /* Retained phone geometry also applies to review and lead-entry. */
 @media(max-width:640px){body.search3-candidate #selectedTour{

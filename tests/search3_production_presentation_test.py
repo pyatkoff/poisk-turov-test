@@ -492,13 +492,27 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(repr(name), manifest)
             self.assertIn(repr(name), scoped)
         self.assertIn("'selected-tour-layout-guard-v1.css'", manifest)
-        self.assertNotIn("'selected-tour-layout-guard-v1.css'", scoped)
+        self.assertIn("'selected-tour-layout-guard-v1.css'", scoped)
+        self.assertIn("'br3-control-consistency-v1.css'", manifest)
+        self.assertIn("'br3-control-consistency-v1.css'", scoped)
 
         shell = (ROOT / 'src/search3/styles/base.css').read_text()
         entry = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
         self.assertIn('.v2-shell{display:block!important;width:min(var(--at-shell)', shell)
         self.assertIn('padding-inline:0!important', shell)
         self.assertIn(':not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}', entry)
+
+        progress = (ROOT / 'src/search3/styles/search-progress.css').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
+        self.assertIn('background:linear-gradient(135deg,#3458dd,#2544bf)!important', progress)
+        self.assertIn('.search-progress-filters{border:1px solid #c8d4f1!important', progress)
+        self.assertIn('.empty-edit-search{color:#3154cf!important', progress)
+        self.assertIn('.direct-tour:hover{background:linear-gradient(135deg,#3c61e5,#294ac7)!important', results)
+        self.assertIn('.secondary{border:1px solid #c8d4f1!important', shell)
+        self.assertIn(':is(.search-submit,.direct-tour,.search-progress-retry', shell)
+        self.assertIn('@media(max-width:820px){body.search3-candidate #selectedTour.selected-tour .selected-head.checkout-head{', detail)
+        self.assertIn('width:min(100%,240px)!important', detail)
 
     def test_legacy_checkout_presentation_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
