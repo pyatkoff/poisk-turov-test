@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_READY_REQUIRED_CI_PENDING_NOT_PUBLISHED",
+  "base_release_sha": "ed740780483850bf85f884f248cdd8692b096cdb",
+  "eight_assets": { "before_raw_bytes": 42074, "after_raw_bytes": 33355, "saved_raw_bytes": 8719 },
+  "main_js": { "before_raw_bytes": 23070, "after_raw_bytes": 16656, "saved_raw_bytes": 6414 },
+  "main_css": { "before_raw_bytes": 10725, "after_raw_bytes": 8420, "saved_raw_bytes": 2305 },
+  "shared_js_files": { "before_raw_bytes": 109354, "after_raw_bytes": 106735, "saved_raw_bytes": 2619 },
+  "loaded_route": { "before_raw_bytes": 151428, "after_raw_bytes": 140090, "saved_raw_bytes": 11338 },
+  "removed": [
+    "whole private booking/services.js duplicate services/tourists card and booking/layout.js dataset-only layout owner",
+    "duplicate hotel/date/night/party/room/meal/operator card inside booking summary; original selected-tour facts remain",
+    "whole private lead/note.js duplicate copy injector and presentation-only flight heading copy",
+    "desktop filter-rail presentation family and its empty220px column; producer has already been excluded from Search3",
+    "accessibility.js from Search3 shared scope only; unchanged legacy/full route owner remains"
+  ],
+  "retained": [
+    "compact booking total, supplier flight label, pending/confirmed price arithmetic and price note",
+    "review/back/lead transitions, summary action, lead child isolation, scroll and phone focus",
+    "original selected-tour facts including placement, fuel and baggage plus original lead fields",
+    "static live-region/results/selected attributes, result busy lifecycle and native-details close-on-search",
+    "API, Tourvisor, URL/payload, lead transport/field mapping, analytics/goals, logo and native controls",
+    "all eight public asset paths and unchanged full legacy manifest"
+  ],
+  "local_checks": [
+    "one package source build/write plus three confirmed-regression rebuilds; exact build/check",
+    "compact booking total pending/confirmed price and supplier label",
+    "thirteen review/lead/back navigation transitions and lead isolation",
+    "selected no-flight/review scheduler, original fact ownership and source presentation suite",
+    "git diff check"
+  ],
+  "required_ci": { "security": "pending", "exact_artifact": "pending" },
+  "planned_browser": "Existing exact selected fixture at375/760/1000/1440 plus real-source results geometry at375/760/761/999/1000/1440. Native entry checks static ARIA, results busy reset/start/error, details close and unchanged form lifecycle. External requests blocked; no lead submission.",
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": ["owner visual acceptance", "physical Safari/safe-area", "live current-source preview", "full responsive/site/SEO journey"],
+  "next_step": "After green required CI, merge and checkpoint with exact evidence. The independent follow-up audit found no whole optional shared-JS owner at least2KB; do not trim live native search-form or protected shared runtime."
+}

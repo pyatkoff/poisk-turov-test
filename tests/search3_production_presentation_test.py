@@ -125,10 +125,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
     def test_booking_summary_has_no_geometry_only_resize_owner(self):
         source = (ROOT / 'src/search3/behavior/booking-summary.js').read_text()
-        layout = (ROOT / 'src/search3/behavior/booking/layout.js').read_text()
         self.assertNotIn("addEventListener('resize',layoutSoon)", source)
-        self.assertNotIn('getBoundingClientRect', layout)
-        self.assertNotIn('offsetWidth', layout)
+        self.assertFalse((ROOT / 'src/search3/behavior/booking/layout.js').exists())
+        self.assertNotIn('search3FinalLayout', source)
 
     def test_retired_hotel_donor_and_tour_header_have_current_owners(self):
         retired = (ROOT / 'src/search3/styles/hotel-results.css').read_text()
@@ -854,11 +853,14 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             for marker in ('search3:preview-lead-state', '__search3CandidateNativeMatchMedia', '?lead=disabled', 'PREVIEW_LEAD_DISABLED'):
                 self.assertNotIn(marker, source, name)
 
-    def test_supplier_party_is_not_mislabeled_as_search_input(self):
+    def test_duplicate_supplier_party_card_is_retired(self):
         source = (ROOT / 'v2' / 'search3-results-filters-v1.js').read_text()
-        self.assertIn('Состав размещения у туроператора', source)
-        self.assertIn('Для выбранного варианта', source)
+        controller = (ROOT / 'v2' / 'tour-controller-v4.js').read_text()
+        self.assertNotIn('Состав размещения у туроператора', source)
+        self.assertNotIn('search3-final-sections', source)
         self.assertNotIn('Состав поездки из поиска', source)
+        for marker in ('placement', 'fuelCharge', 'baggage'):
+            self.assertIn(marker, controller)
 
     def test_shared_footer_has_no_search3_replacement(self):
         # Search3 renders the same server footer as the rest of the site.

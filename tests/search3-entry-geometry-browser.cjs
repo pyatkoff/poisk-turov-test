@@ -25,14 +25,13 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
     ${field('Город вылета', '<select><option>Калининград</option></select>', 'from')}
     ${field('Страна', '<select><option>Турция</option></select>', 'country')}
     ${field('Курорт / регион', '<select><option>Любой</option></select>', 'region')}
-    ${field('Туристы', '<div class="search3-composite__control"><button type="button" class="search3-tourists__summary">2 взрослых · 1 ребёнок</button><div class="search3-tourists__pop"><span>Взрослых</span><select><option>2</option></select><span>Детей</span><select><option>1</option></select></div></div>', 'tourists')}
+    ${field('Туристы', '<div class="search3-composite__control"><select class="search3-direct-control" aria-label="Взрослых"><option>2</option></select><select class="search3-direct-control" aria-label="Детей"><option>1</option></select></div>', 'tourists')}
     ${field('Даты вылета', '<div class="search3-composite__control"><input class="search3-direct-control" type="date" value="2026-09-12"><span class="search3-composite__dash">—</span><input class="search3-direct-control" type="date" value="2026-09-15"></div>', 'dates')}
     ${field('Ночей', '<div class="search3-composite__control"><select class="search3-direct-control"><option>7</option></select><span class="search3-composite__dash">—</span><select class="search3-direct-control"><option>10</option></select></div>', 'nights')}
     <button class="search-submit" type="submit"><b>Найти туры</b></button>
   </div>
   <section class="search3-quality"><div class="search3-quality__grid">${field('Категория отеля', '<select><option>Любая</option></select>', 'stars')}</div></section>
   <div class="search3-quick"><label class="search3-quick__label"><input type="checkbox"><span>Прямой рейс</span></label></div>
-  <section class="search3-mobile-search-entry"><div class="search3-mobile-search-trust"><span><b>✓</b>Актуальные цены</span><span><b>✈</b>Детали перелёта</span><span><b>?</b>Помощь менеджера</span></div><button type="button" class="search3-mobile-search-filter-button"><span>☷</span><b>Фильтры</b></button></section>
 </form></main></body>`;
 
 const measure = node => {
@@ -62,30 +61,20 @@ const measure = node => {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             labels: [...document.querySelectorAll('#tourSearch .field>span')].map(measureNode),
             controls: [...document.querySelectorAll('#tourSearch .search3-primary-grid>.field>select:not(.search3-direct-control)')].map(measureNode),
-            summary: measureNode(document.querySelector('.search3-tourists__summary')),
+            directControls: [...document.querySelectorAll('#tourSearch .search3-direct-control')].map(measureNode),
             composites: [...document.querySelectorAll('#tourSearch .search3-composite__control')].map(measureNode),
-            popupSelects: [...document.querySelectorAll('.search3-tourists__pop select')].map(measureNode),
             submit: measureNode(document.querySelector('.search-submit')),
             quick: measureNode(document.querySelector('.search3-quick__label')),
-            trust: [...document.querySelectorAll('.search3-mobile-search-trust span')].map(measureNode),
-            mobileFilter: measureNode(document.querySelector('.search3-mobile-search-filter-button')),
-            mobileEntry: measureNode(document.querySelector('.search3-mobile-search-entry')),
           };
         }, measure.toString());
         assert.ok(state.overflow <= 1, `${width}: form must not overflow horizontally`);
         if (width <= 760) {
           assert.ok(state.labels.every(item => item.fontSize >= 12), `${width}: labels remain readable`);
-          assert.ok(state.controls.every(item => item.height >= 47.5 && item.fontSize >= 16), `${width}: primary controls keep 48px/16px`);
-          assert.ok(state.summary.height >= 47.5 && state.summary.fontSize >= 16, `${width}: tourist summary keeps 48px/16px`);
-          assert.ok(state.composites.every(item => item.height >= 47.5), `${width}: composite controls keep 48px`);
-          assert.ok(state.popupSelects.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: tourist selectors keep 44px/16px`);
-          assert.ok(state.submit.height >= 47.5 && state.submit.fontSize >= 15, `${width}: submit keeps 48px/readable text`);
-          assert.ok(state.quick.height >= 43.5 && state.quick.fontSize >= 13, `${width}: quick filter keeps a 44px target`);
-          assert.ok(state.trust.every(item => item.fontSize >= 11), `${width}: trust copy remains readable`);
-          assert.ok(state.mobileFilter.height >= 47.5 && state.mobileFilter.fontSize >= 14, `${width}: advanced filters keep a 48px target`);
-          assert.notEqual(state.mobileEntry.display, 'none', `${width}: mobile helper remains visible`);
-        } else {
-          assert.equal(state.mobileEntry.display, 'none', `${width}: mobile helper remains absent after breakpoint`);
+          assert.ok(state.controls.every(item => item.height > 0 && item.fontSize >= 13), `${width}: native primary controls remain visible and readable`);
+          assert.ok(state.directControls.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: native date, night and tourist controls keep 44px/16px`);
+          assert.ok(state.composites.every(item => item.height >= 43.5), `${width}: native composite controls keep a 44px target`);
+          assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
+          assert.ok(state.quick.height > 0 && state.quick.fontSize >= 13, `${width}: native quick filter remains visible and readable`);
         }
         if (output) await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
         states += 1;

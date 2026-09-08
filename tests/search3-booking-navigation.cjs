@@ -36,7 +36,7 @@ function run(dir) {
     if(s==='.tour-flights')return flights;
     if(s==='.tour-flights .section-heading strong')return title;
     if(s==='.tour-flights .section-heading span')return hint;
-    if(s==='.search3-final-sections,.search3-lead-shell,.lead-form')return shell;
+    if(s==='.search3-lead-shell,.lead-form')return shell;
     throw Error('root selector '+s);
   };
   form.querySelector=s=>{
@@ -57,7 +57,7 @@ function run(dir) {
     requestAnimationFrame:fn=>frames.push(fn),CustomEvent:function(type,opts){this.type=type;this.detail=opts.detail}
   };
   const bundle=fs.readFileSync(dir,'utf8');
-  const code=[...new Set([iife(bundle,{literal:'.tour-flights .section-heading strong'}),iife(bundle,{global:'Search3SummaryCta'})])].join('\n');
+  const code=iife(bundle,{global:'Search3SummaryCta'});
   vm.runInNewContext(code,context);
   function flush(){let n=0;while(tasks.size||frames.length){assert.ok(++n<100,'settles');while(tasks.size){const [id,fn]=tasks.entries().next().value;tasks.delete(id);fn()}if(frames.length)frames.shift()()}}
   function click(selector){const e={target:{closest:s=>s===selector?{}:null},preventDefault(){}};clicks.forEach(fn=>fn(e))}
@@ -88,8 +88,8 @@ function run(dir) {
 }
 const result=run(bundlePath);
 const digest=crypto.createHash('sha256').update(JSON.stringify(result.snapshots)).digest('hex');
-assert.equal(digest,'311c90fe19f028e2bfef8f4ebf014c4ac63a096129680c9e8a07b843e978c38b',
-  'thirteen complete navigation snapshots retain shared-guard DOM, events, scroll and focus');
+assert.equal(digest,'887c357f3ed9d5a5fb478529b197a9b41aba79262e6e8dea8136dffec867f319',
+  'thirteen compact-owner navigation snapshots retain isolation, events, scroll and focus');
 console.log(JSON.stringify({snapshots:result.snapshots.length,digest,pending:result.pending,clickListeners:result.clickListeners}));
 assert.deepEqual(result.pending,[1,1],'tour reset and review each share one navigation task');
 assert.equal(result.clickListeners,1,'flight, review and lead use one click owner');

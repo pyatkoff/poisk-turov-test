@@ -102,10 +102,10 @@ separate cascade evidence.
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/booking/format.js` inside `booking-summary.js`, `behavior/selected-flow-v2.js` |
-| Summary and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
-| Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
+| Compact total and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
+| Selected services and tourists | Original selected-tour facts; duplicate booking services card retired |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
-| Lead heading and contact note | `behavior/lead/note.js`, inside the summary CTA owner |
+| Lead heading and fields | Native controller form; duplicate note injector retired |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, shared `v2/lead-form-guard-v1.js` / `v2/lead-ui-race-guard-v1.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Accepted isolation/readability/hidden contracts | Current `results-layout.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
@@ -223,19 +223,12 @@ elements and unequal-specificity alternatives were excluded. The audit is in
 
 ## Update ownership
 
-`booking-summary.js` coalesces tour/flight/price/layout events into one deferred
-update; full render includes layout and consumes the latest values.
-Its private `booking/services.js` uses the same selected tour, flight, numeric
-formatters and queue. Its private `booking/format.js` owns the text, escaping,
-place, party, flight-label and baggage helpers; the standalone presentation-text
-and flight-presentation slots retain provenance only. Tour/flight events request both sections; price-only and
-lead-success events rebuild only the summary, and stage events keep layout-only
-behavior. Services still render if the lead form is absent. The standalone
-`final-sections.js` state/listeners are retired. Compiled regressions preserve
-eleven settled markup/copy/layout snapshots from the preceding published source.
-`summary-cta.js` runs the private lead note in its existing tour/review task;
-the former `lead-note.js` listeners are retired. Public CTA methods and other
-lead lifecycle events retain their scope.
+`booking-summary.js` coalesces tour/flight/price/stage events into one deferred
+compact-total render. Full hotel/tourist/service details remain in the original
+selected-tour facts and are no longer copied into a second services/card layer.
+Its private `booking/format.js` retains escaping and the supplier flight label;
+private services/layout and lead-note injectors are retired. `summary-cta.js`
+keeps review/lead transitions, focus, isolation and the existing public methods.
 `results-presentation.js` owns one animation-frame queue for result state. Result
 mutations may synchronize search state; resize must remain geometry-only so
 an open search editor is preserved. Queued geometry reads current cards, not
@@ -280,11 +273,10 @@ under the same strict selector/media/value rules. This relies on loading the
 complete four-file presentation, not the main stylesheet in isolation. Audit:
 `docs/project/search3-css-cross-asset-dominance.json`.
 
-`behavior/booking-summary.js` retains its state, formatting, price adapter and
-event lifecycle. Private `behavior/booking/layout.js` owns complete layout
-functions inside that same IIFE. One local setter preserves the original target,
-property, value, important priority and operation order. The existing summary
-regression executes the compiled owner and covers all eight layout states.
+`behavior/booking-summary.js` retains state, supplier flight formatting, pending
+and confirmed price arithmetic, and the event lifecycle. Layout-only dataset and
+duplicate service-card owners are retired; focused compiled coverage verifies the
+coalesced total and that native selected facts remain available.
 
 The already loaded `v2/ds2-results-filters.js` is the single desktop local-filter
 owner. Search3's `results-presentation.js` retains only the local zero-result shell bridge;

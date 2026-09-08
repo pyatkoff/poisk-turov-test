@@ -46,14 +46,27 @@ async function inspect(browser, width, previous) {
     const initial = await state();
     assert.ok(initial.visible && !initial.overflow, 'usable initial form');
     if (!previous) {
+      assert.deepEqual(await page.evaluate(() => ({
+        status: [document.getElementById('status').getAttribute('role'), document.getElementById('status').getAttribute('aria-live'), document.getElementById('status').getAttribute('aria-atomic')],
+        resultsBusy: document.getElementById('results').getAttribute('aria-busy'),
+        selectedTabindex: document.getElementById('selectedTour').getAttribute('tabindex')
+      })), { status: ['status','polite','true'], resultsBusy: 'false', selectedTabindex: '-1' }, 'static accessibility salvage is present');
+      await page.locator('#tourSearch details.extras').evaluate(node => { node.open=true; const nested=node.querySelector('details'); if(nested)nested.open=true; });
+    }
+    if (!previous) {
       assert.equal(await page.locator('.mobile-search-sticky,.mobile-search-summary,.mobile-search-submit-sentinel').count(), 0, 'retired mobile surfaces absent');
       assert.equal(await page.locator('#tourSearch.search-params-filter-split,.result-filter-stars,.result-filter-meal').count(), 0, 'retired parameter/filter split markers absent');
     }
     await emit('v2:search-started');
     const started = await state();
+    if(!previous) {
+      assert.equal(await page.locator('#tourSearch details.extras').evaluate(node => node.open),false,'search start closes native extras');
+      assert.equal(await page.locator('#results').getAttribute('aria-busy'),'true','search start announces busy results');
+    }
     await emit('v2:search-error', { phase: 'validation' });
     const validation = await state();
     assert.ok(validation.visible, 'validation restores the form');
+    if(!previous) assert.equal(await page.locator('#results').getAttribute('aria-busy'),'false','search error clears busy results');
     await emit('v2:search-started');
     await emit('v2:search-dirty');
     const dirty = await state();

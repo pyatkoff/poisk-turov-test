@@ -297,7 +297,7 @@ console.log('PASS: selected owner retains state, no-flight recovery/review, and 
       if (selector === '.tour-flights') return flightRoot;
       if (selector.endsWith('.section-heading strong')) return heading;
       if (selector.endsWith('.section-heading span')) return hint;
-      if (selector === '.search3-final-sections,.search3-lead-shell,.lead-form') return flightRoot;
+      if (selector === '.search3-lead-shell,.lead-form') return flightRoot;
       if (selector === '.search3-booking-summary' || selector === '.lead-form') return null;
       throw new Error('Unexpected query: ' + selector);
     }
@@ -320,7 +320,8 @@ console.log('PASS: selected owner retains state, no-flight recovery/review, and 
   assert.equal(button.textContent, 'Изменить рейс');
   onClick(click);
   assert.equal(phase.has('search3-final-review'), false);
-  assert.equal(heading.textContent, 'Выберите рейс');
+  assert.equal(heading.textContent, '', 'compact CTA does not rewrite controller heading copy');
+  assert.equal(hint.textContent, '', 'compact CTA does not add duplicate flight guidance');
   assert.equal(scrolls, 2);
   callbacks.get('v2:tour-selected')();
   assert.equal(tasks.length, 1, 'tour reset shares one review/lead task');

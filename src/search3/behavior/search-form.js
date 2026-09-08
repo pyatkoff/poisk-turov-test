@@ -12,6 +12,7 @@ function init(){
   var shell=form.parentNode;if(shell&&!document.querySelector('.search3-page-intro')){var intro=document.createElement('div');intro.className='search3-page-intro';intro.innerHTML='<div class="search3-breadcrumb">Главная <span>›</span> Поиск туров</div><h1>Поиск туров</h1><p>Найдите туры по лучшим ценам от надежных туроператоров</p>';shell.insertBefore(intro,form);}
   var title=form.querySelector('.search-section-title');if(title)title.hidden=true;
   var main=form.querySelector('.main-fields'),extras=form.querySelector(':scope > details.extras');if(!main||!extras)return;
+  window.addEventListener('v2:search-started',function(){extras.open=false;extras.querySelectorAll('details').forEach(function(detail){detail.open=false;});});
   var refs={};['from','country','dateFrom','dateTo','daysFrom','daysTill','count_people','child_count'].forEach(function(name){refs[name]=form.elements[name]||null;});
   var childAges=document.getElementById('childAges');
   var originalFields={};Object.keys(refs).forEach(function(name){var el=refs[name];originalFields[name]=el&&el.closest?el.closest('.field'):null;});
