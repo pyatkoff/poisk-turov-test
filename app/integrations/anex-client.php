@@ -84,6 +84,7 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $envelope)) {
+            $this->errorDiagnostics($envelope);
             if (is_int($envelope['error']) && $envelope['error'] >= 0 && $envelope['error'] <= 99999) $this->lastRequest['supplier_code'] = $envelope['error'];
             if ($action === 'SearchTour_PRICES' && in_array($envelope['error'], [2110, '2110'], true)) {
                 return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
@@ -101,6 +102,7 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $payload)) {
+            $this->errorDiagnostics($payload);
             if (is_int($payload['error']) && $payload['error'] >= 0 && $payload['error'] <= 99999) $this->lastRequest['supplier_code'] = $payload['error'];
             if ($action === 'SearchTour_PRICES' && in_array($payload['error'], [2110, '2110'], true)) {
                 return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
@@ -110,6 +112,20 @@ final class AnyTourAnexClient
         // The client owns the credential, so callers never need to duplicate it
         // in their own label filters to prevent a supplier echo from escaping.
         return $this->redactPayload($payload);
+    }
+
+    private function errorDiagnostics(array $payload): void
+    {
+        // Read-only operational evidence, never included in public HTTP responses.
+        $clean = $this->redactPayload($payload);
+        foreach (['error_description', 'message', 'errorMessage', 'msg'] as $key) {
+            $value = $clean[$key] ?? null;
+            if (is_string($value) && strlen($value) <= 600
+                && !preg_match('~https?://|oauth|token|password|secret~i', $value)) {
+                $this->lastRequest['supplier_message'] = $value;
+                break;
+            }
+        }
     }
 
     private function redactPayload(array $payload): array
