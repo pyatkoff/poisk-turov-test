@@ -298,9 +298,12 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("'room-details.css'", manifest.split('$excluded =', 1)[0])
         self.assertIn("'room-details.css'", scoped)
         self.assertIn("@import url('/poisk-turov-test/v2/selected-tour-ux.css?v=1')", legacy)
+        runtime = (ROOT / 'v2/room-details-v3.js').read_text()
         for contract in ['.room-detail-card', '.room-gallery-main', '.room-gallery-thumb', '.room-facts', '.room-comment']:
             self.assertIn(contract, legacy)
-            self.assertIn(contract, current)
+            self.assertNotIn(contract, current)
+        self.assertIn("'room-details-v3.js'", scoped)
+        self.assertIn('window.V2RoomDetails=', runtime)
 
     def test_hotel_details_design_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
@@ -350,7 +353,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("'current-price-calendar-v1.css'", scoped)
         for contract in ['.current-price-calendar__days', '.current-price-calendar__day', '.current-price-calendar__note']:
             self.assertIn(contract, legacy)
-            self.assertIn(contract, current)
+            self.assertNotIn(contract, current)
+        self.assertIn("'current-price-calendar-v1.js'", scoped)
+        self.assertIn('no longer mounts the optional price-calendar', current)
 
     def test_results_experience_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
