@@ -1,6 +1,49 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — selected-flow adapter retirement #1633 — 2026-09-08
+## Current resume point — compact native UI #1635 and selected entry repair #1637 — 2026-09-08
+
+Exact final source `89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1`, tree `833623851f9411e188dfe6915dd04f2b4211c675`;
+checked code release `abc6e4f255709572b731b0db1ffb0d94a4b0909e`. Initial checkpoint
+`a728832d300a01f61d92bb194c243117bc63a423`; #1633 retirement is preserved.
+
+#1635 source `66cb0164b2523be69b1eee821dba4efb29d69265`, release `66c77795ea80c786ab89ec7a7275381e50f1822a`:
+eight **8867→11975 B (+3108 CSS)**. The existing header, native form, cards,
+selected facts/flights and lead fields get readable compact presentation.
+#1637 fixes entry hero/form reappearing above selected content using the existing
+selected-state class: **11975→11984 B (+9 CSS)**. Whole-pass growth **+3117 B**
+is product repair, not deletion. JavaScript remains **6607 B**. Only current
+results-layout/entry owners change; retired card CSS stays1B, selected CSS stays
+exact50B and selected JS stays0B. All8 paths and original business owners remain.
+
+Primary Security `34285887617`/exact `34285887635`
+passed. Final Security `34286700375`/exact `34286700356` passed.
+Intermediate primary runs34284706152/34284889596/34285260425/34285553146 were RED:
+CSS-boundary/native marker requirements, fixture catalog/toggle timing and old
+all-width mobile-menu assumptions. Source/test corrections are recorded; existing
+source/PHP/path/presentation/isolation guards were not weakened. Entry values and
+lifecycle still compare exactly; intentional dimensions are recorded with no-overflow,
+16px/44px checks. Desktop navigation and native mobile open/close are both tested.
+Final focused checks: Selected8 at375/760/1000/1440 including both duplicate entry surfaces hidden; lazy3 with native handoff/return focus; entry30 exact values/lifecycle; current results12 raw/served parity at375/760/761/999/1000/1440; native entry375/1440; empty-flight retry/recovery, phone/stale-lead guards and decimal tradeoffs. Real leads0..
+
+Reuse exact artifact `10079777903`, digest `sha256:881720d851ead0efaee151cf3b428985c56949dc9c4cf36fe4b8623494eaf494`;
+archive `e0a2b42cb58b37cc79ec2f1d7c6b65be9916e5d2fda9233069e3f5a3493b0f35`, manifest `41c8fae6568a30363d6198a9ecdd426a172710ff2c94fca260631ba429117df3`,
+payload `921769f1be583978e4bbffb7013de7cafbf24124283ff3b4f62445154b3c68cc`, 717 files.
+**Published preview** source `89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1` via control
+PR#1638, deploy `34286947471`. Earlier #1636 deployed the
+primary package and the short live check found the selected-entry duplication;
+it is fixed by the final source above. Both control PRs closed without merge.
+No rebuild for publication or docs. Noindex, counter0, disabled production leads,
+rollback and13 identical production fingerprints retained. Main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; this lane did not modify main or production.
+
+Actual primary checks: {"width": 1363, "entry": "Readable native form; Moscow/Turkey catalogs loaded; both original /images/logo.svg images complete. Screenshot inspected.", "results": "One live search,100 hotels; first ARES CITY61883RUB, photo/facts/CTA bounded and readable. Screenshot inspected.", "selected": "ARES CITY selected,61883RUB, flight loaded; phone CTA focuses phone; returning restores100 hotels/focus. No horizontal overflow.", "issue": "Entry hero/form reappear above selected tour due existing results-state transition; confirmed and corrected next in#1637.", "lead_submitted": false}.
+Actual final checks: {"width": 1363, "entry": "Native form visible on fresh reload; Turkey catalog loaded. Exact versioned CSS path58eadb7eba76eaa7 served.", "results": "One live search completed with96 hotels; first ANAHTAR APART65487RUB. No real leads.", "selected": "ANAHTAR APART selected; search3-selected-open set, both hero and search form hidden; no horizontal overflow. Canonical selected price65701RUB,214RUB flight adjustment; all offered flight options remain available. Live screenshot inspected.", "return_to_results": "96 hotels restored, selected hidden; edit-search restores form and focuses from. All8 primary values retained; no overflow.", "lead_submitted": false, "scope": "Short targeted live correction check only. Previous package already inspected original logo, form/cards and phone focus. No extra lead/site/SEO traversal."}.
+Deferred: physical Safari/safe-area, owner visual/design acceptance for production, full lead/site/SEO/responsive journey, Group long native flight lists and space footer/lead-summary text in a future coherent UI package; not a new correctness regression.. Audit: `docs/project/search3-compact-native-presentation.json`.
+Rollback: revert #1637/#1635 independently or restore retained preview backup.
+
+Next: The compact native presentation and selected-entry duplication repair are published. Preserve the current11984B eight-asset total and all retired boundaries. Next coherent UI package: group the eight primary search fields into destination/date/nights/party pairs, and fix existing footer/lead-summary text spacing within the same12KB budget. Batch these visible refinements; do not create printer/micro-trim PRs or restore legacy skins. Keep canonical values, price arithmetic, API/lead transport/mapping/analytics and original logo. Production remains gated on explicit owner visual acceptance.
+
+## Historical checkpoint — selected-flow adapter retirement #1633 — 2026-09-08
 
 Exact source `c1990a4cda2bb3ab6623e18b4fd2c5a17be6884b`, tree
 `8f8cfa872dc552cc6ecb17850b2c58a410daccb1`; checked release
