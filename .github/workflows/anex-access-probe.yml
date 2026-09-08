@@ -108,6 +108,7 @@ jobs:
           python3 -B tests/anex_search3_complete_review_test.py
           python3 -B tests/anex_search3_saved_review_test.py
           python3 -B tests/anex_search3_cached_evidence_audit_test.py
+          python3 -B tests/anex_search3_cached_review_test.py
           python3 -B tests/anex_search3_paired_experiment_test.py
           php -l scripts/diagnostics/anex_search3_paired_runner.php
           php tests/anex-search3-paired-runner-smoke.php
@@ -306,6 +307,35 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_saved_review.py --accept
+      - name: Reserve local competitors for cached source-error details
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_cached_review.py --prepare
+      - name: Preserve cached-review reservation before local catalog reads
+        if: steps.operation.outputs.mode == 'observed'
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}-cached-review-reserved
+          path: ${{ runner.temp }}/anex-catalog/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Read complete local candidates for at most 14 cached source errors
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_cached_review.py --run
+      - name: Save cached candidate evidence without reclassifying historical errors
+        if: always() && steps.operation.outputs.mode == 'observed'
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_cached_review.py --finalize
       - name: Save complete saved-review evidence and audit cached details
         if: always() && steps.operation.outputs.mode == 'observed'
         env:

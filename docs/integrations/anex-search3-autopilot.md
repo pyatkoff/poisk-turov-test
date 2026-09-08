@@ -32,6 +32,28 @@ preview, manual decisions и catalog_hotels сохраняются. Исполь
 observed и append-only importer. Новые changes observed runtime требуют свежегоrun;
 старый34271815803/35fa3709 не rerun после подключения нового обработчика.
 
+## Четыре связи приняты, следующий этап — 14 сохранённых карточек ошибок
+
+На d5c56b365833677598a90c882c47150e95b149d4, run34284774030/job102257688857,
+artifact10079050364, digestb8fda9969350f5e580f5851751ea52e2a5b69adec1c52e65d969439664f1f2d4,
+восстановлен10078765006; все gates успешны. Импортировано ровно4 strong связи,
+прежние12880 policy и9manual сохранены по прежним hash, staging8362.
+Новый policy12884 (exact10608/strong2276), effective12893, local unique11063;
+policy hash a176cb72638a2d30bd5610736d35a3f12081ad71e6c417ac7cafa70ca2d38198.
+Покрытие наблюдений229→233 из502, pending269=review132/source_error133/unmatched4.
+Live completed292 сохранены, новых supplier ID0, API0, повторных catalog reads0.
+Последняя точка этого run — anex-saved-review-acceptance-report.json/queue после импорта4;
+обычный observed-report записан до импорта и показывает229, не использовать как свежуюDBточку.
+Новый audit SHAcaacb640360fb3867c3faef622f39a3fead776911ec94af9de8982c462694254
+содержит14 source_error с пригодными API/XML карточками. Отдельный cached-review
+bootstrap фиксирует artifact10079050364 и этот raw audit, сохраняемый внутри нового checkpoint.
+До запросов сохраняется reservation artifact; затем максимум14 local catalog reads,
+по2 за последовательный SSH вызов (sentinel4097,4MB), supplier requests0.
+Проверяются текущие pending/registry/manual и страна. Historical supplier errors не переписываются.
+Raw/ranked результаты, JSON/CSV/checkpoint читаются обратно. Новый cached stage только
+готовит строгие предложения; импорт требует отдельно проверенного checkpoint SHA.
+Исторические112/8362, live292, owner9, complete2 и saved-review4 не перезапускаются.
+
 ## Полное чтение четырёх review подтверждено
 
 На c73d82a0225bcccf565c05ecd06ab967f00b1e58, run34284020284/job102255252324,
