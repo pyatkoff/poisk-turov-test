@@ -10,7 +10,7 @@
   "assets": {
     "search3-entry-v1.css": {
       "candidateSha256": "7032ac69f1bc6277860353592b8b545a6eb65174cbe1a077ee473be7dace2581",
-      "productionSha256": "95f540c7c7f2569e85d706768d2cb3b17b1a98118be6e6d34bbc4f3eaf8d9e9d"
+      "productionSha256": "985424c99cd22f9a0a795b70df761dad4597d19c6c93ef1a3b3b447d402e8642"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",

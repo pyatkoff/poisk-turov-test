@@ -43,5 +43,8 @@ html body.search3-candidate{
 @media(max-width:760px){
  html body.search3-candidate{
 & #tourSearch :is(.search3-dates,.search3-nights) .search3-composite__control{min-height:48px!important}
+& #tourSearch .search3-primary-grid>.field>select:not(.search3-direct-control){width:100%!important;height:48px!important;font-size:16px!important}
+& #tourSearch .search-submit{min-height:48px!important;font-size:16px!important}
+& #tourSearch .search3-quick__label{display:flex!important;align-items:center!important;min-height:44px!important;font-size:13px!important}
  }
 }

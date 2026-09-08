@@ -2,11 +2,11 @@
   "schema_version": 1,
   "status": "SOURCE_READY_REQUIRED_CI_PENDING_NOT_PUBLISHED",
   "base_release_sha": "0957dba138acdc3eaf7ab12878b01b86ec37f1d8",
-  "eight_assets": { "before_raw_bytes": 41959, "after_raw_bytes": 33240, "saved_raw_bytes": 8719 },
+  "eight_assets": { "before_raw_bytes": 41959, "after_raw_bytes": 33606, "saved_raw_bytes": 8353 },
   "main_js": { "before_raw_bytes": 23070, "after_raw_bytes": 16656, "saved_raw_bytes": 6414 },
   "main_css": { "before_raw_bytes": 10610, "after_raw_bytes": 8305, "saved_raw_bytes": 2305 },
   "shared_js_files": { "before_raw_bytes": 118613, "after_raw_bytes": 115994, "saved_raw_bytes": 2619 },
-  "loaded_route": { "before_raw_bytes": 160572, "after_raw_bytes": 149234, "saved_raw_bytes": 11338 },
+  "loaded_route": { "before_raw_bytes": 160572, "after_raw_bytes": 149600, "saved_raw_bytes": 10972 },
   "removed": [
     "whole private booking/services.js duplicate services/tourists card and booking/layout.js dataset-only layout owner",
     "duplicate hotel/date/night/party/room/meal/operator card inside booking summary; original selected-tour facts remain",
@@ -23,7 +23,7 @@
     "all eight public asset paths and unchanged full legacy manifest"
   ],
   "local_checks": [
-    "one package source build/write plus one confirmed-regression rebuild; exact build/check",
+    "one package source build/write plus two confirmed-regression rebuilds; exact build/check",
     "compact booking total pending/confirmed price and supplier label",
     "thirteen review/lead/back navigation transitions and lead isolation",
     "selected no-flight/review scheduler, original fact ownership and source presentation suite",
