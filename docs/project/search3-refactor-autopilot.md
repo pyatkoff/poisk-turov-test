@@ -1,6 +1,48 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — native entry and shared-owner compaction #1619 — 2026-09-08
+## Current resume point — on-demand selected runtime #1618 — 2026-09-08
+
+Exact combined source `b25ae3e8c72e300bbaf877a9df8010d7f3f108fe`, tree `9ee238b4e9745cb95311d0d09add462c6bdee476`;
+checked code release `5bb8595d870906c4eb67b07de3d86a26ff71ec1b`. Concurrent #1619 merged first as
+`fa9917bf35b88f548bbea44baf26785dc5a1aa93`; retain its native-entry retirement
+and shared compaction. Our overlapping core compaction was superseded, not counted twice.
+
+Relative to that fresh base: **initial CSS/JS file payload 125043→101324 B (−23719)**.
+The selected-tour/lead transport and flight-price closure is 25604 B and loads only
+after selection through the existing same-origin bundle endpoint. It is deferred,
+not deleted. Complete file payload **125043→126928 B (+1885)**; eight public assets
+**23506→25391 B (+1885)**; shared payload 101537 B unchanged. Added 1550 B loader,
+208 B confirmed return-visibility/focus repair and 127 B native-details close-on-search
+repair after the concurrent entry retirement. HTTP shared boundaries add 727 B
+overall, 590 B initially and 137 B to the selected request; keep this accounting separate.
+
+All eight public paths remain. Initial search/catalog/URL/runtime/analytics and
+lead race/context/fetch wrappers stay eager. First real action replays once after
+the canonical controller and both price owners are ready. Failed download retries
+only on another action; search reset cancels a pending selection. Current results
+owner reveals results before the unchanged controller chooses its return focus.
+No canonical protected source, price arithmetic, payload or lead transport changed.
+
+Final Security 34268129179, exact 34268129387, boundary
+34268129237 and navigation 34268129190 passed.
+Reuse artifact 10072720854, digest `sha256:1936f778595c200da8251133ee38f2b10771fb9ffa8c59f4507ef04b9d7c4adf`;
+archive `831dc290534fab55e69fa49f7d8c3ccd67594b93af9299c0b26c7517ec35003e`. No release/docs rebuild.
+Actual isolated Chromium passed first-click/retry/reset/decimal/return-focus,
+12 selected detail/review/lead states, 30 native entry lifecycle states, 12 raw/served
+results states, native FormData 375/1440 and retry/fallback/decimal checks. Real leads 0,
+external requests blocked. Earlier red harness/closure checks and confirmed UI
+failures remain red in the audit; the earlier green pre-integration artifact was superseded.
+
+**Checked release is not published preview.** Preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`;
+main observed `86fc165277a13ae9bef1369659e9b150399f0e35`; neither main nor production
+was changed by this work. No new live fingerprint capture or manual visual acceptance
+is claimed. Safari/safe-area, manual screenshots, live current-source preview and
+owner acceptance are deferred. Revert #1618 for rollback while preserving #1619.
+Audit: `docs/project/search3-compact-lazy-runtime.json`.
+
+Next: First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction.
+
+## Historical checkpoint — native entry and shared-owner compaction #1619 — 2026-09-08
 
 Exact source `efd0368b99f91533cb5538d433244a71fb303c25`, checked release
 `fa9917bf35b88f548bbea44baf26785dc5a1aa93`; base was
@@ -40,7 +82,7 @@ presentation. Retain TourController lead form, pending/confirmed price,
 review/back/lead transitions and original tour/flight facts; do not make a
 standalone micro-trim.
 
-## Current resume point — booking/accessibility/rail reset #1614 — 2026-09-08
+## Historical checkpoint — booking/accessibility/rail reset #1614 — 2026-09-08
 
 Exact source `70cc8105a6920472fafccabc172158ed15f48bca`, checked release
 `61df0ca55c4791d04c0c59ce965b92377e300a6f`; fresh base was
@@ -84,7 +126,7 @@ lead, price, catalog, URL, lifecycle or analytics. Do not start another micro-tr
 The next coarse reduction requires a new architecture boundary that preserves those
 contracts; continue audit/design work without changing main/production.
 
-## Current resume point — shared runtime compaction #1615 — 2026-09-08
+## Historical checkpoint — shared runtime compaction #1615 — 2026-09-08
 
 Exact source `1edc81fe4fc61c845cfd21e453c2d4f5255515e1`, tree `38a21ff0873fd6d0871d64e3d36bfdf628d14c59`,
 checked code release `ed740780483850bf85f884f248cdd8692b096cdb`. Base was `0957dba138acdc3eaf7ab12878b01b86ec37f1d8`.
