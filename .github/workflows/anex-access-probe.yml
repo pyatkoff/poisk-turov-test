@@ -136,6 +136,13 @@ jobs:
             "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" >/dev/null
           jq -e '.counts.anex_hotels > 0 and .counts.anex_hotels == (.matches | length)' \
             "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" >/dev/null
+      - name: Check gap runtime without supplier requests
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
       - name: Prepare and reserve the independent initial-search queue
         if: steps.operation.outputs.mode == 'gaps'
         env:

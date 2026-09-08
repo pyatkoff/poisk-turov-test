@@ -4,6 +4,7 @@ declare(strict_types=1);
 error_reporting(0);
 ob_start();
 $result = ['status' => 'source_error', 'reason' => 'details_unavailable'];
+$phase = 'root';
 try {
     $root = realpath((string)getenv('HOME') . '/www/anytoour.ru');
     if (!$root || realpath((string)getcwd()) !== $root) throw new RuntimeException();
@@ -12,12 +13,15 @@ try {
     $snapshot = ($input['mode'] ?? null) === 'snapshot';
     if (!$snapshot && (!is_int($id) || $id < 1 || $id > 2147483647)) throw new RuntimeException();
     $preview = $root . '/_preview/search3-anex-candidate';
+    $phase = 'configuration';
     require (string)getenv('HOME') . '/.anytoour-anex/search3-preview.php';
     require_once $preview . '/app/integrations/anex-client.php';
-    require_once is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php';
+    require_once (is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php');
+    $phase = 'database';
     $pdo = v2_data_db();
     $pdo->exec('START TRANSACTION READ ONLY');
     if ($snapshot) {
+        $phase = 'snapshot';
         $result = ['status' => 'ok', 'staging_total' => (int)$pdo->query('SELECT COUNT(*) FROM anex_hotels')->fetchColumn()];
         foreach (['anex_hotel_search_mappings', 'anex_hotel_decisions'] as $table) {
             $hash = hash_init('sha256');
@@ -39,6 +43,7 @@ try {
     if ($protected) {
         $result = ['status' => 'protected', 'reason' => 'existing_mapping_or_manual_decision'];
     } else {
+        $phase = 'details';
         if (!defined('ANYTOUR_ANEX_PREVIEW_ENABLED') || ANYTOUR_ANEX_PREVIEW_ENABLED !== true) throw new RuntimeException();
         $client = new AnyTourAnexClient(ANEX_API_TOKEN);
         $data = $client->request('Hotels_DETAILS', ['HOTELINC' => $id]);
@@ -52,6 +57,7 @@ try {
         $result = ['status' => 'ok', 'details' => $safe];
     }
 } catch (Throwable $ignored) {
+    $result = ['status' => 'source_error', 'reason' => 'details_unavailable', 'phase' => $phase];
     if (isset($client)) {
         $diagnostic = $client->lastRequestDiagnostics();
         if (($diagnostic['http_status'] ?? 0) === 429) $result['reason'] = 'rate_limited';

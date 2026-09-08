@@ -116,7 +116,7 @@ def remote_batch(selected, catalog_rows, country_id):
             input='{"mode":"snapshot"}', text=True, capture_output=True, timeout=30)
         value = json.loads(result.stdout)
         if result.returncode or value.get('status') != 'ok' or value.get('staging_total') != 8362:
-            raise ValueError('preservation snapshot unavailable')
+            raise ValueError('snapshot:' + str(value.get('phase', 'count')) + ':' + str(value.get('staging_total', -1)))
         return value
     before = snapshot()
     rows = []
@@ -200,7 +200,8 @@ def ssh_batch(selected, catalog_rows, country_id):
     for variable, file in [('DETAILS_PHP', 'anex_search3_gap_details.php'), ('CATALOG_PHP', 'anex_catalog_reader.php')]:
         source += variable + ' = ' + repr(Path(__file__).with_name(file).read_text().removeprefix('<?php')) + '\n'
     source += ast.get_source_segment(own_source, function) + '\n'
-    source += 'print(json.dumps(remote_batch(**json.load(sys.stdin)), ensure_ascii=False))\n'
+    source += "try:\n    print(json.dumps(remote_batch(**json.load(sys.stdin)), ensure_ascii=False))\n"
+    source += "except Exception as error:\n    print(json.dumps({'remote_error': type(error).__name__, 'phase': str(error) if str(error).startswith('snapshot:') else 'batch'}))\n"
     with tempfile.TemporaryDirectory(prefix='anex-search-gaps-', dir=os.environ.get('RUNNER_TEMP')) as temp:
         key = Path(temp) / 'ssh_key'
         key.write_text(os.environ[names[0]].rstrip() + '\n')
@@ -214,8 +215,11 @@ def ssh_batch(selected, catalog_rows, country_id):
             'country_id': country_id}), text=True, capture_output=True, timeout=310,
             env={k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
     if result.returncode or len(result.stdout) > 4000000:
-        raise ValueError('remote batch did not produce a bounded result')
-    return json.loads(result.stdout)
+        raise ValueError('remote_batch_exit_' + str(result.returncode))
+    payload = json.loads(result.stdout)
+    if 'remote_error' in payload:
+        raise ValueError(str(payload['remote_error']) + ':' + str(payload['phase']))
+    return payload
 
 
 def merge(cp, rows, queue):
@@ -288,6 +292,19 @@ def approved_delta(checkpoint_path):
 
 def main():
     directory = Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
+    if '--preflight' in __import__('sys').argv:
+        try:
+            result = ssh_batch([], {}, 1)
+            report = {'status': 'ok', 'supplier_requests': 0, 'preservation': result['preservation']}
+        except Exception as error:
+            import re
+            reason = str(error)
+            report = {'status': 'preflight_failed', 'supplier_requests': 0,
+                      'reason': reason if re.fullmatch(r'[A-Za-z0-9_:.-]{1,160}', reason) else type(error).__name__}
+        (directory / 'anex-initial-search-preflight.json').write_text(json.dumps(report, indent=2) + '\n')
+        print(json.dumps(report))
+        if report['status'] != 'ok': raise SystemExit(1)
+        return
     queue = load_queue()
     cp = restore(directory, queue)
     owner = os.environ['GITHUB_RUN_ID'] + ':' + os.environ['GITHUB_RUN_ATTEMPT']
