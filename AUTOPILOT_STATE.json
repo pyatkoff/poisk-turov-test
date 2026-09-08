@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1563 retires the complete 9722-byte anytour-brand.css legacy V2 skin from Search3. Its private --anytour-* tokens have no external consumers and current Search3 owners preserve form, results, selected/lead and shared header/logo, so no compensation code was added; loaded route payload falls 506022 to 496300 raw (-9722) and carried same-method gzip falls 114104 to 112163 (-1941). The full legacy route retains the unchanged layer.",
+    "last_material_progress": "PR #1568 retires the complete 10197-byte product-shell-v1.css legacy header/hero/grid layer from Search3. Exact Chromium identified and preserved only the inherited font, ink/soft tokens, hidden legacy hero and 52px mobile/tablet shell bottom spacing in the current Search3 base owner. Loaded route payload falls 496300 to 486335 raw (-9965) and carried same-method gzip falls 112163 to 110185 (-1978). The full legacy route retains the unchanged layer.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit product-shell-v1.css as the next substantial complete presentation-layer candidate against the current Search3 page intro and shared site shell. Preserve header/footer/logo and active route geometry, retain the full old-route layer, and do not retire active room-details.css or search-states-design.css merely for size.",
+    "next_action": "Audit search-header-shared-shell-v1.css as the next complete presentation-layer candidate against the current at-global-header and Search3 base/entry owners. Preserve shared header/footer/logo/navigation and active route geometry; retain the full old-route layer.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_ANYTOUR_BRAND_LAYER",
-    "title": "Retire the legacy AnyTour brand presentation layer from Search3",
+    "id": "S3_LEAN_PRODUCT_SHELL_LAYER",
+    "title": "Retire the legacy product shell presentation layer from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1563
+      1568
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "775e7279f1f6cd2d923136451a1ea5594b69e282"
+      "9bcaaae15cc287f929a9fb8c4a42a03307d81b47"
     ],
-    "release_sha": "d42691a6797f58abb5da7aca730d2125d57b425f",
-    "artifact_run": 34206067387,
-    "artifact_id": 10047845216,
-    "artifact_digest": "sha256:7111070f1ff14b5c9be8f20292219c3a752cb1dd8aef9b8c9dbdadb9d7014da6",
-    "checked_release_asset_bytes": 174000,
-    "checked_release_loaded_bytes": 496300,
+    "release_sha": "c46d6fab0f7d8ecfd43d6fc46acdf446a742b1db",
+    "artifact_run": 34208410446,
+    "artifact_id": 10048797611,
+    "artifact_digest": "sha256:aad6972854eb311400c17cc831f17135717bf610838f0e205bc3de9888141f5f",
+    "checked_release_asset_bytes": 173509,
+    "checked_release_loaded_bytes": 486335,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit product-shell-v1.css as one whole reversible layer; preserve shared header/footer/logo and active route geometry, and keep active room-details.css/search-states-design.css unchanged."
+    "next_action": "Audit search-header-shared-shell-v1.css as one whole reversible layer; preserve shared header/footer/logo/navigation and active Search3 geometry."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -8703,8 +8703,8 @@
     "gzip_before": 116431,
     "gzip_after": 115816,
     "gzip_saved": 615,
-    "eight_assets_before": 174000,
-    "eight_assets_after": 174000,
+    "eight_assets_before": 173277,
+    "eight_assets_after": 173277,
     "green_exact_runs": [
       34202647875,
       34202904621
@@ -8727,9 +8727,12 @@
     "gzip_before": 115816,
     "gzip_after": 114104,
     "gzip_saved": 1712,
-    "eight_assets_before": 174000,
-    "eight_assets_after": 174000,
-    "green_exact_runs": [34204676400, 34204924813],
+    "eight_assets_before": 173277,
+    "eight_assets_after": 173277,
+    "green_exact_runs": [
+      34204676400,
+      34204924813
+    ],
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-results-experience-layer.json",
@@ -8748,12 +8751,49 @@
     "gzip_before": 114104,
     "gzip_after": 112163,
     "gzip_saved": 1941,
-    "eight_assets_before": 174000,
-    "eight_assets_after": 174000,
-    "green_exact_runs": [34205833396, 34206067387],
+    "eight_assets_before": 173277,
+    "eight_assets_after": 173277,
+    "green_exact_runs": [
+      34205833396,
+      34206067387
+    ],
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-anytour-brand-layer.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_product_shell_layer_retirement": {
+    "source_pr": 1568,
+    "source_sha": "9bcaaae15cc287f929a9fb8c4a42a03307d81b47",
+    "checked_code_release_sha": "c46d6fab0f7d8ecfd43d6fc46acdf446a742b1db",
+    "retired_search3_owner": "product-shell-v1.css",
+    "legacy_layer_bytes_removed": 10197,
+    "current_owner_bytes_added": 232,
+    "raw_before": 496300,
+    "raw_after": 486335,
+    "raw_saved": 9965,
+    "gzip_before": 112163,
+    "gzip_after": 110185,
+    "gzip_saved": 1978,
+    "eight_assets_before": 173277,
+    "eight_assets_after": 173509,
+    "failed_exact_runs": [
+      34207759220
+    ],
+    "green_exact_runs": [
+      34208217590,
+      34208410446
+    ],
+    "final_artifact_id": 10048797611,
+    "final_artifact_digest": "sha256:aad6972854eb311400c17cc831f17135717bf610838f0e205bc3de9888141f5f",
+    "selected_geometry_artifact": 10048796241,
+    "selected_geometry_digest": "sha256:0db90db602f31f76f115fc2e789a0a447fb01c05765812562c0fd06dce2500b1",
+    "results_geometry_artifact": 10048796853,
+    "results_geometry_digest": "sha256:35e247ede326b51f4192cd6f3d8b078b200d50f6dca7252a8acc936f5f28e1ae",
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-product-shell-layer.json",
+    "corrected_prior_asset_subtotal": "Exact #1563 artifact proves 173277 bytes for the eight public Search3 assets, not the previously transcribed 174000; loaded total 496300 is unchanged.",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
