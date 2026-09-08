@@ -1,0 +1,10 @@
+priority,anex_hotel_id,catalog_hotel_id,anex_name,catalog_name,country,name_similarity,distance_m,score_margin,status,evidence_row_sha256
+"1","28892","17449","Grand Liza Hotel","GRAND LIZA HOTEL","Турция","1","4.1","0.2465","requires_complete_candidate_set","42513139b854c52cea572e9b13171f8a60be58119b8f7b544b07446bcc3fab97"
+"2","28941","17428","Gedikpasa Konagi","GEDIK PASA KONAGI","Турция","0.9697","5.3","0.3982","requires_complete_candidate_set","f72b65750ac426f8a0f623e792179e41b8047f7918c7a47e573cb14f6a80f4eb"
+"3","28950","28738","Hotel Grand Mark","GRAND MARK","Турция","1","1.5","0.325","requires_complete_candidate_set","8e32e28428ec16735b585a26e85b76a85359ae2e95aa238a831059540efbd94a"
+"4","29292","17325","Barin Hotel","BARIN HOTEL","Турция","1","2.2","0.1773","requires_complete_candidate_set","76db9ab4da88c44d6b5a956172b46ec7d10a46216bb8d72bba464f587ed7dcb9"
+"5","30305","17444","Grand Emir Hotel","GRAND EMIR","Турция","1","2.7","0.2647","requires_complete_candidate_set","31d1f9de1b79fd01607b363b926446d3cbe93486ef7335fa71e26437a499b6eb"
+"6","30474","67478","The Laila Hotel","THE LAILA HOTEL","Турция","1","26.9","0.2166","requires_complete_candidate_set","284d3345f36922a24c7e446a12ff9f8283fb982a779f8792dbe8f536456213be"
+"7","31788","71458","A'la Sofia Hotel","A LA SOFIA","Турция","1","9.5","0.2166","requires_complete_candidate_set","7151c25777eefdcf7c46230b5dacf0775a5e8514bef94d40c020f78b834ed827"
+"8","32652","28652","Victory Hotel & Spa.","VICTORY HOTEL & SPA","Турция","1","1.2","0.2954","requires_complete_candidate_set","80baa3fe2cff637615ce810b386aa013e641f7b947e096322c38aa8c0a01ea4d"
+"9","32739","28697","Benler Hotel.","BENLER","Турция","1","2.1","0.1773","requires_complete_candidate_set","a194b505867c8b7527cd84d3074e83742baba0f2d361a5cc70768205655fd82f"
