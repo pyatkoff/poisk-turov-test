@@ -41,5 +41,12 @@
     "current package live visual check until exact publication",
     "owner visual acceptance for production"
   ],
-  "next_step": "Run mandatory source CI, merge only release when green, reuse exact successful artifact for a single isolated preview publication, briefly inspect entry/results/selected without submitting a lead."
+  "next_step": "Run mandatory source CI, merge only release when green, reuse exact successful artifact for a single isolated preview publication, briefly inspect entry/results/selected without submitting a lead.",
+  "selected_entry_visibility_followup": {
+    "baseline_release_sha": "66c77795ea80c786ab89ec7a7275381e50f1822a",
+    "before_bytes": 11975,
+    "after_bytes": 11984,
+    "reason": "Actual published selected state clears search3-has-results, causing hero and search form to reappear above selected content. Use existing search3-selected-open class for the same hide rule. Return/edit handlers remain canonical. Remove redundant photo placeholder background to keep <=12KB.",
+    "ci": "pending mandatory source Security/exact; focused current selected checks assert both entry surfaces hidden. Existing native entry and return-focus coverage retained."
+  }
 }

@@ -97,6 +97,8 @@ async function run(browser, width, previous) {
     const states={detail:await capture(page,prefix+'-detail')};
     assert.equal(await page.locator('#selectedTour .selected-confidence').count(),0,'the retired trust decoration stays absent');
     if(!previous) {
+      assert.equal(await page.locator('#tourSearch').isVisible(),false,'selected tour does not repeat the search form');
+      assert.equal(await page.locator('.v2-product-hero').isVisible(),false,'selected tour does not repeat the entry hero');
       assert.equal(await page.locator('.search3-selected-mobile-bar,.facts-secondary-toggle,.hotel-desc-toggle,.lead-optional-toggle,.search3-flight-show-all').count(),0,'retired presentation owners are not reconstructed');
       assert.equal(await page.locator('#selectedTour .facts > div[hidden]').count(),0,'all original tour facts remain directly available');
       assert.equal(await page.evaluate(()=>typeof window.V2ConversionConfidenceV1),'undefined','retired runtime is absent');
