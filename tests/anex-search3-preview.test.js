@@ -134,6 +134,7 @@ class FakeElement {
 function preview(withFilters = false) {
   const listeners = new Map();
   const requests = [];
+  const observers = [];
   const body = new FakeElement('body');
   const tools = body.appendChild(new FakeElement('div'));
   tools.id = 'resultsTools';
@@ -229,11 +230,16 @@ function preview(withFilters = false) {
   let timerId = 0;
   vm.runInNewContext(source, {
     window, document, fetch, URL, console, AbortController,
+    MutationObserver: class {
+      constructor(callback) { this.callback = callback; observers.push(this); }
+      observe(element) { this.element = element; }
+      disconnect() { this.element = null; }
+    },
     setTimeout: () => ++timerId, clearTimeout() {},
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } }
   }, { filename });
   return {
-    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort, rail, controls, sourceRenders,
+    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort, rail, controls, sourceRenders, observers,
     reset(generation, snapshot) {
       Object.assign(lifecycle, { generation, snapshot, dirty: false });
       window.dispatchEvent({ type: 'v2:search-reset', detail: { generation } });
@@ -376,6 +382,28 @@ test('source counts explain overlap and Tourvisor progress never claims ANEX has
   page.reset(2, null);
   assert.equal(errorTitle.textContent, 'Не получилось завершить поиск');
   assert.equal(page.requests.length, 1);
+});
+
+test('late calendar presentation keeps the Tourvisor label without observing the whole page', async () => {
+  const page = preview();
+  page.reset(1, snapshot());
+  const calendar = page.body.appendChild(new FakeElement('section')); calendar.id = 'currentPriceCalendar';
+  const original = calendar.appendChild(new FakeElement('strong')); original.id = 'currentPriceCalendarTitle';
+  original.textContent = 'Когда дешевле вылететь';
+  page.window.dispatchEvent({ type: 'v2:search-complete' });
+  await tick();
+  assert.equal(original.textContent, 'Календарь цен Tourvisor');
+  assert.equal(page.observers.length, 1);
+  assert.equal(page.observers[0].element, calendar);
+  const wrapped = calendar.appendChild(new FakeElement('strong')); wrapped.id = 'search3PriceCalendarTitle';
+  wrapped.textContent = 'Календарь цен';
+  page.observers[0].callback();
+  page.observers[0].callback();
+  assert.equal(wrapped.textContent, 'Календарь цен Tourvisor');
+  page.reset(2, null);
+  page.observers[0].callback();
+  assert.equal(wrapped.textContent, 'Календарь цен');
+  assert.equal(original.textContent, 'Когда дешевле вылететь');
 });
 
 test('capture keeps submitted parameters and labels independent of later form edits', () => {

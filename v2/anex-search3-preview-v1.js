@@ -79,6 +79,7 @@
   const panelAnchor = (typeof results.closest === 'function' && results.closest('.results-layout')) || results;
   let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', dates = '', panel = null;
   let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null, renderQueued = false;
+  let calendarBox = null, calendarObserver = null;
   const replacedText = new Map(), hiddenEmpty = new Map();
   const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   function node(tag, className, text) {
@@ -218,10 +219,29 @@
       }
     });
   }
+  function labelCalendar() {
+    if (!isCurrent(active, window.V2SearchLifecycle) || !calendarBox) return;
+    const title = calendarBox.querySelector('#search3PriceCalendarTitle') || calendarBox.querySelector('#currentPriceCalendarTitle');
+    if (title && title.textContent !== 'Календарь цен Tourvisor') replaceText(title, 'Календарь цен Tourvisor');
+  }
+  function watchCalendar() {
+    const box = document.getElementById('currentPriceCalendar');
+    if (box !== calendarBox) {
+      if (calendarObserver) calendarObserver.disconnect();
+      calendarObserver = null; calendarBox = box;
+      // The existing presentation owner creates its visible title after the search event.
+      if (box && typeof MutationObserver === 'function') {
+        calendarObserver = new MutationObserver(labelCalendar);
+        calendarObserver.observe(box, { childList: true, subtree: true });
+      }
+    }
+    labelCalendar();
+  }
   function render() {
     clear();
     if (!isCurrent(active, window.V2SearchLifecycle)) return;
     labelTourvisorProgress();
+    watchCalendar();
     const filterNotice = localFilterNotice();
     const cards = new Map();
     results.querySelectorAll('.hotel-card[data-hotel-id]').forEach(card => {
@@ -277,7 +297,6 @@
       replaceText(document.getElementById('resultSummary'), 'Tourvisor: ' + cards.size + ' · ANEX API: ' + (added + merged));
       replaceText(document.querySelector('[data-ds2-filter-count]'), String(ranked.length));
       replaceText(document.querySelector('[data-ds2-filter-word]'), 'в выдаче');
-      replaceText(document.getElementById('search3PriceCalendarTitle'), 'Календарь цен Tourvisor');
       status.textContent = 'Отелей в выдаче: ' + ranked.length + '. Через Tourvisor: ' + cards.size
         + ', через ANEX API: ' + (added + merged) + '. В обоих источниках: ' + merged + '.'
         + (ambiguous ? ' Часть предложений ожидает уточнения связи.' : '');
