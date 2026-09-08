@@ -3,10 +3,22 @@
     "source_pr": 1626,
     "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
     "release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
-    "base_release_sha": "c423da23e5112bcf80867986b3965036db39c54b",
-    "eight_assets": {"before_bytes": 18356, "after_bytes": 15426, "removed_bytes": 2930},
-    "initial_route": {"before_bytes": 79663, "after_bytes": 76733, "removed_bytes": 2930},
-    "complete_route": {"before_bytes": 119893, "after_bytes": 116963, "removed_bytes": 2930},
+    "base_release_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
+    "eight_assets": {
+      "before_bytes": 18356,
+      "after_bytes": 15426,
+      "removed_bytes": 2930
+    },
+    "initial_route": {
+      "before_bytes": 79663,
+      "after_bytes": 76733,
+      "removed_bytes": 2930
+    },
+    "complete_route": {
+      "before_bytes": 119893,
+      "after_bytes": 116963,
+      "removed_bytes": 2930
+    },
     "ci": {
       "security_run": 34271552421,
       "artifact_run": 34271552328,
@@ -24,9 +36,22 @@
       "actual_browser_geometry": "deferred",
       "lead_sent": 0
     },
-    "deferred": ["actual browser geometry for the donor-skin reset", "manual screenshots", "physical Safari/safe-area", "live current-source preview", "owner visual acceptance", "full lead/responsive/site/SEO journey"],
+    "deferred": [
+      "actual browser geometry for the donor-skin reset",
+      "manual screenshots",
+      "physical Safari/safe-area",
+      "live current-source preview",
+      "owner visual acceptance",
+      "full lead/responsive/site/SEO journey"
+    ],
     "parallel_integration": "Independent #1625 merged first as c423da23; its savings are not counted here. Final combined release not rebuilt.",
-    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
+    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading.",
+    "combined_validation": {
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "exact_run": 34273162444,
+      "results_browser": "12states375–1440; raw/served parity, nativeedit, nooverflow",
+      "publication_source": "a960efd5ed65143bc111554689a5deb9e52a3f69"
+    }
   },
   "latest_native_booking_handoff": {
     "source_pr": 1623,
@@ -61,7 +86,12 @@
     },
     "browser": {
       "selected_states": 8,
-      "selected_widths": [375, 760, 1000, 1440],
+      "selected_widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
       "native_lead_handoff": true,
       "lazy_retry": true,
       "reset_cancellation": true,
@@ -343,30 +373,30 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1626 deleted the whole preview-era base donor skin with no rule movement on the final #1625 base: eight assets 18356→15426 (−2930B), initial 79663→76733 (−2930B), complete 119893→116963 (−2930B). Security/exact green; browser geometry deferred; not published.",
+    "last_material_progress": "#1625 removed769B and deferred14626B; #1629 removed3612B CSS and fixed live empty summary plus confirmed375px overflow. Combined with preserved parallel#1626: eight11814B, initial73121B, complete113351B. Exact source and publication separately pinned.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not micro-trim the remaining 15426B. Remaining public owners are results layout5490B, selected flow4483B, results/lazy/native-lead JS5120B and native entry331B. Retire another owner only as a coarse product/design boundary with real eight-asset savings.",
+    "next_action": "The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a31B printer micro-PR. Read-only audit of all17 shared owners found only31B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the11814B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_BASE_SKIN_RETIREMENT",
-    "title": "Retire the preview-era donor base skin without moving its rules",
-    "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+    "id": "S3_RESULTS_NATIVE_RETIREMENT",
+    "title": "Retire orphan results summary and obsolete layout; fix real mobile overflow",
+    "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1626,
+    "source_pr": 1629,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
-    "release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
-    "last_fully_checked_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
-    "security_run": 34271552421,
-    "exact_run": 34271552328,
-    "checked_release_asset_bytes": 15426,
-    "release_loaded_bytes": 116963,
-    "release_initial_bytes": 76733,
-    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
+    "implementation_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "release_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+    "last_fully_checked_release_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+    "security_run": 34273162448,
+    "exact_run": 34273162444,
+    "checked_release_asset_bytes": 11814,
+    "release_loaded_bytes": 113351,
+    "release_initial_bytes": 73121,
+    "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "next_action": "The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a31B printer micro-PR. Read-only audit of all17 shared owners found only31B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the11814B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1849,15 +1879,60 @@
       "selected_evidence_id": 10073289344,
       "selected_evidence_digest": "sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb",
       "selected_states": 8,
-      "selected_widths": [375, 760, 1000, 1440],
-      "lazy_scenarios": ["retry", "reset cancellation"],
+      "selected_widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
+      "lazy_scenarios": [
+        "retry",
+        "reset cancellation"
+      ],
       "native_lead_handoff": true,
       "lead_sent": 0,
       "preview_published": false
+    },
+    "results_native_retirement": {
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "security_run": 34273162448,
+      "exact_run": 34273162444,
+      "navigation_run": 34273162381,
+      "conclusion": "success",
+      "results_artifact": {
+        "id": 10074666336,
+        "digest": "sha256:f404e007cd0ddf90658e941bb6bccc36750377468fd8fc46e73623a1e201ba06"
+      },
+      "results_geometry": "12states375/760/761/999/1000/1440; raw served parity; nativeedit keeps FormData; nooverflow; decimals/sorting/touractions",
+      "native_entry": "375/1440",
+      "selected_runtime": "Unchanged from exact#1625; not rerun for this CSS/index-only package",
+      "real_leads": 0
+    },
+    "late_lead_retirement": {
+      "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "conclusion": "success",
+      "security_run": 34271269892,
+      "exact_run": 34271270024,
+      "selected_artifact": {
+        "id": 10073949493,
+        "digest": "sha256:bb57e5dbae33d4c1a959e8a7db78658a63f20ca04ff17aa5b223aa0ee1312faf"
+      },
+      "results_artifact": {
+        "id": 10073949996,
+        "digest": "sha256:8e95c1a344756bf9213e13105e4d00df64957836813c3a6c5af5ee96fada7506"
+      },
+      "first_attempt": {
+        "source_sha": "5bcc3125df763b6d415ec2c58716b960a70e98ca",
+        "security_run": 34270924349,
+        "security": "success",
+        "exact_run": 34270925550,
+        "exact": "failure",
+        "reason": "Added tour retry fixture used obsolete selector; corrected to canonical .retry-tour, no source/assets rebuild."
+      }
     }
   },
-  "last_verified_commit": "69fa28aa1224026cf05e6c2b4b5993236481396e",
-  "last_verified_commit_scope": "Exact checked source 98aed98b0ac90575be43bc22f58e8c2fcf4071b5; donor base skin removed and merged to release. Browser geometry and publication deferred; not preview/production.",
+  "last_verified_commit": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+  "last_verified_commit_scope": "Exact combined source a960efd5ed65143bc111554689a5deb9e52a3f69 contains#1625,#1626,#1629; existing Security/artifact/current-results/native-entry checks passed. PhysicalSafari/design acceptance deferred.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -2263,116 +2338,141 @@
     "next_action": "Audit lead-review versus lead-state; delete only after sending/success/error and intermediate-width evidence."
   },
   "presentation_refactor_checkpoint": {
-    "stage": "CHECKED_RELEASE_NATIVE_BOOKING_HANDOFF",
-    "implementation_sha": "989e4a90048f76812021b221706fa1635a4884a2",
-    "release_integration_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
-    "source_pr": 1623,
-    "audit": "docs/project/search3-native-booking-handoff.json",
+    "source_pr": 1629,
+    "stage": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+    "implementation_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+    "release_integration_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+    "audit": "docs/project/search3-results-native-retirement.json",
     "ci": {
-      "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
-      "security_run": 34269579797,
-      "exact_run": 34269579936,
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "security_run": 34273162448,
+      "exact_run": 34273162444,
+      "navigation_run": 34273162381,
       "conclusion": "success",
-      "selected_artifact": {
-        "id": 10073289344,
-        "name": "search3-selected-geometry-989e4a90048f76812021b221706fa1635a4884a2-34269579936",
-        "digest": "sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb",
-        "source_sha": "989e4a90048f76812021b221706fa1635a4884a2"
-      }
+      "results_artifact": {
+        "id": 10074666336,
+        "digest": "sha256:f404e007cd0ddf90658e941bb6bccc36750377468fd8fc46e73623a1e201ba06"
+      },
+      "results_geometry": "12states375/760/761/999/1000/1440; raw served parity; nativeedit keeps FormData; nooverflow; decimals/sorting/touractions",
+      "native_entry": "375/1440",
+      "selected_runtime": "Unchanged from exact#1625; not rerun for this CSS/index-only package",
+      "real_leads": 0
     },
     "artifact": {
-      "id": 10073289828,
-      "name": "search3-site-preview-989e4a90048f76812021b221706fa1635a4884a2-34269579936-1",
-      "digest": "sha256:2def434e159e246459b6da0ff5761b8cfb99ec80a768a66ce9becd4b8303fb33",
-      "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
-      "archive_sha256": "4391a159f75ad413926498186cab6ac02619090ed72dcaf2f7e8fbc381d75016",
-      "files": 717,
-      "run_id": 34269579936,
-      "rebuilt_for_release": false,
-      "rebuilt_for_docs": false,
-      "published": false
+      "id": 10074666815,
+      "run": 34273162444,
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+      "digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+      "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+      "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+      "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+      "payload_file_count": 717
     },
     "public_assets": {
-      "before": 25391,
-      "after": 19125,
-      "saved": 6266
-    },
-    "shared_js": {
-      "before": 101537,
-      "after": 101537,
-      "saved": 0
+      "before": 15426,
+      "after": 11814,
+      "removed": 3612,
+      "by_file": {
+        "before": {
+          "search3-results-filters-v1.js": 5120,
+          "search3-results-filters-v1.css": 5490,
+          "search3-entry-v1.css": 331,
+          "search3-entry-v1.js": 0,
+          "search3-results-cards-v2.css": 1,
+          "search3-results-cards-v2.js": 0,
+          "search3-selected-flow-v2.css": 1,
+          "search3-selected-flow-v2.js": 4483
+        },
+        "after": {
+          "search3-results-filters-v1.js": 5120,
+          "search3-results-filters-v1.css": 1878,
+          "search3-entry-v1.css": 331,
+          "search3-entry-v1.js": 0,
+          "search3-results-cards-v2.css": 1,
+          "search3-results-cards-v2.js": 0,
+          "search3-selected-flow-v2.css": 1,
+          "search3-selected-flow-v2.js": 4483
+        },
+        "eight_before": 15426,
+        "eight_after": 11814,
+        "removed": 3612
+      }
     },
     "loaded_route": {
-      "before": 126928,
-      "after": 120662,
-      "saved": 6266
+      "before": 116963,
+      "after": 113351,
+      "removed": 3612
     },
     "initial_route": {
-      "before": 101324,
-      "after": 95058,
-      "saved": 6266
+      "before": 76733,
+      "after": 73121,
+      "removed": 3612
     },
-    "deferred_file_payload_raw": 25604,
-    "parallel_integration": {
-      "pr": 1619,
-      "source_sha": "efd0368b99f91533cb5538d433244a71fb303c25",
-      "release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
-      "policy": "Keep its native-entry retirement and exact SHA-locked shared compaction. Supersede our overlapping token compaction; do not double count savings.",
-      "original_own_source_before_integration": "36d3661f8947a90d9d22d6d9340927c15aac4b84",
-      "original_own_exact_run": 34266026172,
-      "original_own_ci": "success; superseded by combined source, not merged by itself"
+    "publication": {
+      "artifact_id": 10074666815,
+      "artifact_run": 34273162444,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+      "published": true,
+      "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "control_pr": 1630,
+      "control_sha": "25af7faeb0d09940fc19907a549c1db630399103",
+      "deploy_pr": 1630,
+      "deploy_run": 34273519277,
+      "conclusion": "success",
+      "deployment_evidence_artifact": 10074779677,
+      "deployment_evidence_digest": "sha256:b07aaaad1da7ddef11ba678f4e1e85e1bed42f4d90c9c8e1c2f05ba696aacbf1",
+      "release_pin_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+      "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+      "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+      "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+      "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "physical_safari_tested": false,
+      "real_lead_submitted": false,
+      "production_unchanged": true,
+      "production_fingerprint_files": 13,
+      "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+      "supersedes_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "control_closed_without_merge": true
     },
-    "preview_updated": false,
-    "production_updated": false,
-    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "visual_verification": {
-      "scope": "Actual isolated Chromium, automated assertions; no manual screenshot inspection or owner visual acceptance.",
-      "lazy_scenarios": [
-        "download failure then explicit retry",
-        "search reset cancels pending selection"
-      ],
-      "first_successful_selection": {
-        "tour_calls": 1,
-        "flight_calls": 1,
-        "decimal_price": 150001.2,
-        "return_focus": true,
-        "no_selected_request_before_choice": true
-      },
-      "selected_states": 8,
-      "selected_widths": [
-        375,
-        760,
-        1000,
-        1440
-      ],
-      "native_entry_lifecycle_states": 30,
-      "results_raw_served_states": 12,
-      "results_widths": [
-        375,
-        760,
-        761,
-        999,
-        1000,
-        1440
-      ],
-      "native_form_payload_widths": [
-        375,
-        1440
-      ],
-      "retry_fallback_decimal": "passed",
-      "native_lead_handoff": true,
-      "external_requests": "blocked in fixtures",
-      "real_leads_sent": 0,
-      "screenshots_inspected": []
+      "date": "2026-09-08",
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+      "browser": "cloud Chromium",
+      "viewport_width": 1348,
+      "live_search": "Moscow/Turkey,Sep9–22,7–10nights,2adults;100hotels",
+      "placeholder_summary": "absent",
+      "native_edit_buttons": 1,
+      "horizontal_overflow": false,
+      "edit_search": "native form visible, focus departure, all input/select values preserved",
+      "screenshot_inspected": "actual100hotel results at1348px; intentionally bare native design, not accepted design",
+      "lead_sent": 0,
+      "first_tour_and_phone": "verified on preceding#1625 exactpublishedsource in same pass; JS unchanged in#1629, not repeated",
+      "full_visual_acceptance": false
     },
     "deferred": [
       "physical Safari/safe-area",
-      "live current-source preview",
-      "manual screenshot inspection",
-      "owner visual acceptance",
-      "full site/SEO/responsive/lead journey"
+      "owner visual/design acceptance",
+      "full lead/site/SEO/responsive journey"
     ],
-    "next_action": "Audit only coarse remaining public owners; count a successor only for an entire optional-surface retirement or at least 2KB real eight-asset savings. Do not count late loading or source movement as deletion."
+    "next_action": "The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a31B printer micro-PR. Read-only audit of all17 shared owners found only31B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the11814B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval."
   },
   "presentation_refactor_history": [
     {
@@ -4472,6 +4572,143 @@
         "full site/SEO/responsive/lead journey"
       ],
       "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction."
+    },
+    {
+      "source_pr": 1629,
+      "stage": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+      "implementation_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+      "release_integration_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+      "audit": "docs/project/search3-results-native-retirement.json",
+      "ci": {
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "security_run": 34273162448,
+        "exact_run": 34273162444,
+        "navigation_run": 34273162381,
+        "conclusion": "success",
+        "results_artifact": {
+          "id": 10074666336,
+          "digest": "sha256:f404e007cd0ddf90658e941bb6bccc36750377468fd8fc46e73623a1e201ba06"
+        },
+        "results_geometry": "12states375/760/761/999/1000/1440; raw served parity; nativeedit keeps FormData; nooverflow; decimals/sorting/touractions",
+        "native_entry": "375/1440",
+        "selected_runtime": "Unchanged from exact#1625; not rerun for this CSS/index-only package",
+        "real_leads": 0
+      },
+      "artifact": {
+        "id": 10074666815,
+        "run": 34273162444,
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+        "digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+        "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+        "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+        "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+        "payload_file_count": 717
+      },
+      "public_assets": {
+        "before": 15426,
+        "after": 11814,
+        "removed": 3612,
+        "by_file": {
+          "before": {
+            "search3-results-filters-v1.js": 5120,
+            "search3-results-filters-v1.css": 5490,
+            "search3-entry-v1.css": 331,
+            "search3-entry-v1.js": 0,
+            "search3-results-cards-v2.css": 1,
+            "search3-results-cards-v2.js": 0,
+            "search3-selected-flow-v2.css": 1,
+            "search3-selected-flow-v2.js": 4483
+          },
+          "after": {
+            "search3-results-filters-v1.js": 5120,
+            "search3-results-filters-v1.css": 1878,
+            "search3-entry-v1.css": 331,
+            "search3-entry-v1.js": 0,
+            "search3-results-cards-v2.css": 1,
+            "search3-results-cards-v2.js": 0,
+            "search3-selected-flow-v2.css": 1,
+            "search3-selected-flow-v2.js": 4483
+          },
+          "eight_before": 15426,
+          "eight_after": 11814,
+          "removed": 3612
+        }
+      },
+      "loaded_route": {
+        "before": 116963,
+        "after": 113351,
+        "removed": 3612
+      },
+      "initial_route": {
+        "before": 76733,
+        "after": 73121,
+        "removed": 3612
+      },
+      "publication": {
+        "artifact_id": 10074666815,
+        "artifact_run": 34273162444,
+        "http_status": 200,
+        "internal_php_denied": true,
+        "lead_probe_status": 403,
+        "metrika_counter": 0,
+        "payload_file_count": 717,
+        "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+        "production_fingerprint_unchanged": true,
+        "production_lead_delivery": false,
+        "robots": "noindex,follow",
+        "rollback_backup_retained": true,
+        "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "route_count": 9,
+        "schema_version": 1,
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+        "published": true,
+        "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "control_pr": 1630,
+        "control_sha": "25af7faeb0d09940fc19907a549c1db630399103",
+        "deploy_pr": 1630,
+        "deploy_run": 34273519277,
+        "conclusion": "success",
+        "deployment_evidence_artifact": 10074779677,
+        "deployment_evidence_digest": "sha256:b07aaaad1da7ddef11ba678f4e1e85e1bed42f4d90c9c8e1c2f05ba696aacbf1",
+        "release_pin_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+        "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+        "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+        "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+        "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "physical_safari_tested": false,
+        "real_lead_submitted": false,
+        "production_unchanged": true,
+        "production_fingerprint_files": 13,
+        "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+        "supersedes_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+        "control_closed_without_merge": true
+      },
+      "visual_verification": {
+        "date": "2026-09-08",
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+        "browser": "cloud Chromium",
+        "viewport_width": 1348,
+        "live_search": "Moscow/Turkey,Sep9–22,7–10nights,2adults;100hotels",
+        "placeholder_summary": "absent",
+        "native_edit_buttons": 1,
+        "horizontal_overflow": false,
+        "edit_search": "native form visible, focus departure, all input/select values preserved",
+        "screenshot_inspected": "actual100hotel results at1348px; intentionally bare native design, not accepted design",
+        "lead_sent": 0,
+        "first_tour_and_phone": "verified on preceding#1625 exactpublishedsource in same pass; JS unchanged in#1629, not repeated",
+        "full_visual_acceptance": false
+      },
+      "deferred": [
+        "physical Safari/safe-area",
+        "owner visual/design acceptance",
+        "full lead/site/SEO/responsive journey"
+      ],
+      "next_action": "The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a31B printer micro-PR. Read-only audit of all17 shared owners found only31B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the11814B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval."
     }
   ],
   "preview_isolation_followup": {
@@ -4486,117 +4723,45 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "archive_sha256": "846f2a6e4c0a7e47f9ee61c5505025391da6f197be3b6177447843a2a033abe5",
-    "artifact_asset_sha256": [
-      {
-        "bytes": 15099,
-        "path": "v2/search3-entry-v1.css",
-        "sha256": "7b8ca77d07ed57b2c96d09f1b6080a77d7049f0c676cd793910f9ada730f0c17"
-      },
-      {
-        "bytes": 3226,
-        "path": "v2/search3-entry-v1.js",
-        "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
-      },
-      {
-        "bytes": 7336,
-        "path": "v2/search3-results-cards-v2.css",
-        "sha256": "51a834052985443303f55c72ddcb7db6c985ba028626068bf815bef94e7e8ce0"
-      },
-      {
-        "bytes": 0,
-        "path": "v2/search3-results-cards-v2.js",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "bytes": 62808,
-        "path": "v2/search3-results-filters-v1.css",
-        "sha256": "e41042ceb37ca28dda107a2f0fa164d487ddf034abbc01ec18d9fd78a62a8078"
-      },
-      {
-        "bytes": 56272,
-        "path": "v2/search3-results-filters-v1.js",
-        "sha256": "5ad3fdb672495ab663ba8ba05344068b3abbdc0d089fe86a22d16ea8d16c8420"
-      },
-      {
-        "bytes": 9401,
-        "path": "v2/search3-selected-flow-v2.css",
-        "sha256": "6b3b3dd5b67ea4a1ac5305ad9bb1592dc0fa8d0a4e2ab26213c8613b5b89a3b3"
-      },
-      {
-        "bytes": 12129,
-        "path": "v2/search3-selected-flow-v2.js",
-        "sha256": "a84ea3c53dfddb33c1d4cdbcfbb3ebeb1a9276facd0f0e458d73fbe36487f82b"
-      }
-    ],
-    "artifact_digest": "sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f",
-    "artifact_id": 10015159660,
-    "artifact_run": 34113092204,
+    "artifact_id": 10074666815,
+    "artifact_run": 34273162444,
+    "http_status": 200,
+    "internal_php_denied": true,
+    "lead_probe_status": 403,
+    "metrika_counter": 0,
+    "payload_file_count": 717,
+    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+    "production_fingerprint_unchanged": true,
+    "production_lead_delivery": false,
+    "robots": "noindex,follow",
+    "rollback_backup_retained": true,
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "route_count": 9,
+    "schema_version": 1,
+    "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+    "published": true,
+    "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "control_pr": 1630,
+    "control_sha": "25af7faeb0d09940fc19907a549c1db630399103",
+    "deploy_pr": 1630,
+    "deploy_run": 34273519277,
     "conclusion": "success",
-    "control_sha": "222b2da1986e05c8c7fcec2e88dc51b0c1426679",
-    "deploy_pr": 1462,
-    "deploy_run": 34113272969,
-    "deployment_evidence_artifact": 10015213085,
-    "deployment_evidence_digest": "sha256:95edb09b7c67bdcc0d19b778c4952635d3e80e6e5bd66a9fcc2d7023611dc84f",
-    "deployment_guards": "715 exact payload hashes, ZIP/archive/manifest/checksum pins; noindex/counter0/lead403/internalPHPdeny/retained rollback;13 production fingerprints before/after/final independently compared equal.",
-    "latest_verification": {
-      "deferred": [
-        "375/760/999/1000 responsive states; browser has no viewport-resize capability",
-        "physical iPhone/Safari",
-        "lead-entry/sending/success/error visuals",
-        "map interaction (label only checked)",
-        "full matrix"
-      ],
-      "full_matrix_run": false,
-      "header_after": {
-        "columns": "632px",
-        "font": "22px",
-        "note_align": "left"
-      },
-      "header_before": {
-        "columns": "176.844px 467.156px",
-        "font": "38px"
-      },
-      "lead_form_visited": false,
-      "real_lead_submitted": false,
-      "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-      "states": [
-        "initial form and results/tools at first publication90b3a3df",
-        "selected flight and final review",
-        "corrected review header at b9445bc3"
-      ],
-      "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
-      "verified_at": "2026-09-07T10:52:37Z",
-      "viewport": [
-        1363,
-        936
-      ]
-    },
-    "manifest_sha256": "37b70ad3f40857e52a835d76dbfdf99aa839e47f27f2a467b8eb0b5115203c2b",
-    "payload_sha256": "9ef45e366e9d6a06f50e0a939eccc7b13d145356517e3a89abeec2c96cdb708b",
-    "physical_safari_tested": false,
+    "deployment_evidence_artifact": 10074779677,
+    "deployment_evidence_digest": "sha256:b07aaaad1da7ddef11ba678f4e1e85e1bed42f4d90c9c8e1c2f05ba696aacbf1",
+    "release_pin_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+    "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+    "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+    "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+    "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
     "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
-    "production_unchanged": true,
-    "public_assets": {
-      "css_bytes": 94644,
-      "js_bytes": 71627,
-      "scope": "Eight public paths; raw uncompressed bytes, not a page-speed claim.",
-      "total_bytes": 166271
-    },
+    "physical_safari_tested": false,
     "real_lead_submitted": false,
-    "release_pin_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "source_tree": "11be080d74b26eddb9e25a5c020805ddb7fbcdf3",
-    "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
-    "supersedes_intermediate_publication": {
-      "conclusion": "publication guards passed; review-header visual regression found and corrected, not accepted as all-green",
-      "deploy_pr": 1460,
-      "deploy_run": 34112546655,
-      "evidence_artifact": 10014929810,
-      "source_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd"
-    },
-    "verified_at": "2026-09-07T10:52:37Z"
+    "production_unchanged": true,
+    "production_fingerprint_files": 13,
+    "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+    "supersedes_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "control_closed_without_merge": true
   },
   "preview_verification_policy": {
     "batch_execution": {
@@ -4792,13 +4957,13 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:1936f778595c200da8251133ee38f2b10771fb9ffa8c59f4507ef04b9d7c4adf",
+      "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 10072720854,
-      "exact_artifact_status": "VERIFIED_COMBINED_SOURCE_NOT_PUBLISHED",
-      "final_verification_artifact": 10072719965,
-      "final_verification_run": 34268129387,
-      "implementation_verified_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
+      "exact_artifact": 10074666815,
+      "exact_artifact_status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+      "final_verification_artifact": 10074666336,
+      "final_verification_run": 34273162444,
+      "implementation_verified_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -4858,134 +5023,99 @@
         "Checked#1470: phone lead overlap repaired;12 targeted Chromium detail/review/lead states match pre-retirement source. Current pass adds434 CSS bytes and claims0 new removal. Not published."
       ],
       "latest_publication_verification": {
-        "deferred": [
-          "375/760/999/1000 responsive states; browser has no viewport-resize capability",
-          "physical iPhone/Safari",
-          "lead-entry/sending/success/error visuals",
-          "map interaction (label only checked)",
-          "full matrix"
-        ],
-        "full_matrix_run": false,
-        "header_after": {
-          "columns": "632px",
-          "font": "22px",
-          "note_align": "left"
-        },
-        "header_before": {
-          "columns": "176.844px 467.156px",
-          "font": "38px"
-        },
-        "lead_form_visited": false,
+        "artifact_id": 10074666815,
+        "artifact_run": 34273162444,
+        "http_status": 200,
+        "internal_php_denied": true,
+        "lead_probe_status": 403,
+        "metrika_counter": 0,
+        "payload_file_count": 717,
+        "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+        "production_fingerprint_unchanged": true,
+        "production_lead_delivery": false,
+        "robots": "noindex,follow",
+        "rollback_backup_retained": true,
+        "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "route_count": 9,
+        "schema_version": 1,
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+        "published": true,
+        "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "control_pr": 1630,
+        "control_sha": "25af7faeb0d09940fc19907a549c1db630399103",
+        "deploy_pr": 1630,
+        "deploy_run": 34273519277,
+        "conclusion": "success",
+        "deployment_evidence_artifact": 10074779677,
+        "deployment_evidence_digest": "sha256:b07aaaad1da7ddef11ba678f4e1e85e1bed42f4d90c9c8e1c2f05ba696aacbf1",
+        "release_pin_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+        "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+        "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+        "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+        "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "physical_safari_tested": false,
         "real_lead_submitted": false,
-        "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-        "states": [
-          "initial form and results/tools at first publication90b3a3df",
-          "selected flight and final review",
-          "corrected review header at b9445bc3"
-        ],
-        "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
-        "verified_at": "2026-09-07T10:52:37Z",
-        "viewport": [
-          1363,
-          936
-        ]
+        "production_unchanged": true,
+        "production_fingerprint_files": 13,
+        "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+        "supersedes_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+        "control_closed_without_merge": true
       },
       "live_browser_verification": {
-        "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-        "viewport": [
-          1363,
-          936
-        ],
-        "verified_at": "2026-09-07T00:22:33.879812+00:00",
-        "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
-        "expanded_card_screenshot_inspected": true,
-        "selected_flight_screenshot_inspected": true,
-        "hotels": 97,
-        "tours": 515,
-        "hotel": "LUXOR APART",
-        "price_rub": 72832,
-        "real_lead_submitted": false,
-        "full_matrix_run": false,
-        "deferred": [
-          "mobile/tablet widths",
-          "physical Safari",
-          "live no-flight branch",
-          "lead-entry/success/error",
-          "full filter/editor/price matrix"
-        ],
-        "earlier_source_evidence": {
-          "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
-          "states": [
-            "initial form",
-            "results/expanded card",
-            "selected flight",
-            "review/back"
-          ],
-          "findings_corrected": true
-        }
+        "date": "2026-09-08",
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+        "browser": "cloud Chromium",
+        "viewport_width": 1348,
+        "live_search": "Moscow/Turkey,Sep9–22,7–10nights,2adults;100hotels",
+        "placeholder_summary": "absent",
+        "native_edit_buttons": 1,
+        "horizontal_overflow": false,
+        "edit_search": "native form visible, focus departure, all input/select values preserved",
+        "screenshot_inspected": "actual100hotel results at1348px; intentionally bare native design, not accepted design",
+        "lead_sent": 0,
+        "first_tour_and_phone": "verified on preceding#1625 exactpublishedsource in same pass; JS unchanged in#1629, not repeated",
+        "full_visual_acceptance": false
       },
       "pr": 1334,
-      "preview_deploy_pr": 1462,
-      "preview_deploy_run": 34113272969,
+      "preview_deploy_pr": 1630,
+      "preview_deploy_run": 34273519277,
       "preview_deploy_workflow_conclusion": "success",
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-      "release_merge_sha": "5bb8595d870906c4eb67b07de3d86a26ff71ec1b",
-      "source_tree": "9ee238b4e9745cb95311d0d09add462c6bdee476",
-      "status": "CHECKED_SOURCE_AHEAD_OF_PUBLISHED_PREVIEW",
+      "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "release_merge_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+      "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+      "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
       "superseded_artifact": 9999511038,
       "pending_visual_verification": {
-        "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
-        "status": "AUTOMATED_TARGETED_PASS_MANUAL_AND_LIVE_DEFERRED",
+        "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+        "status": "TARGETED_CHECK_WITH_DEFERRED_DESIGN_ACCEPTANCE",
         "passed": {
-          "scope": "Actual isolated Chromium, automated assertions; no manual screenshot inspection or owner visual acceptance.",
-          "lazy_scenarios": [
-            "download failure then explicit retry",
-            "search reset cancels pending selection"
-          ],
-          "first_successful_selection": {
-            "tour_calls": 1,
-            "flight_calls": 1,
-            "decimal_price": 150001.2,
-            "return_focus": true,
-            "no_selected_request_before_choice": true
-          },
-          "selected_states": 12,
-          "selected_widths": [
-            375,
-            760,
-            1000,
-            1440
-          ],
-          "native_entry_lifecycle_states": 30,
-          "results_raw_served_states": 12,
-          "results_widths": [
-            375,
-            760,
-            761,
-            999,
-            1000,
-            1440
-          ],
-          "native_form_payload_widths": [
-            375,
-            1440
-          ],
-          "retry_fallback_decimal": "passed",
-          "external_requests": "blocked in fixtures",
-          "real_leads_sent": 0,
-          "screenshots_inspected": []
+          "date": "2026-09-08",
+          "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+          "browser": "cloud Chromium",
+          "viewport_width": 1348,
+          "live_search": "Moscow/Turkey,Sep9–22,7–10nights,2adults;100hotels",
+          "placeholder_summary": "absent",
+          "native_edit_buttons": 1,
+          "horizontal_overflow": false,
+          "edit_search": "native form visible, focus departure, all input/select values preserved",
+          "screenshot_inspected": "actual100hotel results at1348px; intentionally bare native design, not accepted design",
+          "lead_sent": 0,
+          "first_tour_and_phone": "verified on preceding#1625 exactpublishedsource in same pass; JS unchanged in#1629, not repeated",
+          "full_visual_acceptance": false
         },
         "states": [
           "physical Safari/safe-area",
-          "live current-source preview",
-          "manual screenshot inspection",
-          "owner visual acceptance",
-          "full site/SEO/responsive/lead journey"
+          "owner visual/design acceptance",
+          "full lead/site/SEO/responsive journey"
         ]
       },
-      "combined_release_source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
-      "combined_release_artifact": 10072720854
+      "combined_release_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "combined_release_artifact": 10074666815
     }
   },
   "results_geometry_queue": {
@@ -8464,7 +8594,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T19:20:34.473148+00:00",
+  "updated_at": "2026-09-08T20:15:35.213396+00:00",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -10170,5 +10300,360 @@
       "full site/SEO/responsive/lead journey"
     ],
     "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction."
-  }
+  },
+  "latest_late_lead_retirement": {
+    "source_pr": 1625,
+    "implementation_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "release_integration_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
+    "audit": "docs/project/search3-late-lead-review-retirement.json",
+    "ci": {
+      "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "conclusion": "success",
+      "security_run": 34271269892,
+      "exact_run": 34271270024,
+      "selected_artifact": {
+        "id": 10073949493,
+        "digest": "sha256:bb57e5dbae33d4c1a959e8a7db78658a63f20ca04ff17aa5b223aa0ee1312faf"
+      },
+      "results_artifact": {
+        "id": 10073949996,
+        "digest": "sha256:8e95c1a344756bf9213e13105e4d00df64957836813c3a6c5af5ee96fada7506"
+      },
+      "first_attempt": {
+        "source_sha": "5bcc3125df763b6d415ec2c58716b960a70e98ca",
+        "security_run": 34270924349,
+        "security": "success",
+        "exact_run": 34270925550,
+        "exact": "failure",
+        "reason": "Added tour retry fixture used obsolete selector; corrected to canonical .retry-tour, no source/assets rebuild."
+      }
+    },
+    "artifact": {
+      "id": 10073950483,
+      "run": 34271270024,
+      "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "source_tree": "921c0e33a5ee4cf80a0d4daf02a30d41ede90fc4",
+      "digest": "sha256:7e45cf0eb4068674d7222cea297017fbebf139c96c34568f54cb5ea9add69058",
+      "archive_sha256": "35eb6030525936399246eb12ae5c2e8815ae6d3bc932f3070d54fa3a675a650b",
+      "manifest_sha256": "cc5d1f65c7c3f1c3e768f0f2310164a9d239529d82bed0749496b74f704c0586",
+      "payload_sha256": "dd7015ad0df3669afa8313678b6e4d439724e74951661fd9e48ce7fdee96d338",
+      "payload_file_count": 717
+    },
+    "publication": {
+      "artifact_id": 10073950483,
+      "artifact_run": 34271270024,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "source_tree": "921c0e33a5ee4cf80a0d4daf02a30d41ede90fc4",
+      "published": true,
+      "published_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "control_sha": "f2079a3c4f7b29e2f05f33af11fa3ea22bc528dd",
+      "control_pr": 1628,
+      "deploy_run": 34272077289,
+      "deployment_artifact": 10074220224,
+      "deployment_artifact_digest": "sha256:7e5a4fd1b931f2298e5b845a8ec50f3c48c96f1ae9dde38bdf9b696658eef175",
+      "release_pin_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
+      "published_at": "2026-09-08T19:58:53Z",
+      "control_closed_without_merge": true
+    },
+    "eight_before": 19125,
+    "eight_after": 18356,
+    "removed": 769,
+    "initial_before": 95058,
+    "initial_after": 79663,
+    "deferred_bytes": 14626
+  },
+  "latest_results_native_retirement": {
+    "source_pr": 1629,
+    "stage": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+    "implementation_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+    "release_integration_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+    "audit": "docs/project/search3-results-native-retirement.json",
+    "ci": {
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "security_run": 34273162448,
+      "exact_run": 34273162444,
+      "navigation_run": 34273162381,
+      "conclusion": "success",
+      "results_artifact": {
+        "id": 10074666336,
+        "digest": "sha256:f404e007cd0ddf90658e941bb6bccc36750377468fd8fc46e73623a1e201ba06"
+      },
+      "results_geometry": "12states375/760/761/999/1000/1440; raw served parity; nativeedit keeps FormData; nooverflow; decimals/sorting/touractions",
+      "native_entry": "375/1440",
+      "selected_runtime": "Unchanged from exact#1625; not rerun for this CSS/index-only package",
+      "real_leads": 0
+    },
+    "artifact": {
+      "id": 10074666815,
+      "run": 34273162444,
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+      "digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+      "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+      "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+      "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+      "payload_file_count": 717
+    },
+    "public_assets": {
+      "before": 15426,
+      "after": 11814,
+      "removed": 3612,
+      "by_file": {
+        "before": {
+          "search3-results-filters-v1.js": 5120,
+          "search3-results-filters-v1.css": 5490,
+          "search3-entry-v1.css": 331,
+          "search3-entry-v1.js": 0,
+          "search3-results-cards-v2.css": 1,
+          "search3-results-cards-v2.js": 0,
+          "search3-selected-flow-v2.css": 1,
+          "search3-selected-flow-v2.js": 4483
+        },
+        "after": {
+          "search3-results-filters-v1.js": 5120,
+          "search3-results-filters-v1.css": 1878,
+          "search3-entry-v1.css": 331,
+          "search3-entry-v1.js": 0,
+          "search3-results-cards-v2.css": 1,
+          "search3-results-cards-v2.js": 0,
+          "search3-selected-flow-v2.css": 1,
+          "search3-selected-flow-v2.js": 4483
+        },
+        "eight_before": 15426,
+        "eight_after": 11814,
+        "removed": 3612
+      }
+    },
+    "loaded_route": {
+      "before": 116963,
+      "after": 113351,
+      "removed": 3612
+    },
+    "initial_route": {
+      "before": 76733,
+      "after": 73121,
+      "removed": 3612
+    },
+    "publication": {
+      "artifact_id": 10074666815,
+      "artifact_run": 34273162444,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+      "published": true,
+      "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "control_pr": 1630,
+      "control_sha": "25af7faeb0d09940fc19907a549c1db630399103",
+      "deploy_pr": 1630,
+      "deploy_run": 34273519277,
+      "conclusion": "success",
+      "deployment_evidence_artifact": 10074779677,
+      "deployment_evidence_digest": "sha256:b07aaaad1da7ddef11ba678f4e1e85e1bed42f4d90c9c8e1c2f05ba696aacbf1",
+      "release_pin_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+      "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+      "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+      "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+      "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "physical_safari_tested": false,
+      "real_lead_submitted": false,
+      "production_unchanged": true,
+      "production_fingerprint_files": 13,
+      "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+      "supersedes_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "control_closed_without_merge": true
+    },
+    "visual_verification": {
+      "date": "2026-09-08",
+      "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+      "browser": "cloud Chromium",
+      "viewport_width": 1348,
+      "live_search": "Moscow/Turkey,Sep9–22,7–10nights,2adults;100hotels",
+      "placeholder_summary": "absent",
+      "native_edit_buttons": 1,
+      "horizontal_overflow": false,
+      "edit_search": "native form visible, focus departure, all input/select values preserved",
+      "screenshot_inspected": "actual100hotel results at1348px; intentionally bare native design, not accepted design",
+      "lead_sent": 0,
+      "first_tour_and_phone": "verified on preceding#1625 exactpublishedsource in same pass; JS unchanged in#1629, not repeated",
+      "full_visual_acceptance": false
+    },
+    "deferred": [
+      "physical Safari/safe-area",
+      "owner visual/design acceptance",
+      "full lead/site/SEO/responsive journey"
+    ],
+    "next_action": "The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a31B printer micro-PR. Read-only audit of all17 shared owners found only31B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the11814B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval."
+  },
+  "preview_publication_history": [
+    {
+      "archive_sha256": "846f2a6e4c0a7e47f9ee61c5505025391da6f197be3b6177447843a2a033abe5",
+      "artifact_asset_sha256": [
+        {
+          "bytes": 15099,
+          "path": "v2/search3-entry-v1.css",
+          "sha256": "7b8ca77d07ed57b2c96d09f1b6080a77d7049f0c676cd793910f9ada730f0c17"
+        },
+        {
+          "bytes": 3226,
+          "path": "v2/search3-entry-v1.js",
+          "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+        },
+        {
+          "bytes": 7336,
+          "path": "v2/search3-results-cards-v2.css",
+          "sha256": "51a834052985443303f55c72ddcb7db6c985ba028626068bf815bef94e7e8ce0"
+        },
+        {
+          "bytes": 0,
+          "path": "v2/search3-results-cards-v2.js",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 62808,
+          "path": "v2/search3-results-filters-v1.css",
+          "sha256": "e41042ceb37ca28dda107a2f0fa164d487ddf034abbc01ec18d9fd78a62a8078"
+        },
+        {
+          "bytes": 56272,
+          "path": "v2/search3-results-filters-v1.js",
+          "sha256": "5ad3fdb672495ab663ba8ba05344068b3abbdc0d089fe86a22d16ea8d16c8420"
+        },
+        {
+          "bytes": 9401,
+          "path": "v2/search3-selected-flow-v2.css",
+          "sha256": "6b3b3dd5b67ea4a1ac5305ad9bb1592dc0fa8d0a4e2ab26213c8613b5b89a3b3"
+        },
+        {
+          "bytes": 12129,
+          "path": "v2/search3-selected-flow-v2.js",
+          "sha256": "a84ea3c53dfddb33c1d4cdbcfbb3ebeb1a9276facd0f0e458d73fbe36487f82b"
+        }
+      ],
+      "artifact_digest": "sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f",
+      "artifact_id": 10015159660,
+      "artifact_run": 34113092204,
+      "conclusion": "success",
+      "control_sha": "222b2da1986e05c8c7fcec2e88dc51b0c1426679",
+      "deploy_pr": 1462,
+      "deploy_run": 34113272969,
+      "deployment_evidence_artifact": 10015213085,
+      "deployment_evidence_digest": "sha256:95edb09b7c67bdcc0d19b778c4952635d3e80e6e5bd66a9fcc2d7023611dc84f",
+      "deployment_guards": "715 exact payload hashes, ZIP/archive/manifest/checksum pins; noindex/counter0/lead403/internalPHPdeny/retained rollback;13 production fingerprints before/after/final independently compared equal.",
+      "latest_verification": {
+        "deferred": [
+          "375/760/999/1000 responsive states; browser has no viewport-resize capability",
+          "physical iPhone/Safari",
+          "lead-entry/sending/success/error visuals",
+          "map interaction (label only checked)",
+          "full matrix"
+        ],
+        "full_matrix_run": false,
+        "header_after": {
+          "columns": "632px",
+          "font": "22px",
+          "note_align": "left"
+        },
+        "header_before": {
+          "columns": "176.844px 467.156px",
+          "font": "38px"
+        },
+        "lead_form_visited": false,
+        "real_lead_submitted": false,
+        "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+        "states": [
+          "initial form and results/tools at first publication90b3a3df",
+          "selected flight and final review",
+          "corrected review header at b9445bc3"
+        ],
+        "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
+        "verified_at": "2026-09-07T10:52:37Z",
+        "viewport": [
+          1363,
+          936
+        ]
+      },
+      "manifest_sha256": "37b70ad3f40857e52a835d76dbfdf99aa839e47f27f2a467b8eb0b5115203c2b",
+      "payload_sha256": "9ef45e366e9d6a06f50e0a939eccc7b13d145356517e3a89abeec2c96cdb708b",
+      "physical_safari_tested": false,
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_unchanged": true,
+      "public_assets": {
+        "css_bytes": 94644,
+        "js_bytes": 71627,
+        "scope": "Eight public paths; raw uncompressed bytes, not a page-speed claim.",
+        "total_bytes": 166271
+      },
+      "real_lead_submitted": false,
+      "release_pin_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "source_tree": "11be080d74b26eddb9e25a5c020805ddb7fbcdf3",
+      "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
+      "supersedes_intermediate_publication": {
+        "conclusion": "publication guards passed; review-header visual regression found and corrected, not accepted as all-green",
+        "deploy_pr": 1460,
+        "deploy_run": 34112546655,
+        "evidence_artifact": 10014929810,
+        "source_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd"
+      },
+      "verified_at": "2026-09-07T10:52:37Z"
+    },
+    {
+      "artifact_id": 10073950483,
+      "artifact_run": 34271270024,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "source_tree": "921c0e33a5ee4cf80a0d4daf02a30d41ede90fc4",
+      "published": true,
+      "published_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+      "control_sha": "f2079a3c4f7b29e2f05f33af11fa3ea22bc528dd",
+      "control_pr": 1628,
+      "deploy_run": 34272077289,
+      "deployment_artifact": 10074220224,
+      "deployment_artifact_digest": "sha256:7e5a4fd1b931f2298e5b845a8ec50f3c48c96f1ae9dde38bdf9b696658eef175",
+      "release_pin_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
+      "published_at": "2026-09-08T19:58:53Z",
+      "control_closed_without_merge": true
+    }
+  ]
 }

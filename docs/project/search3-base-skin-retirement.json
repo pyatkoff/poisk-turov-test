@@ -4,7 +4,7 @@
   "source_pr": 1626,
   "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
   "source_tree_sha": "9fa329f9a886c6bade96284e6b908029ecefb701",
-  "base_release_sha": "c423da23e5112bcf80867986b3965036db39c54b",
+  "base_release_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
   "checked_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
   "scope": "Delete the entire preview-era Search3 donor base skin without moving any of its rules; retain the current entry, results and selected owners.",
   "accounting": {

@@ -1,11 +1,57 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — donor base skin retirement #1626 — 2026-09-08
+## Current resume point — native results repair #1629 and exact preview — 2026-09-08
+
+Exact combined source `a960efd5ed65143bc111554689a5deb9e52a3f69`, tree `9ef663d955ad9750f17ac53c13fd9f832480c142`;
+checked code release `b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6`. This includes independently integrated
+#1625 late lead owner, #1626 donor-skin retirement and #1629 result repair.
+
+#1629: eight **15426→11814 B (−3612)**; CSS **5490→1878 B**;
+initial file payload **76733→73121 B**; complete **116963→113351 B**.
+Whole orphan result-summary, stale-banner, desktop-tour decoration and old sidebar
+offset families are removed. Native edit-search remains, legacy summary is retained.
+Confirmed 375 px overflow is fixed with bounded images and full-width results.
+JS/shared originals are unchanged. HTTP bodies including shared boundaries:
+initial 73670 B, selected 40408 B, complete 114078 B. All eight URLs remain.
+
+Earlier in this pass #1625 removed 769 B overall and deferred 14626 B of the exact
+lead guard: initial 95058→79663 B. Protected phone/bootstrap/race behavior passed.
+Total new deletion in these two packages is 4381 B; parallel #1626's 2930 B is separate.
+
+Security `34273162448`, exact artifact `34273162444` and navigation
+`34273162381` passed on this final source. Actual Chromium results:
+12 states at 375/760/761/999/1000/1440, raw/served parity, preserved form parameters,
+edit-search, native header, sorting, tour actions, decimal prices and no overflow.
+Native entry 375/1440 also passed. First exact 34272896628 was RED for actual 375 px
+overflow, fixed in source; no guard was weakened. Only the necessary corrective
+build was added. Reuse artifact `10074666815`, digest `sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102`,
+archive `27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2`. No release/docs rebuild.
+
+**Published preview source:** `a960efd5ed65143bc111554689a5deb9e52a3f69`.
+Control #1630, deploy `34273519277` (success);
+exact source/artifact pins, noindex, lead delivery disabled, Metrika 0,
+production fingerprints unchanged and atomic rollback backup retained.
+Previous publication was #1628 / run 34272077289 / source fda61fbd; its exact evidence
+is retained in `search3-late-lead-review-retirement.json`.
+Actual live checks at 1348 px: one Moscow/Turkey search returned 100 hotels;
+the placeholder summary is absent, one native edit action remains, horizontal
+overflow is absent, and editing restores the form with all values preserved and
+focus on departure. Actual results screenshot inspected. Selection, flights and
+phone focus passed on the preceding #1625 publication in this pass; that unchanged
+JS journey was not repeated after the CSS repair. No real lead was submitted.
+This is isolated experimental presentation; design acceptance is not green.
+Deferred: physical Safari/safe-area, owner visual/design acceptance, full lead/site/SEO/responsive journey. Main observed `86fc165277a13ae9bef1369659e9b150399f0e35`; this lane did not
+change main or production. Rollback: revert #1629 independently; preview uses its
+owned atomic backup. Audit: `docs/project/search3-results-native-retirement.json`.
+
+Next: The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a 31 B printer micro-PR. Read-only audit of all 17 shared owners found only 31 B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the 11814 B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval.
+
+## Historical checkpoint — donor base skin retirement #1626 — 2026-09-08
 
 Exact source `98aed98b0ac90575be43bc22f58e8c2fcf4071b5`, tree
 `9fa329f9a886c6bade96284e6b908029ecefb701`; checked release
 `69fa28aa1224026cf05e6c2b4b5993236481396e`. Independent #1625 merged first as
-`c423da23e5112bcf80867986b3965036db39c54b`; that is the final integration base.
+`c423da23deafb6782eb0d1994c42d6e68d5b7941`; that is the final integration base.
 
 The whole preview-era `base.css` donor skin was deleted with no rule movement.
 Eight public assets are **18356→15426 raw B (−2930)**; results-filter CSS
