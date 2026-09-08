@@ -84,7 +84,6 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $envelope)) {
-            $this->errorDiagnostics($envelope);
             if (is_int($envelope['error']) && $envelope['error'] >= 0 && $envelope['error'] <= 99999) $this->lastRequest['supplier_code'] = $envelope['error'];
             if ($action === 'SearchTour_PRICES' && in_array($envelope['error'], [2110, '2110'], true)) {
                 return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
@@ -102,7 +101,6 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $payload)) {
-            $this->errorDiagnostics($payload);
             if (is_int($payload['error']) && $payload['error'] >= 0 && $payload['error'] <= 99999) $this->lastRequest['supplier_code'] = $payload['error'];
             if ($action === 'SearchTour_PRICES' && in_array($payload['error'], [2110, '2110'], true)) {
                 return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
@@ -112,21 +110,6 @@ final class AnyTourAnexClient
         // The client owns the credential, so callers never need to duplicate it
         // in their own label filters to prevent a supplier echo from escaping.
         return $this->redactPayload($payload);
-    }
-
-    private function errorDiagnostics(array $payload): void
-    {
-        // Read-only operational evidence, never included in public HTTP responses.
-        $clean = $this->redactPayload($payload);
-        $fields = [];
-        foreach (array_slice($clean, 0, 12, true) as $key => $value) {
-            if ($key === 'error' || !is_string($key) || !preg_match('/\A[a-zA-Z_]{1,40}\z/D', $key)) continue;
-            if (preg_match('~searchKey|token|password|secret~i', $key)) continue;
-            if (is_array($value)) $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            if (is_string($value) && strlen($value) <= 1000
-                && !preg_match('~https?://|oauth|token|password|secret~i', $value)) $fields[$key] = $value;
-        }
-        if ($fields) $this->lastRequest['supplier_fields'] = $fields;
     }
 
     private function redactPayload(array $payload): array

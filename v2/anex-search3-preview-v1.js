@@ -9,6 +9,16 @@
   function isCurrent(run, lifecycle) {
     return !!run && !!lifecycle && run.generation === lifecycle.generation && !lifecycle.dirty;
   }
+  function errorMessage(code) {
+    const messages = {
+      search_not_supported: 'ANEX пока не поддерживает эти условия поиска.',
+      invalid_request: 'Проверьте даты, количество ночей и состав туристов для поиска ANEX.',
+      supplier_conditions_rejected: 'ANEX не принял выбранные условия поиска. Измените параметры и повторите поиск.',
+      rate_limited: 'Достигнут лимит запросов ANEX. Подождите минуту перед следующим поиском.',
+      supplier_timeout: 'Расчёт ANEX занял слишком много времени. Повторите поиск позже.'
+    };
+    return typeof messages[code] === 'string' ? messages[code] : 'Не удалось получить предложения ANEX. Повторите поиск позже.';
+  }
   function validHotel(hotel) {
     return !!hotel && Number.isSafeInteger(hotel.local_id) && hotel.local_id > 0
       && typeof hotel.name === 'string' && hotel.name.length > 0 && hotel.name.length <= 300
@@ -18,7 +28,7 @@
         && Number(tour.price.amount) > 0 && typeof tour.checkin === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(tour.checkin)
         && Number.isInteger(tour.nights) && tour.nights > 0 && tour.nights <= 60);
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, version: 1 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, version: 1 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -138,7 +148,7 @@
       const payload = await response.json();
       if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
       if (!response.ok || !payload.ok) {
-        message = payload.error === 'search_not_supported' ? 'ANEX пока не поддерживает эти условия поиска.' : 'ANEX сейчас не ответил. Повторите поиск позже.';
+        message = errorMessage(payload.error);
       } else if (payload.data && payload.data.generation === run.generation && payload.data.provider === 'anex' && Array.isArray(payload.data.hotels)) {
         const seen = new Set();
         hotels = payload.data.hotels.slice(0, 300).filter(hotel => {
@@ -147,11 +157,11 @@
         });
         message = hotels.length ? 'Найдено отелей: ' + hotels.length
           : payload.data.external_search_pending ? 'ANEX продолжает расчёт. Повторите поиск позже.' : 'Подходящих предложений ANEX пока нет.';
-      } else message = 'ANEX сейчас не ответил. Повторите поиск позже.';
+      } else message = errorMessage(null);
       render();
     } catch (error) {
       if (isCurrent(run, window.V2SearchLifecycle) && active === run) {
-        message = 'ANEX сейчас не ответил. Повторите поиск позже.'; render();
+        message = errorMessage(null); render();
       }
     } finally { clearTimeout(timeout); }
   }

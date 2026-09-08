@@ -392,3 +392,13 @@ test('changed form parameters hide ANEX even before lifecycle becomes dirty', as
   assert.match(page.document.getElementById('anexSearch3Results').textContent, /Обновите поиск/);
   assert.equal(page.requests.length, 1);
 });
+
+
+test('supplier rejection, timeout and rate limit have distinct safe messages', () => {
+  const api = helpers();
+  assert.match(api.errorMessage('supplier_conditions_rejected'), /не принял/);
+  assert.match(api.errorMessage('rate_limited'), /лимит/);
+  assert.match(api.errorMessage('supplier_timeout'), /слишком много времени/);
+  assert.match(api.errorMessage('invalid_request'), /Проверьте даты/);
+  assert.doesNotMatch(api.errorMessage('secret <script>'), /secret|script/);
+});

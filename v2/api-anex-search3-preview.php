@@ -119,6 +119,36 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
     return array_values($hotels);
 }
 
+/** A broad interval rejected with 101 may be queried as bounded, disjoint intervals.
+ * Keep the requested dates and every other criterion; never treat an error as empty.
+ * At most seven sequential price calls (plus three dictionaries), under the client budget.
+ */
+function anytour_anex_search3_prices($client, callable $resolver, array $criteria, int $depth = 0): array
+{
+    try {
+        return (new AnyTourAnexSearch($client, $resolver))->search($criteria);
+    } catch (RuntimeException $error) {
+        $last = $client->lastRequestDiagnostics();
+        $begin = new DateTimeImmutable($criteria['checkin_begin']);
+        $end = new DateTimeImmutable($criteria['checkin_end']);
+        $days = (int) $begin->diff($end)->days;
+        if ($depth >= 2 || $days < 1 || ($last['action'] ?? '') !== 'SearchTour_PRICES'
+            || ($last['supplier_code'] ?? null) !== 101) throw $error;
+        $middle = $begin->modify('+' . intdiv($days, 2) . ' days');
+        $left = $right = $criteria;
+        $left['checkin_end'] = $middle->format('Y-m-d');
+        $right['checkin_begin'] = $middle->modify('+1 day')->format('Y-m-d');
+        $a = anytour_anex_search3_prices($client, $resolver, $left, $depth + 1);
+        $b = anytour_anex_search3_prices($client, $resolver, $right, $depth + 1);
+        $a['offers'] = array_merge($a['offers'], $b['offers']);
+        $a['search'] = anytour_anex_normalizer_context($criteria);
+        $a['rejected_count'] += $b['rejected_count'];
+        $a['truncated_count'] += $b['truncated_count'];
+        $a['external_search_pending'] = $a['external_search_pending'] || $b['external_search_pending'];
+        return $a;
+    }
+}
+
 function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null): array
 {
     if (!is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
@@ -143,7 +173,16 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     $criteria['currency_id'] = anytour_anex_search3_dictionary_id(
         anytour_anex_search3_dictionary($client, 'SearchTour_CURRENCIES', $dated, $cache), ['RUB', 'RUR', 'Рубль', 'Рубли', 'Руб']);
     $resolver = AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
-    $result = (new AnyTourAnexSearch($client, $resolver))->search($criteria);
+    $result = anytour_anex_search3_prices($client, $resolver, $criteria);
+    // Bound the merged first pages before catalog hydration; cheapest RUB offers first.
+    usort($result['offers'], static function ($a, $b) {
+        $amount = static function ($offer) {
+            $price = ($offer['price']['currency'] ?? '') === 'RUB' ? $offer['price'] : ($offer['converted_price'] ?? []);
+            return ($price['currency'] ?? '') === 'RUB' ? (float) $price['amount'] : PHP_FLOAT_MAX;
+        };
+        return $amount($a) <=> $amount($b);
+    });
+    $result['offers'] = array_slice($result['offers'], 0, 300);
     // Optional server-only observation for the deployment probe; never projected into HTTP output.
     if ($diagnostics !== null) {
         $diagnostics = ['supplier_offers' => count($result['offers']), 'mapped_offers' => 0,
@@ -232,7 +271,8 @@ function anytour_anex_search3_http(): void
         if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException('ANEX_DATABASE_UNAVAILABLE');
         $helper = is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php';
         require_once $helper;
-        $data = anytour_anex_search3_run($request, v2_data_db(), new AnyTourAnexClient($token), $_SESSION['dictionaries']);
+        $client = new AnyTourAnexClient($token);
+        $data = anytour_anex_search3_run($request, v2_data_db(), $client, $_SESSION['dictionaries']);
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
     } catch (InvalidArgumentException $error) {
@@ -241,7 +281,14 @@ function anytour_anex_search3_http(): void
         anytour_anex_search3_out(['ok' => false, 'error' => $unsupported ? 'search_not_supported' : 'invalid_request'], $unsupported ? 422 : 400);
     } catch (Throwable $ignored) {
         session_write_close();
-        anytour_anex_search3_out(['ok' => false, 'error' => 'supplier_unavailable'], 502);
+        $last = isset($client) ? $client->lastRequestDiagnostics() : [];
+        if (($last['http_status'] ?? null) === 429) {
+            header('Retry-After: 60');
+            anytour_anex_search3_out(['ok' => false, 'error' => 'rate_limited'], 429);
+        }
+        $code = ($last['supplier_code'] ?? null) === 101 ? 'supplier_conditions_rejected'
+            : (($last['curl_errno'] ?? null) === 28 ? 'supplier_timeout' : 'supplier_unavailable');
+        anytour_anex_search3_out(['ok' => false, 'error' => $code], $code === 'supplier_conditions_rejected' ? 422 : 502);
     }
 }
 

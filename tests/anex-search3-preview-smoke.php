@@ -72,3 +72,34 @@ unset($entry);
 anytour_anex_search3_dictionary($fake, 'SearchTour_TOWNFROMS', [], $cache);
 search3_check($calls === 2, 'expired dictionary refreshed');
 echo "ANEX Search3 preview smoke passed\n";
+
+
+// Reproduce a supplier rejecting a broad interval, with narrower requests succeeding.
+$intervals = [];
+$client = new AnyTourAnexClient('test-secret', static function ($url) use (&$intervals) {
+    parse_str(parse_url($url, PHP_URL_QUERY), $query);
+    $intervals[] = [$query['CHECKIN_BEG'], $query['CHECKIN_END']];
+    $days = (new DateTimeImmutable($query['CHECKIN_BEG']))->diff(new DateTimeImmutable($query['CHECKIN_END']))->days;
+    return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => $days > 6
+        ? ['error' => 101, 'prices' => []] : ['prices' => []]])];
+});
+$criteria = array_replace($context, ['supplier_namespace' => 'anex_online', 'departure_id' => 2,
+    'destination_id' => 4, 'currency_id' => 1, 'checkin_begin' => '2026-09-09', 'checkin_end' => '2026-09-22']);
+$result = anytour_anex_search3_prices($client, static function () { return null; }, $criteria);
+search3_check($intervals === [['20260909','20260922'], ['20260909','20260915'], ['20260916','20260922']], 'complete interval split without gaps or overlap');
+search3_check($result['search']['checkin_begin'] === '2026-09-09' && $result['search']['checkin_end'] === '2026-09-22', 'original interval retained');
+foreach ([101, 2111] as $code) {
+    $calls = 0;
+    $client = new AnyTourAnexClient('test-secret', static function () use (&$calls, $code) {
+        $calls++;
+        return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => ['error' => $code, 'prices' => []]])];
+    });
+    try {
+        anytour_anex_search3_prices($client, static function () { return null; }, $criteria);
+        throw new LogicException('supplier error must not become empty success');
+    } catch (RuntimeException $error) {
+        search3_check($error->getMessage() === 'ANEX_SUPPLIER_ERROR', 'failed subrange remains failure');
+        search3_check($calls === ($code === 101 ? 3 : 1), 'bounded splitting only for code 101');
+    }
+}
+echo "ANEX interval recovery smoke passed\n";
