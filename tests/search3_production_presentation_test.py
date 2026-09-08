@@ -361,6 +361,22 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         entry = (ROOT / 'src/search3/styles/entry-v1.css').read_text()
         self.assertIn('#tourSearch>details.extras[hidden]{display:none!important}', entry)
 
+    def test_legacy_search_filter_skin_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/search-filters-ux-v1.css').read_text()
+        primary = (ROOT / 'src/search3/behavior/search-form/primary-controls.js').read_text()
+        entry = (ROOT / 'src/search3/styles/entry-v1.css').read_text()
+        self.assertIn("'search-filters-ux-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'search-filters-ux-v1.css'", scoped)
+        for marker in ('.primary-search-flow', '.dates-picker', '.guests-picker', '.extras-secondary'):
+            self.assertIn(marker, legacy)
+        self.assertIn("select.classList.remove('ux-native-hidden')", primary)
+        self.assertIn("childAges.classList.remove('guests-ages')", primary)
+        self.assertIn('body.search3-candidate .ux-native-field-hidden{display:none!important}', entry)
+        self.assertIn('.search3-tourists__ages{grid-column:1/-1!important;display:grid!important;gap:8px!important;margin-top:9px!important', entry)
+        self.assertNotIn('.ux-native-hidden{', entry)
+
     def test_legacy_header_css_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]

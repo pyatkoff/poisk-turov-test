@@ -1,4 +1,5 @@
 /* Current form presentation after retirement of the legacy base form layer. */
+body.search3-candidate .ux-native-field-hidden{display:none!important}
 body.search3-candidate .search3-mobile-search-entry{display:none}
 html body.search3-candidate{
 & #tourSearch{width:100%!important;max-width:none!important;margin:10px auto 14px!important;padding:14px 16px!important;border:1px solid #e1e7f0!important;border-radius:14px!important;background:#fff!important;box-shadow:0 5px 16px rgba(16,24,40,.04)!important}
@@ -14,7 +15,7 @@ html body.search3-candidate{
 & #tourSearch .search3-tourists__pop[hidden],& #tourSearch .search3-tourists__ages[hidden]{display:none!important}
 & #tourSearch .search3-tourists__pop>span{align-self:center!important;color:#667085!important;font-size:10px!important;font-weight:800!important}
 & #tourSearch .search3-tourists__pop select{min-height:34px!important;font-size:10px!important}
-& #tourSearch .search3-tourists__ages{grid-column:1/-1!important;display:grid!important;gap:8px!important;padding-top:4px!important}
+& #tourSearch .search3-tourists__ages{grid-column:1/-1!important;display:grid!important;gap:8px!important;margin-top:9px!important;padding-top:4px!important}
 & #tourSearch .search3-tourists__ages .field>span{margin-bottom:4px!important;font-size:10px!important}
 & #tourSearch .search3-primary-grid>.search-submit{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;align-self:end!important;min-width:126px!important;min-height:40px!important;margin:0!important;padding:0 13px!important;border:0!important;border-radius:8px!important;background:#0066ff!important;color:#fff!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important;box-shadow:0 4px 10px rgba(0,102,255,.18)!important}
 & #tourSearch .search3-primary-grid>.search-submit b{font-size:14px!important}
