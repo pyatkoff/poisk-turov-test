@@ -133,7 +133,14 @@ jobs:
           else
             jq -c '{ok, checks, search: {destination: .search.destination}, requested_hotel_ids}' \
               "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
-            echo "::warning::ANEX price evidence failed; catalogue checkpoint will still be persisted"
+            if python3 -B scripts/diagnostics/anex_price_evidence_checkpoint.py \
+              --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
+              --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json" \
+              --queue "$queue"; then
+              echo "::warning::ANEX price evidence unavailable; batch deferred and checkpoint persisted"
+            else
+              echo "::warning::ANEX price evidence failure was not checkpointed; catalogue checkpoint will still be persisted"
+            fi
           fi
       - name: Persist validated checkpoint in isolated ANEX staging tables
         env:

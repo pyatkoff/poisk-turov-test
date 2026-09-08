@@ -35,11 +35,41 @@ class PriceEvidenceCheckpointTest(unittest.TestCase):
         result = checkpoint.merge_checkpoint(checkpoint.empty_checkpoint(), self.report(),
                                              checked_at="2026-09-08T00:00:00+00:00")
         self.assertEqual(result["counts"], {
-            "checked_ids": 3, "new_ids": 3, "repeated_ids": 0,
-            "no_offer": 1, "offer_seen": 2,
+            "completed_ids": 3, "checked_ids": 3, "deferred_ids": 0,
+            "new_ids": 3, "repeated_ids": 0,
+            "no_offer": 1, "offer_seen": 2, "probe_unavailable": 0,
         })
         self.assertEqual([row["status"] for row in result["rows"]],
                          ["offer_seen", "no_offer", "offer_seen"])
+        self.assertEqual(result["decision_policy"], "diagnostic_only")
+        self.assertNotIn("accepted", result)
+
+    def test_controlled_probe_failure_is_deferred_without_accepting_identity(self):
+        report = {
+            "ok": False,
+            "mode": "price_evidence",
+            "checks": [
+                {"check": "api_townfroms", "status": "ok"},
+                {"check": "selection", "status": "no_destinations"},
+            ],
+        }
+        queue = {
+            "schema_version": 1,
+            "mode": "price_evidence_queue",
+            "decision_policy": "diagnostic_only",
+            "batches": [{"destination": "Азербайджан", "hotel_ids": [21, 22]}],
+        }
+        result = checkpoint.merge_failure_checkpoint(
+            checkpoint.empty_checkpoint(), report, queue,
+            checked_at="2026-09-08T00:00:00+00:00")
+        self.assertEqual(result["counts"], {
+            "completed_ids": 2, "checked_ids": 0, "deferred_ids": 2,
+            "new_ids": 2, "repeated_ids": 0,
+            "no_offer": 0, "offer_seen": 0, "probe_unavailable": 2,
+        })
+        self.assertTrue(all(row["status"] == "probe_unavailable"
+                            and row["reason"] == "no_destinations"
+                            for row in result["rows"]))
         self.assertEqual(result["decision_policy"], "diagnostic_only")
         self.assertNotIn("accepted", result)
 
