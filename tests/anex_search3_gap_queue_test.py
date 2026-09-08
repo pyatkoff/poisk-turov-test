@@ -110,6 +110,51 @@ class GapQueueTests(unittest.TestCase):
         self.assertEqual(run.call_count, 3)  # two DB snapshots, only one supplier call
         self.assertEqual([r['reason'] for r in rows], ['rate_limited'] * 3)
 
+    def test_empty_php_details_do_not_abort_next_valid_hotel(self):
+        import ast
+        source = Path(gaps.__file__).read_text()
+        node = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef) and n.name == 'remote_batch')
+        ns = {'time': gaps.time, 'DETAILS_PHP': 'details', 'CATALOG_PHP': 'catalog'}
+        exec(gaps.matching_source(), ns)
+        exec(ast.get_source_segment(source, node), ns)
+        selected = self.queue['rows'][:4]
+        originals = {str(r['anex_hotel_id']): {'name': 'Sharm Holiday Resort', 'alternate_name': '',
+                     'country': 'Egypt', 'status': 'review'} for r in selected}
+        last = selected[-1]['anex_hotel_id']
+        def response(value):
+            return type('Response', (), {'returncode': 0, 'stdout': json.dumps(value)})()
+        snapshot = response({'status': 'ok', 'staging_total': 8362})
+        details = {'id': last, 'name': 'Sharm Holiday Resort', 'state': 'Egypt',
+                   'town': 'Sharm', 'latitude': 27.9, 'longitude': 34.3}
+        candidate = {'id': 425, 'name': details['name'], 'country_name': 'Egypt',
+                     'subregion_name': 'Sharm', 'latitude': 27.9, 'longitude': 34.3}
+        responses = [snapshot] + [response({'status': 'ok', 'details': empty}) for empty in ([], {}, None)]
+        responses += [response({'status': 'ok', 'details': details}),
+                      response({'status': 'ok', 'items': [{'key': last, 'candidates': [candidate]}]}), snapshot]
+        with patch.object(ns['subprocess'], 'run', side_effect=responses) as run:
+            result = ns['remote_batch'](selected, originals, 1)
+        rows = result['rows']
+        self.assertEqual([r['reason'] for r in rows[:3]], ['details_empty', 'details_empty', 'details_invalid'])
+        self.assertEqual(rows[-1]['status'], 'strong_candidate')
+        self.assertEqual(rows[-1]['candidates'][0]['resort_evidence']['shared_names'], ['sharm'])
+        self.assertEqual(run.call_count, 7)
+        query = json.loads(run.call_args_list[-2].kwargs['input'])['queries'][0]
+        self.assertEqual(query['country_id'], 1)
+        self.assertEqual(result['preservation']['staging_total'], 8362)
+
+    def test_failure_diagnostic_excludes_arbitrary_error_text(self):
+        secret = 'test-secret-must-never-be-logged'
+        report = gaps.failure_report(ValueError(secret), 'remote_batch')
+        self.assertNotIn(secret, json.dumps(report))
+        report = gaps.failure_report(gaps.RemoteBatchError({'remote_error': 'AttributeError',
+            'function': 'supplier_record', 'line': 55, 'message': secret}), 'remote_batch')
+        self.assertEqual(report['remote_function'], 'supplier_record')
+        self.assertEqual(report['error_kind'], 'AttributeError')
+        self.assertNotIn(secret, json.dumps(report))
+        report = gaps.failure_report(gaps.RemoteBatchError({'remote_error': secret,
+            'function': secret, 'line': secret}), 'remote_batch')
+        self.assertNotIn(secret, json.dumps(report))
+
 
 if __name__ == '__main__':
     unittest.main()

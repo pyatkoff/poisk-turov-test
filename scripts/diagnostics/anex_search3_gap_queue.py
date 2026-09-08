@@ -20,6 +20,29 @@ QUEUE_PATH = Path(__file__).resolve().parents[2] / 'docs/integrations/reports/an
 CLASSES = {'strong_candidate', 'review', 'unmatched', 'source_error', 'protected'}
 
 
+class RemoteBatchError(RuntimeError):
+    def __init__(self, diagnostic):
+        super().__init__('remote_batch_failed')
+        self.diagnostic = diagnostic
+
+
+def failure_report(error, phase):
+    # Never include exception messages, stderr, requests or supplier payloads.
+    kinds = {'ValueError', 'KeyError', 'TypeError', 'AttributeError', 'NameError',
+             'RuntimeError', 'TimeoutExpired', 'JSONDecodeError', 'OSError'}
+    report = {'status': 'batch_unconfirmed', 'phase': phase,
+              'error_kind': type(error).__name__ if type(error).__name__ in kinds else 'other'}
+    if isinstance(error, RemoteBatchError):
+        value = error.diagnostic
+        report['error_kind'] = value.get('remote_error') if value.get('remote_error') in kinds else 'other'
+        allowed = {'remote_batch', 'snapshot', 'supplier_record', 'read_catalog',
+                   'candidate_rank', 'geo_decision', 'xml_relation', 'positive_id'}
+        report['remote_function'] = value.get('function') if value.get('function') in allowed else 'other'
+        if type(value.get('line')) is int and 0 < value['line'] < 10000:
+            report['remote_line'] = value['line']
+    return report
+
+
 def digest(value):
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
                                     separators=(',', ':'), allow_nan=False).encode()).hexdigest()
@@ -149,7 +172,16 @@ def remote_batch(selected, catalog_rows, country_id):
                 if reason == 'rate_limited':
                     stop_reason = 'rate_limited'
                 continue
-            api = supplier_record(response['details'])
+            details = response.get('details')
+            # PHP encodes an empty associative array as []; it is unavailable
+            # evidence, never a negative match and never a batch-level failure.
+            if details == [] or details == {}:
+                row['reason'] = 'details_empty'
+                continue
+            if not isinstance(details, dict):
+                row['reason'] = 'details_invalid'
+                continue
+            api = supplier_record(details)
             row['api'] = api
             if not api['id'] or not api['name']:
                 continue
@@ -201,7 +233,7 @@ def ssh_batch(selected, catalog_rows, country_id):
         source += variable + ' = ' + repr(Path(__file__).with_name(file).read_text().removeprefix('<?php')) + '\n'
     source += ast.get_source_segment(own_source, function) + '\n'
     source += "try:\n    print(json.dumps(remote_batch(**json.load(sys.stdin)), ensure_ascii=False))\n"
-    source += "except Exception as error:\n    print(json.dumps({'remote_error': type(error).__name__, 'phase': str(error) if str(error).startswith('snapshot:') else 'batch'}))\n"
+    source += "except Exception as error:\n    frame = error.__traceback__\n    while frame.tb_next: frame = frame.tb_next\n    print(json.dumps({'remote_error': type(error).__name__, 'function': frame.tb_frame.f_code.co_name, 'line': frame.tb_lineno}))\n"
     with tempfile.TemporaryDirectory(prefix='anex-search-gaps-', dir=os.environ.get('RUNNER_TEMP')) as temp:
         key = Path(temp) / 'ssh_key'
         key.write_text(os.environ[names[0]].rstrip() + '\n')
@@ -218,7 +250,7 @@ def ssh_batch(selected, catalog_rows, country_id):
         raise ValueError('remote_batch_exit_' + str(result.returncode))
     payload = json.loads(result.stdout)
     if 'remote_error' in payload:
-        raise ValueError(str(payload['remote_error']) + ':' + str(payload['phase']))
+        raise RemoteBatchError(payload)
     return payload
 
 
@@ -297,10 +329,7 @@ def main():
             result = ssh_batch([], {}, 1)
             report = {'status': 'ok', 'supplier_requests': 0, 'preservation': result['preservation']}
         except Exception as error:
-            import re
-            reason = str(error)
-            report = {'status': 'preflight_failed', 'supplier_requests': 0,
-                      'reason': reason if re.fullmatch(r'[A-Za-z0-9_:.-]{1,160}', reason) else type(error).__name__}
+            report = dict(failure_report(error, 'preflight'), status='preflight_failed', supplier_requests=0)
         (directory / 'anex-initial-search-preflight.json').write_text(json.dumps(report, indent=2) + '\n')
         print(json.dumps(report))
         if report['status'] != 'ok': raise SystemExit(1)
@@ -340,11 +369,18 @@ def main():
         originals = {str(r['external_id']): r for r in json.loads(catalog_raw)['matches'] if r['external_id'] in wanted}
         if len(originals) != len(selected):
             raise ValueError('queue identities absent from original catalogue')
+        phase = 'remote_batch'
         try:
             result = ssh_batch(selected, originals, queue['evidence']['criteria']['countryId'])
-            cp = merge(cp, result['rows'], queue)
+            phase = 'merge'
             preservation = result['preservation']
-        except Exception:
+            cp = merge(cp, result['rows'], queue)
+        except Exception as error:
+            failure = dict(failure_report(error, phase), source_sha=os.environ.get('GITHUB_SHA'),
+                           completed_total=cp['completed_total'], remaining=cp['remaining'],
+                           reserved_ids=list(cp['in_flight']))
+            (directory / 'anex-initial-search-failure.json').write_text(json.dumps(failure, indent=2) + '\n')
+            print(json.dumps(failure))
             # Keep reservation in artifact: no blind replay on the next run.
             raise RuntimeError('GAP_BATCH_UNCONFIRMED: reserved IDs preserved') from None
     save(directory, cp, queue)
