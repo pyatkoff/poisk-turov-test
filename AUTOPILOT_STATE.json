@@ -53,36 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1523/#1524 retire three complete legacy CSS owners from Search3 only. This invocation loaded raw 594063 to 584536 (-9527), gzip -1793. Exact CI identified and retained 653 bytes of live current-owner geometry; no publication.",
+    "last_material_progress": "PRs #1523/#1524/#1526 retire four complete legacy presentation owners from Search3. Exact current invocation total is 594063 to 580581 raw (-13482), gzip 131441 to 128767 (-2674). Live geometry, ARIA and optional lead disclosure remain in current owners; no publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete checkout-experience-v1.js presentation runtime. Retain optional lead-field disclosure and any required classes/ARIA in current Search3 owners, while keeping lead transport and the full legacy route unchanged. Exclude the whole runtime only after focused lifecycle and exact browser CI pass.",
+    "next_action": "Audit the complete sales-leader-ui-v1.js/.css presentation pair for Search3. Preserve the current selected-tour trust block, full legacy route and protected lead/price/API/analytics contracts; exclude the old pair only after focused source and exact browser CI.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_SHELL_CHECKOUT_OWNERS",
-    "title": "Retire obsolete shell/footer guards and checkout presentation CSS",
+    "id": "S3_LEAN_CHECKOUT_RUNTIME",
+    "title": "Retire legacy checkout JavaScript runtime",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1523,
-      1524
+      1526
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "802f2a222864d54e7bafacbf348ea6b7422583a7",
-      "56c2c1d5bdda7747d705c036ac6722f9ec991b19"
+      "e1a847d7ffb805c2398a95c6c0db26df87b9e0e9"
     ],
-    "release_sha": "3d083e5d19a5dd434a61f394f8959370fd29d0d5",
-    "artifact_run": 34171462972,
-    "artifact_id": 10035859121,
-    "artifact_digest": "sha256:bb28f0a059b5170d59d5bcdd320c52ba9387a39f046876ff508daf6f210ee409",
-    "checked_release_asset_bytes": 151778,
-    "checked_release_loaded_bytes": 584536,
+    "release_sha": "5a867bd074b63b59348c1f442352754463b64c05",
+    "artifact_run": 34172785030,
+    "artifact_id": 10036258837,
+    "artifact_digest": "sha256:9203361cc166c5388cfdd360165762d4c5c56b9c48fb0c6921b5d0f47c8a2b94",
+    "checked_release_asset_bytes": 153884,
+    "checked_release_loaded_bytes": 580581,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the complete checkout-experience-v1.js presentation runtime. Retain optional lead-field disclosure and any required classes/ARIA in current Search3 owners, while keeping lead transport and the full legacy route unchanged. Exclude the whole runtime only after focused lifecycle and exact browser CI pass."
+    "next_action": "Audit the complete sales-leader-ui-v1.js/.css presentation pair for Search3. Preserve the current selected-tour trust block, full legacy route and protected lead/price/API/analytics contracts; exclude the old pair only after focused source and exact browser CI."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1069,11 +1067,32 @@
       "results_geometry_artifact": 10035858746,
       "results_geometry_digest": "sha256:088160b734e832690068c9657b18375b9268f7e4b5adceff5f0eaf7266acfbcf",
       "required_passed": 2,
-      "preview_published": false
+      "preview_published": false,
+      "measurement_correction": "Exact repository recount corrected the prior checkpoint by +8 raw and +3 gzip bytes."
+    },
+    "checkout_runtime_retirement": {
+      "conclusion": "success",
+      "required_passed": 2,
+      "source_pr": 1526,
+      "source_sha": "e1a847d7ffb805c2398a95c6c0db26df87b9e0e9",
+      "security_run": 34172559663,
+      "exact_artifact_runs": [
+        34172559608,
+        34172785030
+      ],
+      "artifact_id": 10036258837,
+      "artifact_digest": "sha256:9203361cc166c5388cfdd360165762d4c5c56b9c48fb0c6921b5d0f47c8a2b94",
+      "selected_geometry_artifact": 10036258261,
+      "selected_geometry_digest": "sha256:5c6c75a30e86e30a0d00ab8f2f212342d7baf75b6c14935150263d939ee6301c",
+      "results_geometry_artifact": 10036258592,
+      "results_geometry_digest": "sha256:9c49adfcbe1dd0f5d4134eaa23f13cd70f6097de6ac3f0308e80ad52a2e69157",
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     }
   },
-  "last_verified_commit": "3d083e5d19a5dd434a61f394f8959370fd29d0d5",
-  "last_verified_commit_scope": "Checked Search3 release after #1523/#1524; three legacy CSS owners retired, exact geometry retained in current owners. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "5a867bd074b63b59348c1f442352754463b64c05",
+  "last_verified_commit_scope": "Checked Search3 release after #1526; legacy checkout runtime excluded while live classes, ARIA and optional-field disclosure remain in the current selected-flow owner. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7417,7 +7436,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T23:57:00Z",
+  "updated_at": "2026-09-08T00:20:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -8090,17 +8109,38 @@
       "checkout-experience-v1.css"
     ],
     "raw_before": 594063,
-    "raw_after": 584536,
-    "raw_saved": 9527,
+    "raw_after": 584544,
+    "raw_saved": 9519,
     "gzip_before": 131441,
-    "gzip_after": 129648,
-    "gzip_saved": 1793,
+    "gzip_after": 129651,
+    "gzip_saved": 1790,
     "eight_assets_before": 151125,
-    "eight_assets_after": 151778,
-    "retained_current_owner_bytes": 653,
+    "eight_assets_after": 151786,
+    "retained_current_owner_bytes": 661,
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-shell-checkout-owners.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "measurement_correction": "Exact repository recount corrected the prior checkpoint by +8 raw bytes and +3 gzip bytes; package deltas and current checkpoint use exact source files."
+  },
+  "latest_checkout_runtime_retirement": {
+    "source_pr": 1526,
+    "source_sha": "e1a847d7ffb805c2398a95c6c0db26df87b9e0e9",
+    "checked_code_release_sha": "5a867bd074b63b59348c1f442352754463b64c05",
+    "retired_search3_owner": "checkout-experience-v1.js",
+    "legacy_runtime_bytes_removed": 6061,
+    "current_selected_asset_bytes_added": 2098,
+    "raw_before": 584544,
+    "raw_after": 580581,
+    "raw_saved": 3963,
+    "gzip_before": 129651,
+    "gzip_after": 128767,
+    "gzip_saved": 884,
+    "eight_assets_before": 151786,
+    "eight_assets_after": 153884,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-checkout-runtime.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
