@@ -18,6 +18,7 @@ on:
       - 'tests/search3-selected-geometry-browser.cjs'
       - 'tests/search3-lean-entry-browser.cjs'
       - 'tests/search3-header-geometry-browser.cjs'
+      - 'tests/search3-entry-owner-browser.cjs'
       - 'scripts/build/search3_site_preview_isolation.py'
       - '.github/workflows/build-search3-whole-site-preview.yml'
 
@@ -274,8 +275,19 @@ jobs:
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Detect entry behavior owner changes
+        id: entry-owner
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/behavior/search-form.js src/search3/behavior/search-form tests/search3-entry-owner-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install browser geometry tooling
-        if: steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
@@ -303,6 +315,29 @@ jobs:
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
           node tests/search3-half-size-reset-browser.cjs
+
+      - name: Verify native entry controls only
+        if: steps.entry-owner.outputs.required == 'true'
+        shell: bash
+        env:
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          SEARCH3_ENTRY_OWNER_OUTPUT: ${{ runner.temp }}/search3-entry-owner
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          cat > "$RUNNER_TEMP/search3-entry-owner-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-entry-owner-router.php" >"$RUNNER_TEMP/search3-entry-owner-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-entry-owner-browser.cjs
 
       - name: Verify selected-tour retirement geometry only
         if: steps.selected-geometry.outputs.required == 'true'
@@ -342,6 +377,15 @@ jobs:
           node tests/search3-results-geometry-browser.cjs
           node tests/search3-entry-geometry-browser.cjs
           node tests/search3-header-geometry-browser.cjs
+
+      - name: Retain native entry evidence
+        if: always() && steps.entry-owner.outputs.required == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-entry-owner-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-entry-owner/
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Retain selected-tour geometry evidence
         if: always() && steps.selected-geometry.outputs.required == 'true'

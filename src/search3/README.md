@@ -1,5 +1,13 @@
 # Search3 presentation sources
 
+Current entry ownership (2026-09-08): the retired `search-form/entry-presentation.js`
+and its calendar/summary/timer-based layout are not shipped. Primary controls keep
+the original adult, child and child-age nodes directly visible, without a tourist
+popup. Region stays in the primary form; quality fields stay directly available.
+The native date/night, catalog/meal and URL/payload contracts remain. Older entry
+adapter notes below are historical. Exact CI checks the native entry only when its
+owner changes; this does not repeat the full lead journey or publish a preview.
+
 Edit this directory, then run from the repository root:
 
 ```sh

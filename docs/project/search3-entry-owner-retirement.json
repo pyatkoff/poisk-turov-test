@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_READY_REQUIRED_CI_PENDING_NOT_PUBLISHED",
+  "base_release_sha": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
+  "eight_assets": { "before_raw_bytes": 60811, "after_raw_bytes": 54605, "saved_raw_bytes": 6206 },
+  "main_js": { "before_raw_bytes": 28806, "after_raw_bytes": 22600 },
+  "loaded_route": { "before_raw_bytes": 179424, "after_raw_bytes": 173218 },
+  "removed": [
+    "behavior/search-form/entry-presentation.js: excluded price-calendar wrapper, duplicate result-summary copy, four-timer responsive DOM relocation, obsolete mobile collapse classes",
+    "custom tourist popup and mirrored summary/outside-click handlers",
+    "mobile trust/filter presentation with no remaining CSS owner and duplicate delayed field relocation"
+  ],
+  "retained": [
+    "same canonical adult/child/child-age nodes, names, values and core handlers",
+    "direct native date and night controls; URL and payload mapping",
+    "meals/catalog restore and filter reset handling",
+    "all eight public asset paths and all shared core files",
+    "results/selected/API/Tourvisor/price/lead/analytics/logo unchanged"
+  ],
+  "local_checks": ["source --write once and --check", "native entry ownership", "meal catalog/URL/reset", "git diff --check"],
+  "required_ci": { "security": "pending", "exact_artifact": "pending" },
+  "actual_browser_checks": [],
+  "planned_smoke": "Exact isolated artifact native form at 375/1440: URL guest hydration, direct editable controls, child ages, night range FormData mapping, tap targets and overflow. External/API/lead requests blocked; no full journey.",
+  "guards": "No existing source/PHP/path/presentation/isolation guard or geometry condition weakened. Entry fixture assertions replaced with direct-control contract; build drift/malformed-input fixtures moved to retained private module.",
+  "superseded_local_pr": 1608,
+  "superseded_local_pr_saved_bytes_counted": 0,
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": ["manual visual acceptance", "physical Safari", "published-preview smoke", "full lead/responsive/site/SEO journey"],
+  "next_step": "After exact CI, merge and retain artifact; continue the remaining booking/selected owner package only after checking parallel work."
+}
