@@ -53,33 +53,32 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1535 and #1536 retire the complete legacy header-current-site.css and selected-tour-description-v1.js owners from Search3. Current header geometry and selected description/facts disclosures remain in current owners. Since the preceding recorded raw point, #1533/#1535/#1536 reduce 577381 to 556977 raw (-20404) and gzip 128290 to 124085 (-4205). Full legacy route and protected contracts remain; no preview or production publication.",
+    "last_material_progress": "PR #1538 retires the complete 4295-byte header-current-site.js runtime from Search3. The current header remains server-rendered and its native details/summary menu passes open/close checks at ten boundary widths. Raw route payload falls 556977 to 552682 (-4295) and gzip 124085 to 122720 (-1365). Full legacy route and protected contracts remain; no preview or production publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete 4295-byte header-current-site.js runtime. Prove server-rendered phone/navigation and native header behavior before whole-owner exclusion; preserve the full legacy route and require focused header behavior plus exact artifact CI.",
+    "next_action": "Audit the complete 2526-byte selected-tour-return-v1.js owner against tour-controller-v4.js and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, aria-hidden state and v2:tour-returned; retire only through one current owner with focused return lifecycle and exact browser CI.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_HEADER_AND_SELECTED_DESCRIPTION",
-    "title": "Retire legacy header CSS and selected-tour description runtime",
+    "id": "S3_LEAN_HEADER_RUNTIME",
+    "title": "Retire legacy header runtime",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1535, 1536],
+    "source_prs": [1538],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "bb7ed9e3f4eefcda01a2f49f0a1ff186c7064e0a",
-      "cc35208f740cd957ca450f7b19fa2acfe6af7e6d"
+      "9a7ff81f041cf13d643deaf2eb73d57bc51e871b"
     ],
-    "release_sha": "7d7cadd20fb890cf81423f0ae3c9abf11f218868",
-    "artifact_run": 34181265652,
-    "artifact_id": 10039007717,
-    "artifact_digest": "sha256:67a3c704cccb21dd254c91a774d91ce35d327ec06e1cfcdd1ebbd720614235f3",
+    "release_sha": "602124449fbe8595b86e55119304df355d82cc0e",
+    "artifact_run": 34182975846,
+    "artifact_id": 10039560348,
+    "artifact_digest": "sha256:ca5d0f292acc46e75bbca8cc9a774d5a39fd055050ac889106af54673f731f45",
     "checked_release_asset_bytes": 171559,
-    "checked_release_loaded_bytes": 556977,
+    "checked_release_loaded_bytes": 552682,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the complete 4295-byte header-current-site.js runtime. Prove server-rendered phone/navigation and native header behavior before whole-owner exclusion; preserve the full legacy route and require focused header behavior plus exact artifact CI."
+    "next_action": "Audit the complete 2526-byte selected-tour-return-v1.js owner against tour-controller-v4.js and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, aria-hidden state and v2:tour-returned; retire only through one current owner with focused return lifecycle and exact browser CI."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1183,10 +1182,29 @@
       "selected_geometry_digest": "sha256:17b6d18ce3d2ea350ea6f0bec56e41873d88103e2839f7a9e43b1f325fe779c1",
       "required_passed": 2,
       "preview_published": false
+    },
+    "header_runtime_retirement": {
+      "source_pr": 1538,
+      "source_sha": "9a7ff81f041cf13d643deaf2eb73d57bc51e871b",
+      "security_run": 34182736622,
+      "initial_exact_failure": {
+        "run": 34182323940,
+        "reason": "The selected-tour guard combined the pre-#1536 generated CSS baseline with a runtime base that no longer contained the retired injected theme. The geometry baseline advanced to final checked #1536 source cc35208f; no assertion or compared property was removed."
+      },
+      "artifact_runs": [34182736594, 34182975846],
+      "artifact_id": 10039560348,
+      "artifact_digest": "sha256:ca5d0f292acc46e75bbca8cc9a774d5a39fd055050ac889106af54673f731f45",
+      "results_header_artifact": 10039560064,
+      "results_header_digest": "sha256:05bc19d1dfa73de02a581c3c98afdb456d723facca6944a74a6fdc628e3b9b17",
+      "selected_geometry_artifact": 10039559706,
+      "selected_geometry_digest": "sha256:dbeca28e0b285d4a37f4b4c45bfe23f6794a87e7687238e1efc37549b3b7b027",
+      "geometry_baseline": "cc35208f740cd957ca450f7b19fa2acfe6af7e6d",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "7d7cadd20fb890cf81423f0ae3c9abf11f218868",
-  "last_verified_commit_scope": "Checked Search3 release after #1536; legacy header CSS and selected-tour description runtime excluded while current owners retain exact header geometry and selected description/facts disclosure. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "602124449fbe8595b86e55119304df355d82cc0e",
+  "last_verified_commit_scope": "Checked Search3 release after #1538; legacy header runtime excluded while server-rendered phone/navigation and native details/summary behavior pass the focused ten-width matrix. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -8335,6 +8353,26 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-header-and-selected-description.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_header_runtime_retirement": {
+    "source_pr": 1538,
+    "source_sha": "9a7ff81f041cf13d643deaf2eb73d57bc51e871b",
+    "checked_code_release_sha": "602124449fbe8595b86e55119304df355d82cc0e",
+    "retired_search3_owner": "header-current-site.js",
+    "legacy_runtime_bytes_removed": 4295,
+    "current_owner_bytes_added": 0,
+    "raw_before": 556977,
+    "raw_after": 552682,
+    "raw_saved": 4295,
+    "gzip_before": 124085,
+    "gzip_after": 122720,
+    "gzip_saved": 1365,
+    "eight_assets_before": 171559,
+    "eight_assets_after": 171559,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-header-runtime.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }

@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "be6ccf763b6569e7930b8fc150815330ef20810c",
+  "source_pr": 1538,
+  "source_sha": "9a7ff81f041cf13d643deaf2eb73d57bc51e871b",
+  "checked_code_release_sha": "602124449fbe8595b86e55119304df355d82cc0e",
+  "retired_search3_owner": "header-current-site.js",
+  "retained_legacy_owner": "The unchanged 4295-byte runtime remains in the full manifest used by /poisk-turov-old/.",
+  "retained_current_behavior": [
+    "Server-rendered phone value and tel link from phone-value.php",
+    "Server-rendered ordered desktop and mobile navigation with active-route state",
+    "Native details/summary mobile menu open and close without JavaScript",
+    "Current Search3 owner hides the obsolete product hero targeted by the legacy runtime"
+  ],
+  "retired_behavior": [
+    "Legacy .at-site-header and .at-mobile-menu mutation and click handlers for markup absent from Search3",
+    "Client rewrite of server-rendered navigation and phone",
+    "Brand-proof mutation for the product hero hidden by the current Search3 owner",
+    "Unused V2BrandProof Search3 global"
+  ],
+  "payload": {
+    "before": {
+      "css": 186118,
+      "js": 199300,
+      "eight_assets": 171559,
+      "raw_total": 556977,
+      "gzip_total": 124085
+    },
+    "after": {
+      "css": 186118,
+      "js": 195005,
+      "eight_assets": 171559,
+      "raw_total": 552682,
+      "gzip_total": 122720
+    }
+  },
+  "raw_saved_bytes": 4295,
+  "gzip_saved_bytes": 1365,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 public paths. Gzip total compresses exact bundle-v1.php endpoint bodies plus each of the eight paths independently at level 9. No compensation code or generated-asset change was needed.",
+  "ci": {
+    "security_run": 34182736622,
+    "initial_exact_failure": {
+      "run": 34182323940,
+      "reason": "The selected-tour guard still mixed the pre-#1536 generated CSS baseline with a runtime base that no longer contained the retired injected theme. The exact geometry baseline was advanced to the final checked #1536 source; no assertion or compared property was removed."
+    },
+    "exact_runs": [34182736594, 34182975846],
+    "artifact_id": 10039560348,
+    "artifact_digest": "sha256:ca5d0f292acc46e75bbca8cc9a774d5a39fd055050ac889106af54673f731f45",
+    "selected_geometry_artifact": 10039559706,
+    "selected_geometry_digest": "sha256:dbeca28e0b285d4a37f4b4c45bfe23f6794a87e7687238e1efc37549b3b7b027",
+    "results_header_artifact": 10039560064,
+    "results_header_digest": "sha256:05bc19d1dfa73de02a581c3c98afdb456d723facca6944a74a6fdc628e3b9b17"
+  },
+  "browser_evidence": {
+    "header_states": 10,
+    "header_widths": [375, 520, 521, 768, 769, 1024, 1025, 1100, 1101, 1440],
+    "native_menu": "Opened and closed through summary clicks at every mobile/tablet width without the legacy runtime.",
+    "selected_states": 12,
+    "entry_states": 30,
+    "result_states": 12,
+    "result": "Final exact Chromium geometry and lifecycle passed twice after the source repair. No supplier request or lead was sent."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "Live current-source interaction and manual screenshots",
+    "Physical Safari and safe-area",
+    "Owner visual acceptance",
+    "Pre-existing browser-default search-progress-retry-results styling"
+  ],
+  "next_action": "Audit the complete 2526-byte selected-tour-return-v1.js owner against tour-controller-v4.js and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, aria-hidden state and v2:tour-returned; retire only if one current owner passes focused return lifecycle and exact browser CI.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}
