@@ -12,4 +12,13 @@
     }
     nightSelect(n1,'Минимум ночей');var nd=document.createElement('span');nd.className='search3-composite__dash';nd.textContent='—';nightCtl.appendChild(nd);nightSelect(n2,'Максимум ночей');main.appendChild(nightBox);
   }
-  var adults=refs.count_people,children=refs.child_count,touristBox=null;if(adults&&children){[adults,children].forEach(function(select){select.classList.remove('ux-native-hidden');select.removeAttribute('aria-hidden');select.tabIndex=0;});touristBox=makeComposite('Туристы','search3-tourists');var touristCtl=touristBox.querySelector('.search3-composite__control');var summary=document.createElement('button');summary.type='button';summary.className='search3-tourists__summary';var pop=document.createElement('div');pop.className='search3-tourists__pop';pop.hidden=true;pop.innerHTML='<span>Взрослых</span>';pop.appendChild(adults);var ch=document.createElement('span');ch.textContent='Детей';pop.appendChild(ch);pop.appendChild(children);if(childAges){childAges.classList.remove('guests-ages');childAges.classList.add('search3-tourists__ages');pop.appendChild(childAges);}function syncGuests(){var a=Number(adults.value||2),c=Number(children.value||0);summary.textContent=a+' '+(a===1?'взрослый':'взрослых')+(c?' · '+c+' '+(c===1?'ребёнок':'детей'):'');}summary.addEventListener('click',function(e){e.preventDefault();pop.hidden=!pop.hidden;});adults.addEventListener('change',syncGuests);children.addEventListener('change',syncGuests);syncGuests();touristCtl.appendChild(summary);touristCtl.appendChild(pop);main.appendChild(touristBox);}
+  // Keep canonical controls directly editable; no second popup or mirrored values.
+  var adults=refs.count_people,children=refs.child_count;
+  if(adults&&children){
+    var touristBox=makeComposite('Туристы','search3-tourists'),touristCtl=touristBox.querySelector('.search3-composite__control');
+    [[adults,'Взрослых'],[children,'Детей']].forEach(function(pair){
+      var select=pair[0];select.classList.remove('ux-native-hidden');select.classList.add('search3-direct-control');select.removeAttribute('aria-hidden');select.tabIndex=0;select.setAttribute('aria-label',pair[1]);touristCtl.appendChild(select);
+    });
+    if(childAges){childAges.classList.remove('guests-ages');childAges.classList.add('search3-tourists__ages');touristCtl.appendChild(childAges);}
+    main.appendChild(touristBox);
+  }
