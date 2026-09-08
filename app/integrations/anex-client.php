@@ -121,10 +121,10 @@ final class AnyTourAnexClient
         $fields = [];
         foreach (array_slice($clean, 0, 12, true) as $key => $value) {
             if ($key === 'error' || !is_string($key) || !preg_match('/\A[a-zA-Z_]{1,40}\z/D', $key)) continue;
-            if (is_string($value) && strlen($value) <= 600
-                && !preg_match('~https?://|oauth|token|password|secret~i', $key . ' ' . $value)) {
-                $fields[$key] = $value;
-            }
+            if (preg_match('~searchKey|token|password|secret~i', $key)) continue;
+            if (is_array($value)) $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (is_string($value) && strlen($value) <= 1000
+                && !preg_match('~https?://|oauth|token|password|secret~i', $value)) $fields[$key] = $value;
         }
         if ($fields) $this->lastRequest['supplier_fields'] = $fields;
     }
