@@ -79,7 +79,6 @@ def source_rows(directory):
         else:
             protected.append(identifier)
     sources = {'priority_sha256': PRIORITY_SHA,
-               'live_checkpoint_sha256': gaps.digest(cp),
                'catalog_sha256': cp['sources']['catalog_sha256'],
                'geo_sha256': cp['sources']['geo_sha256']}
     return rows, sources, protected
@@ -173,8 +172,10 @@ def load(directory):
     cp = json.loads((Path(directory) / CHECKPOINT).read_bytes())
     rows, sources, protected = source_rows(directory)
     ids = sorted(set(rows) | set(protected))
+    cp_sources = cp.get('sources', {})
     if (cp.get('schema_version') != 1 or cp.get('scope') != 'preview'
-            or cp.get('kind') != 'complete_alias_reviews' or cp.get('sources') != sources
+            or cp.get('kind') != 'complete_alias_reviews'
+            or {key: cp_sources.get(key) for key in sources} != sources
             or cp.get('source_artifact_id') != BOOTSTRAP_ARTIFACT
             or cp.get('source_digests') != {str(i): gaps.digest(rows[i]) for i in sorted(rows)}
             or cp.get('manifest_ids') != ids or cp.get('protected_ids') != sorted(protected)

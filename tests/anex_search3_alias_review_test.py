@@ -101,6 +101,9 @@ class AliasReviewTests(unittest.TestCase):
             summary = review.finalize(directory)
             self.assertEqual(summary['checked_ids'], 12)
             self.assertEqual(summary['proposal_counts'], {'strong_candidate': 12})
+            checkpoint = json.loads((directory / review.CHECKPOINT).read_text())
+            checkpoint['sources']['live_checkpoint_sha256'] = 'historical-run-value'
+            (directory / review.CHECKPOINT).write_text(json.dumps(checkpoint))
             ssh.reset_mock()
             self.assertEqual(review.run(directory)['new_catalog_reads'], 0)
             ssh.assert_not_called()
