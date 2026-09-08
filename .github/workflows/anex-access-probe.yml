@@ -102,6 +102,8 @@ jobs:
           python3 -B tests/anex_search3_preview_deploy_test.py
           python3 -B tests/anex_search3_gap_queue_test.py
           python3 -B tests/anex_search3_observed_queue_test.py
+          python3 -B tests/anex_search3_owner_decisions_test.py
+          php -l scripts/diagnostics/anex_search3_owner_decisions.php
           node --check v2/anex-search3-preview-v1.js
           node --test tests/anex-search3-preview.test.js
           php -l scripts/diagnostics/anex_catalog_reader.php
@@ -207,6 +209,7 @@ jobs:
             --observed-checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-checkpoint.json" \
             --mapping "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-mappings.json" \
             --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-mapping-import.json"
+          python3 -B scripts/diagnostics/anex_search3_owner_decisions.py
           python3 -B scripts/diagnostics/anex_search3_observed_queue.py --finalize
       - name: Publish isolated ANEX Search3 preview
         if: steps.operation.outputs.mode == 'preview'

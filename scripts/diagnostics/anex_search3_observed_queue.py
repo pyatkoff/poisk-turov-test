@@ -392,6 +392,9 @@ def main():
         imported = json.loads((directory / 'anex-observed-hotel-mapping-import.json').read_bytes())
         if imported.get('status') not in ('imported', 'already_imported', 'no_new_strong_candidates'):
             raise ValueError('mapping import not confirmed')
+        owner_path = directory / 'anex-owner-hotel-decision-run.json'
+        owner_decisions = json.loads(owner_path.read_bytes()) if owner_path.exists() else {'inserted': 0}
+        owner_added = owner_decisions['inserted']
         observed = snapshot()
         if observed['effective_mapped_count'] < cp['mappings_before']:
             raise ValueError('accepted mappings decreased')
@@ -400,7 +403,8 @@ def main():
         save(directory, cp)
         if restore(directory) != cp:
             raise ValueError('finalized checkpoint readback mismatch')
-        report.update(export(directory, cp, observed), added_links=imported['inserted'],
+        report.update(export(directory, cp, observed), added_links=imported['inserted'] + owner_added,
+                      automated_added_links=imported['inserted'], owner_added_links=owner_added,
                       coverage_before=cp['coverage_before'], coverage_after=observed['counts'],
                       import_status=imported['status'])
     else:
