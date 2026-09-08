@@ -131,6 +131,8 @@ jobs:
               --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
               --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
           else
+            jq -c '{ok, checks, search: {destination: .search.destination}, requested_hotel_ids}' \
+              "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
             echo "::warning::ANEX price evidence failed; catalogue checkpoint will still be persisted"
           fi
       - name: Persist validated checkpoint in isolated ANEX staging tables
