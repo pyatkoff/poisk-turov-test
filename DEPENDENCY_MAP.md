@@ -76,11 +76,11 @@ Similar filenames are evidence for an audit, not evidence for deletion.
 
 ## Shared-shell duplication currently known
 
-Standalone pages use `site-header-v2.php` / `.at-global-header`, while the search entrypoint still has a legacy search-header seam. This is a confirmed duplicate concept, but not permission for a broad rewrite. The canonical destination is the shared header/navigation layer; migration must preserve current search affordances and leave search/results/tour/lead behavior unchanged.
+Standalone pages and Search3 use `site-header-v2.php` / `.at-global-header`. The old-search compatibility route retains the legacy `.at-site-header` seam and full manifest; current search/results/tour/lead behavior remains independent of that compatibility layer.
 
 The footer already uses `v2_render_site_footer()` in the search path. New footer implementations are forbidden; migrate consumers toward the shared component.
 
-`search-header-shared-shell-v1.css` is ACTIVE compatibility styling, not a second canonical design system/header implementation.
+`search-header-shared-shell-v1.css` is COMPATIBILITY styling retained only by the full old-search manifest; Search3 excludes it and `site-header-v2.css` is the canonical active header owner.
 
 ## Compatibility and external dependencies
 

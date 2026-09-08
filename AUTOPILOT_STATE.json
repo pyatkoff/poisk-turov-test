@@ -60,27 +60,27 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_PRODUCT_SHELL_LAYER",
-    "title": "Retire the legacy product shell presentation layer from Search3",
+    "id": "S3_LEAN_SHARED_HEADER_SHELL_LAYER",
+    "title": "Retire the legacy shared search-header shell from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1568
+      1573
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "9bcaaae15cc287f929a9fb8c4a42a03307d81b47"
+      "2b6afe8602587ff6e45e13127129daec4187e22d"
     ],
-    "release_sha": "c46d6fab0f7d8ecfd43d6fc46acdf446a742b1db",
-    "artifact_run": 34208410446,
-    "artifact_id": 10048797611,
-    "artifact_digest": "sha256:aad6972854eb311400c17cc831f17135717bf610838f0e205bc3de9888141f5f",
+    "release_sha": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
+    "artifact_run": 34210172714,
+    "artifact_id": 10049486332,
+    "artifact_digest": "sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c",
     "checked_release_asset_bytes": 173509,
-    "checked_release_loaded_bytes": 486335,
+    "checked_release_loaded_bytes": 481880,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit search-header-shared-shell-v1.css as one whole reversible layer; preserve shared header/footer/logo/navigation and active Search3 geometry."
+    "next_action": "Audit ds2-search-intro-v1.css and ds2-selected-tour-convergence-v1.css as whole reversible candidates in parallel; preserve active Search3 entry and selected-tour geometry."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1336,10 +1336,23 @@
       "preview_published": false,
       "audit": "docs/project/search3-lean-tour-design-layer.json",
       "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+    },
+    "lean_shared_header_shell_layer": {
+      "source_pr": 1573,
+      "source_sha": "2b6afe8602587ff6e45e13127129daec4187e22d",
+      "security_run": 34209958561,
+      "artifact_runs": [
+        34209962002,
+        34210172714
+      ],
+      "artifact_id": 10049486332,
+      "artifact_digest": "sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "1ed8fec4b87792b5274d7a61ba4f5a1930cace89",
-  "last_verified_commit_scope": "Checked Search3 release after #1550; form-local narrowing and DS2 result facets share one canonical source owner, while the complete legacy local-filter runtime remains on the old route. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
+  "last_verified_commit_scope": "Checked Search3 release after #1573; search-header-shared-shell-v1.css is excluded only from Search3, current .at-global-header remains owned by site-header-v2.css, and the old route retains the full legacy layer. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7683,7 +7696,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T00:20:00Z",
+  "updated_at": "2026-09-08T09:32:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -8794,6 +8807,41 @@
     "preview_published": false,
     "audit": "docs/project/search3-lean-product-shell-layer.json",
     "corrected_prior_asset_subtotal": "Exact #1563 artifact proves 173277 bytes for the eight public Search3 assets, not the previously transcribed 174000; loaded total 496300 is unchanged.",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_shared_header_shell_layer_retirement": {
+    "source_pr": 1573,
+    "source_sha": "2b6afe8602587ff6e45e13127129daec4187e22d",
+    "checked_code_release_sha": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
+    "retired_search3_owner": "search-header-shared-shell-v1.css",
+    "legacy_layer_bytes_removed": 4455,
+    "current_owner_bytes_added": 0,
+    "raw_before": 486335,
+    "raw_after": 481880,
+    "raw_saved": 4455,
+    "gzip_before": 110185,
+    "gzip_after": 109432,
+    "gzip_saved": 753,
+    "shared_css_before": 129086,
+    "shared_css_after": 124631,
+    "shared_js_before": 183740,
+    "shared_js_after": 183740,
+    "eight_assets_before": 173509,
+    "eight_assets_after": 173509,
+    "security_run": 34209958561,
+    "green_exact_runs": [
+      34209962002,
+      34210172714
+    ],
+    "final_artifact_id": 10049486332,
+    "final_artifact_digest": "sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c",
+    "selected_geometry_artifact": 10049484807,
+    "selected_geometry_digest": "sha256:1d4a362e8ed0255888f343830f540337abb913e5380cbcb88aca2d231cbf24f7",
+    "results_geometry_artifact": 10049485574,
+    "results_geometry_digest": "sha256:1da978383f64e0401a269ca7cd312033610c6c2743a3bbe66999a1349d2f49e5",
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-shared-header-shell-layer.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
