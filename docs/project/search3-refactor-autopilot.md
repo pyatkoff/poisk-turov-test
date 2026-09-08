@@ -2362,3 +2362,19 @@ Exact Chromium retained selected detail/review/lead, result and entry geometry w
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-tour-design-layer.json`.
 
 Next: audit the complete `hotel-details-design.css` presentation layer. Keep it unchanged on the old route and exclude it from Search3 only if focused result/selected coverage proves the inline-detail owner is obsolete.
+
+## S3_LEAN_HOTEL_DETAILS_LAYER — checked release, 2026-09-08
+
+Source PR #1558 / `60223b579d05456d782722ceead4e755a22167d9`; checked code release `4dc61c0154d4129a9d514121120e48692c82cc97`. Search3 no longer loads the complete 4640-byte `hotel-details-design.css` presentation layer. The unchanged layer remains in the full manifest used by `/poisk-turov-old/`.
+
+The layer belongs to the old `.hotel-actions`, `.hotel-info-toggle`, `.hotel-inline-detail` and inline gallery/facts surface. Current Search3 already hides the retired actions and inline detail, while its hotel CTA, expanded tour rows, selected tour and active room details remain owned by current modules. No replacement CSS or JavaScript was added.
+
+Loaded raw is **519318 → 514678 bytes (−4640)**: scoped shared CSS 162301→157661; shared JavaScript and the eight generated Search3 assets remain 183740 and 174000. Carried same-method gzip is **116431 → 115816 (−615)**.
+
+Security `34202647856` and exact artifacts `34202647875` / `34202904621` passed. Reusable final artifact `10046592943`, digest `sha256:d81ea21c4ec39cda85b576bc745108376c6c9bdf695e1db8709ed5194bb2fd24`; selected evidence `10046591698`, digest `sha256:2d028c44e64423351193a4986726b143c9844d298b37ed343bd4d76c1cc10f8f`; results evidence `10046592310`, digest `sha256:2acf4dd85f72f4a039ceef69c521264c30fc743f2843f781edb0e70cf9c70d42`.
+
+Both exact Chromium runs retained selected detail/review/lead, result and entry geometry without external API or lead requests. Eight public paths and Tourvisor/API, URL/payload, price arithmetic, lead transport/mapping, analytics/goals, logo/native/nesting contracts are unchanged.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-hotel-details-layer.json`.
+
+Next: audit the complete `results-experience-v1.css` presentation layer as one reversible package. Preserve active Search3 result geometry in current owners, keep the layer unchanged on the old route, and do not remove active `room-details.css` for size alone.
