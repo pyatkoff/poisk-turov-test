@@ -17,6 +17,7 @@ on:
       - 'tests/search3_site_preview_isolation_test.py'
       - 'tests/search3-selected-geometry-browser.cjs'
       - 'tests/search3-lean-entry-browser.cjs'
+      - 'tests/search3-header-geometry-browser.cjs'
       - 'scripts/build/search3_site_preview_isolation.py'
       - '.github/workflows/build-search3-whole-site-preview.yml'
 
@@ -258,7 +259,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs; then
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -306,6 +307,7 @@ jobs:
           export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
           node tests/search3-results-geometry-browser.cjs
           node tests/search3-entry-geometry-browser.cjs
+          node tests/search3-header-geometry-browser.cjs
 
       - name: Retain selected-tour geometry evidence
         if: always() && steps.selected-geometry.outputs.required == 'true'

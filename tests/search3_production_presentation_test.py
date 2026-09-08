@@ -211,6 +211,18 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         entry = (ROOT / 'src/search3/styles/entry-v1.css').read_text()
         self.assertIn('#tourSearch>details.extras[hidden]{display:none!important}', entry)
 
+    def test_legacy_header_css_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        current_markup = (ROOT / 'v2/site-header-v2.php').read_text()
+        current_styles = (ROOT / 'v2/site-header-v2.css').read_text()
+        legacy_styles = (ROOT / 'v2/header-current-site.css').read_text()
+        self.assertIn("'header-current-site.css'", scoped)
+        self.assertIn('<header class="at-global-header">', current_markup)
+        self.assertNotIn('<header class="at-site-header">', current_markup)
+        self.assertIn('.at-global-header{', current_styles)
+        self.assertNotIn('.at-global-header', legacy_styles)
+
     def test_small_legacy_layout_guards_are_not_search3_owners(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
