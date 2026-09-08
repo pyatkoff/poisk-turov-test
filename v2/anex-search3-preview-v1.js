@@ -80,6 +80,11 @@
   let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', dates = '', panel = null;
   let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null, renderQueued = false;
   let calendarBox = null, calendarObserver = null;
+  let sourceMode = 'all';
+  const sourceChoices = [
+    ['all', 'Все отели'], ['anex', 'С предложениями ANEX API'],
+    ['tourvisor', 'С предложениями Tourvisor'], ['both', 'В обоих источниках']
+  ];
   const replacedText = new Map(), hiddenEmpty = new Map();
   const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   function node(tag, className, text) {
@@ -91,14 +96,30 @@
   const style = node('style');
   style.textContent = 'body.search3-candidate #anexSearch3Results.anex-search3-panel{display:block!important;grid-column:1/-1;min-width:0}.anex-search3-panel{margin:20px 0;min-width:0}.anex-search3-panel h2{font:inherit;font-weight:700;font-size:20px;margin:0 0 12px}.anex-search3-status{color:#566176;font-size:14px;line-height:1.5}.anex-search3-hotel{border:1px solid #dbe2ed;border-radius:16px;background:#fff;padding:16px;margin:12px 0;overflow-wrap:anywhere}.anex-search3-hotel h3{font:inherit;font-size:18px;font-weight:700;margin:0 0 6px}.anex-search3-place{color:#566176;font-size:14px;margin:0 0 12px}.anex-search3-offers{margin:12px 16px;border-top:1px solid #dbe2ed;padding-top:12px;min-width:0;overflow-wrap:anywhere}.anex-search3-hotel .anex-search3-offers{margin:0}.anex-search3-offers summary{cursor:pointer;min-height:44px;display:list-item;align-content:center;color:#2743cb;font-weight:700;line-height:1.5;padding:8px 0}.anex-search3-offer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;padding:12px 0;border-top:1px solid #edf0f5;line-height:1.5;font-size:14px}.anex-search3-offer p{margin:0;flex:1 1 230px}.anex-search3-offer strong{white-space:nowrap}.anex-search3-note{color:#566176;font-size:12px;line-height:1.5;margin:8px 0}';
   document.head.appendChild(style);
+  style.textContent += '\n.anex-search3-source-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;font-size:14px;font-weight:600}.anex-search3-source-filter select{box-sizing:border-box;max-width:100%;min-width:0;min-height:44px;padding:10px 32px 10px 12px;border:1px solid #dbe2ed;border-radius:8px;background:#fff;color:#18243b;font:inherit}.anex-search3-source-filter select:focus-visible{outline:2px solid #2743cb;outline-offset:2px}body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:none!important}@media(max-width:600px){.anex-search3-source-filter select{width:100%}}';
+  const sourceFilter = node('label', 'anex-search3-source-filter', 'Отели в списке');
+  const sourceSelect = node('select');
+  sourceSelect.id = 'anexSearch3SourceFilter';
+  sourceSelect.setAttribute('aria-controls', 'results');
+  sourceChoices.forEach(([value, label]) => {
+    const option = node('option', '', label); option.value = value; sourceSelect.appendChild(option);
+  });
+  sourceSelect.value = sourceMode;
+  sourceFilter.appendChild(sourceSelect);
+  sourceSelect.addEventListener('change', () => {
+    sourceMode = sourceChoices.some(([value]) => value === sourceSelect.value) ? sourceSelect.value : 'all';
+    queueRender();
+  });
   style.textContent += '\n.anex-search3-tv-price-label{display:block!important;font-size:11px;font-weight:500;line-height:1.4;color:#566176}';
   style.textContent += '\nbody.search3-candidate #results .anex-search3-hotel{display:block!important;padding:0!important;width:100%;min-width:0;grid-column:1/-1}.anex-search3-identity{padding:18px 18px 4px}.anex-search3-identity h3{margin:0 0 6px;font-size:18px;line-height:1.3}.anex-search3-source{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px 10px;padding:7px 10px;border-radius:8px;background:#edf2ff;color:#2743cb;font-size:13px;line-height:1.4;font-weight:700;margin:8px 0;max-width:100%;overflow-wrap:anywhere}.anex-search3-source strong{white-space:nowrap}.anex-search3-offers h4{margin:0 0 8px;font-size:15px;color:#2743cb}.anex-search3-tv-source{margin:12px 16px 0;font-size:14px;color:#566176}.anex-search3-hotel .anex-search3-offers{margin:8px 18px 12px}.anex-search3-panel{padding:10px 0}.anex-search3-panel h2{font-size:16px;margin-bottom:4px}.anex-search3-panel p{margin:4px 0}.anex-search3-offer .anex-search3-source{display:block;background:none;padding:0;margin:0 0 4px;font-size:12px}.anex-search3-hotel .anex-search3-place{margin-bottom:4px}@media(max-width:600px){.anex-search3-identity{padding:14px 14px 4px}.anex-search3-hotel .anex-search3-offers{margin:6px 14px 10px}.anex-search3-offer{gap:6px}.anex-search3-offer p{flex-basis:100%}}';
   function replaceText(element, value) {
     if (!element) return;
-    replacedText.set(element, { before: element.textContent, after: value });
+    const previous = replacedText.get(element);
+    replacedText.set(element, { before: previous && element.textContent === previous.after ? previous.before : element.textContent, after: value });
     element.textContent = value;
   }
   function clear() {
+    results.querySelectorAll('.anex-search3-source-hidden').forEach(card => card.classList.remove('anex-search3-source-hidden'));
     results.querySelectorAll('.anex-search3-offers').forEach(details => {
       if (details.tagName !== 'DETAILS') return;
       const id = Number(details.getAttribute('data-anex-search3-row'));
@@ -238,6 +259,7 @@
     labelCalendar();
   }
   function render() {
+    const sourceFocused = document.activeElement === sourceSelect;
     clear();
     if (!isCurrent(active, window.V2SearchLifecycle)) return;
     labelTourvisorProgress();
@@ -253,7 +275,7 @@
     const ranked = [];
     results.querySelectorAll('.hotel-card[data-hotel-id]').forEach((card, index) => {
       const id = String(card.dataset.hotelId), item = tv.get(id) || {};
-      ranked.push({ id, card, price: item.price, category: item.category, rating: item.rating, seaDistance: item.seaDistance, index });
+      ranked.push({ id, card, tourvisor: true, anex: false, price: item.price, category: item.category, rating: item.rating, seaDistance: item.seaDistance, index });
     });
     panel = node('section', 'anex-search3-panel');
     panel.id = 'anexSearch3Results';
@@ -273,11 +295,12 @@
       if (existing) {
         attach(existing, hotel);
         const item = ranked.find(row => row.card === existing);
+        item.anex = true;
         item.price = Math.min(priceRank(item.price), priceRank(hotel.tours[0].price.amount));
         merged++; return;
       }
       const card = standalone(hotel);
-      ranked.push({ id: String(hotel.local_id), card, price: hotel.tours[0].price.amount,
+      ranked.push({ id: String(hotel.local_id), card, tourvisor: false, anex: true, price: hotel.tours[0].price.amount,
         category: hotel.category, rating: hotel.rating, seaDistance: null });
       added++;
     });
@@ -305,7 +328,27 @@
       tvCards.filter(card => card.parentNode === results).forEach(card => results.appendChild(card));
       if (!filterNotice && hotels.length && !ambiguous) status.textContent = 'По выбранным фильтрам предложений ANEX нет. Измените фильтры или сбросьте их.';
     }
+    const counts = { all: ranked.length, anex: added + merged, tourvisor: ranked.filter(item => item.tourvisor).length, both: merged };
+    sourceChoices.forEach(([value, label], index) => { sourceSelect.children[index].textContent = label + ' · ' + counts[value]; });
+    sourceSelect.value = sourceMode;
+    panel.appendChild(sourceFilter);
+    let visible = 0;
+    ranked.forEach(item => {
+      const shown = sourceMode === 'all' || (sourceMode === 'both' ? item.anex && item.tourvisor : item[sourceMode]);
+      if (shown) visible++; else item.card.classList.add('anex-search3-source-hidden');
+    });
+    if (sourceMode !== 'all') {
+      // Keep both offer sections on shared cards; this selects hotels, not a new supplier search.
+      replaceText(document.querySelector('#resultsTools strong'), 'Найдено отелей: ' + visible);
+      replaceText(document.querySelector('[data-ds2-filter-count]'), String(visible));
+      replaceText(document.querySelector('[data-ds2-filter-word]'), 'в выдаче');
+      const notice = filterNotice || (!(added || merged) ? message : '');
+      status.textContent = visible ? 'Показано отелей: ' + visible + ' из ' + ranked.length + '.'
+        : 'Для выбранного источника отелей нет. Выберите «Все отели» или измените фильтры.';
+      if (notice) status.textContent += ' ' + notice;
+    }
     panelAnchor.parentNode.insertBefore(panel, panelAnchor);
+    if (sourceFocused) sourceSelect.focus({ preventScroll: true });
   }
   function labels() {
     const out = {};
@@ -320,7 +363,7 @@
     if (lifecycle && !lifecycle.dirty && lifecycle.snapshot && lifecycle.generation === lastGeneration) return;
     if (controller) controller.abort();
     controller = null;
-    active = null; hotels = []; message = ''; dates = ''; clear(); openHotels.clear();
+    active = null; hotels = []; message = ''; dates = ''; sourceMode = 'all'; clear(); openHotels.clear();
     updateSupplemental();
     tvItems = []; tvCards = [];
     const existing = window.V2Results && window.V2Results.state;
@@ -368,7 +411,10 @@
   const sort = document.getElementById('sortResults');
   if (sort) sort.addEventListener('change', queueRender);
   const rail = document.querySelector('.results-filter-rail');
-  if (rail) ['input', 'change', 'click'].forEach(event => rail.addEventListener(event, queueRender));
+  if (rail) ['input', 'change', 'click'].forEach(event => rail.addEventListener(event, action => {
+    if (action.type === 'click' && action.target && action.target.closest('[data-ds2-reset]')) sourceMode = 'all';
+    queueRender();
+  }));
   ['v2:search-started', 'v2:search-progress', 'v2:search-complete', 'v2:search-continue-started',
     'v2:search-continue-requested', 'v2:search-continue-progress', 'v2:search-continued',
     'v2:search-continue-error'].forEach(event => window.addEventListener(event, queueRender));

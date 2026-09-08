@@ -742,3 +742,76 @@ test('duplicate TV identities are not silently merged', async () => {
   assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
   assert.equal(page.results.querySelectorAll('.anex-search3-offers').length, 0);
 });
+
+test('source filter selects loaded hotels, preserves shared offers, and combines with budget/reset', async () => {
+  const page = preview(true);
+  const tv = [245, 500].map(id => ({ id, price: 100000, category: 4,
+    tours: [{ price: 100000, meal: 'AI' }] }));
+  const original = plain(tv);
+  const visible = () => page.results.querySelectorAll('.hotel-card')
+    .filter(card => !card.classList.contains('anex-search3-source-hidden')).map(card => card.dataset.hotelId);
+  const choose = async value => {
+    const select = page.document.getElementById('anexSearch3SourceFilter');
+    select.value = value; select.dispatchEvent({ type: 'change' }); await tick();
+  };
+  page.reset(1, snapshot());
+  page.window.V2Results.render(tv);
+  await tick();
+  await choose('anex');
+  assert.deepEqual(visible(), []);
+  assert.match(page.document.getElementById('anexSearch3Results').textContent, /Ищем предложения ANEX/);
+  page.requests[0].respond(response(1, [hotel(), hotel({ local_id: 900 })]));
+  await tick();
+  assert.deepEqual(visible(), ['245', '900']);
+  assert.equal(page.document.getElementById('anexSearch3SourceFilter').value, 'anex');
+  await choose('both');
+  assert.deepEqual(visible(), ['245']);
+  assert.match(page.results.querySelector('[data-hotel-id="245"]').textContent, /Tourvisor hotel 245.*ANEX API/);
+  assert.equal(page.tools.querySelector('strong').textContent, 'Найдено отелей: 1');
+  page.controls.price.value = '50000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+  await tick();
+  assert.deepEqual(visible(), []);
+  assert.match(page.document.getElementById('anexSearch3Results').textContent, /Для выбранного источника отелей нет/);
+  await choose('anex');
+  assert.deepEqual(visible(), ['245', '900']);
+  await choose('tourvisor');
+  assert.deepEqual(visible(), []);
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset });
+  await tick();
+  assert.equal(page.document.getElementById('anexSearch3SourceFilter').value, 'all');
+  assert.deepEqual(visible(), ['245', '900', '500']);
+  assert.equal(page.tools.querySelector('strong').textContent, 'Найдено отелей: 3');
+  assert.equal(page.requests.length, 1);
+  assert.deepEqual(tv, original);
+});
+
+test('source selection survives source rerender and sorting, then resets for a new search', async () => {
+  const page = preview();
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, [hotel({ local_id: 900 })]));
+  await tick();
+  const select = page.document.getElementById('anexSearch3SourceFilter');
+  select.value = 'tourvisor'; select.dispatchEvent({ type: 'change' });
+  await tick();
+  assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), false);
+  assert.equal(page.results.querySelector('.anex-search3-hotel').classList.contains('anex-search3-source-hidden'), true);
+  page.sort.dispatchEvent({ type: 'change' });
+  page.window.dispatchEvent({ type: 'v2:results-rendered', detail: {} });
+  await tick();
+  assert.equal(page.document.getElementById('anexSearch3SourceFilter'), select);
+  assert.equal(select.value, 'tourvisor');
+  page.reset(2, snapshot());
+  assert.equal(select.value, 'all');
+  assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), false);
+  page.requests[1].respond({ ok: false, error: 'rate_limited' });
+  await tick();
+  select.value = 'both'; select.dispatchEvent({ type: 'change' });
+  await tick();
+  assert.match(page.document.getElementById('anexSearch3Results').textContent, /лимит запросов ANEX/);
+  assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), true);
+  page.reset(3, null);
+  assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), false);
+  assert.equal(page.tools.querySelector('strong').textContent, 'Найдено 0 туров');
+  assert.equal(page.requests.length, 2);
+});
