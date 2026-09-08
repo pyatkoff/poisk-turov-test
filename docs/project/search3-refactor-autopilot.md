@@ -2239,3 +2239,19 @@ The required source suite verifies friendly copy, current-tour id, one retry acr
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Physical Safari/safe-area, live current-source verification, manual screenshot review, dedicated empty→recovery Chromium and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-flight-empty-runtime.json`.
 
 Next: audit the complete `price-confidence-v1.js` runtime. Preserve truthful totals, pending-price states, selected-flight arithmetic and all protected payload/lead contracts; exclude it only if focused price snapshots demonstrate that the legacy layer is presentation-only.
+
+## S3_LEAN_PRICE_CONFIDENCE_RUNTIME — checked release, 2026-09-08
+
+Source PR #1544 / `8a5c9c895b23cd6a068dfcf5b40dcbf8141c3759`; checked code release `90124c5440eecbc46b8aeb104614800e3cc54c80`. Search3 no longer loads the complete 2399-byte `price-confidence-v1.js` runtime. The full legacy route retains the unchanged runtime and `V2PriceConfidenceV1` compatibility global.
+
+The runtime only created a second explanatory note. Current owners already preserve the protected truth: `pricePending` uses the base tour price, a confirmed flight replaces it with one normalized total across the selected header, mobile bar and booking summary, and the booking summary states that a manager confirms final price and flight details before payment. `flight-price-sync-v1.js`, `unpriced-flight-price-reset-v1.js`, price arithmetic and lead payload/transport were not changed. The 99-byte dead review selector for the retired node was removed.
+
+Loaded raw is **550542 → 548044 bytes (−2498)**: scoped shared JavaScript 192059→189660 and eight Search3 assets 172365→172266; shared CSS remains 186118. Exact emitted endpoints plus eight independent files gzip is **122288 → 121807 (−481)**.
+
+Security `34188350663` and exact artifacts `34188350666` / `34188528176` passed. Reusable final artifact `10041387959`, digest `sha256:99faf7dd6e12c92697fab64c2729721075991a08c69637580b0b43e32caf41be`; selected evidence `10041387331`, digest `sha256:da267f7de034dfa0b67b89a5ea854cfe5898a4c5943012010c53a62e7cb78ae8`; results evidence `10041387639`, digest `sha256:bd88065902147240b66a13c5c720c0c4e5f8b2a6377c297122477be8b41fa654`.
+
+Focused source checks cover base, pending and confirmed totals plus the retained booking confirmation copy. Exact Chromium retained 12 selected detail/review/lead states, 30 entry states, 12 result states and 10 header states without external API or lead requests. The first exact run correctly detected the intentional two-node note removal; the runtime baseline was advanced to the checked source while keeping every compared property, state and width.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-price-confidence-runtime.json`.
+
+Next: audit the complete `results-filter-autorefresh-v1.js` owner against current instant/local DS2 result filters. Preserve loaded-result completeness guards, zero-result recovery and explicit search submission; do not keep an automatic Tourvisor refresh path in Search3 unless a focused contract proves it is required.
