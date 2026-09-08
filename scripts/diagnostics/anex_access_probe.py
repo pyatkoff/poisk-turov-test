@@ -272,6 +272,42 @@ def choose_named(items, preferred):
     return candidates[0] if candidates else None
 
 
+def choose_exact_named(items, expected):
+    if isinstance(items, dict):
+        items = items.get("items", [])
+    expected = " ".join(str(expected).split()).casefold()
+    if not expected or not isinstance(items, list):
+        return None
+    for item in items:
+        if not isinstance(item, dict) or not positive_id(item):
+            continue
+        for key in ("name", "nameAlt", "alias"):
+            if " ".join(str(item.get(key, "")).split()).casefold() == expected:
+                return item
+    return None
+
+
+def requested_price_hotel_ids(tokens):
+    raw = tokens.get("ANEX_PRICE_HOTEL_IDS", "")
+    if raw in ("", None):
+        return []
+    if not isinstance(raw, str) or len(raw) > 300:
+        raise ValueError("invalid price hotel ids")
+    result = []
+    seen = set()
+    for value in raw.split(","):
+        value = value.strip()
+        if not re.fullmatch(r"[1-9][0-9]{0,8}", value):
+            raise ValueError("invalid price hotel ids")
+        identifier = int(value)
+        if identifier not in seen:
+            seen.add(identifier)
+            result.append(identifier)
+    if not 1 <= len(result) <= 30:
+        raise ValueError("invalid price hotel ids")
+    return result
+
+
 def available_dates(data, today):
     if not isinstance(data, dict):
         return []
@@ -337,17 +373,46 @@ def offer_sample(row, selected):
             availability_flag = econom.get(source) if isinstance(econom, dict) else None
             if availability_flag in ("Y", "N", "F", "R"):
                 sample[target] = availability_flag
+        external_id = positive_id({"id": row.get("hotelKey")})
+        if external_id:
+            sample["external_id"] = external_id
         return sample if sample["hotel"] else None
     except (KeyError, TypeError, ValueError, InvalidOperation):
         return None
 
 
+def summarize_price_evidence(samples, requested):
+    by_id = {}
+    for sample in samples:
+        identifier = sample.get("external_id")
+        if identifier not in requested:
+            continue
+        item = by_id.setdefault(identifier, {
+            "external_id": identifier,
+            "offer_count": 0,
+            "hotel": sample.get("hotel"),
+            "star": sample.get("star"),
+            "rooms": [],
+            "meals": [],
+        })
+        item["offer_count"] += 1
+        for source, target in (("room", "rooms"), ("meal", "meals")):
+            value = sample.get(source)
+            if value and value not in item[target] and len(item[target]) < 5:
+                item[target].append(value)
+    return [by_id[identifier] for identifier in requested if identifier in by_id]
+
+
 def remote_price_probe(tokens):
     global SENSITIVE_VALUES
-    SENSITIVE_VALUES = tuple(value for raw in tokens.values() if isinstance(raw, str)
+    SENSITIVE_VALUES = tuple(value for key, raw in tokens.items()
+                             if key.endswith("_TOKEN") and isinstance(raw, str)
                              for value in (raw, raw.strip()) if value)
+    requested = requested_price_hotel_ids(tokens)
+    evidence_mode = bool(requested)
     checks, selected, samples = [], {}, []
-    report = {"mode": "prices", "checks": checks, "search": selected, "samples": samples}
+    report = {"mode": "price_evidence" if evidence_mode else "prices",
+              "checks": checks, "search": selected, "samples": samples}
     token = tokens.get("ANEX_API_TOKEN", "").strip()
     if not token:
         checks.append({"check": "configuration", "status": "missing_secret"})
@@ -363,8 +428,11 @@ def remote_price_probe(tokens):
         if departure is None:
             stop("no_departures")
         params = {"TOWNFROMINC": positive_id(departure)}
-        destination = choose_named(api_data(token, "SearchTour_STATES", params, checks),
-                                   (r"турци|turkey|türkiye|\btur\b", r"егип|egypt"))
+        states = api_data(token, "SearchTour_STATES", params, checks)
+        target_destination = tokens.get("ANEX_PRICE_DESTINATION", "")
+        destination = (choose_exact_named(states, target_destination)
+                       if evidence_mode and target_destination else
+                       choose_named(states, (r"турци|turkey|türkiye|\btur\b", r"егип|egypt")))
         if destination is None:
             stop("no_destinations")
         params.update(STATEINC=positive_id(destination), ADULT=2, CHILD=0)
@@ -397,6 +465,9 @@ def remote_price_probe(tokens):
         params.update(NIGHTS_FROM=duration, NIGHTS_TILL=duration, FREIGHT=1, FILTER=1,
                       PRICEPAGE=1, PARTITION_PRICE=32, SORT="ASC", DYN_SEPARATE=1)
         selected.update(nights_from=duration, nights_till=duration)
+        if evidence_mode:
+            params["HOTELS"] = ",".join(str(identifier) for identifier in requested)
+            selected["requested_hotels"] = len(requested)
         data = api_data(token, "SearchTour_PRICES", params, checks)
         rows = data.get("prices", []) if isinstance(data, dict) else data
         if not isinstance(rows, list):
@@ -406,6 +477,19 @@ def remote_price_probe(tokens):
         report["external_results_not_loaded"] = bool(data.get("searchKey")) if isinstance(data, dict) else False
         valid = [offer_sample(row, selected) for row in rows]
         valid = [sample for sample in valid if sample is not None]
+        if evidence_mode:
+            expected = [sample for sample in valid if sample.get("external_id") in requested]
+            returned = sorted({sample["external_id"] for sample in expected})
+            report.update(
+                requested_hotel_ids=requested,
+                returned_hotel_ids=returned,
+                missing_hotel_ids=[identifier for identifier in requested if identifier not in returned],
+                unexpected_offer_count=sum(sample.get("external_id") not in requested for sample in valid),
+                evidence=summarize_price_evidence(expected, requested),
+                valid_offers=len(expected),
+                bookable_offers=sum(sample["bookable"] is True for sample in expected),
+            )
+            return report
         report["valid_offers"] = len(valid)
         report["bookable_offers"] = sum(sample["bookable"] is True for sample in valid)
         samples.extend(valid[:3])
