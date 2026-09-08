@@ -53,29 +53,38 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1591 removes the complete app.css layer from Search3 and retains only active base, entry, selected, lead and card primitives in current owners. Exact head 7fe04821 passed after geometry-driven repair. Checked loaded CSS/JS is 448524 to 438274 raw (-10250); the eight generated assets are 185100 raw (+2661 retained current-owner CSS), so this is a route payload reduction, not an eight-asset reduction.",
+    "last_material_progress": "PRs #1591/#1592/#1594 retire app.css, search-states-design.css and mobile-results-filters-v1.css from Search3 while retaining the full old-search bundle. Loaded CSS/JS falls 448524 to 431828 raw (-16696 net); final Security and exact artifact/geometry checks are green.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Re-audit search-states-design.css after app.css retirement; remove it only as a whole Search3-only layer with explicit current-owner status/skeleton/empty fallbacks and a positive final loaded-byte result.",
+    "next_action": "Retire current-price-calendar-v1.css from Search3 after moving only its active grid/button primitives into entry-calendar.css; preserve its JavaScript, price arithmetic and the complete old-route layer.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_APP_PRESENTATION_LAYER",
-    "title": "Retire the legacy app.css presentation layer from Search3",
+    "id": "S3_LEAN_APP_STATE_MOBILE_LAYERS",
+    "title": "Retire legacy application, search-state and mobile-filter presentation layers from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1591],
+    "source_prs": [
+      1591,
+      1592,
+      1594
+    ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_shas": ["7fe04821c961c48243a69d6edee0e345bcc43d8a"],
-    "release_sha": "de49b39989891945b8e47434e72d5e79d9f4080b",
-    "security_runs": [34230516546],
-    "exact_runs": [34230516579],
+    "implementation_shas": [
+      "7fe04821c961c48243a69d6edee0e345bcc43d8a",
+      "1607948872372a5d1426076ccd1158846258be68",
+      "220667185984d1e3c05ede301fa222038b0637b4"
+    ],
+    "release_sha": "58b5cf9dc1c13388c6ebc9706cbdc2a293f7bbfc",
+    "last_fully_checked_release_sha": "58b5cf9dc1c13388c6ebc9706cbdc2a293f7bbfc",
+    "security_run": 34231823029,
+    "exact_run": 34231823219,
     "checked_release_asset_bytes": 185100,
-    "release_loaded_bytes": 438274,
+    "release_loaded_bytes": 431828,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Re-audit search-states-design.css after app.css retirement; preserve explicit current status/skeleton/empty-state ownership and keep the old route unchanged."
+    "next_action": "Retire current-price-calendar-v1.css from Search3 after moving only its active grid/button primitives into entry-calendar.css; preserve its JavaScript, price arithmetic and the complete old-route layer."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -127,21 +136,6 @@
     "visual_ci": 33934082023
   },
   "last_ci": {
-    "app_presentation_layer_retirement": {
-      "artifact_digest": "sha256:8248e14765ed95dce5f84ff16799e893a16a1dd479aebb07910e7282a7bdbb4f",
-      "artifact_id": 10057632192,
-      "artifact_run": 34230516579,
-      "checked_release_sha": "de49b39989891945b8e47434e72d5e79d9f4080b",
-      "entry_results_artifact": 10057631078,
-      "entry_results_digest": "sha256:dfb7988688678d2a4907dcda54c6bc612ce427f2620ddb9c0c3285a8364a653f",
-      "preview_published": false,
-      "required_passed": 2,
-      "security_run": 34230516546,
-      "selected_geometry_artifact": 10057629961,
-      "selected_geometry_digest": "sha256:d854e0350839288dd2da6635f5dc6ed6bca8fcf7876be24df0e32cebb700cc22",
-      "source_pr": 1591,
-      "source_sha": "7fe04821c961c48243a69d6edee0e345bcc43d8a"
-    },
     "acceptance_guard_owner_retirement": {
       "artifact_digest": "sha256:3f4600d19aab8503a56e6ec53620e257ac25b33e25d2f34b6968a8af71cb6ef5",
       "artifact_id": 10023536739,
@@ -1410,37 +1404,11 @@
       "exact_conclusion": "FAILURE",
       "failure_scope": "pixel-to-pixel selected-tour geometry changed after intentional legacy skin removal; all 12 states kept equal DOM node counts and no horizontal overflow",
       "evidence_artifact": 10054929764,
-      "evidence_digest": "sha256:71cd2ce050e3d5a444a981905ff88464241888d2023dfd44794a5c17bc495d03",
-      "repair_pr": 1590,
-      "repair_source_sha": "7e02d38bb8da64a63efad18ce5089a2afa388183",
-      "repair_security_run": 34225808267,
-      "repair_exact_run": 34225808272,
-      "repair_exact_conclusion": "SUCCESS",
-      "artifact_id": 10055697968,
-      "artifact_digest": "sha256:374ddaf86efdfad49a82d46c31d17bdb37d20428ae58e67f1d2586462d6da4f6",
-      "selected_geometry_artifact": 10055697041,
-      "selected_geometry_digest": "sha256:53de20c17c1ef2f1b025ae225a7c867069484d999b00b9c48b160cc0312a8415",
-      "selected_geometry_states": "12 detail/review/lead states at 375/760/1000/1440",
-      "final_conclusion": "SUCCESS"
-    },
-    "current_presentation_runtime_consolidation": {
-      "source_pr": 1587,
-      "source_sha": "3f9f5896ad56a6851be07f616506e8c815ac2571",
-      "security_run": 34224138160,
-      "exact_run": 34224138265,
-      "artifact_id": 10055011556,
-      "artifact_digest": "sha256:5fb3eba01d21851bea83b2701907a2f7ab134105234b3f5b16eed9707d32807a",
-      "selected_geometry_artifact": 10055010965,
-      "selected_geometry_digest": "sha256:0911a7eb49d6c1bd920c09ef36a280aff99c596d6382607e59440bce5ac67e1",
-      "eight_asset_raw_before": 178418,
-      "eight_asset_raw_after": 177847,
-      "eight_asset_raw_saved": 571,
-      "required_passed": 2,
-      "preview_published": false
+      "evidence_digest": "sha256:71cd2ce050e3d5a444a981905ff88464241888d2023dfd44794a5c17bc495d03"
     }
   },
-  "last_verified_commit": "de49b39989891945b8e47434e72d5e79d9f4080b",
-  "last_verified_commit_scope": "Checked Search3 release after #1591: app.css is excluded only from Search3; the old route keeps the full layer, while active base, entry, selected, lead and card primitives live in current owners. Exact source 7fe04821 passed. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "f1a7fe122d878918157cb27f4c83165569f0638e",
+  "last_verified_commit_scope": "Checked Search3 release after #1584; search-filters-ux-v1.css is excluded only from Search3, current native form/tourist owners are preserved, and the old route retains the full legacy layer. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -9044,5 +9012,52 @@
       "live current-source interaction"
     ],
     "next": "Continue with an independent whole-layer audit (app.css/search-states-design.css); do not restore retired selected-tour pixels unless an actual functional regression is confirmed."
+  },
+  "latest_app_state_mobile_layer_retirements": {
+    "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+    "source_prs": [1591, 1592, 1594],
+    "source_shas": [
+      "7fe04821c961c48243a69d6edee0e345bcc43d8a",
+      "1607948872372a5d1426076ccd1158846258be68",
+      "220667185984d1e3c05ede301fa222038b0637b4"
+    ],
+    "release_shas": [
+      "de49b39989891945b8e47434e72d5e79d9f4080b",
+      "49f898823d30b6f3e60cb682e9d474767a03f812",
+      "58b5cf9dc1c13388c6ebc9706cbdc2a293f7bbfc"
+    ],
+    "removed_search3_layers": [
+      "app.css",
+      "search-states-design.css",
+      "mobile-results-filters-v1.css"
+    ],
+    "raw_before": 448524,
+    "raw_after": 431828,
+    "raw_saved": 16696,
+    "shared_css_before": 82345,
+    "shared_css_after": 62988,
+    "shared_js_before": 183740,
+    "shared_js_after": 183740,
+    "eight_assets_before": 182439,
+    "eight_assets_after": 185100,
+    "security_runs": [34230516546, 34231461485, 34231823029],
+    "exact_runs": [34230516579, 34231461481, 34231823219],
+    "final_artifact_id": 10058165680,
+    "final_artifact_digest": "sha256:feee4efdd6bdef701221c28a0d72f35e0ecacca08f7ff5005d0da8c3888dedf3",
+    "selected_geometry_artifact": 10058163708,
+    "selected_geometry_digest": "sha256:84b34d9689a3b14c14a527ad2031eb2c5827a59f039665075fbd0515c277870c",
+    "results_geometry_artifact": 10058164665,
+    "results_geometry_digest": "sha256:d8f80b8afdc76c6ef1c5276409f1ec8eb1d7e7663190482d30d264e6a0d93ee9",
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "audit": "docs/project/search3-lean-app-state-mobile-layers.json",
+    "deferred": [
+      "live current-source interaction and manual screenshot inspection",
+      "physical Safari and safe-area",
+      "owner visual acceptance"
+    ],
+    "next": "Retire current-price-calendar-v1.css from Search3 after moving only active day-grid/button primitives into entry-calendar.css; preserve current-price-calendar-v1.js, price arithmetic and the complete old route."
   }
 }
