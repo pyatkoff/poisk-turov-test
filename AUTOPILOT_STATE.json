@@ -53,32 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1554 retires the complete 11744-byte enhancements.css presentation layer from Search3. Exact Chromium identified only 53 bytes of live selected-picture and flight-variant positioning, now retained in selected-tour-ux.css; net route payload falls 535608 to 523917 raw (-11691) and carried same-method gzip falls 119180 to 117126 (-2054). The full legacy route retains the unchanged layer.",
+    "last_material_progress": "PR #1556 retires the complete 5269-byte tour-design-v1.css presentation layer from Search3. Exact Chromium identified a 670-byte live selected-tour and mobile-flight geometry slice, now retained in selected-tour-ux.css; net route payload falls 523917 to 519318 raw (-4599) and carried same-method gzip falls 117126 to 116431 (-695). The full legacy route retains the unchanged layer.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit tour-design-v1.css as the next complete legacy presentation-layer candidate. Attempt one reversible whole-layer exclusion, retain only exact geometry exposed by focused CI, and keep the unchanged layer on the old route.",
+    "next_action": "Audit hotel-details-design.css as the next complete legacy presentation-layer candidate. Preserve the full old-route owner and exclude it from Search3 only if focused result/selected coverage proves the inline-detail layer is obsolete.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_ENHANCEMENTS_LAYER",
-    "title": "Retire the legacy enhancements presentation layer from Search3",
+    "id": "S3_LEAN_TOUR_DESIGN_LAYER",
+    "title": "Retire the legacy tour-design presentation layer from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1554],
+    "source_prs": [
+      1556
+    ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "d42367668ebfbfc13938f8b6c07a2106d7e51b8d"
+      "87190b028bb628c7b831c65e11d5ea8d54d8639c"
     ],
-    "release_sha": "942ed8d0f895ea17d69e7c41b9d77b3a77224ca8",
-    "artifact_run": 34197764610,
-    "artifact_id": 10044609590,
-    "artifact_digest": "sha256:c935859742995af5186953d99910c964e5a5096d9a94234dae1db9b1cc0c4ec0",
-    "checked_release_asset_bytes": 173330,
-    "checked_release_loaded_bytes": 523917,
+    "release_sha": "74bb11cca818e111503f888a99b3a61e306c1186",
+    "artifact_run": 34200268121,
+    "artifact_id": 10045565727,
+    "artifact_digest": "sha256:738136f729747089b59cb65d9e61a018b53f6c46737959d62990baf18ed21a23",
+    "checked_release_asset_bytes": 174000,
+    "checked_release_loaded_bytes": 519318,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit tour-design-v1.css as the next complete legacy presentation-layer candidate. Preserve its full old-search owner and do not split out micro-removals."
+    "next_action": "Audit hotel-details-design.css as a whole legacy layer; keep it unchanged on /poisk-turov-old/ and do not split out micro-removals."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1158,7 +1160,10 @@
       "source_pr": 1535,
       "source_sha": "bb7ed9e3f4eefcda01a2f49f0a1ff186c7064e0a",
       "security_run": 34179958602,
-      "artifact_runs": [34179958601, 34180190441],
+      "artifact_runs": [
+        34179958601,
+        34180190441
+      ],
       "artifact_id": 10038644238,
       "artifact_digest": "sha256:bb4e598493804b4072972cf88311a0b8e6d15119c93a048bc20bde5718993ff8",
       "header_results_artifact": 10038643910,
@@ -1171,9 +1176,15 @@
     "selected_description_owner_retirement": {
       "source_pr": 1536,
       "source_sha": "cc35208f740cd957ca450f7b19fa2acfe6af7e6d",
-      "security_runs": [34180675058, 34181078426],
+      "security_runs": [
+        34180675058,
+        34181078426
+      ],
       "initial_exact_failure": 34180675055,
-      "artifact_runs": [34181078436, 34181265652],
+      "artifact_runs": [
+        34181078436,
+        34181265652
+      ],
       "artifact_id": 10039007717,
       "artifact_digest": "sha256:67a3c704cccb21dd254c91a774d91ce35d327ec06e1cfcdd1ebbd720614235f3",
       "results_header_artifact": 10039007339,
@@ -1191,7 +1202,10 @@
         "run": 34182323940,
         "reason": "The selected-tour guard combined the pre-#1536 generated CSS baseline with a runtime base that no longer contained the retired injected theme. The geometry baseline advanced to final checked #1536 source cc35208f; no assertion or compared property was removed."
       },
-      "artifact_runs": [34182736594, 34182975846],
+      "artifact_runs": [
+        34182736594,
+        34182975846
+      ],
       "artifact_id": 10039560348,
       "artifact_digest": "sha256:ca5d0f292acc46e75bbca8cc9a774d5a39fd055050ac889106af54673f731f45",
       "results_header_artifact": 10039560064,
@@ -1206,7 +1220,10 @@
       "source_pr": 1540,
       "source_sha": "dddbaa5d9ead9b3178766a44eeba329418b4e497",
       "security_run": 34184579113,
-      "artifact_runs": [34184579101, 34184702799],
+      "artifact_runs": [
+        34184579101,
+        34184702799
+      ],
       "artifact_id": 10040123280,
       "artifact_digest": "sha256:6b40ec5faf8e19e1f5cfe20f38e149fbb7c4f8cabffdeab4c06f8ad0b7da3542",
       "results_geometry_artifact": 10040123068,
@@ -1221,7 +1238,10 @@
       "source_pr": 1542,
       "source_sha": "0301f3bf9c2ab77d7f837e86f6915c344f9f87fe",
       "security_run": 34186013087,
-      "artifact_runs": [34186013106, 34186184019],
+      "artifact_runs": [
+        34186013106,
+        34186184019
+      ],
       "artifact_id": 10040600906,
       "artifact_digest": "sha256:fa390f4dc397d04cf7a9c940d8051d3d416e309c2892c91bab14c3d6c43cc73c",
       "results_geometry_artifact": 10040600381,
@@ -1236,7 +1256,10 @@
       "source_pr": 1546,
       "source_sha": "c7118489fe450ae7850f058206bb20031e6e3004",
       "security_run": 34189315892,
-      "artifact_runs": [34189315891, 34189452118],
+      "artifact_runs": [
+        34189315891,
+        34189452118
+      ],
       "artifact_id": 10041716679,
       "artifact_digest": "sha256:bc39e469877ee9b24721262975490a1d9c6dca8c2ea23d592d558512c92eb384",
       "results_geometry_artifact": 10041716298,
@@ -1251,7 +1274,10 @@
       "source_pr": 1548,
       "source_sha": "e3c6fe0615e64c9117faa0d1895c35a09fe9d7c4",
       "security_run": 34190365275,
-      "artifact_runs": [34190365259, 34190514822],
+      "artifact_runs": [
+        34190365259,
+        34190514822
+      ],
       "artifact_id": 10042067449,
       "artifact_digest": "sha256:3afd81112c9f06803248747e27edb48d8d5de6e44256b15db06f08ce0fdb1bc4",
       "results_geometry_artifact": 10042066943,
@@ -1266,7 +1292,10 @@
       "source_pr": 1550,
       "source_sha": "4cd7961bb85b3654a1c2cfae32d78747deb5c888",
       "security_run": 34192366116,
-      "artifact_runs": [34192366178, 34192605097],
+      "artifact_runs": [
+        34192366178,
+        34192605097
+      ],
       "artifact_id": 10042768273,
       "artifact_digest": "sha256:6b1e966e07714ccff226269fd0ee8099288b34e3ffb87e1f93c9ca764cf588df",
       "results_geometry_artifact": 10042767642,
@@ -1276,6 +1305,37 @@
       "focused_source_states": "combined stars, rating, price, region/subregion, catalog refresh, local narrowing, supplier-bound broadening, zero-result bridge and legacy retention",
       "required_passed": 2,
       "preview_published": false
+    },
+    "tour_design_layer": {
+      "source_pr": 1556,
+      "source_sha": "87190b028bb628c7b831c65e11d5ea8d54d8639c",
+      "checked_code_release_sha": "74bb11cca818e111503f888a99b3a61e306c1186",
+      "security_run": 34199833477,
+      "failed_exact_runs": [
+        34198929535,
+        34199068139,
+        34199526115
+      ],
+      "green_exact_runs": [
+        34199833496,
+        34200268121
+      ],
+      "artifact_id": 10045565727,
+      "artifact_digest": "sha256:738136f729747089b59cb65d9e61a018b53f6c46737959d62990baf18ed21a23",
+      "selected_geometry_artifact": 10045564964,
+      "selected_geometry_digest": "sha256:903a62215194e12a3bb5bf7394d0552d0aca62aea855cd74f791c8b1815a1e48",
+      "results_geometry_artifact": 10045565347,
+      "results_geometry_digest": "sha256:95af06173ab0262b92f0d25bc54eed81be45f52ac45a931adf0156e7cf97a821",
+      "raw_before": 523917,
+      "raw_after": 519318,
+      "raw_saved": 4599,
+      "gzip_before": 117126,
+      "gzip_after": 116431,
+      "gzip_saved": 695,
+      "full_legacy_manifest_owner_retained": true,
+      "preview_published": false,
+      "audit": "docs/project/search3-lean-tour-design-layer.json",
+      "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
     }
   },
   "last_verified_commit": "1ed8fec4b87792b5274d7a61ba4f5a1930cace89",
@@ -8405,7 +8465,10 @@
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   },
   "latest_header_and_selected_description_retirement": {
-    "source_prs": [1535, 1536],
+    "source_prs": [
+      1535,
+      1536
+    ],
     "source_shas": [
       "bb7ed9e3f4eefcda01a2f49f0a1ff186c7064e0a",
       "cc35208f740cd957ca450f7b19fa2acfe6af7e6d"
@@ -8584,8 +8647,17 @@
     "gzip_saved": 1329,
     "eight_assets_before": 172266,
     "eight_assets_after": 173277,
-    "failed_exact_runs": [34193483597, 34193997477, 34194429152, 34195148577, 34195705377],
-    "green_exact_runs": [34196012398, 34196175190],
+    "failed_exact_runs": [
+      34193483597,
+      34193997477,
+      34194429152,
+      34195148577,
+      34195705377
+    ],
+    "green_exact_runs": [
+      34196012398,
+      34196175190
+    ],
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-design-v1-layer.json",
@@ -8606,8 +8678,13 @@
     "gzip_saved": 2054,
     "eight_assets_before": 173277,
     "eight_assets_after": 173330,
-    "failed_exact_runs": [34197097949],
-    "green_exact_runs": [34197557413, 34197764610],
+    "failed_exact_runs": [
+      34197097949
+    ],
+    "green_exact_runs": [
+      34197557413,
+      34197764610
+    ],
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-enhancements-layer.json",
