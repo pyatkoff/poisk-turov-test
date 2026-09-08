@@ -111,6 +111,12 @@ class AliasReviewTests(unittest.TestCase):
                 'status': 'not_prepared', 'checked_ids': 0,
                 'supplier_requests': 0, 'new_catalog_reads': 0})
 
+    def test_bootstrap_accepts_only_pinned_source_lineage(self):
+        for artifact_id in review.BOOTSTRAP_SOURCE_ARTIFACTS:
+            self.assertTrue(review.bootstrap_source_allowed(artifact_id))
+        self.assertFalse(review.bootstrap_source_allowed(10080925594))
+        self.assertFalse(review.bootstrap_source_allowed(None))
+
 
 if __name__ == '__main__':
     unittest.main()

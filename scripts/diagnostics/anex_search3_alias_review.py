@@ -19,6 +19,7 @@ REPORT = 'anex-alias-review-report.json'
 PRIORITY = Path('docs/integrations/reports/anex-observed-evidence-recovery-20260908.json')
 PRIORITY_SHA = '66326b875624d83cf76b13db865ce39db3c52f1279d2de8c5ceca1c3713c4780'
 BOOTSTRAP_ARTIFACT = 10079280403
+BOOTSTRAP_SOURCE_ARTIFACTS = {BOOTSTRAP_ARTIFACT, 10080726299, 10080925593}
 MAX_IDS = 12
 FINAL_STATES = {'completed', 'interrupted_result_unknown', 'not_started'}
 QUALIFIERS = {'beach', 'garden', 'palace', 'park', 'annex', 'adults', 'family', 'harem'}
@@ -26,6 +27,10 @@ QUALIFIERS = {'beach', 'garden', 'palace', 'park', 'annex', 'adults', 'family', 
 
 def job():
     return [os.environ.get('GITHUB_RUN_ID', ''), os.environ.get('GITHUB_RUN_ATTEMPT', '')]
+
+
+def bootstrap_source_allowed(artifact_id):
+    return artifact_id in BOOTSTRAP_SOURCE_ARTIFACTS
 
 
 def file_sha(path):
@@ -231,7 +236,7 @@ def prepare(directory):
         return {'status': 'restored', 'recovered_unknown_ids': recovered,
                 'supplier_requests': 0, 'inserted': 0}
     source = json.loads((directory / 'anex-checkpoint-source.json').read_bytes())
-    if source.get('artifact_id') != BOOTSTRAP_ARTIFACT:
+    if not bootstrap_source_allowed(source.get('artifact_id')):
         raise ValueError('alias checkpoint missing; refusing reset')
     rows, sources, protected_ids = source_rows(directory)
     pending = {r['anex_hotel_id']: r for r in live.snapshot()['pending']}
