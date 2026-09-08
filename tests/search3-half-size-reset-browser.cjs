@@ -51,7 +51,7 @@ async function run(browser, width) {
     const response = await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200, 'isolated Search3 route loads');
     assert.equal(await page.locator('body').evaluate(node => node.classList.contains('search3-candidate')), true);
-    await page.waitForFunction(() => window.V2Runtime && window.V2Results && window.V2TourController && window.V2FlightEmptyRecoveryV1 && window.Search3SummaryCta);
+    await page.waitForFunction(() => window.V2Runtime && window.V2Results && window.V2TourController && window.Search3SummaryCta);
 
     for (const selector of ['#tourSearch input[type=date]', '#tourSearch select.search3-direct-control', '#tourSearch .search-submit']) {
       const control = page.locator(selector).first();
@@ -76,6 +76,7 @@ async function run(browser, width) {
     const directTour = page.locator('#results .direct-tour').first();
     await directTour.waitFor();
     await directTour.click();
+    await page.waitForFunction(() => window.V2FlightEmptyRecoveryV1);
     await page.waitForSelector('#selectedTour .search3-flight-continue button');
     assert.match(await page.locator('#selectedTour').innerText(), /148[\s\u00a0]*500/, 'selected price remains visible');
     await page.locator('#selectedTour .search3-flight-continue button').click();
