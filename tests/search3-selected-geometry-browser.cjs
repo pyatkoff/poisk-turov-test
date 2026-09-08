@@ -94,7 +94,7 @@ async function run(browser, width, previous) {
     await page.waitForFunction(()=>document.body.classList.contains('search3-selected-open'));
     const prefix=(previous?'baseline':'current')+'-'+width;
     const states={detail:await capture(page,prefix+'-detail')};
-    assert.equal(await page.locator('#selectedTour .selected-confidence').count(),previous?1:0,'only the baseline contains the retired trust decoration');
+    assert.equal(await page.locator('#selectedTour .selected-confidence').count(),0,'the retired trust decoration stays absent');
     if(!previous) {
       assert.equal(await page.locator('.search3-selected-mobile-bar,.facts-secondary-toggle,.hotel-desc-toggle,.lead-optional-toggle,.search3-flight-show-all').count(),0,'retired presentation owners are not reconstructed');
       assert.equal(await page.locator('#selectedTour .facts > div[hidden]').count(),0,'all original tour facts remain directly available');
