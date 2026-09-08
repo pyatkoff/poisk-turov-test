@@ -145,6 +145,7 @@ async function verifyEmptyLocalRail(browser) {
       if (!response || response.status() !== 200) throw new Error(width + ': Search3 fixture HTTP failure');
       await page.waitForSelector('body.search3-candidate');
       if (await page.evaluate(() => typeof window.V2ResultsFilterAutorefreshV1) !== 'undefined') throw new Error(width + ': legacy automatic supplier refresh owner is loaded');
+      if (await page.evaluate(() => typeof window.V2ResultsDepthV1) !== 'undefined') throw new Error(width + ': legacy duplicate 100-result request owner is loaded');
       if (width === 375) {
         const witnesses = declarationAudit.assets.flatMap(asset => asset.rows);
         const unsupported = await page.evaluate(rows => rows.filter(row =>

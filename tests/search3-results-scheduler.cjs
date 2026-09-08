@@ -27,6 +27,13 @@ const form = { elements: { from: { value: 'Москва' }, country: { value: '�
 const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, resultsSearchSummary: searchSummary, resultsSearchEdit: edit, resultsSearchDates: dates, resultsSearchNights: nights, resultsSearchGuests: guests, results }[id] || null; }, querySelector(selector) { assert.notEqual(selector, '.search3-page-intro', 'static intro stays owned by search-form'); return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, createElement() { return { hidden: false, isConnected: false, querySelector() { return staleButton = { addEventListener(type, handler) { assert.equal(type, 'click'); this.click = handler; } }; } }; }, addEventListener() {}, body: { classList: { contains(n) { return n === 'search3-candidate' || classes.has(n); }, add(n) { classes.add(n); }, toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
 const window = { innerWidth: 1440, V2SearchLifecycle: { submit() { submitted++; } }, addEventListener(n,fn) { assert.ok(!events.has(n), 'one listener per results lifecycle event'); events.set(n,fn); }, setTimeout() { return 1; }, clearTimeout() {}, matchMedia() { return { addEventListener() {} }; } };
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
+const lifecycleSource = fs.readFileSync(path.join(__dirname, '../v2/search-lifecycle-v6.js'), 'utf8');
+assert.equal((lifecycleSource.match(/loadResults\(id,run,100\)/g) || []).length, 1,
+  'current lifecycle must own exactly one final 100-result request');
+assert.match(lifecycleSource, /if\(complete\(s\)\)\{const items=await loadResults\(id,run,100\);[\s\S]*emit\('complete',\{progress:100,items\},id\)/,
+  'final 100-result render must finish before search-complete is emitted');
+assert.match(lifecycleSource, /if\(shouldRefreshResults\(p\)\)\{try\{await loadResults\(id,run,25\)/,
+  'progressive 25-result refresh must remain in the current lifecycle');
 const bundledIife = require('./search3-bundle-iife.cjs');
 vm.runInNewContext(bundledIife(bundle, { literal: '#resultsSearchRoute' }), {
  document, window,

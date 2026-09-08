@@ -290,6 +290,20 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('window.V2ResultsFilterAutorefreshV1', legacy)
         self.assertNotIn('setTimeout(()=>{timer=0', results)
 
+    def test_legacy_results_depth_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        lifecycle = (ROOT / 'v2/search-lifecycle-v6.js').read_text()
+        legacy = (ROOT / 'v2/results-depth-v1.js').read_text()
+        self.assertIn("'results-depth-v1.js'", scoped)
+        self.assertEqual(lifecycle.count('loadResults(id,run,100)'), 1)
+        self.assertIn("const items=await loadResults(id,run,100)", lifecycle)
+        self.assertIn("emit('complete',{progress:100,items},id)", lifecycle)
+        self.assertIn('await loadResults(id,run,25)', lifecycle)
+        self.assertIn("window.addEventListener('v2:search-complete',expand)", legacy)
+        self.assertIn("runtime.api('search_results',{searchId,limit:EXPANDED_LIMIT})", legacy)
+        self.assertIn('window.V2ResultsDepthV1', legacy)
+
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
