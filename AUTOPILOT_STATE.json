@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1575 retires the complete 10798-byte ds2-selected-tour-convergence-v1.css legacy selected-tour layer from Search3. Exact Chromium exposed the live inherited slice and current owners now preserve shell sizing, price-label tracking, facts/disclosure heights, headings, flight-choice layout, route radius and lead-input radius. Loaded route payload falls 481880 to 472663 raw (-9217 net); the full legacy route retains the unchanged layer.",
+    "last_material_progress": "PR #1580 retires br3-control-consistency-v1.css and selected-tour-layout-guard-v1.css from Search3 while keeping both unchanged on the old route. Exact Chromium caught and then verified the repaired review cascade. Loaded route payload falls 472663 to 470476 raw (-2187 net).",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Retire selected-tour-layout-guard-v1.css and audit br3-control-consistency-v1.css as one substantial reversible legacy-guard package. Preserve current progress/error controls, focus/touch targets, selected return/description geometry and the full old-search manifest.",
+    "next_action": "Audit search-filters-ux-v1.css and selected-tour-ux.css as the next whole-owner candidates; retire only a substantial owner whose active Search3 slice can be kept compactly in current modules.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_SELECTED_CONVERGENCE_LAYER",
-    "title": "Retire the legacy selected-tour convergence layer from Search3",
+    "id": "S3_LEAN_CONTROL_GUARDS_LAYER",
+    "title": "Retire two legacy control/layout guard layers from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1575
+      1580
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "b86a5eeb7396134b08b2eb2ced2eddd717a0f882"
+      "5b07409fdacb9b5cd8912f0c117eabd9e5378172"
     ],
-    "release_sha": "13df507f22e6e56c8320b944cb3c531ad8a796b9",
-    "artifact_run": 34215627824,
-    "artifact_id": 10051687021,
-    "artifact_digest": "sha256:6b813f3bc74c55ec3e9a4ff3acfab85edd1560b4f697a0400f09bc4dd7be6f65",
-    "checked_release_asset_bytes": 175090,
-    "checked_release_loaded_bytes": 472663,
+    "release_sha": "4a8b279deda40075817013653bf03dcd51f927eb",
+    "artifact_run": 34220737644,
+    "artifact_id": 10053671415,
+    "artifact_digest": "sha256:101937e4872190abb5126f9280f6103596918ceb1d20def4d2de5afaf2516d08",
+    "checked_release_asset_bytes": 178176,
+    "checked_release_loaded_bytes": 470476,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Retire selected-tour-layout-guard-v1.css and audit br3-control-consistency-v1.css together; keep only proven live rules in current Search3 owners."
+    "next_action": "Audit search-filters-ux-v1.css and selected-tour-ux.css; keep exact filter lifecycle and selected detail/review/lead behavior before excluding another whole owner."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1366,6 +1366,24 @@
       "selected_geometry_states": "12 detail/review/lead states at 375/760/1000/1440",
       "source_pr": 1575,
       "source_sha": "b86a5eeb7396134b08b2eb2ced2eddd717a0f882"
+    },
+    "control_guards_layer_retirement": {
+      "artifact_digest": "sha256:101937e4872190abb5126f9280f6103596918ceb1d20def4d2de5afaf2516d08",
+      "artifact_id": 10053671415,
+      "artifact_run": 34220737644,
+      "initial_green_exact_run": 34220520872,
+      "diagnostic_failed_exact_run": 34218075137,
+      "preview_published": false,
+      "required_passed": 2,
+      "results_geometry_artifact": 10053670660,
+      "results_geometry_digest": "sha256:c6caf779e233c7b3220d9d21a7b077947a5b6c91e50addae0ee8e405141c8bc8",
+      "results_geometry_states": "Guarded result and entry states passed with no overflow or clipped actions.",
+      "security_run": 34220520877,
+      "selected_geometry_artifact": 10053669978,
+      "selected_geometry_digest": "sha256:35b64a1363a68353f446656709ea1f4436e60d86e67f28a50d8109804ab30931",
+      "selected_geometry_states": "12 detail/review/lead states at 375/760/1000/1440",
+      "source_pr": 1580,
+      "source_sha": "5b07409fdacb9b5cd8912f0c117eabd9e5378172"
     }
   },
   "last_verified_commit": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
@@ -8859,6 +8877,46 @@
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-shared-header-shell-layer.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_control_guards_layer_retirement": {
+    "source_pr": 1580,
+    "source_sha": "5b07409fdacb9b5cd8912f0c117eabd9e5378172",
+    "checked_code_release_sha": "4a8b279deda40075817013653bf03dcd51f927eb",
+    "retired_search3_owners": [
+      "br3-control-consistency-v1.css",
+      "selected-tour-layout-guard-v1.css"
+    ],
+    "legacy_layer_bytes_removed": 5273,
+    "current_owner_bytes_added": 3086,
+    "raw_before": 472663,
+    "raw_after": 470476,
+    "raw_saved": 2187,
+    "gzip_before": 107843,
+    "gzip_after": 107522,
+    "gzip_saved": 321,
+    "gzip_measurement": "Carried previous exact absolute with a same-method delta calculated from the final and preceding reusable artifact payloads.",
+    "shared_css_before": 113833,
+    "shared_css_after": 108560,
+    "shared_js_before": 183740,
+    "shared_js_after": 183740,
+    "eight_assets_before": 175090,
+    "eight_assets_after": 178176,
+    "diagnostic_failed_exact_run": 34218075137,
+    "security_run": 34220520877,
+    "green_exact_runs": [
+      34220520872,
+      34220737644
+    ],
+    "final_artifact_id": 10053671415,
+    "final_artifact_digest": "sha256:101937e4872190abb5126f9280f6103596918ceb1d20def4d2de5afaf2516d08",
+    "selected_geometry_artifact": 10053669978,
+    "selected_geometry_digest": "sha256:35b64a1363a68353f446656709ea1f4436e60d86e67f28a50d8109804ab30931",
+    "results_geometry_artifact": 10053670660,
+    "results_geometry_digest": "sha256:c6caf779e233c7b3220d9d21a7b077947a5b6c91e50addae0ee8e405141c8bc8",
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-control-guards-layer.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
