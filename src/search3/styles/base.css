@@ -2,7 +2,7 @@
 /* donor:search3-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 approved mockup layer. Preview only. */
 body.search3-candidate{
-&{--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;background:#f7f9fc!important}
+&{--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;--at-ink:#151B24!important;--at-soft:#F4F7FF!important;color:var(--at-ink)!important;background:#f7f9fc!important;font-family:Aeroport,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
 & #anytour-consultant-host,& .mobile-search-sticky{display:none!important}
 & .v2-product-hero{display:none!important}
 & .v2-shell{display:block!important;width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important;padding-top:0!important;padding-inline:0!important}
