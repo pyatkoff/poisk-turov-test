@@ -162,7 +162,7 @@ html body.search3-candidate{
 @media(max-width:760px){
   html body.search3-candidate{
 &:not(.search3-has-results) .search3-mobile-search-entry:not([hidden]){display:grid!important;gap:12px!important;width:100%!important;margin:-2px 0 18px!important;padding:0 1px!important}
-& #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+& #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
 & .search3-mobile-search-trust{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
 & .search3-mobile-search-trust span{display:grid!important;justify-items:center!important;gap:4px!important;min-width:0!important;color:#475467!important;font:750 11px/1.25 var(--at-font)!important;text-align:center!important}
 & .search3-mobile-search-trust b{display:grid!important;place-items:center!important;width:24px!important;height:24px!important;border-radius:50%!important;background:#eef4ff!important;color:#155eef!important;font-size:10px!important}
