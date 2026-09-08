@@ -31,15 +31,32 @@ function anex_mapping_message() {
     return $message;
 }
 
+function anex_mapping_preservation($pdo, $ids) {
+    $skip = array_fill_keys($ids, true);
+    $result = ['staging_total' => (int)$pdo->query('SELECT COUNT(*) FROM anex_hotels')->fetchColumn()];
+    foreach (['anex_hotel_search_mappings', 'anex_hotel_decisions'] as $table) {
+        $hash = hash_init('sha256'); $count = 0;
+        $statement = $pdo->query('SELECT * FROM ' . $table . ' ORDER BY anex_hotel_id');
+        while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
+            if ($table === 'anex_hotel_search_mappings' && isset($skip[(int)$row['anex_hotel_id']])) continue;
+            hash_update($hash, json_encode($row) . "\n"); $count++;
+        }
+        $result[$table] = ['count' => $count, 'sha256' => hash_final($hash)];
+    }
+    return $result;
+}
+
 try {
     $policy = 'owner_exact_and_strong_20260908';
     $meta = anex_mapping_message();
+    $appendOnly = ($meta['append_only'] ?? false) === true;
     if (!is_array($meta) || ($meta['type'] ?? '') !== 'meta'
         || ($meta['protocol_version'] ?? null) !== 1 || ($meta['schema_version'] ?? null) !== 1
         || ($meta['scope'] ?? '') !== 'preview' || ($meta['approval_policy'] ?? '') !== $policy
         || !anex_mapping_digest($meta['mapping_digest'] ?? null)
         || !anex_mapping_digest($meta['rows_digest'] ?? null)
-        || !is_array($meta['sources'] ?? null) || count($meta['sources']) !== 2
+        || !is_array($meta['sources'] ?? null) || count($meta['sources']) !== ($appendOnly ? 3 : 2)
+        || ($appendOnly && !anex_mapping_digest($meta['sources']['gap_sha256'] ?? null))
         || !anex_mapping_digest($meta['sources']['catalog_sha256'] ?? null)
         || !anex_mapping_digest($meta['sources']['geo_sha256'] ?? null)
         || !is_array($meta['counts'] ?? null) || count($meta['counts']) !== 4) throw new RuntimeException();
@@ -120,6 +137,8 @@ try {
     $engine = $pdo->query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anex_hotel_search_mappings'")->fetchColumn();
     if (strtoupper((string)$engine) !== 'INNODB' || !$pdo->beginTransaction()) throw new RuntimeException();
     $transaction = true;
+    $preservation = $appendOnly ? anex_mapping_preservation($pdo, array_keys($rows)) : null;
+    if ($appendOnly && $preservation['staging_total'] !== 8362) throw new RuntimeException();
 
     // Bound every ID list. Lock current catalog targets and overrides before any mapping writes.
     foreach (array_chunk(array_keys($targets), 250) as $ids) {
@@ -155,7 +174,7 @@ try {
             $decision = $manual[$id];
             if ($decision['decision_status'] === 'accepted') $stats['manual_accepted_count']++;
             if ($decision['decision_status'] !== 'accepted' || (int)$decision['catalog_hotel_id'] !== $row['catalog_hotel_id']) $stats['manual_conflicts']++;
-            if ($old !== null && (int)$old['enabled'] !== 0) {
+            if (!$appendOnly && $old !== null && (int)$old['enabled'] !== 0) {
                 $disable->execute(array($id, 'preview', $policy));
                 $stats['inactivated_manual']++;
             }
@@ -166,10 +185,11 @@ try {
                 $row['source_row_digest'], $meta['mapping_digest']));
             $stats['inserted']++;
         } elseif ((int)$old['catalog_hotel_id'] === $row['catalog_hotel_id'] && $old['match_class'] === $row['match_class']
-            && $old['source_row_digest'] === $row['source_row_digest'] && $old['mapping_digest'] === $meta['mapping_digest']
+            && $old['source_row_digest'] === $row['source_row_digest'] && ($appendOnly || $old['mapping_digest'] === $meta['mapping_digest'])
             && (int)$old['enabled'] === 1) {
             $stats['unchanged']++;
         } else {
+            if ($appendOnly) throw new RuntimeException('existing mapping conflict');
             $update->execute(array($row['catalog_hotel_id'], $row['match_class'], $row['source_row_digest'],
                 $meta['mapping_digest'], $id, 'preview', $policy));
             $stats['updated']++;
@@ -186,10 +206,12 @@ try {
     if (!is_array($enabled)) throw new RuntimeException();
     $manualAccepted = $pdo->query("SELECT COUNT(*) FROM anex_hotel_decisions d INNER JOIN catalog_hotels c ON c.id=d.catalog_hotel_id WHERE d.decision_status='accepted'")->fetchColumn();
     if ($manualAccepted === false) throw new RuntimeException();
+    if ($appendOnly && $preservation !== anex_mapping_preservation($pdo, array_keys($rows))) throw new RuntimeException();
     $pdo->commit();
     $transaction = false;
     $result = array_merge(array('status' => $stats['inserted'] + $stats['updated'] + $stats['inactivated_manual'] === 0 ? 'already_imported' : 'imported',
         'scope' => 'preview', 'approval_policy' => $policy, 'mapping_digest' => $meta['mapping_digest'],
+        'append_only' => $appendOnly, 'preservation' => $preservation,
         'input_count' => count($rows), 'exact' => $counts['exact'], 'strong' => $counts['strong'],
         'total_enabled' => (int)$enabled['total_enabled'], 'enabled_exact' => (int)$enabled['exact'],
         'enabled_strong' => (int)$enabled['strong'], 'enabled_unique_catalog_hotels' => (int)$enabled['unique_catalog_hotels'],

@@ -150,7 +150,7 @@ class MappingTestStatement extends PDOStatement {
     public function fetchAll($mode=PDO::FETCH_DEFAULT,...$args) {
         return $mode === PDO::FETCH_COLUMN ? array_map(function($row) { return reset($row); },$this->records) : $this->records;
     }
-    public function fetch($mode=PDO::FETCH_DEFAULT,$orientation=PDO::FETCH_ORI_NEXT,$offset=0) { return $this->records[0] ?? false; }
+    public function fetch($mode=PDO::FETCH_DEFAULT,$orientation=PDO::FETCH_ORI_NEXT,$offset=0) { return array_shift($this->records) ?? false; }
     public function fetchColumn($column=0) { return isset($this->records[0]) ? array_values($this->records[0])[$column] : false; }
 }
 class MappingTestPDO extends PDO {
@@ -165,6 +165,9 @@ class MappingTestPDO extends PDO {
     public function prepare($sql,$options=array()) { return new MappingTestStatement($this,$sql); }
     public function query($sql,...$args) { $statement=$this->prepare($sql); $statement->execute(); return $statement; }
     public function run($sql,$params) {
+        if ($sql === 'SELECT COUNT(*) FROM anex_hotels') return array(array('count'=>8362));
+        if ($sql === 'SELECT * FROM anex_hotel_search_mappings ORDER BY anex_hotel_id') return array_values($this->state['mappings']);
+        if ($sql === 'SELECT * FROM anex_hotel_decisions ORDER BY anex_hotel_id') return array_values($this->state['manual']);
         if (strpos($sql,'SELECT ENGINE FROM information_schema.TABLES') === 0) return array(array('ENGINE'=>$this->state['engine'] ?? 'InnoDB'));
         if (strpos($sql,'SELECT id FROM catalog_hotels') === 0) {
             if (count($params)>250) throw new Exception();
@@ -299,6 +302,32 @@ class MappingWriterTest(unittest.TestCase):
         self.save()
         self.assertEqual(self.execute()["status"], "mapping_import_failed")
         self.assertEqual((self.state["writes"], self.state["commits"]), (0, 0))
+
+    def append_protocol(self):
+        lines = self.protocol.splitlines(keepends=True)
+        meta = json.loads(lines[0])
+        meta['append_only'] = True
+        meta['sources']['gap_sha256'] = 'a' * 64
+        return module.canonical(meta) + b'\n' + b''.join(lines[1:])
+
+    def test_append_only_preserves_manual_and_existing_rows(self):
+        self.execute()
+        self.state['manual'] = [{'anex_hotel_id': 10, 'decision_status': 'rejected', 'catalog_hotel_id': None}]
+        original = copy.deepcopy(self.state['mappings'])
+        self.save()
+        report = self.execute(self.append_protocol())
+        self.assertEqual(report['updated'], 0)
+        self.assertEqual(report['inactivated_manual'], 0)
+        self.assertEqual(self.state['mappings'], original)
+        self.assertEqual(report['preservation']['staging_total'], 8362)
+
+    def test_append_conflicting_target_rolls_back(self):
+        self.execute()
+        self.state['mappings']['20']['catalog_hotel_id'] = 300
+        original = copy.deepcopy(self.state['mappings'])
+        self.save()
+        self.assertEqual(self.execute(self.append_protocol())['status'], 'mapping_import_failed')
+        self.assertEqual(self.state['mappings'], original)
 
 
 if __name__ == "__main__":

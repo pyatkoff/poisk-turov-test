@@ -45,6 +45,8 @@ def restore():
     ], check=True, capture_output=True, text=True, timeout=120)
     if not (directory / 'anex-hotel-geo-enrichment.json').is_file():
         raise ValueError('checkpoint missing')
+    (directory / 'anex-checkpoint-source.json').write_text(json.dumps({
+        'run_id': run_id, 'artifact_id': checkpoint['id']}) + '\n', encoding='utf-8')
     print(json.dumps({'checkpoint_restored_from_run': run_id, 'checkpoint_artifact_id': checkpoint['id']}))
 
 

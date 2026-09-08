@@ -110,8 +110,19 @@ def write_protocol(path, meta, rows):
                                 "rows_digest": meta["rows_digest"]}) + b"\n")
 
 
-def ssh_import(mapping_path):
-    meta, rows = load_mapping(mapping_path)
+def ssh_import(mapping_path, gap_checkpoint=None):
+    if gap_checkpoint is None:
+        meta, rows = load_mapping(mapping_path)
+    else:
+        from anex_search3_gap_queue import approved_delta
+        document = approved_delta(gap_checkpoint)
+        rows = [sanitize_row(r) for r in document['rows']]
+        Path(mapping_path).write_bytes(canonical(document) + b'\n')
+        if not rows:
+            return {'status': 'no_new_strong_candidates', 'inserted': 0, 'updated': 0, 'input_count': 0}
+        meta = {k: v for k, v in document.items() if k != 'rows'}
+        meta.update(type='meta', protocol_version=1, mapping_digest=hashlib.sha256(Path(mapping_path).read_bytes()).hexdigest(),
+                    rows_digest=hashlib.sha256(b''.join(canonical(row) + b'\n' for row in rows)).hexdigest())
     names = ("ANYTOOUR_DEPLOY_SSH_KEY", "ANYTOOUR_DEPLOY_HOST", "ANYTOOUR_DEPLOY_USER")
     if any(not os.environ.get(name, "").strip() for name in names):
         raise ValueError("missing SSH configuration")
@@ -148,11 +159,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--gap-checkpoint", type=Path)
     args = parser.parse_args()
     try:
         artifact_dir = Path(os.environ.get("ANEX_CATALOG_ARTIFACT_DIR", "."))
         mapping = args.mapping or artifact_dir / "anex-search-mappings.json"
-        report = ssh_import(mapping)
+        report = ssh_import(mapping, args.gap_checkpoint)
         (args.report or mapping.with_name("anex-search-mapping-import.json")).write_text(
             json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(json.dumps(report, sort_keys=True))

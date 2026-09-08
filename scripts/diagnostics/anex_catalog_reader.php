@@ -84,6 +84,9 @@ try {
             throw new RuntimeException();
         }
         $names = array();
+        if (isset($query['country_id']) && (!is_int($query['country_id']) || $query['country_id'] < 1)) {
+            throw new RuntimeException();
+        }
         foreach ($query['names'] as $name) {
             $name = anex_catalog_text($name);
             if ($name !== '') {
@@ -92,6 +95,7 @@ try {
         }
         $queries[] = array(
             'key' => $query['key'], 'names' => array_values(array_unique($names)),
+            'country_id' => isset($query['country_id']) ? $query['country_id'] : null,
             'latitude' => anex_catalog_number(isset($query['latitude']) ? $query['latitude'] : null, 90),
             'longitude' => anex_catalog_number(isset($query['longitude']) ? $query['longitude'] : null, 180)
         );
@@ -175,7 +179,9 @@ try {
                 . 'h.region_name, h.subregion_name, h.category, ' . $latitude . ' AS latitude, '
                 . $longitude . ' AS longitude, ' . $address . ' AS address FROM catalog_hotels h '
                 . ($hasDetails ? 'LEFT JOIN catalog_hotel_details d ON d.hotel_id = h.id ' : '')
-                . 'WHERE h.is_active = 1 AND (' . implode(' OR ', $conditions) . ') ORDER BY '
+                . 'WHERE h.is_active = 1 '
+                . ($query['country_id'] !== null ? 'AND h.country_id = ' . anex_catalog_param($params, $query['country_id']) . ' ' : '')
+                . 'AND (' . implode(' OR ', $conditions) . ') ORDER BY '
                 . ($exactOrder ? 'CASE WHEN (' . implode(' OR ', $exactOrder) . ') THEN 0 '
                     . ($tokenOrder ? 'WHEN (' . implode(' OR ', $tokenOrder) . ') THEN 1 ' : '') . 'ELSE 2 END, ' : '')
                 . 'h.is_active DESC, h.id ASC LIMIT ' . $candidateLimit;
