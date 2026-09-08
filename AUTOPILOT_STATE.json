@@ -53,34 +53,36 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1523/#1524/#1526 retire four complete legacy presentation owners from Search3. Exact current invocation total is 594063 to 580581 raw (-13482), gzip 131441 to 128767 (-2674). Live geometry, ARIA and optional lead disclosure remain in current owners; no publication.",
+    "last_material_progress": "PRs #1523/#1524/#1526/#1528/#1529 retire eight complete legacy presentation owners from Search3. Exact current invocation total is 594063 to 578965 raw (-15098), gzip 131441 to 128501 (-2940). Full legacy route and protected contracts remain; no preview or production publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete sales-leader-ui-v1.js/.css presentation pair for Search3. Preserve the current selected-tour trust block, full legacy route and protected lead/price/API/analytics contracts; exclude the old pair only after focused source and exact browser CI.",
+    "next_action": "Audit the complete search-complete-recovery-v1.js and search-progress-ux-v1.js/.css lifecycle owners against current entry/results owners. Preserve retry, progress, empty/error recovery, full legacy route and protected contracts; only retire a whole owner when focused lifecycle plus exact browser CI prove the replacement and net route saving is at least 500 raw bytes.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_CHECKOUT_RUNTIME",
-    "title": "Retire legacy checkout JavaScript runtime",
+    "id": "S3_LEAN_SALES_LEADER_AND_DIRTY_OWNERS",
+    "title": "Retire legacy sales-leader and dirty-results presentation owners",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1526
+      1528,
+      1529
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "e1a847d7ffb805c2398a95c6c0db26df87b9e0e9"
+      "913208a812999e84b1a810c1e1278ba02e8e5e23",
+      "3a8f12535a13d368572287462c799d2cbf234cd2"
     ],
-    "release_sha": "5a867bd074b63b59348c1f442352754463b64c05",
-    "artifact_run": 34172785030,
-    "artifact_id": 10036258837,
-    "artifact_digest": "sha256:9203361cc166c5388cfdd360165762d4c5c56b9c48fb0c6921b5d0f47c8a2b94",
-    "checked_release_asset_bytes": 153884,
-    "checked_release_loaded_bytes": 580581,
+    "release_sha": "6d95ad0274f470c73cb77b282abdb219570ade02",
+    "artifact_run": 34174703669,
+    "artifact_id": 10036876352,
+    "artifact_digest": "sha256:a7e956879588c70024a585e84c51e5ee774b013e41b45293409b4057b9da7291",
+    "checked_release_asset_bytes": 156903,
+    "checked_release_loaded_bytes": 578965,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the complete sales-leader-ui-v1.js/.css presentation pair for Search3. Preserve the current selected-tour trust block, full legacy route and protected lead/price/API/analytics contracts; exclude the old pair only after focused source and exact browser CI."
+    "next_action": "Audit the complete search-complete-recovery-v1.js and search-progress-ux-v1.js/.css lifecycle owners against current entry/results owners. Preserve retry, progress, empty/error recovery, full legacy route and protected contracts; only retire a whole owner when focused lifecycle plus exact browser CI prove the replacement and net route saving is at least 500 raw bytes."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1089,10 +1091,42 @@
       "preview_published": false,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
+    },
+    "sales_leader_owner_retirement": {
+      "source_pr": 1528,
+      "source_sha": "913208a812999e84b1a810c1e1278ba02e8e5e23",
+      "security_run": 34173718206,
+      "artifact_run": 34173860069,
+      "artifact_id": 10036603891,
+      "artifact_digest": "sha256:195e108d40f89327c4433cc6462efd3f72195d44b7af7351b2c140c8645dcc46",
+      "selected_geometry_artifact": 10036603298,
+      "selected_geometry_digest": "sha256:2d5afc4101c0a84ee482c128db0bc4f27d41b154cb25955dcb94760a75e115b3",
+      "results_geometry_artifact": 10036603609,
+      "results_geometry_digest": "sha256:dc2368ef45265df790d474ffc494f6465eed41f93a5b023c9a21dcfaa830535d",
+      "required_passed": 2,
+      "preview_published": false
+    },
+    "dirty_results_owner_retirement": {
+      "source_pr": 1529,
+      "source_sha": "3a8f12535a13d368572287462c799d2cbf234cd2",
+      "security_run": 34174597073,
+      "artifact_run": 34174703669,
+      "artifact_id": 10036876352,
+      "artifact_digest": "sha256:a7e956879588c70024a585e84c51e5ee774b013e41b45293409b4057b9da7291",
+      "selected_geometry_artifact": 10036875494,
+      "selected_geometry_digest": "sha256:2780c23fec1104aed3a10d003bdb3c936398d511889fe96d276833ec89f569d8",
+      "results_geometry_artifact": 10036875928,
+      "results_geometry_digest": "sha256:c9fd03bfa2d7805b3c2726519302d63dde76f741cdc557e5be835a607809decc",
+      "required_passed": 2,
+      "preview_published": false,
+      "corrected_exact_run": {
+        "run": 34174508855,
+        "result": "failed only because the exact expected legacy CSS manifest order was stale; corrected to actual unchanged legacy order without weakening guards"
+      }
     }
   },
-  "last_verified_commit": "5a867bd074b63b59348c1f442352754463b64c05",
-  "last_verified_commit_scope": "Checked Search3 release after #1526; legacy checkout runtime excluded while live classes, ARIA and optional-field disclosure remain in the current selected-flow owner. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "6d95ad0274f470c73cb77b282abdb219570ade02",
+  "last_verified_commit_scope": "Checked Search3 release after #1528/#1529; legacy sales-leader and dirty-results presentation owners excluded, with live badge/photo fallback and stale-results refresh lifecycle retained in current results owners. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -3747,7 +3781,7 @@
       "source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309"
     },
     "production": {
-      "last_observed_main_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "last_observed_main_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
       "migration_performed": false,
       "status": "OWNER_VISUAL_APPROVAL_PENDING"
     },
@@ -8141,6 +8175,37 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-checkout-runtime.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_sales_leader_and_dirty_owners": {
+    "source_prs": [
+      1528,
+      1529
+    ],
+    "source_shas": [
+      "913208a812999e84b1a810c1e1278ba02e8e5e23",
+      "3a8f12535a13d368572287462c799d2cbf234cd2"
+    ],
+    "checked_code_release_sha": "6d95ad0274f470c73cb77b282abdb219570ade02",
+    "retired_search3_owners": [
+      "sales-leader-ui-v1.js",
+      "sales-leader-ui-v1.css",
+      "search-dirty-ux-v1.js",
+      "search-dirty-ux-v1.css"
+    ],
+    "legacy_owner_bytes_removed": 4635,
+    "current_owner_bytes_added": 3019,
+    "raw_before": 580581,
+    "raw_after": 578965,
+    "raw_saved": 1616,
+    "gzip_before": 128767,
+    "gzip_after": 128501,
+    "gzip_saved": 266,
+    "eight_assets_before": 153884,
+    "eight_assets_after": 156903,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-sales-and-dirty-owners.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }

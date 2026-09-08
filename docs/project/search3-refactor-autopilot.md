@@ -2135,3 +2135,17 @@ Security `34172559663` and both exact artifacts `34172559608` / `34172785030` pa
 Checked release is ahead of published preview. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No preview or production deployment occurred. Live current-source interaction, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-checkout-runtime.json`.
 
 Next: audit the complete `sales-leader-ui-v1.js/.css` presentation pair. Preserve the current selected-tour trust block, full legacy route and all protected contracts; exclude the old pair only after focused source and exact browser CI.
+
+## S3_LEAN_SALES_LEADER_AND_DIRTY_OWNERS — checked release, 2026-09-08
+
+Source PRs #1528 / `913208a812999e84b1a810c1e1278ba02e8e5e23` and #1529 / `3a8f12535a13d368572287462c799d2cbf234cd2`; checked code release `6d95ad0274f470c73cb77b282abdb219570ade02`. Search3 no longer loads the complete `sales-leader-ui-v1.js/.css` and `search-dirty-ux-v1.js/.css` owners. The full legacy route retains all four files unchanged.
+
+The current result-card owner retains the supplier badge and broken-photo fallback. The current results owner retains one accessible stale-results banner, refresh through `V2SearchLifecycle.submit`, clearing on search start/reset and reapplication after rerender. The duplicate legacy dimming/pseudo-message layer and its unused Search3 global are retired.
+
+Loaded raw is **580581 → 578965 bytes (−1616)**: scoped shared CSS 196984→195452, scoped shared JS 229713→226610 and eight Search3 assets 153884→156903 (+3019 retained current behavior). Exact emitted endpoints plus eight independent files gzip is **128767 → 128501 (−266)**. The current invocation including #1523/#1524/#1526 is **594063 → 578965 raw (−15098)** and **131441 → 128501 gzip (−2940)**.
+
+#1528 passed Security `34173718206` and exact artifacts `34173718133` / `34173860069`. Its reusable artifact is `10036603891`, digest `sha256:195e108d40f89327c4433cc6462efd3f72195d44b7af7351b2c140c8645dcc46`; selected/results evidence `10036603298` / `10036603609`. #1529 passed Security `34174597073` and exact artifacts `34174597057` / `34174703669`. Its reusable artifact is `10036876352`, digest `sha256:a7e956879588c70024a585e84c51e5ee774b013e41b45293409b4057b9da7291`; selected/results evidence `10036875494` / `10036875928`. One preceding #1529 run failed only because the expected legacy CSS array order was stale; the assertion was corrected to the actual unchanged order and no guard was weakened.
+
+Exact Chromium retained 12 selected detail/review/lead states, 30 entry states and 12 result-card/drawer states. No supplier request or lead was sent. Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-sales-and-dirty-owners.json`.
+
+Next: audit `search-complete-recovery-v1.js` and `search-progress-ux-v1.js/.css` against current entry/results owners. Preserve retry, progress and empty/error recovery; retire a whole owner only when focused lifecycle plus exact browser CI pass and net route saving is at least 500 raw bytes.
