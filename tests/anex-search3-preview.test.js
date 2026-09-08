@@ -313,6 +313,71 @@ test('late supplemental metadata keeps incomplete facets hidden and never activa
   assert.equal(page.requests.length, 1);
 });
 
+test('text meals and ANEX aliases share the same filter without inventing missing meals', async () => {
+  const page = preview(true);
+  page.reset(1, snapshot());
+  const tv = [{ id: 245, category: 4, rating: 4.2, price: 100000,
+    tours: [{ price: 100000, meal: '  Всё включено  ' }, { price: 80000, meal: { name: 'HB' } }] }];
+  const original = plain(tv);
+  page.window.V2Results.render(tv);
+  const anex = hotel({ local_id: 900, rating: 4.5, tours: ['AI-WITHOUT ALCOHOL', 'UAI', 'HB'].map(meal => ({ ...hotel().tours[0], meal })) });
+  page.requests[0].respond(response(1, [anex]));
+  await tick();
+  assert.equal(page.rail.querySelector('[data-ds2-meal-fieldset]').hidden, false);
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.meal.find(input => input.value === 'ai') });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
+  assert.equal(page.sourceRenders.at(-1)[0].tours.length, 1);
+  assert.match(page.results.textContent, /Всё включено без алкоголя/);
+  assert.match(page.results.textContent, /Ультра всё включено/);
+  assert.doesNotMatch(page.results.textContent, /Полупансион/);
+  assert.deepEqual(tv, original);
+  for (const meal of ['', '  ', null, 7, {}, { id: 7 }]) {
+    assert.equal(page.window.DS2ResultsFilters.hasMealData([{ tours: [{ meal }] }]), false);
+  }
+  const label = page.window.AnyTourAnexSearch3.mealLabel;
+  assert.equal(label('RO'), 'Без питания');
+  assert.equal(label('BB'), 'Завтраки');
+  assert.equal(label('Supplier Special'), 'Supplier Special');
+  assert.equal(label(null), '');
+  assert.equal(page.requests.length, 1);
+});
+
+test('source counts explain overlap and Tourvisor progress never claims ANEX has finished', async () => {
+  const page = preview();
+  const progress = page.body.appendChild(new FakeElement('section'));
+  progress.id = 'status';
+  const head = progress.appendChild(new FakeElement('div'));
+  head.className = 'search-progress-head';
+  const title = head.appendChild(new FakeElement('strong'));
+  title.textContent = 'Поиск завершён';
+  page.reset(1, snapshot());
+  page.window.dispatchEvent({ type: 'v2:search-complete', detail: { items: [{ id: 245 }] } });
+  await tick();
+  assert.equal(title.textContent, 'Tourvisor · Поиск завершён');
+  assert.match(page.body.textContent, /Ищем предложения ANEX/);
+  page.requests[0].respond(response(1, [hotel(), hotel({ local_id: 900 })]));
+  await tick();
+  assert.match(page.document.getElementById('anexSearch3Results').textContent,
+    /Отелей в выдаче: 2\. Через Tourvisor: 1, через ANEX API: 2\. В обоих источниках: 1/);
+  assert.equal(page.summary.textContent, 'Tourvisor: 1 · ANEX API: 2');
+  page.window.dispatchEvent({ type: 'v2:search-complete', detail: { items: [{ id: 245 }] } });
+  await tick();
+  assert.equal(title.textContent, 'Tourvisor · Поиск завершён', 'no duplicate source label');
+  const error = new FakeElement('div'); error.className = 'search-progress-error-copy';
+  const errorTitle = error.appendChild(new FakeElement('strong')); errorTitle.textContent = 'Не получилось завершить поиск';
+  const retry = error.appendChild(new FakeElement('button')); retry.textContent = 'Повторить поиск';
+  progress.replaceChildren(error);
+  page.window.dispatchEvent({ type: 'v2:search-error', detail: { phase: 'status' } });
+  await tick();
+  assert.equal(errorTitle.textContent, 'Tourvisor · Не получилось завершить поиск');
+  assert.equal(error.querySelector('button'), retry);
+  assert.equal(page.results.querySelectorAll('.anex-search3-offers').length, 2);
+  page.reset(2, null);
+  assert.equal(errorTitle.textContent, 'Не получилось завершить поиск');
+  assert.equal(page.requests.length, 1);
+});
+
 test('capture keeps submitted parameters and labels independent of later form edits', () => {
   const api = helpers();
   const snapshot = {

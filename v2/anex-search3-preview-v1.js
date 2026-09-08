@@ -40,11 +40,18 @@
     const number = Number(value);
     return Number.isFinite(number) && number > 0 ? number : Infinity;
   }
+  function mealLabel(value) {
+    const text = typeof value === 'string' ? value.trim() : '';
+    const labels = { RO: 'Без питания', BB: 'Завтраки', HB: 'Полупансион', FB: 'Полный пансион',
+      AI: 'Всё включено', ALL: 'Всё включено', 'ALL INCLUSIVE': 'Всё включено',
+      UAI: 'Ультра всё включено', 'ULTRA ALL INCLUSIVE': 'Ультра всё включено',
+      'AI-WITHOUT ALCOHOL': 'Всё включено без алкоголя', 'AI WITHOUT ALCOHOL': 'Всё включено без алкоголя' };
+    return labels[text.toUpperCase()] || text;
+  }
   function filterItem(hotel) {
-    const aliases = { ALL: 'All Inclusive', UAI: 'Ultra All Inclusive' };
     return { id: hotel.local_id, category: hotel.category, rating: hotel.rating, seaDistance: null,
       price: Number(hotel.tours[0].price.amount), tours: hotel.tours.map(tour => ({
-        price: Number(tour.price.amount), meal: { name: aliases[String(tour.meal || '').trim().toUpperCase()] || String(tour.meal || '') },
+        price: Number(tour.price.amount), meal: { name: mealLabel(tour.meal) },
         anex: tour
       })) };
   }
@@ -61,7 +68,7 @@
     }
     return priceRank(a.price) - priceRank(b.price) || String(a.id).localeCompare(String(b.id));
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, version: 1 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, version: 1 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -128,7 +135,7 @@
     hotel.tours.forEach(tour => {
       const row = node('div', 'anex-search3-offer');
       const date = tour.checkin.split('-').reverse().join('.');
-      row.appendChild(node('p', '', [date, tour.nights + ' ноч.', tour.meal, tour.room,
+      row.appendChild(node('p', '', [date, tour.nights + ' ноч.', mealLabel(tour.meal), tour.room,
         tour.adults + ' взр.' + (tour.children ? ', ' + tour.children + ' дет.' : '')].filter(Boolean).join(' · ')));
       row.appendChild(node('strong', '', price(tour)));
       details.appendChild(row);
@@ -201,9 +208,20 @@
     renderQueued = true;
     Promise.resolve().then(() => { renderQueued = false; render(); });
   }
+  function labelTourvisorProgress() {
+    const status = document.getElementById('status');
+    if (!status) return;
+    ['.search-progress-head', '.search-progress-error-copy', '.search-progress-empty-copy'].forEach(selector => {
+      const box = status.querySelector(selector), title = box && box.querySelector('strong');
+      if (title && (selector !== '.search-progress-empty-copy' || title.textContent === 'По этим условиям туров не нашли')) {
+        replaceText(title, 'Tourvisor · ' + title.textContent);
+      }
+    });
+  }
   function render() {
     clear();
     if (!isCurrent(active, window.V2SearchLifecycle)) return;
+    labelTourvisorProgress();
     const filterNotice = localFilterNotice();
     const cards = new Map();
     results.querySelectorAll('.hotel-card[data-hotel-id]').forEach(card => {
@@ -256,11 +274,13 @@
       document.body.classList.add('search3-has-results', 'search3-results-active');
       if (tools) tools.hidden = false;
       if (tools) replaceText(tools.querySelector('strong'), 'Найдено отелей: ' + ranked.length);
-      replaceText(document.getElementById('resultSummary'), 'С ANEX API: ' + (added + merged));
+      replaceText(document.getElementById('resultSummary'), 'Tourvisor: ' + cards.size + ' · ANEX API: ' + (added + merged));
       replaceText(document.querySelector('[data-ds2-filter-count]'), String(ranked.length));
       replaceText(document.querySelector('[data-ds2-filter-word]'), 'в выдаче');
       replaceText(document.getElementById('search3PriceCalendarTitle'), 'Календарь цен Tourvisor');
-      status.textContent = 'Отелей с ANEX API в общей выдаче: ' + (added + merged) + (ambiguous ? '. Часть предложений ожидает уточнения связи.' : '.');
+      status.textContent = 'Отелей в выдаче: ' + ranked.length + '. Через Tourvisor: ' + cards.size
+        + ', через ANEX API: ' + (added + merged) + '. В обоих источниках: ' + merged + '.'
+        + (ambiguous ? ' Часть предложений ожидает уточнения связи.' : '');
     } else {
       // Restore the original source order when ANEX is hidden by changed filters.
       tvCards.filter(card => card.parentNode === results).forEach(card => results.appendChild(card));
@@ -330,10 +350,13 @@
   if (sort) sort.addEventListener('change', queueRender);
   const rail = document.querySelector('.results-filter-rail');
   if (rail) ['input', 'change', 'click'].forEach(event => rail.addEventListener(event, queueRender));
+  ['v2:search-started', 'v2:search-progress', 'v2:search-complete', 'v2:search-continue-started',
+    'v2:search-continue-requested', 'v2:search-continue-progress', 'v2:search-continued',
+    'v2:search-continue-error'].forEach(event => window.addEventListener(event, queueRender));
   document.addEventListener('click', event => {
     if (event.target && event.target.closest && event.target.closest('.tour-more-toggle')) setTimeout(render, 0);
   }, true);
-  window.addEventListener('v2:search-error', () => { if (!isCurrent(active, window.V2SearchLifecycle)) clear(); });
+  window.addEventListener('v2:search-error', () => { if (!isCurrent(active, window.V2SearchLifecycle)) clear(); else queueRender(); });
   // The addon may be loaded after a URL-triggered initial search has started.
   if (window.V2SearchLifecycle && window.V2SearchLifecycle.snapshot) start();
 }());

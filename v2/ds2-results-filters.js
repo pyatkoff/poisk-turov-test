@@ -14,7 +14,7 @@ function renderer(){return window.V2Results||null;}
 function price(h){const p=Number(h&&h.price||0);if(p>0)return p;const tours=Array.isArray(h&&h.tours)?h.tours:[];const values=tours.map(t=>Number(t&&t.price||0)).filter(v=>v>0);return values.length?Math.min.apply(null,values):0;}
 function allPrices(list){const values=[];(Array.isArray(list)?list:[]).forEach(h=>{const tours=Array.isArray(h&&h.tours)?h.tours:[];tours.forEach(t=>{const p=Number(t&&t.price||0);if(p>0)values.push(p);});if(!tours.length){const p=price(h);if(p>0)values.push(p);}});return values;}
 function totalTours(list){return (Array.isArray(list)?list:[]).reduce((sum,h)=>sum+(Array.isArray(h&&h.tours)?h.tours.length:0),0);}
-function mealText(t){return [t&&t.meal&&t.meal.russianName,t&&t.meal&&t.meal.fullRussianName,t&&t.meal&&t.meal.name].filter(Boolean).join(' ').toLowerCase();}
+function mealText(t){const m=t&&t.meal;return(typeof m==='string'?m:[m&&m.russianName,m&&m.fullRussianName,m&&m.name].filter(v=>typeof v==='string').join(' ')).trim().toLowerCase();}
 function tourMealMatches(t,key){if(!key)return true;const m=mealText(t);if(key==='ai')return /вс[её]\s+включено|all\s+inclusive|(^|\s)ai($|\s)/i.test(m);if(key==='hb')return /полупансион|half\s*board|(^|\s)hb($|\s)/i.test(m);return true;}
 function tourPriceMatches(t){const p=Number(t&&t.price||0);return !state.priceMax||!p||p<=state.priceMax;}
 function hasCompleteHotelField(list,key){const items=Array.isArray(list)?list:[];return !!items.length&&items.every(h=>Number(h&&h[key]||0)>0);}
