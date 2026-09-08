@@ -1,0 +1,85 @@
+{
+  "boundaries": {
+    "catalog_hotels_changed": false,
+    "owner_decisions_replayed": false,
+    "price_finality_claimed": false,
+    "production_changed": false,
+    "tourvisor_contract_changed": false
+  },
+  "branch": "feature/anex-search-adapter-20260907",
+  "changes": [
+    "Instant source selection for loaded hotel cards: all / ANEX API / Tourvisor / both",
+    "Card visibility and counters honor the same selection, preserving both sections on shared hotels",
+    "Selection composes with existing local filters/sorting and resets with the filter reset or next search",
+    "Empty state preserves supplier errors/loading but excludes stale unfiltered counts"
+  ],
+  "draft_pr": 1493,
+  "live_verification": {
+    "all_visible_ids_unique": true,
+    "at_sha": "ca34026dc8461bbd9425b0dff0823807b541bd59",
+    "control_height_px": 44,
+    "counts": {
+      "all": 220,
+      "anex": 152,
+      "both": 32,
+      "tourvisor": 100
+    },
+    "empty_with_minimum_budget": true,
+    "final_source_counts": {
+      "all": 220,
+      "anex": 152,
+      "both": 32,
+      "tourvisor": 100
+    },
+    "final_source_empty_text_consistent": true,
+    "final_source_reset_restores_all": true,
+    "final_source_sha": "d3bf074933f372e4e06eec3781c51b96542aa57a",
+    "horizontal_overflow": false,
+    "remaining": "Mobile visual verification not performed: documented browser surface did not provide viewport resizing. Physical Safari remains deferred.",
+    "reset_restores_all": true,
+    "shared_sections_readable": true,
+    "viewport": {
+      "height": 936,
+      "width": 1363
+    }
+  },
+  "mapping_registry": {
+    "effective": 12889,
+    "manual": 9,
+    "manual_sha256": "ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1",
+    "policy": 12880,
+    "policy_sha256": "2924faab70dcbf7d00b684e0e05639544145bdf6e2cf5f50f2645d6e6fb825e2",
+    "staging": 8362
+  },
+  "observed_code_compatibility": "Compare through d3bf0749 changes only own JS addon, its Node tests and documentation. No changes to workflow, app/integrations or scripts/diagnostics.",
+  "observed_code_sha": "35fa3709446721ab6bdc7bd6fa142f5171239670",
+  "previous_run_issue": {
+    "conclusion": "failure",
+    "reason": "ANEX_HTTP_ERROR in post-deployment supplier probe; publication succeeded. Next current-source probe and browser search succeeded.",
+    "run_id": 34274079684
+  },
+  "schema_version": 1,
+  "scope": "AnyTour isolated ANEX preview",
+  "source_requests_on_filter_change": 0,
+  "source_sha": "d3bf074933f372e4e06eec3781c51b96542aa57a",
+  "tests": {
+    "command": "node --test tests/anex-search3-preview.test.js",
+    "passed": 24
+  },
+  "workflow": {
+    "artifact": {
+      "digest": "sha256:91d8fbd9ddaa2c7b5828f53eed7e27a66c78c827afcfc4049b815edc781d7b35",
+      "id": 10075181725,
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34274501810/artifacts/10075181725"
+    },
+    "attempt": 1,
+    "conclusion": "success",
+    "job_id": 102224051849,
+    "restored_from": {
+      "artifact_id": 10075013589,
+      "run_id": 34274079684
+    },
+    "run_id": 34274501810,
+    "supplier_probe": "ok; Turkey152/Egypt36 projected hotels; observed445/mapped204/pending241"
+  }
+}
