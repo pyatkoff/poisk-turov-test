@@ -245,5 +245,4 @@ body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
 & #selectedTour{order:5!important}
 & #resultsTools strong{font-size:18px!important}
 }}
-@media(max-width:560px){body.search3-candidate.search3-results-active #status.status:has(.search-progress-ux:not(.search-progress-done)){position:relative!important;top:auto!important;z-index:auto!important}}
 }
