@@ -9,8 +9,12 @@ function verify_shared(bool $ok, string $message): void {
 function render_shared(string $temp, string $scope, string $phase = 'all'): string {
     $code = '$_GET=' . var_export(['type' => 'js', 'scope' => $scope, 'phase' => $phase], true)
         . '; require ' . var_export($temp . '/bundle-v1.php', true) . ';';
-    $output = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code));
-    verify_shared(is_string($output), 'bundle subprocess failed');
+    $process = proc_open([PHP_BINARY, '-r', $code], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    verify_shared(is_resource($process), 'bundle subprocess could not start');
+    $output = stream_get_contents($pipes[1]);
+    $error = stream_get_contents($pipes[2]);
+    fclose($pipes[1]); fclose($pipes[2]);
+    verify_shared(proc_close($process) === 0 && is_string($output), 'bundle subprocess failed: ' . $error);
     return $output;
 }
 try {
