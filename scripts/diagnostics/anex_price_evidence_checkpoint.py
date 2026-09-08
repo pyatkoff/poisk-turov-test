@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+"""Merge one bounded ANEX price-evidence report into a resumable checkpoint."""
+
+import argparse
+import datetime as dt
+import json
+import os
+from pathlib import Path
+import tempfile
+
+MAX_HOTELS = 30
+MAX_ID = 999_999_999
+STATUSES = {"offer_seen", "no_offer"}
+
+
+def utc_now():
+    return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def bounded_text(value, limit=200):
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.split())[:limit]
+
+
+def valid_id(value):
+    return type(value) is int and 1 <= value <= MAX_ID
+
+
+def unique_ids(values, label):
+    if not isinstance(values, list) or len(values) > MAX_HOTELS:
+        raise ValueError("invalid " + label)
+    if any(not valid_id(value) for value in values) or len(set(values)) != len(values):
+        raise ValueError("invalid " + label)
+    return values
+
+
+def empty_checkpoint():
+    return {
+        "schema_version": 1,
+        "mode": "price_evidence_checkpoint",
+        "decision_policy": "diagnostic_only",
+        "rows": [],
+    }
+
+
+def load_checkpoint(path):
+    target = Path(path)
+    if not target.exists():
+        return empty_checkpoint()
+    value = json.loads(target.read_text(encoding="utf-8"))
+    if (not isinstance(value, dict) or value.get("schema_version") != 1
+            or value.get("mode") != "price_evidence_checkpoint"
+            or value.get("decision_policy") != "diagnostic_only"
+            or not isinstance(value.get("rows"), list)):
+        raise ValueError("invalid price evidence checkpoint")
+    seen = set()
+    for row in value["rows"]:
+        if (not isinstance(row, dict) or not valid_id(row.get("external_id"))
+                or row.get("status") not in STATUSES or row["external_id"] in seen):
+            raise ValueError("invalid price evidence checkpoint row")
+        seen.add(row["external_id"])
+    return value
+
+
+def validate_report(report):
+    if (not isinstance(report, dict) or report.get("mode") != "price_evidence"
+            or report.get("ok") is not True):
+        raise ValueError("invalid price evidence report")
+    requested = unique_ids(report.get("requested_hotel_ids"), "requested hotel ids")
+    if not requested:
+        raise ValueError("empty price evidence report")
+    returned = unique_ids(report.get("returned_hotel_ids"), "returned hotel ids")
+    missing = unique_ids(report.get("missing_hotel_ids"), "missing hotel ids")
+    requested_set, returned_set, missing_set = set(requested), set(returned), set(missing)
+    if (returned_set & missing_set or returned_set | missing_set != requested_set
+            or not returned_set <= requested_set):
+        raise ValueError("price evidence ids do not partition requested ids")
+    search = report.get("search")
+    destination = bounded_text(search.get("destination")) if isinstance(search, dict) else ""
+    if not destination or search.get("requested_hotels") != len(requested):
+        raise ValueError("invalid price evidence search")
+    evidence_by_id = {}
+    evidence = report.get("evidence")
+    if not isinstance(evidence, list) or len(evidence) > MAX_HOTELS:
+        raise ValueError("invalid price evidence")
+    for item in evidence:
+        identifier = item.get("external_id") if isinstance(item, dict) else None
+        offers = item.get("offer_count") if isinstance(item, dict) else None
+        if (identifier not in returned_set or identifier in evidence_by_id
+                or type(offers) is not int or not 1 <= offers <= 10_000):
+            raise ValueError("invalid price evidence item")
+        evidence_by_id[identifier] = {
+            "offer_count": offers,
+            "hotel": bounded_text(item.get("hotel")),
+            "star": bounded_text(item.get("star"), 80),
+            "rooms": [bounded_text(value) for value in item.get("rooms", [])[:5]
+                      if bounded_text(value)],
+            "meals": [bounded_text(value) for value in item.get("meals", [])[:5]
+                      if bounded_text(value)],
+        }
+    if set(evidence_by_id) != returned_set:
+        raise ValueError("price evidence does not cover returned ids")
+    return requested, returned_set, destination, evidence_by_id
+
+
+def merge_checkpoint(checkpoint, report, checked_at=None):
+    requested, returned, destination, evidence = validate_report(report)
+    checked_at = checked_at or utc_now()
+    previous = {row["external_id"]: row for row in checkpoint["rows"]}
+    new_ids = sum(identifier not in previous for identifier in requested)
+    for identifier in requested:
+        old = previous.get(identifier, {})
+        row = {
+            "external_id": identifier,
+            "destination": destination,
+            "status": "offer_seen" if identifier in returned else "no_offer",
+            "first_checked_at": old.get("first_checked_at", checked_at),
+            "last_checked_at": checked_at,
+        }
+        if identifier in evidence:
+            row.update(evidence[identifier])
+        previous[identifier] = row
+    rows = [previous[key] for key in sorted(previous)]
+    status_counts = {status: sum(row["status"] == status for row in rows) for status in sorted(STATUSES)}
+    return {
+        "schema_version": 1,
+        "mode": "price_evidence_checkpoint",
+        "decision_policy": "diagnostic_only",
+        "updated_at": checked_at,
+        "counts": {
+            "checked_ids": len(rows),
+            "new_ids": new_ids,
+            "repeated_ids": len(requested) - new_ids,
+            **status_counts,
+        },
+        "last_batch": {
+            "destination": destination,
+            "requested_ids": len(requested),
+            "returned_ids": len(returned),
+            "missing_ids": len(requested) - len(returned),
+            "unexpected_offer_count": report.get("unexpected_offer_count", 0),
+            "external_results_not_loaded": report.get("external_results_not_loaded") is True,
+        },
+        "rows": rows,
+    }
+
+
+def write_atomic(path, value):
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=target.name + ".", dir=target.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(value, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        os.replace(temporary, target)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--report", required=True)
+    args = parser.parse_args()
+    checkpoint = load_checkpoint(args.checkpoint)
+    report = json.loads(Path(args.report).read_text(encoding="utf-8"))
+    result = merge_checkpoint(checkpoint, report)
+    write_atomic(args.checkpoint, result)
+    print(json.dumps(result["counts"], ensure_ascii=False, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
