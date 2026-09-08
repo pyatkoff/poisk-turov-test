@@ -42,7 +42,7 @@ const card = `
 </article>`;
 
 const drawer = `<div class="mrf-sheet"><div class="mrf-backdrop"></div><section class="mrf-panel"><div class="mrf-grab"></div><div class="mrf-head"><h3>Фильтры</h3><button class="mrf-close" type="button">×</button></div><div class="mrf-section"><strong>Категория отеля</strong><div class="mrf-options"><button class="mrf-choice is-active" type="button">5★</button></div></div><div class="mrf-section"><strong>Цена за тур, до</strong><div class="mrf-price"><input type="number"><span>₽</span></div></div><div class="mrf-actions"><button class="mrf-reset" type="button">Сбросить</button><button class="mrf-apply" type="button">Показать</button></div></section></div>`;
-const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{display:block!important;width:100%!important;max-width:none!important;padding:0!important}.results-layout{display:block!important;width:calc(100% - 48px)!important;max-width:951px!important;margin:24px auto!important}.results-filter-rail{display:none!important}.results-layout #results{display:flex!important;width:100%!important;max-width:none!important;margin:0!important}@media(min-width:1000px){.results-layout{width:min(886px,calc(100% - 48px))!important}}</style><body class="search3-candidate search3-results-active search3-has-results"><main class="v2-shell"><section id="resultsSearchSummary">Параметры поиска</section><section id="resultsTools"><strong>1 тур</strong></section><div class="results-layout"><aside class="results-filter-rail"></aside><section id="results">${card}</section></div></main>${drawer}</body>`;
+const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{display:block!important;width:100%!important;max-width:none!important;padding:0!important}</style><body class="search3-candidate search3-results-active search3-has-results"><main class="v2-shell"><section id="resultsSearchSummary">Параметры поиска</section><section id="resultsTools"><strong>1 тур</strong></section><div class="results-layout"><aside class="results-filter-rail"></aside><section id="results">${card}</section></div></main>${drawer}</body>`;
 
 function inside(inner, outer, message) {
   assert.ok(inner.left >= outer.left - 1 && inner.right <= outer.right + 1
@@ -70,9 +70,6 @@ function inside(inner, outer, message) {
               for (const [name, value] of Object.entries(declarations)) node.style.setProperty(name, value, 'important');
             };
             force('.v2-shell', { display: 'block', width: '100%', 'max-width': 'none', padding: '0' });
-            force('.results-layout', { display: 'block', width: innerWidth >= 1000 ? 'min(886px, calc(100% - 48px))' : 'calc(100% - 48px)', 'max-width': '951px', margin: '24px auto' });
-            force('.results-filter-rail', { display: 'none' });
-            force('#results', { display: 'flex', width: '100%', 'max-width': 'none', margin: '0' });
           });
           if (expanded) await page.evaluate(() => {
             document.body.classList.add('search3-hotel-tours-open');

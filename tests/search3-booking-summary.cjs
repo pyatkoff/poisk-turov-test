@@ -1,61 +1,25 @@
-/* Event-burst regression: execute the actual summary module with a small DOM adapter. */
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const vm = require('node:vm');
-const path = require('node:path');
-const events = new Map(), timers = [];
-let renders = 0, html = '', lead = false, review = false, desktop = false;
-const layoutWrites = [];
-const style = owner => ({
-  removeProperty(name) { layoutWrites.push([owner, 'remove', name]); },
-  setProperty(name, value, priority) { layoutWrites.push([owner, 'set', name, value, priority]); }
-});
-let titleWrites = 0, titleValue = '';
-const title = { get textContent() { return titleValue; }, set textContent(value) { titleWrites++; titleValue = value; } }, flight = { textContent: '' };
-const summary = { style: style('summary'), remove() {}, querySelector(s) { return s.includes('__title') ? title : s.includes('__flight') ? flight : null; } };
-const shell = { style: style('shell'), parentNode: { insertBefore() {} }, querySelector() { return summary; }, insertAdjacentHTML(_, value) { renders++; html = value; } };
-const form = { style: style('form'), closest() { return shell; } };
-const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' ? lead : name === 'search3-final-review' && review; } }, querySelector(s) { return s === '.lead-form' ? form : s === '.search3-lead-shell,.lead-form' ? shell : null; } };
-const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: desktop }; } };
-const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
-const bundledIife = require('./search3-bundle-iife.cjs');
-const presentationSource = bundledIife(bundle, { global: 'Search3BookingSummary' });
-vm.runInNewContext(presentationSource, {
-  window, document: { getElementById() { return root; }, createElement() { return {}; }, addEventListener() {} }, setTimeout(fn) { timers.push(fn); }
-});
-const emit = (name, detail) => events.get(name)({ detail });
-const flush = () => { while (timers.length) timers.shift()(); };
-emit('v2:tour-selected', { tour: { name: 'First', price: 100 } });
-emit('v2:flight-selected', { flight: { forward: [{ company: 'SU', number: 'Actual flight' }] } });
-emit('v2:tour-price-updated', { price: 321 });
-assert.equal(events.has('resize'), false, 'CSS-owned geometry needs no resize subscriber');
-assert.equal(timers.length, 1, 'one scheduled pass for a synchronous event burst');
-flush();
-assert.equal(renders, 1);
-assert.ok(html.includes('Actual flight') && html.includes('321 ₽'), 'latest flight and price survive coalescing');
-emit('v2:tour-selected', { tour: { name: 'Second', price: 654 } });
-lead = true;
-emit('search3:lead-entry');
-flush();
-assert.equal(renders, 2, 'a render supersedes an already pending layout');
-assert.ok(html.includes('Second') && html.includes('654 ₽'));
-assert.ok(!html.includes('Actual flight'), 'new tour clears previous flight');
-assert.equal(flight.textContent, 'Рейс уточнит менеджер');
-lead = false;
-emit('v2:booking-review'); flush();
-assert.equal(renders, 2, 'layout-only events do not rebuild the summary');
-assert.equal(titleWrites, 1, 'unchanged heading does not generate new DOM mutations');
-assert.equal(flight.textContent, 'Выберите рейс');
-emit('v2:tour-price-updated', { price: 987 }); flush();
-assert.equal(renders, 3, 'later updates are not lost');
-assert.ok(html.includes('987 ₽'));
-console.log('PASS: coalesced summary events preserve latest tour/flight/price and stage');
-
-// Current CSS owns layout. The adapter keeps only lifecycle copy/data updates.
-for (desktop of [false, true]) for (review of [false, true]) for (lead of [false, true]) {
-  layoutWrites.length = 0;
-  window.Search3BookingSummary.syncLayout();
-  assert.deepEqual(layoutWrites, []);
-  assert.equal(root.dataset.search3FinalLayout, review && !lead ? 'maket7' : undefined);
-}
-console.log('PASS: all eight summary states use CSS layout while preserving lifecycle data');
+/* Compact booking total keeps coalesced price/flight state without duplicate tour cards. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+const iife=require('./search3-bundle-iife.cjs');
+const bundle=fs.readFileSync(process.argv[2]||path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
+const events=new Map(),timers=[];let html='',renders=0,lead=false;
+const oldSummary={remove(){}};
+const shell={querySelector(){return renders?oldSummary:null},insertAdjacentHTML(_,value){html=value;renders++}};
+const form={closest(){return shell}};
+const root={classList:{contains(name){return name==='search3-lead-entry'&&lead}},querySelector(selector){return selector==='.lead-form'?form:null}};
+const window={addEventListener(name,fn){if(!events.has(name))events.set(name,[]);events.get(name).push(fn)}};
+vm.runInNewContext(iife(bundle,{global:'Search3BookingSummary'}),{window,document:{getElementById(){return root}},setTimeout(fn){timers.push(fn)},Intl});
+const emit=(name,detail={})=>(events.get(name)||[]).forEach(fn=>fn({detail}));
+const flush=()=>{while(timers.length)timers.shift()()};
+emit('v2:tour-selected',{tour:{name:'Duplicate hotel card',date:'2026-09-10',nights:7,price:70000,meal:{name:'AI'},roomType:'STD',operator:{name:'OP'}}});
+emit('v2:flight-selected',{flight:{forward:[{company:{name:'SU'},number:'SU123'}]}});
+emit('v2:tour-price-updated',{price:72150});
+assert.equal(timers.length,1,'synchronous tour/flight/price events coalesce');flush();
+assert.equal(renders,1);assert.match(html,/SU SU123/);assert.match(html,/72 150 ₽/);
+for(const duplicate of ['Duplicate hotel card','2026-09-10','AI','STD','OP'])assert.ok(!html.includes(duplicate),'full facts stay only in selected-tour DOM: '+duplicate);
+emit('v2:tour-price-updated',{pricePending:true,price:999999,basePrice:69500});flush();assert.match(html,/69 500 ₽/);
+lead=true;emit('search3:lead-entry');flush();assert.match(html,/SU SU123/);
+assert.equal(window.Search3BookingSummary.normalizedTotal({pricePending:true,price:999,basePrice:123}),123);
+assert.equal(window.Search3BookingSummary.normalizedTotal({pricePending:false,price:456,basePrice:123}),456);
+assert.equal(window.Search3BookingSummary.version,6);
+console.log('PASS: compact booking total preserves coalescing, flight label and pending/confirmed price');

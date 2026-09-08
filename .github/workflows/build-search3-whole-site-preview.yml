@@ -343,8 +343,8 @@ jobs:
         if: steps.selected-geometry.outputs.required == 'true'
         shell: bash
         env:
-          SEARCH3_GEOMETRY_BASE: def1cf844aa1b9d15bb59219d8633ad4e1409314 # checked current reset + native entry, before selected owner retirement
-          SEARCH3_RUNTIME_BASE: def1cf844aa1b9d15bb59219d8633ad4e1409314 # exact same current route closure for protected-content and entry comparison
+          SEARCH3_GEOMETRY_BASE: 7eadf95d1164f51530fe545a5e42fb1ea977096e # checked current route after selected owner retirement
+          SEARCH3_RUNTIME_BASE: 7eadf95d1164f51530fe545a5e42fb1ea977096e # exact current route closure for protected-content and entry comparison
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
           SEARCH3_GEOMETRY_OUTPUT: ${{ runner.temp }}/search3-selected-geometry
         run: |
