@@ -297,6 +297,17 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.hotel-actions,.hotel-inline-detail', results)
         self.assertIn('display:none!important', results)
 
+    def test_search_states_design_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/search-states-design.css').read_text()
+        current = (ROOT / 'src/search3/styles/search-progress.css').read_text()
+        self.assertIn("'search-states-design.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'search-states-design.css'", scoped)
+        for contract in ['.skeleton-card', '.empty', '.tour-loading']:
+            self.assertIn(contract, legacy)
+            self.assertIn(contract, current)
+
     def test_results_experience_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
