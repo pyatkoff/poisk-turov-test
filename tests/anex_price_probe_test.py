@@ -111,6 +111,38 @@ class PriceProbeTest(unittest.TestCase):
         self.assertIs(result["samples"][0]["grouped"], False)
         self.assertNotIn(self.row["id"], json.dumps(result))
 
+    def test_batched_price_evidence_keeps_identity_diagnostic_only(self):
+        payloads = copy.deepcopy(self.payloads)
+        expected = copy.deepcopy(self.row)
+        expected.update(hotelKey=123, grouped=1, room="Family", meal="AI")
+        unexpected = copy.deepcopy(self.row)
+        unexpected.update(hotelKey=999, grouped=0)
+        payloads[-1] = {"prices": [expected, unexpected]}
+        tokens = dict(TOKENS, ANEX_PRICE_HOTEL_IDS="123,124,123",
+                      ANEX_PRICE_DESTINATION="Турция")
+        result, request = self.run_probe(payloads, tokens)
+        self.assertTrue(result["ok"])
+        self.assertEqual(request.call_count, 6)
+        self.assertEqual(request.call_args_list[-1].args[0]["HOTELS"], "123,124")
+        self.assertEqual(result["requested_hotel_ids"], [123, 124])
+        self.assertEqual(result["returned_hotel_ids"], [123])
+        self.assertEqual(result["missing_hotel_ids"], [124])
+        self.assertEqual(result["unexpected_offer_count"], 1)
+        self.assertEqual(result["evidence"][0]["external_id"], 123)
+        self.assertEqual(result["evidence"][0]["rooms"], ["Family"])
+        self.assertNotIn("accepted", result)
+
+    def test_empty_price_evidence_is_not_an_identity_rejection(self):
+        payloads = copy.deepcopy(self.payloads)
+        payloads[-1] = {"prices": []}
+        tokens = dict(TOKENS, ANEX_PRICE_HOTEL_IDS="123,124",
+                      ANEX_PRICE_DESTINATION="Турция")
+        result, _ = self.run_probe(payloads, tokens)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["returned_hotel_ids"], [])
+        self.assertEqual(result["missing_hotel_ids"], [123, 124])
+        self.assertEqual(result["evidence"], [])
+
     def test_boolean_booking_flags_are_preserved(self):
         payloads = copy.deepcopy(self.payloads)
         payloads[-1]["prices"][0]["bron"] = True
