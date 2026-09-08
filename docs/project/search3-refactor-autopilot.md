@@ -4,13 +4,14 @@
 
 Exact source `98aed98b0ac90575be43bc22f58e8c2fcf4071b5`, tree
 `9fa329f9a886c6bade96284e6b908029ecefb701`; checked release
-`69fa28aa1224026cf05e6c2b4b5993236481396e`. Base was
-`e50a50948b3247edbbda4e32ac86de7be5e76c51`.
+`69fa28aa1224026cf05e6c2b4b5993236481396e`. Independent #1625 merged first as
+`c423da23e5112bcf80867986b3965036db39c54b`; that is the final integration base.
 
 The whole preview-era `base.css` donor skin was deleted with no rule movement.
-Eight public assets are **19125→16195 raw B (−2930)**; results-filter CSS
-**8420→5490 B**; initial route **95058→92128 B**; complete route
-**120662→117732 B**. All eight paths and current entry/results/selected owners remain.
+Eight public assets are **18356→15426 raw B (−2930)**; results-filter CSS
+**8420→5490 B**; initial route **79663→76733 B**; complete route
+**119893→116963 B**. The independent #1625 savings are not counted here. All
+eight paths and current entry/results/selected owners remain.
 
 Security `34271552421` and exact artifact `34271552328` passed. Reuse artifact
 `10074024154`, digest
@@ -31,8 +32,11 @@ owner acceptance and full lead/responsive/site/SEO journey are also deferred.
 `86fc165277a13ae9bef1369659e9b150399f0e35`; main and production unchanged.
 Revert `69fa28aa` for rollback. Audit: `docs/project/search3-base-skin-retirement.json`.
 
-Next: do not micro-trim the remaining 16195 B. Remaining public owners are results
-layout5490 B, selected flow5589 B, result-state/lazy/native-lead JS4783 B and native
+The exact artifact is for #1626 on its original source base; the clean final merge
+also contains independently green #1625 and was not rebuilt.
+
+Next: do not micro-trim the remaining 15426 B. Remaining public owners are results
+layout5490 B, selected flow4483 B, result-state/lazy/native-lead JS5120 B and native
 entry331 B. Retire another owner only as a coarse product/design boundary with real
 eight-asset savings; do not count source movement or deferred loading.
 

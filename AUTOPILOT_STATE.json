@@ -3,10 +3,10 @@
     "source_pr": 1626,
     "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
     "release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
-    "base_release_sha": "e50a50948b3247edbbda4e32ac86de7be5e76c51",
-    "eight_assets": {"before_bytes": 19125, "after_bytes": 16195, "removed_bytes": 2930},
-    "initial_route": {"before_bytes": 95058, "after_bytes": 92128, "removed_bytes": 2930},
-    "complete_route": {"before_bytes": 120662, "after_bytes": 117732, "removed_bytes": 2930},
+    "base_release_sha": "c423da23e5112bcf80867986b3965036db39c54b",
+    "eight_assets": {"before_bytes": 18356, "after_bytes": 15426, "removed_bytes": 2930},
+    "initial_route": {"before_bytes": 79663, "after_bytes": 76733, "removed_bytes": 2930},
+    "complete_route": {"before_bytes": 119893, "after_bytes": 116963, "removed_bytes": 2930},
     "ci": {
       "security_run": 34271552421,
       "artifact_run": 34271552328,
@@ -25,7 +25,8 @@
       "lead_sent": 0
     },
     "deferred": ["actual browser geometry for the donor-skin reset", "manual screenshots", "physical Safari/safe-area", "live current-source preview", "owner visual acceptance", "full lead/responsive/site/SEO journey"],
-    "next_action": "Do not micro-trim the remaining 16195B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
+    "parallel_integration": "Independent #1625 merged first as c423da23; its savings are not counted here. Final combined release not rebuilt.",
+    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
   },
   "latest_native_booking_handoff": {
     "source_pr": 1623,
@@ -342,9 +343,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1626 deleted the whole preview-era base donor skin with no rule movement: eight assets 19125→16195 (−2930B), initial 95058→92128 (−2930B), complete 120662→117732 (−2930B). Final Security/exact green; browser geometry deferred; not published.",
+    "last_material_progress": "#1626 deleted the whole preview-era base donor skin with no rule movement on the final #1625 base: eight assets 18356→15426 (−2930B), initial 79663→76733 (−2930B), complete 119893→116963 (−2930B). Security/exact green; browser geometry deferred; not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not micro-trim the remaining 16195B. Remaining public owners are results layout5490B, selected flow5589B, result-state/lazy/native-lead JS4783B and native entry331B. Retire another owner only as a coarse product/design boundary with real eight-asset savings.",
+    "next_action": "Do not micro-trim the remaining 15426B. Remaining public owners are results layout5490B, selected flow4483B, results/lazy/native-lead JS5120B and native entry331B. Retire another owner only as a coarse product/design boundary with real eight-asset savings.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -361,11 +362,11 @@
     "last_fully_checked_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
     "security_run": 34271552421,
     "exact_run": 34271552328,
-    "checked_release_asset_bytes": 16195,
-    "release_loaded_bytes": 117732,
-    "release_initial_bytes": 92128,
+    "checked_release_asset_bytes": 15426,
+    "release_loaded_bytes": 116963,
+    "release_initial_bytes": 76733,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "Do not micro-trim the remaining 16195B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
+    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",

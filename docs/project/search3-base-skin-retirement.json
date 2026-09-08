@@ -4,14 +4,14 @@
   "source_pr": 1626,
   "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
   "source_tree_sha": "9fa329f9a886c6bade96284e6b908029ecefb701",
-  "base_release_sha": "e50a50948b3247edbbda4e32ac86de7be5e76c51",
+  "base_release_sha": "c423da23e5112bcf80867986b3965036db39c54b",
   "checked_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
   "scope": "Delete the entire preview-era Search3 donor base skin without moving any of its rules; retain the current entry, results and selected owners.",
   "accounting": {
-    "eight_public_assets": {"before_bytes": 19125, "after_bytes": 16195, "removed_bytes": 2930},
+    "eight_public_assets": {"before_bytes": 18356, "after_bytes": 15426, "removed_bytes": 2930},
     "results_filter_css": {"before_bytes": 8420, "after_bytes": 5490, "removed_bytes": 2930},
-    "initial_route": {"before_bytes": 95058, "after_bytes": 92128, "removed_bytes": 2930},
-    "complete_route": {"before_bytes": 120662, "after_bytes": 117732, "removed_bytes": 2930}
+    "initial_route": {"before_bytes": 79663, "after_bytes": 76733, "removed_bytes": 2930},
+    "complete_route": {"before_bytes": 119893, "after_bytes": 116963, "removed_bytes": 2930}
   },
   "retained_contracts": [
     "all eight public asset paths",
@@ -56,5 +56,6 @@
   },
   "rollback": "Revert merge 69fa28aa1224026cf05e6c2b4b5993236481396e.",
   "deferred": ["actual browser geometry for the donor-skin design reset", "manual screenshots", "physical Safari/safe-area", "live current-source preview", "owner visual acceptance", "full lead/responsive/site/SEO journey"],
-  "next_action": "Do not micro-trim the remaining 16195B. The remaining public owners are results layout 5490B, selected flow 5589B, result-state/lazy/native-lead JS 4783B and native entry 331B; retire another owner only as a coarse product/design boundary with real eight-asset savings."
+  "parallel_integration": "Independent #1625 merged first as c423da23; its 769B eight-asset saving and 15395B initial-route saving are not counted in this package. The final combined release was not rebuilt.",
+  "next_action": "Do not micro-trim the remaining 15426B. The remaining public owners are results layout 5490B, results/lazy/native-lead JS 5120B, selected flow 4483B and native entry 331B; retire another owner only as a coarse product/design boundary with real eight-asset savings."
 }

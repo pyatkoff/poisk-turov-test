@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "task": "Deferred exact lead owner and retired duplicate selected review block",
+  "date": "2026-09-08",
+  "status": "SOURCE_READY_AWAITING_CI",
+  "baseline_release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+  "source_sha": null,
+  "release_sha": null,
+  "baseline_source_pr": 1623,
+  "baseline_source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+  "baseline_security_run": 34269579797,
+  "baseline_exact_run": 34269579936,
+  "assets": {
+    "search3-results-filters-v1.js": {
+      "before": 4783,
+      "after": 5120
+    },
+    "search3-results-filters-v1.css": {
+      "before": 8420,
+      "after": 8420
+    },
+    "search3-entry-v1.css": {
+      "before": 331,
+      "after": 331
+    },
+    "search3-entry-v1.js": {
+      "before": 0,
+      "after": 0
+    },
+    "search3-results-cards-v2.css": {
+      "before": 1,
+      "after": 1
+    },
+    "search3-results-cards-v2.js": {
+      "before": 0,
+      "after": 0
+    },
+    "search3-selected-flow-v2.css": {
+      "before": 1,
+      "after": 1
+    },
+    "search3-selected-flow-v2.js": {
+      "before": 5589,
+      "after": 4483
+    }
+  },
+  "eight_assets_raw": {
+    "before": 19125,
+    "after": 18356,
+    "saved": 769
+  },
+  "shared_file_payload_raw": {
+    "before": 101537,
+    "after": 101537,
+    "saved": 0
+  },
+  "complete_route_file_payload_raw": {
+    "before": 120662,
+    "after": 119893,
+    "saved": 769
+  },
+  "initial_route_file_payload_raw": {
+    "before": 95058,
+    "after": 79663,
+    "saved": 15395
+  },
+  "selected_file_payload_raw": {
+    "before": 25604,
+    "after": 40230,
+    "deferred_extra": 14626
+  },
+  "changes": [
+    "Whole obsolete selected review CTA/activateReview block removed: selected flow5589→4483 (-1106B). Existing native CTA owns empty-flight handoff.",
+    "Exact protected lead-form-guard-v1.js moves to selected phase in original relative order; main loader4783→5120 (+337B) provides equivalent exported bootstrap before first replay.",
+    "Race guard and lead search context remain eager. Canonical lead source, validation, lead transport/fields, pricing and analytics unchanged."
+  ],
+  "local_checks": [
+    "One final eight-asset build",
+    "Existing selected-flow scheduler source check passed: native handoff, no duplicate CTA, observer settles, retry and decimal tradeoffs",
+    "Loader/browser syntax check"
+  ],
+  "ci": {},
+  "visual_checks": [],
+  "preview_updated": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+  "production_modified": false,
+  "deferred": [
+    "Final source CI/browser checks pending",
+    "Physical Safari",
+    "Manual screenshot inspection",
+    "Current-source live preview",
+    "Owner visual acceptance",
+    "Full lead/site/SEO journey"
+  ],
+  "next_action": "Complete Security and exact source artifact, integrate release, then assess justified reuse of the accumulated artifact for existing isolated whole-site preview; no repeat asset build. Do not count deferral as deletion.",
+  "failed_runs": [
+    {
+      "source_sha": "5bcc3125df763b6d415ec2c58716b960a70e98ca",
+      "exact_run": 34270925550,
+      "result": "failure",
+      "reason": "Selected8 and lazy download/reset/phone/race assertions passed; added tour retry scenario awaited obsolete guard decorator .tour-load-retry. Canonical controller already owns .retry-tour; fixture now clicks that actual action. No production code or asset rebuild for this fixture correction."
+    }
+  ]
+}
