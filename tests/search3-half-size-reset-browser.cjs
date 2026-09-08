@@ -51,7 +51,7 @@ async function run(browser, width) {
     const response = await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200, 'isolated Search3 route loads');
     assert.equal(await page.locator('body').evaluate(node => node.classList.contains('search3-candidate')), true);
-    await page.waitForFunction(() => window.V2Runtime && window.V2Results && window.V2TourController && window.Search3SelectedFlowV2);
+    await page.waitForFunction(() => window.V2Runtime && window.V2Results && window.V2TourController && window.V2FlightEmptyRecoveryV1 && window.Search3SummaryCta);
 
     for (const selector of ['#tourSearch input[type=date]', '#tourSearch select.search3-direct-control', '#tourSearch .search-submit']) {
       const control = page.locator(selector).first();

@@ -73,6 +73,7 @@ async function prepare(page, mode) {
 
   for (const file of [
     'v2/tour-controller-v4.js',
+    'v2/flight-empty-recovery-v1.js',
     'v2/flight-price-sync-v1.js',
     'v2/search3-results-filters-v1.js',
     'v2/search3-selected-flow-v2.js'
@@ -86,7 +87,7 @@ async function prepare(page, mode) {
   }
   await page.waitForFunction(() => (
     window.__fallbackTest.flightCalls === 1
-    && document.querySelector('#selectedTour.search3-flight-fallback .load-flights')
+    && document.querySelector('#selectedTour .load-flights')
   ));
 }
 
@@ -105,7 +106,6 @@ async function verifyLocalizedFlightTradeoff(browser) {
     summaryCount: document.querySelectorAll('#selectedTour .search3-booking-summary').length,
     prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
-    parsedDecimal: window.Search3SelectedFlowV2.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
     wrongDigitCollapse: document.body.textContent.includes('+827 664 ₽ к минимальной'),
     leadRequests: window.__fallbackTest.leadRequests
   }));
@@ -116,7 +116,6 @@ async function verifyLocalizedFlightTradeoff(browser) {
     || state.prices[1] !== 'Стоимость тура: 90 049,6 ₽'
     || state.tradeoffs[0] !== 'Самая низкая цена'
     || state.tradeoffs[1] !== '+17 217,6 ₽ к минимальной'
-    || state.parsedDecimal !== 90049.6
     || state.wrongDigitCollapse
     || state.leadRequests !== 0
   ) throw new Error('localized flight tradeoff failed: ' + JSON.stringify(state));
@@ -132,19 +131,17 @@ async function verifyFallbackHandoff(browser) {
     flightCalls: window.__fallbackTest.flightCalls,
     retries: document.querySelectorAll('#selectedTour .load-flights').length,
     message: document.querySelector('#selectedTour .selected-loading')?.textContent || '',
-    fallback: document.getElementById('selectedTour').dataset.search3FlightFallback,
     continueText: document.querySelector('#selectedTour .search3-flight-continue button')?.textContent || '',
     mobileActions: document.querySelectorAll('[data-s3-selected-lead]').length,
-    legacyOwner: typeof window.V2FlightEmptyRecoveryV1
+    canonicalOwner: window.V2FlightEmptyRecoveryV1?.version
   }));
   if (
     state.flightCalls !== 1
     || state.retries !== 1
     || !state.message.includes('менеджер уточнит перелёт по заявке')
-    || state.fallback !== '1'
     || state.continueText !== 'Оставить заявку'
     || state.mobileActions !== 0
-    || state.legacyOwner !== 'undefined'
+    || state.canonicalOwner !== 1
   ) throw new Error('initial fallback state failed: ' + JSON.stringify(state));
 
   const stableWrites = await page.evaluate(async () => {
@@ -153,8 +150,8 @@ async function verifyFallbackHandoff(browser) {
     let writes = 0;
     const observer = new MutationObserver(records => { writes += records.length; });
     observer.observe(document.getElementById('selectedTour'), {subtree:true,childList:true,attributes:true,characterData:true});
-    window.Search3SelectedFlowV2.sync();
-    window.Search3SelectedFlowV2.sync();
+    window.V2FlightEmptyRecoveryV1.decorate();
+    window.V2FlightEmptyRecoveryV1.decorate();
     for (let i=0;i<4;i++) await frame();
     observer.disconnect();
     return writes;
@@ -188,13 +185,11 @@ async function verifyRetryRecovery(browser) {
   await page.waitForFunction(() => (
     window.__fallbackTest.flightCalls === 2
     && document.querySelector('#selectedTour .flight-variant')
-    && !document.getElementById('selectedTour').classList.contains('search3-flight-fallback')
   ));
   const state = await page.evaluate(() => ({
     flightCalls: window.__fallbackTest.flightCalls,
     variants: document.querySelectorAll('#selectedTour .flight-variant').length,
     retries: document.querySelectorAll('#selectedTour .load-flights').length,
-    fallback: document.getElementById('selectedTour').dataset.search3FlightFallback || '',
     mobileFallbackAction: document.querySelector('[data-s3-selected-lead]')?.dataset.search3SelectedFlowAction || '',
     leadRequests: window.__fallbackTest.leadRequests
   }));
@@ -202,7 +197,6 @@ async function verifyRetryRecovery(browser) {
     state.flightCalls !== 2
     || state.variants !== 1
     || state.retries !== 0
-    || state.fallback
     || state.mobileFallbackAction
     || state.leadRequests !== 0
   ) throw new Error('retry recovery failed: ' + JSON.stringify(state));

@@ -95,6 +95,9 @@ class Search3SourceBuildTest(unittest.TestCase):
 
     def test_current_outputs_match_and_build_is_idempotent(self):
         self.assertEqual(builder.build(self.root), 8)
+        self.assertEqual(
+            json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']['search3-selected-flow-v2.js'], [])
+        self.assertEqual((self.root / 'v2/search3-selected-flow-v2.js').read_bytes(), b'')
         before = (self.root / 'docs/project/search3-production-import.json').read_bytes()
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)

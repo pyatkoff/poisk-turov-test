@@ -109,7 +109,9 @@ def assemble(root):
         return content
 
     for name, parts in manifest['assets'].items():
-        if Path(name).name != name or not name.startswith('search3-') or not parts:
+        # Public compatibility paths may intentionally remain as zero-byte slots
+        # after their final source owner is retired.
+        if Path(name).name != name or not name.startswith('search3-') or not isinstance(parts, list):
             raise ValueError('Invalid Search3 output: ' + name)
         chunks = [read_part(part, Path(name).suffix) for part in parts]
         content = b''.join(chunks)

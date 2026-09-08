@@ -933,10 +933,33 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertEqual(assets['search3-entry-v1.css'], ['styles/entry-native-controls.css'])
         self.assertEqual(assets['search3-results-cards-v2.css'], ['styles/result-cards.css'])
         self.assertEqual(assets['search3-selected-flow-v2.css'], ['styles/selected-tour.css'])
+        self.assertEqual(assets['search3-selected-flow-v2.js'], [])
         self.assertFalse((ROOT / 'src/search3/styles/base.css').exists())
+        self.assertFalse((ROOT / 'src/search3/behavior/selected-flow-v2.js').exists())
+        self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
         self.assertLessEqual((ROOT / 'v2/search3-results-filters-v1.css').stat().st_size, 5490)
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertLessEqual((ROOT / 'v2/search3-selected-flow-v2.css').stat().st_size, 1)
+        self.assertEqual((ROOT / 'v2/search3-selected-flow-v2.js').stat().st_size, 0)
+
+    def test_selected_runtime_uses_canonical_owners_once(self):
+        phases = json.loads(subprocess.check_output([
+            'php', '-r',
+            'require "v2/bundle-manifest-v1.php"; echo json_encode(['
+            'v2_bundle_phase_files("js", "search3", "initial"),'
+            'v2_bundle_phase_files("js", "search3", "selected")]);'
+        ], cwd=ROOT))
+        initial, selected = phases
+        self.assertNotIn('flight-empty-recovery-v1.js', initial)
+        self.assertEqual(selected.count('flight-empty-recovery-v1.js'), 1)
+        self.assertEqual(selected.count('flight-price-sync-v1.js'), 1)
+        self.assertEqual(selected.count('tour-controller-v4.js'), 1)
+        recovery = (ROOT / 'v2/flight-empty-recovery-v1.js').read_text()
+        summary = (ROOT / 'src/search3/behavior/summary-cta.js').read_text()
+        self.assertIn('Проверить рейсы ещё раз', recovery)
+        self.assertIn("window.addEventListener('v2:tour-selected'", recovery)
+        self.assertIn("selectedState(true)", summary)
+        self.assertIn('correctTradeoffs', summary)
 
     def test_native_controls_and_isolation_remain(self):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()

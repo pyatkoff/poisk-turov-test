@@ -77,7 +77,7 @@ async function run(browser, width, previous) {
     const response=await page.goto(base+'/poisk-turov/', {waitUntil:'domcontentloaded'});
     assert.equal(response.status(),200,'isolated Search3 entry must load');
     assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('search3-candidate')),true,'canonical host gate must enable Search3');
-    await page.waitForFunction(()=>window.V2TourController && window.Search3SelectedFlowV2 && window.Search3SummaryCta);
+    await page.waitForFunction(()=>window.V2TourController && window.V2FlightEmptyRecoveryV1 && window.Search3SummaryCta);
     await page.evaluate(({tour,flights})=>{
       window.__geometryCalls={tour:0,flights:0,other:0};
       window.V2Runtime.api=async action=>{
