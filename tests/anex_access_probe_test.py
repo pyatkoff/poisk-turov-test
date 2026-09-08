@@ -64,6 +64,16 @@ class RequestBoundaryTest(unittest.TestCase):
                              ("https", "parser.anextour.ru", "/export/default.php"))
             self.assertEqual(urllib.parse.parse_qs(parsed.query)["oauth_token"], [REFERENCE_TOKEN])
 
+    def test_hotel_details_rate_floor(self):
+        probe._next_hotel_details_request_at = 0.0
+        with mock.patch.object(probe.time, "monotonic", side_effect=[100.0, 100.25]), \
+                mock.patch.object(probe.time, "sleep") as sleep:
+            probe.wait_for_hotel_details_slot()
+            probe.wait_for_hotel_details_slot()
+        sleep.assert_called_once()
+        self.assertAlmostEqual(sleep.call_args.args[0], 0.8)
+        self.assertAlmostEqual(probe._next_hotel_details_request_at, 102.1)
+
     def test_redirects_never_forward_credentials(self):
         self.assertIsNone(probe.NoRedirect().redirect_request(
             None, None, 302, "Found", {}, "https://elsewhere.invalid/?oauth_token=" + REFERENCE_TOKEN))

@@ -145,15 +145,17 @@ final class AnyTourAnexSearch
             if ($criteria['child_ages']) $params['AGES'] = implode(',', $criteria['child_ages']);
         }
         if (isset($criteria['hotel_ids'])) {
-            if (!is_array($criteria['hotel_ids']) || !$criteria['hotel_ids'] || count($criteria['hotel_ids']) > 10) {
+            if (!is_array($criteria['hotel_ids']) || !$criteria['hotel_ids'] || count($criteria['hotel_ids']) > 30) {
                 throw new InvalidArgumentException('ANEX_INVALID_HOTELS');
             }
+            $hotelIds = [];
             foreach ($criteria['hotel_ids'] as $id) {
                 if (!(is_int($id) || is_string($id)) || !preg_match('/^[1-9][0-9]{0,8}$/D', (string)$id)) {
                     throw new InvalidArgumentException('ANEX_INVALID_HOTELS');
                 }
+                $hotelIds[(string)$id] = (string)$id;
             }
-            $params['HOTELS'] = implode(',', $criteria['hotel_ids']);
+            $params['HOTELS'] = implode(',', array_values($hotelIds));
         }
         $params += ['FREIGHT' => 1, 'FILTER' => 1, 'PRICEPAGE' => 1,
             'PARTITION_PRICE' => 32, 'SORT' => 'ASC', 'DYN_SEPARATE' => 1];

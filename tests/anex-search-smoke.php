@@ -74,6 +74,24 @@ search_reject(static function () use ($search, $criteria) { $search->search(arra
 search_reject(static function () use ($search, $offer) { $search->flights($offer['offer_key']); });
 search_check($client->requestsMade() === 3, 'invalid search reached network');
 
+$batchCalls = [];
+$batchClient = new AnyTourAnexClient('batch-secret', static function (string $url) use (&$batchCalls): array {
+    parse_str((string) parse_url($url, PHP_URL_QUERY), $params);
+    $batchCalls[] = $params;
+    return ['status' => 200, 'body' => json_encode([$params['action'] => ['prices' => []]])];
+});
+$batchSearch = new AnyTourAnexSearch($batchClient, null, ['batch-secret']);
+$hotelIds = array_map('strval', range(469, 498));
+$batchSearch->search(array_replace($criteria, ['hotel_ids' => $hotelIds]));
+search_check(count($batchCalls) === 1
+    && $batchCalls[0]['HOTELS'] === implode(',', $hotelIds), '30-hotel batch was not serialized');
+search_reject(static function () use ($batchSearch, $criteria): void {
+    $batchSearch->search(array_replace($criteria, ['hotel_ids' => array_map('strval', range(469, 499))]));
+});
+search_check(count($batchCalls) === 1, '31-hotel batch reached supplier');
+$batchSearch->search(array_replace($criteria, ['hotel_ids' => ['469', 469, '470']]));
+search_check($batchCalls[1]['HOTELS'] === '469,470', 'duplicate hotel ids were not normalized');
+
 $clock = 1000;
 $gatewayCalls = [];
 $gatewayFactory = static function () use (&$gatewayCalls, $baseRow): AnyTourAnexClient {
@@ -136,4 +154,28 @@ search_reject(static function () use ($gateway, &$freshSession, $criteria): void
     $gateway->handle(['action' => 'search', 'criteria' => array_replace($criteria, ['extra' => 1])], $freshSession);
 });
 search_check(!isset($freshSession['search']), 'failed replacement leaves no stale search');
-echo "ANEX_SEARCH_SMOKE_OK search/expand/flights/stale-state/source-identity\n";
+
+$rateClock = 2000;
+$rateCalls = 0;
+$rateFactory = static function () use (&$rateCalls): AnyTourAnexClient {
+    return new AnyTourAnexClient('rate-secret', static function (string $url) use (&$rateCalls): array {
+        ++$rateCalls;
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $params);
+        return ['status' => 200, 'body' => json_encode([$params['action'] => ['prices' => []]])];
+    });
+};
+$rateGateway = new AnyTourAnexPreviewGateway($rateFactory, null, ['rate-secret'],
+    static function () use (&$rateClock): int { return $rateClock; });
+$rateSession = [];
+for ($i = 0; $i < 10; ++$i) {
+    $rateGateway->handle(['action' => 'search', 'criteria' => $criteria], $rateSession);
+}
+search_reject(static function () use ($rateGateway, &$rateSession, $criteria): void {
+    $rateGateway->handle(['action' => 'search', 'criteria' => $criteria], $rateSession);
+});
+search_check($rateCalls === 10, 'burst limit reached supplier');
+++$rateClock;
+$rateGateway->handle(['action' => 'search', 'criteria' => $criteria], $rateSession);
+search_check($rateCalls === 11, 'burst window did not reopen');
+
+echo "ANEX_SEARCH_SMOKE_OK search/expand/flights/stale-state/source-identity/30-hotels/rate-limit\n";

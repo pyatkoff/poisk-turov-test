@@ -42,6 +42,20 @@ CHECKS = {"api_townfroms", "reference_currentstamp", "reference_states",
           "api_states", "api_checkin", "api_currencies", "api_nights",
           "api_prices", "api_prices_expanded"}
 SENSITIVE_VALUES = ()
+# A single diagnostic process deliberately stays below both token limits:
+# 10 requests/second and 60 requests/minute.
+HOTEL_DETAILS_REQUEST_INTERVAL = 1.05
+_next_hotel_details_request_at = 0.0
+
+
+def wait_for_hotel_details_slot():
+    global _next_hotel_details_request_at
+    now = time.monotonic()
+    delay = _next_hotel_details_request_at - now
+    if delay > 0:
+        time.sleep(delay)
+        now += delay
+    _next_hotel_details_request_at = now + HOTEL_DETAILS_REQUEST_INTERVAL
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -212,6 +226,8 @@ def api_data(token, action, params, checks, expanded=False):
                "SearchTour_PRICES": "api_prices_expanded" if expanded else "api_prices"}
     if action not in allowed or len(checks) >= (38 if action == "Hotels_DETAILS" else 12):
         raise ValueError("invalid read method or request budget")
+    if action == "Hotels_DETAILS":
+        wait_for_hotel_details_slot()
     result, body = request(dict(params, samo_action="api", version="1.0",
                                 type="json", action=action), token)
     result["check"] = allowed[action]
