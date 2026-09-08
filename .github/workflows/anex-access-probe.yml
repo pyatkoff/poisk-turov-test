@@ -54,6 +54,7 @@ jobs:
           python3 -B tests/anex_geo_enrichment_test.py
           python3 -B tests/anex_geo_checkpoint_restore_test.py
           python3 -B tests/anex_staging_import_test.py
+          python3 -B tests/anex_price_evidence_queue_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
@@ -81,6 +82,14 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_access_probe.py --catalog
+      - name: Prepare diagnostic-only 30-hotel price evidence queue
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          python3 -B scripts/diagnostics/anex_price_evidence_queue.py \
+            --catalog "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" \
+            --geo "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
+            --output "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-queue.json"
       - name: Persist validated checkpoint in isolated ANEX staging tables
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
