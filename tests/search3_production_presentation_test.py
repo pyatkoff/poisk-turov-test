@@ -958,13 +958,23 @@ class Search3HalfSizeResetTest(unittest.TestCase):
 
     def test_protected_core_files_and_hashes_remain_exact(self):
         protected = MANIFEST['protectedSha256']
+        # Count executable closures, not filename mentions in the phase allowlist.
+        # Every protected source must still be delivered exactly once on each route.
+        closures = json.loads(subprocess.check_output([
+            'php', '-r',
+            'require "v2/bundle-manifest-v1.php"; echo json_encode(['
+            'v2_bundle_files("js", "full"), v2_bundle_files("js", "search3"),'
+            'array_merge(v2_bundle_phase_files("js", "search3", "initial"),'
+            'v2_bundle_phase_files("js", "search3", "selected"))]);'
+        ], cwd=ROOT))
         for name in (
             'analytics-v4.js', 'tour-controller-v4.js', 'flight-price-sync-v1.js',
             'lead-search-context.js', 'lead-form-guard-v1.js', 'runtime-v3.js',
         ):
             digest = hashlib.sha256((ROOT / 'v2' / name).read_bytes()).hexdigest()
             self.assertEqual(digest, protected[name], name)
-            self.assertEqual(self.bundle.count("'" + name + "'"), 1, name)
+            for closure in closures:
+                self.assertEqual(closure.count(name), 1, name)
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for retained behavior contracts')
     def test_retained_business_and_runtime_behavior(self):
