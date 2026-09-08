@@ -31,3 +31,6 @@ body.search3-candidate{
 :is(.search-submit,.direct-tour,.search-progress-retry,.search-progress-edit,.search-progress-relax-dates,.search-progress-relax-nights,.secondary,.load-flights.secondary,.facts-secondary-toggle,.room-detail-toggle,.tour-load-retry,.lead-success-back,.search-progress-filters,.back-results,.hotel-desc-toggle,.empty-edit-search):focus-visible{outline:3px solid rgba(49,84,207,.24)!important;outline-offset:3px!important}
 @media(max-width:700px){.secondary{min-height:44px}}
 @media(prefers-reduced-motion:reduce){.secondary{transition:none!important}}
+
+/* The retained sort select needs the full mobile row after the rail reset. */
+@media(max-width:999px){html body.search3-candidate.search3-results-active .results-tools--ds2{width:100%!important}}

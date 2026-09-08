@@ -63,6 +63,9 @@ function v2_bundle_content_version(string $type, ?string $scope = null): string
         $path = __DIR__ . '/' . $file;
         hash_update($ctx, $file . ':' . v2_asset_content_version($path) . ';');
     }
+    if ($scope === 'search3' && $type === 'js') {
+        hash_update($ctx, 'compact:' . v2_asset_content_version(__DIR__ . '/search3-shared-runtime.json') . ';');
+    }
     return substr(hash_final($ctx), 0, 16);
 }
 

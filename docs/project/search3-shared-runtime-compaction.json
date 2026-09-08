@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_READY_REQUIRED_CI_PENDING_NOT_PUBLISHED",
+  "base_release_sha": "0957dba138acdc3eaf7ab12878b01b86ec37f1d8",
+  "scope": "Search3-only compiled representation of 15 retained shared JavaScript modules",
+  "eight_assets": {
+    "before_raw_bytes": 41959,
+    "after_raw_bytes": 42074,
+    "saved_raw_bytes": -115
+  },
+  "shared_js": {
+    "before_raw_bytes": 118613,
+    "after_raw_bytes": 109354,
+    "saved_raw_bytes": 9259
+  },
+  "loaded_route": {
+    "before_raw_bytes": 160572,
+    "after_raw_bytes": 151428,
+    "saved_raw_bytes": 9144
+  },
+  "shared_gzip_estimate": {
+    "before_bytes": 30629,
+    "after_bytes": 28897,
+    "saved_bytes": 1732,
+    "method": "gzip of joined shared files, mtime=0; HTTP wrappers excluded"
+  },
+  "method": "Pinned Terser: exact-print guard first, local binding renaming only; compression disabled. AST statement/literal/operator shape equality required after renaming.",
+  "source_files_unchanged": true,
+  "legacy_response_unchanged": true,
+  "cache": "Original source fingerprints plus generated manifest fingerprint in Search3 JS version; full-route cache version unchanged.",
+  "fallback": "Missing/corrupt manifest or mismatched source/code SHA256 serves the canonical source within the original ordered script boundary.",
+  "excluded_from_compaction": [
+    "tour-controller-v4.js: existing exact-print proof rejects source",
+    "catalogs-v2.js: existing exact-print proof rejects source",
+    "accessibility.js: owned by concurrent retirement #1614"
+  ],
+  "local_checks": [
+    "shared runtime generated once and --check passed",
+    "existing JS compaction semantic fixtures passed, also with binding-only mode"
+  ],
+  "required_ci": "pending",
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": [
+    "physical Safari",
+    "live current-source preview",
+    "owner visual acceptance"
+  ],
+  "rollback": "Revert this source PR; original shared sources and full bundle manifest remain intact.",
+  "confirmed_repair": "Mobile sort toolbar retained a width that reserved 234px for the retired rail. Allow full width below1000px; original raw-JS page overflowed at375 before compaction.",
+  "ci_followup": "First exact run34255999699 red on retired custom disclosure fixture. Second34256744950 confirmed pre-existing raw-JS mobile results overflow. Current served/raw DOM comparison and native-entry checks replace fabricated retired UI fixtures under the same required gate; protected source/PHP/path/presentation/isolation guards unchanged."
+}
