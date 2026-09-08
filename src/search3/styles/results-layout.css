@@ -69,6 +69,9 @@ margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
   & .facts,& .hotel-desc,& .tour-flights {margin-top:24px}
   & .section-heading {display:grid;gap:4px;margin-bottom:16px}
   & .lead-form {margin-top:32px;padding-top:28px;border-top:1px solid #dbe2ed}
+  & .lead-selection-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 20px;padding:16px;border-radius:12px;background:#f8faff}
+  & .lead-selection-summary>span {display:grid;gap:3px}
+  & .lead-selection-summary b {display:block;line-height:1.45}
   & .flight-variant {border:1px solid #dbe2ed;border-radius:12px;padding:16px;margin-top:12px}
   & .is-selected {border-color:#2743cb;background:#f5f7fb}
   & .flight-route {display:grid;grid-template-columns:1fr auto 1fr;gap:12px}

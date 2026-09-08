@@ -118,6 +118,8 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#selectedTour .search3-booking-summary,.search3-summary-submit').count(),0,'duplicate review card and intermediary CTA stay retired');
       assert.match((await page.locator('#selectedTour .selected-price').textContent()).replace(/\s/g,' '),/148 500 ₽/,'canonical selected price remains visible');
       assert.equal(await page.locator('#selectedTour .lead-form input[name=phone]').isVisible(),true,'phone remains directly reachable');
+      const leadSummary=await page.locator('#selectedTour .lead-selection-summary').evaluate(node=>({display:getComputedStyle(node).display,b:getComputedStyle(node.querySelector('b')).display}));
+      assert.deepEqual(leadSummary,{display:'grid',b:'block'},'lead selection summary keeps labels and values visually separated');
     }
     const calls=await page.evaluate(()=>window.__geometryCalls);
     assert.deepEqual(calls,{tour:1,flights:1,other:0});
