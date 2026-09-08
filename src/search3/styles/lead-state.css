@@ -22,11 +22,12 @@ body.search3-candidate{
 }
 /* Compact contact/lifecycle essentials retained from the retired lead-review layer. */
 body.search3-candidate #selectedTour{
-& .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important}
+& .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;padding:11px 12px!important;border:1px solid #edf0f5!important}
 & .lead-form :is(input,textarea){background:#fff!important}
 & .lead-consent{border-radius:12px!important;background:#fff!important}
 & .lead-consent input{flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
-& .lead-consent a{color:#2743cb!important}
+& .lead-consent span{margin:0!important;color:#667085!important;font-weight:600!important;line-height:1.45!important}
+& .lead-consent a{color:#2743cb!important;font-weight:600!important}
 & .lead-message{color:#2743cb!important;font-weight:600!important}
 & .lead-form.checkout-lead .primary{padding-inline:20px!important}
 & .search3-lead-protection{display:flex;align-items:center;gap:7px;color:var(--at-muted);font-weight:700}
@@ -35,6 +36,10 @@ body.search3-candidate #selectedTour{
 & .lead-form[data-search3-lead-state="sending"] .search3-lead-status ol li:first-child:before{border-color:#075cff!important;border-top-color:transparent!important;animation:search3LeadSpin .8s linear infinite}
 &.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__price-note{display:none!important}
 }
+@media(max-width:560px){body.search3-candidate #selectedTour{
+& .lead-fields input{height:49px!important}
+& .lead-consent{padding:10px!important}
+}}
 @keyframes search3LeadSpin{to{transform:rotate(360deg)}}
 @media(max-width:640px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}
