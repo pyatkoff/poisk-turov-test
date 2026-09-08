@@ -88,10 +88,13 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#selectedTour .selected-confidence').isVisible(),width>=1000,'desktop trust remains, mobile stays hidden');
     if(!previous) {
       assert.equal(await page.evaluate(()=>typeof window.V2ConversionConfidenceV1),'undefined','retired runtime is absent');
+      assert.equal(await page.evaluate(()=>typeof window.V2PriceConfidenceV1),'undefined','retired price-confidence runtime is absent');
       assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
+      assert.equal(await page.locator('#selectedTour .selected-price-confidence').count(),0,'legacy price-confidence note is not constructed');
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
     await page.waitForSelector('#selectedTour.search3-final-review .search3-summary-submit');
+    if(!previous) assert.equal(await page.locator('#selectedTour .search3-booking-summary__price-note').count(),1,'current booking summary retains one price confirmation note');
     states.review=await capture(page,prefix+'-review');
     await page.locator('#selectedTour .search3-summary-submit').click();
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');

@@ -263,6 +263,20 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("setAttribute(retry, 'data-tid', tourId)", fallback)
         self.assertIn('window.V2FlightEmptyRecoveryV1', legacy)
 
+    def test_legacy_price_confidence_runtime_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        selected = (ROOT / 'src/search3/behavior/selected-flow-v2.js').read_text()
+        booking = (ROOT / 'src/search3/behavior/booking-summary.js').read_text()
+        review = (ROOT / 'src/search3/styles/review-layout.css').read_text()
+        legacy = (ROOT / 'v2/price-confidence-v1.js').read_text()
+        self.assertIn("'price-confidence-v1.js'", scoped)
+        self.assertIn('if (value.pricePending) return number(value.basePrice)', selected)
+        self.assertIn('if(d.pricePending)return number(d.basePrice)', booking)
+        self.assertIn('Перед оплатой менеджер подтвердит итоговую стоимость и детали перелёта.', booking)
+        self.assertNotIn('.selected-price-confidence', review)
+        self.assertIn('window.V2PriceConfidenceV1', legacy)
+
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]

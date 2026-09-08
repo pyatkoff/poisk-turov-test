@@ -293,20 +293,32 @@ assert.equal(dateValue.textContent, '7 сентября', 'selected facts use th
 assert.equal(eyebrow.textContent, 'ВАШ ТУР', 'selected detail keeps its concise owner copy');
 assert.equal(selectedPriceLabel.textContent, 'За весь тур · 2 взрослых, 1 ребёнок', 'party scope is owned by selected-flow');
 assert.equal(selectedDataset.search3SelectedPresentation, '1', 'compatibility presentation marker is retained');
+events.get('v2:tour-price-updated')({ detail: { pricePending: true, price: 999999, basePrice: 100000 } });
+flush();
+assert.match(mobileAmount.textContent, /100[\s\u00a0]?000/, 'pending flight keeps the truthful base tour total');
+assert.match(strongText, /100[\s\u00a0]?000/, 'pending flight never exposes an unconfirmed flight total');
+events.get('v2:tour-price-updated')({ detail: { pricePending: false, price: 125500, basePrice: 100000 } });
+flush();
+assert.match(mobileAmount.textContent, /125[\s\u00a0]?500/, 'confirmed flight total replaces the base total');
+assert.match(strongText, /125[\s\u00a0]?500/, 'confirmed flight total is shared with the booking summary');
 strongText = '';
 mobileAmount.textContent = '';
 window.Search3CandidateSelectedPresentationV1.decorate();
-assert.match(strongText, /120[\s\u00a0]?000/, 'legacy decorate synchronously restores the booking total');
-assert.match(mobileAmount.textContent, /120[\s\u00a0]?000/, 'legacy decorate synchronously restores the mobile total');
+assert.match(strongText, /125[\s\u00a0]?500/, 'legacy decorate synchronously restores the booking total');
+assert.match(mobileAmount.textContent, /125[\s\u00a0]?500/, 'legacy decorate synchronously restores the mobile total');
+const stablePriceWrites = priceWrites;
+const stablePriceAttributeWrites = priceAttributeWrites;
 window.Search3SelectedFlowV2.syncDisplayedPrice();
 window.Search3SelectedFlowV2.syncDisplayedPrice();
-assert.equal(priceWrites, 2, 'unchanged price text is not rewritten after one explicit restoration');
-assert.equal(priceAttributeWrites, 1, 'unchanged price aria-label is not rewritten');
+assert.equal(priceWrites, stablePriceWrites, 'unchanged price text is not rewritten after one explicit restoration');
+assert.equal(priceAttributeWrites, stablePriceAttributeWrites, 'unchanged price aria-label is not rewritten');
 selected.hidden = true;
 strongText = 'retained hidden summary';
 window.Search3CandidateSelectedPresentationV1.decorate();
 assert.equal(strongText, 'retained hidden summary', 'legacy decorate still leaves a hidden tour untouched');
 selected.hidden = false;
+flightRootReads = 0;
+window.Search3SelectedFlowV2.sync();
 assert.equal(
   flightRootReads,
   1,
