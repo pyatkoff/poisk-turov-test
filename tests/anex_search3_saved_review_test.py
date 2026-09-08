@@ -162,6 +162,51 @@ class SavedReviewTests(unittest.TestCase):
         self.sql.assert_not_called()
         self.snapshot.assert_not_called()
 
+    def test_acceptance_requires_checked_checkpoint_and_reproduces_all_four_results(self):
+        review.prepare(self.directory)
+        review.run(self.directory)
+        path = self.directory / review.CHECKPOINT
+        with patch.object(review, 'CHECKED_CHECKPOINT_SHA', None):
+            with self.assertRaisesRegex(ValueError, 'unchecked saved-review checkpoint'):
+                review.approved_delta(path)
+        with patch.object(review, 'CHECKED_CHECKPOINT_SHA', review.file_sha(path)):
+            delta = review.approved_delta(path)
+            self.assertEqual(delta['counts']['strong'], 4)
+            self.assertEqual([r['anex_hotel_id'] for r in delta['rows']], self.ids)
+            self.assertTrue(delta['append_only'])
+            cp, _ = review.load(self.directory)
+            batch = cp['batches'][0]
+            batch['results'][0]['raw_candidates'][0]['name'] = 'Completely Different Hotel'
+            batch['results'][0]['raw_candidates_sha256'] = gaps.digest(batch['results'][0]['raw_candidates'])
+            batch['results_sha256'] = gaps.digest(batch['results'])
+            owner.save(path, cp)
+            with self.assertRaisesRegex(ValueError, 'unchecked saved-review checkpoint'):
+                review.approved_delta(path)
+        with patch.object(review, 'CHECKED_CHECKPOINT_SHA', review.file_sha(path)):
+            with self.assertRaisesRegex(ValueError, 'scores changed'):
+                review.approved_delta(path)
+
+    def test_finalized_acceptance_uses_saved_digest_without_database_or_supplier_calls(self):
+        import anex_search_mapping_import as importer
+        review.prepare(self.directory)
+        review.run(self.directory)
+        path = self.directory / review.CHECKPOINT
+        with patch.object(review, 'CHECKED_CHECKPOINT_SHA', review.file_sha(path)):
+            delta = review.approved_delta(path)
+            owner.save(self.directory / review.ACCEPTANCE, {'state': 'finalized', 'delta_sha256': gaps.digest(delta)})
+            self.snapshot.reset_mock()
+            self.sql.reset_mock()
+            with patch.object(importer, 'ssh_import') as sql_import, patch.object(gaps, 'ssh_batch') as batch:
+                result = review.accept(self.directory)
+                self.assertEqual(result['status'], 'already_finalized')
+                self.assertEqual(result['inserted'], 0)
+                self.assertEqual(result['supplier_requests'], 0)
+                self.assertEqual(result['new_catalog_reads'], 0)
+                sql_import.assert_not_called()
+                batch.assert_not_called()
+                self.snapshot.assert_not_called()
+                self.sql.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -32,6 +32,23 @@ preview, manual decisions и catalog_hotels сохраняются. Исполь
 observed и append-only importer. Новые changes observed runtime требуют свежегоrun;
 старый34271815803/35fa3709 не rerun после подключения нового обработчика.
 
+## Полное чтение четырёх review подтверждено
+
+На c73d82a0225bcccf565c05ecd06ab967f00b1e58, run34284020284/job102255252324,
+artifact10078765006, digest19f5e4c4e8b7a88f529c71ca264e6f1cc5f1c7b0a9c6e40393326ae5e336a522,
+восстановлен10078089699. Новых supplier ID0/API calls0; четыре независимых local catalog reads.
+Checkpoint anex-saved-review-checkpoint.json SHA5e140dca328249c9f4a3067a9f8d63e82f775d88ded9df6c1afddfab6e44a2b1.
+Все четыре полных набора exhausted, strong criteria сохранены:
+28978→28499 (289 кандидатов,4.7м,margin0.1857),
+32640→59148 (489,19.3м,0.2954),32683→17428 (486,5.3м,0.3803),
+32722→35307 (459,8.7м,0.2306). Similarity1/1/0.9697/1.
+Новый acceptance validator фиксирует именно этот SHA и воспроизводит XML/API/country,
+все raw/ranked candidates и margin; используется существующий append-only writer.
+Принятие не объявляется до фактического DB readback следующего запуска.
+Finalized delta завершается без повторного SQL import; старые owner9/complete2 не меняются.
+Offline cache audit нашёл14 source_error с пригодными сохранёнными API cards:
+это очередь независимого чтения нашей базы без supplier retries, ещё не принятые связи.
+
 ## Подтверждённые сегменты и закрытие новых observed ID — 8 сентября
 
 **SHA12c074c20c2e18ea120925e3bd96947c95eb9935**, run34282062162/job102248915132,
