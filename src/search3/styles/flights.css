@@ -67,3 +67,7 @@ body.search3-candidate #selectedTour{
 & .flight-route{padding:10px 12px!important;border-radius:14px!important;background:#fafbfe!important}
 & .flight-arrow{width:34px!important;height:34px!important;border-radius:50%!important;background:#edf2ff!important}
 }
+@media(max-width:560px){body.search3-candidate #selectedTour{
+& .flight-route{padding:9px!important;border-radius:12px!important}
+& .flight-arrow{width:20px!important;height:20px!important;background:transparent!important}
+}}
