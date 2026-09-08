@@ -16,7 +16,7 @@ const price = fs.readFileSync(path.join(root, 'v2/flight-price-sync-v1.js'), 'ut
 const summary = fs.readFileSync(path.join(root, 'src/search3/behavior/summary-cta.js'), 'utf8');
 for (const marker of ['Проверить рейсы ещё раз', 'MutationObserver(queue)', "window.addEventListener('v2:tour-selected'"]) assert.ok(recovery.includes(marker), marker);
 for (const marker of ['displayedVariantPrice', 'priceTradeoff', 'clarifyVariantChoices', "window.addEventListener('v2:flight-selected'"]) assert.ok(price.includes(marker), marker);
-for (const marker of ['selectedState', 'correctTradeoffs', 'Оставить заявку', 'search3:lead-entry']) assert.ok(summary.includes(marker), marker);
+for (const marker of ['selectedState', 'correctTradeoffs', 'MutationObserver', 'load-flights', 'Оставить заявку', 'search3:lead-entry']) assert.ok(summary.includes(marker), marker);
 
 const events = new Map();
 const bodyClasses = new Set(['search3-candidate']);
@@ -72,6 +72,6 @@ assert.equal(bodyClasses.has('search3-selected-open'), false);
 window.Search3SummaryCta.enterLead('flight');
 assert.ok(selectedClasses.has('search3-lead-entry'));
 assert.equal(focused, 1);
-assert.equal(window.Search3SummaryCta.version, 11);
+assert.equal(window.Search3SummaryCta.version, 12);
 
 console.log('PASS: selected public adapter is retired; canonical recovery/price and native handoff remain');
