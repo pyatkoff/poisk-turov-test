@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "db176b5aceaf51c892c9b68f6eda0be88a17a473",
+  "source_pr": 1558,
+  "source_sha": "60223b579d05456d782722ceead4e755a22167d9",
+  "checked_code_release_sha": "4dc61c0154d4129a9d514121120e48692c82cc97",
+  "retired_search3_owner": "hotel-details-design.css",
+  "retained_legacy_owner": "The unchanged 4640-byte hotel actions, inline-detail, gallery and facts layer remains in the full manifest used by /poisk-turov-old/.",
+  "retained_current_geometry": [
+    "Current Search3 result cards explicitly hide the retired hotel actions and inline-detail surfaces",
+    "Current Search3 hotel CTA and expanded tour rows remain owned by results-cards-v2.css",
+    "Selected-tour and active room-detail presentation remain in their current Search3 owners"
+  ],
+  "payload": {
+    "before": {"css": 162301, "js": 183740, "eight_assets": 174000, "raw_total": 519318, "gzip_total": 116431},
+    "after": {"css": 157661, "js": 183740, "eight_assets": 174000, "raw_total": 514678, "gzip_total": 115816}
+  },
+  "legacy_layer_bytes_removed": 4640,
+  "current_owner_bytes_added": 0,
+  "raw_saved_bytes": 4640,
+  "gzip_saved_bytes": 615,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Gzip carries the preceding absolute with a same-method exact endpoint and eight-file delta.",
+  "ci": {
+    "security_run": 34202647856,
+    "failed_exact_runs": [],
+    "green_exact_runs": [34202647875, 34202904621],
+    "artifact_id": 10046592943,
+    "artifact_digest": "sha256:d81ea21c4ec39cda85b576bc745108376c6c9bdf695e1db8709ed5194bb2fd24",
+    "selected_geometry_artifact": 10046591698,
+    "selected_geometry_digest": "sha256:2d028c44e64423351193a4986726b143c9844d298b37ed343bd4d76c1cc10f8f",
+    "results_geometry_artifact": 10046592310,
+    "results_geometry_digest": "sha256:2acf4dd85f72f4a039ceef69c521264c30fc743f2843f781edb0e70cf9c70d42"
+  },
+  "focused_evidence": {
+    "source": "The complete retired layer targets only the old .hotel-actions, .hotel-info-toggle, .hotel-inline-detail and inline gallery/facts surface; current Search3 explicitly hides .hotel-actions and .hotel-inline-detail.",
+    "browser": "Both exact Chromium runs retained selected detail/review/lead, result and entry geometry without external API or lead requests.",
+    "compensation": "No CSS or JavaScript was added."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API parameters, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": ["Live current-source interaction and manual screenshots", "Physical Safari and safe-area", "Owner visual acceptance"],
+  "next_action": "Audit results-experience-v1.css as the next substantial complete presentation-layer candidate. Preserve active result geometry in current Search3 owners, retain the full old-route layer, and keep active room-details.css loaded unless focused coverage proves otherwise.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}
