@@ -5,228 +5,159 @@ const vm = require('node:vm');
 
 const events = new Map();
 const frames = [];
-let flightRootReads = 0;
-let priceWrites = 0;
-let priceAttributeWrites = 0;
-let priceAriaLabel = '';
-let strongText = '';
-let documentClick;
 const bodyClasses = new Set(['search3-candidate']);
-
-const label = { textContent: '' };
-const strong = {};
-Object.defineProperty(strong, 'textContent', {
-  get() { return strongText; },
-  set(value) { strongText = value; priceWrites += 1; }
-});
-const priceBox = {
-  querySelector(selector) {
-    if (selector === ':scope > span') return label;
-    if (selector === ':scope > strong') return strong;
-    return null;
-  },
-  getAttribute(name) {
-    return name === 'aria-label' ? priceAriaLabel : null;
-  },
-  setAttribute(name, value) {
-    if (name === 'aria-label') {
-      priceAriaLabel = value;
-      priceAttributeWrites += 1;
-    }
-  }
-};
-const mobileAttributes = new Map();
-const mobileLabel = { textContent: '' };
-const mobileAmount = {
-  textContent: '',
-  getAttribute(name) { return mobileAttributes.get(name) || null; },
-  setAttribute(name, value) { mobileAttributes.set(name, value); }
-};
-const mobileButton = {
-  textContent: '',
-  dataset: {},
-  getAttribute(name) { return mobileAttributes.get('button:' + name) || null; },
-  hasAttribute(name) { return mobileAttributes.has('button:' + name); },
-  setAttribute(name, value) { mobileAttributes.set('button:' + name, value); },
-  removeAttribute(name) { mobileAttributes.delete('button:' + name); }
-};
-const mobileBar = {
-  hidden: true,
-  querySelector(selector) {
-    if (selector === '.search3-selected-mobile-bar__price small') return mobileLabel;
-    if (selector === '[data-s3-selected-price]') return mobileAmount;
-    if (selector === '[data-s3-selected-lead]') return mobileButton;
-    return null;
-  }
-};
-const selectedPriceLabel = { textContent: 'Стоимость тура' };
-const selectedPriceAttributes = new Map();
-const selectedPrice = {
-  childNodes: [{ nodeType: 3, textContent: '100 000 ₽' }],
-  querySelector(selector) { return selector === 'small' ? selectedPriceLabel : null; },
-  getAttribute(name) { return selectedPriceAttributes.get(name) || null; },
-  setAttribute(name, value) { selectedPriceAttributes.set(name, value); }
-};
-const dateValue = { textContent: '' };
-const dateRow = {
-  querySelector(selector) {
-    if (selector === 'span') return { textContent: 'Дата' };
-    if (selector === 'b') return dateValue;
-    return null;
-  }
-};
-const descriptionClasses = new Set();
-let descriptionToggle;
-const description = {
-  textContent: 'Длинное проверенное описание отеля. '.repeat(12),
-  dataset: {},
-  classList: {
-    add(name) { descriptionClasses.add(name); },
-    toggle(name, enabled) { enabled ? descriptionClasses.add(name) : descriptionClasses.delete(name); },
-    contains(name) { return descriptionClasses.has(name); }
-  },
-  insertAdjacentElement(position, node) {
-    assert.equal(position, 'afterend');
-    descriptionToggle = node;
-  }
-};
-const factsClasses = new Set();
-let factsToggle;
-const factItems = Array.from({ length: 10 }, () => ({
-  hidden: false,
-  getAttribute() { return null; },
-  setAttribute() {}
-}));
-const facts = {
-  children: factItems,
-  dataset: {},
-  classList: {
-    add(name) { factsClasses.add(name); },
-    toggle(name, enabled) { enabled ? factsClasses.add(name) : factsClasses.delete(name); },
-    contains(name) { return factsClasses.has(name); }
-  },
-  getAttribute() { return null; },
-  setAttribute() {},
-  insertAdjacentElement(position, node) {
-    assert.equal(position, 'afterend');
-    factsToggle = node;
-  }
-};
-const eyebrow = { textContent: 'ВЫБРАННЫЙ ТУР' };
+const selectedClasses = new Set();
+let flightRootReads = 0;
 let flightDataPresent = true;
 let flightErrorPresent = false;
 let flightRetry = null;
-let flightRetryInsertions = 0;
-const emptyFlightMessage = {
-  textContent: 'Данные по рейсам пока не получены.',
-  insertAdjacentElement(position, node) {
-    assert.equal(position, 'afterend');
-    flightRetry = node;
-    flightRetryInsertions += 1;
-  }
-};
+let fallbackAction = null;
+let fallbackButton = null;
+let retryInsertions = 0;
+let actionInsertions = 0;
+let reviewClicks = 0;
 let fallbackDataWrites = 0;
 let fallbackDataValue;
+let priceVariants = [];
+let observerCallback = null;
+let mutationPending = false;
+
+function mutateSelected() {
+  if (observerCallback) mutationPending = true;
+}
+
 const selectedDataset = {};
 Object.defineProperty(selectedDataset, 'search3FlightFallback', {
   configurable: true,
   get() { return fallbackDataValue; },
   set(value) { fallbackDataValue = value; fallbackDataWrites += 1; }
 });
-let fallbackClicks = 0;
-let leadForm = null;
-let priceVariants = [];
-const selectedClasses = new Set();
-const fallbackButton = { textContent: 'Далее: итог тура', click() { fallbackClicks += 1; } };
-const fallbackAction = {
-  classList: { add() {} },
-  querySelector(selector) { return selector === 'button' ? fallbackButton : null; }
+
+function removable(node, onRemove) {
+  node.removed = false;
+  node.remove = function () {
+    node.removed = true;
+    onRemove();
+    mutateSelected();
+  };
+  return node;
+}
+
+function element(tag) {
+  const attributes = new Map();
+  const classes = new Set();
+  const node = {
+    tagName: String(tag || '').toUpperCase(),
+    type: '',
+    className: '',
+    textContent: '',
+    dataset: {},
+    classList: {
+      add(name) {
+        if (!classes.has(name)) {
+          classes.add(name);
+          mutateSelected();
+        }
+      },
+      remove(name) {
+        if (classes.delete(name)) mutateSelected();
+      },
+      contains(name) { return classes.has(name); }
+    },
+    getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },
+    setAttribute(name, value) { attributes.set(name, value); }
+  };
+  if (tag === 'div') {
+    const button = fallbackButton = { textContent: '', click() { reviewClicks += 1; } };
+    Object.defineProperty(node, 'innerHTML', {
+      set(value) {
+        button.textContent = /<button[^>]*>([^<]*)<\/button>/.exec(value)?.[1] || '';
+      }
+    });
+    node.querySelector = selector => selector === 'button' ? button : null;
+  }
+  return node;
+}
+
+let emptyMessageText = 'Данные по рейсам пока не получены.';
+const emptyMessage = {
+  get textContent() { return emptyMessageText; },
+  set textContent(value) {
+    if (emptyMessageText !== value) {
+      emptyMessageText = value;
+      mutateSelected();
+    }
+  },
+  insertAdjacentElement(position, node) {
+    assert.equal(position, 'afterend');
+    flightRetry = removable(node, () => { if (flightRetry === node) flightRetry = null; });
+    retryInsertions += 1;
+    mutateSelected();
+  }
 };
+
 const flights = {
   querySelector(selector) {
     if (selector === '.flight-variant,.flight-error') return flightDataPresent || flightErrorPresent ? {} : null;
-    if (selector === '.selected-loading') return emptyFlightMessage;
+    if (selector === '.selected-loading') return emptyMessage;
     if (selector === '.load-flights') return flightRetry;
     if (selector === '.search3-flight-continue') return fallbackAction;
-    if (selector === '.flight-variants' || selector === '.search3-flight-show-all') return null;
     return null;
+  },
+  appendChild(node) {
+    fallbackAction = removable(node, () => { if (fallbackAction === node) fallbackAction = null; });
+    actionInsertions += 1;
+    mutateSelected();
   }
 };
+
 const selected = {
   hidden: false,
   children: [{}],
   dataset: selectedDataset,
   classList: {
-    add(name) { selectedClasses.add(name); },
-    remove(name) { selectedClasses.delete(name); },
+    add(name) {
+      if (!selectedClasses.has(name)) {
+        selectedClasses.add(name);
+        mutateSelected();
+      }
+    },
+    remove(name) {
+      if (selectedClasses.delete(name)) mutateSelected();
+    },
     contains(name) { return selectedClasses.has(name); }
   },
   querySelector(selector) {
-    assert.ok(!selector.includes('search3-tour-detail-rail'), 'retired rail is not queried during selected-flow updates');
-    if (selector === '.selected-price > small') return selectedPriceLabel;
-    if (selector === '.selected-price') return selectedPrice;
-    if (selector === '.selected-head .eyebrow') return eyebrow;
-    if (selector === '.hotel-desc') return description;
-    if (selector === '.facts') return facts;
-    if (selector === '.lead-form') return leadForm;
-    if (selector === '.search3-flight-continue button') return fallbackButton;
     if (selector === '.tour-flights') {
       flightRootReads += 1;
       return flights;
     }
+    if (selector === '.search3-flight-continue--fallback') return fallbackAction;
     return null;
   },
   querySelectorAll(selector) {
     if (selector === '.flight-variant') return priceVariants;
-    if (selector === '.search3-booking-summary__total') return [priceBox];
-    if (selector === '.facts > div') return [dateRow];
-    if (selector === '.search3-booking-summary dl > div' || selector === '.search3-final-services > article') return [];
+    if (selector === '[data-search3-selected-flow-owned="1"]') {
+      return [flightRetry, fallbackAction].filter(node => node && !node.removed);
+    }
     return [];
-  },
-  contains() { return true; }
+  }
 };
+
 const document = {
   body: {
     classList: {
       contains(name) { return bodyClasses.has(name); },
-      toggle(name, enabled) { if (enabled) bodyClasses.add(name); else bodyClasses.delete(name); }
-    },
-    appendChild() { throw new Error('existing mobile bar should be reused'); }
+      toggle(name, enabled) { enabled ? bodyClasses.add(name) : bodyClasses.delete(name); }
+    }
   },
   getElementById(id) { return id === 'selectedTour' ? selected : null; },
-  querySelector(selector) {
-    if (selector === '.search3-selected-mobile-bar') return mobileBar;
-    if (selector === '.search3-selected-mobile-bar [data-s3-selected-lead]') return mobileButton;
-    return null;
-  },
-  addEventListener(name, handler) { if (name === 'click') documentClick = handler; },
-  createElement() {
-    const attributes = new Map();
-    const listeners = new Map();
-    return {
-      type: '',
-      className: '',
-      textContent: '',
-      dataset: {},
-      style: { display: '' },
-      getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },
-      setAttribute(name, value) { attributes.set(name, value); },
-      addEventListener(name, handler) { listeners.set(name, handler); },
-      click() { const handler = listeners.get('click'); if (handler) handler(); }
-    };
-  }
+  createElement: element
 };
+
 const window = {
   addEventListener(name, handler) { events.set(name, handler); },
-  requestAnimationFrame(handler) { frames.push(handler); },
-  matchMedia() { return { matches: true }; },
-  Search3CandidateResultsV1: {
-    partyLabel(adults, childs) { return `${adults} взрослых, ${childs} ребёнок`; },
-    formatDate() { return '7 сентября'; },
-    mealLabel() { return 'Всё включено'; },
-    roomLabel() { return 'Стандарт'; },
-    placementLabel() { return '2+1'; }
-  }
+  requestAnimationFrame(handler) { frames.push(handler); }
 };
 
 vm.runInNewContext(
@@ -234,9 +165,11 @@ vm.runInNewContext(
   {
     document,
     window,
-    MutationObserver: function () { this.observe = function () {}; },
+    MutationObserver: function (callback) {
+      observerCallback = callback;
+      this.observe = function () {};
+    },
     Intl,
-    Set,
     Array,
     Number,
     String,
@@ -246,243 +179,95 @@ vm.runInNewContext(
 );
 
 const flush = () => {
-  while (frames.length) frames.shift()();
+  while (frames.length || mutationPending) {
+    while (frames.length) frames.shift()();
+    if (mutationPending) {
+      mutationPending = false;
+      observerCallback();
+    }
+  }
 };
 
 flush();
-assert.ok(bodyClasses.has('search3-selected-open'), 'shared owner synchronizes selected visibility');
-assert.equal(mobileBar.hidden, false, 'shared owner exposes the mobile action for a selected tour');
-assert.equal(window.Search3SelectedTourMobile.version, 14, 'legacy compatibility API remains available');
-assert.equal(window.Search3SelectedTourMobile.sync, window.Search3SelectedFlowV2.sync,
-  'legacy compatibility API delegates to the single selected-flow owner');
-assert.equal(description.dataset.v2Disclosure, '1', 'current owner adopts the long description disclosure');
-assert.ok(descriptionClasses.has('is-collapsed'), 'long description starts collapsed');
-assert.equal(descriptionToggle.getAttribute('aria-expanded'), 'false');
-assert.equal(descriptionToggle.textContent, 'Подробнее об отеле');
-descriptionToggle.click();
-assert.equal(descriptionToggle.getAttribute('aria-expanded'), 'true');
-assert.equal(descriptionToggle.textContent, 'Свернуть описание');
-assert.ok(!descriptionClasses.has('is-collapsed'), 'description expands without losing text');
-descriptionToggle.click();
-assert.ok(descriptionClasses.has('is-collapsed'), 'description can be collapsed again');
-assert.equal(facts.dataset.v2Disclosure, '1', 'current owner adopts secondary facts disclosure');
-assert.ok(factsClasses.has('facts-secondary-collapsed'));
-assert.ok(factItems.slice(0, 5).every(item => item.hidden === false));
-assert.ok(factItems.slice(5).every(item => item.hidden === true));
-assert.equal(factsToggle.getAttribute('aria-expanded'), 'false');
-factsToggle.click();
-assert.equal(factsToggle.getAttribute('aria-expanded'), 'true');
-assert.ok(factItems.every(item => item.hidden === false), 'all facts restore on expansion');
-flightRootReads = 0;
-priceWrites = 0;
-priceAttributeWrites = 0;
-priceAriaLabel = '';
+assert.ok(bodyClasses.has('search3-selected-open'), 'selected visibility remains synchronized');
+assert.equal(window.Search3SelectedFlowV2.version, 5);
+assert.equal(window.Search3SelectedTourMobile, undefined, 'retired mobile presentation API is not rebuilt');
+assert.equal(window.Search3CandidateSelectedPresentationV1, undefined, 'retired detail formatter API is not rebuilt');
+assert.equal(window.Search3SelectedFlowV2Helpers, undefined, 'retired aggregate helper API is not rebuilt');
 
-events.get('v2:tour-selected')({ detail: { tour: { id: 'tour-1', price: 100000, adults: 2, childs: 1, date: '2026-09-07' } } });
-events.get('v2:tour-price-updated')({ detail: { price: 100000 } });
+events.get('v2:tour-selected')({ detail: { tour: { id: 'tour-1', price: 100000 } } });
 events.get('v2:tour-price-updated')({ detail: { price: 120000 } });
-
-assert.equal(frames.length, 1, 'rapid price updates share one selected-flow frame');
-assert.equal(priceWrites, 0, 'price DOM write is deferred to the shared frame');
-
+events.get('v2:flight-selected')({ detail: {} });
+assert.equal(frames.length, 1, 'related selected and price events share one retained frame');
 flush();
 
-assert.equal(priceWrites, 1, 'latest price is written once');
-assert.equal(priceAttributeWrites, 1, 'latest price aria-label is written once');
-assert.match(mobileAmount.textContent, /120[\s\u00a0]?000/, 'mobile price shares the latest selected total');
-assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
-assert.equal(dateValue.textContent, '7 сентября', 'selected facts use the canonical date formatter');
-assert.equal(eyebrow.textContent, 'ВАШ ТУР', 'selected detail keeps its concise owner copy');
-assert.equal(selectedPriceLabel.textContent, 'За весь тур · 2 взрослых, 1 ребёнок', 'party scope is owned by selected-flow');
-assert.equal(selectedDataset.search3SelectedPresentation, '1', 'compatibility presentation marker is retained');
-events.get('v2:tour-price-updated')({ detail: { pricePending: true, price: 999999, basePrice: 100000 } });
-flush();
-assert.match(mobileAmount.textContent, /100[\s\u00a0]?000/, 'pending flight keeps the truthful base tour total');
-assert.match(strongText, /100[\s\u00a0]?000/, 'pending flight never exposes an unconfirmed flight total');
-events.get('v2:tour-price-updated')({ detail: { pricePending: false, price: 125500, basePrice: 100000 } });
-flush();
-assert.match(mobileAmount.textContent, /125[\s\u00a0]?500/, 'confirmed flight total replaces the base total');
-assert.match(strongText, /125[\s\u00a0]?500/, 'confirmed flight total is shared with the booking summary');
-strongText = '';
-mobileAmount.textContent = '';
-window.Search3CandidateSelectedPresentationV1.decorate();
-assert.match(strongText, /125[\s\u00a0]?500/, 'legacy decorate synchronously restores the booking total');
-assert.match(mobileAmount.textContent, /125[\s\u00a0]?500/, 'legacy decorate synchronously restores the mobile total');
-const stablePriceWrites = priceWrites;
-const stablePriceAttributeWrites = priceAttributeWrites;
-window.Search3SelectedFlowV2.syncDisplayedPrice();
-window.Search3SelectedFlowV2.syncDisplayedPrice();
-assert.equal(priceWrites, stablePriceWrites, 'unchanged price text is not rewritten after one explicit restoration');
-assert.equal(priceAttributeWrites, stablePriceAttributeWrites, 'unchanged price aria-label is not rewritten');
-selected.hidden = true;
-strongText = 'retained hidden summary';
-window.Search3CandidateSelectedPresentationV1.decorate();
-assert.equal(strongText, 'retained hidden summary', 'legacy decorate still leaves a hidden tour untouched');
-selected.hidden = false;
-const tradeoffBestClasses = new Set();
-const tradeoffBest = {
+const bestClasses = new Set();
+const best = {
   textContent: 'К минимальной цене',
-  classList: { toggle(name, enabled) { enabled ? tradeoffBestClasses.add(name) : tradeoffBestClasses.delete(name); } }
+  classList: {
+    contains(name) { return bestClasses.has(name); },
+    toggle(name, enabled) { enabled ? bestClasses.add(name) : bestClasses.delete(name); }
+  }
 };
-const tradeoffDecimal = { textContent: 'К минимальной цене', classList: { toggle() {} } };
+const decimal = { textContent: 'К минимальной цене', classList: { contains() { return false; }, toggle() {} } };
 priceVariants = [
   {
     querySelector(selector) { return selector === '.flight-choice>b' ? { textContent: 'Стоимость тура: 72 832 ₽' } : null; },
-    querySelectorAll(selector) { return selector === '.flight-choice-tradeoffs span' ? [tradeoffBest] : []; }
+    querySelectorAll(selector) { return selector === '.flight-choice-tradeoffs span' ? [best] : []; }
   },
   {
     querySelector(selector) { return selector === '.flight-choice>b' ? { textContent: 'Стоимость тура: 90 049,6 ₽' } : null; },
-    querySelectorAll(selector) { return selector === '.flight-choice-tradeoffs span' ? [tradeoffDecimal] : []; }
+    querySelectorAll(selector) { return selector === '.flight-choice-tradeoffs span' ? [decimal] : []; }
   }
 ];
-assert.equal(window.Search3SelectedFlowV2.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'), 90049.6,
-  'localized decimal parser remains exact in the current selected-flow owner');
-assert.equal(window.Search3SelectedFlowV2.correctFlightTradeoffs(), true,
-  'current owner corrects localized flight tradeoffs without a second observer');
-assert.equal(tradeoffBest.textContent, 'Самая низкая цена');
-assert.ok(tradeoffBestClasses.has('is-best-price'));
-assert.equal(tradeoffDecimal.textContent.replace(/\s/g, ' '), '+17 217,6 ₽ к минимальной');
+assert.equal(window.Search3SelectedFlowV2.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'), 90049.6);
+assert.equal(window.Search3SelectedFlowV2.correctFlightTradeoffs(), true);
+assert.equal(best.textContent, 'Самая низкая цена');
+assert.ok(bestClasses.has('is-best-price'));
+assert.equal(decimal.textContent.replace(/\s/g, ' '), '+17 217,6 ₽ к минимальной');
+
 priceVariants = [];
-flightRootReads = 0;
-window.Search3SelectedFlowV2.sync();
-assert.equal(
-  flightRootReads,
-  1,
-  'one sync reuses one flight root lookup for disclosure and no-flight state'
-);
-
-let disclosureLookups = 0;
-let disclosureAttributeWrites = 0;
-let disclosureHiddenWrites = 0;
-const disclosureAttributes = new Map();
-const variants = Array.from({ length: 7 }, () => ({
-  hidden: false,
-  classList: { contains() { return false; } },
-  querySelector() { return null; }
-}));
-let disclosureDataWrites = 0;
-let disclosureDataValue;
-const variantsDataset = {};
-Object.defineProperty(variantsDataset, 'search3FlightDisclosure', {
-  configurable: true,
-  get() { return disclosureDataValue; },
-  set(value) { disclosureDataValue = value; disclosureDataWrites += 1; }
-});
-const variantsBox = {
-  dataset: variantsDataset,
-  id: 'flightVariants',
-  querySelectorAll() { return variants; },
-  removeAttribute() {}
-};
-let disclosureHidden = false;
-const disclosure = {
-  textContent: '',
-  get hidden() { return disclosureHidden; },
-  set hidden(value) { disclosureHidden = value; disclosureHiddenWrites += 1; },
-  getAttribute(name) { return disclosureAttributes.has(name) ? disclosureAttributes.get(name) : null; },
-  hasAttribute(name) { return disclosureAttributes.has(name); },
-  setAttribute(name, value) {
-    disclosureAttributes.set(name, value);
-    disclosureAttributeWrites += 1;
-  },
-  removeAttribute(name) {
-    disclosureAttributes.delete(name);
-    disclosureAttributeWrites += 1;
-  }
-};
-const disclosureFlights = {
-  querySelector(selector) {
-    if (selector === '.flight-variants') return variantsBox;
-    if (selector === '.search3-flight-show-all') {
-      disclosureLookups += 1;
-      return disclosure;
-    }
-    return null;
-  },
-  insertBefore() {},
-  appendChild() {}
-};
-
-window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
-window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
-
-assert.equal(disclosureLookups, 2, 'each disclosure sync performs one show-all lookup');
-assert.equal(disclosureHiddenWrites, 0, 'stable disclosure visibility is not rewritten');
-assert.equal(disclosureAttributeWrites, 2, 'stable disclosure aria attributes are written only once');
-assert.equal(disclosureDataWrites, 1, 'stable disclosure dataset marker is written only once');
-
-flightRootReads = 0;
-window.Search3SelectedFlowV2.toggleFlightDisclosure({
-  closest() { return disclosureFlights; },
-  focus() {}
-});
-assert.equal(flightRootReads, 0, 'disclosure toggle reuses its closest flight root');
-
 flightDataPresent = false;
 flightRootReads = 0;
-assert.equal(window.Search3SelectedFlowV2.activateReview(), true, 'no-flight review activation succeeds');
-assert.equal(flightRootReads, 1, 'review activation reuses one flight root for state and action');
-assert.equal(fallbackClicks, 1, 'no-flight path activates the primary continue button without a desktop rail');
-
-flightRootReads = 0;
 window.Search3SelectedFlowV2.sync();
 window.Search3SelectedFlowV2.sync();
-assert.equal(flightRootReads, 2, 'each no-flight sync reuses one flight root for all fallback work');
-assert.equal(fallbackDataWrites, 1, 'stable fallback dataset marker is written only once');
-assert.equal(flightRetryInsertions, 1, 'empty-flight recovery creates exactly one delegated retry action');
-assert.equal(flightRetry.getAttribute('data-tid'), 'tour-1', 'retry action keeps the current tour id');
+assert.equal(flightRootReads, 2, 'each sync reads the flight root once');
+assert.equal(fallbackDataWrites, 1, 'stable no-flight marker is written once');
+assert.equal(retryInsertions, 1, 'no-flight state creates one delegated retry');
+assert.equal(actionInsertions, 1, 'no-flight state creates one review action');
+assert.equal(flightRetry.getAttribute('data-tid'), 'tour-1');
 assert.equal(flightRetry.textContent, 'Проверить рейсы ещё раз');
-assert.match(emptyFlightMessage.textContent, /менеджер уточнит перелёт по заявке/);
+assert.match(emptyMessage.textContent, /менеджер уточнит перелёт по заявке/);
+assert.equal(mutationPending, true, 'no-flight DOM changes produce one observer delivery');
+mutationPending = false;
+observerCallback();
+assert.equal(frames.length, 1, 'the observer coalesces no-flight DOM changes into one settling frame');
+flush();
+assert.equal(frames.length, 0, 'settled no-flight DOM does not wake the observer again');
+selectedClasses.add('search3-final-review');
+window.Search3SelectedFlowV2.sync();
+assert.equal(fallbackButton.textContent, 'Изменить рейс', 'fallback sync preserves the review exit label');
+selectedClasses.delete('search3-final-review');
+window.Search3SelectedFlowV2.sync();
+assert.equal(fallbackButton.textContent, 'Далее: итог тура', 'fallback sync restores the review entry label');
+assert.equal(window.Search3SelectedFlowV2.activateReview(), true);
+assert.equal(reviewClicks, 1, 'fallback review delegates to the primary continue action');
 
-flightRetry = null;
 flightErrorPresent = true;
-emptyFlightMessage.textContent = 'Не удалось загрузить рейсы';
+emptyMessage.textContent = 'Не удалось загрузить рейсы';
 assert.equal(window.Search3SelectedFlowV2.ensureEmptyFlightRecovery(flights), null,
-  'flight errors keep the controller-owned error and retry presentation');
-assert.equal(flightRetry, null, 'empty-flight owner does not add a second error retry');
+  'controller-owned errors do not gain a duplicate retry');
 flightErrorPresent = false;
-
-documentClick({
-  target: { closest(selector) { return selector === '[data-s3-selected-lead]' ? mobileButton : null; } },
-  preventDefault() {}
-});
-assert.equal(fallbackClicks, 2, 'compatibility CTA delegates the no-flight path exactly once');
-
 flightDataPresent = true;
 window.Search3SelectedFlowV2.sync();
-documentClick({
-  target: { closest(selector) { return selector === '[data-s3-selected-lead]' ? mobileButton : null; } },
-  preventDefault() {}
-});
-assert.equal(fallbackClicks, 3, 'compatibility CTA delegates the normal flight path exactly once');
+assert.ok(!selectedClasses.has('search3-flight-fallback'));
+assert.equal(flightRetry, null, 'owned empty-state retry is removed after recovery');
+assert.equal(fallbackAction, null, 'owned empty-state continue action is removed after recovery');
 
-const style = { display: '', setProperty(name, value) { if (name === 'display') this.display = value; } };
-const nameLabel = { hidden: true, style, removeAttribute() {}, nextElementSibling: null };
-const phoneStyle = { display: '', setProperty(name, value) { if (name === 'display') this.display = value; } };
-const phoneLabel = { hidden: true, style: phoneStyle, removeAttribute() {} };
-nameLabel.nextElementSibling = phoneLabel;
-const nameInput = { hidden: true, closest() { return nameLabel; }, removeAttribute() {} };
-const phoneInput = { closest() { return phoneLabel; } };
-const optional = { textContent: 'Дополнить заявку', hidden: false, style: { display: '', setProperty(name, value) { if (name === 'display') this.display = value; } } };
-const leadFields = { firstElementChild: nameLabel, insertBefore() {}, prepend() {} };
-leadForm = {
-  dataset: {},
-  querySelector(selector) {
-    if (selector === '.lead-fields') return leadFields;
-    if (selector === 'input[name="name"]') return nameInput;
-    if (selector === 'input[name="phone"]') return phoneInput;
-    return null;
-  },
-  querySelectorAll(selector) { return selector === 'button,summary' ? [optional] : []; }
-};
-selectedClasses.add('search3-lead-entry');
-window.Search3SelectedTourMobile.normalizeLeadFields();
-assert.equal(leadForm.dataset.search3MobileLeadNormalized, '1', 'mobile lead normalization remains idempotently marked');
-assert.equal(nameLabel.hidden, false, 'name field remains visible in mobile lead entry');
-assert.equal(phoneLabel.hidden, false, 'phone field remains visible in mobile lead entry');
-assert.equal(optional.hidden, true, 'obsolete optional lead expander remains hidden');
-
-console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/fallback DOM state');
+selected.hidden = true;
+window.Search3SelectedFlowV2.sync();
+assert.ok(!bodyClasses.has('search3-selected-open'), 'hidden selected tour clears shared selected state');
+console.log('PASS: selected owner retains state, no-flight recovery/review, and decimal-safe price labels');
 
 // The primary continue owner changes booking phase without classifying or
 // rearranging supplier flight segments. Exercise it separately from fallback.

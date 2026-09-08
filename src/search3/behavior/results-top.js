@@ -9,7 +9,17 @@
     body.classList.toggle('search3-results-active',value);
     if(tools)tools.hidden=!value;
   }
-  window.addEventListener('v2:results-rendered',function(){active(true);});
+  window.addEventListener('v2:results-rendered',function(){body.classList.remove('search3-editing-search');active(true);});
+  document.addEventListener('click',function(event){
+    var edit=event.target&&event.target.closest&&event.target.closest('#resultsSearchEdit,.empty-edit-search');
+    var form=document.getElementById('tourSearch');
+    if(!edit||!form)return;
+    event.preventDefault();
+    body.classList.add('search3-editing-search');
+    form.scrollIntoView({behavior:'smooth',block:'start'});
+    var field=form.querySelector('select:not([disabled]),input:not([type="hidden"]):not([disabled])');
+    if(field)field.focus({preventScroll:true});
+  });
   window.addEventListener('v2:tour-selected',function(){active(false);});
   window.addEventListener('v2:selected-tour-closed',function(){active(results.children.length>0);});
   window.addEventListener('v2:search-reset',function(){active(false);});
