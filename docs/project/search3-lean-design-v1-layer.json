@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "801a2cd463215d3c4f67233d27240f18a3ef3497",
+  "source_pr": 1552,
+  "source_sha": "802e1adff7395fb817563512f080ef2d798b0ef6",
+  "checked_code_release_sha": "f0f39e91f037343fa3aa30a4d5953f01ca42cf9f",
+  "retired_search3_owner": "design-v1.css",
+  "retained_legacy_owner": "The unchanged 7527-byte layer remains in the full manifest used by /poisk-turov-old/.",
+  "retained_current_geometry": [
+    "Selected-tour Back control spacing",
+    "Flight route padding, radius and responsive arrow dimensions",
+    "Lead consent box and primary CTA dimensions",
+    "Mobile entry grid 10px rhythm and 49px native fields"
+  ],
+  "payload": {
+    "before": {"css": 186118, "js": 183740, "eight_assets": 172266, "raw_total": 542124, "gzip_total": 120509},
+    "after": {"css": 178591, "js": 183740, "eight_assets": 173277, "raw_total": 535608, "gzip_total": 119180}
+  },
+  "legacy_layer_bytes_removed": 7527,
+  "current_owner_bytes_added": 1011,
+  "raw_saved_bytes": 6516,
+  "gzip_saved_bytes": 1329,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Gzip carries the preceding absolute with a same-method exact endpoint and eight-file delta.",
+  "ci": {
+    "security_run": 34196012323,
+    "failed_exact_runs": [34193483597, 34193997477, 34194429152, 34195148577, 34195705377],
+    "green_exact_runs": [34196012398, 34196175190],
+    "artifact_id": 10044015653,
+    "artifact_digest": "sha256:ee6824caa70a9aaabf48720bc517c475e28d83e0f7fb8b1159f116718d4b4514",
+    "selected_geometry_artifact": 10044014763,
+    "selected_geometry_digest": "sha256:95c9ce657e50f82d9477d22987c77f25061b38297ee47f4245e5eb83f69f8143",
+    "results_geometry_artifact": 10044015196,
+    "results_geometry_digest": "sha256:685945e258b13936a05989c0f58dd806b23297a553ba8a75811bc328e7985266"
+  },
+  "focused_evidence": {
+    "selected_geometry_states": 12,
+    "entry_states": 30,
+    "result_states": 12,
+    "header_states": 10,
+    "result": "The red exact iterations exposed live rules and were repaired in current owners. Both final exact runs passed without external API or lead requests."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API parameters, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": ["Live current-source interaction and manual screenshots", "Physical Safari and safe-area", "Owner visual acceptance"],
+  "next_action": "Audit the complete enhancements.css layer against current Search3 owners; retain the unchanged layer on the old route and attempt only a whole-layer reversible package.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}
