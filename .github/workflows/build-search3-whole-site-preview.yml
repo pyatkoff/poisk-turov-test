@@ -275,7 +275,7 @@ jobs:
         shell: bash
         env:
           SEARCH3_GEOMETRY_BASE: cc35208f740cd957ca450f7b19fa2acfe6af7e6d # checked exact source after selected-description retirement
-          SEARCH3_RUNTIME_BASE: ${{ github.event.pull_request.base.sha }}
+          SEARCH3_RUNTIME_BASE: e27812e0c10e7c80ffcc3b792129f0fb7845e635 # checked source after price-confidence retirement
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
           SEARCH3_GEOMETRY_OUTPUT: ${{ runner.temp }}/search3-selected-geometry
         run: |
