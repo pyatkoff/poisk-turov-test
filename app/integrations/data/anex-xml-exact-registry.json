@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "scope": "preview",
+  "provider": "anex_xml",
+  "catalog_id_field": "catalog_hotels.id",
+  "matching_rule": "exact_name_country_town_v1_distinctive",
+  "evidence": {
+    "checked_at": "2026-09-07T18:16:46.355959Z",
+    "source_sha": "f148feaa8d83ea1af542e67d5ddfbb3450194cad",
+    "run_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34150890531",
+    "artifact_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34150890531/artifacts/10029330453",
+    "artifact_digest": "sha256:35b3120ea01bc5609535859b049973b9a0a4c70b95c381fb8e7dc0d3098b1afd",
+    "reference_stamp": "0x000000098f30b661"
+  },
+  "mapping_file": "anex-xml-exact-identities.csv",
+  "mapping_sha256": "de4a46cd7919d130a975eb8f0dfc1df8d127c95990ab888bec3429f84bbdaa25",
+  "mapping_count": 8734,
+  "strict_source_count": 10611,
+  "deferred_short_name_count": 1877
+}

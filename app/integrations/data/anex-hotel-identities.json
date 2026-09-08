@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "scope": "preview",
+  "catalog_id_field": "catalog_hotels.id",
+  "evidence": {
+    "checked_at": "2026-09-07T16:23:20.4804513Z",
+    "source_sha": "bfe698926433a2d610bc81b2b19dffc005e70217",
+    "source_file": "docs/integrations/anex-hotel-matching-sample-20260907.json",
+    "run_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34142991785"
+  },
+  "entries": [
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "43689"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "43689"
+        }
+      ],
+      "candidate_hotel_id": 83221,
+      "status": "needs_review",
+      "reason": "Совпадают название, страна и город Каш; у Анекса нет адреса и координат.",
+      "anex_name": "Radisson Blu Hotel Kas",
+      "candidate_name": "RADISSON BLU HOTEL KAS",
+      "distance_m": null
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "30160"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "30160"
+        }
+      ],
+      "candidate_hotel_id": 40430,
+      "status": "verified_preview",
+      "reason": "Название с прежним вариантом, та же страна/Адлер; координаты отличаются на 12,5 м.",
+      "anex_name": "Грейс Кристалл",
+      "candidate_name": "ГРЕЙС КРИСТАЛЛ (EX. КРИСТАЛЛ)",
+      "distance_m": 12.5
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "30536"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "30536"
+        }
+      ],
+      "candidate_hotel_id": 17469,
+      "status": "verified_preview",
+      "reason": "Переставлены слова Hotel/Historia; совпадают страна и район, расстояние 21,3 м.",
+      "anex_name": "Hotel Historia",
+      "candidate_name": "HISTORIA HOTEL",
+      "distance_m": 21.3
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "464"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "464"
+        }
+      ],
+      "candidate_hotel_id": 185,
+      "status": "needs_review",
+      "reason": "У AnyTour уточнение Junior Suite; требуется проверить границы карточки комплекса Harem.",
+      "anex_name": "Domina Coral Bay Harem",
+      "candidate_name": "DOMINA CORAL BAY HAREM JUNIOR SUITE",
+      "distance_m": 158.3
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "465"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "465"
+        }
+      ],
+      "candidate_hotel_id": 195,
+      "status": "needs_review",
+      "reason": "Кандидат DREAMS BEACH: название сокращено, Хадаба/El Fanar, расстояние 96,4 м. Порог алгоритма не пройден; это не отсутствие отеля.",
+      "anex_name": "Dreams Beach Resort & Aqua Park Sharm El Sheikh",
+      "candidate_name": "DREAMS BEACH",
+      "distance_m": 96.4
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "466"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "466"
+        }
+      ],
+      "candidate_hotel_id": 218,
+      "status": "needs_review",
+      "reason": "У AnyTour сокращение SSH; обе записи относятся к Шарм-эль-Шейху, улица Four Seasons Boulevard, 52,4 м.",
+      "anex_name": "Four Seasons Resort Sharm El Sheikh",
+      "candidate_name": "FOUR SEASONS RESORT SSH",
+      "distance_m": 52.4
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "468"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "468"
+        }
+      ],
+      "candidate_hotel_id": 295,
+      "status": "needs_review",
+      "reason": "Различаются сокращение, прежнее название и уровни географии; Al Tahrir, 45,5 м.",
+      "anex_name": "Retac Qunay Dahab Resort & Spa",
+      "candidate_name": "RETAC QUNAY RESORT & SPA (EX. LE MERIDIEN DAHAB RESORT)",
+      "distance_m": 45.5
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "469"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "469"
+        }
+      ],
+      "candidate_hotel_id": 245,
+      "status": "verified_preview",
+      "reason": "Совпадают основное название, страна и Наама Бей; 143 м.",
+      "anex_name": "Jaz Sharm Dreams",
+      "candidate_name": "JAZ SHARM DREAMS RESORT",
+      "distance_m": 143
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "470"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "470"
+        }
+      ],
+      "candidate_hotel_id": 252,
+      "status": "verified_preview",
+      "reason": "Совпадают основное и прежнее названия, страна/Таба; 48,6 м.",
+      "anex_name": "Taba Hotel & Nelson Village Taba (Ex. Hilton Taba)",
+      "candidate_name": "TABA HOTEL & NELSON VILLAGE (EX. HILTON)",
+      "distance_m": 48.6
+    },
+    {
+      "identities": [
+        {
+          "provider": "anex_online",
+          "external_id": "472"
+        },
+        {
+          "provider": "anex_xml",
+          "external_id": "472"
+        }
+      ],
+      "candidate_hotel_id": 260,
+      "status": "verified_preview",
+      "reason": "Совпадают текущее/прежнее названия и координаты; 0 м.",
+      "anex_name": "Park Regency Resort (Ex. Hyatt Regency Sharm El Sheikh)",
+      "candidate_name": "PARK REGENCY SHARM EL SHEIKH (EX. HYATT REGENCY SSH)",
+      "distance_m": 0
+    }
+  ]
+}

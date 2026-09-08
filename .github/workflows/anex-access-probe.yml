@@ -1,0 +1,235 @@
+name: ANEX hotel catalog for AnyTour
+
+on:
+  push:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - '.github/workflows/anex-access-probe.yml'
+      - 'scripts/diagnostics/anex_access_probe.py'
+      - 'scripts/diagnostics/anex_hotel_match_probe.py'
+      - 'scripts/diagnostics/anex_catalog_reader.php'
+      - 'tests/anex_access_probe_test.py'
+      - 'tests/anex_price_probe_test.py'
+      - 'scripts/diagnostics/anex_price_evidence_queue.py'
+      - 'scripts/diagnostics/anex_review_queue_export.py'
+      - 'scripts/diagnostics/anex_price_evidence_checkpoint.py'
+      - 'tests/anex_price_evidence_queue_test.py'
+      - 'tests/anex_review_queue_export_test.py'
+      - 'tests/anex_price_evidence_checkpoint_test.py'
+      - 'scripts/diagnostics/anex_sales_priority_export.py'
+      - 'tests/anex_sales_priority_export_test.py'
+      - 'tests/anex_hotel_match_probe_test.py'
+      - 'scripts/diagnostics/anex_adapter_probe.py'
+      - 'scripts/diagnostics/anex_adapter_runner.php'
+      - 'scripts/diagnostics/anex_full_catalog_probe.py'
+      - 'scripts/diagnostics/anex_geo_enrichment.py'
+      - 'scripts/diagnostics/anex_geo_checkpoint_restore.py'
+      - 'scripts/diagnostics/anex_staging_import.py'
+      - 'scripts/diagnostics/anex_staging_writer.php'
+      - 'tests/anex_geo_enrichment_test.py'
+      - 'tests/anex_geo_checkpoint_restore_test.py'
+      - 'tests/anex_staging_import_test.py'
+      - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
+      - 'app/integrations/**'
+      - 'v2/api-anex-preview.php'
+      - 'v2/api-anex-search3-preview.php'
+      - 'v2/anex-search3-preview-v1.js'
+      - 'scripts/diagnostics/anex_search_mapping*'
+      - 'scripts/diagnostics/anex_search3_*'
+      - 'tests/anex_search_mapping*'
+      - 'tests/anex_search3_*'
+      - 'tests/anex-*-smoke.php'
+      - 'tests/anex_adapter_probe_test.py'
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [observed, gaps, preview]
+        default: observed
+        description: Focused hotel queue or isolated preview verification
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: anytour-anex-access-probe
+  cancel-in-progress: false
+
+jobs:
+  verify-access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Choose the requested ANEX operation
+        id: operation
+        env:
+          REQUESTED_OPERATION: ${{ inputs.operation }}
+        run: |
+          python3 - <<'PYTHON'
+          import os, subprocess
+          requested = os.environ.get('REQUESTED_OPERATION', '')
+          if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
+              mode = requested or 'observed'
+          else:
+              paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
+              mode = 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
+          if mode not in ('observed', 'gaps', 'preview'): raise SystemExit('Invalid ANEX operation')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
+          print('ANEX operation:', mode)
+          PYTHON
+      - name: Verify request and credential boundaries locally
+        run: |
+          python3 -B tests/anex_access_probe_test.py
+          python3 -B tests/anex_price_probe_test.py
+          python3 -B tests/anex_hotel_match_probe_test.py
+          python3 -B tests/anex_adapter_probe_test.py
+          python3 -B tests/anex_full_catalog_probe_test.py
+          python3 -B tests/anex_geo_enrichment_test.py
+          python3 -B tests/anex_geo_checkpoint_restore_test.py
+          python3 -B tests/anex_staging_import_test.py
+          python3 -B tests/anex_price_evidence_queue_test.py
+          python3 -B tests/anex_review_queue_export_test.py
+          python3 -B tests/anex_price_evidence_checkpoint_test.py
+          python3 -B tests/anex_sales_priority_export_test.py
+          python3 -B tests/anex_exact_registry_builder_test.py
+          python3 -B tests/anex_search_mapping_builder_test.py
+          python3 -B tests/anex_search_mapping_import_test.py
+          python3 -B tests/anex_search3_preview_deploy_test.py
+          python3 -B tests/anex_search3_gap_queue_test.py
+          python3 -B tests/anex_search3_observed_queue_test.py
+          node --check v2/anex-search3-preview-v1.js
+          node --test tests/anex-search3-preview.test.js
+          php -l scripts/diagnostics/anex_catalog_reader.php
+          php -l scripts/diagnostics/anex_search3_gap_details.php
+          php -l scripts/diagnostics/anex_adapter_runner.php
+          php -l scripts/diagnostics/anex_catalog_bulk_reader.php
+          php -l scripts/diagnostics/anex_staging_writer.php
+          php -l app/integrations/anex-xml-exact-registry.php
+          for file in app/integrations/*.php; do php -l "$file"; done
+          php -l v2/api-anex-preview.php
+          php tests/anex-hotel-identities-smoke.php
+          php tests/anex-xml-exact-registry-smoke.php
+          php tests/anex-client-smoke.php
+          php tests/anex-normalizer-smoke.php
+          php tests/anex-search-smoke.php
+          php -l scripts/diagnostics/anex_search_mapping_writer.php
+          php -l scripts/diagnostics/anex_search3_mapping_runner.php
+          php tests/anex-search-mapping-registry-smoke.php
+          php -l v2/api-anex-search3-preview.php
+          php tests/anex-search3-preview-smoke.php
+          php tests/anex-search-observations-smoke.php
+          php -l scripts/diagnostics/anex_search3_observations_setup.php
+      - name: Restore cumulative hotel enrichment checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_geo_checkpoint_restore.py
+      - name: Require the completed catalogue and preserve previous diagnostics
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          # The owner approved existing exact and strong matches for test Search3.
+          # Never restart enrichment or require an availability scan for these links.
+          jq -e '.remaining == 0 and .processed_total == 8362 and (.rows | length) == 8362' \
+            "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" >/dev/null
+          jq -e '.counts.anex_hotels > 0 and .counts.anex_hotels == (.matches | length)' \
+            "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" >/dev/null
+      - name: Check gap runtime without supplier requests
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
+      - name: Prepare and reserve the independent initial-search queue
+        if: steps.operation.outputs.mode == 'gaps'
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --prepare
+      - name: Reserve new observed hotels and preserve earlier results
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_observed_queue.py --prepare
+      - name: Preserve reservation before any hotel requests
+        if: steps.operation.outputs.mode == 'gaps' || steps.operation.outputs.mode == 'observed'
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: ${{ runner.temp }}/anex-catalog/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enrich at most 30 new initial-search gaps
+        if: steps.operation.outputs.mode == 'gaps'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py
+      - name: Append independently verified new preview links
+        if: steps.operation.outputs.mode == 'gaps'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          python3 -B scripts/diagnostics/anex_search_mapping_import.py \
+            --gap-checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-initial-search-checkpoint.json" \
+            --mapping "$ANEX_CATALOG_ARTIFACT_DIR/anex-initial-search-mappings.json" \
+            --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-initial-search-mapping-import.json"
+      - name: Match one batch of at most 30 newly observed hotels
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_observed_queue.py
+      - name: Append verified observed links and measure saved search coverage
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          python3 -B scripts/diagnostics/anex_search_mapping_import.py \
+            --observed-checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-checkpoint.json" \
+            --mapping "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-mappings.json" \
+            --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-mapping-import.json"
+          python3 -B scripts/diagnostics/anex_search3_observed_queue.py --finalize
+      - name: Publish isolated ANEX Search3 preview
+        if: steps.operation.outputs.mode == 'preview'
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_preview_deploy.py
+      - name: Verify the changed initial-search adapter
+        if: steps.operation.outputs.mode == 'preview'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_mapping_probe.py
+      - name: Preserve full matching tables for manual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/anex-catalog/
+          if-no-files-found: error
+          retention-days: 30
