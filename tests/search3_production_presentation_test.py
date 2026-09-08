@@ -964,6 +964,22 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             self.assertEqual(digest, protected[name], name)
             self.assertEqual(self.bundle.count("'" + name + "'"), 1, name)
 
+    @unittest.skipUnless(shutil.which('node'), 'Node required for retained behavior contracts')
+    def test_retained_business_and_runtime_behavior(self):
+        # The reset retires CSS-owner assertions, not booking, lifecycle, price,
+        # filter, handoff or lead behavior. Keep those contracts executable.
+        for name in (
+            'search3-presentation-utils.cjs', 'search3-booking-summary.cjs',
+            'search3-booking-services.cjs', 'search3-lead-note-owner.cjs',
+            'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs',
+            'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs',
+            'search3-selected-return-owner.cjs', 'search3-entry-summary.cjs',
+            'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs',
+            'search3-progress-owner.cjs', 'search3-filter-rail-ownership.cjs',
+            'search3-filter-rail-price-input.cjs',
+        ):
+            subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
