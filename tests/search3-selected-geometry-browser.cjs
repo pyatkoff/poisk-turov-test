@@ -49,9 +49,7 @@ async function capture(page, label) {
     const contract = {
       facts: [...root.querySelectorAll('.facts > div')].map(node => [text(node.querySelector('span')), text(node.querySelector('b'))]),
       selectedPrice: text(root.querySelector('.selected-price')),
-      summaryTotal: text(root.querySelector('.search3-booking-summary__total strong')),
       fields: [...root.querySelectorAll('.lead-form [name]')].map(node => [node.name,node.type,node.value,node.required]).sort((a,b)=>a[0].localeCompare(b[0])),
-      review: root.classList.contains('search3-final-review'),
       lead: root.classList.contains('search3-lead-entry')
     };
     return {overflow:document.documentElement.scrollWidth>innerWidth+2,rootWidth:round(rr.width),nodes,contract};
@@ -104,22 +102,17 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#selectedTour .selected-price-confidence').count(),0,'legacy price-confidence note is not constructed');
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
-    await page.waitForSelector('#selectedTour.search3-final-review .search3-summary-submit');
-    if(!previous) assert.equal(await page.locator('#selectedTour .search3-booking-summary__price-note').count(),1,'current booking summary retains one price confirmation note');
-    states.review=await capture(page,prefix+'-review');
-    await page.locator('#selectedTour .search3-summary-submit').click();
+    if(previous){
+      await page.waitForSelector('#selectedTour.search3-final-review .search3-summary-submit');
+      await page.locator('#selectedTour .search3-summary-submit').click();
+    }
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
     states.lead=await capture(page,prefix+'-lead');
     assert.equal(await page.locator('#selectedTour .lead-form button[type=submit]').isVisible(),true,'lead submit remains reachable');
     if(!previous) {
-      const total=page.locator('#selectedTour .search3-booking-summary__total strong');
-      await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:tour-price-updated',{detail:{pricePending:true,price:999999,basePrice:148500}})));
-      await settle(page);
-      assert.equal((await total.textContent()).replace(/\s/g,' '),'148 500 ₽','pending flight uses the base tour total');
-      await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:tour-price-updated',{detail:{pricePending:false,price:149900,basePrice:148500}})));
-      await settle(page);
-      assert.equal((await total.textContent()).replace(/\s/g,' '),'149 900 ₽','confirmed flight total replaces the pending base');
-      assert.equal(await page.locator('#selectedTour .lead-form input[name=phone]').isVisible(),true,'phone remains reachable after the price update');
+      assert.equal(await page.locator('#selectedTour .search3-booking-summary,.search3-summary-submit').count(),0,'duplicate review card and intermediary CTA stay retired');
+      assert.match((await page.locator('#selectedTour .selected-price').textContent()).replace(/\s/g,' '),/148 500 ₽/,'canonical selected price remains visible');
+      assert.equal(await page.locator('#selectedTour .lead-form input[name=phone]').isVisible(),true,'phone remains directly reachable');
     }
     const calls=await page.evaluate(()=>window.__geometryCalls);
     assert.deepEqual(calls,{tour:1,flights:1,other:0});
@@ -139,7 +132,7 @@ async function run(browser, width, previous) {
     for(const width of [375,760,1000,1440]){
       const before=await run(browser,width,true),after=await run(browser,width,false);
       evidence.widths[width]={before,after};
-      for(const phase of ['detail','review','lead']){
+      for(const phase of ['detail','lead']){
         const a=before[phase],b=after[phase];
         // Card/disclosure/optional-field wrappers are intentionally removed. Do
         // not pretend their old pixel tree is the new design contract: retain
@@ -154,6 +147,6 @@ async function run(browser, width, previous) {
     await browser.close();
     fs.writeFileSync(path.join(output,'geometry.json'),JSON.stringify(evidence,null,2)+'\n');
   }
-  assert.deepEqual(evidence.differences,[],'protected selected facts/prices/lead fields and stages must match in all12 states without overflow; see evidence');
-  console.log('SEARCH3_SELECTED_GEOMETRY_OK states=12 widths=375,760,1000,1440 intentional_layout_retirement=1');
+  assert.deepEqual(evidence.differences,[],'protected selected facts/prices/lead fields and stages must match in all8 states without overflow; see evidence');
+  console.log('SEARCH3_SELECTED_GEOMETRY_OK states=8 widths=375,760,1000,1440 native_lead_handoff=1');
 })().catch(error=>{console.error(error);process.exitCode=1});

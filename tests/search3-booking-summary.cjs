@@ -1,25 +1,20 @@
-/* Compact booking total keeps coalesced price/flight state without duplicate tour cards. */
-const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
-const iife=require('./search3-bundle-iife.cjs');
-const bundle=fs.readFileSync(process.argv[2]||path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
-const events=new Map(),timers=[];let html='',renders=0,lead=false;
-const oldSummary={remove(){}};
-const shell={querySelector(){return renders?oldSummary:null},insertAdjacentHTML(_,value){html=value;renders++}};
-const form={closest(){return shell}};
-const root={classList:{contains(name){return name==='search3-lead-entry'&&lead}},querySelector(selector){return selector==='.lead-form'?form:null}};
-const window={addEventListener(name,fn){if(!events.has(name))events.set(name,[]);events.get(name).push(fn)}};
-vm.runInNewContext(iife(bundle,{global:'Search3BookingSummary'}),{window,document:{getElementById(){return root}},setTimeout(fn){timers.push(fn)},Intl});
-const emit=(name,detail={})=>(events.get(name)||[]).forEach(fn=>fn({detail}));
-const flush=()=>{while(timers.length)timers.shift()()};
-emit('v2:tour-selected',{tour:{name:'Duplicate hotel card',date:'2026-09-10',nights:7,price:70000,meal:{name:'AI'},roomType:'STD',operator:{name:'OP'}}});
-emit('v2:flight-selected',{flight:{forward:[{company:{name:'SU'},number:'SU123'}]}});
-emit('v2:tour-price-updated',{price:72150});
-assert.equal(timers.length,1,'synchronous tour/flight/price events coalesce');flush();
-assert.equal(renders,1);assert.match(html,/SU SU123/);assert.match(html,/72 150 ₽/);
-for(const duplicate of ['Duplicate hotel card','2026-09-10','AI','STD','OP'])assert.ok(!html.includes(duplicate),'full facts stay only in selected-tour DOM: '+duplicate);
-emit('v2:tour-price-updated',{pricePending:true,price:999999,basePrice:69500});flush();assert.match(html,/69 500 ₽/);
-lead=true;emit('search3:lead-entry');flush();assert.match(html,/SU SU123/);
-assert.equal(window.Search3BookingSummary.normalizedTotal({pricePending:true,price:999,basePrice:123}),123);
-assert.equal(window.Search3BookingSummary.normalizedTotal({pricePending:false,price:456,basePrice:123}),456);
-assert.equal(window.Search3BookingSummary.version,6);
-console.log('PASS: compact booking total preserves coalescing, flight label and pending/confirmed price');
+/* Duplicate booking card is absent; canonical price and lead owners remain. */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.join(__dirname, '..');
+const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const executable = value => value.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+
+assert.equal(executable(read('src/search3/behavior/booking-summary.js')), '', 'booking summary is provenance only');
+const bundle = read('v2/search3-results-filters-v1.js');
+for (const marker of ['Search3BookingSummary', 'search3-booking-summary', 'Перед оплатой менеджер подтвердит']) {
+  assert.ok(!bundle.includes(marker), 'duplicate summary marker stays absent: ' + marker);
+}
+const price = read('v2/flight-price-sync-v1.js');
+assert.match(price, /function valueOfPrice\(v\)/, 'canonical price owner retains numeric extraction');
+assert.match(price, /new CustomEvent\('v2:tour-price-updated'/, 'canonical price owner retains update event');
+assert.match(price, /Стоимость с выбранным рейсом/, 'selected price keeps confirmed flight total');
+const controller = read('v2/tour-controller-v4.js');
+assert.match(controller, /leadPayload\(new FormData\(form\)\)/, 'canonical controller retains lead payload');
+console.log('PASS: duplicate booking card retired; canonical selected price and lead payload remain');

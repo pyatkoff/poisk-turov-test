@@ -38,7 +38,7 @@
   }
 
   function flowLabel() {
-    return 'Далее: итог тура';
+    return 'Оставить заявку';
   }
 
   function localizedMoneyNumber(value) {
