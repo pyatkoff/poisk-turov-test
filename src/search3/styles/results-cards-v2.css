@@ -3,6 +3,8 @@
 /* Current owner for the hotel identity, decision labels and package readability.
    The retired acceptance guard duplicated this family ahead of this asset. */
 html body.search3-candidate.search3-results-active #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results{
+& .sales-leader-badge{display:inline-flex;align-items:center;width:max-content;margin:0 0 8px;padding:5px 9px;border-radius:999px;background:var(--at-soft-blue);border:1px solid var(--at-line-strong);color:var(--at-brand-dark);font-size:12px;font-weight:900;line-height:1;letter-spacing:.01em}
+& .is-sales-leader .hotel-title{margin-top:0}
 & .hotel-card{display:block!important;width:100%!important;min-width:0!important;padding:0!important}
 & .hotel-title{font-size:18px!important;line-height:1.15!important}
 & :is(.hotel-compare-toggle,.hotel-actions,.hotel-inline-detail,.result-decision-badges,.hotel-choice-hint,.hotel-decision-line){display:none!important}
@@ -72,6 +74,7 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
 
 @media(max-width:760px){
 html body.search3-candidate.search3-results-active #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results{
+& .sales-leader-badge{margin-bottom:6px;padding:4px 8px;font-size:11px}
 & .hotel-main{display:block!important;height:auto!important;min-height:0!important}
 & :is(.hotel-photo,.hotel-photo>img){width:100%!important;height:clamp(184px,52vw,240px)!important;min-height:184px!important;max-height:240px!important}
 & .hotel-body{display:block!important;height:auto!important;min-height:0!important;padding:10px!important}
