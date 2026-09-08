@@ -60,6 +60,7 @@ assert.ok(resultClasses.has('search-results-stale'));
 assert.equal(staleBanner.hidden, false);
 staleButton.click();
 assert.equal(submitted, 1, 'stale results can start a fresh search');
+assert.equal(typeof window.V2ResultsFilterAutorefreshV1, 'undefined', 'Search3 does not install a second automatic supplier-search owner');
 emit('v2:search-started');
 assert.ok(!resultClasses.has('search-results-stale'));
 // A render event is queued before reset. Its old item count must not be used later.

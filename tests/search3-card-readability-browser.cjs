@@ -144,6 +144,7 @@ async function verifyEmptyLocalRail(browser) {
       const response = await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded', timeout: 30000 });
       if (!response || response.status() !== 200) throw new Error(width + ': Search3 fixture HTTP failure');
       await page.waitForSelector('body.search3-candidate');
+      if (await page.evaluate(() => typeof window.V2ResultsFilterAutorefreshV1) !== 'undefined') throw new Error(width + ': legacy automatic supplier refresh owner is loaded');
       if (width === 375) {
         const witnesses = declarationAudit.assets.flatMap(asset => asset.rows);
         const unsupported = await page.evaluate(rows => rows.filter(row =>
