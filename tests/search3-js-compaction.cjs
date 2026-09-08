@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const { compact, print, parsed } = require('../scripts/build/search3-js/compact.cjs');
+const { compact, compactBindings, print, parsed } = require('../scripts/build/search3-js/compact.cjs');
 
 (async () => {
   const cases = [
@@ -27,6 +27,7 @@ const { compact, print, parsed } = require('../scripts/build/search3-js/compact.
   }
   for (const original of cases) {
     const output = await compact(original);
+    assert.equal(execute(await compactBindings(original)), execute(original));
     assert.equal(execute(output), execute(original));
     assert.deepEqual(parsed(await print(original)), parsed(original));
     assert.equal(await compact(output), output, 'printing is deterministic and idempotent');
@@ -42,6 +43,7 @@ const { compact, print, parsed } = require('../scripts/build/search3-js/compact.
   ];
   for (const original of localNames) {
     const output = await compact(original);
+    assert.equal(execute(await compactBindings(original)), execute(original));
     assert.equal(execute(output), execute(original));
     assert.ok(Buffer.byteLength(output) <= Buffer.byteLength(original));
   }

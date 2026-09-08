@@ -63,6 +63,8 @@ jobs:
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php
           python3 -B scripts/build/search3_assets.py --check
+          node scripts/build/search3-js/shared-runtime.cjs --check
+          php tests/search3-shared-runtime-smoke.php
           php tests/search3-lean-base-bundle-smoke.php
           node tests/search3-js-compaction.cjs
           node tests/search3-css-printing.cjs

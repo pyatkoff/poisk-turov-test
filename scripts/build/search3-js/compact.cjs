@@ -69,7 +69,32 @@ async function compact(code) {
   return Buffer.byteLength(compacted) < Buffer.byteLength(code) ? compacted : code;
 }
 
-module.exports = { compact, print, parsed };
+// Shared runtime uses binding renaming only: no statement, condition or arithmetic
+// compression. Keep function/class names, arity, globals, properties and eval scopes.
+async function compactBindings(code) {
+  const exact = await print(code);
+  const result = await terser.minify(exact, {
+    compress: false,
+    mangle: { toplevel: false, eval: false, properties: false },
+    keep_fnames: true,
+    keep_classnames: true,
+    format: { comments: /^!|@(?:license|preserve|cc_on)|copyright|source(?:mapping)?url/i,
+      quote_style: 3, wrap_iife: true, keep_quoted_props: true, keep_numbers: true }
+  });
+  const output = result.code ? result.code + '\n' : '';
+  function shape(node) {
+    if (Array.isArray(node)) return node.map(shape);
+    if (!node || typeof node !== 'object') return node;
+    return Object.fromEntries(Object.entries(node)
+      .filter(([key]) => !(node.type === 'Identifier' && key === 'name'))
+      .map(([key, value]) => [key, shape(value)]));
+  }
+  assert.deepEqual(shape(parsed(output).tree), shape(parsed(exact).tree),
+    'Shared JS renaming changed statement, literal or arithmetic structure');
+  return Buffer.byteLength(output) < Buffer.byteLength(code) ? output : code;
+}
+
+module.exports = { compact, compactBindings, print, parsed };
 if (require.main === module) {
   (async () => {
     const input = JSON.parse(fs.readFileSync(0, 'utf8'));
