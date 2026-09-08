@@ -3,6 +3,57 @@
 Дата: 2026-09-07. Проект: только AnyTour / pyatkoff/poisk-turov-test.
 Рабочая ветка: feature/anex-search-adapter-20260907; draft PR #1493.
 
+## Подтверждённый парный замер и новая порция — 8 сентября
+
+**SHA d894836df02e5238959467ba17e2b1ce49b843c4**, run34278308252/job102236677930,
+успех, artifact10076612792 (reserved10076598330). Восстановлен10076461153.
+Все три case V2 completed; checkpoint sha013a231497da38399159167c25ebaa0aeb01079d776d7370d163a61bdc90603a.
+Artifact digest ab8f6126b7d6aa4417c2f1bc86bac2f38edd505d1fe69caf9e7a7e68abda28c9.
+Полный отчёт: `anex-paired-search-v2-report.json`, CSV и отдельный checkpoint.
+
+Москва → Турция, 16 сентября,7 ночей,2 взрослых,RUB. Tourvisor только ANEX:
+один день15 отелей,неделя16–22сентября15. Оба поиска complete, локальный лимит100
+не достигнут; общих8, по7 уникальных для каждого диапазона, объединение22.
+Это подтверждает различие наборов, но не рост количества при сужении или полный
+инвентарь поставщика. Direct ANEX:296 предложений/296 единыхhotel ID,147 mapped local,
+6 пересечений с однодневным TV по принятым связям. ANEX6 calls, включая5dict+1PRICES;
+TV8 calls длядвухзамеров. Первый ANEX page, без expansion/externalpagination.
+У6 совпали дата/7ночей/состав/питание/названияномеров; разница30647–32819RUB на2взрослых.
+Конкретный одинаковый рейс и включение fuel не доказаны; final_price_verified=false.
+
+Новые sightings: observations456→502,mapped210→229,pending246→273.
+Из46 дополнительных сохранённыхID19 уже имеют связи,27 пополнили unresolved;
+с учётом прежних5 получилось32 новых eligible. Затем выполнена ровно одна порция30.
+
+**Observed run34271815803 attempt3/job102237493314**, успех,
+artifact10076716759 (reserved10076689051), digest
+4945ce3a4de502083c5f4e110d03f1cfffcbc249ad4b1dc2b16794a93c398b79;
+восстановлен10076612792. Новых30,повторов0: review26/source_error2/unmatched2/strong0.
+Inserted0,registry12889=policy12880+manual9; staging8362; прежние policy/manual hashes
+не изменились. Completed290=inherited90+live200,in_flight0; прежние260rows сохранены.
+Свежий DB readback502/mapped229/pending273; осталось2 новых eligible.
+Очереди review134/source_error133/unmatched4.9/2 finalized stages штатно no-op.
+
+Перед повтором observed35fa3709 сравнен с d894836d: ни один существующий matcher,
+client,importer,SSHилиhotel-checkpoint файл не менялся. Новые paired файлы выполняются
+только отдельным mode. Семь существующих шагов observed (restore/preflight/reserve/
+match/import-finalize/upload) структурно одинаковы; workflow дополнился только paired
+веткой и её тестами, собственный JS observed не исполняет. Это не разрешает повтор
+устаревшего кода при будущих изменениях алгоритма. Оба paired замера завершены;
+автоматизация их не повторяет и продолжает только observed.
+
+Далее: оставшиеся2 новых ID и новые живые наблюдения штатной очередью. Отдельный
+диагностический этап — одна сопоставленная курортная область и категории на одной дате:
+сначала реальные ID справочников обеих систем, затем собственный bounded checkpoint
+с дедупликацией запросов; цифру звёзд нельзя подставлять вместо ANEX STARS group ID.
+Следующий этап цены — конкретные туры и рейсы на6 принятых общих отелях, проверка
+обязательных доплат по подтверждённому ANEX quote-контракту. В текущем observed-задаче
+новые PRICES/preview deploy не выполняются. Значения дат обычного поиска не менялись.
+
+[Сводка замера и планы](reports/anex-paired-day-width-20260908.json).
+Проверка: runner JSON/CSV/checkpoint readback,логи и GitHub artifact/digest; независимое
+скачивание ZIP не заявляется. Main/production/catalog_hotels/принятые связи не менялись.
+
 ## Исправление первого парного замера — 8 сентября
 
 Run34277892617/SHAf281481b прошёл локальные gates и восстановил10075181725.

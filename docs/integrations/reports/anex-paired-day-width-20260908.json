@@ -1,0 +1,462 @@
+{
+  "schema_version": 1,
+  "project": "AnyTour",
+  "date": "2026-09-08",
+  "purpose": "owner_requested_one_day_anex_only_paired_search",
+  "criteria": {
+    "adults": 2,
+    "currency": "RUB",
+    "date": "2026-09-16",
+    "experiment_id": "one_day_anex_20260908_v2",
+    "nights": 7
+  },
+  "experiment": {
+    "run_id": 34278308252,
+    "attempt": 1,
+    "source_sha": "d894836df02e5238959467ba17e2b1ce49b843c4",
+    "artifact_id": 10076612792,
+    "artifact_sha256": "ab8f6126b7d6aa4417c2f1bc86bac2f38edd505d1fe69caf9e7a7e68abda28c9",
+    "checkpoint_sha256": "013a231497da38399159167c25ebaa0aeb01079d776d7370d163a61bdc90603a",
+    "cases": [
+      {
+        "case_id": "tv_day",
+        "coverage_limits": {
+          "continuation_requested": false,
+          "final_price_verified": false,
+          "full_supplier_inventory": false,
+          "hotel_limit": 100,
+          "hotel_limit_reached": false,
+          "offer_limit": 1500,
+          "output_limit_reached": false,
+          "raw_status_projection": "Only bounded status/count/progress/price scalars; no search or tour identifiers",
+          "search_complete": true,
+          "status_poll_limit": 8,
+          "supplier_total_known": false
+        },
+        "error_code": null,
+        "offers": 15,
+        "requests": {
+          "anex": 0,
+          "anex_last_request": null,
+          "total": 4,
+          "tourvisor": 4,
+          "tourvisor_log": [
+            {
+              "action": "operators",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 292,
+              "http_status": 200,
+              "response_bytes": 3698,
+              "retry_after_seconds": null
+            },
+            {
+              "action": "search_start",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 151,
+              "http_status": 200,
+              "response_bytes": 25,
+              "retry_after_seconds": null
+            },
+            {
+              "action": "search_status",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 152,
+              "http_status": 200,
+              "response_bytes": 115,
+              "retry_after_seconds": null
+            },
+            {
+              "action": "search_results",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 239,
+              "http_status": 200,
+              "response_bytes": 19852,
+              "retry_after_seconds": null
+            }
+          ]
+        },
+        "result_sha256": "bce7f83e774681fa3009fbbdd7f6f04e3ca2de02007ac7ae70f159a578a80cea",
+        "status": "ok",
+        "summary": {
+          "mapped_hotels": 15,
+          "offers": 15,
+          "operator_unverified_tours": 0,
+          "output_limit_reached": false,
+          "raw_hotels": 15,
+          "raw_tours": 15,
+          "rejected_tours": 0,
+          "unique_hotels": 15
+        }
+      },
+      {
+        "case_id": "tv_week",
+        "coverage_limits": {
+          "continuation_requested": false,
+          "final_price_verified": false,
+          "full_supplier_inventory": false,
+          "hotel_limit": 100,
+          "hotel_limit_reached": false,
+          "offer_limit": 1500,
+          "output_limit_reached": false,
+          "raw_status_projection": "Only bounded status/count/progress/price scalars; no search or tour identifiers",
+          "search_complete": true,
+          "status_poll_limit": 8,
+          "supplier_total_known": false
+        },
+        "error_code": null,
+        "offers": 15,
+        "requests": {
+          "anex": 0,
+          "anex_last_request": null,
+          "total": 4,
+          "tourvisor": 4,
+          "tourvisor_log": [
+            {
+              "action": "operators",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 156,
+              "http_status": 200,
+              "response_bytes": 3698,
+              "retry_after_seconds": null
+            },
+            {
+              "action": "search_start",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 307,
+              "http_status": 200,
+              "response_bytes": 25,
+              "retry_after_seconds": null
+            },
+            {
+              "action": "search_status",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 149,
+              "http_status": 200,
+              "response_bytes": 112,
+              "retry_after_seconds": null
+            },
+            {
+              "action": "search_results",
+              "attempt": 1,
+              "curl_errno": 0,
+              "elapsed_ms": 198,
+              "http_status": 200,
+              "response_bytes": 19588,
+              "retry_after_seconds": null
+            }
+          ]
+        },
+        "result_sha256": "b4278e868d09b25cc58d54fd15e6c4c823c3f7416ffadfdc5f741ba3b26ff3f1",
+        "status": "ok",
+        "summary": {
+          "mapped_hotels": 15,
+          "offers": 15,
+          "operator_unverified_tours": 0,
+          "output_limit_reached": false,
+          "raw_hotels": 15,
+          "raw_tours": 15,
+          "rejected_tours": 0,
+          "unique_hotels": 15
+        }
+      },
+      {
+        "case_id": "anex_day",
+        "coverage_limits": {
+          "external_results_loaded": false,
+          "external_search_pending": false,
+          "final_price_verified": false,
+          "first_page_only": true,
+          "full_supplier_inventory": false,
+          "groups_expanded": false,
+          "local_inventory_only": true,
+          "offer_limit": 300,
+          "partition_price": 32,
+          "price_page": 1,
+          "supplier_total_known": false
+        },
+        "error_code": null,
+        "offers": 296,
+        "requests": {
+          "anex": 6,
+          "anex_last_request": {
+            "action": "SearchTour_PRICES",
+            "curl_errno": 0,
+            "elapsed_ms": 1167,
+            "http_status": 200,
+            "response_bytes": 883072
+          },
+          "total": 6,
+          "tourvisor": 0,
+          "tourvisor_log": []
+        },
+        "result_sha256": "8acd6f36467461090fc66df48c986b0b7933f4f67c36513075b9f1b6dc8806c0",
+        "status": "ok",
+        "summary": {
+          "mapped_hotels": 147,
+          "offers": 296,
+          "rejected_tours": 0,
+          "truncated_count": 0,
+          "unique_hotels": 296
+        }
+      }
+    ],
+    "comparison": {
+      "accepted_overlap_count": 6,
+      "accepted_overlap_local_ids": [
+        "1601",
+        "9250",
+        "21753",
+        "71506",
+        "72994",
+        "111534"
+      ],
+      "aligned_date_party_examples": [
+        {
+          "anex_hotel_id": 25084,
+          "anex_meal": "AI",
+          "anex_price": "72245",
+          "anex_room": "Standard Room",
+          "date": "2026-09-16",
+          "fuel_inclusion_verified": false,
+          "identical_package_verified": false,
+          "local_hotel_id": 21753,
+          "nights": 7,
+          "same_hotel_basis": "previously_accepted_mapping",
+          "tourvisor_meal": "AI",
+          "tourvisor_price": "102946",
+          "tourvisor_room": "standard room"
+        },
+        {
+          "anex_hotel_id": 26050,
+          "anex_meal": "BB",
+          "anex_price": "75028",
+          "anex_room": "Standard Room",
+          "date": "2026-09-16",
+          "fuel_inclusion_verified": false,
+          "identical_package_verified": false,
+          "local_hotel_id": 9250,
+          "nights": 7,
+          "same_hotel_basis": "previously_accepted_mapping",
+          "tourvisor_meal": "BB",
+          "tourvisor_price": "105720",
+          "tourvisor_room": "standard room"
+        },
+        {
+          "anex_hotel_id": 41333,
+          "anex_meal": "BB",
+          "anex_price": "76955",
+          "anex_room": "Standard Room",
+          "date": "2026-09-16",
+          "fuel_inclusion_verified": false,
+          "identical_package_verified": false,
+          "local_hotel_id": 111534,
+          "nights": 7,
+          "same_hotel_basis": "previously_accepted_mapping",
+          "tourvisor_meal": "BB",
+          "tourvisor_price": "109774",
+          "tourvisor_room": "standard room"
+        },
+        {
+          "anex_hotel_id": 27318,
+          "anex_meal": "AI",
+          "anex_price": "77062",
+          "anex_room": "Economy Room",
+          "date": "2026-09-16",
+          "fuel_inclusion_verified": false,
+          "identical_package_verified": false,
+          "local_hotel_id": 72994,
+          "nights": 7,
+          "same_hotel_basis": "previously_accepted_mapping",
+          "tourvisor_meal": "AI",
+          "tourvisor_price": "107747",
+          "tourvisor_room": "economy room"
+        },
+        {
+          "anex_hotel_id": 9069,
+          "anex_meal": "AI",
+          "anex_price": "82199",
+          "anex_room": "Standard Room",
+          "date": "2026-09-16",
+          "fuel_inclusion_verified": false,
+          "identical_package_verified": false,
+          "local_hotel_id": 1601,
+          "nights": 7,
+          "same_hotel_basis": "previously_accepted_mapping",
+          "tourvisor_meal": "AI",
+          "tourvisor_price": "115001",
+          "tourvisor_room": "standard room"
+        },
+        {
+          "anex_hotel_id": 27317,
+          "anex_meal": "AI",
+          "anex_price": "88514",
+          "anex_room": "Standard Room",
+          "date": "2026-09-16",
+          "fuel_inclusion_verified": false,
+          "identical_package_verified": false,
+          "local_hotel_id": 71506,
+          "nights": 7,
+          "same_hotel_basis": "previously_accepted_mapping",
+          "tourvisor_meal": "AI",
+          "tourvisor_price": "119161",
+          "tourvisor_room": "standard room"
+        }
+      ],
+      "anex_mapped_local_hotels": 147,
+      "anex_unique_hotels": 296,
+      "date_width_cases_successful": true,
+      "date_width_output_uncapped": true,
+      "date_width_searches_completed": true,
+      "final_price_verified": false,
+      "interpretation": "bounded_search_samples_only; hotel/name/price overlap does not accept a mapping",
+      "new_mappings_accepted": 0,
+      "tv_day_only_hotels": [
+        "1600",
+        "9250",
+        "9263",
+        "21753",
+        "42916",
+        "71506",
+        "72994"
+      ],
+      "tv_day_unique_hotels": 15,
+      "tv_week_only_hotels": [
+        "1039",
+        "1282",
+        "1326",
+        "1351",
+        "1525",
+        "28482",
+        "56421"
+      ],
+      "tv_week_unique_hotels": 15
+    },
+    "historical_files_unchanged": true,
+    "previous_incomplete_experiment": {
+      "artifact_id": 10076461153,
+      "id": "one_day_anex_20260908",
+      "previous_anex_requests": 0,
+      "previous_results_rewritten": false,
+      "previous_tourvisor_searches_started": 1,
+      "reason": "local_status_path_regex_error_after_search_start"
+    }
+  },
+  "observed_batch": {
+    "run_id": 34271815803,
+    "attempt": 3,
+    "job_id": 102237493314,
+    "source_sha": "35fa3709446721ab6bdc7bd6fa142f5171239670",
+    "restored_artifact": 10076612792,
+    "artifact_id": 10076716759,
+    "artifact_sha256": "4945ce3a4de502083c5f4e110d03f1cfffcbc249ad4b1dc2b16794a93c398b79",
+    "result": {
+      "added_links": 0,
+      "automated_added_links": 0,
+      "checkpoint_readback_verified": true,
+      "completed_total": 290,
+      "counts": {
+        "manual_review": 0,
+        "mapped": 229,
+        "observed": 502,
+        "pending": 273
+      },
+      "coverage_after": {
+        "manual_review": 0,
+        "mapped": 229,
+        "observed": 502,
+        "pending": 273
+      },
+      "coverage_before": {
+        "manual_review": 0,
+        "mapped": 229,
+        "observed": 502,
+        "pending": 273
+      },
+      "effective_mapped_count": 12889,
+      "import_status": "no_new_strong_candidates",
+      "in_flight": 0,
+      "inherited_completed": 90,
+      "live_completed": 200,
+      "new_completed": 30,
+      "new_counts": {
+        "review": 26,
+        "source_error": 2,
+        "unmatched": 2
+      },
+      "owner_added_links": 0,
+      "preservation": {
+        "anex_hotel_decisions": {
+          "count": 9,
+          "sha256": "ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1"
+        },
+        "anex_hotel_search_mappings": {
+          "count": 12880,
+          "sha256": "2924faab70dcbf7d00b684e0e05639544145bdf6e2cf5f50f2645d6e6fb825e2"
+        },
+        "staging_total": 8362,
+        "status": "ok"
+      },
+      "previous_evidence_unchanged": true,
+      "queues": {
+        "manual_decisions": 0,
+        "pending": 2,
+        "protected": 0,
+        "review": 134,
+        "source_error": 133,
+        "unmatched": 4
+      },
+      "remaining_new_ids": 2,
+      "repeated_ids": 0,
+      "schema_version": 1,
+      "scope": "preview",
+      "source_sha": "35fa3709446721ab6bdc7bd6fa142f5171239670"
+    }
+  },
+  "conclusions": {
+    "date_width": "15 hotels in both completed Tourvisor searches; 8 common, 7 day-only, 7 week-only; union22. One-day query broadens saved identities in this sample but does not increase returned count.",
+    "anex": "296 normalized unique ANEX hotel IDs in first PRICES page;147 mapped local hotels;6 accepted overlap with Tourvisor one-day.",
+    "identity": "Matching date/nights/party/meal/room and price is supporting evidence, not automatic identity acceptance.",
+    "price_delta_rub_two_adults": {
+      "min": 30647,
+      "max": 32819,
+      "fuel_inclusion_verified": false,
+      "identical_flight_package_verified": false
+    },
+    "observations": "456/210 before direct ANEX sample, 502/229 after;46 additional saved IDs,19 already mapped,27 newly unresolved.32 eligible including5 pre-existing;30 processed,2 remain."
+  },
+  "next_steps": [
+    {
+      "task": "Process up to30 newly observed hotels from restored latest checkpoint; next eligible2",
+      "scope": "observed_existing_automation",
+      "supplier_prices": false
+    },
+    {
+      "task": "Resolve one common Turkish resort and star-group IDs from both dictionaries before a bounded segmented comparison on one exact date",
+      "scope": "separate_owner_requested_diagnostic",
+      "new_checkpoint_required": true,
+      "assumed_resort_ids": false,
+      "assumed_star_ids": false
+    },
+    {
+      "task": "Compare concrete offers for accepted common hotels and selected flights; establish mandatory surcharges and fuel with ANEX quote contract",
+      "scope": "separate_preview_price_work",
+      "final_price_verified": false
+    }
+  ],
+  "evidence_method": "Runner JSON/CSV/checkpoint readback, job logs and GitHub artifact metadata; no independent ZIP download.",
+  "unchanged": [
+    "catalog_hotels",
+    "manual_decisions",
+    "prior_policy_mappings",
+    "production",
+    "preview_default_date_width",
+    "Tourvisor_normal_endpoint_contract"
+  ]
+}
