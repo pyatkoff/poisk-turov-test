@@ -7,7 +7,7 @@ html body.search3-candidate{
 & #tourSearch :is(.search3-primary-grid,.search3-quality__grid)>.field{min-width:0!important;margin:0!important}
 & #tourSearch .field>span{display:block!important;margin-bottom:5px!important;color:#667085!important;font-size:9px!important;font-weight:800!important}
 & #tourSearch :is(select,input[type=date],input[type=number],input[type=text],.search3-tourists__summary){width:100%!important;min-height:40px!important;padding:0 11px!important;border:1px solid #d9e1ec!important;border-radius:8px!important;background:#fff!important;color:#101828!important;font:750 11px/1.2 var(--at-font)!important;box-shadow:none!important}
-& #tourSearch .field>select{height:50px!important}
+& #tourSearch .field>:is(select,input:not([type=checkbox])){height:50px!important}
 & #tourSearch .search3-composite__control{position:relative!important;display:flex!important;align-items:center!important;gap:7px!important;min-height:40px!important;padding:0 10px!important;border:1px solid #d9e1ec!important;border-radius:8px!important;background:#fff!important;color:#667085!important}
 & #tourSearch .search3-composite__dash{flex:0 0 auto!important;color:#98a2b3!important;font-size:11px!important;font-weight:800!important}
 & #tourSearch .search3-tourists .search3-composite__control{padding:0!important;border:0!important;background:transparent!important}
