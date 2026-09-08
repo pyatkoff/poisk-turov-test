@@ -1,4 +1,8 @@
 .search-progress-ux{display:grid;gap:8px}
+.skeleton-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.skeleton-card{height:260px;border-radius:22px}
+.empty{grid-column:1/-1;display:flex;flex-direction:column;gap:7px;padding:44px 24px;border:1px solid #e2e7f0;border-radius:20px;color:#7a8599;text-align:center}
+.tour-loading{padding:14px 4px;color:#667085}
 .search-progress-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .search-progress-head strong{font-size:14px}
 .search-progress-head span{font-size:12px;color:#667085}
@@ -32,6 +36,7 @@
   .search-progress-filters{transition:none!important}
 }
 @media(max-width:760px){
+  .skeleton-grid{grid-template-columns:1fr}
   .search-progress-empty{align-items:stretch;flex-direction:column;gap:12px}
   .search-progress-empty-actions{justify-content:flex-start}
 }

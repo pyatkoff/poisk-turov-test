@@ -3,6 +3,10 @@
 /* Current owner for the hotel identity, decision labels and package readability.
    The retired acceptance guard duplicated this family ahead of this asset. */
 html body.search3-candidate.search3-results-active #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results{
+& .hotel-card{background:#fff!important;border:1px solid #e2e7f0!important;border-radius:17px!important;overflow:hidden!important}
+& .hotel-photo{overflow:hidden!important;background:#eef2f8!important}
+& .hotel-photo>img{display:block!important;width:100%!important;object-fit:cover!important}
+& .photo-placeholder{display:flex;align-items:center;justify-content:center;height:100%;color:#9ba7be;font-size:13px;font-weight:900;letter-spacing:.08em}
 & .sales-leader-badge{display:inline-flex;align-items:center;width:max-content;margin:0 0 8px;padding:5px 9px;border-radius:999px;background:var(--at-soft-blue);border:1px solid var(--at-line-strong);color:var(--at-brand-dark);font-size:12px;font-weight:900;line-height:1;letter-spacing:.01em}
 & .is-sales-leader .hotel-title{margin-top:0}
 & .hotel-card{display:block!important;width:100%!important;min-width:0!important;padding:0!important}

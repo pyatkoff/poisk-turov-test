@@ -221,6 +221,24 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(legacy_contract, legacy)
             self.assertIn(current_contract, current)
 
+    def test_app_css_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/app.css').read_text()
+        current = ''.join(path.read_text() for path in (ROOT / 'src/search3/styles').rglob('*.css'))
+        self.assertIn("'app.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'app.css'", scoped)
+        for legacy_contract, current_contract in [
+            ('.search-card', '#tourSearch'),
+            ('.hotel-card', '.hotel-card'),
+            ('.skeleton-grid', '.skeleton-grid'),
+            ('.selected-tour', '#selectedTour'),
+            ('.lead-form', '.lead-form'),
+        ]:
+            self.assertIn(legacy_contract, legacy)
+            self.assertIn(current_contract, current)
+        self.assertIn('&,& *{box-sizing:border-box!important}', current)
+
     def test_enhancements_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
