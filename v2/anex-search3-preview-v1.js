@@ -85,7 +85,7 @@
     ['all', 'Все отели'], ['anex', 'С предложениями ANEX API'],
     ['tourvisor', 'С предложениями Tourvisor'], ['both', 'В обоих источниках']
   ];
-  const replacedText = new Map(), hiddenEmpty = new Map();
+  const replacedText = new Map(), hiddenEmpty = new Map(), sourceDisplay = new Map();
   const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   function node(tag, className, text) {
     const element = document.createElement(tag);
@@ -119,6 +119,13 @@
     element.textContent = value;
   }
   function clear() {
+    sourceDisplay.forEach((before, card) => {
+      if (card.style.getPropertyValue('display') === 'none' && card.style.getPropertyPriority('display') === 'important') {
+        if (before.value) card.style.setProperty('display', before.value, before.priority);
+        else card.style.removeProperty('display');
+      }
+    });
+    sourceDisplay.clear();
     results.querySelectorAll('.anex-search3-source-hidden').forEach(card => card.classList.remove('anex-search3-source-hidden'));
     results.querySelectorAll('.anex-search3-offers').forEach(details => {
       if (details.tagName !== 'DETAILS') return;
@@ -335,7 +342,12 @@
     let visible = 0;
     ranked.forEach(item => {
       const shown = sourceMode === 'all' || (sourceMode === 'both' ? item.anex && item.tourvisor : item[sourceMode]);
-      if (shown) visible++; else item.card.classList.add('anex-search3-source-hidden');
+      if (shown) visible++; else {
+        item.card.classList.add('anex-search3-source-hidden');
+        sourceDisplay.set(item.card, { value: item.card.style.getPropertyValue('display'), priority: item.card.style.getPropertyPriority('display') });
+        // Inline priority also wins over the existing layered !important card layout.
+        item.card.style.setProperty('display', 'none', 'important');
+      }
     });
     if (sourceMode !== 'all') {
       // Keep both offer sections on shared cards; this selects hotels, not a new supplier search.

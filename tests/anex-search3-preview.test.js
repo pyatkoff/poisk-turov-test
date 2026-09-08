@@ -46,7 +46,13 @@ class FakeElement {
     this.parentNode = null;
     this.attributes = {};
     this.dataset = {};
-    this.style = { setProperty(name, value) { this[name] = value; } };
+    this.style = {
+      priorities: {},
+      setProperty(name, value, priority = '') { this[name] = value; this.priorities[name] = priority; },
+      getPropertyValue(name) { return this[name] || ''; },
+      getPropertyPriority(name) { return this.priorities[name] || ''; },
+      removeProperty(name) { delete this[name]; delete this.priorities[name]; }
+    };
     this.id = '';
     this.className = '';
     this.hidden = false;
@@ -792,10 +798,13 @@ test('source selection survives source rerender and sorting, then resets for a n
   page.requests[0].respond(response(1, [hotel({ local_id: 900 })]));
   await tick();
   const select = page.document.getElementById('anexSearch3SourceFilter');
+  page.tvCard.style.setProperty('display', 'grid', 'important');
   select.value = 'tourvisor'; select.dispatchEvent({ type: 'change' });
   await tick();
   assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), false);
   assert.equal(page.results.querySelector('.anex-search3-hotel').classList.contains('anex-search3-source-hidden'), true);
+  assert.equal(page.results.querySelector('.anex-search3-hotel').style.getPropertyValue('display'), 'none');
+  assert.equal(page.results.querySelector('.anex-search3-hotel').style.getPropertyPriority('display'), 'important');
   page.sort.dispatchEvent({ type: 'change' });
   page.window.dispatchEvent({ type: 'v2:results-rendered', detail: {} });
   await tick();
@@ -810,8 +819,11 @@ test('source selection survives source rerender and sorting, then resets for a n
   await tick();
   assert.match(page.document.getElementById('anexSearch3Results').textContent, /лимит запросов ANEX/);
   assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), true);
+  assert.equal(page.tvCard.style.getPropertyValue('display'), 'none');
   page.reset(3, null);
   assert.equal(page.tvCard.classList.contains('anex-search3-source-hidden'), false);
+  assert.equal(page.tvCard.style.getPropertyValue('display'), 'grid');
+  assert.equal(page.tvCard.style.getPropertyPriority('display'), 'important');
   assert.equal(page.tools.querySelector('strong').textContent, 'Найдено 0 туров');
   assert.equal(page.requests.length, 2);
 });
