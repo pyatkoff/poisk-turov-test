@@ -78,6 +78,33 @@ def completed(cp):
     return {r['external_id'] for r in cp['inherited'] + cp['rows']}
 
 
+def needs_finalization(directory, cp):
+    if cp['in_flight']:
+        return False
+    pending = cp.get('batch_needs_finalization')
+    if pending is not None and type(pending) is not bool:
+        raise ValueError('invalid finalization marker')
+    if pending is None:
+        # Older checkpoints have no marker. A verified but unfinished report
+        # identifies the batch whose DB readback still needs to be completed.
+        path = directory / 'anex-observed-hotel-report.json'
+        if not path.exists():
+            return False
+        report = json.loads(path.read_bytes())
+        pending = (report.get('completed_total') == cp['completed_total']
+                   and report.get('checkpoint_readback_verified') is True
+                   and report.get('previous_evidence_unchanged') is True
+                   and 'import_status' not in report)
+    if pending:
+        previous = cp.get('previous_new_rows')
+        if (type(previous) is not int or not 0 <= previous <= len(cp['rows'])
+                or not 0 <= len(cp['rows']) - previous <= 30
+                or cp.get('previous_completed') != len(cp['inherited']) + previous
+                or gaps.digest(cp['rows'][:previous]) != cp.get('previous_rows_sha256')):
+            raise ValueError('unverified unfinished batch')
+    return pending
+
+
 def snapshot():
     value = gaps.ssh_batch([], {}, 1, observations=True)
     if value.get('scope') != 'preview' or value.get('truncated') is not False:
@@ -182,6 +209,13 @@ def main():
     cp = restore(directory)
     owner = os.environ['GITHUB_RUN_ID'] + ':' + os.environ['GITHUB_RUN_ATTEMPT']
     if '--prepare' in sys.argv:
+        if needs_finalization(directory, cp):
+            observed = snapshot()
+            cp.update(reservation_owner=owner, batch_needs_finalization=True)
+            save(directory, cp)
+            report = export(directory, cp, observed)
+            print(json.dumps(dict(report, reserved=0, recovered_unknown=0, resumed_finalization=True)))
+            return
         previous_total = cp['completed_total']
         previous_rows = len(cp['rows'])
         recovered = bool(cp['in_flight'])
@@ -193,7 +227,7 @@ def main():
         cp.update(in_flight=[r['anex_hotel_id'] for r in selected], admissions=cp['admissions'] + selected,
                   reservation_owner=owner, previous_completed=previous_total, previous_new_rows=previous_rows,
                   previous_rows_sha256=gaps.digest(cp['rows'][:previous_rows]), coverage_before=observed['counts'],
-                  mappings_before=observed['effective_mapped_count'])
+                  mappings_before=observed['effective_mapped_count'], batch_needs_finalization=recovered)
         save(directory, cp)
         report = export(directory, cp, observed)
         print(json.dumps(dict(report, reserved=len(selected), recovered_unknown=cp['completed_total'] - previous_total)))
@@ -209,7 +243,10 @@ def main():
         if observed['effective_mapped_count'] < cp['mappings_before']:
             raise ValueError('accepted mappings decreased')
         cp['import_finalized_ids'] = [r['external_id'] for r in cp['rows'] if r['status'] == 'strong_candidate']
+        cp['batch_needs_finalization'] = False
         save(directory, cp)
+        if restore(directory) != cp:
+            raise ValueError('finalized checkpoint readback mismatch')
         report.update(export(directory, cp, observed), added_links=imported['inserted'],
                       coverage_before=cp['coverage_before'], coverage_after=observed['counts'],
                       import_status=imported['status'])
@@ -226,6 +263,7 @@ def main():
                 raise RuntimeError('OBSERVED_BATCH_UNCONFIRMED: reservation preserved') from None
         if gaps.digest(cp['rows'][:cp['previous_new_rows']]) != cp['previous_rows_sha256']:
             raise ValueError('old completed evidence changed')
+        cp['batch_needs_finalization'] = True
         save(directory, cp)
         # Re-read the file we will upload, so integrity is checked on persisted bytes as well.
         if restore(directory) != cp:

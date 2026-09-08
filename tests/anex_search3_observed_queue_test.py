@@ -95,6 +95,57 @@ class ObservedQueueTests(unittest.TestCase):
         self.assertEqual(live.restore(self.directory)['completed_total'], 92)
         self.assertEqual(after['inherited'], cp['inherited'])
 
+    def test_unfinished_readback_resumes_without_reserving_or_replaying_hotels(self):
+        cp = copy.deepcopy(self.cp)
+        ids = list(range(90000000, 90000120))
+        cp.update(rows=[{'external_id': i, 'status': 'source_error',
+                         'reason': 'interrupted_result_unknown', 'candidates': []} for i in ids],
+                  admissions=self.observed(ids)['pending'], completed_total=210,
+                  previous_completed=180, previous_new_rows=90,
+                  mappings_before=12872, coverage_before=self.observed(ids)['counts'])
+        cp['previous_rows_sha256'] = gaps.digest(cp['rows'][:90])
+        live.save(self.directory, cp)
+        # Backward-compatible recovery of the artifact written before the marker existed.
+        (self.directory / 'anex-observed-hotel-report.json').write_text(json.dumps({
+            'completed_total': 210, 'new_completed': 30,
+            'checkpoint_readback_verified': True, 'previous_evidence_unchanged': True}))
+        (self.directory / 'anex-observed-hotel-mapping-import.json').write_text(json.dumps({
+            'status': 'no_new_strong_candidates', 'inserted': 0}))
+        observed = self.observed(ids + list(range(90000120, 90000170)))
+        env = {'ANEX_CATALOG_ARTIFACT_DIR': str(self.directory), 'GITHUB_RUN_ID': '3', 'GITHUB_RUN_ATTEMPT': '1'}
+        with patch.dict(os.environ, env), patch.object(live, 'snapshot', return_value=observed), \
+                patch.object(gaps, 'ssh_batch') as api:
+            for args in (['queue', '--prepare'], ['queue']):
+                with patch.object(sys, 'argv', args):
+                    live.main()
+            with patch.object(sys, 'argv', ['queue', '--finalize']), \
+                    patch.object(live, 'snapshot', side_effect=ValueError('remote_batch_exit_255')), \
+                    self.assertRaises(ValueError):
+                live.main()
+            pending = live.restore(self.directory)
+            self.assertTrue(pending['batch_needs_finalization'])
+            self.assertEqual(pending['rows'], cp['rows'])
+            # Another readback interruption must still never consume the next 50 IDs.
+            with patch.dict(os.environ, {'GITHUB_RUN_ATTEMPT': '2'}):
+                for args in (['queue', '--prepare'], ['queue'], ['queue', '--finalize']):
+                    with patch.object(sys, 'argv', args):
+                        live.main()
+            api.assert_not_called()
+        after = live.restore(self.directory)
+        self.assertEqual(after['admissions'], cp['admissions'])
+        self.assertEqual(after['rows'], cp['rows'])
+        self.assertEqual(after['completed_total'], 210)
+        self.assertEqual(after['in_flight'], [])
+        self.assertFalse(after['batch_needs_finalization'])
+        report = json.loads((self.directory / 'anex-observed-hotel-report.json').read_bytes())
+        self.assertEqual((report['new_completed'], report['added_links'], report['remaining_new_ids']), (30, 0, 50))
+
+    def test_unfinished_report_cannot_override_prior_evidence(self):
+        cp = dict(self.cp, batch_needs_finalization=True, previous_new_rows=0,
+                  previous_completed=90, previous_rows_sha256='changed')
+        with self.assertRaisesRegex(ValueError, 'unverified unfinished batch'):
+            live.needs_finalization(self.directory, cp)
+
     def test_unadmitted_rows_or_legacy_evidence_changes_fail_closed(self):
         for key, value in [('inherited', []), ('completed_total', 0), ('in_flight', [90000000]),
                            ('import_finalized_ids', [90000000])]:
