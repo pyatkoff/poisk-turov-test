@@ -2287,3 +2287,19 @@ Focused source checks assert one final 100-result request, completion only after
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-results-depth-runtime.json`.
 
 Next: audit `results-local-filters-v1.js` against `ds2-results-filters.js` and `search-lifecycle-v6.js` as one substantial owner-consolidation package. Preserve every unique form-narrowing, result-facet, completeness, catalog-refresh and explicit supplier-search contract; do not remove working filter behavior for size alone.
+
+## S3_LEAN_LOCAL_FILTER_OWNER — checked release, 2026-09-08
+
+Source PR #1550 / `4cd7961bb85b3654a1c2cfae32d78747deb5c888`; checked code release `1ed8fec4b87792b5274d7a61ba4f5a1930cace89`. Search3 no longer loads the complete 5765-byte `results-local-filters-v1.js` runtime. The unchanged runtime and `V2ResultsLocalFiltersV1` global remain in the full manifest used by `/poisk-turov-old/`.
+
+The unique form contract moved into the current `ds2-results-filters.js` owner: stars, rating, price bounds, scalar/object region and subregion IDs, region-dependent catalog refresh, tour pruning and minimum-price recomputation. Changes that would broaden the supplier snapshot still reach the current explicit lifecycle submit path. Both form narrowing and DS2 facets now filter one canonical source list, preventing a locally rendered subset from being recaptured as a second owner’s source and preserving the Search3 zero-result bridge.
+
+Loaded raw is **543984 → 542124 bytes (−1860)**: scoped shared JavaScript 185600→183740; shared CSS and the eight Search3 assets remain 186118 and 172266. Exact same-method endpoint gzip delta is **−438 bytes**, giving **120947 → 120509** from the preceding exact checkpoint. The removed legacy runtime is 5765 bytes and the retained behavior adds 3905 bytes to the current shared owner; only the net loaded saving is reported.
+
+Security `34192366116` and exact artifacts `34192366178` / `34192605097` passed. Reusable final artifact `10042768273`, digest `sha256:6b1e966e07714ccff226269fd0ee8099288b34e3ffb87e1f93c9ca764cf588df`; selected evidence `10042767008`, digest `sha256:ede37e35a92a7ca573371a9d28776702f7fc1d35191ac07842d092e4061ca583`; results evidence `10042767642`, digest `sha256:6a1cb432427f5f28337440ed6b3eaac68c153ae70a701253cc7bf4550f2ec39f`.
+
+Focused source checks cover stars narrow/clear, rating and price bounds, region clearing subregion, one catalog refresh, tour-price recomputation, unsafe broadening handoff, DS2 facet zero/recovery and old-route retention. Exact Chromium retained 12 selected states, 30 entry states, 12 result states and 10 header states. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-local-filter-owner.json`.
+
+Next: audit the complete `design-v1.css` and `enhancements.css` legacy presentation layers against current Search3 private/DS2 owners. Remove a whole layer only if focused geometry proves it has no unique Search3 contract; keep both layers on the old route and avoid micro-removals.
