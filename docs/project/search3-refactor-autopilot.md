@@ -2303,3 +2303,19 @@ Focused source checks cover stars narrow/clear, rating and price bounds, region 
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-local-filter-owner.json`.
 
 Next: audit the complete `design-v1.css` and `enhancements.css` legacy presentation layers against current Search3 private/DS2 owners. Remove a whole layer only if focused geometry proves it has no unique Search3 contract; keep both layers on the old route and avoid micro-removals.
+
+## S3_LEAN_DESIGN_V1_LAYER — checked release, 2026-09-08
+
+Source PR #1552 / `802e1adff7395fb817563512f080ef2d798b0ef6`; checked code release `f0f39e91f037343fa3aa30a4d5953f01ca42cf9f`. Search3 no longer loads the complete 7527-byte `design-v1.css` presentation layer. The unchanged layer and full manifest order remain available to `/poisk-turov-old/`.
+
+Exact Chromium deliberately drove the repair. Five red runs (`34193483597`, `34193997477`, `34194429152`, `34195148577`, `34195705377`) exposed only the live selected-tour and mobile-entry slice: Back spacing, flight route/arrow geometry, lead consent/CTA dimensions, the 10px mobile form grid rhythm and 49px native fields. These rules now live in current Search3 owners; the rest of the legacy layer remains excluded. The red runs are recorded as red, not described as successful.
+
+Loaded raw is **542124 → 535608 bytes (−6516)**: scoped shared CSS 186118→178591, shared JavaScript remains 183740, and the eight generated Search3 assets are 172266→173277 after retaining 1011 bytes of current-owner geometry. Carried same-method gzip is **120509 → 119180 (−1329)**.
+
+Security `34196012323` and exact artifacts `34196012398` / `34196175190` passed. Reusable final artifact `10044015653`, digest `sha256:ee6824caa70a9aaabf48720bc517c475e28d83e0f7fb8b1159f116718d4b4514`; selected evidence `10044014763`, digest `sha256:95c9ce657e50f82d9477d22987c77f25061b38297ee47f4245e5eb83f69f8143`; results evidence `10044015196`, digest `sha256:685945e258b13936a05989c0f58dd806b23297a553ba8a75811bc328e7985266`.
+
+Exact Chromium retained 12 selected detail/review/lead states, 30 entry states, 12 result states and 10 header states. No supplier request or lead was sent. Eight public paths and Tourvisor/API, URL/payload, price arithmetic, lead transport/mapping, analytics/goals, logo/native/nesting contracts are unchanged.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-design-v1-layer.json`.
+
+Next: audit the complete `enhancements.css` presentation layer. Keep it unchanged on the old route and attempt only a whole-layer, reversible Search3 exclusion with focused geometry-driven repair; do not create micro-removal PRs.

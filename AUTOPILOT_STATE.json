@@ -53,32 +53,32 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1550 consolidates form-local result filtering into the current DS2 owner and retires the complete 5765-byte results-local-filters-v1.js runtime from Search3. Net raw route payload falls 543984 to 542124 (-1860) after preserving all unique narrowing, price, region/subregion and catalog-refresh contracts; exact same-method gzip falls 120947 to 120509 (-438). The full legacy route retains its unchanged owner.",
+    "last_material_progress": "PR #1552 retires the complete 7527-byte design-v1.css presentation layer from Search3. Exact Chromium identified 1011 bytes of live selected-tour and mobile-entry geometry, which now lives in current owners; net route payload falls 542124 to 535608 raw (-6516) and carried same-method gzip falls 120509 to 119180 (-1329). The full legacy route retains the unchanged layer.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete design-v1.css and enhancements.css legacy presentation layers against current Search3 private/DS2 owners. Remove a whole layer only if focused geometry proves it has no unique Search3 contract; keep both layers on the old route.",
+    "next_action": "Audit the complete enhancements.css legacy presentation layer against current Search3 private/DS2 owners. Attempt a whole-layer exclusion only as one reversible package and retain exact current-owner rules exposed by focused geometry; keep the unchanged layer on the old route.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_LOCAL_FILTER_OWNER",
-    "title": "Consolidate local result filters into one current owner",
+    "id": "S3_LEAN_DESIGN_V1_LAYER",
+    "title": "Retire the legacy design-v1 presentation layer from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1550],
+    "source_prs": [1552],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "4cd7961bb85b3654a1c2cfae32d78747deb5c888"
+      "802e1adff7395fb817563512f080ef2d798b0ef6"
     ],
-    "release_sha": "1ed8fec4b87792b5274d7a61ba4f5a1930cace89",
-    "artifact_run": 34192605097,
-    "artifact_id": 10042768273,
-    "artifact_digest": "sha256:6b1e966e07714ccff226269fd0ee8099288b34e3ffb87e1f93c9ca764cf588df",
-    "checked_release_asset_bytes": 172266,
-    "checked_release_loaded_bytes": 542124,
+    "release_sha": "f0f39e91f037343fa3aa30a4d5953f01ca42cf9f",
+    "artifact_run": 34196175190,
+    "artifact_id": 10044015653,
+    "artifact_digest": "sha256:ee6824caa70a9aaabf48720bc517c475e28d83e0f7fb8b1159f116718d4b4514",
+    "checked_release_asset_bytes": 173277,
+    "checked_release_loaded_bytes": 535608,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit design-v1.css and enhancements.css as complete legacy presentation-layer candidates against current Search3/DS2 geometry owners; do not split out micro-removals."
+    "next_action": "Audit enhancements.css as the next complete legacy presentation-layer candidate. Preserve its full old-search owner and do not split out micro-removals."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -8567,6 +8567,28 @@
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-local-filter-owner.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_design_v1_layer_retirement": {
+    "source_pr": 1552,
+    "source_sha": "802e1adff7395fb817563512f080ef2d798b0ef6",
+    "checked_code_release_sha": "f0f39e91f037343fa3aa30a4d5953f01ca42cf9f",
+    "retired_search3_owner": "design-v1.css",
+    "legacy_layer_bytes_removed": 7527,
+    "current_owner_bytes_added": 1011,
+    "raw_before": 542124,
+    "raw_after": 535608,
+    "raw_saved": 6516,
+    "gzip_before": 120509,
+    "gzip_after": 119180,
+    "gzip_saved": 1329,
+    "eight_assets_before": 172266,
+    "eight_assets_after": 173277,
+    "failed_exact_runs": [34193483597, 34193997477, 34194429152, 34195148577, 34195705377],
+    "green_exact_runs": [34196012398, 34196175190],
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-design-v1-layer.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
