@@ -1,6 +1,22 @@
 # poisk-turov-test — Autopilot Roadmap
 
-Updated: 2026-09-04
+Updated: 2026-09-08
+
+## Current owner direction — product/site work without duplicate layers (2026-09-08)
+
+The active plan is [Search3 product development](docs/project/search3-product-development-plan.md)
+and `AUTOPILOT_STATE.json.current_task`. Useful CSS/JS growth for better visuals,
+usability and functionality is explicitly authorized. Historical 12KB/zero-growth
+targets or mandatory per-packet savings do not define the current product goal.
+Replace superseded implementations in the same packet; no stacked override layers.
+
+**Do not stop after one PR if this invocation has time for the next safe step.**
+Finish applicable CI/integration, record evidence, then continue the next product task.
+A blocked item or production visual-approval wait does not block independent safe work.
+Keep lean preview checks and all protected business/production boundaries.
+Older roadmap/checkpoint sections below are historical where superseded here.
+
+
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priority source; `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture and `TEST_MATRIX.md` owns CI/test mapping.
 
