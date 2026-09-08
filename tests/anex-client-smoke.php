@@ -257,3 +257,10 @@ clientTest('token-shared slots cooldown and private state without affecting mock
 });
 
 echo 'ANEX client: ' . $passed . " tests passed\n";
+
+clientTest('diagnostics expose only fixed action and numeric metadata', static function (): void {
+    $client = clientWithResponse(200, '{"error":2111,"message":"test-secret"}');
+    clientFailure(static function () use ($client): void { $client->request('SearchTour_PRICES'); }, 'ANEX_SUPPLIER_ERROR');
+    clientCheck($client->lastRequestDiagnostics() === ['action' => 'SearchTour_PRICES', 'http_status' => 200,
+        'response_bytes' => strlen('{"error":2111,"message":"test-secret"}'), 'supplier_code' => 2111], 'bounded metadata without supplier message');
+});

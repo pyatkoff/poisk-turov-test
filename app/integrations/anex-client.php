@@ -11,6 +11,10 @@ final class AnyTourAnexClient
     private $transport;
     private $requests = 0;
     private $rateDirectory;
+    private $lastRequest = [];
+
+    /** Fixed action and numeric metadata only; never URL, headers or supplier text. */
+    public function lastRequestDiagnostics(): array { return $this->lastRequest; }
 
     public function __construct(string $token, ?callable $transport = null, ?string $rateDirectory = null)
     {
@@ -49,6 +53,7 @@ final class AnyTourAnexClient
             'proxy' => '', 'timeout' => 20, 'connect_timeout' => 10,
             'max_response_bytes' => self::BODY_LIMIT, 'protocol' => 'https',
         ];
+        $this->lastRequest = ['action' => $action];
         ++$this->requests;
         try {
             $response = $this->transport !== null
@@ -62,6 +67,8 @@ final class AnyTourAnexClient
             || !is_int($response['status']) || !is_string($response['body'])) {
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
+        $this->lastRequest['http_status'] = $response['status'];
+        $this->lastRequest['response_bytes'] = strlen($response['body']);
         if (strlen($response['body']) > self::BODY_LIMIT) {
             throw new RuntimeException('ANEX_RESPONSE_TOO_LARGE');
         }
@@ -77,6 +84,7 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $envelope)) {
+            if (is_int($envelope['error']) && $envelope['error'] >= 0 && $envelope['error'] <= 99999) $this->lastRequest['supplier_code'] = $envelope['error'];
             if ($action === 'SearchTour_PRICES' && in_array($envelope['error'], [2110, '2110'], true)) {
                 return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
             }
@@ -93,6 +101,7 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $payload)) {
+            if (is_int($payload['error']) && $payload['error'] >= 0 && $payload['error'] <= 99999) $this->lastRequest['supplier_code'] = $payload['error'];
             if ($action === 'SearchTour_PRICES' && in_array($payload['error'], [2110, '2110'], true)) {
                 return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
             }
@@ -322,6 +331,10 @@ final class AnyTourAnexClient
             }
             $completed = curl_exec($handle);
             $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+            $this->lastRequest['http_status'] = $status;
+            $this->lastRequest['curl_errno'] = curl_errno($handle);
+            $this->lastRequest['response_bytes'] = strlen($body);
+            $this->lastRequest['elapsed_ms'] = (int) round(curl_getinfo($handle, CURLINFO_TOTAL_TIME) * 1000);
             if ($status === 429) $this->rateSlot($retryUntil ?? microtime(true) + 60);
             if ($completed === false && strlen($body) <= self::BODY_LIMIT) {
                 throw new RuntimeException('ANEX_TRANSPORT_ERROR');

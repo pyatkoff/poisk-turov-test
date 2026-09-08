@@ -103,6 +103,35 @@ try {
     $report['mapping_coverage_observed'] = $report['mapped_offers'] > 0 && $report['projected_hotels'] > 0;
     $report['status'] = $report['supplier_offers'] === 0 ? 'empty' : ($report['mapping_coverage_observed'] ? 'ok' : 'no_mapped_offers');
     $report['ok'] = true;
+    // Reproduce the actual initial form: Moscow -> Turkey, +1..+14 days, 7..10 nights.
+    // One additional sequential search, retaining the successful Egypt evidence on failure.
+    $lookup->execute(['Москва', 'Moscow', 'Турция', 'Turkey']);
+    $defaultLocal = $lookup->fetchAll(PDO::FETCH_ASSOC);
+    $defaultProbe = ['ok' => false, 'status' => 'ANEX_DESTINATION_UNSUPPORTED'];
+    if (count($defaultLocal) === 1) {
+        $defaultParams = $params;
+        $defaultParams['countryId'] = (int) $defaultLocal[0]['country_id'];
+        $defaultParams['dateFrom'] = $today->modify('+1 day')->format('Y-m-d');
+        $defaultParams['dateTo'] = $today->modify('+14 days')->format('Y-m-d');
+        $defaultParams['nightsFrom'] = 7;
+        $defaultParams['nightsTo'] = 10;
+        $defaultProbe['criteria'] = $defaultParams;
+        $started = microtime(true);
+        try {
+            $defaultDiagnostics = [];
+            $defaultResult = anytour_anex_search3_run(['generation' => 2, 'params' => $defaultParams], $pdo, $client, $cache, $defaultDiagnostics);
+            $defaultProbe['ok'] = true;
+            $defaultProbe['status'] = 'ok';
+            $defaultProbe['projected_hotels'] = count($defaultResult['hotels']);
+            $defaultProbe['supplier_offers'] = $defaultDiagnostics['supplier_offers'];
+        } catch (Throwable $error) {
+            $code = $error->getMessage();
+            $defaultProbe['status'] = preg_match('/\AANEX_[A-Z_]{1,70}\z/D', $code) ? $code : 'ANEX_SEARCH3_PROBE_ERROR';
+        }
+        $defaultProbe['elapsed_ms'] = (int) round((microtime(true) - $started) * 1000);
+        $defaultProbe['last_request'] = $client->lastRequestDiagnostics();
+    }
+    $report['default_form_probe'] = $defaultProbe;
 } catch (Throwable $error) {
     $code = $error->getMessage();
     $report['status'] = preg_match('/\AANEX_[A-Z_]{1,70}\z/D', $code) ? $code : 'ANEX_SEARCH3_PROBE_ERROR';
