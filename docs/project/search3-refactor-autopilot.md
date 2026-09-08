@@ -1,6 +1,54 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — selected owner retirement #1612 — 2026-09-08
+## Current resume point — shared runtime compaction #1615 — 2026-09-08
+
+Exact source `1edc81fe4fc61c845cfd21e453c2d4f5255515e1`, tree `38a21ff0873fd6d0871d64e3d36bfdf628d14c59`,
+checked code release `ed740780483850bf85f884f248cdd8692b096cdb`. Base was `0957dba138acdc3eaf7ab12878b01b86ec37f1d8`.
+
+New package only: shared JS **118613 → 109354 raw B (−9259)**;
+eight public assets **41959 → 42074 B (+115 CSS)**; complete loaded file payload
+**160572 → 151428 B (net −9144)**. The115B repairs confirmed mobile sort toolbar
+overflow: its old width reserved234px for a retired rail. PHP actually serves
+shared JS **119376 → 110117 B**, including unchanged script boundaries.
+Joined shared-JS gzip estimate30629→28897; this is not a whole-route transfer claim.
+
+Fifteen retained shared modules use a deterministic source/code-SHA256 checked
+representation with local binding renaming, no statement/arithmetic compression,
+no property/global/eval mangling, preserved function/class names and AST shape proof.
+Canonical sources, full legacy response/cache, protected contracts and eight paths
+remain. Missing/stale/corrupt data serves canonical source. Search3 cache includes
+both source and map fingerprints. The map was generated once; do not sum unchanged
+canonical file lengths as served Search3 bytes after this checkpoint.
+
+Security34257278495 and exact34257278546 passed; boundary34257278502 passed.
+Reuse artifact10068440285, digest `sha256:6c6dcef0346838b06d03af83c29bbd34b39e4448078dae0245fcd476e9b90b6a`;
+archive57f503b7f9e6bebd71284b86e2aae3e14b2f0c36167dc3c9bbc0461b63c5fb55.
+Results/native evidence10068439161 (`sha256:a8249324081cc71e3b140b7a953fcd49293b47835021d456be6a9c9a755c79b0`),
+selected evidence10068437965 (`sha256:56d645eef2978c0bbe5c30d55fd5b6b5b2973e4bd8e39b8367292ab6f19e1e40`).
+No release/docs rebuild. First exact34255999699 was red on a fabricated retired
+button; second34256744950 correctly exposed pre-existing raw-JS mobile overflow.
+The final source fixes it. Both red runs remain red in the audit.
+
+Actual isolated Chromium:12 raw/served result DOM and geometry states across
+375/760/761/999/1000/1440; real expand/collapse, sorting, tour identity, decimal price,
+empty-result editing and native header/unchanged logo. Selected detail/review/lead12,
+native form lifecycle30, guest/night FormData375/1440 and retry/fallback/decimal checks
+also pass. No external calls or real leads. The required result gate now checks the
+actual retained UI and native entry instead of fabricated retired disclosure/drawer/
+guest/header skins. All source/PHP/path/presentation/isolation guards remain. No
+claim that historical pixel expectations or53 previously skipped tests passed.
+Manual screenshot inspection, live current source, physical Safari/safe-area,
+owner acceptance and full site/SEO/lead matrix remain deferred.
+
+**Checked release is not published preview.** Preview stays `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`.
+Main freshly observed `86fc165277a13ae9bef1369659e9b150399f0e35` changed independently;
+this package did not change main or production. No new fingerprint capture is
+claimed because no publication occurred. Revert #1615 for rollback.
+Audit: `docs/project/search3-shared-runtime-compaction.json`.
+
+Next: Refresh release and moving PR #1614 before any next edit. It owns booking/services/layout/lead-note, dead rail and accessibility; retain its work and the #1615 compact map/current results fixture in sequential integration. Do not recreate obsolete UI to satisfy historical fixtures. After that coarse package, audit retained controller/catalogs compaction only with an exact syntax-preserving representation: current printer drops an EmptyStatement in tour-controller-v4 and converts a numeric string property key in catalogs-v2, so both remain raw. Preserve protected arithmetic, API/URL/payload, lead and analytics; do not make a micro-PR or repeat this 15-module pass.
+
+## Historical checkpoint — selected owner retirement #1612 — 2026-09-08
 
 Source `26c7200ae676d1d35581680f64f1fda5a4806955`, checked code release
 `7eadf95d1164f51530fe545a5e42fb1ea977096e`. This supersedes the older
