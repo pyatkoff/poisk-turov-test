@@ -11,8 +11,10 @@ on:
       - 'tests/anex_access_probe_test.py'
       - 'tests/anex_price_probe_test.py'
       - 'scripts/diagnostics/anex_price_evidence_queue.py'
+      - 'scripts/diagnostics/anex_review_queue_export.py'
       - 'scripts/diagnostics/anex_price_evidence_checkpoint.py'
       - 'tests/anex_price_evidence_queue_test.py'
+      - 'tests/anex_review_queue_export_test.py'
       - 'tests/anex_price_evidence_checkpoint_test.py'
       - 'tests/anex_hotel_match_probe_test.py'
       - 'scripts/diagnostics/anex_adapter_probe.py'
@@ -59,6 +61,7 @@ jobs:
           python3 -B tests/anex_geo_checkpoint_restore_test.py
           python3 -B tests/anex_staging_import_test.py
           python3 -B tests/anex_price_evidence_queue_test.py
+          python3 -B tests/anex_review_queue_export_test.py
           python3 -B tests/anex_price_evidence_checkpoint_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
@@ -87,6 +90,13 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_access_probe.py --catalog
+      - name: Export final manual-work queues
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          python3 -B scripts/diagnostics/anex_review_queue_export.py \
+            --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
+            --output-dir "$ANEX_CATALOG_ARTIFACT_DIR"
       - name: Prepare diagnostic-only 30-hotel price evidence queue
         env:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
