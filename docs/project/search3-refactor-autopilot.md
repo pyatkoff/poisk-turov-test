@@ -2223,3 +2223,19 @@ Focused deterministic coverage passed original source, rerendered same-tour sour
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area, owner visual acceptance and the pre-existing browser-default result-only retry styling remain deferred. Audit: `docs/project/search3-lean-selected-return-runtime.json`.
 
 Next: audit the complete 1855-byte `flight-empty-recovery-v1.js` owner against the current `selected/flight-fallback.js` owner. Retain the friendly no-flight message and exactly one delegated retry button, preserve fallback review/lead and price behavior, and require empty→retry→recovery plus exact selected browser CI. Do not take the larger `price-confidence-v1.js` before this lower-risk presentation-only owner.
+
+## S3_LEAN_FLIGHT_EMPTY_RUNTIME — checked release, 2026-09-08
+
+Source PR #1542 / `0301f3bf9c2ab77d7f837e86f6915c344f9f87fe`; checked code release `dac375ad4c0f4d366cab3c8a1be4855f3ad6dfcd`. Search3 no longer loads the complete 1855-byte `flight-empty-recovery-v1.js` runtime. The full legacy route retains the unchanged file and `V2FlightEmptyRecoveryV1` compatibility global.
+
+The current selected-flow fallback owner now upgrades the empty-flight copy and creates exactly one delegated `.load-flights.secondary[data-tid]` action from the current tour id. Existing controller delegation performs the retry. The current owner does not decorate `.flight-error`, does not alter flight variants, and preserves the no-flight review/lead handoff. No Tourvisor/API, price, payload or lead transport code moved.
+
+Loaded raw is **551591 → 550542 bytes (−1049)**: scoped shared JavaScript 193914→192059, shared CSS remains 186118, and the eight generated Search3 assets are 171559→172365 (+806 retained behavior). Exact emitted endpoints plus eight independent files gzip is **122454 → 122288 (−166)**.
+
+Security `34186013087` and exact artifacts `34186013106` / `34186184019` passed. Reusable final artifact `10040600906`, digest `sha256:fa390f4dc397d04cf7a9c940d8051d3d416e309c2892c91bab14c3d6c43cc73c`; selected evidence `10040599919`, digest `sha256:3cf61cca1b18f87ae2ef4a1a980c5d8c4aa2e5900406160137ed15f21a5a49cb`; results evidence `10040600381`, digest `sha256:b7619849afd13b93d6913481889e1007dd73cd27f510dd7b19644c2a02c3fabf`.
+
+The required source suite verifies friendly copy, current-tour id, one retry across repeated sync, error exclusion and fallback navigation. Exact Chromium retained 12 selected detail/review/lead states, 30 entry states, 12 result states and 10 header states without external API or lead requests. The dedicated empty→retry→recovered browser file was updated but is only wired to the main-target flight workflow, so its execution remains deferred rather than claimed green.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Physical Safari/safe-area, live current-source verification, manual screenshot review, dedicated empty→recovery Chromium and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-flight-empty-runtime.json`.
+
+Next: audit the complete `price-confidence-v1.js` runtime. Preserve truthful totals, pending-price states, selected-flight arithmetic and all protected payload/lead contracts; exclude it only if focused price snapshots demonstrate that the legacy layer is presentation-only.
