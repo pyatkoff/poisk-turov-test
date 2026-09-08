@@ -1,0 +1,19 @@
+﻿external_id,supplier_name,country,supplier_town,matching_status,matching_reason,candidate_ids,candidate_count,offer_count,observed_at,scope_status,mapping_decision
+24465,Ассир.,Абхазия,Пицунда,review,insufficient_independent_evidence,"62837,66900,131890,157137",4,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+24472,Илиос.,Абхазия,Гагра,review,insufficient_independent_evidence,"43847,6433,41164,113679,125377",18,1,2026-09-08T09:51:44.319621+00:00,unknown,not_accepted_by_export
+25044,Amina Beach.,Абхазия,Цандрыпш,review,insufficient_independent_evidence,32457,1,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+27804,Посейдон.,Абхазия,Гагра,review,insufficient_independent_evidence,"71804,67671,72945,75492,40504",99,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+27988,Бригантина,Абхазия,Цандрыпш,review,competing_candidates,"48490,45553,30565,30161,46467",19,1,2026-09-08T09:30:57.073925+00:00,unknown,not_accepted_by_export
+28268,Лагуна,Абхазия,Цандрыпш,review,competing_candidates,"41321,128265,29867,39063,48346",174,1,2026-09-08T09:30:57.073925+00:00,unknown,not_accepted_by_export
+28295,Дельфин Клубный,Абхазия,Лдзаа,review,insufficient_independent_evidence,"30045,80150,30064,130885,47803",24,1,2026-09-08T09:30:57.073925+00:00,unknown,not_accepted_by_export
+28460,Комфорт.,Абхазия,Сухум,review,insufficient_independent_evidence,"67664,72833,122353,112334,63665",151,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+29009,Эдем.,Абхазия,Пицунда,review,insufficient_independent_evidence,"74293,81860,119561,158807,65897",124,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+29261,Магнолия.,Абхазия,Гагра,review,insufficient_independent_evidence,"43830,48499,98986,30030,116118",112,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+29510,Уют.,Абхазия,Пицунда,review,candidate_limit_reached,"73035,118923,145579,100157,110682",256,1,2026-09-08T09:51:44.319621+00:00,unknown,not_accepted_by_export
+29683,Платан.,Абхазия,Цандрыпш,review,competing_candidates,"47630,41321,131712,131713,96619",128,1,2026-09-08T09:30:57.073925+00:00,unknown,not_accepted_by_export
+29873,Камелия.,Абхазия,Цандрыпш,review,insufficient_independent_evidence,"156236,143205,107650,57818,78672",73,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+30425,Парадайз Курортно-Семейный Комплекс,Абхазия,Мачара,review,candidate_limit_reached,"7230,126233,57310,57311,11878",256,1,2026-09-08T09:51:44.319621+00:00,unknown,not_accepted_by_export
+31672,Шоколад,Абхазия,Цандрыпш,review,insufficient_independent_evidence,"78241,155171,117736,38728,73415",22,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export
+35507,Черноморская Жемчужина,Абхазия,Очамчира,review,insufficient_independent_evidence,"81818,114214,155918",3,1,2026-09-08T09:51:44.319621+00:00,unknown,not_accepted_by_export
+35689,Серебряный Пляж.,Абхазия,Новый Афон,review,insufficient_independent_evidence,"83104,57875,57870,111022,155682",20,1,2026-09-08T09:30:57.073925+00:00,unknown,not_accepted_by_export
+35973,Bruni Loft.,Абхазия,Цандрыпш,review,insufficient_independent_evidence,83458,1,1,2026-09-08T09:42:02.515996+00:00,unknown,not_accepted_by_export

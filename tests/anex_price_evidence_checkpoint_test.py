@@ -100,6 +100,39 @@ class PriceEvidenceCheckpointTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 checkpoint.load_checkpoint(path)
 
+    def test_empty_filter_result_preserves_criteria_without_global_conclusion(self):
+        report = self.report()
+        report.update(returned_hotel_ids=[], missing_hotel_ids=[11, 12, 13], evidence=[],
+                      empty_reason="no_hotels_for_filters")
+        report["search"].update(departure="Москва", departure_id=1, destination_id=6,
+                                checkin_begin="20261001", checkin_end="20261001",
+                                nights_from=7, nights_till=7, price_page=1,
+                                token="must-not-persist", searchKey="private")
+        previous = checkpoint.empty_checkpoint()
+        previous["rows"] = [{"external_id": 99, "destination": "Egypt",
+                             "status": "offer_seen", "offer_count": 1}]
+        result = checkpoint.merge_checkpoint(previous, report)
+        self.assertEqual(result["rows"][-1], previous["rows"][0])
+        self.assertEqual(result["counts"]["no_offer"], 3)
+        for row in result["rows"][:3]:
+            self.assertEqual(row["empty_reason"], "no_hotels_for_filters")
+            self.assertEqual(row["search"]["checkin_begin"], "20261001")
+            self.assertEqual(row["search"]["price_page"], 1)
+            self.assertFalse(row["global_availability_known"])
+            self.assertEqual(row["absence_interpretation"], "not_seen_in_requested_search_page")
+            self.assertNotIn("token", row["search"])
+            self.assertNotIn("searchKey", row["search"])
+        self.assertEqual(result["last_batch"]["empty_reason"], "no_hotels_for_filters")
+
+    def test_partial_page_absence_is_not_global_unavailability(self):
+        report = self.report()
+        report["external_results_not_loaded"] = True
+        result = checkpoint.merge_checkpoint(checkpoint.empty_checkpoint(), report)
+        absent = result["rows"][1]
+        self.assertTrue(absent["external_results_not_loaded"])
+        self.assertFalse(absent["global_availability_known"])
+        self.assertEqual(absent["evidence_scope"], "requested_search_first_page")
+
 
 if __name__ == "__main__":
     unittest.main()

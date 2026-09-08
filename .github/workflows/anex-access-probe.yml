@@ -16,6 +16,8 @@ on:
       - 'tests/anex_price_evidence_queue_test.py'
       - 'tests/anex_review_queue_export_test.py'
       - 'tests/anex_price_evidence_checkpoint_test.py'
+      - 'scripts/diagnostics/anex_sales_priority_export.py'
+      - 'tests/anex_sales_priority_export_test.py'
       - 'tests/anex_hotel_match_probe_test.py'
       - 'scripts/diagnostics/anex_adapter_probe.py'
       - 'scripts/diagnostics/anex_adapter_runner.php'
@@ -63,6 +65,7 @@ jobs:
           python3 -B tests/anex_price_evidence_queue_test.py
           python3 -B tests/anex_review_queue_export_test.py
           python3 -B tests/anex_price_evidence_checkpoint_test.py
+          python3 -B tests/anex_sales_priority_export_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
@@ -81,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_geo_checkpoint_restore.py
-      - name: Download full ANEX hotel reference and match the AnyTour catalogue
+      - name: Reuse completed catalogue or continue the existing enrichment pass
         env:
           ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
           ANEX_REFERENCE_TOKEN: ${{ secrets.ANEX_REFERENCE_TOKEN }}
@@ -89,7 +92,21 @@ jobs:
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
-        run: python3 -B scripts/diagnostics/anex_access_probe.py --catalog
+        run: |
+          # A completed catalogue is the immutable input of the price stage.
+          # Missing/corrupt restored input must fail, never restart the queue.
+          remaining="$(jq -er '.remaining | select(type == "number" and . >= 0 and floor == .)' \
+            "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json")"
+          if [ "$remaining" = "0" ]; then
+            jq -e '.processed_total > 0 and .processed_total == (.rows | length)' \
+              "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" >/dev/null
+            jq -e '.counts.anex_hotels > 0 and .counts.anex_hotels == (.matches | length)' \
+              "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" >/dev/null
+            test -s "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json"
+            echo "Reusing restored completed catalogue for the bounded price stage"
+          else
+            python3 -B scripts/diagnostics/anex_access_probe.py --catalog
+          fi
       - name: Export final manual-work queues
         env:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
@@ -97,11 +114,12 @@ jobs:
           python3 -B scripts/diagnostics/anex_review_queue_export.py \
             --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
             --output-dir "$ANEX_CATALOG_ARTIFACT_DIR"
-      - name: Prepare diagnostic-only 30-hotel price evidence queue
+      - name: Prepare sales-first diagnostic-only 30-hotel price evidence queue
         env:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: |
           python3 -B scripts/diagnostics/anex_price_evidence_queue.py \
+            --sales-first \
             --catalog "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" \
             --geo "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
             --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
@@ -142,6 +160,21 @@ jobs:
               echo "::warning::ANEX price evidence failure was not checkpointed; catalogue checkpoint will still be persisted"
             fi
           fi
+      - name: Refresh remaining queue and export observed-offer matching priorities
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          python3 -B scripts/diagnostics/anex_price_evidence_queue.py \
+            --sales-first \
+            --catalog "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" \
+            --geo "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
+            --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
+            --output "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-queue.json"
+          python3 -B scripts/diagnostics/anex_sales_priority_export.py \
+            --catalog "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" \
+            --geo "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
+            --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
+            --output-dir "$ANEX_CATALOG_ARTIFACT_DIR"
       - name: Persist validated checkpoint in isolated ANEX staging tables
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -150,6 +183,7 @@ jobs:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_staging_import.py
       - name: Preserve full matching tables for manual review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}

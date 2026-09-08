@@ -19,6 +19,39 @@ FAILURE_STATUSES = {
 STATUSES = {"offer_seen", "no_offer", "probe_unavailable"}
 
 
+def search_context(report):
+    """Persist only public criteria; absence is scoped to a bounded search page."""
+    search = report.get("search")
+    if not isinstance(search, dict):
+        search = {}
+    clean = {}
+    for key in ("departure", "destination", "currency", "checkin_begin", "checkin_end"):
+        value = bounded_text(search.get(key))
+        if value:
+            clean[key] = value
+    for key in ("departure_id", "destination_id", "currency_id", "adults", "children",
+                "nights_from", "nights_till", "requested_hotels", "price_page",
+                "freight", "filter", "partition_price", "dyn_separate"):
+        value = search.get(key)
+        if type(value) is int and 0 <= value <= MAX_ID:
+            clean[key] = value
+    if search.get("sort") in {"ASC", "DESC"}:
+        clean["sort"] = search["sort"]
+    return clean
+
+
+def evidence_context(report):
+    context = {
+        "search": search_context(report),
+        "evidence_scope": "requested_search_first_page",
+        "external_results_not_loaded": report.get("external_results_not_loaded") is True,
+        "global_availability_known": False,
+    }
+    if report.get("empty_reason") in {"no_hotels_for_filters", "empty_price_page"}:
+        context["empty_reason"] = report["empty_reason"]
+    return context
+
+
 def utc_now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
@@ -150,7 +183,15 @@ def merge_failure_checkpoint(checkpoint, report, queue, checked_at=None):
             "reason": reason,
             "first_checked_at": old.get("first_checked_at", checked_at),
             "last_checked_at": checked_at,
+            "search": search_context(report),
+            "global_availability_known": False,
         }
+        # Store only the final failed check's numeric code, never an error body.
+        failed = [item for item in report["checks"]
+                  if isinstance(item, dict) and item.get("status") != "ok"]
+        code = failed[-1].get("supplier_code") if failed else None
+        if type(code) is int and 0 <= code <= 10_000_000:
+            previous[identifier]["supplier_code"] = code
     rows = [previous[key] for key in sorted(previous)]
     status_counts = {status: sum(row["status"] == status for row in rows)
                      for status in sorted(STATUSES)}
@@ -181,6 +222,7 @@ def merge_checkpoint(checkpoint, report, checked_at=None):
     checked_at = checked_at or utc_now()
     previous = {row["external_id"]: row for row in checkpoint["rows"]}
     new_ids = sum(identifier not in previous for identifier in requested)
+    context = evidence_context(report)
     for identifier in requested:
         old = previous.get(identifier, {})
         row = {
@@ -189,7 +231,10 @@ def merge_checkpoint(checkpoint, report, checked_at=None):
             "status": "offer_seen" if identifier in returned else "no_offer",
             "first_checked_at": old.get("first_checked_at", checked_at),
             "last_checked_at": checked_at,
+            **context,
         }
+        if identifier not in returned:
+            row["absence_interpretation"] = "not_seen_in_requested_search_page"
         if identifier in evidence:
             row.update(evidence[identifier])
         previous[identifier] = row
@@ -215,6 +260,9 @@ def merge_checkpoint(checkpoint, report, checked_at=None):
             "missing_ids": len(requested) - len(returned),
             "unexpected_offer_count": report.get("unexpected_offer_count", 0),
             "external_results_not_loaded": report.get("external_results_not_loaded") is True,
+            "search": context["search"],
+            "evidence_scope": context["evidence_scope"],
+            "empty_reason": context.get("empty_reason"),
         },
         "rows": rows,
     }

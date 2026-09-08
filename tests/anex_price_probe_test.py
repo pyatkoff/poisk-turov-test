@@ -151,6 +151,86 @@ class PriceProbeTest(unittest.TestCase):
         self.assertEqual(result["returned_hotel_ids"], [])
         self.assertEqual(result["missing_hotel_ids"], [123, 124])
         self.assertEqual(result["evidence"], [])
+        self.assertEqual(result["empty_reason"], "empty_price_page")
+        self.assertEqual(result["evidence_scope"], "requested_search_first_page")
+
+    def test_prices_2110_is_scoped_empty_evidence_with_sanitized_code(self):
+        tokens = dict(TOKENS, ANEX_PRICE_HOTEL_IDS="123,124",
+                      ANEX_PRICE_DESTINATION="Турция")
+        for code in (2110, "2110"):
+            for nested in (True, False):
+                with self.subTest(code=code, nested=nested):
+                    replies = [reply(action, data) for action, data in zip(METHODS, self.payloads)]
+                    error = {"error": code, "message": API_TOKEN,
+                             "url": "https://private.invalid/?oauth_token=" + REFERENCE_TOKEN}
+                    body = {"SearchTour_PRICES": error} if nested else error
+                    replies[-1] = ({"status": "ok", "http_status": 200}, json.dumps(body).encode())
+                    with mock.patch.object(probe, "request", side_effect=replies) as request:
+                        result = probe.clean_report(probe.remote_price_probe(tokens))
+                    self.assertTrue(result["ok"])
+                    self.assertEqual(request.call_count, 6)
+                    self.assertEqual(request.call_args_list[-1].args[0]["HOTELS"], "123,124")
+                    self.assertEqual(result["checks"][-1], {
+                        "check": "api_prices", "status": "ok", "http_status": 200,
+                        "supplier_code": 2110, "count": 0})
+                    self.assertEqual(result["requested_hotel_ids"], [123, 124])
+                    self.assertEqual(result["missing_hotel_ids"], [123, 124])
+                    self.assertEqual(result["returned_hotel_ids"], [])
+                    self.assertEqual(result["evidence"], [])
+                    self.assertEqual(result["empty_reason"], "no_hotels_for_filters")
+                    self.assertEqual(result["evidence_scope"], "requested_search_first_page")
+                    self.assertEqual(result["search"], {
+                        "departure": "Москва", "destination": "Турция", "currency": "RUB",
+                        "checkin_begin": self.start.strftime("%Y%m%d"),
+                        "checkin_end": self.start.strftime("%Y%m%d"),
+                        "adults": 2, "children": 0, "nights_from": 7, "nights_till": 7,
+                        "requested_hotels": 2, "departure_id": 1, "destination_id": 2,
+                        "currency_id": 3, "freight": 1, "filter": 1, "price_page": 1,
+                        "partition_price": 32, "dyn_separate": 1, "sort": "ASC"})
+                    for private in (API_TOKEN, REFERENCE_TOKEN, "private.invalid", "accepted"):
+                        self.assertNotIn(private, json.dumps(result))
+
+    def test_prerequisite_2110_is_not_a_successful_price_check(self):
+        tokens = dict(TOKENS, ANEX_PRICE_HOTEL_IDS="123,124",
+                      ANEX_PRICE_DESTINATION="Турция")
+        for index, action in enumerate(METHODS[:-1]):
+            with self.subTest(action=action):
+                payloads = copy.deepcopy(self.payloads)
+                payloads[index] = {"error": 2110, "message": API_TOKEN}
+                result, request = self.run_probe(payloads, tokens)
+                self.assertFalse(result["ok"])
+                self.assertEqual(request.call_count, index + 1)
+                self.assertEqual(result["checks"][-1]["status"], "supplier_error")
+                self.assertEqual(result["checks"][-1]["supplier_code"], 2110)
+                self.assertNotIn("empty_reason", result)
+                self.assertNotIn(API_TOKEN, json.dumps(result))
+
+    def test_other_price_errors_and_non_evidence_2110_remain_failures(self):
+        evidence_tokens = dict(TOKENS, ANEX_PRICE_HOTEL_IDS="123,124",
+                               ANEX_PRICE_DESTINATION="Турция")
+        for code, tokens in ((2111, evidence_tokens), ("2110x", evidence_tokens), (2110, TOKENS)):
+            with self.subTest(code=code, evidence=tokens is evidence_tokens):
+                payloads = copy.deepcopy(self.payloads)
+                payloads[-1] = {"error": code, "message": API_TOKEN}
+                result, request = self.run_probe(payloads, tokens)
+                self.assertFalse(result["ok"])
+                self.assertEqual(request.call_count, 6)
+                self.assertEqual(result["checks"][-1]["status"], "supplier_error")
+                self.assertNotIn("empty_reason", result)
+                self.assertNotIn(API_TOKEN, json.dumps(result))
+
+    def test_malformed_prices_body_does_not_become_empty_evidence(self):
+        tokens = dict(TOKENS, ANEX_PRICE_HOTEL_IDS="123,124",
+                      ANEX_PRICE_DESTINATION="Турция")
+        for body in (b'{"SearchTour_PRICES":{"error":2110', b'2110', b'<html>2110</html>'):
+            with self.subTest(body=body):
+                replies = [reply(action, data) for action, data in zip(METHODS, self.payloads)]
+                replies[-1] = ({"status": "ok", "http_status": 200}, body)
+                with mock.patch.object(probe, "request", side_effect=replies):
+                    result = probe.clean_report(probe.remote_price_probe(tokens))
+                self.assertFalse(result["ok"])
+                self.assertEqual(result["checks"][-1]["status"], "invalid_response")
+                self.assertNotIn("empty_reason", result)
 
     def test_boolean_booking_flags_are_preserved(self):
         payloads = copy.deepcopy(self.payloads)

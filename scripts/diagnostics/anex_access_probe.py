@@ -219,7 +219,7 @@ def positive_id(item):
     return int(value) if value.isdigit() and 0 < int(value) < 100_000_000 else None
 
 
-def api_data(token, action, params, checks, expanded=False):
+def api_data(token, action, params, checks, expanded=False, allow_filtered_empty=False):
     allowed = {"SearchTour_TOWNFROMS": "api_townfroms",
                "SearchTour_STATES": "api_states", "SearchTour_CHECKIN": "api_checkin",
                "SearchTour_CURRENCIES": "api_currencies", "SearchTour_NIGHTS": "api_nights",
@@ -246,6 +246,12 @@ def api_data(token, action, params, checks, expanded=False):
             code = str(error.get("error", ""))
             if code.isdigit() and 0 <= int(code) <= 10_000_000:
                 result["supplier_code"] = int(code)
+            # PRICES 2110 is a business-empty response for these filters. Keep
+            # prerequisite/expanded errors and ordinary access checks strict.
+            if (allow_filtered_empty and action == "SearchTour_PRICES" and not expanded
+                    and code == "2110"):
+                result.update(status="ok", count=0)
+                return {"prices": [], "empty_reason": "no_hotels_for_filters"}
             raise StopProbe()
         if not isinstance(data, (list, dict)):
             raise ValueError("invalid API envelope")
@@ -438,6 +444,8 @@ def remote_price_probe(tokens):
         params.update(STATEINC=positive_id(destination), ADULT=2, CHILD=0)
         selected.update(departure=safe_label(departure.get("name")),
                         destination=safe_label(destination.get("name")), adults=2, children=0)
+        if evidence_mode:
+            selected.update(departure_id=params["TOWNFROMINC"], destination_id=params["STATEINC"])
         calendar = api_data(token, "SearchTour_CHECKIN", params, checks)
         dates = available_dates(calendar, dt.datetime.now(dt.timezone.utc).date())
         if not dates:
@@ -451,6 +459,8 @@ def remote_price_probe(tokens):
             stop("no_currency")
         params["CURRENCY"] = positive_id(currency)
         selected["currency"] = safe_label(currency.get("alias") or currency.get("currencyISO") or currency.get("name"))
+        if evidence_mode:
+            selected["currency_id"] = params["CURRENCY"]
         nights_data = api_data(token, "SearchTour_NIGHTS", params, checks)
         raw_nights = nights_data if isinstance(nights_data, list) else (
             nights_data.get("places") or nights_data.get("nights", []))
@@ -467,8 +477,10 @@ def remote_price_probe(tokens):
         selected.update(nights_from=duration, nights_till=duration)
         if evidence_mode:
             params["HOTELS"] = ",".join(str(identifier) for identifier in requested)
-            selected["requested_hotels"] = len(requested)
-        data = api_data(token, "SearchTour_PRICES", params, checks)
+            selected.update(requested_hotels=len(requested), freight=1, filter=1,
+                            price_page=1, partition_price=32, dyn_separate=1, sort="ASC")
+        data = api_data(token, "SearchTour_PRICES", params, checks,
+                        allow_filtered_empty=evidence_mode)
         rows = data.get("prices", []) if isinstance(data, dict) else data
         if not isinstance(rows, list):
             checks[-1]["status"] = "invalid_response"
@@ -481,6 +493,7 @@ def remote_price_probe(tokens):
             expected = [sample for sample in valid if sample.get("external_id") in requested]
             returned = sorted({sample["external_id"] for sample in expected})
             report.update(
+                evidence_scope="requested_search_first_page",
                 requested_hotel_ids=requested,
                 returned_hotel_ids=returned,
                 missing_hotel_ids=[identifier for identifier in requested if identifier not in returned],
@@ -489,6 +502,9 @@ def remote_price_probe(tokens):
                 valid_offers=len(expected),
                 bookable_offers=sum(sample["bookable"] is True for sample in expected),
             )
+            if not rows:
+                report["empty_reason"] = ("no_hotels_for_filters"
+                    if checks[-1].get("supplier_code") == 2110 else "empty_price_page")
             return report
         report["valid_offers"] = len(valid)
         report["bookable_offers"] = sum(sample["bookable"] is True for sample in valid)
@@ -556,6 +572,17 @@ def clean_report(report):
         for key in ("adults", "children", "nights_from", "nights_till", "requested_hotels"):
             if type(search.get(key)) is int and 0 <= search[key] <= 100:
                 result["search"][key] = search[key]
+        for key in ("departure_id", "destination_id", "currency_id"):
+            if type(search.get(key)) is int and 1 <= search[key] < 100_000_000:
+                result["search"][key] = search[key]
+        for key, expected in (("freight", 1), ("filter", 1), ("price_page", 1),
+                              ("partition_price", 32), ("dyn_separate", 1), ("sort", "ASC")):
+            if type(search.get(key)) is type(expected) and search[key] == expected:
+                result["search"][key] = expected
+        if report.get("evidence_scope") == "requested_search_first_page":
+            result["evidence_scope"] = "requested_search_first_page"
+        if report.get("empty_reason") in ("no_hotels_for_filters", "empty_price_page"):
+            result["empty_reason"] = report["empty_reason"]
         for key in ("requested_hotel_ids", "returned_hotel_ids", "missing_hotel_ids"):
             values = report.get(key, [])
             if not isinstance(values, list) or len(values) > 30 or any(
