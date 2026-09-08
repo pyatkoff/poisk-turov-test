@@ -995,6 +995,22 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         for marker in ('.results-layout', '.direct-tour', '[hidden]', '.v2-product-hero'):
             self.assertIn(marker, results)
 
+    def test_native_form_groups_and_shared_footer_keep_single_owners(self):
+        index = (ROOT / 'v2/index.php').read_text()
+        native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        self.assertEqual(index.count('<fieldset class="search-group '), 4)
+        for label in ('Направление', 'Даты вылета', 'Продолжительность', 'Туристы'):
+            self.assertIn(label, index)
+        for name in (
+            'from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
+            'count_people', 'child_count',
+        ):
+            self.assertEqual(index.count(f'name="{name}"'), 1, name)
+        self.assertIn('& .search-group{', native)
+        self.assertIn('@media(max-width:430px){& .search-group{grid-template-columns:1fr}', native)
+        self.assertNotIn('.ds2-site-footer', results)
+
     def test_optional_shared_layers_are_search3_only_exclusions(self):
         for name in (
             'site-footer-v1.css', 'ds2-search-intro-v1.css', 'ds2-search.css',
