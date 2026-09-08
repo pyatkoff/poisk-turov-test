@@ -46,16 +46,15 @@ def build_request(directory):
             'owner_instruction': 'Да, соединяй их и дальше продолжай', 'rows': rows}
 
 
-def ssh_apply(request):
+def ssh_php(source, request, maximum_bytes=65536):
+    if maximum_bytes not in (65536, 4000000):
+        raise ValueError('unsupported diagnostic response limit')
     names = ('ANYTOOUR_DEPLOY_SSH_KEY', 'ANYTOOUR_DEPLOY_HOST', 'ANYTOOUR_DEPLOY_USER')
     if any(not os.environ.get(name, '').strip() for name in names):
         raise ValueError('missing SSH configuration')
     host, user = (os.environ[name].strip() for name in names[1:])
     if host.startswith('-') or user.startswith('-') or any(c.isspace() for c in host + user):
         raise ValueError('invalid SSH target')
-    root = Path(__file__).resolve().parents[2]
-    source = (root / 'app/integrations/anex-search-mapping-registry.php').read_text().removeprefix('<?php')
-    source += '\n' + Path(__file__).with_suffix('.php').read_text().removeprefix('<?php')
     with tempfile.TemporaryDirectory(prefix='anex-owner-', dir=os.environ.get('RUNNER_TEMP')) as temp:
         key = Path(temp) / 'ssh_key'
         key.write_text(os.environ[names[0]].rstrip() + '\n')
@@ -70,9 +69,16 @@ def ssh_apply(request):
                    'cd "$HOME/www/anytoour.ru" && php -r ' + shlex.quote(source)]
         result, _ = gaps.run_ssh(command, json.dumps(request, ensure_ascii=False),
                                 {k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
-    if len(result.stdout) > 65536:
-        raise ValueError('owner decision response too large')
+    if len(result.stdout.encode('utf-8')) > maximum_bytes:
+        raise ValueError('diagnostic response too large')
     return json.loads(result.stdout)
+
+
+def ssh_apply(request):
+    root = Path(__file__).resolve().parents[2]
+    source = (root / 'app/integrations/anex-search-mapping-registry.php').read_text().removeprefix('<?php')
+    source += '\n' + Path(__file__).with_suffix('.php').read_text().removeprefix('<?php')
+    return ssh_php(source, request)
 
 
 def save(path, value):
@@ -104,7 +110,6 @@ def apply(directory):
             or {r['anex_hotel_id']: r['catalog_hotel_id'] for r in result.get('rows', [])} != PAIRS
             or len(result.get('rows', [])) != 9 or result.get('preservation_before') != result.get('preservation_after')):
         raise ValueError('owner decisions not confirmed; prepared checkpoint retained')
-    save(path, dict(prepared, state='applied', result=result))
     save(directory / RUN_REPORT, result)
     csv_path = path.with_suffix('.csv')
     cells = [['anex_hotel_id', 'catalog_hotel_id', 'decision_status', 'approval_id', 'evidence_row_sha256']]
@@ -115,6 +120,7 @@ def apply(directory):
     with csv_path.open(newline='') as handle:
         if list(csv.reader(handle)) != cells:
             raise ValueError('owner decisions CSV readback failed')
+    save(path, dict(prepared, state='applied', result=result))
     return result
 
 

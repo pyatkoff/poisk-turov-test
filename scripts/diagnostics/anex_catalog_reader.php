@@ -76,6 +76,13 @@ try {
         throw new RuntimeException();
     }
     $candidateLimit = isset($input['candidate_limit']) && in_array($input['candidate_limit'], array(64, 256), true) ? $input['candidate_limit'] : 8;
+    // Explicit read-only review, never used by the ordinary matching/import path.
+    // Fetch one sentinel beyond the bounded set; only an exhausted result is complete.
+    $completeReview = ($input['mode'] ?? '') === 'complete_review';
+    if ($completeReview) {
+        if (count($input['queries']) > 2) throw new RuntimeException();
+        $candidateLimit = 4097;
+    }
     $queries = array();
     foreach ($input['queries'] as $query) {
         if (!is_array($query) || !isset($query['key']) || !is_int($query['key'])
@@ -87,6 +94,7 @@ try {
         if (isset($query['country_id']) && (!is_int($query['country_id']) || $query['country_id'] < 1)) {
             throw new RuntimeException();
         }
+        if ($completeReview && !isset($query['country_id'])) throw new RuntimeException();
         foreach ($query['names'] as $name) {
             $name = anex_catalog_text($name);
             if ($name !== '') {
@@ -199,7 +207,14 @@ try {
             }
             $statement->closeCursor();
         }
-        $items[] = array('key' => $query['key'], 'candidates' => $candidates);
+        $item = array('key' => $query['key'], 'candidates' => $candidates);
+        if ($completeReview) {
+            if (count(array_unique(array_column($candidates, 'id'))) !== count($candidates)) throw new RuntimeException();
+            $item['candidate_set_complete'] = count($candidates) < $candidateLimit;
+            $item['fetch_limit'] = $candidateLimit;
+            $item['query_scope'] = 'active_country_name_or_geobox';
+        }
+        $items[] = $item;
     }
     $pdo->exec('ROLLBACK');
     $transactionStarted = false;
@@ -217,7 +232,7 @@ while (ob_get_level() > 0) {
     ob_end_clean();
 }
 $encoded = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-if (!is_string($encoded) || strlen($encoded) > 307200) {
+if (!is_string($encoded) || strlen($encoded) > (!empty($completeReview) ? 4000000 : 307200)) {
     $encoded = '{"status":"catalog_unavailable","items":[]}';
 }
 echo $encoded, "\n";

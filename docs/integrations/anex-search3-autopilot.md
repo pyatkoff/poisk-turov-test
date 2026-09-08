@@ -17,7 +17,24 @@
 политические mappings, остальные manual decisions и catalog_hotels не изменяются.
 Подтверждённый checkpoint исключает повторный импорт; потерянный ответ допускает только идемпотентное
 подтверждение тех же девяти пар. Hotels_DETAILS/PRICES и preview deploy для этого шага не нужны.
-Фактическое применение и итоговые счётчики требуется подтвердить свежим ANEX run и artifact.
+Фактическое применение подтверждено: SHA3c7d84e98e2cffbc580cf320a807279596ba6901,
+run34270564307 attempt1/job102210804749, artifact10073641924 (reserved10073636576),
+digest `5448af5b97ccac0c4d13d46cc66b114d602e26f910365cda70809c0ab4fb007c`.
+Вставлено9 accepted manual decisions, эффективный registry12887; policy mappings12878 и
+их hash406984ed4ff72eb55e1bf9093b991c91cb3c9c4cc2c22897beb2cf68cfbdff73 сохранены.
+Staging8362; completed260, новые/повторные supplier IDs0. Свежий DB snapshot:202/445 mapped,
+243 unresolved = review110/source_error131/unmatched2; eligible0. Прочитанные обратно
+owner checkpoint/JSON/CSV включены в artifact. Проверки PHP и штатные gates зелёные.
+
+В оставшемся capped-наборе24 обнаружены ещё2 пары без метрических флагов:
+32832→71458 A'la Sofia Hotel. и 32875→28489 Istanbul Comfort Hotel.
+Они не входят в девять подтверждённых владельцем решений. Их источник сохранён отдельно в
+`reports/anex-complete-candidate-review-20260908.json` с исходными row digests.
+Следующий узкий диагностический шаг читает для этих2 полный набор кандидатов AnyTour:
+тот же country/name/geo SQL в read-only транзакции, до4097 строк с sentinel и явным exhausted.
+Незавершённый набор не объявляется полным. Обычный matcher остаётся на прежних8/64/256,
+критерии/importer не изменены. Полный raw/ranked набор и отдельный checkpoint сохраняются;
+эта диагностика не вставляет связи и не вызывает ANEX. Завершённое чтение не повторяется.
 
 ## Аудит предела кандидатов и девять пар для следующего чтения — 8 сентября
 

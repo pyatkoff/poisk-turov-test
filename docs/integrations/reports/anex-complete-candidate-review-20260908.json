@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "scope": "preview",
+  "kind": "complete_candidate_read_only_review",
+  "source": {
+    "sha": "3c7d84e98e2cffbc580cf320a807279596ba6901",
+    "run_id": 34270564307,
+    "artifact_id": 10073641924,
+    "artifact_digest": "sha256:5448af5b97ccac0c4d13d46cc66b114d602e26f910365cda70809c0ab4fb007c",
+    "evidence_access": "runner JSON readback and GitHub artifact metadata; no independent ZIP download"
+  },
+  "policy": {
+    "supplier_requests": false,
+    "database_writes": false,
+    "maximum_ids": 2,
+    "candidate_fetch_limit": 4097,
+    "acceptance": "not authorized by this diagnostic; all existing criteria remain unchanged"
+  },
+  "rows": [
+    {
+      "anex_hotel_id": 32832,
+      "automatic_acceptance": false,
+      "best": {
+        "distance_m": 13.2,
+        "id": 71458,
+        "latitude": 41.0053646,
+        "longitude": 28.9731842,
+        "name": "A LA SOFIA",
+        "name_similarity": 1,
+        "region": "Стамбул",
+        "score": 1.05,
+        "town": "Султанахмет"
+      },
+      "candidate_count": 256,
+      "candidate_set_complete": false,
+      "country": "Турция",
+      "evidence_row_sha256": "b37760c9866cf13a47ab3c814d351fcbd616b3dc53dd19bc9db5f2aa5df9c235",
+      "hotel_name": "A'la Sofia Hotel.",
+      "name_0_9_count": 1,
+      "name_country_near_count": 1,
+      "near_200m_count": 33,
+      "score_margin": 0.2166,
+      "signals": [],
+      "status": "review",
+      "supplier": {
+        "latitude": 41.005283,
+        "longitude": 28.973298,
+        "region": "Стамбул",
+        "town": "Султанахмет-Фатих"
+      }
+    },
+    {
+      "anex_hotel_id": 32875,
+      "automatic_acceptance": false,
+      "best": {
+        "distance_m": 10.9,
+        "id": 28489,
+        "latitude": 41.0063744,
+        "longitude": 28.9714146,
+        "name": "COMFORT HOTEL ISTANBUL",
+        "name_similarity": 1,
+        "region": "Стамбул",
+        "score": 1.05,
+        "town": "Султанахмет"
+      },
+      "candidate_count": 256,
+      "candidate_set_complete": false,
+      "country": "Турция",
+      "evidence_row_sha256": "f0754d028b244ca9066a2b4d5636d771b0239ffd09d677d51102e1c76c074bff",
+      "hotel_name": "Istanbul Comfort Hotel.",
+      "name_0_9_count": 1,
+      "name_country_near_count": 1,
+      "near_200m_count": 33,
+      "score_margin": 0.2061,
+      "signals": [],
+      "status": "review",
+      "supplier": {
+        "latitude": 41.006367,
+        "longitude": 28.971285,
+        "region": "Стамбул",
+        "town": "Султанахмет-Фатих"
+      }
+    }
+  ]
+}
