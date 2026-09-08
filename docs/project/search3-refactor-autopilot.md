@@ -2401,7 +2401,7 @@ Source PR #1563 / `775e7279f1f6cd2d923136451a1ea5594b69e282`; checked code relea
 
 The retired file owned its own hero/brand/form/card skin and private `--anytour-*` variables; focused source inspection found no consumers of those variables outside that same file. Current Search3 owners preserve its form, result cards, selected/lead states and shared site header/logo. Active `room-details.css` and `search-states-design.css` remain loaded. No replacement CSS or JavaScript was added.
 
-Loaded raw is **506022 → 496300 bytes (−9722)**: scoped shared CSS 149005→139283; shared JavaScript and the eight generated Search3 assets remain 183740 and 174000. Carried same-method gzip is **114104 → 112163 (−1941)**.
+Loaded raw is **506022 → 496300 bytes (−9722)**: scoped shared CSS 149005→139283; shared JavaScript remains 183740 and the exact artifact-proven eight generated Search3 assets remain 173277. This corrects the previously transcribed 174000 subtotal without changing the 496300 loaded total. Carried same-method gzip is **114104 → 112163 (−1941)**.
 
 Security `34205833337` and exact artifacts `34205833396` / `34206067387` passed. Reusable final artifact `10047845216`, digest `sha256:7111070f1ff14b5c9be8f20292219c3a752cb1dd8aef9b8c9dbdadb9d7014da6`; results evidence `10047844646`, digest `sha256:28dc1e34ebe754433ecb98ac9565dd2901db8d09fef698e83126b6d2b69edb82`; selected evidence `10047844074`, digest `sha256:0dd0c4cc01227efb3693bda83a791956ba230793a7a4a1b27fa797cce1e17306`.
 
@@ -2410,3 +2410,19 @@ Exact Chromium retained selected detail/review/lead, result, expanded-package, e
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-anytour-brand-layer.json`.
 
 Next: audit the complete `product-shell-v1.css` presentation layer against the current Search3 page intro and shared site shell. Preserve header/footer/logo and active route geometry, retain the full old-route layer, and do not retire active `room-details.css` or `search-states-design.css` merely for size.
+
+## S3_LEAN_PRODUCT_SHELL_LAYER — checked release, 2026-09-08
+
+Source PR #1568 / `9bcaaae15cc287f929a9fb8c4a42a03307d81b47`; checked code release `c46d6fab0f7d8ecfd43d6fc46acdf446a742b1db`. Search3 no longer loads the complete 10197-byte `product-shell-v1.css` legacy presentation layer. The unchanged file remains in the full manifest used by `/poisk-turov-old/`.
+
+The retired layer owned the obsolete `.at-site-header*`, nav/mobile-menu, product hero and old `.primary-search-flow` grid. Current Search3 uses `.at-global-header`, hides and replaces the old hero, and owns its shell, entry, results, selected and lead surfaces. Exact Chromium identified the retained slice: hidden legacy hero before initialization, 52px mobile/tablet shell bottom spacing, Aeroport font and the inherited ink/soft values. Those contracts add 232 compiled bytes to the current Search3 base; no other legacy rule moved.
+
+Loaded raw is **496300 → 486335 bytes (−9965)**: scoped shared CSS 139283→129086; shared JavaScript remains 183740; the eight public assets are 173277→173509. Exact artifact `10047845216` proves the prior eight-asset subtotal was 173277 rather than the transcribed 174000; its 496300 loaded total is unchanged. Same-method endpoint/eight-file gzip delta is **−1978 bytes**, carrying **112163 → 110185**.
+
+Security `34208217683` and exact artifacts `34208217590` / `34208410446` passed. The first exact run `34207759220` is retained as red: node counts and geometry were unchanged, but it exposed the font, ink and soft-token visual drift that was then repaired. Reusable final artifact `10048797611`, digest `sha256:aad6972854eb311400c17cc831f17135717bf610838f0e205bc3de9888141f5f`; selected evidence `10048796241`, digest `sha256:0db90db602f31f76f115fc2e789a0a447fb01c05765812562c0fd06dce2500b1`; results evidence `10048796853`, digest `sha256:35e247ede326b51f4192cd6f3d8b078b200d50f6dca7252a8acc936f5f28e1ae`.
+
+Final exact Chromium retained 12 selected detail/review/lead states, 30 entry states, 12 result states and 10 shared-header states without external API or lead requests. Header/footer/navigation and canonical logo are unchanged. Eight public paths and Tourvisor/API, URL/payload, price arithmetic, lead transport/mapping, analytics/goals, native/nesting contracts are preserved.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-product-shell-layer.json`.
+
+Next: audit the complete `search-header-shared-shell-v1.css` layer against the current `.at-global-header` and Search3 base/entry owners. Preserve header/footer/logo/navigation and active route geometry, and keep the full layer on the old route.
