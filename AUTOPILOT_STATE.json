@@ -1,4 +1,67 @@
 {
+  "latest_results_top_bridge_retirement": {
+    "schema_version": 1,
+    "date": "2026-09-08",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1643,
+    "baseline_release_sha": "0f62674722787bf3b1156f2fa708e0d3a5b5fb3d",
+    "source_sha": "937c343d00b379414074ee5632298543054a5935",
+    "source_tree": "dd53455b1a6e5d4e394bdf9a0ad7d3ba48a00cf7",
+    "release_integration_sha": "3003788b8096d7eae161ed8ad98769c7e0da3a42",
+    "public_assets": {
+      "paths": 8,
+      "before_raw_bytes": 10097,
+      "after_raw_bytes": 9073,
+      "removed_raw_bytes": 1024,
+      "removed_percent": 10.14,
+      "results_js_before": 4720,
+      "results_js_after": 3625,
+      "results_css_before": 4573,
+      "results_css_after": 4644
+    },
+    "retired_whole_sources": [
+      "src/search3/behavior/results-top.js"
+    ],
+    "accounting": "The retired bridge contributed1556 built bytes. Compact native state adds461JS bytes and native :has/selected-open salvage adds71CSS bytes; net1024B deletion. No code moved to shared assets.",
+    "ci": {
+      "security_run": 34290099786,
+      "exact_artifact_run": 34290099807,
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 10081029313,
+      "digest": "sha256:54425f1aaeee6158d43ee35b13f42c08251499af9f554154eb7f4f92c6bfc964",
+      "archive_sha256": "b9f8b43e29a0e7acbef5ab125566475ed82155733544586c0b8eaaf6ec788ac4",
+      "file_count": 717,
+      "results_evidence_id": 10081028950,
+      "results_evidence_digest": "sha256:aaa6fe3e506b9f069d27a142fd9fec7fcddf7cf82c747cf4f6435a8033a2e396",
+      "entry_evidence_id": 10081028561,
+      "entry_evidence_digest": "sha256:69650889f2527bb8b4ce73996b162b2b467b90b08df94ed449a3853be8987abf"
+    },
+    "browser_evidence": {
+      "results_states": 12,
+      "results_widths": [375, 760, 761, 999, 1000, 1440],
+      "raw_served_parity": true,
+      "entry_widths": [375, 1440],
+      "external_calls": 0,
+      "real_leads_submitted": 0,
+      "selected_return_current_source": "deferred"
+    },
+    "publication": {
+      "published": false,
+      "published_preview_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
+      "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+      "main_changed": false,
+      "production_changed": false
+    },
+    "deferred": [
+      "current-source selected/return browser and live/manual screenshots",
+      "physical Safari and safe-area verification",
+      "owner visual acceptance and full lead/site/SEO journey"
+    ],
+    "rollback": "Revert 3003788b8096d7eae161ed8ad98769c7e0da3a42 independently.",
+    "next_action": "Resume the owner roadmap's coherent native-form grouping/footer/lead-summary readability package. Useful current-owner growth is allowed; do not restore results-top.js or stack another state bridge."
+  },
   "latest_eager_selected_runtime_retirement": {
     "schema_version": 1,
     "date": "2026-09-08",
@@ -467,7 +530,7 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1640 retires the whole selected-runtime lazy proxy. Eight11984→10097B (−1887); complete loaded files116150→114263B. The canonical selected owners are eager, so initial files rise by40423B; exact CI confirms zero selected-phase requests and the protected journey.",
+    "last_material_progress": "#1643 retires the whole results-top state bridge. Eight10097→9073B (−1024); exact CI confirms12 results states and native entry while selected/return on current source is explicitly deferred. #1640 eager-runtime retirement remains preserved.",
     "name": "Search3 site completion and preview acceptance before migration",
     "next_action": "Implement one coherent native-form grouping/footer/lead-summary readability package in current owners. Useful CSS/JS growth is authorized; remove superseded rules/handlers in the same packet. Refresh release/open PRs; continue results, selected-tour and site work beyond one PR while time remains.",
     "status": "ACTIVE",
@@ -480,7 +543,7 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "last_fully_checked_release_sha": "3003788b8096d7eae161ed8ad98769c7e0da3a42",
     "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
     "next_action": "Implement one coherent native-form grouping/footer/lead-summary readability package in current owners. Useful CSS/JS growth is authorized; remove superseded rules/handlers in the same packet. Refresh release/open PRs; continue results, selected-tour and site work beyond one PR while time remains.",
     "baseline_release_sha": "0f62674722787bf3b1156f2fa708e0d3a5b5fb3d",
@@ -9177,7 +9240,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T23:12:19.404Z",
+  "updated_at": "2026-09-08T23:27:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
