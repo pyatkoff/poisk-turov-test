@@ -1,3 +1,4 @@
 
 
-/* Retired: the selected-tour shell is owned by tour-detail.css and selected-flow-v2.css. */
+/* The legacy selected-tour shell is retired; retain only the native media bound. */
+.selected-picture img{max-width:100%;height:auto}
