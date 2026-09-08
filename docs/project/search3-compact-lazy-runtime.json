@@ -11,7 +11,7 @@
   "assets": {
     "search3-results-filters-v1.js": {
       "before": 9164,
-      "after": 10922
+      "after": 11049
     },
     "search3-results-filters-v1.css": {
       "before": 8420,
@@ -44,8 +44,8 @@
   },
   "eight_assets_raw": {
     "before": 23506,
-    "after": 25264,
-    "saved": -1758
+    "after": 25391,
+    "saved": -1885
   },
   "shared_file_payload_raw": {
     "before": 101537,
@@ -54,13 +54,13 @@
   },
   "complete_route_file_payload_raw": {
     "before": 125043,
-    "after": 126801,
-    "saved": -1758
+    "after": 126928,
+    "saved": -1885
   },
   "initial_route_file_payload_raw": {
     "before": 125043,
-    "after": 101197,
-    "saved": 23846
+    "after": 101324,
+    "saved": 23719
   },
   "deferred_file_payload_raw": 25604,
   "http_bundle_boundaries_raw": {
@@ -74,13 +74,14 @@
     "unpriced-flight-price-reset-v1.js"
   ],
   "compaction_method": "Reuse #1619 exact source-SHA-locked normalization and existing guarded local-binding compaction, unchanged. No additional shared-byte reduction claimed by this integration.",
-  "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager. Confirmed browser regression repaired in current results owner: reveal the retained results on return capture, before the unchanged controller resolves the focus target.",
+  "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager. Confirmed browser regression repaired in current results owner: reveal the retained results on return capture, before the unchanged controller resolves the focus target. The integration retained native details close-on-search in the compact entry owner after the #1619 projection retirement omitted it.",
   "local_checks": [
     "8-asset final build once",
     "generated shared map once",
     "syntax and compaction semantic fixtures",
     "one affected asset rebuild after confirmed return-visibility regression",
-    "one 8-asset integration build after concurrent native-entry manifest merge; shared artifact map reused byte-identically"
+    "one 8-asset integration build after concurrent native-entry manifest merge; shared artifact map reused byte-identically",
+    "affected asset rebuild after confirmed native-details integration repair"
   ],
   "ci": {},
   "published": false,
@@ -111,6 +112,11 @@
       "source": "1dc64daaf7bbc73ab09085ef7bac432471b0e280",
       "exact_run": 34265737512,
       "failure": "12 selected geometry states passed; actual lazy return test exposed hidden results and missing return focus. Fixed in results-top owner before canonical return handler."
+    },
+    {
+      "source": "9d8cdbcb948ebf5c566d5e30ba1c613b31ea3039",
+      "exact_run": 34266516178,
+      "failure": "Selected12 and lazy retry/reset/return scenarios passed. Existing native lifecycle check caught details left open after search; restored only close-on-search in current native form owner."
     }
   ],
   "invocation_start_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
