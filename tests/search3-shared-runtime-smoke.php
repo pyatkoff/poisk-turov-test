@@ -31,7 +31,7 @@ try {
     $compact = render_shared($temp, 'search3');
     $initial = render_shared($temp, 'search3', 'initial');
     $selected = render_shared($temp, 'search3', 'selected');
-    $later = ['tour-controller-v4.js', 'flight-price-sync-v1.js', 'unpriced-flight-price-reset-v1.js'];
+    $later = ['tour-controller-v4.js', 'lead-form-guard-v1.js', 'flight-price-sync-v1.js', 'unpriced-flight-price-reset-v1.js'];
     verify_shared(v2_bundle_phase_files('js', 'search3', 'selected') === $later, 'selected closure changed');
     verify_shared(strlen($initial) + strlen($selected) === strlen($compact), 'phases duplicate or omit bytes');
     verify_shared(render_shared($temp, 'full', 'selected') === '', 'legacy must reject selected phase');
