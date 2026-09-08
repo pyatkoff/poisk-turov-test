@@ -79,11 +79,11 @@ Codex is an execution lane. `AGENTS.md`, `ARCHITECTURE.md`, `AUTOPILOT.md`, `AUT
 
 Do not start until C1/C2 establish current consumers. Refactor `v2_asset()` to permit controlled allowlisted subdirectories, then migrate only one low-risk asset family as proof. Preserve asset URLs/order/cache behavior and run bundle/startup/visual checks.
 
-## DEFERRED — C5 / SHARED-UI — full search header component migration
+## COMPLETE FOR SEARCH3 / COMPATIBILITY RETAINED — C5 / SHARED-UI — search header migration
 
 **Risk:** MEDIUM
 
-Full `/poisk-turov/` migration from legacy `.at-site-header` to shared `site-header-v2` remains deferred until an atomic extraction/edit path exists. Isolated evidence-backed CSS alignment remains allowed, but this queue must not use header migration as a refactor placeholder.
+Search3 `/poisk-turov/` now renders shared `site-header-v2` / `.at-global-header`. The old-search route retains `.at-site-header` and the full legacy compatibility layer. Further work must not remove that legacy owner without separate old-route migration evidence.
 
 ## Lane model
 
