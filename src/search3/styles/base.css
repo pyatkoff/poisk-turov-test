@@ -13,6 +13,9 @@ body.search3-candidate{
 & .search3-breadcrumb span{padding:0 7px!important}
 & .search3-page-intro h1{margin:6px 0 3px!important;color:#14213d!important;font-size:27px!important;line-height:1.02!important;font-weight:950!important;letter-spacing:-.03em!important}
 & .search3-page-intro p{margin:0!important;color:#475467!important;font-size:11px!important;font-weight:600!important}
+& #selectedTour{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important}
+& #selectedTour *{min-width:0!important}
+& #selectedTour :is(img,table,pre){max-width:100%!important}
 }
 @media(max-width:760px){body.search3-candidate{
 &{--at-page-gutter:24px!important;--at-page-edge:12px!important}

@@ -6,15 +6,15 @@
   "eight_public_paths_preserved": true,
   "eight_assets": {
     "before_raw_bytes": 178349,
-    "after_raw_bytes": 78175,
-    "saved_raw_bytes": 100174,
-    "reduction_percent": 56.17
+    "after_raw_bytes": 78387,
+    "saved_raw_bytes": 99962,
+    "reduction_percent": 56.05
   },
   "loaded_route": {
     "before_raw_bytes": 412027,
-    "after_raw_bytes": 196788,
-    "saved_raw_bytes": 215239,
-    "reduction_percent": 52.24
+    "after_raw_bytes": 197000,
+    "saved_raw_bytes": 215027,
+    "reduction_percent": 52.19
   },
   "active_search3_css_sources": [
     "styles/base.css",
