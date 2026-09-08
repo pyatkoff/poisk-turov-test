@@ -98,7 +98,7 @@ separate cascade evidence.
 | Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
 | Lead heading and contact note | `behavior/lead/note.js`, inside the summary CTA owner |
-| Lead entry and lifecycle presentation | `behavior/summary-cta.js`, `behavior/lead-flow.js`, `styles/lead-state.css` |
+| Lead entry and lifecycle presentation | `behavior/summary-cta.js`, shared `v2/lead-form-guard-v1.js` / `v2/lead-ui-race-guard-v1.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Accepted isolation/readability/hidden contracts | Current `results-layout.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
 

@@ -72,11 +72,21 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         # either replaced selector did. The trailing element is unchanged.
         self.assertEqual(shared.count('.'), 2)
 
-    def test_mobile_lead_lifecycle_has_one_current_owner(self):
+    def test_shared_lead_guard_has_one_current_lifecycle_owner(self):
+        retired = (ROOT / 'src/search3/behavior/lead-flow.js').read_text()
         source = (ROOT / 'src/search3/styles/lead-state.css').read_text()
-        self.assertEqual(source.count('.search3-lead-status {display:grid!important;grid-template-columns:1fr!important'), 1)
-        self.assertEqual(source.count(':is(.search3-messenger-actions,.search3-error-actions) {display:grid!important'), 1)
-        self.assertEqual(source.count('.search3-stay-site {width:100%!important'), 1)
+        guard = (ROOT / 'v2/lead-form-guard-v1.js').read_text()
+        race = (ROOT / 'v2/lead-ui-race-guard-v1.js').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
+        self.assertNotIn('search3-lead-status', source)
+        for selector in ('.lead-success-panel', '.lead-success-handoff', '.lead-success-handoff__actions'):
+            self.assertIn(selector, source)
+        self.assertIn(':is(.lead-success-back,.lead-success-messenger){min-height:44px}', source)
+        for event in ('v2:lead-started', 'v2:lead-success', 'v2:lead-error'):
+            self.assertIn("window.addEventListener('" + event + "'", guard)
+            self.assertIn("window.addEventListener('" + event + "'", race)
+        for owner in ('syncLeadSubmitState', 'decorateLeadSuccess', 'decorateMessengerHandoff'):
+            self.assertIn(owner, guard)
 
     def test_mobile_search_entry_uses_linked_presentation_owner(self):
         retired = (ROOT / 'src/search3/behavior/mobile-search-entry.js').read_text()
@@ -676,17 +686,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
         lead_state = (ROOT / 'src/search3/styles/lead-state.css').read_text()
         all_styles = ''.join(path.read_text() for path in (ROOT / 'src/search3/styles').rglob('*.css'))
-        self.assertNotRegex(lead_state, r"content\s*:\s*['\"]✓['\"]")
-        self.assertRegex(
-            lead_state,
-            r"\.search3-lead-status ol li:before\s*\{[^}]*content\s*:\s*['\"]{2}[^}]*background\s*:\s*#fff[^}]*color\s*:\s*transparent",
-        )
-        self.assertRegex(
-            lead_state,
-            r"data-search3-lead-state\s*=\s*['\"]sending['\"][^}]*animation\s*:\s*search3LeadSpin",
-        )
-        self.assertEqual(all_styles.count('@keyframes search3LeadSpin'), 1)
-        self.assertEqual(all_styles.count('animation:search3LeadSpin'), 1)
+        self.assertNotIn('search3-lead-status', all_styles)
+        self.assertNotIn('data-search3-lead-state', all_styles)
+        self.assertNotIn('search3LeadSpin', all_styles)
         self.assertRegex(lead_state, r"\.lead-consent input\{[^}]*flex:0 0 15px[^}]*width:15px!important[^}]*height:15px!important")
         self.assertRegex(lead_state, r"\.search3-lead-protection\{[^}]*display:flex[^}]*gap:7px")
         self.assertRegex(lead_state, r"\.search3-lead-protection span\{[^}]*display:grid[^}]*width:18px[^}]*height:18px")
@@ -698,7 +700,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn(':is(.selected-head>:not(:first-child),.tour-flights .flight-baggage,.tour-flights .section-heading span){display:none!important}', lead_state)
         self.assertNotIn('min-height:280px!important;display:flex!important;align-items:center!important', all_styles)
         self.assertNotIn('& .lead-fields {gap:14px!important;grid-template-columns:1fr 1fr!important}', all_styles)
-        self.assertEqual(lead_state.count('.lead-form[data-search3-lead-state]~.search3-booking-summary'), 1)
+        self.assertIn('.lead-success-panel{display:grid', lead_state)
+        self.assertIn('.lead-success-handoff__actions{display:flex', lead_state)
 
         selected = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
         self.assertFalse((ROOT / 'src/search3/styles/injected/selected-tour-mobile.css').exists())
@@ -768,15 +771,17 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         continue_owner = (ROOT / 'src/search3/behavior/flight-continue.js').read_text()
         summary_owner = (ROOT / 'src/search3/behavior/summary-cta.js').read_text()
         lead_owner = (ROOT / 'src/search3/behavior/lead-flow.js').read_text()
+        lead_guard = (ROOT / 'v2/lead-form-guard-v1.js').read_text()
         handoff = (ROOT / 'src/search3/behavior/selected-tour-handoff.js').read_text()
         results_owner = (ROOT / 'src/search3/behavior/results-presentation.js').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', continue_owner, flags=re.S).strip(), '')
         self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", summary_owner)
         self.assertIn("closest('#selectedTour .search3-flight-continue button')", summary_owner)
         self.assertIn("dispatchEvent(new CustomEvent('search3:lead-entry'", summary_owner)
-        self.assertIn("window.addEventListener('v2:lead-started'", lead_owner)
-        self.assertIn("window.addEventListener('v2:lead-success'", lead_owner)
-        self.assertIn("window.addEventListener('v2:lead-error'", lead_owner)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', lead_owner, flags=re.S).strip(), '')
+        self.assertIn("window.addEventListener('v2:lead-started'", lead_guard)
+        self.assertIn("window.addEventListener('v2:lead-success'", lead_guard)
+        self.assertIn("window.addEventListener('v2:lead-error'", lead_guard)
         self.assertEqual(re.sub(r'/\*.*?\*/', '', handoff, flags=re.S).strip(), '')
         self.assertIn("selected.querySelector('.selected-head h2')", results_owner)
 

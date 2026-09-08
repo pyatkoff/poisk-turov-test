@@ -70,8 +70,8 @@ function run(dir) {
   click('#selectedTour .search3-summary-submit');record('lead entry');
   assert.ok(root.classList.contains('search3-lead-entry'));
   assert.equal(head.snapshot().styles.display[0],'none');
-  form.dataset.search3LeadState='sending';emit('v2:lead-started');record('sending');
-  form.dataset.search3LeadState='error';emit('v2:lead-error');record('retry available');
+  emit('v2:lead-started');record('sending');
+  emit('v2:lead-error');record('retry available');
   click('#selectedTour .search3-lead-back');record('back to review');
   assert.ok(!root.classList.contains('search3-lead-entry'));
   assert.equal(head.snapshot().styles.display,undefined);
@@ -88,8 +88,8 @@ function run(dir) {
 }
 const result=run(bundlePath);
 const digest=crypto.createHash('sha256').update(JSON.stringify(result.snapshots)).digest('hex');
-assert.equal(digest,'800e65e6d7658048cac39579fb279d2825987c25961995ee53e5902ed013232b',
-  'thirteen complete navigation snapshots retain pre-consolidation DOM, events, scroll and focus');
+assert.equal(digest,'311c90fe19f028e2bfef8f4ebf014c4ac63a096129680c9e8a07b843e978c38b',
+  'thirteen complete navigation snapshots retain shared-guard DOM, events, scroll and focus');
 console.log(JSON.stringify({snapshots:result.snapshots.length,digest,pending:result.pending,clickListeners:result.clickListeners}));
 assert.deepEqual(result.pending,[1,1],'tour reset and review each share one navigation task');
 assert.equal(result.clickListeners,1,'flight, review and lead use one click owner');
