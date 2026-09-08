@@ -304,6 +304,20 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("runtime.api('search_results',{searchId,limit:EXPANDED_LIMIT})", legacy)
         self.assertIn('window.V2ResultsDepthV1', legacy)
 
+    def test_form_local_filters_are_consolidated_into_ds2_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        current = (ROOT / 'v2/ds2-results-filters.js').read_text()
+        legacy = (ROOT / 'v2/results-local-filters-v1.js').read_text()
+        self.assertIn("'results-local-filters-v1.js'", scoped)
+        self.assertIn("formLocalNames=new Set(['stars','rating','price_from','price_till','region','subregion'])", current)
+        self.assertIn('canUseFormLocal(filters)', current)
+        self.assertIn("form.addEventListener('change',handleFormLocal,true)", current)
+        self.assertIn("window.__DS2ResultsRailApplying=true", current)
+        self.assertIn("CustomEvent('v2:results-local-filtered'", current)
+        self.assertIn('window.V2ResultsLocalFiltersV1', legacy)
+        self.assertIn('version:15', current)
+
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]

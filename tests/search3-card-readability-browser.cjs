@@ -146,6 +146,7 @@ async function verifyEmptyLocalRail(browser) {
       await page.waitForSelector('body.search3-candidate');
       if (await page.evaluate(() => typeof window.V2ResultsFilterAutorefreshV1) !== 'undefined') throw new Error(width + ': legacy automatic supplier refresh owner is loaded');
       if (await page.evaluate(() => typeof window.V2ResultsDepthV1) !== 'undefined') throw new Error(width + ': legacy duplicate 100-result request owner is loaded');
+      if (await page.evaluate(() => typeof window.V2ResultsLocalFiltersV1) !== 'undefined') throw new Error(width + ': legacy second local-filter source owner is loaded');
       if (width === 375) {
         const witnesses = declarationAudit.assets.flatMap(asset => asset.rows);
         const unsupported = await page.evaluate(rows => rows.filter(row =>
