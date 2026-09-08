@@ -124,6 +124,7 @@ try {
             $defaultProbe['status'] = 'ok';
             $defaultProbe['projected_hotels'] = count($defaultResult['hotels']);
             $defaultProbe['supplier_offers'] = $defaultDiagnostics['supplier_offers'];
+            $defaultProbe['date_range'] = $defaultResult['date_range'];
         } catch (Throwable $error) {
             $code = $error->getMessage();
             $defaultProbe['status'] = preg_match('/\AANEX_[A-Z_]{1,70}\z/D', $code) ? $code : 'ANEX_SEARCH3_PROBE_ERROR';

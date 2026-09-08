@@ -19,6 +19,14 @@
     };
     return typeof messages[code] === 'string' ? messages[code] : 'Не удалось получить предложения ANEX. Повторите поиск позже.';
   }
+  function dateRangeLabel(range) {
+    if (!range || ![range.from, range.to].every(value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value))) return '';
+    const begin = new Date(range.from + 'T00:00:00Z'), end = new Date(range.to + 'T00:00:00Z');
+    if (!Number.isFinite(+begin) || !Number.isFinite(+end) || begin.toISOString().slice(0, 10) !== range.from
+      || end.toISOString().slice(0, 10) !== range.to || end < begin || end - begin > 6 * 86400000) return '';
+    const format = value => value.split('-').reverse().join('.');
+    return 'Вылеты ANEX: ' + format(range.from) + (range.to === range.from ? '' : ' — ' + format(range.to));
+  }
   function validHotel(hotel) {
     return !!hotel && Number.isSafeInteger(hotel.local_id) && hotel.local_id > 0
       && typeof hotel.name === 'string' && hotel.name.length > 0 && hotel.name.length <= 300
@@ -28,7 +36,7 @@
         && Number(tour.price.amount) > 0 && typeof tour.checkin === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(tour.checkin)
         && Number.isInteger(tour.nights) && tour.nights > 0 && tour.nights <= 60);
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, version: 1 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, version: 1 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -37,7 +45,7 @@
   const results = document.getElementById('results'), form = document.getElementById('tourSearch');
   if (!results || !form || !window.fetch) return;
   const panelAnchor = (typeof results.closest === 'function' && results.closest('.results-layout')) || results;
-  let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', panel = null;
+  let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', dates = '', panel = null;
   const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   function node(tag, className, text) {
     const element = document.createElement(tag);
@@ -102,6 +110,7 @@
     panel.style.setProperty('grid-column', '1 / -1');
     panel.setAttribute('aria-label', 'Предложения ANEX');
     panel.appendChild(node('h2', '', 'Предложения ANEX'));
+    if (dates) panel.appendChild(node('p', 'anex-search3-status', dates));
     const status = node('p', 'anex-search3-status', filterNotice || message);
     status.setAttribute('role', 'status');
     panel.appendChild(status);
@@ -133,7 +142,7 @@
     if (lifecycle && !lifecycle.dirty && lifecycle.snapshot && lifecycle.generation === lastGeneration) return;
     if (controller) controller.abort();
     controller = null;
-    active = null; hotels = []; message = ''; clear();
+    active = null; hotels = []; message = ''; dates = ''; clear();
     if (!lifecycle || lifecycle.dirty || !lifecycle.snapshot || lifecycle.generation === lastGeneration) return;
     const run = capture(lifecycle.snapshot, lifecycle.generation, labels());
     if (!run) return;
@@ -150,6 +159,7 @@
       if (!response.ok || !payload.ok) {
         message = errorMessage(payload.error);
       } else if (payload.data && payload.data.generation === run.generation && payload.data.provider === 'anex' && Array.isArray(payload.data.hotels)) {
+        dates = dateRangeLabel(payload.data.date_range);
         const seen = new Set();
         hotels = payload.data.hotels.slice(0, 300).filter(hotel => {
           if (!validHotel(hotel) || seen.has(hotel.local_id)) return false;

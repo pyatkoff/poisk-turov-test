@@ -78,7 +78,7 @@ function anytour_anex_search3_core(array $params): array
         foreach ($values as $value) if (!is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
     }
     if (($params['currency'] ?? 'RUB') !== 'RUB') throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
-    return $core;
+    return anytour_anex_search3_week($core);
 }
 
 /** Projection is deliberately separate from both suppliers' booking IDs. */
@@ -119,34 +119,18 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
     return array_values($hotels);
 }
 
-/** A broad interval rejected with 101 may be queried as bounded, disjoint intervals.
- * Keep the requested dates and every other criterion; never treat an error as empty.
- * At most seven sequential price calls (plus three dictionaries), under the client budget.
- */
-function anytour_anex_search3_prices($client, callable $resolver, array $criteria, int $depth = 0): array
+/** Owner policy: ANEX searches only the first seven departure dates of the form interval. */
+function anytour_anex_search3_week(array $criteria): array
 {
-    try {
-        return (new AnyTourAnexSearch($client, $resolver))->search($criteria);
-    } catch (RuntimeException $error) {
-        $last = $client->lastRequestDiagnostics();
-        $begin = new DateTimeImmutable($criteria['checkin_begin']);
-        $end = new DateTimeImmutable($criteria['checkin_end']);
-        $days = (int) $begin->diff($end)->days;
-        if ($depth >= 2 || $days < 1 || ($last['action'] ?? '') !== 'SearchTour_PRICES'
-            || ($last['supplier_code'] ?? null) !== 101) throw $error;
-        $middle = $begin->modify('+' . intdiv($days, 2) . ' days');
-        $left = $right = $criteria;
-        $left['checkin_end'] = $middle->format('Y-m-d');
-        $right['checkin_begin'] = $middle->modify('+1 day')->format('Y-m-d');
-        $a = anytour_anex_search3_prices($client, $resolver, $left, $depth + 1);
-        $b = anytour_anex_search3_prices($client, $resolver, $right, $depth + 1);
-        $a['offers'] = array_merge($a['offers'], $b['offers']);
-        $a['search'] = anytour_anex_normalizer_context($criteria);
-        $a['rejected_count'] += $b['rejected_count'];
-        $a['truncated_count'] += $b['truncated_count'];
-        $a['external_search_pending'] = $a['external_search_pending'] || $b['external_search_pending'];
-        return $a;
-    }
+    $weekEnd = (new DateTimeImmutable($criteria['checkin_begin']))->modify('+6 days')->format('Y-m-d');
+    if ($criteria['checkin_end'] > $weekEnd) $criteria['checkin_end'] = $weekEnd;
+    return $criteria;
+}
+
+/** Exactly one price operation; errors never become empty success or recursive requests. */
+function anytour_anex_search3_prices($client, callable $resolver, array $criteria): array
+{
+    return (new AnyTourAnexSearch($client, $resolver))->search(anytour_anex_search3_week($criteria));
 }
 
 function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null): array
@@ -174,7 +158,7 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         anytour_anex_search3_dictionary($client, 'SearchTour_CURRENCIES', $dated, $cache), ['RUB', 'RUR', 'Рубль', 'Рубли', 'Руб']);
     $resolver = AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
     $result = anytour_anex_search3_prices($client, $resolver, $criteria);
-    // Bound the merged first pages before catalog hydration; cheapest RUB offers first.
+    // Bound the first page before catalog hydration; cheapest RUB offers first.
     usort($result['offers'], static function ($a, $b) {
         $amount = static function ($offer) {
             $price = ($offer['price']['currency'] ?? '') === 'RUB' ? $offer['price'] : ($offer['converted_price'] ?? []);
@@ -209,7 +193,8 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         $hydrate->execute(array_keys($ids));
         foreach ($hydrate->fetchAll(PDO::FETCH_ASSOC) as $row) $metadata[(int) $row['id']] = $row;
     }
-    return ['generation' => $request['generation'], 'provider' => 'anex', 'hotels' => anytour_anex_search3_project($result['offers'], $metadata, $params),
+    return ['generation' => $request['generation'], 'provider' => 'anex',
+        'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => anytour_anex_search3_project($result['offers'], $metadata, $params),
         'external_search_pending' => $result['external_search_pending'], 'first_page_only' => true];
 }
 

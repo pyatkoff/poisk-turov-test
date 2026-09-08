@@ -31,6 +31,14 @@ function helpers() {
   return window.AnyTourAnexSearch3;
 }
 
+test('ANEX displays its actual week without claiming the full shared range', () => {
+  const label = helpers().dateRangeLabel;
+  assert.equal(label({ from: '2026-09-09', to: '2026-09-15' }), 'Вылеты ANEX: 09.09.2026 — 15.09.2026');
+  assert.equal(label({ from: '2026-09-09', to: '2026-09-09' }), 'Вылеты ANEX: 09.09.2026');
+  for (const value of [null, {}, { from: '2026-09-09', to: '2026-09-22' },
+    { from: '2026-02-30', to: '2026-03-01' }, { from: '<script>', to: '2026-09-15' }]) assert.equal(label(value), '');
+});
+
 class FakeElement {
   constructor(tagName) {
     this.tagName = tagName.toUpperCase();

@@ -74,7 +74,7 @@ search3_check($calls === 2, 'expired dictionary refreshed');
 echo "ANEX Search3 preview smoke passed\n";
 
 
-// Reproduce a supplier rejecting a broad interval, with narrower requests succeeding.
+// A broad shared form interval becomes exactly one ANEX week; the original input stays intact.
 $intervals = [];
 $client = new AnyTourAnexClient('test-secret', static function ($url) use (&$intervals) {
     parse_str(parse_url($url, PHP_URL_QUERY), $query);
@@ -86,8 +86,8 @@ $client = new AnyTourAnexClient('test-secret', static function ($url) use (&$int
 $criteria = array_replace($context, ['supplier_namespace' => 'anex_online', 'departure_id' => 2,
     'destination_id' => 4, 'currency_id' => 1, 'checkin_begin' => '2026-09-09', 'checkin_end' => '2026-09-22']);
 $result = anytour_anex_search3_prices($client, static function () { return null; }, $criteria);
-search3_check($intervals === [['20260909','20260922'], ['20260909','20260915'], ['20260916','20260922']], 'complete interval split without gaps or overlap');
-search3_check($result['search']['checkin_begin'] === '2026-09-09' && $result['search']['checkin_end'] === '2026-09-22', 'original interval retained');
+search3_check($intervals === [['20260909','20260915']], 'single ANEX week request');
+search3_check($result['search']['checkin_begin'] === '2026-09-09' && $result['search']['checkin_end'] === '2026-09-15', 'actual ANEX week context');
 foreach ([101, 2111] as $code) {
     $calls = 0;
     $client = new AnyTourAnexClient('test-secret', static function () use (&$calls, $code) {
@@ -99,7 +99,15 @@ foreach ([101, 2111] as $code) {
         throw new LogicException('supplier error must not become empty success');
     } catch (RuntimeException $error) {
         search3_check($error->getMessage() === 'ANEX_SUPPLIER_ERROR', 'failed subrange remains failure');
-        search3_check($calls === ($code === 101 ? 3 : 1), 'bounded splitting only for code 101');
+        search3_check($calls === 1, 'supplier errors never multiply requests');
     }
 }
-echo "ANEX interval recovery smoke passed\n";
+echo "ANEX single week smoke passed\n";
+
+search3_check($criteria['checkin_end'] === '2026-09-22', 'shared form interval not mutated');
+$oneDay = array_replace($criteria, ['checkin_end' => $criteria['checkin_begin']]);
+search3_check(anytour_anex_search3_week($oneDay) === $oneDay, 'single date stays single');
+$short = array_replace($criteria, ['checkin_end' => '2026-09-12']);
+search3_check(anytour_anex_search3_week($short) === $short, 'short range is not expanded');
+$wideParams = array_replace($params, ['dateTo' => (new DateTimeImmutable($date))->modify('+20 days')->format('Y-m-d')]);
+search3_check(anytour_anex_search3_core($wideParams)['checkin_end'] === (new DateTimeImmutable($date))->modify('+6 days')->format('Y-m-d'), 'dictionary dates use the same week');
