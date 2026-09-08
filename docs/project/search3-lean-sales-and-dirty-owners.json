@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "ec27d1b19da2ce0ce8e7e37751fb7f21eceddf21",
+  "checked_code_release_sha": "6d95ad0274f470c73cb77b282abdb219570ade02",
+  "source_prs": [
+    1528,
+    1529
+  ],
+  "source_shas": [
+    "913208a812999e84b1a810c1e1278ba02e8e5e23",
+    "3a8f12535a13d368572287462c799d2cbf234cd2"
+  ],
+  "retired_search3_owners": [
+    "sales-leader-ui-v1.js",
+    "sales-leader-ui-v1.css",
+    "search-dirty-ux-v1.js",
+    "search-dirty-ux-v1.css"
+  ],
+  "retained_legacy_owners": "All four files remain unchanged in the full legacy manifest used by /poisk-turov-old/.",
+  "retained_current_behavior": [
+    "Sales-leader badge rendering and broken-result-photo fallback in the current results card owner",
+    "Dirty results state when the edited search no longer matches rendered results",
+    "One accessible refresh banner that submits through V2SearchLifecycle.submit",
+    "Dirty state clearing on search start/reset and reapplication after results rerender",
+    "All URL/form restoration, filtering, Tourvisor/API, price and lead behavior"
+  ],
+  "retired_behavior": [
+    "Duplicate legacy sales-leader runtime and CSS presentation layer",
+    "Duplicate legacy dirty-state runtime, CSS dimming layer and repeated pseudo-message",
+    "Search3-only V2SearchDirtyUXV1 global with no repository consumers"
+  ],
+  "payload": {
+    "before": {
+      "css": 196984,
+      "js": 229713,
+      "eight_assets": 153884,
+      "raw_total": 580581,
+      "gzip_total": 128767
+    },
+    "after": {
+      "css": 195452,
+      "js": 226610,
+      "eight_assets": 156903,
+      "raw_total": 578965,
+      "gzip_total": 128501
+    }
+  },
+  "raw_saved_bytes": 1616,
+  "gzip_saved_bytes": 266,
+  "measurement_scope": "Raw total sums route-scoped source files and eight generated Search3 public paths. Gzip total compresses exact bundle-v1.php output including separators plus eight files independently at level 9. Transferred live behavior is included in the net result.",
+  "packages": {
+    "sales_leader": {
+      "source_pr": 1528,
+      "source_sha": "913208a812999e84b1a810c1e1278ba02e8e5e23",
+      "release_sha": "046a4c8caa85ab9a008c279b6eeb58dc029fff99",
+      "legacy_bytes_removed": 1934,
+      "current_assets_delta": 1097,
+      "raw_before": 580581,
+      "raw_after": 579744,
+      "raw_saved": 837,
+      "gzip_before": 128767,
+      "gzip_after": 128656,
+      "gzip_saved": 111,
+      "security_run": 34173718206,
+      "exact_runs": [
+        34173718133,
+        34173860069
+      ],
+      "artifact_id": 10036603891,
+      "artifact_digest": "sha256:195e108d40f89327c4433cc6462efd3f72195d44b7af7351b2c140c8645dcc46",
+      "selected_artifact": 10036603298,
+      "selected_digest": "sha256:2d5afc4101c0a84ee482c128db0bc4f27d41b154cb25955dcb94760a75e115b3",
+      "results_artifact": 10036603609,
+      "results_digest": "sha256:dc2368ef45265df790d474ffc494f6465eed41f93a5b023c9a21dcfaa830535d"
+    },
+    "dirty_results": {
+      "source_pr": 1529,
+      "source_sha": "3a8f12535a13d368572287462c799d2cbf234cd2",
+      "release_sha": "6d95ad0274f470c73cb77b282abdb219570ade02",
+      "legacy_bytes_removed": 2701,
+      "current_assets_delta": 1922,
+      "raw_before": 579744,
+      "raw_after": 578965,
+      "raw_saved": 779,
+      "gzip_before": 128656,
+      "gzip_after": 128501,
+      "gzip_saved": 155,
+      "security_run": 34174597073,
+      "exact_runs": [
+        34174597057,
+        34174703669
+      ],
+      "artifact_id": 10036876352,
+      "artifact_digest": "sha256:a7e956879588c70024a585e84c51e5ee774b013e41b45293409b4057b9da7291",
+      "selected_artifact": 10036875494,
+      "selected_digest": "sha256:2780c23fec1104aed3a10d003bdb3c936398d511889fe96d276833ec89f569d8",
+      "results_artifact": 10036875928,
+      "results_digest": "sha256:c9fd03bfa2d7805b3c2726519302d63dde76f741cdc557e5be835a607809decc",
+      "corrected_run": {
+        "run": 34174508855,
+        "result": "Failed only on stale expected CSS manifest order; assertion was corrected to the actual unchanged full legacy order, then all exact guards passed."
+      }
+    }
+  },
+  "browser_evidence": {
+    "selected_states": 12,
+    "selected_widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "entry_states": 30,
+    "entry_widths": [
+      375,
+      700,
+      701,
+      760,
+      761,
+      1440
+    ],
+    "result_states": 12,
+    "result_widths": [
+      375,
+      760,
+      761,
+      999,
+      1000,
+      1440
+    ],
+    "result": "Exact Chromium geometry and lifecycle passed after each final source commit. No supplier request or lead was sent."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "Live current-source interaction",
+    "Physical Safari and safe-area",
+    "Owner visual acceptance"
+  ],
+  "next_action": "Audit the complete search-complete-recovery-v1.js and search-progress-ux-v1.js/.css lifecycle owners against current entry/results owners. Preserve retry, progress, empty/error recovery, full legacy route and protected contracts; only retire a whole owner when focused lifecycle plus exact browser CI prove the replacement and net route saving is at least 500 raw bytes.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}
