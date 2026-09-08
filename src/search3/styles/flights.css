@@ -69,5 +69,5 @@ body.search3-candidate #selectedTour{
 }
 @media(max-width:560px){body.search3-candidate #selectedTour{
 & .flight-route{padding:9px!important;border-radius:12px!important}
-& .flight-arrow{width:20px!important;height:20px!important;background:transparent!important}
+& .flight-arrow{width:24px!important;height:20px!important;background:transparent!important}
 }}

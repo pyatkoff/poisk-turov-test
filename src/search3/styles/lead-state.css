@@ -40,6 +40,7 @@ body.search3-candidate #selectedTour{
 @media(max-width:560px){body.search3-candidate #selectedTour{
 & .lead-fields input{height:49px!important}
 & .lead-consent{padding:10px!important}
+& .lead-form .primary{height:52px!important}
 }}
 @keyframes search3LeadSpin{to{transform:rotate(360deg)}}
 @media(max-width:640px){
