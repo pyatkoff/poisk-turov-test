@@ -1,5 +1,54 @@
 # Search3 technical refactor autopilot
 
+## Current resume point — selected owner retirement #1612 — 2026-09-08
+
+Source `26c7200ae676d1d35581680f64f1fda5a4806955`, checked code release
+`7eadf95d1164f51530fe545a5e42fb1ea977096e`. This supersedes the older
+resume suggestions below; do not repeat entry/selected/results retirements.
+
+Eight public assets **54,605 → 41,959 raw B (−12,646)**. Selected JS is
+18,705 → 5,589; main JS22,600 → 23,070 includes470 B restoring result-summary
+and empty-result edit buttons to the native search form. Loaded route
+173,218 → 160,572; shared V2 JS118,613 and CSS0 unchanged. #1610's earlier
+6,206 B saving is separate, not counted again as this package.
+
+Whole selected trust/mobile/disclosure/optional-field and duplicate projection
+layers are retired. Original facts, flight variants and lead fields remain.
+No-flight retry/review, selected-open and decimal-safe labels are retained;
+observed DOM writes settle without repeated mutations. API/URL/payload/price
+arithmetic/lead mapping/transport/analytics/logo/native browser contracts unchanged.
+
+Single required source pass: Security34247520934 and exact34247521545 success.
+Reuse artifact10064661836, digest
+`sha256:a5a5774cd9ea7388fbd0140417beb04ebcd7d6c7bafd7e5125c2930fb2ddd0e9`;
+evidence10064661265, digest
+`sha256:ea81152b3927abb80d535c4113093ac3ff429075fb4ad6060056c4a93c558004`.
+No release/docs rebuild. All active source/PHP/path/presentation/isolation guards
+passed. No new test skips or conditional geometry bypass.
+
+Actual isolated Chromium:12 detail/review/lead states at375/760/1000/1440 preserve
+facts, price, lead fields and transitions without overflow. Pending base and
+confirmed totals checked. Native form geometry/values/lifecycle match current
+baseline def1cf84 in30 states; result and empty-result edit repaired at375/1440.
+No-flight retry/review/lead, retry recovery, decimal labels and stable observed
+DOM pass. External calls blocked; no real leads. Inspected375-review and1440-detail
+screenshots: intentionally largely unstyled UI; **not pixel parity, polished design,
+or owner visual acceptance**. Expectations reflect the authorized visual removal,
+not a claim that the old wrapper geometry remains. Physical Safari/safe-area,
+live current-source interaction and full responsive/site/SEO checks deferred.
+
+No publication. Preview stays source
+`c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production untouched.
+Audit: `docs/project/search3-selected-owner-retirement.json`.
+
+Next bounded audit found only the duplicate private booking/services owner as
+a justified retirement candidate (~2022 raw B estimated, not built or counted).
+Accumulate with another useful coarse package; no standalone micro-PR/deploy.
+Keep booking summary/pending total, summary CTA and original tour/fuel/baggage
+facts. Do not delete native search-form/secondary controls: they still own live
+meal URL/catalog/reset and native direct/night behavior.
+
 
 ## Latest checked layer retirement — enhancements.css — 2026-09-08
 
