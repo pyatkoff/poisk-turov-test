@@ -11,7 +11,7 @@
   "assets": {
     "search3-results-filters-v1.js": {
       "before": 16656,
-      "after": 18206
+      "after": 18414
     },
     "search3-results-filters-v1.css": {
       "before": 8420,
@@ -44,8 +44,8 @@
   },
   "eight_assets_raw": {
     "before": 33355,
-    "after": 34905,
-    "saved": -1550
+    "after": 35113,
+    "saved": -1758
   },
   "shared_file_payload_raw": {
     "before": 106735,
@@ -54,13 +54,13 @@
   },
   "complete_route_file_payload_raw": {
     "before": 140090,
-    "after": 136625,
-    "saved": 3465
+    "after": 136833,
+    "saved": 3257
   },
   "initial_route_file_payload_raw": {
     "before": 140090,
-    "after": 110906,
-    "saved": 29184
+    "after": 111114,
+    "saved": 28976
   },
   "deferred_file_payload_raw": 25719,
   "http_bundle_boundaries_raw": {
@@ -74,11 +74,12 @@
     "unpriced-flight-price-reset-v1.js"
   ],
   "compaction_method": "Scope-aware local binding plan applied to original source tokens; exact AST compared with only planned identifier substitutions. Original operators, literals, empty statements and numeric quoted keys are preserved. Existing exact-print guard remains unchanged.",
-  "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager.",
+  "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager. Confirmed browser regression repaired in current results owner: reveal the retained results on return capture, before the unchanged controller resolves the focus target.",
   "local_checks": [
     "8-asset final build once",
     "generated shared map once",
-    "syntax and compaction semantic fixtures"
+    "syntax and compaction semantic fixtures",
+    "one affected asset rebuild after confirmed return-visibility regression"
   ],
   "ci": {},
   "published": false,
@@ -93,5 +94,22 @@
     "owner visual acceptance",
     "full SEO/site/responsive/lead journey"
   ],
-  "next_action": "Run mandatory Security and exact artifact with focused lazy initial/retry/reset/first-click checks; merge release only after success. Then record exact source/artifact and checkpoint."
+  "next_action": "Run mandatory Security and exact artifact with focused lazy initial/retry/reset/first-click checks; merge release only after success. Then record exact source/artifact and checkpoint.",
+  "failed_runs": [
+    {
+      "source": "516f0c413f20a847a1d66e56194c230a423e72c3",
+      "exact_run": 34265372642,
+      "failure": "PHP harness treated valid empty rejected-phase output as subprocess failure; fixed harness with exit-status-aware subprocess."
+    },
+    {
+      "source": "59d539664c8e3684e0f8f146712476e005cbbb7b",
+      "exact_run": 34265521359,
+      "failure": "Guard counted text occurrences in phase allowlist instead of delivered owners. Preserved exact protected SHA checks and strengthened delivery check to exactly one owner in full, Search3, and union of initial/selected closures."
+    },
+    {
+      "source": "1dc64daaf7bbc73ab09085ef7bac432471b0e280",
+      "exact_run": 34265737512,
+      "failure": "12 selected geometry states passed; actual lazy return test exposed hidden results and missing return focus. Fixed in results-top owner before canonical return handler."
+    }
+  ]
 }
