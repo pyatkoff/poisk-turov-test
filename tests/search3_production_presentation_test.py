@@ -319,6 +319,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('<header class="at-global-header">', current_header)
         self.assertIn('& .v2-product-hero{display:none!important}', base)
         self.assertIn('& .v2-shell{padding-bottom:52px!important}', base)
+        self.assertIn('--at-ink:#151B24!important', base)
+        self.assertIn('--at-soft:#F4F7FF!important', base)
+        self.assertIn('font-family:Aeroport,Inter,-apple-system', base)
         self.assertIn("define('V2_SEARCH3_PRESENTATION', false)", legacy_route)
 
     def test_tablet_legacy_extras_are_not_a_search3_owner(self):
