@@ -1,5 +1,9 @@
 /* Lead lifecycle foundations retained from the retired full-cycle layer. */
 body.search3-candidate{
+& #selectedTour .lead-form{position:relative!important}
+& #selectedTour .lead-form label{min-width:0;margin-bottom:13px}
+& #selectedTour .lead-message{min-height:20px;padding:0 2px}
+& #selectedTour .lead-phone-hint{display:block;margin:5px 0 0;color:#7a8599;font-size:10px;line-height:1.35}
 & #selectedTour .lead-form[data-search3-lead-state]>*:not(.search3-lead-status){display:none!important}
 & .search3-lead-status{display:grid;grid-template-columns:54px minmax(0,1fr);gap:16px;align-items:start;padding:8px 0}
 & .search3-lead-status[hidden]{display:none!important}

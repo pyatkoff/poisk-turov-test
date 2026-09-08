@@ -6,7 +6,7 @@ body.search3-candidate{
 & #selectedTour {
 & .tour-flights {scroll-margin-top:18px}
 & .flight-variants {display:grid;gap:10px}
-& .flight-variant {padding:0!important;border:1px solid var(--at-line)!important;background:#fff!important;overflow:hidden!important}
+& .flight-variant {position:relative!important;padding:0!important;border:1px solid var(--at-line)!important;background:#fff!important;overflow:hidden!important}
 & .flight-variant.is-selected {border-color:var(--at-brand)!important;background:#fff!important;box-shadow:0 0 0 1px var(--at-brand) inset!important}
 & .flight-choice {display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;margin:0!important;padding:11px 13px!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fafcff!important;cursor:pointer!important}
 & .flight-choice input {grid-row:1/3!important;width:16px!important;height:16px!important;margin:0!important;accent-color:var(--at-brand)!important}
@@ -28,6 +28,8 @@ body.search3-candidate{
 & .lead-form {scroll-margin-top:18px}
 & .search3-flight-continue {display:flex;justify-content:flex-end;margin-top:12px}
 & .search3-flight-continue button {min-width:210px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 12px/1 var(--at-font);cursor:pointer}
+& .load-flights{min-height:46px;padding:0 16px}
+& .tour-flights .flight-error[data-v2-friendly-error="1"]+.load-flights,& .tour-flights .load-flights:has(+.flight-error[data-v2-friendly-error="1"]){margin-top:6px}
 }
 
 /* Board 3: one real Tourvisor option remains one atomic choice, but its real legs read as two directions. */
@@ -62,6 +64,14 @@ body.search3-candidate{
 /* Native radio and selected border already convey selection; no price overlay. */
 body.search3-candidate #selectedTour .flight-variant.is-selected:before{content:none!important}
 @media(max-width:430px){body.search3-candidate #selectedTour .tour-flights.checkout-flights .flight-variant{margin:0!important}}
+@media(max-width:760px){body.search3-candidate #selectedTour{
+& .flight-segment+.flight-segment{margin-top:10px}
+& .flight-segment-title strong{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:#eef3ff}
+& .flight-route>div:not(.flight-arrow)>span{order:-1}
+& .flight-baggage{padding:7px 9px;border-radius:10px;background:#f7f9fd}
+& .flight-baggage b{color:#344054}
+}}
+@media(max-width:430px){body.search3-candidate #selectedTour .flight-arrow{transform:rotate(90deg)}}
 
 /* Live flight chrome retained after retiring the broad legacy design layer. */
 body.search3-candidate #selectedTour{
