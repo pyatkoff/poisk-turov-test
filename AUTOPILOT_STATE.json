@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1584 retires search-filters-ux-v1.css from Search3. Native tourist selects are restored from legacy hidden/ARIA/tab state; old search keeps the complete layer. Loaded CSS/JS falls 470476 to 458693 raw (-11783 net).",
+    "last_material_progress": "PR #1588 removes selected-tour-ux.css from Search3 on the explicitly experimental test release. Loaded CSS/JS falls 458693 to 447863 raw (-10830 net). Security/source passed; exact pixel equality is intentionally red because the old skin was removed, while all 12 DOM node counts remain equal and overflow remains false.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners.",
+    "next_action": "Continue with an independent whole-layer audit (app.css/search-states-design.css); do not restore retired selected-tour pixels unless an actual functional regression is confirmed.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_SEARCH_FILTER_SKIN",
-    "title": "Retire legacy search filter presentation from Search3",
-    "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+    "id": "S3_LEAN_SELECTED_TOUR_SKIN",
+    "title": "Retire legacy selected-tour skin from Search3",
+    "status": "EXPERIMENTAL_RELEASE_SECURITY_GREEN_EXACT_VISUAL_RED_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1584
+      1588
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "a201f645bc614bdab65ee3008ebfd152a70b78af"
+      "33395ab79eb4148c4c440edb0ea1bcb2fddd48e1"
     ],
-    "release_sha": "f1a7fe122d878918157cb27f4c83165569f0638e",
-    "artifact_run": 34222910847,
-    "artifact_id": 10054529522,
-    "artifact_digest": "sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd",
-    "checked_release_asset_bytes": 178418,
-    "checked_release_loaded_bytes": 458693,
+    "release_sha": "20df2019ea2948ef725526bc896ca290fdd154ab",
+    "last_fully_checked_release_sha": "f1a7fe122d878918157cb27f4c83165569f0638e",
+    "security_run": 34223970798,
+    "exact_run": 34223970803,
+    "checked_release_asset_bytes": 181778,
+    "release_loaded_bytes": 447863,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners."
+    "next_action": "Continue with an independent whole-layer audit (app.css/search-states-design.css); do not restore retired selected-tour pixels unless an actual functional regression is confirmed."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1392,6 +1392,15 @@
       "checks": "Security owner validators plus exact source/PHP/path/presentation/isolation and browser geometry",
       "artifact_id": 10054529522,
       "artifact_digest": "sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd"
+    },
+    "selected_tour_skin_retirement": {
+      "security_run": 34223970798,
+      "security_conclusion": "SUCCESS",
+      "exact_run": 34223970803,
+      "exact_conclusion": "FAILURE",
+      "failure_scope": "pixel-to-pixel selected-tour geometry changed after intentional legacy skin removal; all 12 states kept equal DOM node counts and no horizontal overflow",
+      "evidence_artifact": 10054929764,
+      "evidence_digest": "sha256:71cd2ce050e3d5a444a981905ff88464241888d2023dfd44794a5c17bc495d03"
     }
   },
   "last_verified_commit": "f1a7fe122d878918157cb27f4c83165569f0638e",
@@ -7739,7 +7748,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T11:54:30Z",
+  "updated_at": "2026-09-08T12:06:30Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -8962,5 +8971,42 @@
       "manual screenshot inspection"
     ],
     "next": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners."
+  },
+  "latest_selected_tour_skin_retirement": {
+    "status": "EXPERIMENTAL_RELEASE_SECURITY_GREEN_EXACT_VISUAL_RED_NOT_PUBLISHED",
+    "source_pr": 1588,
+    "source_sha": "33395ab79eb4148c4c440edb0ea1bcb2fddd48e1",
+    "release_sha": "20df2019ea2948ef725526bc896ca290fdd154ab",
+    "last_fully_checked_release_sha": "f1a7fe122d878918157cb27f4c83165569f0638e",
+    "removed_search3_layers": [
+      "selected-tour-ux.css"
+    ],
+    "raw_before": 458693,
+    "raw_after": 447863,
+    "raw_saved": 10830,
+    "shared_css_before": 96535,
+    "shared_css_after": 82345,
+    "shared_js_before": 183740,
+    "shared_js_after": 183740,
+    "eight_assets_before": 178418,
+    "eight_assets_after": 181778,
+    "security_run": 34223970798,
+    "security_conclusion": "success",
+    "exact_run": 34223970803,
+    "exact_conclusion": "failure",
+    "exact_failure_scope": "pixel-to-pixel selected-tour geometry changed after intentional legacy skin removal; all 12 states kept equal DOM node counts and no horizontal overflow",
+    "failure_evidence_artifact": 10054929764,
+    "failure_evidence_digest": "sha256:71cd2ce050e3d5a444a981905ff88464241888d2023dfd44794a5c17bc495d03",
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "accepted_test_branch_visual_change": true,
+    "deferred": [
+      "manual inspection of changed selected-tour visuals",
+      "physical Safari/safe-area",
+      "live current-source interaction"
+    ],
+    "next": "Continue with an independent whole-layer audit (app.css/search-states-design.css); do not restore retired selected-tour pixels unless an actual functional regression is confirmed."
   }
 }

@@ -2537,3 +2537,16 @@ Implementation source `a201f645bc614bdab65ee3008ebfd152a70b78af`; checked releas
 Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; this source was not published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, physical Safari/safe-area and manual screenshot inspection remain deferred.
 
 Next: retire `selected-tour-ux.css` as one reversible Search3-only package, retaining only confirmed detail, flight, room-disclosure and lead-state contracts in current owners. Following the owner’s test-branch guidance, use one Security + exact artifact/smoke pass per substantial package and do not repeat the same CI after ready transition.
+
+
+### S3_LEAN_SELECTED_TOUR_SKIN — experimental test release, not published
+
+[#1588](https://github.com/pyatkoff/poisk-turov-test/pull/1588) removes the complete 14,190-byte `selected-tour-ux.css` layer from Search3 only. The unchanged full manifest still serves it to `/poisk-turov-old/`. Confirmed description/room disclosure, flight recovery/mobile route and lead-state rules remain in current Search3 owners; old decision summaries, repeated checkout skin and legacy lead-success/trust presentation were not copied.
+
+Loaded shared CSS + shared JS + eight public assets: **458,693 → 447,863 raw bytes (−10,830 B)**. Shared CSS: 96,535 → 82,345 B; shared JS: 183,740 B unchanged; eight public assets: 178,418 → 181,778 B (+3,360 B retained current rules).
+
+Implementation `33395ab79eb4148c4c440edb0ea1bcb2fddd48e1`; experimental release `20df2019ea2948ef725526bc896ca290fdd154ab`. Security [34223970798](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34223970798) passed. Exact artifact/browser [34223970803](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34223970803) is **red** at selected-tour pixel equality: removal changed legacy spacing/skin in all 12 detail/review/lead snapshots. It did not produce a reusable release artifact. Evidence `10054929764`, digest `sha256:71cd2ce050e3d5a444a981905ff88464241888d2023dfd44794a5c17bc495d03`, records equal DOM node counts for every state and no horizontal overflow. This is recorded as an owner-authorized visual experiment on the test release, not as green CI or a checked release. Last fully checked release remains `f1a7fe122d878918157cb27f4c83165569f0638e`.
+
+Preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Manual inspection of changed selected-tour visuals, live current-source interaction and physical Safari remain deferred.
+
+Next: continue an independent whole-layer audit of `app.css` / `search-states-design.css`. Do not restore retired selected-tour pixels unless an actual functional regression is confirmed. Keep the reduced owner-requested policy: one Security plus one build/smoke run per substantial source package, no automatic ready-transition repeat.
