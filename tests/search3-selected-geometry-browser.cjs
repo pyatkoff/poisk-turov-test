@@ -88,7 +88,9 @@ async function run(browser, width, previous) {
       window.V2TourController.selectTour(tour.id);
     },{tour,flights});
     await page.waitForSelector('#selectedTour .flight-variant');
-    await page.waitForFunction(()=>window.V2FlightEmptyRecoveryV1);
+    await page.waitForFunction(previous
+      ? ()=>window.Search3SelectedFlowV2
+      : ()=>window.V2FlightEmptyRecoveryV1);
     await page.waitForSelector('#selectedTour .search3-flight-continue button');
     await page.waitForFunction(()=>document.body.classList.contains('search3-selected-open'));
     const prefix=(previous?'baseline':'current')+'-'+width;
