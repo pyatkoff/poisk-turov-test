@@ -48,7 +48,18 @@
       "execution_resource_exhausted",
       "current_queue_complete",
       "no_independent_safe_task_available"
-    ]
+    ],
+    "active_queue_ids": [
+      "S3_PRODUCT_FORM_READABILITY",
+      "S3_PRODUCT_RESULTS_CLARITY",
+      "S3_PRODUCT_SELECTED_LEAD",
+      "S3_PRODUCT_SHARED_SITE",
+      "S3_PRODUCT_PAGES_HANDOFF",
+      "S3_PRODUCT_USEFUL_FEATURES",
+      "S3_PRODUCT_CURRENT_ACCEPTANCE",
+      "S3_PRODUCT_APPROVED_MIGRATION"
+    ],
+    "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
