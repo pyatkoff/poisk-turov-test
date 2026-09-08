@@ -78,7 +78,6 @@ async function prepare(page, mode) {
   for (const file of [
     'v2/tour-controller-v4.js',
     'v2/flight-price-sync-v1.js',
-    'v2/flight-empty-recovery-v1.js',
     'v2/search3-results-filters-v1.js',
     'v2/search3-selected-flow-v2.js'
   ]) {
@@ -147,7 +146,8 @@ async function verifyFallbackHandoff(browser) {
     fallback: document.getElementById('selectedTour').dataset.search3FlightFallback,
     continueText: document.querySelector('#selectedTour .search3-flight-continue button')?.textContent || '',
     mobileText: document.querySelector('[data-s3-selected-lead]')?.textContent || '',
-    mobileAction: document.querySelector('[data-s3-selected-lead]')?.dataset.search3SelectedFlowAction || ''
+    mobileAction: document.querySelector('[data-s3-selected-lead]')?.dataset.search3SelectedFlowAction || '',
+    legacyOwner: typeof window.V2FlightEmptyRecoveryV1
   }));
   if (
     state.flightCalls !== 1
@@ -157,6 +157,7 @@ async function verifyFallbackHandoff(browser) {
     || state.continueText !== 'Далее: итог тура'
     || state.mobileText !== 'Далее: итог тура'
     || state.mobileAction !== '1'
+    || state.legacyOwner !== 'undefined'
   ) throw new Error('initial fallback state failed: ' + JSON.stringify(state));
 
   await page.click('#selectedTour .load-flights');

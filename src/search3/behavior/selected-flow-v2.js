@@ -410,6 +410,7 @@
     if (noFlight) {
       selected.classList.add('search3-flight-fallback');
       setData(selected, 'search3FlightFallback', '1');
+      ensureEmptyFlightRecovery(flights);
       ensureReviewAction(flights);
     } else {
       clearFallback();
@@ -491,6 +492,7 @@
     version: 4,
     sync: sync,
     noFlightState: noFlightState,
+    ensureEmptyFlightRecovery: ensureEmptyFlightRecovery,
     activateReview: activateReview,
     syncDisplayedPrice: syncDisplayedPrice,
     syncFlightDisclosure: syncFlightDisclosure,

@@ -250,6 +250,19 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("sourceButton", controller)
         self.assertIn("window.V2SelectedTourReturnV1", legacy)
 
+    def test_legacy_flight_empty_runtime_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        current = (ROOT / 'src/search3/behavior/selected-flow-v2.js').read_text()
+        fallback = (ROOT / 'src/search3/behavior/selected/flight-fallback.js').read_text()
+        legacy = (ROOT / 'v2/flight-empty-recovery-v1.js').read_text()
+        self.assertIn("'flight-empty-recovery-v1.js'", scoped)
+        self.assertIn('ensureEmptyFlightRecovery(flights)', current)
+        self.assertIn('function ensureEmptyFlightRecovery(flights)', fallback)
+        self.assertIn('менеджер уточнит перелёт по заявке', fallback)
+        self.assertIn("setAttribute(retry, 'data-tid', tourId)", fallback)
+        self.assertIn('window.V2FlightEmptyRecoveryV1', legacy)
+
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
