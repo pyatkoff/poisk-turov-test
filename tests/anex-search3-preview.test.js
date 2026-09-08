@@ -113,8 +113,11 @@ class FakeElement {
   dispatchEvent(event) { (this.listeners.get(event.type) || []).forEach(listener => listener(event)); }
   matches(selector) {
     const attribute = selector.match(/\[([^\]]+)\]$/);
-    if (attribute) return this.getAttribute(attribute[1]) !== null
-      && (!selector.slice(0, attribute.index) || this.matches(selector.slice(0, attribute.index)));
+    if (attribute) {
+      const parts = attribute[1].split('=');
+      return this.getAttribute(parts[0]) !== null && (parts.length === 1 || this.getAttribute(parts[0]) === parts[1].replace(/^"|"$/g, ''))
+        && (!selector.slice(0, attribute.index) || this.matches(selector.slice(0, attribute.index)));
+    }
     if (selector.startsWith('#')) return this.id === selector.slice(1);
     if (selector.startsWith('.')) return this.classList.contains(selector.slice(1));
     return this.tagName.toLowerCase() === selector.toLowerCase();
@@ -128,7 +131,7 @@ class FakeElement {
   closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector) || null; }
 }
 
-function preview() {
+function preview(withFilters = false) {
   const listeners = new Map();
   const requests = [];
   const body = new FakeElement('body');
@@ -141,6 +144,8 @@ function preview() {
   const sort = tools.appendChild(new FakeElement('select'));
   sort.id = 'sortResults';
   sort.value = 'price';
+  const rail = withFilters ? body.appendChild(new FakeElement('aside')) : null;
+  if (rail) rail.className = 'results-filter-rail';
   const layout = body.appendChild(new FakeElement('div'));
   layout.className = 'results-layout';
   const results = layout.appendChild(new FakeElement('div'));
@@ -163,7 +168,7 @@ function preview() {
     currentScript: { src: 'https://example.test/_preview/search3-anex-candidate/v2/anex-search3-preview-v1.js?v=test' },
     createElement: tag => new FakeElement(tag),
     getElementById: id => body.querySelector('#' + id),
-    querySelector: selector => body.querySelector(selector),
+    querySelector: selector => selector === '#resultsTools strong' ? tools.querySelector('strong') : body.querySelector(selector),
     querySelectorAll: selector => body.querySelectorAll(selector),
     addEventListener() {}
   };
@@ -175,12 +180,48 @@ function preview() {
       origin: 'https://example.test'
     },
     V2SearchLifecycle: lifecycle,
+    matchMedia() { return { matches: true }; },
     addEventListener(name, listener) {
       if (!listeners.has(name)) listeners.set(name, []);
       listeners.get(name).push(listener);
     },
     dispatchEvent(event) { (listeners.get(event.type) || []).forEach(listener => listener(event)); }
   };
+  const sourceRenders = [], controls = {};
+  if (withFilters) {
+    window.V2Results = { state: { items: [] }, render(items) {
+      this.state.items = items;
+      sourceRenders.push(items);
+      results.replaceChildren(...items.map(item => {
+        const card = new FakeElement('article');
+        card.className = 'hotel-card'; card.setAttribute('data-hotel-id', String(item.id));
+        card.textContent = 'Tourvisor hotel ' + item.id;
+        return card;
+      }));
+      if (!items.length) { const empty = results.appendChild(new FakeElement('div')); empty.className = 'empty'; }
+      window.dispatchEvent({ type: 'v2:results-rendered', detail: { items } });
+    } };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../v2/ds2-results-filters.js'), 'utf8'), { window, document }, { filename: 'ds2-results-filters.js' });
+    rail.textContent = '';
+    controls.price = rail.appendChild(new FakeElement('input'));
+    controls.price.setAttribute('data-ds2-price', '');
+    Object.assign(controls.price, { min: '40000', max: '250000', value: '250000' });
+    const priceLabel = rail.appendChild(new FakeElement('small'));
+    priceLabel.setAttribute('data-ds2-price-label', '');
+    for (const [key, options] of Object.entries({ meal: ['', 'ai', 'hb'], stars: ['0', '3', '4', '5'], rating: ['0', '4', '4.5'], sea: ['0', '500'] })) {
+      const field = rail.appendChild(new FakeElement('fieldset'));
+      field.setAttribute('data-ds2-' + key + '-fieldset', '');
+      controls[key] = options.map(value => {
+        const input = field.appendChild(new FakeElement('input'));
+        input.setAttribute('data-ds2-choice', ''); input.setAttribute('name', 'ds2-' + key);
+        input.name = 'ds2-' + key; input.value = value; return input;
+      });
+    }
+    controls.reset = rail.appendChild(new FakeElement('button'));
+    controls.reset.setAttribute('data-ds2-reset', '');
+    rail.appendChild(new FakeElement('b')).setAttribute('data-ds2-filter-count', '');
+    rail.appendChild(new FakeElement('span')).setAttribute('data-ds2-filter-word', '');
+  }
   const fetch = (url, options) => new Promise(resolve => {
     requests.push({ url: String(url), options, body: JSON.parse(options.body), respond: payload => resolve({ ok: true, json: async () => payload }) });
   });
@@ -192,7 +233,7 @@ function preview() {
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } }
   }, { filename });
   return {
-    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort,
+    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort, rail, controls, sourceRenders,
     reset(generation, snapshot) {
       Object.assign(lifecycle, { generation, snapshot, dirty: false });
       window.dispatchEvent({ type: 'v2:search-reset', detail: { generation } });
@@ -208,6 +249,68 @@ const snapshot = () => ({
 const response = (generation, hotels) => ({
   ok: true,
   data: { generation, provider: 'anex', hotels, external_search_pending: false, first_page_only: true }
+});
+
+test('shared filters require meal and budget on the same ANEX tour, then reset both sources locally', async () => {
+  const page = preview(true);
+  page.reset(1, snapshot());
+  const tv = [{ id: 245, category: 4, rating: 4.2, seaDistance: 400, price: 100000,
+    tours: [{ price: 100000, meal: { name: 'AI' } }] }];
+  const original = plain(tv);
+  page.window.V2Results.render(tv);
+  const anex = hotel({ local_id: 900, rating: 4.5, tours: [
+    ['40000', 'HB'], ['80000', 'AI'], ['110000', 'UAI']
+  ].map(([amount, meal]) => ({ ...hotel().tours[0], price: { amount, currency: 'RUB' }, meal })) });
+  page.requests[0].respond(response(1, [anex]));
+  await tick();
+  assert.equal(page.controls.price.min, '40000');
+  assert.equal(page.controls.price.max, '110000');
+  assert.equal(page.rail.querySelector('[data-ds2-sea-fieldset]').hidden, true);
+  assert.equal(page.rail.querySelector('[data-ds2-rating-fieldset]').hidden, false);
+  const budget = async value => {
+    page.controls.price.value = String(value);
+    page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+    await tick();
+  };
+  await budget(60000);
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
+  assert.equal(page.results.querySelectorAll('[data-anex-search3-card]').length, 1);
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.meal.find(input => input.value === 'ai') });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 0);
+  assert.match(page.body.textContent, /По выбранным фильтрам предложений ANEX нет/);
+  await budget(90000);
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
+  assert.equal(page.rail.querySelector('[data-ds2-filter-count]').textContent, '1');
+  assert.match(page.results.textContent, /80\s*000/);
+  assert.doesNotMatch(page.results.textContent, /40\s*000|110\s*000/);
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
+  assert.equal(page.rail.querySelector('[data-ds2-filter-count]').textContent, '2');
+  assert.equal(page.requests.length, 1);
+  assert.deepEqual(tv, original);
+  assert.ok(page.sourceRenders.every(items => items.every(item => item.id === 245 && item.tours.every(tour => !tour.anex))));
+});
+
+test('late supplemental metadata keeps incomplete facets hidden and never activates outside ANEX preview', async () => {
+  const page = preview(true);
+  page.reset(1, snapshot());
+  page.window.V2Results.render([{ id: 245, category: 4, rating: 4.2, seaDistance: 400, price: 100000,
+    tours: [{ price: 100000, meal: { name: 'AI' } }] }]);
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.rating.find(input => input.value === '4.5') });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 0);
+  page.requests[0].respond(response(1, [hotel({ local_id: 900, rating: 0 })]));
+  await tick();
+  assert.equal(page.rail.querySelector('[data-ds2-rating-fieldset]').hidden, true);
+  assert.equal(page.window.DS2ResultsFilters.state.rating, 0);
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
+  const state = plain(page.window.DS2ResultsFilters.state);
+  page.window.location.pathname = '/poisk-turov/';
+  assert.equal(page.window.DS2ResultsFilters.setSupplementalItems([]), false);
+  assert.deepEqual(plain(page.window.DS2ResultsFilters.state), state);
+  assert.equal(page.requests.length, 1);
 });
 
 test('capture keeps submitted parameters and labels independent of later form edits', () => {
@@ -381,7 +484,7 @@ test('source summary precedes the layout while ANEX-only cards join the common l
   assert.equal(panel.querySelectorAll('.hotel-card').length, 0);
 });
 
-test('local result filters hide ANEX offers until cleared without a new request', async () => {
+test('missing filter implementation keeps the compatibility guard without a new request', async () => {
   const page = preview();
   page.window.DS2ResultsFilters = { state: {} };
   page.reset(1, snapshot());
@@ -391,12 +494,14 @@ test('local result filters hide ANEX offers until cleared without a new request'
   for (const [key, value] of [['stars', '5'], ['rating', '8'], ['meal', 'AI'], ['seaMax', 500]]) {
     page.window.DS2ResultsFilters.state = { [key]: value };
     rerender();
+    await tick();
     assert.equal(page.body.querySelectorAll('[data-anex-search3-row]').length, 0, key);
     assert.equal(page.body.querySelectorAll('.anex-search3-hotel').length, 0, key);
     assert.match(page.document.getElementById('anexSearch3Results').textContent, /сбросьте фильтры/);
   }
   page.window.DS2ResultsFilters.state = {};
   rerender();
+  await tick();
   assert.equal(page.body.querySelectorAll('.anex-search3-offers').length, 2);
   assert.equal(page.results.children[0], page.tvCard);
   assert.equal(page.requests.length, 1);
@@ -412,6 +517,7 @@ test('changed form parameters hide ANEX even before lifecycle becomes dirty', as
   assert.equal(page.body.querySelectorAll('.anex-search3-offers').length, 2);
   current = { ...current, childs: [5, 11] };
   page.window.dispatchEvent({ type: 'v2:results-rendered', detail: {} });
+  await tick();
   assert.equal(page.lifecycle.dirty, false);
   assert.equal(page.body.querySelectorAll('[data-anex-search3-row]').length, 0);
   assert.match(page.document.getElementById('anexSearch3Results').textContent, /Обновите поиск/);
@@ -464,11 +570,13 @@ test('one mapped card retains TV controls and groups both sources inside its dis
   assert.deepEqual(items, before, 'source results remain untouched');
   box.hidden = false;
   page.sort.dispatchEvent({ type: 'change' });
+  await tick();
   assert.equal(box.hidden, false, 'rerender preserves the original disclosure');
   assert.equal(box.querySelector('.direct-tour'), button);
   assert.equal(box.querySelectorAll('.anex-search3-offers').length, 1);
   page.window.DS2ResultsFilters = { state: { stars: 5 } };
   page.sort.dispatchEvent({ type: 'change' });
+  await tick();
   assert.equal(label.textContent, 'За весь тур');
   assert.equal(count.textContent, '2 тура');
   assert.equal(box.querySelector('.anex-search3-offers'), null);
@@ -490,6 +598,7 @@ test('combined sorting uses source minima and catalog rating, preserving open AN
   page.results.querySelector('.anex-search3-hotel').querySelector('details').open = true;
   page.sort.value = 'rating';
   page.sort.dispatchEvent({ type: 'change' });
+  await tick();
   assert.deepEqual(ids(), ['245', '900']);
   assert.equal(page.results.querySelector('.anex-search3-hotel').querySelector('details').open, true);
   assert.equal(page.requests.length, 1);
@@ -513,13 +622,16 @@ test('ANEX-only results clear the TV empty state and merge once when the TV card
   assert.equal(page.tools.querySelector('strong').textContent, 'Найдено отелей: 1');
   page.window.DS2ResultsFilters = { state: { stars: 5 } };
   page.sort.dispatchEvent({ type: 'change' });
+  await tick();
   assert.equal(empty.hidden, false);
   assert.equal(page.tools.hidden, true);
   assert.equal(page.body.classList.contains('search3-has-results'), false);
   page.window.DS2ResultsFilters.state = {};
   page.sort.dispatchEvent({ type: 'change' });
+  await tick();
   page.results.replaceChildren(page.tvCard);
   page.window.dispatchEvent({ type: 'v2:results-rendered', detail: { items: [{ id: 245, price: 2000 }] } });
+  await tick();
   assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
   assert.equal(page.results.querySelectorAll('.anex-search3-hotel').length, 0);
   assert.equal(page.tvCard.querySelectorAll('.anex-search3-offers').length, 1);

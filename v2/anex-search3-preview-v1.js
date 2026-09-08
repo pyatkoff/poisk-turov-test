@@ -40,6 +40,14 @@
     const number = Number(value);
     return Number.isFinite(number) && number > 0 ? number : Infinity;
   }
+  function filterItem(hotel) {
+    const aliases = { ALL: 'All Inclusive', UAI: 'Ultra All Inclusive' };
+    return { id: hotel.local_id, category: hotel.category, rating: hotel.rating, seaDistance: null,
+      price: Number(hotel.tours[0].price.amount), tours: hotel.tours.map(tour => ({
+        price: Number(tour.price.amount), meal: { name: aliases[String(tour.meal || '').trim().toUpperCase()] || String(tour.meal || '') },
+        anex: tour
+      })) };
+  }
   function compareCards(a, b, mode) {
     if (mode === 'rating' || mode === 'stars') {
       const key = mode === 'stars' ? 'category' : 'rating';
@@ -53,7 +61,7 @@
     }
     return priceRank(a.price) - priceRank(b.price) || String(a.id).localeCompare(String(b.id));
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, version: 1 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, version: 1 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -63,7 +71,7 @@
   if (!results || !form || !window.fetch) return;
   const panelAnchor = (typeof results.closest === 'function' && results.closest('.results-layout')) || results;
   let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', dates = '', panel = null;
-  let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null;
+  let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null, renderQueued = false;
   const replacedText = new Map(), hiddenEmpty = new Map();
   const money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
   function node(tag, className, text) {
@@ -172,11 +180,26 @@
     }
     const filter = window.DS2ResultsFilters, state = filter && filter.state;
     const range = document.querySelector('[data-ds2-price]');
-    if ((state && (state.stars || state.rating || state.meal || state.seaMax))
-      || (range && Number(range.value) < Number(range.max))) {
+    if ((!filter || typeof filter.filteredHotel !== 'function') && ((state && (state.stars || state.rating || state.meal || state.seaMax))
+      || (range && Number(range.value) < Number(range.max)))) {
       return 'Для просмотра предложений ANEX сбросьте фильтры результатов.';
     }
     return '';
+  }
+  function updateSupplemental() {
+    const filter = window.DS2ResultsFilters;
+    if (filter && typeof filter.setSupplementalItems === 'function') filter.setSupplementalItems(hotels.map(filterItem));
+  }
+  function filteredHotel(hotel) {
+    const filter = window.DS2ResultsFilters;
+    if (!filter || typeof filter.filteredHotel !== 'function') return hotel;
+    const kept = filter.filteredHotel(filterItem(hotel));
+    return kept && kept.tours.length ? Object.assign({}, hotel, { tours: kept.tours.map(tour => tour.anex) }) : null;
+  }
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    Promise.resolve().then(() => { renderQueued = false; render(); });
   }
   function render() {
     clear();
@@ -206,7 +229,7 @@
     status.setAttribute('role', 'status');
     panel.appendChild(status);
     let added = 0, merged = 0, ambiguous = 0;
-    (filterNotice ? [] : hotels).filter(validHotel).forEach(hotel => {
+    (filterNotice ? [] : hotels).filter(validHotel).map(filteredHotel).filter(Boolean).forEach(hotel => {
       const existing = cards.get(String(hotel.local_id));
       if (cards.has(String(hotel.local_id)) && !existing) { ambiguous++; return; }
       if (existing) {
@@ -234,11 +257,14 @@
       if (tools) tools.hidden = false;
       if (tools) replaceText(tools.querySelector('strong'), 'Найдено отелей: ' + ranked.length);
       replaceText(document.getElementById('resultSummary'), 'С ANEX API: ' + (added + merged));
+      replaceText(document.querySelector('[data-ds2-filter-count]'), String(ranked.length));
+      replaceText(document.querySelector('[data-ds2-filter-word]'), 'в выдаче');
       replaceText(document.getElementById('search3PriceCalendarTitle'), 'Календарь цен Tourvisor');
       status.textContent = 'Отелей с ANEX API в общей выдаче: ' + (added + merged) + (ambiguous ? '. Часть предложений ожидает уточнения связи.' : '.');
     } else {
       // Restore the original source order when ANEX is hidden by changed filters.
       tvCards.filter(card => card.parentNode === results).forEach(card => results.appendChild(card));
+      if (!filterNotice && hotels.length && !ambiguous) status.textContent = 'По выбранным фильтрам предложений ANEX нет. Измените фильтры или сбросьте их.';
     }
     panelAnchor.parentNode.insertBefore(panel, panelAnchor);
   }
@@ -256,6 +282,7 @@
     if (controller) controller.abort();
     controller = null;
     active = null; hotels = []; message = ''; dates = ''; clear(); openHotels.clear();
+    updateSupplemental();
     tvItems = []; tvCards = [];
     const existing = window.V2Results && window.V2Results.state;
     if (existing && Array.isArray(existing.items)) tvItems = existing.items.slice();
@@ -282,6 +309,7 @@
           if (!validHotel(hotel) || seen.has(hotel.local_id)) return false;
           seen.add(hotel.local_id); return true;
         });
+        updateSupplemental();
         message = hotels.length ? 'Найдено отелей: ' + hotels.length
           : payload.data.external_search_pending ? 'ANEX продолжает расчёт. Повторите поиск позже.' : 'Подходящих предложений ANEX пока нет.';
       } else message = errorMessage(null);
@@ -296,10 +324,12 @@
   window.addEventListener('v2:results-rendered', event => {
     if (event && event.detail && Array.isArray(event.detail.items)) tvItems = event.detail.items.slice();
     tvCards = Array.from(results.querySelectorAll('.hotel-card[data-hotel-id]')).filter(card => !card.getAttribute('data-anex-search3-card'));
-    render();
+    queueRender();
   });
   const sort = document.getElementById('sortResults');
-  if (sort) sort.addEventListener('change', render);
+  if (sort) sort.addEventListener('change', queueRender);
+  const rail = document.querySelector('.results-filter-rail');
+  if (rail) ['input', 'change', 'click'].forEach(event => rail.addEventListener(event, queueRender));
   document.addEventListener('click', event => {
     if (event.target && event.target.closest && event.target.closest('.tour-more-toggle')) setTimeout(render, 0);
   }, true);
