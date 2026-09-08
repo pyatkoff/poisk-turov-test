@@ -221,6 +221,33 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(legacy_contract, legacy)
             self.assertIn(current_contract, current)
 
+    def test_app_css_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/app.css').read_text()
+        current = ''.join(path.read_text() for path in (ROOT / 'src/search3/styles').rglob('*.css'))
+        self.assertIn("'app.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'app.css'", scoped)
+        for legacy_contract, current_contract in [
+            ('.search-card', '#tourSearch'),
+            ('.hotel-card', '.hotel-card'),
+            ('.skeleton-grid', '.skeleton-grid'),
+            ('.selected-tour', '#selectedTour'),
+            ('.lead-form', '.lead-form'),
+        ]:
+            self.assertIn(legacy_contract, legacy)
+            self.assertIn(current_contract, current)
+        self.assertIn('&,& *{box-sizing:border-box!important}', current)
+        for marker in (
+            '.selected-head .eyebrow{min-height:0!important;padding:0!important;display:inline-flex;align-items:center;border-radius:999px',
+            '.selected-picture img{display:block}',
+            '.flight-choice>span {display:flex;align-items:baseline;justify-content:space-between;gap:16px',
+            '.flight-choice small {color:#243f9e;font-size:14px;font-weight:900',
+            '.lead-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}',
+            '.lead-form .primary{width:100%;margin-top:3px;border:0;color:#fff}',
+        ):
+            self.assertIn(marker, current)
+
     def test_enhancements_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
