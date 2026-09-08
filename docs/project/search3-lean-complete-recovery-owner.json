@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "a0ca1af11a3feba68fbffe0285d5340940fc424f",
+  "checked_code_release_sha": "ed2b4f2c35674f7242203d4e5db8db98eec112c2",
+  "source_pr": 1531,
+  "source_sha": "db7a8789b1b267a1d03143bb2f05f8ffdbe6dcdf",
+  "retired_search3_owner": "search-complete-recovery-v1.js",
+  "retained_legacy_owner": "The unchanged file remains in the full manifest used by /poisk-turov-old/.",
+  "retained_current_behavior": [
+    "Completed-search/status-error detection in search-progress-ux-v1.js via lastProgress >= 100",
+    "Identical accessible alert title, explanatory copy and search-progress-retry-results action",
+    "Result-only retry through the current lifecycle/runtime/renderer with search generation and dirty-state protection",
+    "All normal search progress, continue-search, empty/error recovery, API, URL, price, lead and analytics behavior"
+  ],
+  "retired_behavior": [
+    "Second event subscriber and duplicate completedByStatus state",
+    "Duplicate rendering of the same result-only retry HTML",
+    "Unused V2SearchCompleteRecoveryV1 Search3 global"
+  ],
+  "payload": {
+    "before": {
+      "css": 195452,
+      "js": 226610,
+      "eight_assets": 156903,
+      "raw_total": 578965,
+      "gzip_total": 128501
+    },
+    "after": {
+      "css": 195452,
+      "js": 225026,
+      "eight_assets": 156903,
+      "raw_total": 577381,
+      "gzip_total": 128290
+    }
+  },
+  "raw_saved_bytes": 1584,
+  "gzip_saved_bytes": 211,
+  "measurement_scope": "Raw total sums route-scoped source files and eight generated Search3 public paths. Gzip total compresses exact bundle-v1.php output including separators plus eight files independently at level 9. No compensation code or generated-asset change was needed.",
+  "ci": {
+    "security_run": 34175615768,
+    "exact_runs": [
+      34175615653,
+      34175744875
+    ],
+    "artifact_id": 10037202118,
+    "artifact_digest": "sha256:463c93d6cec9c305a289f43855c60921893f0a59318ae6f20ba14d7964acfe78",
+    "selected_geometry_artifact": 10037201648,
+    "selected_geometry_digest": "sha256:09243f02614f80a3379486ee91354520dca30c74c4ba996a7652085ee5b4fa5b",
+    "results_geometry_artifact": 10037201881,
+    "results_geometry_digest": "sha256:3ca738534f477060b4d5a6629c0c98728df6dfd18dc9f2320acdb61099b67a26"
+  },
+  "browser_evidence": {
+    "selected_states": 12,
+    "selected_widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "entry_states": 30,
+    "entry_widths": [
+      375,
+      700,
+      701,
+      760,
+      761,
+      1440
+    ],
+    "result_states": 12,
+    "result_widths": [
+      375,
+      760,
+      761,
+      999,
+      1000,
+      1440
+    ],
+    "result": "Exact Chromium geometry and lifecycle passed twice after the source commit. No supplier request or lead was sent."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "Live current-source interaction",
+    "Physical Safari and safe-area",
+    "Owner visual acceptance"
+  ],
+  "next_action": "Audit the complete search-progress-ux-v1.js/.css owner against current entry/results behavior. Preserve progress, continue-search, empty/error recovery and retryResultsOnly semantics; do not retire it unless a bounded current owner passes focused lifecycle and exact browser CI with a net route saving of at least 500 raw bytes.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}

@@ -2149,3 +2149,17 @@ Loaded raw is **580581 → 578965 bytes (−1616)**: scoped shared CSS 196984→
 Exact Chromium retained 12 selected detail/review/lead states, 30 entry states and 12 result-card/drawer states. No supplier request or lead was sent. Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-sales-and-dirty-owners.json`.
 
 Next: audit `search-complete-recovery-v1.js` and `search-progress-ux-v1.js/.css` against current entry/results owners. Preserve retry, progress and empty/error recovery; retire a whole owner only when focused lifecycle plus exact browser CI pass and net route saving is at least 500 raw bytes.
+
+## S3_LEAN_COMPLETE_RECOVERY_OWNER — checked release, 2026-09-08
+
+Source PR #1531 / `db7a8789b1b267a1d03143bb2f05f8ffdbe6dcdf`; checked code release `ed2b4f2c35674f7242203d4e5db8db98eec112c2`. Search3 no longer loads the complete 1584-byte `search-complete-recovery-v1.js` runtime. The full legacy route retains the file unchanged.
+
+`search-progress-ux-v1.js` already owns completed-search/status-error detection, renders the same accessible alert/copy/button and performs the actual result-only retry with search ID, generation and dirty-state protection. No compensation code was needed. The duplicate event subscriptions, state and unused Search3 global are retired.
+
+Loaded raw is **578965 → 577381 bytes (−1584)**: scoped shared JavaScript 226610→225026; shared CSS and the eight Search3 assets remain 195452 and 156903. Exact emitted endpoints plus eight independent files gzip is **128501 → 128290 (−211)**. The current invocation total is **594063 → 577381 raw (−16682)** and **131441 → 128290 gzip (−3151)**.
+
+Security `34175615768` and exact artifacts `34175615653` / `34175744875` passed. Reusable artifact `10037202118`, digest `sha256:463c93d6cec9c305a289f43855c60921893f0a59318ae6f20ba14d7964acfe78`; selected/results evidence `10037201648` / `10037201881`. Exact Chromium retained 12 selected, 30 entry and 12 result states. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-complete-recovery-owner.json`.
+
+Next: audit the complete `search-progress-ux-v1.js/.css` owner against current entry/results behavior. Preserve progress, continue-search, empty/error recovery and `retryResultsOnly` semantics; retire it only after focused lifecycle and exact browser CI with at least 500 raw bytes net saving.
