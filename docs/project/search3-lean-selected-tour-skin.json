@@ -1,0 +1,71 @@
+{
+  "id": "S3_LEAN_SELECTED_TOUR_SKIN",
+  "status": "EXPERIMENTAL_RELEASE_SECURITY_GREEN_EXACT_VISUAL_RED_NOT_PUBLISHED",
+  "implementationSourceSha": "33395ab79eb4148c4c440edb0ea1bcb2fddd48e1",
+  "experimentalReleaseSha": "20df2019ea2948ef725526bc896ca290fdd154ab",
+  "lastFullyCheckedReleaseSha": "f1a7fe122d878918157cb27f4c83165569f0638e",
+  "sourcePr": 1588,
+  "scope": "Search3 only; full legacy manifest and /poisk-turov-old/ unchanged",
+  "removedLayers": [
+    {
+      "path": "v2/selected-tour-ux.css",
+      "rawBytes": 14190
+    }
+  ],
+  "bytes": {
+    "loadedRaw": {
+      "before": 458693,
+      "after": 447863,
+      "saved": 10830
+    },
+    "sharedCss": {
+      "before": 96535,
+      "after": 82345
+    },
+    "sharedJs": {
+      "before": 183740,
+      "after": 183740
+    },
+    "eightPublicAssets": {
+      "before": 178418,
+      "after": 181778
+    }
+  },
+  "retainedCurrentOwners": [
+    "description disclosure",
+    "room disclosure",
+    "flight recovery/mobile route",
+    "lead form/message state"
+  ],
+  "ci": {
+    "security": {
+      "run": 34223970798,
+      "conclusion": "success"
+    },
+    "exactArtifact": {
+      "run": 34223970803,
+      "conclusion": "failure",
+      "reusableArtifact": false,
+      "reason": "pixel-to-pixel selected-tour geometry changed after intentional legacy skin removal; all 12 states kept equal DOM node counts and no horizontal overflow"
+    },
+    "failureEvidence": {
+      "artifactId": 10054929764,
+      "digest": "sha256:71cd2ce050e3d5a444a981905ff88464241888d2023dfd44794a5c17bc495d03",
+      "states": 12,
+      "equalNodeCounts": true,
+      "horizontalOverflow": false
+    }
+  },
+  "publication": {
+    "published": false,
+    "publishedPreviewSource": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "mainObserved": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "productionChanged": false
+  },
+  "deferred": [
+    "manual inspection of changed selected-tour visuals",
+    "physical Safari/safe-area",
+    "live current-source interaction"
+  ],
+  "next": "Continue with an independent whole-layer audit (app.css/search-states-design.css); do not restore retired selected-tour pixels unless an actual functional regression is confirmed."
+}
