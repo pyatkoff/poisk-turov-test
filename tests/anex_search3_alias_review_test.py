@@ -105,6 +105,12 @@ class AliasReviewTests(unittest.TestCase):
             self.assertEqual(review.run(directory)['new_catalog_reads'], 0)
             ssh.assert_not_called()
 
+    def test_finalize_without_prepare_is_a_safe_noop(self):
+        with tempfile.TemporaryDirectory() as temp:
+            self.assertEqual(review.finalize(Path(temp)), {
+                'status': 'not_prepared', 'checked_ids': 0,
+                'supplier_requests': 0, 'new_catalog_reads': 0})
+
 
 if __name__ == '__main__':
     unittest.main()

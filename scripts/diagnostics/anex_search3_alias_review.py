@@ -17,7 +17,7 @@ import anex_search3_owner_decisions as owner
 CHECKPOINT = 'anex-alias-review-checkpoint.json'
 REPORT = 'anex-alias-review-report.json'
 PRIORITY = Path('docs/integrations/reports/anex-observed-evidence-recovery-20260908.json')
-PRIORITY_SHA = 'f62617fd453de990bca805cc7c181d9a96942f5154992b37d7134baa58ab12d1'
+PRIORITY_SHA = '66326b875624d83cf76b13db865ce39db3c52f1279d2de8c5ceca1c3713c4780'
 BOOTSTRAP_ARTIFACT = 10079280403
 MAX_IDS = 12
 FINAL_STATES = {'completed', 'interrupted_result_unknown', 'not_started'}
@@ -297,6 +297,9 @@ def run(directory):
 
 def finalize(directory):
     directory = Path(directory)
+    if not (directory / CHECKPOINT).exists():
+        return {'status': 'not_prepared', 'checked_ids': 0, 'supplier_requests': 0,
+                'new_catalog_reads': 0}
     cp, _ = load(directory)
     for batch in cp['batches']:
         if batch['state'] == 'reserved':
