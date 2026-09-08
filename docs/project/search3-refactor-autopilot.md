@@ -2465,3 +2465,46 @@ Retire only a proven whole layer or bounded family; preserve active entry, resul
 selected-tour, price, URL/payload, Tourvisor/API, lead, analytics, logo and browser
 contracts.
 
+### S3_LEAN_SELECTED_CONVERGENCE_LAYER — CHECKED RELEASE, NOT PUBLISHED, NOT PRODUCTION (2026-09-08)
+
+Source PR #1575 / `b86a5eeb7396134b08b2eb2ced2eddd717a0f882`; checked release
+`13df507f22e6e56c8320b944cb3c531ad8a796b9`. Search3 no longer loads the complete
+10,798-byte `ds2-selected-tour-convergence-v1.css` layer. The full old-search
+manifest retains the unchanged file.
+
+The first exact run correctly exposed the donor's remaining live presentation slice.
+Current Search3 owners now explicitly preserve selected shell sizing and box sizing,
+price-label tracking, facts and disclosure heights, section typography, flight-choice
+grid placement, route radius and mobile lead-input radius. The final desktop mismatch
+was the inherited `.045em` price-label tracking: without it the auto price column
+grew 12.6px. No business logic moved.
+
+Loaded raw is **481880 → 472663 bytes (−9217 net)**: scoped shared CSS
+**124631 → 113833**, shared JavaScript remains **183740**, and the eight generated
+public assets are **173509 → 175090** (+1581 retained current-owner CSS).
+Carried same-method endpoint plus eight-file gzip is **109432 → 107843 (−1589)**.
+
+Security `34215439259`, exact source run `34215439223` and ready repeat
+`34215627824` passed. Reusable artifact `10051687021`, digest
+`sha256:6b813f3bc74c55ec3e9a4ff3acfab85edd1560b4f697a0400f09bc4dd7be6f65`.
+Results/entry evidence `10051686606`, digest
+`sha256:178b841171f92931285942b5968c722a71e5690edf4b7bab8f02b43a105ca351`;
+selected evidence `10051686211`, digest
+`sha256:9c16de58147951a5a0a4291bc22b1aca3aded16df1a722d0aea49896a87812ef`.
+
+Exact source/PHP/path/presentation/isolation guards passed. Chromium retained all
+12 selected detail/review/lead states at 375/760/1000/1440 and the guarded
+results/entry states, with no external API or lead request. Eight public paths,
+price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping,
+Metrika/analytics/goals, logo and native-browser/nesting contracts are preserved.
+
+Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; this source was not
+published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not
+changed. Live current-source visuals, representative manual screenshot inspection,
+physical Safari/safe-area and owner acceptance remain deferred. Audit:
+`docs/project/search3-lean-selected-convergence-layer.json`.
+
+Next: retire the complete `selected-tour-layout-guard-v1.css` and audit
+`br3-control-consistency-v1.css` in one substantial reversible package. Preserve
+current progress/error controls, focus/touch targets, selected return/description
+geometry, and keep both legacy files unchanged on the old route.
