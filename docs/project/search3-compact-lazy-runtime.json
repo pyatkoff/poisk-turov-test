@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "task": "Search3 token-preserving core compaction and on-demand selected runtime",
+  "date": "2026-09-08",
+  "status": "LOCAL_BUILT_AWAITING_SOURCE_CI",
+  "baseline_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
+  "source_sha": null,
+  "release_sha": null,
+  "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "assets": {
+    "search3-results-filters-v1.js": {
+      "before": 16656,
+      "after": 18206
+    },
+    "search3-results-filters-v1.css": {
+      "before": 8420,
+      "after": 8420
+    },
+    "search3-entry-v1.css": {
+      "before": 2688,
+      "after": 2688
+    },
+    "search3-entry-v1.js": {
+      "before": 0,
+      "after": 0
+    },
+    "search3-results-cards-v2.css": {
+      "before": 1,
+      "after": 1
+    },
+    "search3-results-cards-v2.js": {
+      "before": 0,
+      "after": 0
+    },
+    "search3-selected-flow-v2.css": {
+      "before": 1,
+      "after": 1
+    },
+    "search3-selected-flow-v2.js": {
+      "before": 5589,
+      "after": 5589
+    }
+  },
+  "eight_assets_raw": {
+    "before": 33355,
+    "after": 34905,
+    "saved": -1550
+  },
+  "shared_file_payload_raw": {
+    "before": 106735,
+    "after": 101720,
+    "saved": 5015
+  },
+  "complete_route_file_payload_raw": {
+    "before": 140090,
+    "after": 136625,
+    "saved": 3465
+  },
+  "initial_route_file_payload_raw": {
+    "before": 140090,
+    "after": 110906,
+    "saved": 29184
+  },
+  "deferred_file_payload_raw": 25719,
+  "http_bundle_boundaries_raw": {
+    "all": 727,
+    "initial": 590,
+    "selected": 137
+  },
+  "deferred_owners": [
+    "tour-controller-v4.js",
+    "flight-price-sync-v1.js",
+    "unpriced-flight-price-reset-v1.js"
+  ],
+  "compaction_method": "Scope-aware local binding plan applied to original source tokens; exact AST compared with only planned identifier substitutions. Original operators, literals, empty statements and numeric quoted keys are preserved. Existing exact-print guard remains unchanged.",
+  "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager.",
+  "local_checks": [
+    "8-asset final build once",
+    "generated shared map once",
+    "syntax and compaction semantic fixtures"
+  ],
+  "ci": {},
+  "published": false,
+  "production_modified": false,
+  "main_modified": false,
+  "visual_checks": [],
+  "deferred": [
+    "CI/browser validation pending",
+    "physical Safari",
+    "live current-source preview",
+    "manual screenshot inspection",
+    "owner visual acceptance",
+    "full SEO/site/responsive/lead journey"
+  ],
+  "next_action": "Run mandatory Security and exact artifact with focused lazy initial/retry/reset/first-click checks; merge release only after success. Then record exact source/artifact and checkpoint."
+}

@@ -50,11 +50,11 @@ function v2_bundle_scope(?string $scope = null): string
     return $scope;
 }
 
-function v2_bundle_content_version(string $type, ?string $scope = null): string
+function v2_bundle_content_version(string $type, ?string $scope = null, string $phase = 'all'): string
 {
     $scope = v2_bundle_scope($scope);
     try {
-        $files = v2_bundle_files($type, $scope);
+        $files = v2_bundle_phase_files($type, $scope, $phase);
     } catch (InvalidArgumentException $error) {
         return '0';
     }
@@ -69,12 +69,13 @@ function v2_bundle_content_version(string $type, ?string $scope = null): string
     return substr(hash_final($ctx), 0, 16);
 }
 
-function v2_bundle_asset(string $type, ?string $scope = null): string
+function v2_bundle_asset(string $type, ?string $scope = null, string $phase = 'all'): string
 {
     $scope = v2_bundle_scope($scope);
-    $files = v2_bundle_files($type, $scope);
-    $url = v2_public_path('bundle-v1.php') . '?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type, $scope));
+    $files = v2_bundle_phase_files($type, $scope, $phase);
+    $url = v2_public_path('bundle-v1.php') . '?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type, $scope, $phase));
     if ($scope !== 'full') $url .= '&scope=' . rawurlencode($scope);
+    if ($phase !== 'all') $url .= '&phase=' . rawurlencode($phase);
     // Keep source-closure names visible to legacy production verification without creating requests.
     if ($type === 'js') $url .= '#' . implode(',', array_map('rawurlencode', $files));
     return $url;

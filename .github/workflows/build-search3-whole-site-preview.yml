@@ -16,6 +16,7 @@ on:
       - 'tests/search3_production_presentation_test.py'
       - 'tests/search3_site_preview_isolation_test.py'
       - 'tests/search3-selected-geometry-browser.cjs'
+      - 'tests/search3-lazy-selected-browser.cjs'
       - 'tests/search3-lean-entry-browser.cjs'
       - 'tests/search3-header-geometry-browser.cjs'
       - 'tests/search3-entry-owner-browser.cjs'
@@ -263,7 +264,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/behavior/selected-runtime.js tests/search3-lazy-selected-browser.cjs src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -367,6 +368,7 @@ jobs:
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
           node tests/search3-selected-geometry-browser.cjs
+          node tests/search3-lazy-selected-browser.cjs
           node tests/search3-lean-entry-browser.cjs
           node tests/search3-flight-fallback-browser.cjs
 
