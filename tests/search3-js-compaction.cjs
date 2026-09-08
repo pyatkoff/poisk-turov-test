@@ -2,6 +2,9 @@
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const { compact, compactBindings, print, parsed } = require('../scripts/build/search3-js/compact.cjs');
+const { normalizeSharedSource, normalizationRules } = require('../scripts/build/search3-js/shared-source-normalization.cjs');
+const fs = require('node:fs');
+const path = require('node:path');
 
 (async () => {
   const cases = [
@@ -73,5 +76,14 @@ output("/* literal source explanation */");
     'dropping even an empty statement fails closed');
   await assert.rejects(compact('output(`line\n${2 + 3}`)'), /changed syntax/,
     'rewriting template raw text fails closed even for an untagged template');
+  for (const name of Object.keys(normalizationRules)) {
+    const original = fs.readFileSync(path.join(__dirname, '..', 'v2', name), 'utf8');
+    const normalized = normalizeSharedSource(name, original);
+    assert.notEqual(normalized, original, `${name} must use its one reviewed normalization`);
+    assert.ok(Buffer.byteLength(await compactBindings(normalized)) < Buffer.byteLength(original),
+      `${name} normalization must unlock a smaller binding-only representation`);
+    assert.throws(() => normalizeSharedSource(name, original + '\n'), /source changed/,
+      `${name} normalization must fail closed on canonical source drift`);
+  }
   console.log('PASS: checked printing and optimization preserve execution, closures, eval, public keys, names, arity and getter side effects');
 })().catch(error => { console.error(error); process.exitCode = 1; });

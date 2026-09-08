@@ -26,20 +26,22 @@ async function run(browser, width) {
     assert.equal(await adults.inputValue(), '3', 'URL adult value stays on original control');
     assert.equal(await children.inputValue(), '1', 'URL child count survives native presentation');
     assert.equal(await page.locator('#childAges select').inputValue(), '8', 'URL child age survives');
-    for (const selector of ['input[type=date]', 'select.search3-direct-control', '.search-submit']) {
+    for (const selector of ['input[type=date]', 'input[name=daysFrom]', 'input[name=daysTill]', 'select[name=count_people]', 'select[name=child_count]', '.search-submit']) {
       for (const control of await page.locator('#tourSearch ' + selector).all()) {
         assert.equal(await control.isVisible(), true, selector + ' remains directly visible');
         assert.ok((await control.boundingBox()).height >= 44, selector + ' native target >=44px');
       }
     }
-    assert.equal(await page.locator('.search3-tourists__pop,.search3-tourists__summary,.search3-mobile-search-filter-button,.search3-price-calendar').count(), 0);
+    assert.equal(await page.locator('.search3-composite,.search3-direct-control,.search3-primary-grid,.search3-quality,.search3-quick,.search3-tourists__pop,.search3-tourists__summary,.search3-mobile-search-filter-button,.search3-price-calendar').count(), 0,
+      'retired entry projection is absent');
+    assert.equal(await page.locator('#tourSearch > details.extras').count(), 1, 'canonical advanced filters remain');
     await adults.selectOption('4');
     await children.selectOption('2');
     await page.waitForFunction(() => document.querySelectorAll('#childAges select').length === 2);
     await page.locator('#childAges select').nth(0).selectOption('8');
     await page.locator('#childAges select').nth(1).selectOption('6');
-    await page.locator('select[data-search3-night=daysFrom]').selectOption('8');
-    await page.locator('select[data-search3-night=daysTill]').selectOption('9');
+    await page.locator('input[name=daysFrom]').fill('8');
+    await page.locator('input[name=daysTill]').fill('9');
     const payload = await page.evaluate(() => {
       const data = new FormData(document.getElementById('tourSearch'));
       return { adults: data.get('count_people'), children: data.get('child_count'), ages: data.getAll('child_age[]'), from: data.get('daysFrom'), till: data.get('daysTill') };
