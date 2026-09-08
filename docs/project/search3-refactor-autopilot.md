@@ -2576,3 +2576,19 @@ Exact Chromium retained selected detail/review/lead at 375/760/1000/1440, entry 
 Preview was not published and remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, manual screenshot inspection, physical Safari/safe-area and owner acceptance remain deferred. Audit: `docs/project/search3-lean-app-layer.json`.
 
 Next: re-audit the complete `search-states-design.css` layer after `app.css` retirement. Its previous fallback assumptions are obsolete; preserve explicit current status, skeleton and empty-state ownership and proceed only with a positive final loaded-byte result.
+
+### S3_LEAN_APP_STATE_MOBILE_LAYERS — checked release, not published (2026-09-08)
+
+Three consecutive Search3-only packages retired complete legacy presentation layers while preserving every file in the full manifest for `/poisk-turov-old/`:
+
+- [#1591](https://github.com/pyatkoff/poisk-turov-test/pull/1591), source `7fe04821c961c48243a69d6edee0e345bcc43d8a`, release `de49b39989891945b8e47434e72d5e79d9f4080b`: removed 12,911-byte `app.css`; 2,661 bytes of active base/entry/result/selected primitives moved to current Search3 owners, net **448,524 → 438,274 raw (−10,250 B)** and same-method gzip **100,143 → 98,083 (−2,060 B)**.
+- [#1592](https://github.com/pyatkoff/poisk-turov-test/pull/1592), source `1607948872372a5d1426076ccd1158846258be68`, release `49f898823d30b6f3e60cb682e9d474767a03f812`: removed complete 2,199-byte `search-states-design.css` with no compensation; skeleton, empty and tour-loading structure remains in current `search-progress.css`.
+- [#1594](https://github.com/pyatkoff/poisk-turov-test/pull/1594), source `220667185984d1e3c05ede301fa222038b0637b4`, checked release `58b5cf9dc1c13388c6ebc9706cbdc2a293f7bbfc`: removed complete 4,247-byte `mobile-results-filters-v1.css` with no compensation. `mobile-results-filters-v1.js` remains loaded and the current Search3 toolbar owner already supplies the bar, drawer, option and action presentation.
+
+Combined loaded shared CSS + shared JS + eight generated public assets are **448,524 → 431,828 raw bytes (−16,696 B)**. Shared CSS is **82,345 → 62,988 B**, shared JS remains **183,740 B**, and the eight generated assets are **182,439 → 185,100 B** after the retained current-owner primitives from #1591. All eight public paths are unchanged.
+
+Required Security runs `34230516546`, `34231461485`, `34231823029` and exact artifact runs `34230516579`, `34231461481`, `34231823219` passed. Final reusable artifact `10058165680`, digest `sha256:feee4efdd6bdef701221c28a0d72f35e0ecacca08f7ff5005d0da8c3888dedf3`; selected evidence `10058163708`, digest `sha256:84b34d9689a3b14c14a527ad2031eb2c5827a59f039665075fbd0515c277870c`; results/entry evidence `10058164665`, digest `sha256:d8f80b8afdc76c6ef1c5276409f1ec8eb1d7e7663190482d30d264e6a0d93ee9`. Final exact source/PHP/path/presentation/isolation guards and Chromium 12 selected detail/review/lead, 30 entry and 12 result/drawer states passed without external API or lead requests.
+
+Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; none of these sources was published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, manual screenshot inspection, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-app-state-mobile-layers.json`.
+
+Next: retire `current-price-calendar-v1.css` from Search3 after moving only its active day-grid/button primitives into `entry-calendar.css`. Preserve `current-price-calendar-v1.js`, all price arithmetic, the eight public paths and the complete old-route layer.
