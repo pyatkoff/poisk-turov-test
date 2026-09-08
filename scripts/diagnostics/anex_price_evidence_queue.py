@@ -27,6 +27,24 @@ def load_object(path):
     return value
 
 
+def completed_ids(checkpoint):
+    if checkpoint is None:
+        return set()
+    if (not isinstance(checkpoint, dict) or checkpoint.get("schema_version") != 1
+            or checkpoint.get("mode") != "price_evidence_checkpoint"
+            or checkpoint.get("decision_policy") != "diagnostic_only"
+            or not isinstance(checkpoint.get("rows"), list)):
+        raise ValueError("invalid price evidence checkpoint")
+    result = set()
+    for row in checkpoint["rows"]:
+        identifier = row.get("external_id") if isinstance(row, dict) else None
+        if (type(identifier) is not int or not 1 <= identifier <= 999_999_999
+                or identifier in result):
+            raise ValueError("invalid price evidence checkpoint row")
+        result.add(identifier)
+    return result
+
+
 def bounded_text(value, limit=200):
     if not isinstance(value, str):
         return ""
@@ -34,9 +52,12 @@ def bounded_text(value, limit=200):
     return value[:limit]
 
 
-def build_queue(catalog, geo, batch_size=30, generated_at=None):
+def build_queue(catalog, geo, batch_size=30, generated_at=None, completed=None):
     if not 1 <= batch_size <= 30:
         raise ValueError("batch size must be between 1 and 30")
+    completed = set() if completed is None else set(completed)
+    if any(type(value) is not int or not 1 <= value <= 999_999_999 for value in completed):
+        raise ValueError("invalid completed ids")
     matches = catalog.get("matches")
     rows = geo.get("rows")
     if not isinstance(matches, list) or not isinstance(rows, list):
@@ -48,11 +69,15 @@ def build_queue(catalog, geo, batch_size=30, generated_at=None):
     eligible = []
     excluded = {}
     seen = set()
+    already_checked = 0
     for row in rows:
         if not isinstance(row, dict) or row.get("status") != "review":
             continue
-        reason = row.get("reason", "")
         external_id = row.get("external_id")
+        if type(external_id) is int and external_id in completed:
+            already_checked += 1
+            continue
+        reason = row.get("reason", "")
         api = row.get("api")
         relation = row.get("api_xml_relation")
         candidates = row.get("candidates")
@@ -125,6 +150,7 @@ def build_queue(catalog, geo, batch_size=30, generated_at=None):
         "decision_policy": "diagnostic_only",
         "counts": {
             "eligible": len(eligible),
+            "already_checked": already_checked,
             "excluded": sum(excluded.values()),
             "batches": len(batches),
             "queued_ids": sum(len(batch["hotel_ids"]) for batch in batches),
@@ -139,15 +165,20 @@ def main():
     parser.add_argument("--catalog", required=True)
     parser.add_argument("--geo", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--checkpoint")
     parser.add_argument("--batch-size", type=int, default=30)
     args = parser.parse_args()
     catalog = load_object(args.catalog)
     geo = load_object(args.geo)
-    result = build_queue(catalog, geo, args.batch_size)
+    checkpoint = (load_object(args.checkpoint)
+                  if args.checkpoint and Path(args.checkpoint).exists() else None)
+    result = build_queue(catalog, geo, args.batch_size, completed=completed_ids(checkpoint))
     result["sources"] = {
         "catalog_sha256": digest(args.catalog),
         "geo_sha256": digest(args.geo),
     }
+    if args.checkpoint and Path(args.checkpoint).exists():
+        result["sources"]["checkpoint_sha256"] = digest(args.checkpoint)
     target = Path(args.output)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
