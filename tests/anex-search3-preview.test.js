@@ -779,6 +779,7 @@ test('source filter selects loaded hotels, preserves shared offers, and combines
   await tick();
   assert.deepEqual(visible(), []);
   assert.match(page.document.getElementById('anexSearch3Results').textContent, /Для выбранного источника отелей нет/);
+  assert.doesNotMatch(page.document.getElementById('anexSearch3Results').textContent, /Найдено отелей:/);
   await choose('anex');
   assert.deepEqual(visible(), ['245', '900']);
   await choose('tourvisor');

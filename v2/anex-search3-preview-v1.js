@@ -354,7 +354,7 @@
       replaceText(document.querySelector('#resultsTools strong'), 'Найдено отелей: ' + visible);
       replaceText(document.querySelector('[data-ds2-filter-count]'), String(visible));
       replaceText(document.querySelector('[data-ds2-filter-word]'), 'в выдаче');
-      const notice = filterNotice || (!(added || merged) ? message : '');
+      const notice = filterNotice || (!hotels.length ? message : '');
       status.textContent = visible ? 'Показано отелей: ' + visible + ' из ' + ranked.length + '.'
         : 'Для выбранного источника отелей нет. Выберите «Все отели» или измените фильтры.';
       if (notice) status.textContent += ' ' + notice;
