@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "source_pr": 1619,
+  "source_sha": "efd0368b99f91533cb5538d433244a71fb303c25",
+  "release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
+  "base_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
+  "eight_assets": { "before_raw_bytes": 33355, "after_raw_bytes": 23506, "saved_raw_bytes": 9849 },
+  "shared_js": { "before_raw_bytes": 106735, "after_raw_bytes": 101537, "saved_raw_bytes": 5198 },
+  "loaded_route": { "before_raw_bytes": 140090, "after_raw_bytes": 125043, "saved_raw_bytes": 15047 },
+  "removed": [
+    "whole client entry-control projection for primary and secondary form controls",
+    "custom composite field, quick-control and quality-control entry presentation",
+    "avoidable formatting from Search3-only representations of tour-controller-v4.js and catalogs-v2.js"
+  ],
+  "retained": [
+    "canonical server-rendered form and all field names",
+    "catalog meals and child-age ownership, URL hydration and FormData payload",
+    "Tourvisor/API, price arithmetic, lead transport/mapping, analytics/goals and logo",
+    "exact canonical protected sources and complete legacy route",
+    "all eight public paths plus 44px and Safari-safe native control rules"
+  ],
+  "required_ci": {
+    "security": { "run": 34265965821, "status": "success" },
+    "exact_artifact": {
+      "run": 34265965943,
+      "status": "success",
+      "artifact_id": 10071852547,
+      "artifact_digest": "sha256:5553468af7d54aa90ea04b50a8187e2af009d14bec27f0fdd8c8f453de59aa94"
+    }
+  },
+  "browser": {
+    "native_entry": { "widths": [375, 1440], "artifact_id": 10071851661, "digest": "sha256:837d9d430c2fbf81d7a50446ec83e80cb912f1e5fa7829f481211848f174d12a" },
+    "results": { "states": 12, "widths": [375, 760, 761, 999, 1000, 1440], "raw_served_parity": true, "artifact_id": 10071852147, "digest": "sha256:10d6c05a7a5a641ac81c6fffb6fdda82a37c7a75e56c76284739cdc872e30ca2" },
+    "external_calls": 0,
+    "lead_sent": 0,
+    "manual_screenshot_inspection": false
+  },
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": ["owner visual acceptance", "manual screenshot inspection", "physical Safari/safe-area", "live current-source preview", "full lead/responsive/site/SEO journey"],
+  "rollback": "Revert merge commit fa9917bf35b88f548bbea44baf26785dc5a1aa93.",
+  "next_step": "Assess a coarse booking-summary/format/summary-CTA retirement. Retain TourController lead form, pending/confirmed price, review/back/lead transitions and original tour/flight facts."
+}

@@ -1,5 +1,45 @@
 # Search3 technical refactor autopilot
 
+## Current resume point — native entry and shared-owner compaction #1619 — 2026-09-08
+
+Exact source `efd0368b99f91533cb5538d433244a71fb303c25`, checked release
+`fa9917bf35b88f548bbea44baf26785dc5a1aa93`; base was
+`e4fae092af9fa9d1607cdc141b52cc270ab00ca2`. Eight public assets are
+**33355 → 23506 raw B (−9849)**. Search3 shared JavaScript is
+**106735 → 101537 B (−5198)**, so complete loaded CSS/JS is
+**140090 → 125043 B (−15047)**.
+
+The entire client entry-control projection is retired. Canonical server markup,
+catalogs and lifecycle now directly own the visible form, meal loading, child
+ages, URL hydration and `FormData`. Only the compatibility ready marker and compact
+44px/Safari-safe native control rules remain. Exact SHA-locked build normalization
+serves compact Search3-only representations of `tour-controller-v4.js` and
+`catalogs-v2.js`; their canonical protected sources and the complete legacy route
+remain byte-identical.
+
+Security `34265965821` and exact artifact `34265965943` passed on the first head.
+Reuse artifact `10071852547`, digest
+`sha256:5553468af7d54aa90ea04b50a8187e2af009d14bec27f0fdd8c8f453de59aa94`.
+Actual isolated Chromium checked native entry at 375/1440 and 12 current results
+states at 375/760/761/999/1000/1440 with raw/served parity, external calls0 and
+leads0. Entry evidence `10071851661`, digest
+`sha256:837d9d430c2fbf81d7a50446ec83e80cb912f1e5fa7829f481211848f174d12a`;
+results evidence `10071852147`, digest
+`sha256:10d6c05a7a5a641ac81c6fffb6fdda82a37c7a75e56c76284739cdc872e30ca2`.
+Manual screenshot inspection was not performed.
+
+**Checked release is not published preview.** Preview remains
+`c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production unchanged. Owner visual
+acceptance, physical Safari/safe-area, live current-source preview and the full
+lead/responsive/site/SEO journey remain deferred. Revert merge `fa9917bf` for
+rollback. Audit: `docs/project/search3-native-entry-shared-compaction.json`.
+
+Next: assess one coarse retirement of booking-summary/booking-format/summary-CTA
+presentation. Retain TourController lead form, pending/confirmed price,
+review/back/lead transitions and original tour/flight facts; do not make a
+standalone micro-trim.
+
 ## Current resume point — booking/accessibility/rail reset #1614 — 2026-09-08
 
 Exact source `70cc8105a6920472fafccabc172158ed15f48bca`, checked release

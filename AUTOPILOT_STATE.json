@@ -1,4 +1,36 @@
 {
+  "latest_native_entry_shared_compaction": {
+    "source_pr": 1619,
+    "source_sha": "efd0368b99f91533cb5538d433244a71fb303c25",
+    "release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
+    "base_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
+    "eight_assets": { "before_bytes": 33355, "after_bytes": 23506, "removed_bytes": 9849 },
+    "shared_js": { "before_bytes": 106735, "after_bytes": 101537, "removed_bytes": 5198 },
+    "loaded_route": { "before_bytes": 140090, "after_bytes": 125043, "removed_bytes": 15047 },
+    "ci": {
+      "security_run": 34265965821,
+      "artifact_run": 34265965943,
+      "conclusion": "success",
+      "artifact_id": 10071852547,
+      "artifact_digest": "sha256:5553468af7d54aa90ea04b50a8187e2af009d14bec27f0fdd8c8f453de59aa94",
+      "entry_evidence_id": 10071851661,
+      "entry_evidence_digest": "sha256:837d9d430c2fbf81d7a50446ec83e80cb912f1e5fa7829f481211848f174d12a",
+      "results_evidence_id": 10071852147,
+      "results_evidence_digest": "sha256:10d6c05a7a5a641ac81c6fffb6fdda82a37c7a75e56c76284739cdc872e30ca2",
+      "preview_published": false
+    },
+    "browser": {
+      "entry_widths": [375, 1440],
+      "results_states": 12,
+      "results_widths": [375, 760, 761, 999, 1000, 1440],
+      "raw_served_parity": true,
+      "external_calls": 0,
+      "lead_sent": 0,
+      "manual_screenshot_inspection": false
+    },
+    "deferred": ["owner visual acceptance", "manual screenshot inspection", "physical Safari/safe-area", "live current-source preview", "full lead/responsive/site/SEO journey"],
+    "next_action": "Assess one coarse retirement of booking-summary/booking-format/summary-CTA presentation while retaining TourController lead form, pending/confirmed price, review/back/lead transitions and original facts. Do not make a micro trim."
+  },
   "latest_booking_accessibility_rail_reset": {
     "source_pr": 1614,
     "source_sha": "70cc8105a6920472fafccabc172158ed15f48bca",
@@ -198,9 +230,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1614 retired booking/services/layout/lead-note, accessibility and dead rail owners: eight42074→33355 (−8719B), loaded151428→140090 (−11338B). Final Security/exact/navigation green; not published.",
+    "last_material_progress": "PR #1619 retired the whole entry control projection and compacted two protected shared owners without changing canonical sources: eight33355→23506 (−9849B), loaded140090→125043 (−15047B). Security/exact green; not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "No whole optional shared-JS owner at least2KB remains after #1614. Design a new coarse architecture boundary without trimming protected runtime/results/API/Tourvisor/lead/price/catalog/URL/lifecycle/analytics owners; do not make a micro-PR.",
+    "next_action": "Assess one coarse booking-summary/format/summary-CTA retirement while retaining protected TourController lead, price, review/back/lead and fact contracts; do not make a micro-PR.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
