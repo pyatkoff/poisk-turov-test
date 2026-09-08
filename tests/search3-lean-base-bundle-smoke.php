@@ -17,11 +17,12 @@ foreach (['header-current-site.js', 'selected-tour-return-v1.js', 'flight-empty-
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
 if (count($fullJs) !== count($search3Js) + 19) lean_bundle_fail('unexpected JavaScript scope delta');
-if (array_values(array_diff($fullCss, $search3Css)) !== ['enhancements.css', 'design-v1.css', 'hotel-details-design.css', 'tour-design-v1.css', 'results-experience-v1.css', 'sales-leader-ui-v1.css', 'conversion-confidence-v1.css', 'checkout-experience-v1.css', 'header-current-site.css', 'primary-meal-ux-v1.css', 'search-progress-ux-v1.css', 'search-dirty-ux-v1.css', 'mobile-search-summary-v1.css', 'search-params-filter-rail-v1.css', 'search-shell-grid-v1.css', 'results-layout-guard-v1.css', 'search-header-layout-guard-v1.css', 'search-footer-rhythm-v1.css', 'ds2-search-tablet-filters-v1.css']) lean_bundle_fail('unreviewed CSS scope delta');
+if (array_values(array_diff($fullCss, $search3Css)) !== ['enhancements.css', 'design-v1.css', 'hotel-details-design.css', 'tour-design-v1.css', 'anytour-brand.css', 'results-experience-v1.css', 'sales-leader-ui-v1.css', 'conversion-confidence-v1.css', 'checkout-experience-v1.css', 'header-current-site.css', 'primary-meal-ux-v1.css', 'search-progress-ux-v1.css', 'search-dirty-ux-v1.css', 'mobile-search-summary-v1.css', 'search-params-filter-rail-v1.css', 'search-shell-grid-v1.css', 'results-layout-guard-v1.css', 'search-header-layout-guard-v1.css', 'search-footer-rhythm-v1.css', 'ds2-search-tablet-filters-v1.css']) lean_bundle_fail('unreviewed CSS scope delta');
 if (!in_array('enhancements.css', $fullCss, true)) lean_bundle_fail('legacy enhancements layer missing');
 if (!in_array('design-v1.css', $fullCss, true)) lean_bundle_fail('legacy design layer missing');
 if (!in_array('hotel-details-design.css', $fullCss, true)) lean_bundle_fail('legacy hotel details layer missing');
 if (!in_array('tour-design-v1.css', $fullCss, true)) lean_bundle_fail('legacy tour design layer missing');
+if (!in_array('anytour-brand.css', $fullCss, true)) lean_bundle_fail('legacy AnyTour brand layer missing');
 if (!in_array('results-experience-v1.css', $fullCss, true)) lean_bundle_fail('legacy results experience layer missing');
 if (!in_array('header-current-site.css', $fullCss, true)) lean_bundle_fail('legacy header CSS missing');
 if (!in_array('header-current-site.js', $fullJs, true)) lean_bundle_fail('legacy header runtime missing');
