@@ -44,6 +44,11 @@ async function inspect(browser, width, previous) {
     await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1');
     await page.waitForTimeout(400); // Drain canonical catalog/control initialization.
     const initial = await state();
+    if (!previous) {
+      const controls = await page.locator('#tourSearch .main-fields input,#tourSearch .main-fields select').evaluateAll(nodes => nodes.map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize)})));
+      assert.ok(controls.length >= 8 && controls.every(n => n.height >= 44 && n.font >= 16), 'native primary controls stay readable and touchable');
+      if (width === 375 || width === 1440) await page.screenshot({ path: path.join(process.env.SEARCH3_GEOMETRY_OUTPUT, `entry-current-${width}.png`), fullPage: true });
+    }
     assert.ok(initial.visible && !initial.overflow, 'usable initial form');
     if (!previous) {
       assert.deepEqual(await page.evaluate(() => ({
@@ -114,7 +119,14 @@ async function inspect(browser, width, previous) {
     for (const width of [375, 700, 701, 760, 761, 1440]) {
       const before = await inspect(browser, width, true), after = await inspect(browser, width, false);
       evidence.widths[width] = { before, after };
-      assert.deepEqual(after, before, `form geometry, values and lifecycle preserved at ${width}`);
+      // Compact native presentation intentionally changes dimensions. Keep exact
+      // values/visibility in every phase and reject overflow at both breakpoints.
+      for (const phase of Object.keys(before)) {
+        assert.deepEqual(after[phase].fields, before[phase].fields, `${width} ${phase}: exact form values`);
+        assert.equal(after[phase].visible, before[phase].visible, `${width} ${phase}: lifecycle visibility`);
+        assert.equal(after[phase].overflow, false, `${width} ${phase}: no horizontal overflow`);
+        assert.ok(after[phase].width > 0, `${width} ${phase}: bounded native form`);
+      }
     }
   } finally {
     await browser.close();

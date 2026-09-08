@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-08T22:11:46.856942+00:00",
+  "status": "source package prepared; mandatory CI and isolated publication pending",
+  "baseline_release_sha": "a728832d300a01f61d92bb194c243117bc63a423",
+  "baseline_source_sha": "c1990a4cda2bb3ab6623e18b4fd2c5a17be6884b",
+  "scope": "Compact presentation for existing canonical header, native form, results, selected tour and lead fields. No JavaScript, business owner, PHP, route or manifest changes. Preserve #1633 retirement.",
+  "assets_before_raw_bytes": {
+    "search3-results-filters-v1.js": 6607,
+    "search3-results-filters-v1.css": 1878,
+    "search3-entry-v1.css": 331,
+    "search3-entry-v1.js": 0,
+    "search3-results-cards-v2.css": 1,
+    "search3-results-cards-v2.js": 0,
+    "search3-selected-flow-v2.css": 50,
+    "search3-selected-flow-v2.js": 0
+  },
+  "assets_after_raw_bytes": {
+    "search3-results-filters-v1.js": 6607,
+    "search3-results-filters-v1.css": 2511,
+    "search3-entry-v1.css": 717,
+    "search3-entry-v1.js": 0,
+    "search3-results-cards-v2.css": 1079,
+    "search3-results-cards-v2.js": 0,
+    "search3-selected-flow-v2.css": 1080,
+    "search3-selected-flow-v2.js": 0
+  },
+  "eight_assets_before_raw_bytes": 8867,
+  "eight_assets_after_raw_bytes": 11994,
+  "raw_bytes_added": 3127,
+  "accounting": "Intentional CSS growth for the confirmed bare native UI, not a size reduction. Budget <=12000 raw bytes across eight public assets.",
+  "verification": {
+    "local": "Pinned compiler successful; no JS asset byte changes; git diff --check. Initial CSS parse error (missing explicit nested selector) fixed before compilation; budget adjusted within same package.",
+    "ci": "pending Security/owner validators and exact artifact with existing source/PHP/path/presentation/isolation guards",
+    "focused": "Existing entry comparison retains exact values/lifecycle and no-overflow in all phases; changed dimensions recorded, readable 16px/44px controls asserted. Existing results and selected matrices retained.",
+    "live": "not yet published or visually checked"
+  },
+  "published_preview_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+  "deferred": [
+    "Safari/native device check",
+    "current package live visual check until exact publication",
+    "owner visual acceptance for production"
+  ],
+  "next_step": "Run mandatory source CI, merge only release when green, reuse exact successful artifact for a single isolated preview publication, briefly inspect entry/results/selected without submitting a lead."
+}
