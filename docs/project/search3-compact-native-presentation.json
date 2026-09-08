@@ -17,21 +17,21 @@
   },
   "assets_after_raw_bytes": {
     "search3-results-filters-v1.js": 6607,
-    "search3-results-filters-v1.css": 2511,
-    "search3-entry-v1.css": 717,
+    "search3-results-filters-v1.css": 4576,
+    "search3-entry-v1.css": 753,
     "search3-entry-v1.js": 0,
-    "search3-results-cards-v2.css": 1079,
+    "search3-results-cards-v2.css": 1,
     "search3-results-cards-v2.js": 0,
-    "search3-selected-flow-v2.css": 1080,
+    "search3-selected-flow-v2.css": 50,
     "search3-selected-flow-v2.js": 0
   },
   "eight_assets_before_raw_bytes": 8867,
-  "eight_assets_after_raw_bytes": 11994,
-  "raw_bytes_added": 3127,
+  "eight_assets_after_raw_bytes": 11987,
+  "raw_bytes_added": 3120,
   "accounting": "Intentional CSS growth for the confirmed bare native UI, not a size reduction. Budget <=12000 raw bytes across eight public assets.",
   "verification": {
     "local": "Pinned compiler successful; no JS asset byte changes; git diff --check. Initial CSS parse error (missing explicit nested selector) fixed before compilation; budget adjusted within same package.",
-    "ci": "pending Security/owner validators and exact artifact with existing source/PHP/path/presentation/isolation guards",
+    "ci": "First exact run34284706152 rejected restored card CSS/nonempty selected CSS and native marker drift. Keep existing allowlist/empty layers/image rule exact; put compact styles in current results-layout owner, retain native 16px/44px important markers. No guard changes. Corrected CI pending.",
     "focused": "Existing entry comparison retains exact values/lifecycle and no-overflow in all phases; changed dimensions recorded, readable 16px/44px controls asserted. Existing results and selected matrices retained.",
     "live": "not yet published or visually checked"
   },

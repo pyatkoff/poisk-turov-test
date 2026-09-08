@@ -1,18 +1,1 @@
-/* Canonical renderer cards and tour choices; no synthetic chrome or extra JS. */
-.search3-candidate #results{
-& .hotel-card{background:#fff;border:1px solid #dbe2ed;border-radius:18px;overflow:hidden}
-& .hotel-main{display:grid;grid-template-columns:minmax(140px,30%) 1fr}
-& .hotel-photo{position:relative;background:#e7edf5}
-& .hotel-photo img{display:block;width:100%;height:100%;min-height:180px;object-fit:cover}
-& .stars-badge{position:absolute;top:12px;left:12px;background:white;padding:4px 8px;border-radius:8px}
-& .hotel-body{padding:20px}
-& .hotel-title{font-size:20px;font-weight:700}
-& :is(.hotel-place,.hotel-price-context,small){color:#526078;font-size:14px}
-& .hotel-price{font-size:24px;font-weight:700;color:#2743cb}
-& :is(.hotel-decision-line,.tour-facts){display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}
-& .tour-fact small{display:block}
-& .tour-row{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;border-top:1px solid #dbe2ed;padding:20px}
-& .tour-action{display:grid;gap:8px;align-content:start}
-& .tour-more-toggle{margin:0 20px 20px}
-@media(max-width:600px){& .hotel-main{grid-template-columns:1fr}& .hotel-photo img{height:180px}}
-}
+/* Retired: current entry, results-layout and result-card owners keep live rules. */
