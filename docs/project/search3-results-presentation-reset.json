@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_READY_CI_PENDING_NOT_PUBLISHED_NOT_PRODUCTION",
+  "base_release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+  "scope": "retire the duplicate Search3 result decoration layer and retain only route-state visibility",
+  "eight_assets": {
+    "before_raw_bytes": 78454,
+    "after_raw_bytes": 60811,
+    "saved_raw_bytes": 17643,
+    "before_gzip_bytes": 22594,
+    "after_gzip_bytes": 18093,
+    "saved_gzip_bytes": 4501
+  },
+  "loaded_route": {
+    "before_raw_bytes": 197067,
+    "after_raw_bytes": 179424,
+    "saved_raw_bytes": 17643
+  },
+  "original_route": {
+    "before_raw_bytes": 665247,
+    "after_raw_bytes": 179424,
+    "saved_raw_bytes": 485823,
+    "reduction_percent": 73.03
+  },
+  "retired_modules": [
+    "behavior/results-presentation.js",
+    "behavior/results/cards.js",
+    "behavior/results/labels.js"
+  ],
+  "compact_replacement": "behavior/results-top.js",
+  "protected_owners_unchanged": [
+    "results-renderer-v5.js",
+    "tour-controller-v4.js",
+    "search-lifecycle-v6.js",
+    "analytics-v4.js",
+    "lead-form-guard-v1.js",
+    "flight-price-sync-v1.js"
+  ],
+  "browser_contract": "one blocked-network journey renders a result, selects its real direct-tour action, reaches detail/review/lead at 375 and 1440, and sends no lead",
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "intentional reset visual acceptance",
+    "physical Safari and safe-area verification"
+  ]
+}

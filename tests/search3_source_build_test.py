@@ -134,7 +134,7 @@ class Search3SourceBuildTest(unittest.TestCase):
             builder.build(self.root)
 
     def test_private_part_drift_rebuilds_only_its_enclosing_asset(self):
-        part = self.root / 'src/search3/behavior/results/labels.js'
+        part = self.root / 'src/search3/behavior/search-form/primary-controls.js'
         part.write_bytes(part.read_bytes() + b'\nwindow.__search3PrivateDriftFixture = "controlled private-part edit";\n')
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
@@ -149,10 +149,10 @@ class Search3SourceBuildTest(unittest.TestCase):
                 self.assertEqual(content, original)
 
     def test_invalid_private_include_fails_before_writing_any_output(self):
-        part = self.root / 'src/search3/behavior/results/labels.js'
+        part = self.root / 'src/search3/behavior/search-form/primary-controls.js'
         original = part.read_bytes()
-        for target in ('behavior/results-presentation.js',
-                       'behavior/results/cards.js', '../../v2/search3-entry-v1.js'):
+        for target in ('behavior/search-form.js',
+                       'behavior/search-form/secondary-controls.js', '../../v2/search3-entry-v1.js'):
             with self.subTest(target=target):
                 part.write_bytes(original + f'/* @include {target} */\n'.encode())
                 with self.assertRaisesRegex(ValueError, 'Invalid or repeated'):
