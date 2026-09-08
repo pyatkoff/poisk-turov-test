@@ -16,6 +16,7 @@
       "behavior/flight-presentation.js",
       "behavior/presentation-text.js",
       "behavior/booking-summary.js",
+      "behavior/booking/format.js",
       "behavior/booking-stepper.js",
       "behavior/final-sections.js",
       "behavior/flight-continue.js",

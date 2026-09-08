@@ -249,9 +249,9 @@ window.Search3SelectedFlowV2.sync();
 assert.equal(fallbackButton.textContent, 'Изменить рейс', 'fallback sync preserves the review exit label');
 selectedClasses.delete('search3-final-review');
 window.Search3SelectedFlowV2.sync();
-assert.equal(fallbackButton.textContent, 'Далее: итог тура', 'fallback sync restores the review entry label');
+assert.equal(fallbackButton.textContent, 'Оставить заявку', 'fallback sync restores the native lead entry label');
 assert.equal(window.Search3SelectedFlowV2.activateReview(), true);
-assert.equal(reviewClicks, 1, 'fallback review delegates to the primary continue action');
+assert.equal(reviewClicks, 1, 'fallback lead entry delegates to the primary continue action');
 
 flightErrorPresent = true;
 emptyMessage.textContent = 'Не удалось загрузить рейсы';
@@ -286,19 +286,22 @@ console.log('PASS: selected owner retains state, no-flight recovery/review, and 
     querySelector() { return action; },
     scrollIntoView() { scrolls += 1; }
   };
+  const phone = { focus() {} };
+  const form = { scrollIntoView() { scrolls += 1; }, querySelector(selector) { assert.equal(selector, 'input[name="phone"]'); return phone; } };
   const root = {
     children: [],
     classList: {
       contains: name => phase.has(name),
       add: name => phase.add(name),
-      remove: name => phase.delete(name)
+      remove: (...names) => names.forEach(name => phase.delete(name))
     },
     querySelector(selector) {
       if (selector === '.tour-flights') return flightRoot;
       if (selector.endsWith('.section-heading strong')) return heading;
       if (selector.endsWith('.section-heading span')) return hint;
       if (selector === '.search3-lead-shell,.lead-form') return flightRoot;
-      if (selector === '.search3-booking-summary' || selector === '.lead-form') return null;
+      if (selector === '.search3-booking-summary') return null;
+      if (selector === '.lead-form') return form;
       throw new Error('Unexpected query: ' + selector);
     }
   };
@@ -312,20 +315,19 @@ console.log('PASS: selected owner retains state, no-flight recovery/review, and 
   callbacks.get('v2:flight-selected')();
   while (tasks.length) tasks.shift()();
   assert.equal(action.hidden, false);
-  assert.equal(button.textContent, 'Далее: итог тура');
+  assert.equal(button.textContent, 'Оставить заявку');
   const click = { target: { closest(selector) { return selector === '#selectedTour .search3-flight-continue button' ? button : null; } }, preventDefault() {} };
   onClick(click);
-  assert.equal(phase.has('search3-final-review'), true);
-  assert.deepEqual(notifications, ['v2:booking-review']);
-  assert.equal(button.textContent, 'Изменить рейс');
-  onClick(click);
+  assert.equal(phase.has('search3-lead-entry'), true);
   assert.equal(phase.has('search3-final-review'), false);
+  assert.deepEqual(notifications, ['search3:lead-entry']);
   assert.equal(heading.textContent, '', 'compact CTA does not rewrite controller heading copy');
   assert.equal(hint.textContent, '', 'compact CTA does not add duplicate flight guidance');
-  assert.equal(scrolls, 2);
+  assert.equal(scrolls, 1);
   callbacks.get('v2:tour-selected')();
   assert.equal(tasks.length, 1, 'tour reset shares one review/lead task');
   while (tasks.length) tasks.shift()();
   assert.equal(phase.has('search3-final-review'), false);
-  console.log('PASS: primary flight continue preserves review/back transitions without supplier segment mutation');
+  assert.equal(phase.has('search3-lead-entry'), false);
+  console.log('PASS: native selected CTA reaches lead form without supplier segment mutation');
 }

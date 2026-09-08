@@ -1,6 +1,1 @@
-/* Private formatters for the compact booking total and supplier flight label. */
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}
-function placeholder(segment){if(!segment||typeof segment!=='object')return false;const number=String(segment.number||'').replace(/\s+/g,'').toUpperCase();return /000$/.test(number)&&String((segment.departure||{}).time||'')==='00:00'&&String((segment.arrival||{}).time||'')==='00:00';}
-function segments(variant){return variant?[].concat(Array.isArray(variant.forward)?variant.forward:[],Array.isArray(variant.backward)?variant.backward:[]).filter(Boolean):[];}
-function supplierFlightLabel(variant,emptyLabel){if(!variant)return emptyLabel||'Рейс уточняется';const labels=segments(variant).map(segment=>[text(segment.company),placeholder(segment)?'рейс уточняется':text(segment.number)].filter(Boolean).join(' '));return Array.from(new Set(labels.filter(Boolean))).join(' · ')||'Рейс уточняется';}
+/* Retired with the duplicate booking summary; canonical controller renders flight facts. */

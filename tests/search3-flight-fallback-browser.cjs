@@ -97,17 +97,12 @@ async function verifyLocalizedFlightTradeoff(browser) {
     Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span'))
       .some(node => node.textContent.replace(/\s/g, ' ') === '+17 217,6 ₽ к минимальной')
   ));
-  // The booking sidebar belongs to review/lead, not the flight-selection stage.
+  // The native handoff goes directly to the canonical lead form.
   await page.locator('#selectedTour .search3-flight-continue button').click();
-  await page.waitForSelector('#selectedTour .search3-summary-submit');
-  await page.click('#selectedTour .search3-summary-submit');
   await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
-  await page.waitForSelector('#selectedTour .search3-booking-summary');
   const state = await page.evaluate(() => ({
-    summaryTotal: document.querySelector('#selectedTour .search3-booking-summary__total strong')?.textContent.trim().replace(/\s/g, ' '),
-    summaryTotalCount: document.querySelectorAll('#selectedTour .search3-booking-summary__total').length,
-    repeatedFlightCost: !!document.querySelector('#selectedTour .search3-booking-summary__flight-costs'),
-    priceNote: document.querySelector('#selectedTour .search3-booking-summary__price-note')?.textContent,
+    selectedPrice: document.querySelector('#selectedTour .selected-price')?.textContent.trim().replace(/\s/g, ' '),
+    summaryCount: document.querySelectorAll('#selectedTour .search3-booking-summary').length,
     prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     parsedDecimal: window.Search3SelectedFlowV2.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
@@ -115,10 +110,8 @@ async function verifyLocalizedFlightTradeoff(browser) {
     leadRequests: window.__fallbackTest.leadRequests
   }));
   if (
-    state.summaryTotal !== '72 832 ₽'
-    || state.summaryTotalCount !== 1
-    || state.repeatedFlightCost
-    || state.priceNote !== 'Перед оплатой менеджер подтвердит итоговую стоимость и детали перелёта.'
+    !state.selectedPrice.includes('72 832 ₽')
+    || state.summaryCount !== 0
     || state.prices[0] !== 'Стоимость тура: 72 832 ₽'
     || state.prices[1] !== 'Стоимость тура: 90 049,6 ₽'
     || state.tradeoffs[0] !== 'Самая низкая цена'
@@ -149,7 +142,7 @@ async function verifyFallbackHandoff(browser) {
     || state.retries !== 1
     || !state.message.includes('менеджер уточнит перелёт по заявке')
     || state.fallback !== '1'
-    || state.continueText !== 'Далее: итог тура'
+    || state.continueText !== 'Оставить заявку'
     || state.mobileActions !== 0
     || state.legacyOwner !== 'undefined'
   ) throw new Error('initial fallback state failed: ' + JSON.stringify(state));
@@ -173,19 +166,6 @@ async function verifyFallbackHandoff(browser) {
   await page.waitForFunction(() => document.querySelectorAll('#selectedTour .load-flights').length === 1);
 
   await page.locator('#selectedTour .search3-flight-continue button').click();
-  await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-final-review'));
-  await page.waitForSelector('#selectedTour .search3-summary-submit');
-  state = await page.evaluate(() => ({
-    review: document.getElementById('selectedTour').classList.contains('search3-final-review'),
-    summaryAction: document.querySelector('#selectedTour .search3-summary-submit')?.textContent || '',
-    leadEntry: document.getElementById('selectedTour').classList.contains('search3-lead-entry'),
-    leadRequests: window.__fallbackTest.leadRequests
-  }));
-  if (!state.review || state.summaryAction !== 'Перейти к заявке' || state.leadEntry || state.leadRequests !== 0) {
-    throw new Error('fallback review handoff failed: ' + JSON.stringify(state));
-  }
-
-  await page.click('#selectedTour .search3-summary-submit');
   await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
   state = await page.evaluate(() => ({
     review: document.getElementById('selectedTour').classList.contains('search3-final-review'),
@@ -194,10 +174,9 @@ async function verifyFallbackHandoff(browser) {
     submitText: document.querySelector('#selectedTour .lead-form button[type="submit"]')?.textContent || '',
     leadRequests: window.__fallbackTest.leadRequests
   }));
-  if (!state.review || !state.leadEntry || !state.form || state.submitText !== 'Отправить заявку' || state.leadRequests !== 0) {
+  if (state.review || !state.leadEntry || !state.form || state.submitText !== 'Отправить заявку' || state.leadRequests !== 0) {
     throw new Error('fallback lead entry failed: ' + JSON.stringify(state));
   }
-  await page.waitForFunction(() => document.querySelector('#selectedTour .search3-booking-summary__flight')?.textContent === 'Рейс уточнит менеджер');
   console.log('SEARCH3_FLIGHT_FALLBACK_HANDOFF_OK ' + JSON.stringify(state));
   await page.close();
 }
