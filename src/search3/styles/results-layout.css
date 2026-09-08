@@ -68,7 +68,7 @@ body.search3-candidate{
 
 }
 
-.search3-show-tours{font-family:var(--at-font)!important;line-height:1!important}
+.search3-show-tours{min-height:44px!important;font-family:var(--at-font)!important;line-height:1!important}
 .direct-tour{width:100%!important;min-height:36px!important;border:0!important;border-radius:7px!important;background:#ff5a0a!important;color:#fff!important;font:900 10px/1 var(--at-font)!important;box-shadow:0 8px 22px rgba(49,80,216,.22)!important;transition:transform .16s ease,box-shadow .16s ease,background .16s ease!important}
 .direct-tour:hover{background:linear-gradient(135deg,#3c61e5,#294ac7)!important;transform:translateY(-1px);box-shadow:0 12px 28px rgba(49,80,216,.28)!important}
 @media(prefers-reduced-motion:reduce){.direct-tour{transition:none!important}.direct-tour:hover{transform:none}}
