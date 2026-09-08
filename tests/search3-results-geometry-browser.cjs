@@ -29,7 +29,6 @@ const card = `
       <div class="hotel-bottom"><div class="hotel-best-offer"><small>За весь тур</small><strong class="hotel-price">от 148 500 ₽</strong><small class="hotel-price-context"><span>2 взрослых</span></small></div></div>
       <div class="search3-hotel-facts"><span><small>Вылет</small><b>12 сент. 2026</b></span><span><small>Ночей</small><b>9</b></span><span><small>Питание</small><b>Всё включено</b></span><span><small>Рейс</small><b>Чартер</b></span></div>
       <div class="search3-hotel-action"><button class="search3-show-tours" type="button" data-search3-show-label="Показать 16 туров">Показать 16 туров</button></div>
-      <div class="hotel-actions"></div><div class="hotel-inline-detail"></div><button class="hotel-compare-toggle"></button><div class="result-decision-badges"></div>
     </div>
   </div>
   <div class="hotel-tours" hidden>
@@ -97,7 +96,7 @@ function inside(inner, outer, message) {
               tourAction: pick('.tour-action'), direct: pick('.direct-tour'),
               sheet: pick('.mrf-sheet'), backdrop: pick('.mrf-backdrop'), panel: pick('.mrf-panel'),
               close: pick('.mrf-close'), drawerActions: pick('.mrf-actions'),
-              retired: ['.hotel-actions', '.hotel-inline-detail', '.hotel-compare-toggle', '.result-decision-badges', '.hotel-choice-hint', '.hotel-decision-line'].map(selector => pick(selector).display),
+              retired: document.querySelectorAll('.hotel-actions,.hotel-inline-detail,.hotel-compare-toggle,.result-decision-badges').length,
             };
           });
           assert.ok(state.overflow <= 1, `${width}: page must not overflow horizontally`);
@@ -111,7 +110,7 @@ function inside(inner, outer, message) {
             inside(state.action.box, state.body.box, `${width}: hotel action stays inside body`);
             inside(state.disclosure.box, state.card.box, `${width}: disclosure stays inside card`);
             assert.ok(state.disclosure.box.height >= 43.5, `${width}: disclosure keeps a 44px target`);
-            assert.ok(state.retired.every(display => display === 'none'), `${width}: retired card chrome stays hidden`);
+            assert.equal(state.retired, 0, `${width}: retired card chrome stays absent`);
             assert.ok(state.photo.box.right <= state.body.box.left + 1 || state.photo.box.bottom <= state.body.box.top + 1,
               `${width}: photo and body do not overlap`);
           }
