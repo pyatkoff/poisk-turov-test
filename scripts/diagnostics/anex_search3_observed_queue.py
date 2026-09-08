@@ -141,10 +141,116 @@ def merge(cp, rows):
                 completed_total=cp['completed_total'] + len(rows))
 
 
+def evidence_history(directory, cp):
+    """Recover full legacy evidence without replacing the digest-only handoff."""
+    validate(cp, legacy(directory))
+    old = json.loads((directory / gaps.CHECKPOINT).read_bytes())['rows']
+    history = {r['external_id']: (r, 'legacy_checkpoint') for r in old}
+    for stub in cp['inherited']:
+        if gaps.digest(history[stub['external_id']][0]) != stub['row_sha256']:
+            raise ValueError('legacy review evidence changed')
+    history.update({r['external_id']: (r, 'live_checkpoint') for r in cp['rows']})
+    return history
+
+
+def csv_cell(value):
+    if isinstance(value, (dict, list)):
+        value = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    unsafe = isinstance(value, str) and (value.startswith(('\t', '\r')) or value.lstrip().startswith(('=', '+', '-', '@')))
+    return "'" + value if unsafe else value
+
+
+def export_triage(directory, cp, observed):
+    """Read-only review dossiers; priority is demand, never match confidence."""
+    before = gaps.digest(cp)
+    history = evidence_history(directory, cp)
+    hints = {r['anex_hotel_id']: r.get('candidates', []) for r in gaps.load_queue()['rows']}
+    items = []
+    for observation in observed['pending']:
+        identifier = observation['anex_hotel_id']
+        if identifier not in history:
+            continue
+        evidence, origin = history[identifier]
+        status, reason = evidence['status'], evidence.get('reason', '')
+        if status not in ('review', 'source_error', 'unmatched', 'protected'):
+            continue
+        action = {'review': 'compare_saved_evidence', 'source_error': 'diagnose_source_error',
+                  'unmatched': 'find_independent_candidates', 'protected': 'check_protected_state'}[status]
+        if reason == 'interrupted_result_unknown':
+            action = 'investigate_interrupted_result_without_replay'
+        items.append({'anex_hotel_id': identifier, 'status': status, 'reason': reason,
+                      'next_action': action, 'automatic_retry': False, 'automatic_acceptance': False,
+                      'observation': observation, 'evidence_origin': origin,
+                      'evidence_row_sha256': gaps.digest(evidence), 'evidence': evidence,
+                      'prior_fixed_queue_hints': hints.get(identifier, [])})
+    # Stable ties: frequency descending, most recently seen first, numeric ID ascending.
+    items.sort(key=lambda r: r['anex_hotel_id'])
+    items.sort(key=lambda r: r['observation'].get('last_seen_utc', ''), reverse=True)
+    items.sort(key=lambda r: r['observation']['search_count'], reverse=True)
+    for n, item in enumerate(items, 1):
+        item['priority'] = n
+    summary = {'count': len(items), 'by_status': dict(Counter(r['status'] for r in items)),
+               'by_reason': dict(Counter(r['reason'] for r in items)),
+               'by_country': dict(Counter(r['observation'].get('country_name', '') for r in items)),
+               'with_saved_candidates': sum(bool(r['evidence'].get('candidates')) for r in items),
+               'with_prior_hints_only': sum(not r['evidence'].get('candidates') and bool(r['prior_fixed_queue_hints']) for r in items),
+               'unknown_results_not_replayed': sum(r['reason'] == 'interrupted_result_unknown' for r in items),
+               'top_priorities': [{'anex_hotel_id': r['anex_hotel_id'], 'status': r['status'],
+                                  'reason': r['reason'], 'search_count': r['observation']['search_count']}
+                                 for r in items[:10]]}
+    payload = {'schema_version': 1, 'scope': 'preview', 'kind': 'observed_review_dossiers',
+               'source_sha': os.environ.get('GITHUB_SHA'), 'checkpoint_sha256': before,
+               'observations_sha256': gaps.digest(observed), 'summary': summary, 'rows': items,
+               'policy': 'Saved evidence only. Hints are historical, not fresh checks. No acceptance or retry.'}
+    target = directory / 'anex-observed-hotel-triage.json'
+    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
+    if json.loads(target.read_bytes()) != payload:
+        raise ValueError('triage JSON readback mismatch')
+    columns = ['priority', 'anex_hotel_id', 'hotel_name', 'country_id', 'country_name', 'search_count',
+               'last_seen_utc', 'status', 'reason', 'next_action', 'candidate_ids', 'prior_hint_ids',
+               'api_name', 'api_country', 'api_town', 'api_region', 'api_address', 'api_latitude',
+               'api_longitude', 'evidence_origin', 'evidence_row_sha256']
+    candidate_columns = ['priority', 'anex_hotel_id', 'candidate_rank', 'catalog_hotel_id', 'name',
+                         'country', 'town', 'region', 'address', 'latitude', 'longitude',
+                         'name_similarity', 'distance_m', 'country_match', 'score', 'resort_evidence']
+    dossiers, candidates = [], []
+    for item in items:
+        evidence, observation = item['evidence'], item['observation']
+        api = evidence.get('api', {})
+        candidate_rows = evidence.get('candidates', [])
+        dossier = dict(observation, **{k: item[k] for k in ('priority', 'status', 'reason', 'next_action',
+                                                         'evidence_origin', 'evidence_row_sha256')})
+        dossier['candidate_ids'] = ','.join(str(c.get('id', c.get('catalog_hotel_id', ''))) for c in candidate_rows)
+        dossier['prior_hint_ids'] = ','.join(str(c.get('id', c.get('catalog_hotel_id', ''))) for c in item['prior_fixed_queue_hints'])
+        dossier.update({'api_' + k: v for k, v in api.items()})
+        dossiers.append([dossier.get(k, '') for k in columns])
+        for rank, candidate in enumerate(candidate_rows, 1):
+            row = dict(candidate, priority=item['priority'], anex_hotel_id=item['anex_hotel_id'],
+                       candidate_rank=rank, catalog_hotel_id=candidate.get('id', candidate.get('catalog_hotel_id', '')))
+            candidates.append([row.get(k, '') for k in candidate_columns])
+    files = {target.name: hashlib.sha256(target.read_bytes()).hexdigest()}
+    for name, header, rows in [('triage', columns, dossiers), ('candidates', candidate_columns, candidates)]:
+        path = directory / ('anex-observed-hotel-' + name + '.csv')
+        with path.open('w', newline='', encoding='utf-8') as handle:
+            writer = csv.writer(handle)
+            writer.writerow(header)
+            writer.writerows([[csv_cell(c) for c in row] for row in rows])
+        with path.open(newline='', encoding='utf-8') as handle:
+            persisted = list(csv.reader(handle))
+        expected = [header] + [[str(csv_cell(c)) if c is not None else '' for c in row] for row in rows]
+        if persisted != expected:
+            raise ValueError('triage CSV readback mismatch')
+        files[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    if gaps.digest(cp) != before:
+        raise ValueError('triage changed completed evidence')
+    return dict(summary, candidate_rows=len(candidates), files=files, readback_verified=True)
+
+
 def export(directory, cp, observed):
     remaining = eligible(cp, observed)
     history = {r['external_id']: r for r in cp['inherited'] + cp['rows']}
     unresolved = {r['anex_hotel_id'] for r in observed['pending']}
+    observations = {r['anex_hotel_id']: r for r in observed['pending'] + observed['manual_review']}
     queues = {'pending': remaining, 'manual_decisions': observed['manual_review']}
     for status in ('review', 'source_error', 'unmatched', 'protected'):
         queues[status] = [r for i, r in history.items() if i in unresolved and r['status'] == status]
@@ -155,15 +261,18 @@ def export(directory, cp, observed):
             writer = csv.writer(handle)
             writer.writerow(['anex_hotel_id', 'hotel_name', 'country_id', 'search_count', 'status', 'reason'])
             for r in rows:
-                cells = [r.get('external_id', r.get('anex_hotel_id')), r.get('hotel_name', ''),
-                         r.get('country_id', ''), r.get('search_count', ''), r.get('status', name), r.get('reason', '')]
-                writer.writerow(["'" + c if isinstance(c, str) and c.startswith(('=', '+', '-', '@', '\t', '\r')) else c for c in cells])
+                identifier = r.get('external_id', r.get('anex_hotel_id'))
+                observation = observations.get(identifier, {})
+                cells = [identifier, observation.get('hotel_name', ''), observation.get('country_id', ''),
+                         observation.get('search_count', ''), r.get('status', name), r.get('reason', '')]
+                writer.writerow([csv_cell(c) for c in cells])
     result = {'schema_version': 1, 'scope': 'preview', 'source_sha': os.environ.get('GITHUB_SHA'),
               'counts': observed['counts'], 'remaining_new_ids': len(remaining),
               'completed_total': cp['completed_total'], 'inherited_completed': len(cp['inherited']),
               'live_completed': len(cp['rows']), 'in_flight': len(cp['in_flight']),
               'effective_mapped_count': observed['effective_mapped_count'],
-              'queues': {k: len(v) for k, v in queues.items()}, 'pending': remaining}
+              'queues': {k: len(v) for k, v in queues.items()}, 'pending': remaining,
+              'triage': export_triage(directory, cp, observed)}
     (directory / 'anex-observed-hotel-queue.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
     return {k: v for k, v in result.items() if k != 'pending'}
 

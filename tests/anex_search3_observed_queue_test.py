@@ -1,4 +1,5 @@
 import copy
+import csv
 import json
 import os
 from pathlib import Path
@@ -167,6 +168,76 @@ class ObservedQueueTests(unittest.TestCase):
         for value in [dict(self.observed([1]), truncated=True), self.observed([1, 1])]:
             with patch.object(gaps, 'ssh_batch', return_value=value), self.assertRaises(ValueError):
                 live.snapshot()
+
+    def test_triage_recovers_legacy_evidence_and_orders_by_current_search_demand(self):
+        legacy_path = self.directory / gaps.CHECKPOINT
+        legacy_cp = json.loads(legacy_path.read_bytes())
+        row = legacy_cp['rows'][0]
+        identifier = row['external_id']
+        row.update(status='review', reason='competing_candidates', api={'name': 'Saved supplier name'},
+                   candidates=[{'id': 11, 'name': 'Candidate one', 'distance_m': 120, 'country_match': True},
+                               {'id': 12, 'name': 'Candidate two', 'distance_m': None}])
+        legacy_path.write_text(json.dumps(legacy_cp))
+        cp = live.restore(self.directory)
+        cp.update(rows=[{'external_id': 90000001, 'status': 'review', 'reason': 'insufficient_independent_evidence',
+                         'candidates': []}], admissions=self.observed([90000001])['pending'], completed_total=91)
+        live.save(self.directory, cp)
+        observed = self.observed([identifier, 90000001])
+        observed['pending'][0].update(hotel_name='Current observed name', search_count=3)
+        observed['pending'][1]['search_count'] = 100
+        before = (self.directory / live.CHECKPOINT).read_bytes()
+        with patch.object(gaps, 'ssh_batch') as api:
+            report = live.export(self.directory, cp, observed)
+        api.assert_not_called()
+        self.assertEqual((self.directory / live.CHECKPOINT).read_bytes(), before)
+        self.assertEqual(live.restore(self.directory), cp)
+        data = json.loads((self.directory / 'anex-observed-hotel-triage.json').read_bytes())
+        self.assertEqual([r['anex_hotel_id'] for r in data['rows']], [90000001, identifier])
+        saved = data['rows'][1]
+        self.assertEqual(saved['evidence'], row)
+        self.assertEqual(saved['evidence_row_sha256'], cp['inherited'][0]['row_sha256'])
+        self.assertEqual(saved['observation']['hotel_name'], 'Current observed name')
+        self.assertFalse(saved['automatic_acceptance'])
+        self.assertEqual(report['triage']['candidate_rows'], 2)
+        self.assertTrue(report['triage']['readback_verified'])
+        with (self.directory / 'anex-observed-hotel-review.csv').open() as f:
+            by_id = {int(r['anex_hotel_id']): r for r in csv.DictReader(f)}
+        self.assertEqual(by_id[identifier]['hotel_name'], 'Current observed name')
+        self.assertEqual(by_id[identifier]['search_count'], '3')
+        with (self.directory / 'anex-observed-hotel-candidates.csv').open() as f:
+            candidates = list(csv.DictReader(f))
+        self.assertEqual([r['catalog_hotel_id'] for r in candidates], ['11', '12'])
+        self.assertEqual(candidates[1]['distance_m'], '')
+
+    def test_triage_excludes_mapped_manual_new_and_reserved_ids_and_does_not_replay_unknown(self):
+        old_ids = [r['external_id'] for r in self.cp['inherited'][:3]]
+        cp = copy.deepcopy(self.cp)
+        cp.update(admissions=self.observed([90000001])['pending'], in_flight=[90000001])
+        observed = self.observed([old_ids[0], 90000001, 90000002])
+        observed['manual_review'] = self.observed([old_ids[1]])['pending']
+        observed['pending'][0]['hotel_name'] = ' =HYPERLINK("unsafe")'
+        with patch.object(gaps, 'ssh_batch') as api:
+            summary = live.export_triage(self.directory, cp, observed)
+        api.assert_not_called()
+        data = json.loads((self.directory / 'anex-observed-hotel-triage.json').read_bytes())
+        self.assertEqual([r['anex_hotel_id'] for r in data['rows']], [old_ids[0]])
+        row = data['rows'][0]
+        self.assertEqual(row['status'], 'source_error')
+        self.assertEqual(row['next_action'], 'investigate_interrupted_result_without_replay')
+        self.assertFalse(row['automatic_retry'])
+        self.assertEqual(row['evidence']['candidates'], [])
+        self.assertEqual(row['prior_fixed_queue_hints'], gaps.load_queue()['rows'][0]['candidates'])
+        self.assertEqual(summary['unknown_results_not_replayed'], 1)
+        with (self.directory / 'anex-observed-hotel-triage.csv').open() as f:
+            self.assertTrue(next(csv.DictReader(f))['hotel_name'].startswith("' ="))
+
+    def test_triage_refuses_changed_legacy_evidence(self):
+        old = self.directory / gaps.CHECKPOINT
+        value = json.loads(old.read_bytes())
+        value['rows'][0]['reason'] = 'tampered'
+        old.write_text(json.dumps(value))
+        with self.assertRaises(ValueError):
+            live.export_triage(self.directory, self.cp, self.observed([value['rows'][0]['external_id']]))
 
 
 if __name__ == '__main__':
