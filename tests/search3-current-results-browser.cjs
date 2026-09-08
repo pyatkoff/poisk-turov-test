@@ -30,7 +30,11 @@ async function snapshot(page) {
       return { tag: node.tagName, classes: node.className, text: node.children.length ? '' : node.textContent,
         rect: [r.x, r.y, r.width, r.height].map(n => Math.round(n * 100) / 100), display: s.display, visibility: s.visibility };
     });
-    return { html: result.innerHTML, nodes, overflow: document.documentElement.scrollWidth > innerWidth + 2 };
+    const overflow = document.documentElement.scrollWidth > innerWidth + 2;
+    const offenders = overflow ? [...document.querySelectorAll('body *')].filter(node => {
+      const r = node.getBoundingClientRect(); return r.width > 0 && r.right > innerWidth + 2;
+    }).slice(0,12).map(node => ({tag:node.tagName,id:node.id,classes:node.className,rect:node.getBoundingClientRect().toJSON()})) : [];
+    return { html: result.innerHTML, nodes, overflow, offenders };
   });
 }
 async function run(browser, width, previous) {
@@ -61,6 +65,7 @@ async function run(browser, width, previous) {
     assert.ok((await card.locator('.direct-tour').boundingBox()).height >= 35.5, 'real selection action remains usable');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), tour.id, 'selection identity retained');
     const collapsed = await snapshot(page);
+    if (collapsed.overflow) console.error(JSON.stringify({width,previous,offenders:collapsed.offenders}));
     assert.equal(collapsed.overflow, false, width + ': results fit viewport');
     await card.locator('.tour-more-toggle').click();
     assert.equal(await card.locator('.tour-row').count(), 2, 'actual toggle reveals all tours');
