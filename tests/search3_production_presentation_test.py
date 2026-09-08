@@ -511,7 +511,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.direct-tour:hover{background:linear-gradient(135deg,#3c61e5,#294ac7)!important', results)
         self.assertIn('.secondary{border:1px solid #c8d4f1!important', shell)
         self.assertIn(':is(.search-submit,.direct-tour,.search-progress-retry', shell)
-        self.assertIn('@media(max-width:820px){body.search3-candidate #selectedTour.selected-tour .selected-head.checkout-head{', detail)
+        self.assertIn('@media(max-width:820px){#selectedTour.selected-tour .selected-head.checkout-head{', detail)
         self.assertIn('width:min(100%,240px)!important', detail)
 
     def test_legacy_checkout_presentation_is_not_a_search3_owner(self):
