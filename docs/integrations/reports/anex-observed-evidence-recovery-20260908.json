@@ -1,0 +1,379 @@
+{
+  "accepted_pairs": [
+    {
+      "anex_hotel_id": 28978,
+      "catalog_hotel_id": 28499,
+      "distance_m": 4.7,
+      "name_similarity": 1,
+      "score_margin": 0.1857,
+      "source": "observed_saved_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 32640,
+      "catalog_hotel_id": 59148,
+      "distance_m": 19.3,
+      "name_similarity": 1,
+      "score_margin": 0.2954,
+      "source": "observed_saved_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 32683,
+      "catalog_hotel_id": 17428,
+      "distance_m": 5.3,
+      "name_similarity": 0.9697,
+      "score_margin": 0.3803,
+      "source": "observed_saved_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 32722,
+      "catalog_hotel_id": 35307,
+      "distance_m": 8.7,
+      "name_similarity": 1,
+      "score_margin": 0.2306,
+      "source": "observed_saved_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 34380,
+      "catalog_hotel_id": 17325,
+      "distance_m": 2.2,
+      "name_similarity": 1,
+      "score_margin": 0.1625,
+      "source": "observed_cached_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 34438,
+      "catalog_hotel_id": 77657,
+      "distance_m": 6.3,
+      "name_similarity": 1,
+      "score_margin": 0.2306,
+      "source": "observed_cached_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 35017,
+      "catalog_hotel_id": 82367,
+      "distance_m": 8,
+      "name_similarity": 1,
+      "score_margin": 0.1978,
+      "source": "observed_cached_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 36887,
+      "catalog_hotel_id": 103994,
+      "distance_m": 2,
+      "name_similarity": 1,
+      "score_margin": 0.2017,
+      "source": "observed_cached_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 37042,
+      "catalog_hotel_id": 43227,
+      "distance_m": 3,
+      "name_similarity": 1,
+      "score_margin": 0.13,
+      "source": "observed_cached_review:name_country_coordinates"
+    },
+    {
+      "anex_hotel_id": 39940,
+      "catalog_hotel_id": 80474,
+      "distance_m": 30.7,
+      "name_similarity": 1,
+      "score_margin": 0.1978,
+      "source": "observed_cached_review:name_country_coordinates"
+    }
+  ],
+  "added_links": 10,
+  "artifact": {
+    "digest": "sha256:b7378b9e296cceba298b763575bc3c14fa7ddcf24d42fca9049116b2a3941f4c",
+    "id": 10079280403,
+    "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34285330215/artifacts/10079280403"
+  },
+  "coverage_after": {
+    "manual_review": 0,
+    "mapped": 239,
+    "observed": 502,
+    "pending": 263
+  },
+  "coverage_before": {
+    "manual_review": 0,
+    "mapped": 229,
+    "observed": 502,
+    "pending": 273
+  },
+  "date": "2026-09-08",
+  "effective_mapped_count": 12899,
+  "evidence_checkpoints": {
+    "cached14": "370b406754bd71d7e74e1ab20f9728163db7727ee56f819e911d9f7b5b33c921",
+    "four": "5e140dca328249c9f4a3067a9f8d63e82f775d88ded9df6c1afddfab6e44a2b1"
+  },
+  "executable_sha": "0156629b42a466139477c86d8070a5e75a51084e",
+  "final_database_readback": {
+    "anex_hotel_decisions": {
+      "count": 9,
+      "sha256": "ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1"
+    },
+    "anex_hotel_search_mappings": {
+      "count": 12890,
+      "sha256": "4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc"
+    },
+    "staging_total": 8362,
+    "status": "ok"
+  },
+  "goal": "Match every ANEX hotel observed in saved searches",
+  "independently_checked_ids": 18,
+  "job_id": 102259468693,
+  "live_checkpoint_completed": 292,
+  "live_history_unchanged": true,
+  "new_supplier_requests": 0,
+  "queues": {
+    "manual_decisions": 0,
+    "pending": 0,
+    "protected": 0,
+    "review": 132,
+    "source_error": 127,
+    "unmatched": 4
+  },
+  "run_id": 34285330215,
+  "schema_version": 1,
+  "scope": "AnyTour preview",
+  "unaccepted_review_ids": 8,
+  "validation": "Runner JSON/CSV/checkpoint readback, reproduced strict evidence, preserved old mapping/manual row hashes and fresh DB readback; independent local ZIP download not performed.",
+  "next_read_only_alias_priorities": {
+    "scope": "Provisional capped-review subset from stored triage, to be revalidated against full source rows and fresh registry before any read",
+    "max_ids": 12,
+    "supplier_requests": 0,
+    "criterion": "Name score below acceptance threshold, candidate within200m, potential margin>=0.1; screen is not match evidence",
+    "source_snapshot_mapped": 233,
+    "all_ten_accepted_ids_excluded": true,
+    "rows": [
+      {
+        "anex_hotel_id": 32202,
+        "hotel_name": "Fuat Bey Palace Hotel",
+        "country": "Турция",
+        "source_row_sha256": "f87f30f493dbd9310021a9ebbb423d117a961916c0198acdc0a94a0d25597af7",
+        "best": {
+          "distance_m": 7.9,
+          "id": 78667,
+          "latitude": 41.0036558,
+          "longitude": 28.9690757,
+          "name": "FUAT BEY PALACE HOTEL (EX. KUPELI PALACE)",
+          "name_similarity": 0.8571,
+          "region": "Стамбул",
+          "score": 0.9571,
+          "town": "Султанахмет"
+        },
+        "score_margin": 0.0734,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 29368,
+        "hotel_name": "Sogut Hotel & Spa Old City Istanbul",
+        "country": "Турция",
+        "source_row_sha256": "accf044a4a628ad140a0dd274c20090c300a950798936bc22a20f33ecd76b666",
+        "best": {
+          "distance_m": 8.4,
+          "id": 17633,
+          "latitude": 41.0128223,
+          "longitude": 28.9553006,
+          "name": "SOGUT HOTEL OLD CITY",
+          "name_similarity": 0.8571,
+          "region": "Стамбул",
+          "score": 0.9571,
+          "town": "Лалели"
+        },
+        "score_margin": 0.1646,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 28967,
+        "hotel_name": "Grand Pamir Hotel",
+        "country": "Турция",
+        "source_row_sha256": "bbe413596a3677d4ed6e799faa11fde11b769fb71e584acde70b1bf4cdeace62",
+        "best": {
+          "distance_m": 10,
+          "id": 46679,
+          "latitude": 41.0118046,
+          "longitude": 28.9541889,
+          "name": "GRAND PAMIR HOTEL LALELI",
+          "name_similarity": 0.8293,
+          "region": "Стамбул",
+          "score": 0.939,
+          "town": "Аксарай"
+        },
+        "score_margin": 0.019,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 32751,
+        "hotel_name": "Antis Hotel Sultanahmet.",
+        "country": "Турция",
+        "source_row_sha256": "695e6f9938745b25d9b4238ccd8fa8d0559624d5cc26ea1188eabd70a500a859",
+        "best": {
+          "distance_m": 44.4,
+          "id": 17317,
+          "latitude": 41.0041541,
+          "longitude": 28.979796,
+          "name": "AVICENNA HOTEL SULTANAHMET",
+          "name_similarity": 0.8163,
+          "region": "Стамбул",
+          "score": 0.9306,
+          "town": "Султанахмет"
+        },
+        "score_margin": 0.0491,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 31508,
+        "hotel_name": "Almina Inn Hotel",
+        "country": "Турция",
+        "source_row_sha256": "d4488ae8a081c8658d2e098598da237500e5ce2aebf2da9403ed6c43dcfab274",
+        "best": {
+          "distance_m": 17.2,
+          "id": 70291,
+          "latitude": 41.0072271,
+          "longitude": 28.9643652,
+          "name": "ALMINA INN BEYAZIT",
+          "name_similarity": 0.8,
+          "region": "Стамбул",
+          "score": 0.92,
+          "town": "Бейазит"
+        },
+        "score_margin": 0.0385,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 32692,
+        "hotel_name": "Almina Inn Hotel.",
+        "country": "Турция",
+        "source_row_sha256": "6ed0f443966ea3b2697cae45cd6ff857812d07bd7041200b9f1cbebd75e374b5",
+        "best": {
+          "distance_m": 17.2,
+          "id": 70291,
+          "latitude": 41.0072271,
+          "longitude": 28.9643652,
+          "name": "ALMINA INN BEYAZIT",
+          "name_similarity": 0.8,
+          "region": "Стамбул",
+          "score": 0.92,
+          "town": "Бейазит"
+        },
+        "score_margin": 0.0385,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 29273,
+        "hotel_name": "Dara Otel",
+        "country": "Турция",
+        "source_row_sha256": "a962b1198ab520d278316e89ff0dfebdb6e888093a7b9d9b6512c5c05c1038f7",
+        "best": {
+          "distance_m": 21.4,
+          "id": 17304,
+          "latitude": 41.004438,
+          "longitude": 28.972701,
+          "name": "ARENA HOTEL",
+          "name_similarity": 0.8,
+          "region": "Стамбул",
+          "score": 0.92,
+          "town": "Султанахмет"
+        },
+        "score_margin": 0.0411,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 32869,
+        "hotel_name": "Grand Ons Hotel.",
+        "country": "Турция",
+        "source_row_sha256": "a5792c4b90c50b1fa7bfd736902e4538a5624cd89f8abbb7c0be90dc2e02cebe",
+        "best": {
+          "distance_m": 32.7,
+          "id": 17452,
+          "latitude": 41.0076323,
+          "longitude": 28.9551305,
+          "name": "GRAND ONS LALELI",
+          "name_similarity": 0.8,
+          "region": "Стамбул",
+          "score": 0.92,
+          "town": "Лалели"
+        },
+        "score_margin": 0.0168,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 32769,
+        "hotel_name": "Sureyya Hotel.",
+        "country": "Турция",
+        "source_row_sha256": "0d7643e6c0cc7a5888083dbcde3413770ffab91be9a35757f5e6172cdb8cc551",
+        "best": {
+          "distance_m": 4.1,
+          "id": 17656,
+          "latitude": 41.0107208,
+          "longitude": 28.9578219,
+          "name": "SUREYYA HOTEL LALELI",
+          "name_similarity": 0.7879,
+          "region": "Стамбул",
+          "score": 0.9121,
+          "town": "Лалели"
+        },
+        "score_margin": 0.1221,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 32575,
+        "hotel_name": "Vicenza Hotel.",
+        "country": "Турция",
+        "source_row_sha256": "00ae7dcc344dc948b8a090c70b1bddcd166815e8dbb172f2d485a0ae9f9f65a7",
+        "best": {
+          "distance_m": 4.9,
+          "id": 17692,
+          "latitude": 41.0123,
+          "longitude": 28.9572,
+          "name": "VICENZA HOTEL LALELI",
+          "name_similarity": 0.7879,
+          "region": "Стамбул",
+          "score": 0.9121,
+          "town": "Лалели"
+        },
+        "score_margin": 0.0787,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 30720,
+        "hotel_name": "Sureyya Hotel",
+        "country": "Турция",
+        "source_row_sha256": "7a47cb0f898b60d3e2f22399106a7c810c6c94409cde75e66c4278fe57457346",
+        "best": {
+          "distance_m": 13.5,
+          "id": 17656,
+          "latitude": 41.0107208,
+          "longitude": 28.9578219,
+          "name": "SUREYYA HOTEL LALELI",
+          "name_similarity": 0.7879,
+          "region": "Стамбул",
+          "score": 0.9121,
+          "town": "Лалели"
+        },
+        "score_margin": 0.1221,
+        "automatic_acceptance": false
+      },
+      {
+        "anex_hotel_id": 8803,
+        "hotel_name": "Hali Hotel",
+        "country": "Турция",
+        "source_row_sha256": "64f0459b9b8a33628a93cc33cb0264efc79f2d3103f04196d8e8d7004194680b",
+        "best": {
+          "distance_m": 148.8,
+          "id": 27565,
+          "latitude": 41.0077438,
+          "longitude": 28.9715328,
+          "name": "APRILIS HOTEL",
+          "name_similarity": 0.7826,
+          "region": "Стамбул",
+          "score": 0.9087,
+          "town": "Султанахмет"
+        },
+        "score_margin": 0.0537,
+        "automatic_acceptance": false
+      }
+    ],
+    "required_evidence": "Generated raw hotel_aliases with verified provenance and complete canonical/alias/geobox competitor set. Keep country,200m,name>=0.9,qualifiers and margin>=0.1; no acceptance by nearby coordinates alone."
+  }
+}

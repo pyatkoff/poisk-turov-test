@@ -8,8 +8,8 @@
 Владелец уточнил8сентября: задача — как можно быстрее связать каждый ANEX hotel ID
 из фактической выдачи с catalog_hotels, а не расширять количество TV поисков.
 Новые курортные/звёздные/ценовые эксперименты отложены. Основная метрика:
-принятые ANEX ID / все ANEX ID в сохранённых поисках, сейчас229/502, unresolved273.
-136 review,133 source_error,4 unmatched — активная работа по доказательствам,
+принятые ANEX ID / все ANEX ID в сохранённых поисках, актуальная точка ниже:239/502, unresolved263.
+132 review,127 source_error,4 unmatched — активная работа по доказательствам,
 а remaining_new_ids=0 само по себе не является завершением этой цели.
 Старые supplier requests с неизвестным результатом автоматически не повторяются.
 
@@ -31,6 +31,44 @@ geo API cards по единомуANEXID и проверяет source hashes/coun
 preview, manual decisions и catalog_hotels сохраняются. Используется тот же workflow
 observed и append-only importer. Новые changes observed runtime требуют свежегоrun;
 старый34271815803/35fa3709 не rerun после подключения нового обработчика.
+
+## Актуальная точка: десять связей из сохранённых доказательств
+
+Исполняемый SHA0156629b42a466139477c86d8070a5e75a51084e,
+run34285330215 attempt1/job102259468693, успешен;
+artifact10079280403, digestb7378b9e296cceba298b763575bc3c14fa7ddcf24d42fca9049116b2a3941f4c,
+восстановлен10079156958. За владельческую работу18 ID независимо проверены,
+добавлено10 strong (4 saved-review +6 cached-review),8 оставлены на разбор.
+Новых/повторных supplier ID0, API calls0. Прежние292live rows сохранены,
+in_flight0, remaining_new_ids0. Повторные читатели4/14 вернули already_completed,
+повторный acceptance4 — already_finalized/inserted0. Cached acceptance добавил ровно6.
+Все raw/ranked/JSON/CSV/checkpoint readback подтверждены runner; SHA обоих
+evidence checkpoints остались прежними. Независимое локальное скачиваниеZIP не выполнялось.
+
+Свежий DB registry **12899 = policy12890(exact10608/strong2282)+manual9**,
+unique local11067, staging8362. Policy hash
+4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc;
+manual hashac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1.
+Прежниеpolicy12884 сохранены поhasha176cb72638a2d30bd5610736d35a3f12081ad71e6c417ac7cafa70ca2d38198.
+Покрытие **239/502**, pending263=review132/source_error127/unmatched4.
+Последняя точка — anex-cached-review-acceptance-report.json и обновлённаяqueue;
+обычный observed-report в этомrun создан доимпорта6 и показывает233, не239.
+Исторические source_error не переклассифицированы: отдельный evidence report
+содержит8 проверенных review, тогдакак119 interrupted_result_unknown остаются неподтверждёнными.
+Финальный cache audit SHA bd4ffa07816efc54c32f4259fc6e863f969d7ae90e98f81c34a6361e103215f3:
+25 пригодных cached APIcards дляоставшихся, включая8 из завершённогоcache14.
+
+Результат текущей работы ровно10; прежниеowner9/complete2 — отдельная история.
+Машинная сводка и12 предварительных приоритетов длянезависимой проверки прежнихназваний:
+reports/anex-observed-evidence-recovery-20260908.json.
+Приоритеты не являются предложенными связями: нужно сначала проверить свежийregistry,
+полные source rows и raw hotel_aliases(источникgenerated), затем полный набор конкурентов
+canonical/alias/name/geobox страны. Порогиname0.9/country/200м/qualifier/margin0.1 сохраняются.
+Не передавать полноту без sentinel/exhausted доказательства, не менять pinned checkpoints ради расширения.
+В paired/segment/price проекциях для119 unknown нет дополнительныхcoords/address/hotelURL;
+название/курорт/цена сами по себе не подтверждают связь. Unknown supplier requests не повторять.
+Нулевой остаток новыхID не закрывает263несопоставленных: продолжать независимую работу
+с сохранёнными доказательствами, без новыхTV/PRICES/previewdeploy экспериментов.
 
 ## Проверка cache14 дала шесть строгих пар
 
