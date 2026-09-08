@@ -115,11 +115,14 @@ jobs:
           # The catalogue process uses the same API token. Drain its rolling
           # one-minute window before the six bounded SearchTour requests.
           sleep 65
-          python3 -B scripts/diagnostics/anex_access_probe.py --price-evidence \
-            > "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
-          python3 -B scripts/diagnostics/anex_price_evidence_checkpoint.py \
-            --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
-            --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
+          if python3 -B scripts/diagnostics/anex_access_probe.py --price-evidence \
+            > "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"; then
+            python3 -B scripts/diagnostics/anex_price_evidence_checkpoint.py \
+              --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
+              --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
+          else
+            echo "::warning::ANEX price evidence failed; catalogue checkpoint will still be persisted"
+          fi
       - name: Persist validated checkpoint in isolated ANEX staging tables
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
