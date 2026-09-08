@@ -277,6 +277,19 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('.selected-price-confidence', review)
         self.assertIn('window.V2PriceConfidenceV1', legacy)
 
+    def test_legacy_filter_autorefresh_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        lifecycle = (ROOT / 'v2/search-lifecycle-v6.js').read_text()
+        results = (ROOT / 'src/search3/behavior/results-presentation.js').read_text()
+        legacy = (ROOT / 'v2/results-filter-autorefresh-v1.js').read_text()
+        self.assertIn("'results-filter-autorefresh-v1.js'", scoped)
+        self.assertIn("form.addEventListener('submit'", lifecycle)
+        self.assertIn("window.addEventListener('v2:search-dirty', markStale)", results)
+        self.assertIn("staleBanner.querySelector('.search-stale-update')", results)
+        self.assertIn('window.V2ResultsFilterAutorefreshV1', legacy)
+        self.assertNotIn('setTimeout(()=>{timer=0', results)
+
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
