@@ -59,15 +59,19 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1');
         await action.click();
       }
       await page.waitForSelector('#selectedTour .flight-variant');
-      await page.waitForFunction(() => document.querySelector('.search3-booking-summary__total strong')?.textContent.includes('150'));
+      await page.waitForSelector('#selectedTour .search3-flight-continue button');
       assert.deepEqual(await page.evaluate(() => window.__lazyCalls), [['tour', 'lazy-tour'], ['flights', 'lazy-tour']], 'first successful click selects exactly once');
       const price = await page.locator('#selectedTour .selected-price').innerText();
       assert.match(price, /150[\s\u00a0]*001,2/, 'decimal selected price retained');
+      assert.equal(await page.locator('#selectedTour .search3-flight-continue button').innerText(), 'Оставить заявку', 'lazy chunk exposes native lead handoff');
+      await page.locator('#selectedTour .search3-flight-continue button').click();
+      await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
+      assert.equal(await page.locator('.search3-booking-summary,.search3-summary-submit').count(), 0, 'duplicate booking review remains absent');
       await page.locator('#selectedTour .back-results').click();
       await page.waitForFunction(() => document.activeElement?.matches('.direct-tour'));
       assert.equal(chunks, scenario === 'retry' ? 2 : 1, 'loaded chunk is reused');
       assert.deepEqual(errors, []);
-      evidence.push({ scenario, chunks, tourRequests: 1, flightRequests: 1, returnFocus: true, price });
+      evidence.push({ scenario, chunks, tourRequests: 1, flightRequests: 1, nativeLeadHandoff: true, returnFocus: true, price });
       await page.close();
     }
   } finally { await browser.close(); }
