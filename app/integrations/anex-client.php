@@ -10,8 +10,9 @@ final class AnyTourAnexClient
     private $token;
     private $transport;
     private $requests = 0;
+    private $rateDirectory;
 
-    public function __construct(string $token, ?callable $transport = null)
+    public function __construct(string $token, ?callable $transport = null, ?string $rateDirectory = null)
     {
         $token = trim($token);
         if ($token === '' || strlen($token) > 4096 || preg_match('/[\x00-\x20\x7f]/', $token)) {
@@ -19,6 +20,7 @@ final class AnyTourAnexClient
         }
         $this->token = $token;
         $this->transport = $transport;
+        $this->rateDirectory = $rateDirectory ?? sys_get_temp_dir();
     }
 
     public function __debugInfo(): array
@@ -75,6 +77,9 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $envelope)) {
+            if ($action === 'SearchTour_PRICES' && in_array($envelope['error'], [2110, '2110'], true)) {
+                return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
+            }
             throw new RuntimeException('ANEX_SUPPLIER_ERROR');
         }
         if (!array_key_exists($action, $envelope)) {
@@ -88,6 +93,9 @@ final class AnyTourAnexClient
             throw new RuntimeException('ANEX_INVALID_RESPONSE');
         }
         if (array_key_exists('error', $payload)) {
+            if ($action === 'SearchTour_PRICES' && in_array($payload['error'], [2110, '2110'], true)) {
+                return ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'];
+            }
             throw new RuntimeException('ANEX_SUPPLIER_ERROR');
         }
         // The client owns the credential, so callers never need to duplicate it
@@ -211,16 +219,80 @@ final class AnyTourAnexClient
         return $params;
     }
 
+    /** Only real cURL requests share this token-hash state across PHP workers. */
+    private function rateSlot(?float $blockedUntil = null): bool
+    {
+        $path = rtrim($this->rateDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR
+            . 'anytour-anex-rate-' . hash('sha256', $this->token) . '.json';
+        if (is_link($path)) throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+        $handle = @fopen($path, 'c+');
+        if ($handle === false) throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+        try {
+            $opened = fstat($handle);
+            $named = @lstat($path);
+            if (!$opened || !$named || ($named['mode'] & 0170000) !== 0100000
+                || $opened['ino'] !== $named['ino'] || $opened['dev'] !== $named['dev']
+                || !@chmod($path, 0600)) throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+            while (true) {
+                if (!flock($handle, LOCK_EX)) throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+                rewind($handle);
+                $raw = stream_get_contents($handle, 2048);
+                $state = $raw === '' ? ['next_at' => 0, 'blocked_until' => 0] : json_decode($raw, true);
+                if (!is_array($state) || !isset($state['next_at'], $state['blocked_until'])) {
+                    throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+                }
+                foreach (['next_at', 'blocked_until'] as $field) {
+                    if ((!is_int($state[$field]) && !is_float($state[$field]))
+                        || !is_finite((float) $state[$field]) || $state[$field] < 0) {
+                        throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+                    }
+                }
+                $now = microtime(true);
+                if ($blockedUntil !== null) {
+                    $state['blocked_until'] = max($state['blocked_until'], $blockedUntil, $now + 1.05);
+                } else {
+                    // A supplier cooldown fails immediately; it never occupies a worker for minutes.
+                    if ($state['blocked_until'] > $now) return false;
+                    $wait = $state['next_at'] - $now;
+                    if ($wait > 0) {
+                        flock($handle, LOCK_UN);
+                        usleep((int) ceil(min($wait, 1.05) * 1000000));
+                        continue;
+                    }
+                    $state['next_at'] = $now + 1.05;
+                }
+                $encoded = json_encode($state);
+                rewind($handle);
+                if (!ftruncate($handle, 0) || fwrite($handle, $encoded) !== strlen($encoded)
+                    || !fflush($handle)) throw new RuntimeException('ANEX_TRANSPORT_ERROR');
+                return true;
+            }
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    private function retryUntil(string $value): ?float
+    {
+        if (preg_match('/^[0-9]{1,9}$/D', $value)) return microtime(true) + (int) $value;
+        if (strlen($value) !== 29 || preg_match('/[^\x20-\x7e]/', $value)) return null;
+        $date = DateTimeImmutable::createFromFormat('!D, d M Y H:i:s \G\M\T', $value, new DateTimeZone('UTC'));
+        return $date && $date->format('D, d M Y H:i:s \G\M\T') === $value
+            ? (float) $date->getTimestamp() : null;
+    }
+
     private function curlRequest(string $url): array
     {
         if (!function_exists('curl_init')) {
             throw new RuntimeException('ANEX_TRANSPORT_UNAVAILABLE');
         }
+        if (!$this->rateSlot()) return ['status' => 429, 'body' => ''];
         $handle = curl_init();
         if ($handle === false) {
             throw new RuntimeException('ANEX_TRANSPORT_UNAVAILABLE');
         }
         $body = '';
+        $retryUntil = null;
         try {
             $configured = curl_setopt_array($handle, [
                 CURLOPT_URL => $url, CURLOPT_HTTPGET => true,
@@ -232,6 +304,13 @@ final class AnyTourAnexClient
                 CURLOPT_HEADER => false, CURLOPT_RETURNTRANSFER => false, CURLOPT_VERBOSE => false,
                 CURLOPT_HTTPHEADER => ['Accept: application/json'],
                 CURLOPT_USERAGENT => 'AnyTour-ANEX-read-client/1.0',
+                CURLOPT_HEADERFUNCTION => function ($unused, string $line) use (&$retryUntil): int {
+                    if (stripos($line, 'HTTP/') === 0) $retryUntil = null;
+                    if (stripos($line, 'Retry-After:') === 0 && strlen($line) <= 128) {
+                        $retryUntil = $this->retryUntil(trim(substr($line, 12)));
+                    }
+                    return strlen($line);
+                },
                 CURLOPT_WRITEFUNCTION => static function ($unused, string $chunk) use (&$body): int {
                     $remaining = self::BODY_LIMIT + 1 - strlen($body);
                     $body .= substr($chunk, 0, max(0, $remaining));
@@ -242,10 +321,12 @@ final class AnyTourAnexClient
                 throw new RuntimeException('ANEX_TRANSPORT_ERROR');
             }
             $completed = curl_exec($handle);
+            $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+            if ($status === 429) $this->rateSlot($retryUntil ?? microtime(true) + 60);
             if ($completed === false && strlen($body) <= self::BODY_LIMIT) {
                 throw new RuntimeException('ANEX_TRANSPORT_ERROR');
             }
-            return ['status' => (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE), 'body' => $body];
+            return ['status' => $status, 'body' => $body];
         } finally {
             curl_close($handle);
         }

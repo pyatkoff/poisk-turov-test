@@ -73,7 +73,7 @@ clientTest('write actions and routing overrides rejected before network', static
     clientCheck($client->requestsMade() === 0, 'invalid input never sent');
 });
 clientTest('HTTP errors and redirects never reveal body', static function (): void {
-    foreach ([301, 302, 307, 400, 401, 500] as $status) {
+    foreach ([301, 302, 307, 400, 401, 429, 500] as $status) {
         $client = clientWithResponse($status, 'test-secret https://supplier/?oauth_token=test-secret');
         clientFailure(static function () use ($client): void { $client->request('SearchTour_TOWNFROMS'); }, 'ANEX_HTTP_ERROR');
     }
@@ -195,6 +195,65 @@ clientTest('default service caller needs no duplicate token filter', static func
     clientCheck($flight['carrier'] === null && $flight['classes'][0]['hand_baggage'] === null, 'nested flight labels protected by client');
     clientCheck($flight['classes'][0]['baggage'] === '20 kg', 'clean baggage preserved');
     clientCheck(strpos(json_encode([$result, $flights]), 'test-secret') === false, 'service exposes no token');
+});
+
+clientTest('PRICES 2110 is empty while unrelated supplier errors remain errors', static function (): void {
+    foreach (['{"error":2110}', '{"SearchTour_PRICES":{"error":"2110","message":"test-secret"}}'] as $body) {
+        clientCheck(clientWithResponse(200, $body)->request('SearchTour_PRICES')
+            === ['prices' => [], 'empty_reason' => 'no_hotels_for_filters'], 'business-empty prices');
+    }
+    foreach ([['SearchTour_PRICES', '{"error":2109}'], ['SearchTour_STATES', '{"error":2110}']] as $case) {
+        clientFailure(static function () use ($case): void {
+            clientWithResponse(200, $case[1])->request($case[0]);
+        }, 'ANEX_SUPPLIER_ERROR');
+    }
+});
+clientTest('Retry-After accepts only delta seconds or a valid GMT HTTP date', static function (): void {
+    $client = clientWithResponse(200, '{"SearchTour_TOWNFROMS":[]}');
+    $parse = new ReflectionMethod(AnyTourAnexClient::class, 'retryUntil');
+    $parse->setAccessible(true);
+    $now = microtime(true);
+    clientCheck(abs($parse->invoke($client, '120') - $now - 120) < 1, 'delta deadline');
+    $future = time() + 120;
+    clientCheck($parse->invoke($client, gmdate('D, d M Y H:i:s', $future) . ' GMT') === (float) $future, 'date deadline');
+    foreach (['-1', '1.5', 'tomorrow', "120\r\ntest-secret", str_repeat('a', 28) . "\0", str_repeat('9', 100)] as $invalid) {
+        clientCheck($parse->invoke($client, $invalid) === null, 'invalid header discarded');
+    }
+});
+clientTest('token-shared slots cooldown and private state without affecting mocks', static function (): void {
+    $directory = sys_get_temp_dir() . '/anex-client-test-' . bin2hex(random_bytes(8));
+    clientCheck(mkdir($directory, 0700), 'temporary directory');
+    try {
+        $first = new AnyTourAnexClient('test-secret', null, $directory);
+        $second = new AnyTourAnexClient('test-secret', null, $directory);
+        $slot = new ReflectionMethod(AnyTourAnexClient::class, 'rateSlot');
+        $slot->setAccessible(true);
+        clientCheck($slot->invoke($first), 'first shared slot');
+        $started = microtime(true);
+        clientCheck($slot->invoke($second), 'second shared slot');
+        clientCheck(microtime(true) - $started >= 1.0, 'separate clients share pacing');
+        $files = glob($directory . '/*');
+        clientCheck(count($files) === 1 && strpos($files[0], 'test-secret') === false, 'hash-keyed file');
+        clearstatcache();
+        clientCheck((fileperms($files[0]) & 0777) === 0600, 'private state permissions');
+        clientCheck(strpos(file_get_contents($files[0]), 'test-secret') === false, 'no token in state');
+        $slot->invoke($first, microtime(true) + 120);
+        clientCheck($slot->invoke($second) === false, 'shared cooldown blocks another client');
+        if (function_exists('curl_init')) {
+            clientFailure(static function () use ($second): void {
+                $second->request('SearchTour_TOWNFROMS');
+            }, 'ANEX_HTTP_ERROR');
+        }
+        $mock = new AnyTourAnexClient('test-secret', static function (): array {
+            return ['status' => 200, 'body' => '{"SearchTour_TOWNFROMS":[]}'];
+        }, $directory . '/does-not-exist');
+        for ($i = 0; $i < 12; ++$i) clientCheck($mock->request('SearchTour_TOWNFROMS') === [], 'mock bypasses all shared state');
+        file_put_contents($files[0], '{corrupt');
+        clientFailure(static function () use ($slot, $first): void { $slot->invoke($first); }, 'ANEX_TRANSPORT_ERROR');
+    } finally {
+        foreach (glob($directory . '/*') as $file) unlink($file);
+        rmdir($directory);
+    }
 });
 
 echo 'ANEX client: ' . $passed . " tests passed\n";
