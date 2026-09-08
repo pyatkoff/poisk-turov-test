@@ -43,9 +43,14 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   assert.equal(apiCalls, 1, 'catalog is loaded once');
 
   const presentation = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/search-form/secondary-controls.js'), 'utf8');
-  assert.match(presentation, /new URLSearchParams\(window\.location\.search/);
-  assert.match(presentation, /meal\.addEventListener\('focus',loadMeals/);
-  assert.match(presentation, /closest\('\.search-filters-reset'\)/);
+  const lifecycle = fs.readFileSync(path.join(__dirname, '../v2/search-lifecycle-v6.js'), 'utf8');
+  const markup = fs.readFileSync(path.join(__dirname, '../v2/index.php'), 'utf8');
+  assert.equal(presentation.replace(/\/\*[\s\S]*?\*\//g, '').trim(), '', 'retired meal projection is provenance only');
+  assert.match(source, /name==='food'.*loadMeals\(token\)/, 'catalog owner lazily loads meals on native focus');
+  assert.match(lifecycle, /new URLSearchParams\(window\.location\.search\|\|''\)/, 'lifecycle owns URL hydration');
+  assert.match(lifecycle, /'food'.*setField\(name,queryValue/, 'lifecycle restores food URL state');
+  assert.match(lifecycle, /meal:f\.get\('food'\)\|\|''/, 'FormData keeps meal in the Tourvisor payload');
+  assert.match(markup, /<select name="food">/, 'server markup keeps the canonical meal control');
   assert.doesNotMatch(presentation, /meal-quick|meal-native-select|V2PrimaryMealUXV1/);
   console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1');
 })().catch(error => { console.error(error); process.exitCode = 1; });
