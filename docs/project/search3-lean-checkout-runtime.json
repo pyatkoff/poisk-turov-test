@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "827bb0a4d0d0679f9a851b0f2806cc4be024e462",
+  "checked_code_release_sha": "5a867bd074b63b59348c1f442352754463b64c05",
+  "source_pr": 1526,
+  "source_sha": "e1a847d7ffb805c2398a95c6c0db26df87b9e0e9",
+  "retired_search3_owner": "checkout-experience-v1.js",
+  "retained_legacy_owner": "v2/checkout-experience-v1.js remains in the full legacy manifest",
+  "retained_current_behavior": [
+    "Selected head, picture, description, facts, flights and lead geometry classes",
+    "Facts list/listitem roles and flight aria-label",
+    "Optional name/comment disclosure and lead-success hiding",
+    "Mobile required name/phone normalization",
+    "All lead transport, field names/mapping and submission lifecycle"
+  ],
+  "retired_behavior": [
+    "Hidden Search3 checkout journey markup and stage mutation",
+    "Hidden facts heading",
+    "Separate selected-tour MutationObserver and duplicate lifecycle subscriptions",
+    "Hidden checkout-help marker"
+  ],
+  "payload": {
+    "before": {
+      "css": 196984,
+      "js": 235774,
+      "eight_assets": 151786,
+      "raw_total": 584544,
+      "gzip_total": 129651
+    },
+    "after": {
+      "css": 196984,
+      "js": 229713,
+      "eight_assets": 153884,
+      "raw_total": 580581,
+      "gzip_total": 128767
+    }
+  },
+  "raw_saved_bytes": 3963,
+  "gzip_saved_bytes": 884,
+  "measurement_scope": "Raw total sums route-scoped source files and eight generated Search3 paths. Gzip total compresses exact bundle-v1.php output including separators plus eight files at level 9. The prior checkpoint was corrected by +8 raw and +3 gzip after an exact repository recount.",
+  "ci": {
+    "security_run": 34172559663,
+    "exact_runs": [
+      34172559608,
+      34172785030
+    ],
+    "artifact_id": 10036258837,
+    "artifact_digest": "sha256:9203361cc166c5388cfdd360165762d4c5c56b9c48fb0c6921b5d0f47c8a2b94",
+    "selected_geometry_artifact": 10036258261,
+    "selected_geometry_digest": "sha256:5c6c75a30e86e30a0d00ab8f2f212342d7baf75b6c14935150263d939ee6301c",
+    "results_geometry_artifact": 10036258592,
+    "results_geometry_digest": "sha256:9c49adfcbe1dd0f5d4134eaa23f13cd70f6097de6ac3f0308e80ad52a2e69157"
+  },
+  "browser_evidence": {
+    "selected_states": 12,
+    "selected_widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "entry_states": 30,
+    "entry_widths": [
+      375,
+      700,
+      701,
+      760,
+      761,
+      1440
+    ],
+    "result_states": 12,
+    "result_widths": [
+      375,
+      760,
+      761,
+      999,
+      1000,
+      1440
+    ],
+    "result": "Exact Chromium geometry passed twice after the final source commit."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "Live current-source interaction",
+    "Physical Safari and safe-area",
+    "Owner visual acceptance"
+  ],
+  "next_action": "Audit the complete sales-leader-ui-v1.js/.css presentation pair for Search3. Preserve the current selected-tour trust block, full legacy route and protected lead/price/API/analytics contracts; exclude the old pair only after focused source and exact browser CI.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}
