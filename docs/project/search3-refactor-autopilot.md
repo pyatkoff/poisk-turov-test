@@ -2271,3 +2271,19 @@ Focused source checks cover instant/local facets, completeness guards, zero-resu
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-filter-autorefresh-runtime.json`.
 
 Next: audit `results-depth-v1.js` against `search-lifecycle-v6.js`. The lifecycle already renders 100 results before emitting `v2:search-complete`; preserve progressive 25-result refreshes and the final 100-result render, and remove the old post-completion owner only if focused coverage proves its second request is redundant.
+
+## S3_LEAN_RESULTS_DEPTH_RUNTIME — checked release, 2026-09-08
+
+Source PR #1548 / `e3c6fe0615e64c9117faa0d1895c35a09fe9d7c4`; checked code release `98599ae41594d809af24ef767e7586a9706f8ac6`. Search3 no longer loads the complete 1346-byte `results-depth-v1.js` runtime. The full legacy route retains the unchanged file and `V2ResultsDepthV1` compatibility global.
+
+The current `search-lifecycle-v6.js` remains the single network owner: it fetches progressive 25-result batches while search runs, then fetches and renders 100 results before emitting `v2:search-complete`. The retired owner listened to that completion event and issued the same 100-result request again. No replacement request or behavior code was added.
+
+Loaded raw is **545330 → 543984 bytes (−1346)**: scoped shared JavaScript 186946→185600; shared CSS and the eight Search3 assets remain 186118 and 172266. Exact emitted endpoints plus eight independent files gzip is **121305 → 120947 (−358)**.
+
+Security `34190365275` and exact artifacts `34190365259` / `34190514822` passed. Reusable final artifact `10042067449`, digest `sha256:3afd81112c9f06803248747e27edb48d8d5de6e44256b15db06f08ce0fdb1bc4`; selected evidence `10042066429`, digest `sha256:c4bee1faaea696858c5bce1f1378dab1ae319bf773749f7a8e78cbbf394cd209`; results evidence `10042066943`, digest `sha256:9bebbde6699e8935680a29eaa3f34e0d0d350c47fe1114856082bff03eaad206`.
+
+Focused source checks assert one final 100-result request, completion only after its render, retained progressive limit 25 and absent Search3 compatibility global. Exact Chromium retained 12 selected states, 30 entry states, 12 result states and 10 header states. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-results-depth-runtime.json`.
+
+Next: audit `results-local-filters-v1.js` against `ds2-results-filters.js` and `search-lifecycle-v6.js` as one substantial owner-consolidation package. Preserve every unique form-narrowing, result-facet, completeness, catalog-refresh and explicit supplier-search contract; do not remove working filter behavior for size alone.

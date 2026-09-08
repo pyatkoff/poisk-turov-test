@@ -53,32 +53,32 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1546 retires the complete 2714-byte results-filter-autorefresh-v1.js runtime from Search3. Raw route payload falls 548044 to 545330 (-2714) and exact gzip falls 121807 to 121305 (-502). Current result facets remain instant/local and primary parameter changes retain explicit submission; the full legacy route keeps automatic refresh unchanged.",
+    "last_material_progress": "PR #1548 retires the complete 1346-byte results-depth-v1.js runtime from Search3. Raw route payload falls 545330 to 543984 (-1346) and exact gzip falls 121305 to 120947 (-358). The current lifecycle retains progressive 25-result refreshes and performs one final 100-result render before completion; the full legacy route remains unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit results-depth-v1.js against search-lifecycle-v6.js. Preserve progressive 25-result refreshes and the final 100-result render; exclude the legacy owner only if the lifecycle already performs the same final search_results request before emitting v2:search-complete.",
+    "next_action": "Audit results-local-filters-v1.js against ds2-results-filters.js and search-lifecycle-v6.js as one substantial owner-consolidation candidate. Preserve instant loaded-result facets, search-form narrowing, completeness guards, catalog refresh and explicit supplier-search submission; do not trade working filters for bytes.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_FILTER_AUTOREFRESH_RUNTIME",
-    "title": "Retire legacy automatic filter refresh runtime",
+    "id": "S3_LEAN_RESULTS_DEPTH_RUNTIME",
+    "title": "Retire duplicate post-completion results depth runtime",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1546],
+    "source_prs": [1548],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "c7118489fe450ae7850f058206bb20031e6e3004"
+      "e3c6fe0615e64c9117faa0d1895c35a09fe9d7c4"
     ],
-    "release_sha": "401c095df33a9cfd440534d48d72ff5a5e8a4c89",
-    "artifact_run": 34189452118,
-    "artifact_id": 10041716679,
-    "artifact_digest": "sha256:bc39e469877ee9b24721262975490a1d9c6dca8c2ea23d592d558512c92eb384",
+    "release_sha": "98599ae41594d809af24ef767e7586a9706f8ac6",
+    "artifact_run": 34190514822,
+    "artifact_id": 10042067449,
+    "artifact_digest": "sha256:3afd81112c9f06803248747e27edb48d8d5de6e44256b15db06f08ce0fdb1bc4",
     "checked_release_asset_bytes": 172266,
-    "checked_release_loaded_bytes": 545330,
+    "checked_release_loaded_bytes": 543984,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit results-depth-v1.js against search-lifecycle-v6.js. Preserve progressive 25-result refreshes and the final 100-result render; remove only the redundant post-completion request."
+    "next_action": "Audit results-local-filters-v1.js against the DS2 result-filter owner and lifecycle. Consolidate only with full preservation of form narrowing, completeness, catalog refresh and explicit supplier-search behavior."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1246,10 +1246,25 @@
       "focused_source_states": "instant/local facets, completeness guards, zero-result recovery, explicit stale-results submission and legacy auto-refresh retention",
       "required_passed": 2,
       "preview_published": false
+    },
+    "results_depth_runtime_retirement": {
+      "source_pr": 1548,
+      "source_sha": "e3c6fe0615e64c9117faa0d1895c35a09fe9d7c4",
+      "security_run": 34190365275,
+      "artifact_runs": [34190365259, 34190514822],
+      "artifact_id": 10042067449,
+      "artifact_digest": "sha256:3afd81112c9f06803248747e27edb48d8d5de6e44256b15db06f08ce0fdb1bc4",
+      "results_geometry_artifact": 10042066943,
+      "results_geometry_digest": "sha256:9bebbde6699e8935680a29eaa3f34e0d0d350c47fe1114856082bff03eaad206",
+      "selected_geometry_artifact": 10042066429,
+      "selected_geometry_digest": "sha256:c4bee1faaea696858c5bce1f1378dab1ae319bf773749f7a8e78cbbf394cd209",
+      "focused_source_states": "progressive 25-result refresh, one final 100-result render before completion, no second post-completion request and legacy retention",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "401c095df33a9cfd440534d48d72ff5a5e8a4c89",
-  "last_verified_commit_scope": "Checked Search3 release after #1546; legacy automatic filter refresh is excluded while instant/local result facets and explicit primary-parameter submission remain. The full legacy route retains automatic refresh. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "98599ae41594d809af24ef767e7586a9706f8ac6",
+  "last_verified_commit_scope": "Checked Search3 release after #1548; the duplicate post-completion depth runtime is excluded while progressive 25-result refreshes and one final 100-result render remain in the current lifecycle. The full legacy route is unchanged. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -8498,6 +8513,25 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-filter-autorefresh-runtime.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_results_depth_runtime_retirement": {
+    "source_pr": 1548,
+    "source_sha": "e3c6fe0615e64c9117faa0d1895c35a09fe9d7c4",
+    "checked_code_release_sha": "98599ae41594d809af24ef767e7586a9706f8ac6",
+    "retired_search3_owner": "results-depth-v1.js",
+    "legacy_runtime_bytes_removed": 1346,
+    "raw_before": 545330,
+    "raw_after": 543984,
+    "raw_saved": 1346,
+    "gzip_before": 121305,
+    "gzip_after": 120947,
+    "gzip_saved": 358,
+    "eight_assets_before": 172266,
+    "eight_assets_after": 172266,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-results-depth-runtime.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
