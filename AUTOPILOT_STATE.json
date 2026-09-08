@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1558 retires the complete 4640-byte hotel-details-design.css presentation layer from Search3. Current Search3 already hides the old inline-detail/actions surface, so no compensation code was added; loaded route payload falls 519318 to 514678 raw (-4640) and carried same-method gzip falls 116431 to 115816 (-615). The full legacy route retains the unchanged layer.",
+    "last_material_progress": "PR #1561 retires the complete 8656-byte results-experience-v1.css presentation layer from Search3. Current Search3 result owners preserve card, photo, expanded-tour, CTA, tools and empty-state geometry, so no compensation code was added; loaded route payload falls 514678 to 506022 raw (-8656) and carried same-method gzip falls 115816 to 114104 (-1712). The full legacy route retains the unchanged layer.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit results-experience-v1.css as the next substantial complete presentation-layer candidate. Preserve active result-card geometry in current Search3 owners and keep the full legacy layer on /poisk-turov-old/; do not retire active room-details.css merely for size.",
+    "next_action": "Audit anytour-brand.css as the next substantial complete presentation-layer candidate against current Search3 owners. Preserve brand tokens and active geometry, retain the full old-route layer, and do not retire active room-details.css or search-states-design.css merely for size.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_HOTEL_DETAILS_LAYER",
-    "title": "Retire the legacy hotel-details presentation layer from Search3",
+    "id": "S3_LEAN_RESULTS_EXPERIENCE_LAYER",
+    "title": "Retire the legacy results-experience presentation layer from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1558
+      1561
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "60223b579d05456d782722ceead4e755a22167d9"
+      "886ae5f7b1cbe886ad2bc047c2785edebd343d88"
     ],
-    "release_sha": "4dc61c0154d4129a9d514121120e48692c82cc97",
-    "artifact_run": 34202904621,
-    "artifact_id": 10046592943,
-    "artifact_digest": "sha256:d81ea21c4ec39cda85b576bc745108376c6c9bdf695e1db8709ed5194bb2fd24",
+    "release_sha": "b9d4240871c1194187022ea0b3f80a16ae0f4435",
+    "artifact_run": 34204924813,
+    "artifact_id": 10047392842,
+    "artifact_digest": "sha256:bb40958fb09d03030f6dccd52cb8609579fba06a69e99908d3c2ee69a33d7a2b",
     "checked_release_asset_bytes": 174000,
-    "checked_release_loaded_bytes": 514678,
+    "checked_release_loaded_bytes": 506022,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit results-experience-v1.css as one whole reversible layer; keep active room-details.css and all old-route owners unchanged."
+    "next_action": "Audit anytour-brand.css as one whole reversible layer; preserve brand tokens and active geometry, and keep active room-details.css/search-states-design.css unchanged."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -8712,6 +8712,27 @@
     "full_legacy_manifest_owner_retained": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-hotel-details-layer.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_results_experience_layer_retirement": {
+    "source_pr": 1561,
+    "source_sha": "886ae5f7b1cbe886ad2bc047c2785edebd343d88",
+    "checked_code_release_sha": "b9d4240871c1194187022ea0b3f80a16ae0f4435",
+    "retired_search3_owner": "results-experience-v1.css",
+    "legacy_layer_bytes_removed": 8656,
+    "current_owner_bytes_added": 0,
+    "raw_before": 514678,
+    "raw_after": 506022,
+    "raw_saved": 8656,
+    "gzip_before": 115816,
+    "gzip_after": 114104,
+    "gzip_saved": 1712,
+    "eight_assets_before": 174000,
+    "eight_assets_after": 174000,
+    "green_exact_runs": [34204676400, 34204924813],
+    "full_legacy_manifest_owner_retained": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-results-experience-layer.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }

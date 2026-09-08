@@ -2378,3 +2378,19 @@ Both exact Chromium runs retained selected detail/review/lead, result and entry 
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-hotel-details-layer.json`.
 
 Next: audit the complete `results-experience-v1.css` presentation layer as one reversible package. Preserve active Search3 result geometry in current owners, keep the layer unchanged on the old route, and do not remove active `room-details.css` for size alone.
+
+## S3_LEAN_RESULTS_EXPERIENCE_LAYER — checked release, 2026-09-08
+
+Source PR #1561 / `886ae5f7b1cbe886ad2bc047c2785edebd343d88`; checked code release `b9d4240871c1194187022ea0b3f80a16ae0f4435`. Search3 no longer loads the complete 8656-byte `results-experience-v1.css` presentation layer. The unchanged layer remains in the full manifest used by `/poisk-turov-old/`.
+
+Current Search3 owners already preserve result tools, hotel card/photo, hotel facts, package disclosure, expanded tour rows, price/CTA and actionable empty state. Both exact Chromium runs passed without adding any replacement CSS or JavaScript.
+
+Loaded raw is **514678 → 506022 bytes (−8656)**: scoped shared CSS 157661→149005; shared JavaScript and the eight generated Search3 assets remain 183740 and 174000. Carried same-method gzip is **115816 → 114104 (−1712)**.
+
+Security `34204676344` and exact artifacts `34204676400` / `34204924813` passed. Reusable final artifact `10047392842`, digest `sha256:bb40958fb09d03030f6dccd52cb8609579fba06a69e99908d3c2ee69a33d7a2b`; results evidence `10047392372`, digest `sha256:4d1aed11ba7554daa3bebc58204d5f1338d73f35fb7450fb3adb39388d2c8eb3`; selected evidence `10047392000`, digest `sha256:21998738db112adc43866985216ec8ff7a573550a3205658a9c9d9d481460612`.
+
+Exact Chromium retained selected detail/review/lead, result, expanded-package and entry geometry without external API or lead requests. Eight public paths and Tourvisor/API, URL/payload, price arithmetic, lead transport/mapping, analytics/goals, logo/native/nesting contracts are unchanged.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-results-experience-layer.json`.
+
+Next: audit the complete `anytour-brand.css` presentation layer against current Search3 owners as one reversible package. Preserve brand tokens and active geometry, keep the layer unchanged on the old route, and do not remove active `room-details.css` or `search-states-design.css` merely for size.

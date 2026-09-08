@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "1f0ab754d75168f4f247deed04bea93b06593a14",
+  "source_pr": 1561,
+  "source_sha": "886ae5f7b1cbe886ad2bc047c2785edebd343d88",
+  "checked_code_release_sha": "b9d4240871c1194187022ea0b3f80a16ae0f4435",
+  "retired_search3_owner": "results-experience-v1.css",
+  "retained_legacy_owner": "The unchanged 8656-byte result cards, package rows, result tools and actionable-empty presentation layer remains in the full manifest used by /poisk-turov-old/.",
+  "retained_current_geometry": [
+    "Current Search3 result tools and layout",
+    "Hotel card, photo, facts, price and package disclosure",
+    "Expanded package rows and CTA",
+    "Actionable empty state"
+  ],
+  "payload": {
+    "before": {"css": 157661, "js": 183740, "eight_assets": 174000, "raw_total": 514678, "gzip_total": 115816},
+    "after": {"css": 149005, "js": 183740, "eight_assets": 174000, "raw_total": 506022, "gzip_total": 114104}
+  },
+  "legacy_layer_bytes_removed": 8656,
+  "current_owner_bytes_added": 0,
+  "raw_saved_bytes": 8656,
+  "gzip_saved_bytes": 1712,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Gzip carries the preceding absolute with a same-method exact endpoint and eight-file delta.",
+  "ci": {
+    "security_run": 34204676344,
+    "failed_exact_runs": [],
+    "green_exact_runs": [34204676400, 34204924813],
+    "artifact_id": 10047392842,
+    "artifact_digest": "sha256:bb40958fb09d03030f6dccd52cb8609579fba06a69e99908d3c2ee69a33d7a2b",
+    "selected_geometry_artifact": 10047392000,
+    "selected_geometry_digest": "sha256:21998738db112adc43866985216ec8ff7a573550a3205658a9c9d9d481460612",
+    "results_geometry_artifact": 10047392372,
+    "results_geometry_digest": "sha256:4d1aed11ba7554daa3bebc58204d5f1338d73f35fb7450fb3adb39388d2c8eb3"
+  },
+  "focused_evidence": {
+    "source": "Current results-layout.css, results-cards-v2.css and hotel-card-convergence.css retain the active Search3 result surface while the full legacy file remains available to the old route.",
+    "browser": "Both exact Chromium runs retained selected detail/review/lead, result, expanded-package and entry geometry.",
+    "compensation": "No CSS or JavaScript was added."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API parameters, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": ["Live current-source interaction and manual screenshots", "Physical Safari and safe-area", "Owner visual acceptance"],
+  "next_action": "Audit anytour-brand.css as the next substantial complete presentation-layer candidate. Preserve brand tokens and active geometry, retain the full old-route layer, and keep active room-details.css/search-states-design.css loaded unless focused evidence proves otherwise.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}
