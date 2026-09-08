@@ -190,6 +190,15 @@ That initial extraction changed source ownership only. Later reductions and the
 owner-authorized whole-layer retirement are separate changes with their own
 audits; their verification must not be inferred from the byte-preserving split.
 
+The owner-authorized reset package intentionally keeps only `base.css`,
+`results-layout.css` and `entry-native-controls.css` in the active Search3 CSS
+composition. The card and selected CSS public files remain empty provenance slots.
+All retired readable source modules remain in this directory for a reversible
+repair pass, but they are not compiled into Search3. The full legacy manifest is
+unchanged. Search3 also excludes only optional shared presentation runtimes;
+canonical lifecycle, renderer, controller, URL, price, lead and analytics owners
+remain loaded.
+
 An earlier CSS-only consolidation removed proven duplicate declarations while
 preserving the final cascade; see `docs/project/search3-css-deduplication.json`.
 The later ten-layer retirement supersedes that audit's description of active

@@ -3,7 +3,7 @@
 /* Search 3 approved mockup layer. Preview only. */
 body.search3-candidate{
 &,& *{box-sizing:border-box!important}
-&{margin:0;--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;--at-ink:#151B24!important;--at-soft:#F4F7FF!important;color:var(--at-ink)!important;background:#f7f9fc!important;font-family:Aeroport,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+&{margin:0;--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;--at-ink:#151B24!important;--at-soft:#F4F7FF!important;--at-font:Aeroport,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;color:var(--at-ink)!important;background:#f7f9fc!important;font-family:var(--at-font)!important}
 & #anytour-consultant-host,& .mobile-search-sticky{display:none!important}
 & .v2-product-hero{display:none!important}
 & .v2-shell{display:block!important;width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important;padding-top:0!important;padding-inline:0!important}

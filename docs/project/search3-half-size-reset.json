@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_READY_CI_PENDING_NOT_PUBLISHED_NOT_PRODUCTION",
+  "base_release_sha": "0c3ec5daa6dd1bb487aa403acb1db1ae0a0e79f8",
+  "owner_direction": "halve Search3 CSS/JS quickly with one final CI pass",
+  "eight_public_paths_preserved": true,
+  "eight_assets": {
+    "before_raw_bytes": 178349,
+    "after_raw_bytes": 88797,
+    "saved_raw_bytes": 89552,
+    "reduction_percent": 50.21
+  },
+  "loaded_route": {
+    "before_raw_bytes": 419167,
+    "after_raw_bytes": 207410,
+    "saved_raw_bytes": 211757,
+    "reduction_percent": 50.52
+  },
+  "active_search3_css_sources": [
+    "styles/base.css",
+    "styles/results-layout.css",
+    "styles/entry-native-controls.css",
+    "styles/result-cards.css",
+    "styles/selected-tour.css"
+  ],
+  "retired_current_css_modules": 42,
+  "search3_shared_css_raw_bytes": {
+    "before": 57078,
+    "after": 0
+  },
+  "search3_shared_js_raw_bytes": {
+    "before": 183740,
+    "after": 118613
+  },
+  "excluded_optional_shared_js": [
+    "hotel-actions-v3.js",
+    "room-details-v3.js",
+    "hotel-autocomplete-v1.js",
+    "search-filters-ux-v1.js",
+    "current-price-calendar-v1.js",
+    "mobile-results-filters-v1.js",
+    "ds2-results-filters.js"
+  ],
+  "protected_core_unchanged": [
+    "runtime-retry-policy.js",
+    "runtime-v3.js",
+    "analytics-v4.js",
+    "results-renderer-v5.js",
+    "search-continue-v6.js",
+    "tour-controller-v4.js",
+    "lead-search-context.js",
+    "lead-ui-race-guard-v1.js",
+    "lead-form-guard-v1.js",
+    "flight-price-sync-v1.js",
+    "unpriced-flight-price-reset-v1.js",
+    "catalog-local-routing-v1.js",
+    "country-matrix-routing-v1.js",
+    "catalogs-v2.js",
+    "url-primary-catalog-sync-v1.js",
+    "search-lifecycle-v6.js",
+    "passive-price-observer-v1.js",
+    "accessibility.js"
+  ],
+  "legacy_full_manifest_unchanged": true,
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": [
+    "intentional reset visual acceptance",
+    "manual current-source journey",
+    "physical Safari and safe-area verification"
+  ]
+}
