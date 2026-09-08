@@ -26,6 +26,7 @@ const window = {
 vm.runInNewContext(iife(bundle, { global: 'Search3SummaryCta' }), {
   window,
   document: {
+    body: { classList: { toggle(name, active) { assert.equal(name, 'search3-selected-open'); active ? classes.add(name) : classes.delete(name); } } },
     getElementById(id) { assert.equal(id, 'selectedTour'); return selected; },
     addEventListener(name, fn) { assert.equal(name, 'click'); clicks.push(fn); }
   },
@@ -41,5 +42,6 @@ clicks.forEach(fn => fn(click));
 assert.ok(classes.has('search3-lead-entry'));
 assert.ok(!classes.has('search3-final-review'));
 assert.deepEqual(trace.map(row => row[0]), ['prevent', 'event', 'scroll', 'focus']);
-assert.equal(window.Search3SummaryCta.version, 10);
+assert.ok(classes.has('search3-selected-open'));
+assert.equal(window.Search3SummaryCta.version, 11);
 console.log('PASS: native CTA enters the canonical lead form with one click');
