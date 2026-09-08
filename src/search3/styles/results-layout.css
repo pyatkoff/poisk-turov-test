@@ -10,26 +10,9 @@ body.search3-candidate{
 &.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
 &.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
 & #resultsSearchEdit{min-height:44px!important}
-&.search3-results-active .results-tools--ds2{
-  position:static!important;
-  top:auto!important;
-  z-index:auto!important;
-  width:min(886px,calc(100% - 234px))!important;
-  max-width:886px!important;
-  margin:0 max(0px,calc((100% - 1120px)/2)) 10px auto!important;
-  padding:12px 14px!important;
-  border-radius:12px!important;
-  backdrop-filter:none!important;
-}
-&.search3-results-active .results-layout{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr)!important;
-  align-items:start!important;
-  width:min(886px,calc(100% - 48px))!important;
-  max-width:886px!important;
-  min-width:0!important;
-  margin:0 max(0px,calc((100% - 1120px)/2)) 56px auto!important;
-}
+&.search3-results-active :is(.results-tools--ds2,.results-layout){box-sizing:border-box;width:100%;max-width:1120px;margin:10px auto}
+&.search3-results-active .results-layout{margin-bottom:56px}
+& #results .hotel-card img{max-width:100%;height:auto}
 &.search3-results-active .results-layout #results{
   display:flex!important;
   flex-direction:column!important;
