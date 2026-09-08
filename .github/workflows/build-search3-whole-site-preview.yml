@@ -274,7 +274,7 @@ jobs:
         if: steps.selected-geometry.outputs.required == 'true'
         shell: bash
         env:
-          SEARCH3_GEOMETRY_BASE: 0f1efa2b22cd7069a0d96adbbdca1bcfa694f309 # last checked source before selected-tour retirement
+          SEARCH3_GEOMETRY_BASE: cc35208f740cd957ca450f7b19fa2acfe6af7e6d # checked exact source after selected-description retirement
           SEARCH3_RUNTIME_BASE: ${{ github.event.pull_request.base.sha }}
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
           SEARCH3_GEOMETRY_OUTPUT: ${{ runner.temp }}/search3-selected-geometry

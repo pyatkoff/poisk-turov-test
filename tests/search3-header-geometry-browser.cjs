@@ -10,8 +10,12 @@ const root = path.resolve(__dirname, '..');
 const searchNames = JSON.parse(execFileSync('php', ['-r',
   'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("css", "search3"));'
 ], { cwd: root, encoding: 'utf8' }));
+const searchScripts = JSON.parse(execFileSync('php', ['-r',
+  'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'
+], { cwd: root, encoding: 'utf8' }));
 assert.ok(searchNames.includes('site-header-v2.css'), 'current header CSS missing');
 assert.ok(!searchNames.includes('header-current-site.css'), 'legacy header CSS leaked into Search3');
+assert.ok(!searchScripts.includes('header-current-site.js'), 'legacy header runtime leaked into Search3');
 const css = searchNames.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n');
 const logo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='40'%3E%3Crect width='180' height='40' fill='%232743cb'/%3E%3C/svg%3E";
 const labels = ['Поиск туров', 'Страны', 'Горящие туры', 'Раннее бронирование', 'Как купить', 'Контакты'];
@@ -30,7 +34,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
         await page.setContent(html);
         await page.addStyleTag({ content: css });
         await page.evaluate(() => document.fonts && document.fonts.ready);
-        if (width <= 1024) await page.locator('.at-global-header__mobile').evaluate(node => { node.open = true; });
+        if (width <= 1024) await page.locator('.at-global-header__mobile > summary').click();
         const state = await page.evaluate(() => {
           const box = selector => document.querySelector(selector).getBoundingClientRect();
           const visible = selector => {
@@ -65,6 +69,9 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
           assert.equal(state.panel, true, `${width}: open mobile panel missing`);
           assert.ok(state.menuButton.height >= 39.5, `${width}: mobile menu target collapsed`);
           assert.ok(state.panelTargets.every(height => height >= 43.5), `${width}: mobile panel target below 44px`);
+          await page.locator('.at-global-header__mobile > summary').click();
+          assert.equal(await page.locator('.at-global-header__mobile').evaluate(node => node.open), false,
+            `${width}: native menu did not close without legacy runtime`);
         } else {
           assert.equal(state.nav, true, `${width}: desktop nav missing`);
           assert.equal(state.actions, true, `${width}: desktop actions missing`);

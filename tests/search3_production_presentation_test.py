@@ -223,6 +223,21 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.at-global-header{', current_styles)
         self.assertNotIn('.at-global-header', legacy_styles)
 
+    def test_legacy_header_runtime_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        current_markup = (ROOT / 'v2/site-header-v2.php').read_text()
+        legacy = (ROOT / 'v2/header-current-site.js').read_text()
+        search_form = (ROOT / 'src/search3/behavior/search-form.js').read_text()
+        self.assertIn("'header-current-site.js'", scoped)
+        self.assertIn("require_once __DIR__ . '/phone-value.php'", current_markup)
+        self.assertIn('<details class="at-global-header__mobile">', current_markup)
+        self.assertIn("['/poisk-turov/', 'Поиск туров']", current_markup)
+        self.assertIn("hero.hidden=true", search_form)
+        self.assertIn("document.querySelector('.at-mobile-menu')", legacy)
+        self.assertIn("document.querySelector('.v2-product-hero')", legacy)
+        self.assertNotIn('.at-mobile-menu', current_markup)
+
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
