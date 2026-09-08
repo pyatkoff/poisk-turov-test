@@ -15,6 +15,8 @@ SOURCE_DIGESTS = {32832: 'b37760c9866cf13a47ab3c814d351fcbd616b3dc53dd19bc9db5f2
                   32875: 'f0754d028b244ca9066a2b4d5636d771b0239ffd09d677d51102e1c76c074bff'}
 CHECKPOINT = 'anex-complete-candidate-review-checkpoint.json'
 REPORT = 'anex-complete-candidate-review-report.json'
+CHECKED_CHECKPOINT_SHA = '2d45340a3643f09b7f3b0b7cd5c9d91549a14ebbc024fa33e98b69cf2219704e'
+ACCEPTANCE = 'anex-complete-candidate-review-acceptance.json'
 
 
 def analyze(row, item):
@@ -38,6 +40,98 @@ def analyze(row, item):
             'original_best_id': row['candidates'][0]['id'], 'ranked_candidates': ranked,
             'raw_candidates': candidates, 'raw_candidates_sha256': gaps.digest(candidates),
             'automatic_acceptance': False, 'status': 'read_only_review'}
+
+
+def approved_delta(path):
+    """Reproduce both complete sets and unchanged strong gates from the checked artifact."""
+    path = Path(path)
+    raw = path.read_bytes()
+    if path.name != CHECKPOINT or hashlib.sha256(raw).hexdigest() != CHECKED_CHECKPOINT_SHA:
+        raise ValueError('unchecked complete-review checkpoint')
+    cp = json.loads(raw)
+    if cp.get('state') != 'completed' or gaps.digest(cp['results']) != cp['results_sha256']:
+        raise ValueError('complete-review result not confirmed')
+    if {r['anex_hotel_id'] for r in cp['results']} != IDS or len(cp['results']) != 2:
+        raise ValueError('complete-review acceptance is limited to two checked records')
+    directory = path.parent
+    live_cp = live.restore(directory)
+    if live_cp['in_flight']:
+        raise ValueError('live batch must finish before complete-review import')
+    history = live.evidence_history(directory, live_cp)
+    sources, documents = {}, {}
+    expected_sources = gaps.load_queue()['sources']
+    for key, filename in [('catalog_sha256', 'anex-hotel-catalog-match.json'),
+                          ('geo_sha256', 'anex-hotel-geo-enrichment.json')]:
+        content = (directory / filename).read_bytes()
+        sources[key] = hashlib.sha256(content).hexdigest()
+        if sources[key] != expected_sources[key]:
+            raise ValueError('baseline provenance changed')
+        documents[key] = json.loads(content)
+    originals = {r['external_id']: r for r in documents['catalog_sha256']['matches']}
+    baseline_accepted = {r['external_id'] for r in documents['catalog_sha256']['matches'] if r['status'] == 'verified_auto'}
+    baseline_accepted |= {r['external_id'] for r in documents['geo_sha256']['rows'] if r['status'] == 'strong_candidate'}
+    ns = {}
+    exec(gaps.matching_source(), ns)
+    delta = []
+    for result in cp['results']:
+        identifier = result['anex_hotel_id']
+        row = history[identifier][0]
+        if identifier in baseline_accepted or gaps.digest(row) != SOURCE_DIGESTS[identifier]:
+            raise ValueError('complete-review source identity changed')
+        original = originals[identifier]
+        xml = {'id': identifier, 'name': original['name'], 'alternate_name': original['alternate_name'],
+               'town_id': original.get('town_id')}
+        if (row['xml'] != xml or ns['xml_relation'](xml, row['api']) != 'same_record'
+                or ns['country_match'](original['country'], row['api']['country']) is not True):
+            raise ValueError('supplier identity not verified')
+        item = {'key': identifier, 'candidates': result['raw_candidates'],
+                'candidate_set_complete': result['candidate_set_complete'],
+                'fetch_limit': result['fetch_limit'], 'query_scope': result['query_scope']}
+        if analyze(row, item) != result or result['candidate_set_complete'] is not True:
+            raise ValueError('full candidate evidence was not reproduced')
+        status, reason = ns['geo_decision'](row['api'], result['ranked_candidates'], 'same_record', candidate_set_complete=True)
+        if status != 'strong_candidate' or reason != 'name_country_coordinates':
+            raise ValueError('complete set does not satisfy strict strong criteria')
+        delta.append({'anex_hotel_id': identifier, 'catalog_hotel_id': result['best']['id'],
+                      'match_class': status, 'reason': 'observed_complete_review:' + reason,
+                      'source_row_digest': gaps.digest(result)})
+    sources['gap_sha256'] = CHECKED_CHECKPOINT_SHA
+    return {'schema_version': 1, 'scope': 'preview', 'approval_policy': 'owner_exact_and_strong_20260908',
+            'append_only': True, 'sources': sources, 'rows': sorted(delta, key=lambda r: r['anex_hotel_id']),
+            'counts': {'exact': 0, 'strong': len(delta), 'total': len(delta),
+                       'unique_catalog_hotels': len({r['catalog_hotel_id'] for r in delta})}}
+
+
+def accept(directory):
+    from anex_search_mapping_import import ssh_import
+    delta = approved_delta(directory / CHECKPOINT)
+    path = directory / ACCEPTANCE
+    previous = json.loads(path.read_bytes()) if path.exists() else None
+    if previous is not None and previous.get('delta_sha256') != gaps.digest(delta):
+        raise ValueError('complete-review acceptance changed')
+    if previous is not None and previous.get('state') == 'finalized':
+        return {'status': 'already_finalized', 'inserted': 0, 'supplier_requests': 0}
+    before_live = gaps.digest(live.restore(directory))
+    before = live.snapshot()
+    checkpoint = {'state': 'prepared', 'delta_sha256': gaps.digest(delta), 'coverage_before': before['counts']}
+    owner.save(path, checkpoint)
+    imported = ssh_import(directory / 'anex-complete-candidate-review-mappings.json',
+                          complete_review_checkpoint=directory / CHECKPOINT)
+    after = live.snapshot()
+    if after['effective_mapped_count'] < before['effective_mapped_count']:
+        raise ValueError('accepted mappings decreased')
+    live_cp = live.restore(directory)
+    if gaps.digest(live_cp) != before_live:
+        raise ValueError('complete-review import changed live checkpoint')
+    preservation = gaps.ssh_batch([], {}, 1)['preservation']
+    report = dict(live.export(directory, live_cp, after),
+                  coverage_before=before['counts'], coverage_after=after['counts'], import_result=imported,
+                  supplier_requests=0, new_completed=0, old_live_checkpoint_unchanged=True,
+                  database_readback=preservation)
+    checkpoint.update(state='finalized', import_result=imported, report=report)
+    owner.save(path, checkpoint)
+    owner.save(directory / 'anex-complete-candidate-review-acceptance-report.json', report)
+    return report
 
 
 def run(directory):
@@ -112,7 +206,8 @@ def run(directory):
 if __name__ == '__main__':
     directory = Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
     try:
-        print(json.dumps(run(directory), ensure_ascii=False, sort_keys=True))
+        action = accept if '--accept' in __import__('sys').argv else run
+        print(json.dumps(action(directory), ensure_ascii=False, sort_keys=True))
     except Exception as error:
         report = gaps.failure_report(error, 'complete_candidate_review')
         owner.save(directory / 'anex-complete-candidate-review-failure.json', report)

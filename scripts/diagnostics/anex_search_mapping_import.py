@@ -110,13 +110,16 @@ def write_protocol(path, meta, rows):
                                 "rows_digest": meta["rows_digest"]}) + b"\n")
 
 
-def ssh_import(mapping_path, gap_checkpoint=None, observed_checkpoint=None):
-    if gap_checkpoint is not None and observed_checkpoint is not None:
+def ssh_import(mapping_path, gap_checkpoint=None, observed_checkpoint=None, complete_review_checkpoint=None):
+    if sum(p is not None for p in (gap_checkpoint, observed_checkpoint, complete_review_checkpoint)) > 1:
         raise ValueError('choose one independent checkpoint')
-    if gap_checkpoint is None and observed_checkpoint is None:
+    if gap_checkpoint is None and observed_checkpoint is None and complete_review_checkpoint is None:
         meta, rows = load_mapping(mapping_path)
     else:
-        if observed_checkpoint is not None:
+        if complete_review_checkpoint is not None:
+            from anex_search3_complete_review import approved_delta
+            document = approved_delta(complete_review_checkpoint)
+        elif observed_checkpoint is not None:
             from anex_search3_observed_queue import approved_delta
             document = approved_delta(observed_checkpoint)
         else:

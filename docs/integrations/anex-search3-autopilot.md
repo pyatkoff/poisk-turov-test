@@ -36,6 +36,25 @@ owner checkpoint/JSON/CSV включены в artifact. Проверки PHP и 
 критерии/importer не изменены. Полный raw/ranked набор и отдельный checkpoint сохраняются;
 эта диагностика не вставляет связи и не вызывает ANEX. Завершённое чтение не повторяется.
 
+Полное чтение подтверждено на SHA9f938ced784b93e15a6721df98c3f06542bdb5ab,
+run34271242417 attempt1/job102213079245, artifact10073908775 (reserved10073901795),
+digest `f5e04c10cf1c78d73a0576eac26fe355264763064d92ed7472dae53ae7c6cd65`.
+32832:608 кандидатов, лучший71458, similarity1,13.2м, margin0.1887.
+32875:623 кандидата, лучший28489, similarity1,10.9м, margin0.1834.
+Оба набора exhausted=true, сохранены полностью; live checkpoint не изменился.
+Checkpoint sha256 `2d45340a3643f09b7f3b0b7cd5c9d91549a14ebbc024fa33e98b69cf2219704e`.
+Девять manual decisions восстановлены как already_finalized/inserted0; их DB hash
+`ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1`.
+
+Следующий acceptance шаг ограничен этим проверенным checkpoint и двумя source row digests.
+Он заново вычисляет все608/623 оценки, XML/API relation, country, baseline provenance и прежние
+strong-пороги/qualifiers/margin. Только доказанная полнота заменяет прежний guard обрезанной страницы;
+обычные вызовы geo_decision по умолчанию по-прежнему отклоняют256+ строк.
+Разрешение владельца принимать exact/strong для preview распространяется на результаты с полными
+строгими доказательствами. Используется существующий append-only writer; отдельный finalized
+acceptance checkpoint исключает повторную вставку. Ручные решения и исходные completed rows сохраняются.
+Фактический импорт этих2 предстоит подтвердить новым run; пока они не включены в счётчик12887.
+
 ## Аудит предела кандидатов и девять пар для следующего чтения — 8 сентября
 
 Исполняемый SHA **b88b1ede67294cba95fd819b51531ba2ca227d22** расширил

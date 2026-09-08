@@ -213,6 +213,7 @@ jobs:
           python3 -B scripts/diagnostics/anex_search3_owner_decisions.py
           python3 -B scripts/diagnostics/anex_search3_observed_queue.py --finalize
           python3 -B scripts/diagnostics/anex_search3_complete_review.py
+          python3 -B scripts/diagnostics/anex_search3_complete_review.py --accept
       - name: Publish isolated ANEX Search3 preview
         if: steps.operation.outputs.mode == 'preview'
         env:

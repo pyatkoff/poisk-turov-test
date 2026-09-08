@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -40,6 +41,60 @@ class CompleteReviewTests(unittest.TestCase):
         item['candidate_set_complete'] = True
         with self.assertRaisesRegex(ValueError, 'proof invalid'):
             review.analyze(self.row, item)
+
+    def test_complete_evidence_only_replaces_the_truncation_guard(self):
+        ns = {}
+        exec(gaps.matching_source(), ns)
+        result = review.analyze(self.row, self.item(300))
+        ranked = result['ranked_candidates']
+        decide = ns['geo_decision']
+        self.assertEqual(decide(self.row['api'], ranked, 'same_record')[1], 'candidate_limit_reached')
+        self.assertEqual(decide(self.row['api'], ranked, 'same_record', True)[0], 'strong_candidate')
+        self.assertEqual(decide(self.row['api'], ranked, 'same_record', 'true')[0], 'review')
+        bad = copy.deepcopy(ranked)
+        bad[1]['score'] = bad[0]['score']
+        self.assertEqual(decide(self.row['api'], bad, 'same_record', True)[1], 'competing_candidates')
+        bad = copy.deepcopy(ranked)
+        bad[0]['country_match'] = False
+        self.assertEqual(decide(self.row['api'], bad, 'same_record', True)[1], 'country_conflict')
+
+    def test_complete_import_reproduces_raw_evidence_and_baseline_identity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            history = {}
+            originals, results = [], []
+            for i in sorted(review.IDS):
+                row = dict(copy.deepcopy(self.row), external_id=i, api=dict(self.row['api'], id=i),
+                           xml=dict(self.row['xml'], id=i, town_id=None))
+                history[i] = (row, 'live_checkpoint')
+                item = self.item(300)
+                item['key'] = i
+                results.append(review.analyze(row, item))
+                originals.append({'external_id': i, 'name': 'Example Hotel', 'alternate_name': '',
+                                  'country': 'Турция', 'status': 'review'})
+            sources = {}
+            for key, name, value in [('catalog_sha256', 'anex-hotel-catalog-match.json', {'matches': originals}),
+                                     ('geo_sha256', 'anex-hotel-geo-enrichment.json', {'rows': []})]:
+                owner.save(directory / name, value)
+                sources[key] = hashlib.sha256((directory / name).read_bytes()).hexdigest()
+            path = directory / review.CHECKPOINT
+            owner.save(path, {'state': 'completed', 'results': results, 'results_sha256': gaps.digest(results)})
+            digests = {i: gaps.digest(history[i][0]) for i in review.IDS}
+            with patch.object(review, 'SOURCE_DIGESTS', digests), \
+                    patch.object(live, 'restore', return_value={'in_flight': []}), \
+                    patch.object(live, 'evidence_history', return_value=history), \
+                    patch.object(gaps, 'load_queue', return_value={'sources': sources}), \
+                    patch.object(review, 'CHECKED_CHECKPOINT_SHA', hashlib.sha256(path.read_bytes()).hexdigest()):
+                self.assertEqual(review.approved_delta(path)['counts']['strong'], 2)
+                changed = json.loads(path.read_bytes())
+                changed['results'][0]['best']['id'] = 900
+                changed['results_sha256'] = gaps.digest(changed['results'])
+                owner.save(path, changed)
+                with self.assertRaisesRegex(ValueError, 'unchecked complete-review checkpoint'):
+                    review.approved_delta(path)
+                with patch.object(review, 'CHECKED_CHECKPOINT_SHA', hashlib.sha256(path.read_bytes()).hexdigest()):
+                    with self.assertRaisesRegex(ValueError, 'not reproduced'):
+                        review.approved_delta(path)
         item = self.item(2)
         item['candidates'][1]['id'] = 1
         with self.assertRaisesRegex(ValueError, 'proof invalid'):

@@ -51,7 +51,7 @@ def merge_geo_checkpoint(previous, batch):
                 batch_counts=batch["counts"])
 
 
-def geo_decision(api, candidates, relation):
+def geo_decision(api, candidates, relation, candidate_set_complete=False):
     if relation != "same_record":
         return "review", "supplier_identity_unverified"
     if not candidates:
@@ -61,8 +61,9 @@ def geo_decision(api, candidates, relation):
         return "review", "country_conflict"
     if best["distance_m"] is not None and best["distance_m"] > 5000:
         return "review", "coordinate_conflict"
-    # The reader returns at most 256 rows: a full page cannot prove uniqueness.
-    if len(candidates) >= 256:
+    # An ordinary 256-row page cannot prove uniqueness. Only the independently
+    # validated complete-review path supplies an exhausted-set proof.
+    if len(candidates) >= 256 and candidate_set_complete is not True:
         return "review", "candidate_limit_reached"
     if len(candidates) > 1 and best["score"] - candidates[1]["score"] < 0.1:
         return "review", "competing_candidates"
