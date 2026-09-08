@@ -74,6 +74,17 @@ class RequestBoundaryTest(unittest.TestCase):
         self.assertAlmostEqual(sleep.call_args.args[0], 0.8)
         self.assertAlmostEqual(probe._next_hotel_details_request_at, 102.1)
 
+    def test_hotel_details_api_waits_before_transport(self):
+        checks = []
+        payload = json.dumps({"Hotels_DETAILS": {"id": 469, "name": "Hotel"}}).encode()
+        with mock.patch.object(probe, "wait_for_hotel_details_slot") as wait, \
+                mock.patch.object(probe, "request", return_value=response(payload)) as request:
+            result = probe.api_data(API_TOKEN, "Hotels_DETAILS", {"HOTELINC": 469}, checks)
+        wait.assert_called_once_with()
+        request.assert_called_once()
+        self.assertEqual(result["id"], 469)
+        self.assertEqual(checks[0]["check"], "api_hotel_details")
+
     def test_redirects_never_forward_credentials(self):
         self.assertIsNone(probe.NoRedirect().redirect_request(
             None, None, 302, "Found", {}, "https://elsewhere.invalid/?oauth_token=" + REFERENCE_TOKEN))
