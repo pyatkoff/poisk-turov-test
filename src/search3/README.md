@@ -238,10 +238,11 @@ The visible count and route remain here; the permanently hidden duplicate meta
 counter has been retired. Static page intro text belongs only to `search-form.js`
 and is not rewritten on results, reset or form-change events.
 
-The retired `results-top.js` slot retains provenance only. Its result header,
-route, edit and state lifecycle now shares the current results presentation IIFE
-and its existing results/reset subscriptions. The same owner keeps a separate
-zero-delay mobile-toolbar mount.
+The `results-top.js` bridge is retired entirely. Canonical shared lifecycle and
+renderer owners keep result/tool rendering; the compact native `search-form.js`
+owner retains only result-shell visibility, edit/focus and `aria-busy` state.
+Selected visibility uses the existing `search3-selected-open` class in CSS, so
+there is no second result/selected return listener or click replay.
 The retired `selected-tour-handoff.js` slot also retains provenance only. Result
 button labels, selected-tour busy state and entry focus share the existing
 results/reset/tour lifecycle in `results-presentation.js`; canonical return focus

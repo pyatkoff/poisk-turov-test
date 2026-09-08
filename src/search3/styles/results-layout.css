@@ -23,10 +23,10 @@ margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
 & #resultSummary{display:block;color:#526078}
 & .results-tools{margin:16px 0}
 & #results{display:grid;gap:16px}
-& .results-filter-rail,&:not(.search3-has-results) .results-layout{display:none!important}
-&:not(.search3-has-results) .results-tools--ds2{display:none!important}
-&:is(.search3-has-results,.search3-selected-open) :is(.v2-product-hero,#tourSearch){display:none!important}
-&.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+& .results-filter-rail,&:not(:has(#results>*)) :is(.results-layout,.results-tools--ds2){display:none!important}
+&:is(:has(#results>*),.search3-selected-open) :is(.v2-product-hero,#tourSearch){display:none!important}
+&:has(#results>*).search3-editing-search #tourSearch{display:block!important}
+&.search3-selected-open :is(.results-tools,.results-layout){display:none!important}
 @media(max-width:999px){
 & .at-global-header :is(.at-global-header__nav,.at-global-header__actions){display:none}
 & .at-global-header__mobile{display:block}
