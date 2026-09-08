@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -28,6 +29,35 @@ class GapQueueTests(unittest.TestCase):
                 gaps.restore(path, self.queue)
             gaps.save(path, self.cp, self.queue)
             self.assertEqual(gaps.restore(path, self.queue), self.cp)
+
+    def test_ssh_failure_reports_only_allowlisted_reason_without_retry(self):
+        secret = 'private-host-user-and-token'
+        env = {'ANYTOOUR_DEPLOY_SSH_KEY': 'fake-key', 'ANYTOOUR_DEPLOY_HOST': 'example.invalid',
+               'ANYTOOUR_DEPLOY_USER': 'test'}
+        for message, reason in (
+            ('kex_exchange_identification: Connection closed by remote host', 'ssh_connection_closed'),
+            ('Permission denied (publickey).', 'ssh_authentication_failed'),
+            ('Host key verification failed.', 'ssh_host_key_rejected'),
+            ('unexpected diagnostic', 'ssh_exit_nonzero'),
+        ):
+            response = type('Response', (), {'returncode': 255, 'stdout': secret, 'stderr': message + secret})()
+            with patch.dict(os.environ, env), patch.object(gaps.subprocess, 'run', return_value=response) as run:
+                with self.assertRaises(gaps.SSHBatchError) as caught:
+                    gaps.ssh_batch([], {}, 1)
+            self.assertEqual(run.call_count, 1)
+            report = gaps.failure_report(caught.exception, 'preflight')
+            self.assertEqual((report['reason_code'], report['exit_code']), (reason, 255))
+            self.assertNotIn(secret, json.dumps(report) + str(caught.exception))
+            self.assertNotIn(message, json.dumps(report))
+
+    def test_oversized_response_is_not_reported_as_successful_ssh_exit(self):
+        env = {'ANYTOOUR_DEPLOY_SSH_KEY': 'fake-key', 'ANYTOOUR_DEPLOY_HOST': 'example.invalid',
+               'ANYTOOUR_DEPLOY_USER': 'test'}
+        response = type('Response', (), {'returncode': 0, 'stdout': 'x' * 4000001, 'stderr': ''})()
+        with patch.dict(os.environ, env), patch.object(gaps.subprocess, 'run', return_value=response):
+            with self.assertRaises(gaps.SSHBatchError) as caught:
+                gaps.ssh_batch([], {}, 1)
+        self.assertEqual(gaps.failure_report(caught.exception, 'observed_batch')['reason_code'], 'response_size_limit')
 
     def test_merge_preserves_old_rows_and_rejects_replay(self):
         first, second = [r['anex_hotel_id'] for r in self.queue['rows'][:2]]

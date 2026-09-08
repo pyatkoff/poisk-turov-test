@@ -26,12 +26,36 @@ class RemoteBatchError(RuntimeError):
         self.diagnostic = diagnostic
 
 
+class SSHBatchError(RuntimeError):
+    def __init__(self, returncode, stderr='', oversized=False):
+        super().__init__('ssh_batch_failed')
+        self.exit_code = returncode if type(returncode) is int and -255 <= returncode <= 255 else None
+        self.reason_code = 'response_size_limit' if oversized else 'ssh_exit_nonzero'
+        # Classify locally; never retain or report stderr, hosts, users or keys.
+        if not oversized:
+            message = str(stderr).lower()
+            for reason, markers in (
+                ('ssh_authentication_failed', ('permission denied', 'too many authentication failures')),
+                ('ssh_host_key_rejected', ('host key verification failed', 'remote host identification has changed')),
+                ('ssh_connection_timeout', ('connection timed out', 'operation timed out')),
+                ('ssh_connection_refused', ('connection refused',)),
+                ('ssh_name_resolution_failed', ('could not resolve hostname', 'name or service not known')),
+                ('ssh_network_unreachable', ('no route to host', 'network is unreachable')),
+                ('ssh_connection_closed', ('connection reset', 'connection closed', 'kex_exchange_identification', 'banner exchange')),
+            ):
+                if any(marker in message for marker in markers):
+                    self.reason_code = reason
+                    break
+
+
 def failure_report(error, phase):
     # Never include exception messages, stderr, requests or supplier payloads.
     kinds = {'ValueError', 'KeyError', 'TypeError', 'AttributeError', 'NameError',
              'RuntimeError', 'TimeoutExpired', 'JSONDecodeError', 'OSError'}
     report = {'status': 'batch_unconfirmed', 'phase': phase,
               'error_kind': type(error).__name__ if type(error).__name__ in kinds else 'other'}
+    if isinstance(error, SSHBatchError):
+        report.update(error_kind='SSHBatchError', reason_code=error.reason_code, exit_code=error.exit_code)
     if isinstance(error, RemoteBatchError):
         value = error.diagnostic
         report['error_kind'] = value.get('remote_error') if value.get('remote_error') in kinds else 'other'
@@ -256,8 +280,10 @@ def ssh_batch(selected, catalog_rows, country_id, observations=False):
         result = subprocess.run(command, input=json.dumps({'selected': selected, 'catalog_rows': catalog_rows,
             'country_id': country_id, 'observations': observations}), text=True, capture_output=True, timeout=310,
             env={k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
-    if result.returncode or len(result.stdout) > 4000000:
-        raise ValueError('remote_batch_exit_' + str(result.returncode))
+    if result.returncode:
+        raise SSHBatchError(result.returncode, result.stderr)
+    if len(result.stdout) > 4000000:
+        raise SSHBatchError(result.returncode, oversized=True)
     payload = json.loads(result.stdout)
     if 'remote_error' in payload:
         raise RemoteBatchError(payload)
