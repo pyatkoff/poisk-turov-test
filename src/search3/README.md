@@ -255,6 +255,14 @@ Regression adapters: `tests/search3-booking-summary.cjs`,
 `tests/search3-results-scheduler.cjs`, `tests/search3-mobile-toolbar-scheduler.cjs`
 and `tests/search3-mobile-toolbar-ownership.cjs`, run by the presentation test suite.
 
+The selected-runtime lazy proxy is retired. Search3 now requests the existing
+compact shared runtime once, with the canonical controller, flight recovery,
+price and lead owners already present before the public Search3 adapters execute.
+This removes the proxy click replay, script-injection/error state and reset
+generation while preserving the protected owners byte-for-byte. The historical
+`initial`/`selected` bundle phases remain a reversible server capability but the
+Search3 page does not use them.
+
 
 A later cascade pass removes earlier declarations only when the same complete
 expanded selector list, media/supports context, property and important priority

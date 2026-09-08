@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-08",
+  "stage": "SOURCE_PACKAGE_PREPARED_CI_PENDING",
+  "baseline_release_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
+  "scope": "Retire the whole Search3 selected-runtime lazy proxy. The page requests the existing compact shared Search3 runtime once; canonical tour, flight recovery, price and lead owners remain byte-identical.",
+  "retired_whole_sources": [
+    "src/search3/behavior/selected-runtime.js"
+  ],
+  "public_assets": {
+    "paths": 8,
+    "before_raw_bytes": 11984,
+    "after_raw_bytes": 10097,
+    "removed_raw_bytes": 1887,
+    "removed_percent": 15.75,
+    "changed_asset": {
+      "path": "v2/search3-results-filters-v1.js",
+      "before_raw_bytes": 6607,
+      "after_raw_bytes": 4720
+    }
+  },
+  "loaded_file_payload": {
+    "before_raw_bytes": 116150,
+    "after_raw_bytes": 114263,
+    "removed_raw_bytes": 1887,
+    "accounting": "The same protected shared owners are present once before and after; the complete-path reduction is the deleted proxy, not a source move."
+  },
+  "initial_file_payload_tradeoff": {
+    "before_raw_bytes": 73840,
+    "after_raw_bytes": 114263,
+    "added_raw_bytes": 40423,
+    "reason": "The former 42310-byte selected phase is now eager while the 1887-byte proxy is removed. Selection no longer incurs a second runtime request or click replay."
+  },
+  "preserved": [
+    "all eight public Search3 asset paths",
+    "canonical tour controller and return focus",
+    "flight empty recovery and retry",
+    "decimal price and flight tradeoff arithmetic",
+    "lead guard, stale-event protection, transport and field mapping",
+    "URL, payload, Tourvisor/API and analytics contracts",
+    "same-origin compact shared-runtime source hashes"
+  ],
+  "verification": {
+    "local_build": "SEARCH3_SOURCE_BUILD_OK assets=8 in write and check modes",
+    "source_build_tests": "13 passed",
+    "focused_units": "selected-flow scheduler and booking navigation passed",
+    "browser_fixture": "Updated in place to require zero selected-phase requests and retain direct selection, reset cancellation, tour retry, decimal price, phone validation, stale lead blocking and return focus.",
+    "security_ci": "pending",
+    "exact_artifact_ci": "pending"
+  },
+  "publication": {
+    "published": false,
+    "published_preview_source_sha": "66cb0164b2523be69b1eee821dba4efb29d69265",
+    "production_changed": false,
+    "main_changed": false
+  },
+  "rollback": "Revert this package independently to restore the split selected phase and proxy.",
+  "next_action": "Run one mandatory Security and one exact artifact CI on the final source. Integrate only if both pass; reuse that artifact and combine any preview publication with the already verified #1637 selected-entry repair."
+}

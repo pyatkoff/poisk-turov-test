@@ -45,8 +45,8 @@ if (!in_array('flight-empty-recovery-v1.js', $fullJs, true)) lean_bundle_fail('c
 if (!in_array('flight-empty-recovery-v1.js', $search3Js, true)) lean_bundle_fail('canonical flight recovery runtime missing from Search3');
 $initialJs = v2_bundle_phase_files('js', 'search3', 'initial');
 $selectedJs = v2_bundle_phase_files('js', 'search3', 'selected');
-if (in_array('flight-empty-recovery-v1.js', $initialJs, true)) lean_bundle_fail('flight recovery leaked into initial phase');
 if (count(array_keys($selectedJs, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery selected owner is not exact');
+if (count(array_keys($search3Js, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery eager owner is not exact');
 if (!in_array('price-confidence-v1.js', $fullJs, true)) lean_bundle_fail('legacy price confidence runtime missing');
 if (!in_array('results-filter-autorefresh-v1.js', $fullJs, true)) lean_bundle_fail('legacy filter autorefresh runtime missing');
 if (!in_array('results-depth-v1.js', $fullJs, true)) lean_bundle_fail('legacy results depth runtime missing');
@@ -61,5 +61,6 @@ if (str_contains($legacyUrl, 'scope=')) lean_bundle_fail('legacy URL changed sco
 if (!str_contains($legacyUrl, 'search-redesign-v2.js')) lean_bundle_fail('legacy closure lost view owner');
 if (!str_contains($search3Url, '&scope=search3')) lean_bundle_fail('Search3 scope missing from URL');
 if (str_contains($search3Url, 'search-redesign-v2.js')) lean_bundle_fail('Search3 closure exposes excluded owner');
+if (str_contains($search3Url, 'phase=')) lean_bundle_fail('Search3 page runtime must use one eager bundle');
 
 echo 'SEARCH3_LEAN_BASE_OK full_js=' . count($fullJs) . ' search3_js=' . count($search3Js) . "\n";
