@@ -1,4 +1,33 @@
 {
+  "latest_base_skin_retirement": {
+    "source_pr": 1626,
+    "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
+    "release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+    "base_release_sha": "c423da23e5112bcf80867986b3965036db39c54b",
+    "eight_assets": {"before_bytes": 18356, "after_bytes": 15426, "removed_bytes": 2930},
+    "initial_route": {"before_bytes": 79663, "after_bytes": 76733, "removed_bytes": 2930},
+    "complete_route": {"before_bytes": 119893, "after_bytes": 116963, "removed_bytes": 2930},
+    "ci": {
+      "security_run": 34271552421,
+      "artifact_run": 34271552328,
+      "conclusion": "success",
+      "artifact_id": 10074024154,
+      "artifact_digest": "sha256:2fe82654ae24ade1baf27b395e2f7e68189e7d0c08de7d3d2c509ad97611e003",
+      "archive_sha256": "d5a27e56c8a4e4ad650930cbf48c0dd7a428f4950dd764e6593ff1e90fdee5bf",
+      "preview_published": false
+    },
+    "verification": {
+      "source_build": true,
+      "protected_closures": true,
+      "PHP_path_presentation_isolation": true,
+      "preview_routes": 9,
+      "actual_browser_geometry": "deferred",
+      "lead_sent": 0
+    },
+    "deferred": ["actual browser geometry for the donor-skin reset", "manual screenshots", "physical Safari/safe-area", "live current-source preview", "owner visual acceptance", "full lead/responsive/site/SEO journey"],
+    "parallel_integration": "Independent #1625 merged first as c423da23; its savings are not counted here. Final combined release not rebuilt.",
+    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
+  },
   "latest_native_booking_handoff": {
     "source_pr": 1623,
     "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
@@ -314,30 +343,30 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1623 retired the duplicate booking summary/formatter and intermediate review stage: eight assets 25391→19125 (−6266B), initial 101324→95058 (−6266B), complete 126928→120662 (−6266B). Final Security/exact green; not published.",
+    "last_material_progress": "#1626 deleted the whole preview-era base donor skin with no rule movement on the final #1625 base: eight assets 18356→15426 (−2930B), initial 79663→76733 (−2930B), complete 119893→116963 (−2930B). Security/exact green; browser geometry deferred; not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit only coarse remaining public owners. Count a successor only if it removes an entire optional surface or produces at least 2KB real eight-asset savings while preserving protected lead, price, URL, payload, Tourvisor/API and analytics contracts; do not count late loading or source movement as deletion.",
+    "next_action": "Do not micro-trim the remaining 15426B. Remaining public owners are results layout5490B, selected flow4483B, results/lazy/native-lead JS5120B and native entry331B. Retire another owner only as a coarse product/design boundary with real eight-asset savings.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_NATIVE_BOOKING_HANDOFF",
-    "title": "Retire duplicate booking review and hand off directly to the native lead form",
+    "id": "S3_BASE_SKIN_RETIREMENT",
+    "title": "Retire the preview-era donor base skin without moving its rules",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1623,
+    "source_pr": 1626,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "989e4a90048f76812021b221706fa1635a4884a2",
-    "release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
-    "last_fully_checked_release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
-    "security_run": 34269579797,
-    "exact_run": 34269579936,
-    "checked_release_asset_bytes": 19125,
-    "release_loaded_bytes": 120662,
-    "release_initial_bytes": 95058,
+    "implementation_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
+    "release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+    "last_fully_checked_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+    "security_run": 34271552421,
+    "exact_run": 34271552328,
+    "checked_release_asset_bytes": 15426,
+    "release_loaded_bytes": 116963,
+    "release_initial_bytes": 76733,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "Audit only coarse remaining public owners; count a successor only for an entire optional-surface retirement or at least 2KB real eight-asset savings. Do not count late loading or source movement as deletion."
+    "next_action": "Do not micro-trim the remaining 15426B. Retire another owner only as a coarse product/design boundary with real eight-asset savings; do not count source movement or deferred loading."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1827,8 +1856,8 @@
       "preview_published": false
     }
   },
-  "last_verified_commit": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
-  "last_verified_commit_scope": "Exact checked source 989e4a90048f76812021b221706fa1635a4884a2; native booking handoff merged to release, not published preview/production.",
+  "last_verified_commit": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+  "last_verified_commit_scope": "Exact checked source 98aed98b0ac90575be43bc22f58e8c2fcf4071b5; donor base skin removed and merged to release. Browser geometry and publication deferred; not preview/production.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,

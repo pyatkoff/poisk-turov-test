@@ -1,6 +1,46 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — native booking handoff #1623 — 2026-09-08
+## Current resume point — donor base skin retirement #1626 — 2026-09-08
+
+Exact source `98aed98b0ac90575be43bc22f58e8c2fcf4071b5`, tree
+`9fa329f9a886c6bade96284e6b908029ecefb701`; checked release
+`69fa28aa1224026cf05e6c2b4b5993236481396e`. Independent #1625 merged first as
+`c423da23e5112bcf80867986b3965036db39c54b`; that is the final integration base.
+
+The whole preview-era `base.css` donor skin was deleted with no rule movement.
+Eight public assets are **18356→15426 raw B (−2930)**; results-filter CSS
+**8420→5490 B**; initial route **79663→76733 B**; complete route
+**119893→116963 B**. The independent #1625 savings are not counted here. All
+eight paths and current entry/results/selected owners remain.
+
+Security `34271552421` and exact artifact `34271552328` passed. Reuse artifact
+`10074024154`, digest
+`sha256:2fe82654ae24ade1baf27b395e2f7e68189e7d0c08de7d3d2c509ad97611e003`,
+archive `d5a27e56c8a4e4ad650930cbf48c0dd7a428f4950dd764e6593ff1e90fdee5bf`.
+Source build, protected closures, PHP/path/presentation/isolation and 9 local preview
+routes passed; real leads0. The first exact `34271267151` was red because its source
+assertion required the deleted filename. The final guard requires it to remain absent,
+pins the smaller output and retains native/results owner assertions.
+
+No actual browser geometry ran for this design reset because the workflow's focused
+geometry path selectors do not include the retired donor owner. This is deferred,
+not green. Manual screenshots, physical Safari/safe-area, live current-source preview,
+owner acceptance and full lead/responsive/site/SEO journey are also deferred.
+
+**Checked release is not published preview.** Preview stays
+`c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; main and production unchanged.
+Revert `69fa28aa` for rollback. Audit: `docs/project/search3-base-skin-retirement.json`.
+
+The exact artifact is for #1626 on its original source base; the clean final merge
+also contains independently green #1625 and was not rebuilt.
+
+Next: do not micro-trim the remaining 15426 B. Remaining public owners are results
+layout5490 B, selected flow4483 B, result-state/lazy/native-lead JS5120 B and native
+entry331 B. Retire another owner only as a coarse product/design boundary with real
+eight-asset savings; do not count source movement or deferred loading.
+
+## Historical checkpoint — native booking handoff #1623 — 2026-09-08
 
 Exact source `989e4a90048f76812021b221706fa1635a4884a2`, tree
 `c1642263d5fee92371b14d1a9c94d6692ce1e87e`; checked release
