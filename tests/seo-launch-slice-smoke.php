@@ -17,16 +17,22 @@ $turkeyExpected=[
 ];
 $secondWaveExpected=['/country/egypt/','/country/maldives/'];
 $seasonalExpected=['/country/turkey/antalya/september/','/country/maldives/september/'];
+$hubExpected=['/','/country/'];
 $coreMonths=v2_seo_core_month_launch_paths();
 if(count($coreMonths)!==96)seo_launch_fail('core_month_count');
 foreach(['/country/turkey/january/','/country/egypt/december/','/country/maldives/september/','/country/turkey/kemer/june/'] as $path){if(!in_array($path,$coreMonths,true))seo_launch_fail('core_month_missing_'.$path);}
 $expected=array_values(array_unique(array_merge($turkeyExpected,$secondWaveExpected,$coreMonths)));
+$indexableExpected=array_values(array_unique(array_merge($hubExpected,$expected)));
 
 if(v2_seo_turkey_launch_paths()!==$turkeyExpected)seo_launch_fail('turkey_compat_paths');
 if(v2_seo_second_wave_country_launch_paths()!==$secondWaveExpected)seo_launch_fail('second_wave_paths');
 if(v2_seo_seasonal_september_launch_paths()!==$seasonalExpected)seo_launch_fail('seasonal_compat_paths');
+if(v2_seo_core_hub_launch_paths()!==$hubExpected)seo_launch_fail('core_hub_paths');
 $paths=v2_seo_controlled_launch_paths();
 if($paths!==$expected||count($paths)!==104)seo_launch_fail('unexpected_controlled_paths');
+$indexablePaths=v2_seo_controlled_indexable_paths();
+if($indexablePaths!==$indexableExpected||count($indexablePaths)!==106)seo_launch_fail('unexpected_indexable_paths');
+if(v2_seo_static_controlled_launch_paths()!==$indexableExpected)seo_launch_fail('unexpected_static_public_paths');
 if(in_array('/poisk-turov/',$paths,true))seo_launch_fail('search_route_must_not_be_indexable');
 if(count($paths)!==count(array_unique($paths)))seo_launch_fail('duplicate_path');
 foreach($paths as $path)if(str_contains($path,'/hotel/'))seo_launch_fail('hotel_tours_launch_leak');
@@ -42,7 +48,7 @@ if(count($routeBindings)!==104)seo_launch_fail('controlled_route_identity_count'
 $disabled=v2_seo_controlled_launch_site_params(['OTHER'=>'keep'],false);
 if(!empty($disabled['SEO_INDEXABLE'])||($disabled['SEO_INDEXABLE_PATHS']??null)!==[])seo_launch_fail('disabled_gate');
 $enabled=v2_seo_controlled_launch_site_params([],true);
-if(empty($enabled['SEO_INDEXABLE'])||($enabled['SEO_INDEXABLE_PATHS']??[])!==$paths)seo_launch_fail('enabled_gate');
+if(empty($enabled['SEO_INDEXABLE'])||($enabled['SEO_INDEXABLE_PATHS']??[])!==$indexablePaths)seo_launch_fail('enabled_gate');
 
 $turkeyCatalog=v2_seo_content_pilot_turkey_catalog();
 $turkeyUrls=v2_seo_turkey_launch_sitemap_urls($turkeyCatalog,true);
@@ -52,9 +58,10 @@ if($turkeyUrls!==$turkeyExpectedUrls)seo_launch_fail('turkey_sitemap_drift');
 
 $catalog=v2_seo_controlled_launch_catalog();
 $urls=v2_seo_controlled_launch_sitemap_urls($catalog,true);
-$expectedUrls=array_map(static fn(string $path):string=>'https://anytoour.ru'.$path,$paths);
+$expectedUrls=array_map(static fn(string $path):string=>'https://anytoour.ru'.$path,$indexablePaths);
 sort($expectedUrls,SORT_STRING);
 if($urls!==$expectedUrls)seo_launch_fail('controlled_sitemap_drift');
+if(count($urls)!==106)seo_launch_fail('controlled_sitemap_count');
 if(count($catalog['publication_candidates']??[])!==104)seo_launch_fail('publication_candidate_count');
 foreach($coreMonths as $path){
     if(($catalog['registry'][$path]['type']??'')!=='seasonal')seo_launch_fail('seasonal_registry_'.$path);
@@ -74,4 +81,4 @@ $rogue['graph'][$roguePath]=['parent'=>'/country/turkey/','related'=>[]];$rogue[
 try{v2_seo_publication_manifest($rogue);seo_launch_fail('hotel_tours_publication_fence_bypassed');}
 catch(InvalidArgumentException $e){if(!str_contains($e->getMessage(),'separate launch decision'))seo_launch_fail('hotel_tours_publication_fence_wrong_error');}
 
-echo "SEO_LAUNCH_SLICE_OK paths=104 base=8 coreMonths=96 routeAuthority=104 sitemap=104 hotelTours=0\n";
+echo "SEO_LAUNCH_SLICE_OK catalogPaths=104 hubs=2 indexable=106 coreMonths=96 routeAuthority=104 sitemap=106 hotelTours=0\n";

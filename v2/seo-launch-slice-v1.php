@@ -43,10 +43,23 @@ function v2_seo_core_month_launch_paths(): array
     ));
 }
 
-/** Source-controlled baseline. Dynamic Egypt/Maldives resort routes are added separately. */
+/** Navigational hubs approved for the same reversible production indexation gate. */
+function v2_seo_core_hub_launch_paths(): array
+{
+    return [
+        '/',
+        '/country/',
+    ];
+}
+
+/**
+ * Source-controlled public baseline: 104 existing catalog paths plus two hubs.
+ * Dynamic Egypt/Maldives resort routes are added separately.
+ */
 function v2_seo_static_controlled_launch_paths(): array
 {
     return array_values(array_unique(array_merge(
+        v2_seo_core_hub_launch_paths(),
         v2_seo_turkey_launch_paths(),
         v2_seo_second_wave_country_launch_paths(),
         v2_seo_core_month_launch_paths()
@@ -54,16 +67,39 @@ function v2_seo_static_controlled_launch_paths(): array
 }
 
 /**
- * Single exact-path production indexation allowlist.
+ * Existing catalog-backed cohort retained for identity, feedback and navigation consumers.
  * Generated Egypt/Maldives resort routes enter only after the production
  * materializer writes a validated launch manifest. hotel_tours stay absent.
  */
 function v2_seo_controlled_launch_paths(): array
 {
     return array_values(array_unique(array_merge(
-        v2_seo_static_controlled_launch_paths(),
+        v2_seo_turkey_launch_paths(),
+        v2_seo_second_wave_country_launch_paths(),
+        v2_seo_core_month_launch_paths(),
         v2_seo_core_resort_launch_paths()
     )));
+}
+
+/** Single exact-path production indexation allowlist, including the two core hubs. */
+function v2_seo_controlled_indexable_paths(): array
+{
+    return array_values(array_unique(array_merge(
+        v2_seo_core_hub_launch_paths(),
+        v2_seo_controlled_launch_paths()
+    )));
+}
+
+/** Shared rollout-switch semantics for standalone pages and the homepage. */
+function v2_seo_controlled_launch_enabled(array $siteParams): bool
+{
+    if (array_key_exists('SEO_CONTROLLED_LAUNCH', $siteParams)) {
+        return !empty($siteParams['SEO_CONTROLLED_LAUNCH']);
+    }
+    if (array_key_exists('SEO_TURKEY_LAUNCH', $siteParams)) {
+        return !empty($siteParams['SEO_TURKEY_LAUNCH']);
+    }
+    return true;
 }
 
 function v2_seo_turkey_launch_site_params(array $siteParams, bool $launchEnabled): array
@@ -77,7 +113,7 @@ function v2_seo_turkey_launch_site_params(array $siteParams, bool $launchEnabled
 function v2_seo_controlled_launch_site_params(array $siteParams, bool $launchEnabled): array
 {
     $siteParams['SEO_INDEXABLE'] = $launchEnabled;
-    $siteParams['SEO_INDEXABLE_PATHS'] = $launchEnabled ? v2_seo_controlled_launch_paths() : [];
+    $siteParams['SEO_INDEXABLE_PATHS'] = $launchEnabled ? v2_seo_controlled_indexable_paths() : [];
     return $siteParams;
 }
 
@@ -91,9 +127,14 @@ function v2_seo_turkey_launch_sitemap_xml(array $catalog, bool $launchEnabled): 
 }
 function v2_seo_controlled_launch_sitemap_urls(array $catalog, bool $launchEnabled): array
 {
-    return v2_seo_sitemap_candidate_urls($catalog, $launchEnabled, v2_seo_controlled_launch_paths());
+    if (!$launchEnabled) return [];
+    $catalogUrls = v2_seo_sitemap_candidate_urls($catalog, true, v2_seo_controlled_launch_paths());
+    $hubUrls = array_map(static fn(string $path): string => 'https://anytoour.ru' . $path, v2_seo_core_hub_launch_paths());
+    $urls = array_values(array_unique(array_merge($catalogUrls, $hubUrls)));
+    sort($urls, SORT_STRING);
+    return $urls;
 }
 function v2_seo_controlled_launch_sitemap_xml(array $catalog, bool $launchEnabled): string
 {
-    return v2_seo_sitemap_candidate_xml($catalog, $launchEnabled, v2_seo_controlled_launch_paths());
+    return v2_seo_sitemap_urls_xml(v2_seo_controlled_launch_sitemap_urls($catalog, $launchEnabled));
 }

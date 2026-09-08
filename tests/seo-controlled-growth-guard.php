@@ -5,14 +5,18 @@ require_once __DIR__.'/../v2/seo-launch-slice-v1.php';
 require_once __DIR__.'/../v2/seo-core-month-content-v1.php';
 
 $errors=[];
-$launchPaths=v2_seo_controlled_launch_paths();
+$catalogPaths=v2_seo_controlled_launch_paths();
+$launchPaths=v2_seo_controlled_indexable_paths();
 $monthRecords=v2_seo_core_month_content_records(strtotime('2026-09-03T12:00:00Z'));
-$expectedBase=8;
+$expectedCatalogBase=8;
+$expectedHubs=2;
 $expectedMonths=96;
-$expectedPublic=$expectedBase+$expectedMonths;
+$expectedCatalog=$expectedCatalogBase+$expectedMonths;
+$expectedPublic=$expectedHubs+$expectedCatalog;
 
 if(count($monthRecords)!==$expectedMonths)$errors[]='core month matrix must contain exactly 96 records';
-if(count($launchPaths)!==$expectedPublic)$errors[]='controlled public SEO cohort must be exactly 104 base+month paths';
+if(count($catalogPaths)!==$expectedCatalog)$errors[]='controlled catalog SEO cohort must preserve exactly 104 base+month paths';
+if(count($launchPaths)!==$expectedPublic)$errors[]='controlled public SEO cohort must be exactly 106 hubs+base+month paths';
 if(count($launchPaths)!==count(array_unique($launchPaths)))$errors[]='controlled public SEO cohort contains duplicate paths';
 
 $monthPaths=[];
@@ -33,6 +37,7 @@ foreach($launchPaths as $path){
     if(str_contains($path,'/hotel/'))$errors[]='hotel_tours must never enter controlled public baseline: '.$path;
     if($path==='/poisk-turov/')$errors[]='search route must never enter controlled public baseline';
 }
+foreach(['/','/country/'] as $hub)if(!in_array($hub,$launchPaths,true))$errors[]='core hub missing from controlled public cohort: '.$hub;
 
 if($errors!==[]){
     fwrite(STDERR,"SEO_CONTROLLED_GROWTH_GUARD_FAIL\n");
@@ -40,4 +45,4 @@ if($errors!==[]){
     exit(1);
 }
 
-echo "SEO_CONTROLLED_GROWTH_GUARD_OK public_paths=104 base=8 core_months=96 hotel_tours=0\n";
+echo "SEO_CONTROLLED_GROWTH_GUARD_OK public_paths=106 hubs=2 catalog_base=8 core_months=96 hotel_tours=0\n";
