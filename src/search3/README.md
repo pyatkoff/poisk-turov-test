@@ -174,9 +174,9 @@ Final-review presentation now has one linked owner in `styles/review-layout.css`
 the source/build tests keep the private CSS-string compiler covered with isolated
 fixtures, without restoring a runtime style injector.
 
-`styles/selected-tour.css` is also a provenance-only slot. The retained selected
-tour shell lives with the current desktop owner in `styles/tour-detail.css`; its
-mobile bar and narrow-state rules live in `styles/selected-flow-v2.css`.
+The legacy selected-tour shell is retired. `styles/selected-tour.css` retains
+only the native selected-picture width bound, so remote hotel images cannot
+overflow the viewport; no card, mobile-bar or narrow-state presentation remains.
 
 Repeated ancestor prefixes in 74 CSS selector lists now use `:is()` for plain
 class alternatives with equal specificity. Declarations and media boundaries are

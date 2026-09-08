@@ -927,7 +927,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         total = sum((ROOT / 'v2' / name).stat().st_size for name in expected)
         self.assertLessEqual(total, 89174, 'eight assets must remain at least two times smaller')
 
-    def test_reset_css_allowlist_and_empty_public_slots(self):
+    def test_reset_css_allowlist_and_native_selected_bound(self):
         assets = self.source['assets']
         self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/results-layout.css'])
         self.assertEqual(assets['search3-entry-v1.css'], ['styles/entry-native-controls.css'])
@@ -939,7 +939,10 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
         self.assertLessEqual((ROOT / 'v2/search3-results-filters-v1.css').stat().st_size, 5490)
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
-        self.assertLessEqual((ROOT / 'v2/search3-selected-flow-v2.css').stat().st_size, 1)
+        self.assertEqual(
+            (ROOT / 'v2/search3-selected-flow-v2.css').read_text(),
+            '.selected-picture img{max-width:100%;height:auto}\n',
+        )
         self.assertEqual((ROOT / 'v2/search3-selected-flow-v2.js').stat().st_size, 0)
 
     def test_selected_runtime_uses_canonical_owners_once(self):
