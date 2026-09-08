@@ -2616,3 +2616,15 @@ Security `34241546821` and exact artifact build `34241546778` passed. Reusable a
 Preview was not published: published source remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Manual screenshot inspection, live current-source interaction, physical Safari/safe-area and the broad responsive/site/SEO matrix are deferred, not passed.
 
 Next: audit retained results/selected JavaScript as one coarse owner package. Do not return to micro-trims or per-layer browser/deploy cycles; preserve API/Tourvisor, URL/payload, price, lead and analytics contracts.
+
+## 2026-09-08 — results presentation reset (#1607)
+
+The same active reduction pass continued after #1604 with [#1607](https://github.com/pyatkoff/poisk-turov-test/pull/1607), exact source `e15d9e67feb0e08d97dfd0255a75a8e89b245980`. The duplicate Search3 results presentation, card decoration and label owners were removed as whole modules; `results-top.js` is now a small route-visibility bridge. The canonical `v2/results-renderer-v5.js` remains responsible for result rendering, sorting, empty recovery and the real `.direct-tour` action.
+
+Eight public assets are **78454 → 60811 raw bytes (−17643 B)** and same-method gzip is **22594 → 18093 (−4501 B)**. Complete loaded Search3 CSS/JS is **197067 → 179424 B**. Against the original 665247-byte route, the checked release has removed **485823 B (−73.03%)** and is **3.71× smaller**.
+
+Security `34243761242` and exact artifact/core-browser run `34243761739` passed. Reusable artifact `10063127413`, digest `sha256:11adb12faeebc6402c15758e45696ba0e9c286e79d309f4da734287796f961fa`; browser evidence `10063126829`, digest `sha256:b1c8e44ab397f253fc41fd37938683111aa2e373376088a843613ee5c52db14a`. The deliberately narrow smoke rendered a result through the retained renderer, selected its actual action and reached detail/review/lead at 375 and 1440 with external requests blocked and zero leads sent. It first caught and then repaired an empty mobile rail overflow and desktop results remaining expanded under selected detail. Checked code release: `686cd04e26a7d07bed559d637301cf30b4aed7b2`.
+
+Preview was not published and remains source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`. Main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Manual visual acceptance, live current-source interaction and physical Safari/safe-area remain deferred.
+
+Next: treat retained selected-flow JavaScript as one coarse package. Preserve price and pending arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics; do not spend a separate cycle on micro-reductions.

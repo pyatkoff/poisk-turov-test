@@ -1,7 +1,10 @@
 {
   "schema_version": 1,
-  "status": "SOURCE_READY_CI_PENDING_NOT_PUBLISHED_NOT_PRODUCTION",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
   "base_release_sha": "9d0d29f21033414fe86ee8179a9027f922d98896",
+  "source_pr": 1607,
+  "source_sha": "e15d9e67feb0e08d97dfd0255a75a8e89b245980",
+  "checked_release_sha": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
   "scope": "retire the duplicate Search3 result decoration layer and retain only route-state visibility",
   "eight_assets": {
     "before_raw_bytes": 78454,
@@ -37,8 +40,29 @@
     "flight-price-sync-v1.js"
   ],
   "browser_contract": "one blocked-network journey renders a result, selects its real direct-tour action, reaches detail/review/lead at 375 and 1440, and sends no lead",
+  "verification": {
+    "security": {
+      "run": 34243761242,
+      "conclusion": "success"
+    },
+    "exact_artifact": {
+      "run": 34243761739,
+      "conclusion": "success",
+      "artifact_id": 10063127413,
+      "digest": "sha256:11adb12faeebc6402c15758e45696ba0e9c286e79d309f4da734287796f961fa"
+    },
+    "browser_evidence": {
+      "artifact_id": 10063126829,
+      "digest": "sha256:b1c8e44ab397f253fc41fd37938683111aa2e373376088a843613ee5c52db14a"
+    },
+    "repaired_failures": [
+      "34243059579: empty mobile result rail retained 220px and overflowed",
+      "34243427648: desktop result grid remained expanded beneath selected detail"
+    ]
+  },
   "preview_published": false,
   "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
   "deferred": [
     "intentional reset visual acceptance",
     "physical Safari and safe-area verification"
