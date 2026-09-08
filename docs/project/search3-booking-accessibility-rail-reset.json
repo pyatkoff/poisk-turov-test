@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
-  "status": "SOURCE_READY_REQUIRED_CI_PENDING_NOT_PUBLISHED",
+  "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "source_sha": "70cc8105a6920472fafccabc172158ed15f48bca",
+  "release_sha": "61df0ca55c4791d04c0c59ce965b92377e300a6f",
   "base_release_sha": "ed740780483850bf85f884f248cdd8692b096cdb",
   "eight_assets": { "before_raw_bytes": 42074, "after_raw_bytes": 33355, "saved_raw_bytes": 8719 },
   "main_js": { "before_raw_bytes": 23070, "after_raw_bytes": 16656, "saved_raw_bytes": 6414 },
@@ -29,11 +31,25 @@
     "selected no-flight/review scheduler, original fact ownership and source presentation suite",
     "git diff check"
   ],
-  "required_ci": { "security": "pending", "exact_artifact": "pending" },
-  "planned_browser": "Existing exact selected fixture at375/760/1000/1440 plus real-source results geometry at375/760/761/999/1000/1440. Native entry checks static ARIA, results busy reset/start/error, details close and unchanged form lifecycle. External requests blocked; no lead submission.",
+  "required_ci": {
+    "security": { "run": 34258249194, "status": "success" },
+    "exact_artifact": { "run": 34258249202, "status": "success", "artifact_id": 10068815027, "artifact_digest": "sha256:60d7d83b3dfe963fc1d5b42af74cd6fa7fac7200167e8437f2f5f64e4d63eadc", "archive_sha256": "d2959364524a72c91eb2af8b6016557ea813799676b5c03af8467a9acd64bcc1" },
+    "standalone_navigation": { "run": 34258249247, "status": "success" }
+  },
+  "browser": {
+    "selected_states": 12,
+    "selected_widths": [375, 760, 1000, 1440],
+    "native_entry_states": 30,
+    "results_states": 12,
+    "results_widths": [375, 760, 761, 999, 1000, 1440],
+    "raw_served_parity": true,
+    "external_calls": 0,
+    "lead_sent": 0,
+    "manual_screenshot_inspection": false
+  },
   "preview_published": false,
   "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "main_sha_observed": "86fc165277a13ae9bef1369659e9b150399f0e35",
   "deferred": ["owner visual acceptance", "physical Safari/safe-area", "live current-source preview", "full responsive/site/SEO journey"],
-  "next_step": "After green required CI, merge and checkpoint with exact evidence. The independent follow-up audit found no whole optional shared-JS owner at least2KB; do not trim live native search-form or protected shared runtime."
+  "next_step": "Independent follow-up audit found no whole optional shared-JS owner at least2KB. Do not trim live native search-form or protected runtime/results/API/Tourvisor/lead/price/catalog/URL/lifecycle/analytics owners; the next coarse reduction needs a new architecture boundary."
 }

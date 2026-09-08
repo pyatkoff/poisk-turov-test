@@ -1,4 +1,36 @@
 {
+  "latest_booking_accessibility_rail_reset": {
+    "source_pr": 1614,
+    "source_sha": "70cc8105a6920472fafccabc172158ed15f48bca",
+    "release_sha": "61df0ca55c4791d04c0c59ce965b92377e300a6f",
+    "base_release_sha": "ed740780483850bf85f884f248cdd8692b096cdb",
+    "before_bytes": 42074,
+    "after_bytes": 33355,
+    "newly_removed_bytes": 8719,
+    "loaded_before_bytes": 151428,
+    "loaded_after_bytes": 140090,
+    "loaded_removed_bytes": 11338,
+    "ci": {
+      "security_run": 34258249194,
+      "artifact_run": 34258249202,
+      "navigation_run": 34258249247,
+      "conclusion": "success",
+      "artifact_id": 10068815027,
+      "artifact_digest": "sha256:60d7d83b3dfe963fc1d5b42af74cd6fa7fac7200167e8437f2f5f64e4d63eadc",
+      "preview_published": false
+    },
+    "visual": {
+      "selected_states": 12,
+      "native_entry_states": 30,
+      "results_states": 12,
+      "raw_served_parity": true,
+      "external_calls": 0,
+      "lead_sent": 0,
+      "manual_screenshot_inspection": false
+    },
+    "deferred": ["owner visual acceptance", "physical Safari/safe-area", "live current-source preview", "full responsive/site/SEO journey"],
+    "next_action": "No whole optional shared-JS owner at least2KB remains. Design a new coarse architecture boundary without trimming protected runtime/results/API/Tourvisor/lead/price/catalog/URL/lifecycle/analytics owners."
+  },
   "latest_selected_owner_retirement": {
     "source_pr": 1612,
     "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
@@ -166,29 +198,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1615 reduced shared JS9259B and added115B to fix mobile sort overflow: loaded160572→151428 (net9144B), eight41959→42074. Original core JS/legacy response unchanged. Final Security/exact artifact green; current actual-route checks replace obsolete fabricated UI fixtures. Not published.",
+    "last_material_progress": "PR #1614 retired booking/services/layout/lead-note, accessibility and dead rail owners: eight42074→33355 (−8719B), loaded151428→140090 (−11338B). Final Security/exact/navigation green; not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Refresh release and moving PR #1614 before any next edit. It owns booking/services/layout/lead-note, dead rail and accessibility; retain its work and the #1615 compact map/current results fixture in sequential integration. Do not recreate obsolete UI to satisfy historical fixtures. After that coarse package, audit retained controller/catalogs compaction only with an exact syntax-preserving representation: current printer drops an EmptyStatement in tour-controller-v4 and converts a numeric string property key in catalogs-v2, so both remain raw. Preserve protected arithmetic, API/URL/payload, lead and analytics; do not make a micro-PR or repeat this 15-module pass.",
+    "next_action": "No whole optional shared-JS owner at least2KB remains after #1614. Design a new coarse architecture boundary without trimming protected runtime/results/API/Tourvisor/lead/price/catalog/URL/lifecycle/analytics owners; do not make a micro-PR.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_SHARED_RUNTIME_COMPACTION",
-    "title": "Compact retained shared JS and repair mobile sort overflow",
+    "id": "S3_BOOKING_ACCESSIBILITY_RAIL_RESET",
+    "title": "Retire booking presentation, accessibility duplicate and dead filter rail",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1615,
+    "source_pr": 1614,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "1edc81fe4fc61c845cfd21e453c2d4f5255515e1",
-    "release_sha": "ed740780483850bf85f884f248cdd8692b096cdb",
-    "last_fully_checked_release_sha": "ed740780483850bf85f884f248cdd8692b096cdb",
-    "security_run": 34257278495,
-    "exact_run": 34257278546,
-    "checked_release_asset_bytes": 42074,
-    "release_loaded_bytes": 151428,
+    "implementation_sha": "70cc8105a6920472fafccabc172158ed15f48bca",
+    "release_sha": "61df0ca55c4791d04c0c59ce965b92377e300a6f",
+    "last_fully_checked_release_sha": "61df0ca55c4791d04c0c59ce965b92377e300a6f",
+    "security_run": 34258249194,
+    "exact_run": 34258249202,
+    "checked_release_asset_bytes": 33355,
+    "release_loaded_bytes": 140090,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "Refresh release and moving PR #1614 before any next edit. It owns booking/services/layout/lead-note, dead rail and accessibility; retain its work and the #1615 compact map/current results fixture in sequential integration. Do not recreate obsolete UI to satisfy historical fixtures. After that coarse package, audit retained controller/catalogs compaction only with an exact syntax-preserving representation: current printer drops an EmptyStatement in tour-controller-v4 and converts a numeric string property key in catalogs-v2, so both remain raw. Preserve protected arithmetic, API/URL/payload, lead and analytics; do not make a micro-PR or repeat this 15-module pass."
+    "next_action": "No whole optional shared-JS owner at least2KB remains after #1614. Design a new coarse architecture boundary without trimming protected owners; do not make a micro-PR."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",

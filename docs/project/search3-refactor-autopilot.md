@@ -1,5 +1,49 @@
 # Search3 technical refactor autopilot
 
+## Current resume point — booking/accessibility/rail reset #1614 — 2026-09-08
+
+Exact source `70cc8105a6920472fafccabc172158ed15f48bca`, checked release
+`61df0ca55c4791d04c0c59ce965b92377e300a6f`; fresh base was
+`ed740780483850bf85f884f248cdd8692b096cdb`. Eight public assets are
+**42074 → 33355 raw B (−8719)**: main JS23070→16656 (−6414), main
+CSS10725→8420 (−2305). Search3 shared file payload drops another2619B by
+excluding `accessibility.js` from Search3 only; complete loaded file payload is
+151428→140090 (−11338). The full legacy route and all eight public paths remain.
+
+Whole private booking services/layout/lead-note owners, the duplicate booking
+fact card, redundant CTA copy, dead desktop filter rail and its empty220px column
+are retired. Compact booking total, pending/confirmed arithmetic, flight label,
+review/back/lead transitions, original placement/fuel/baggage facts and lead
+fields remain. Static ARIA/live attributes, results busy lifecycle and native
+details close-on-search replace the removed accessibility runtime in Search3.
+
+Security34258249194, exact artifact34258249202 and standalone navigation
+34258249247 passed on the final merged head. Reuse artifact10068815027, digest
+`sha256:60d7d83b3dfe963fc1d5b42af74cd6fa7fac7200167e8437f2f5f64e4d63eadc`;
+archive `d2959364524a72c91eb2af8b6016557ea813799676b5c03af8467a9acd64bcc1`.
+Selected evidence10068814072, results evidence10068814511 and entry
+evidence10068813396 retain their exact recorded digests in the audit.
+
+Actual isolated Chromium: selected detail/review/lead12 states at
+375/760/1000/1440, native entry lifecycle30 states, current raw/served results12
+states at375/760/761/999/1000/1440, retry/fallback/decimal price and native header.
+External calls0 and leads0. The exact run repaired one real 44px results disclosure
+regression and retired stale fixtures for already removed drawer/header/card skins;
+no claim that53 pre-existing skipped historical tests passed. Manual screenshot
+inspection, physical Safari/safe-area, live current-source preview and owner visual
+acceptance remain deferred.
+
+**Checked release is not published preview.** Preview remains
+`c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; production unchanged. Revert #1614
+for rollback. Audit: `docs/project/search3-booking-accessibility-rail-reset.json`.
+
+Next: independent post-merge audit found no whole optional shared-JS owner ≥2KB.
+All remaining owners at that size are protected runtime/results/API/Tourvisor,
+lead, price, catalog, URL, lifecycle or analytics. Do not start another micro-trim.
+The next coarse reduction requires a new architecture boundary that preserves those
+contracts; continue audit/design work without changing main/production.
+
 ## Current resume point — shared runtime compaction #1615 — 2026-09-08
 
 Exact source `1edc81fe4fc61c845cfd21e453c2d4f5255515e1`, tree `38a21ff0873fd6d0871d64e3d36bfdf628d14c59`,
