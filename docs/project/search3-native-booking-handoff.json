@@ -1,0 +1,100 @@
+{
+  "package": "SEARCH3_NATIVE_BOOKING_HANDOFF",
+  "date": "2026-09-08",
+  "source_pr": 1623,
+  "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+  "source_tree_sha": "c1642263d5fee92371b14d1a9c94d6692ce1e87e",
+  "base_release_sha": "4b92586a8126b6b93f56b2c0463c8347a867867f",
+  "checked_release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+  "accounting": {
+    "eight_public_assets": {
+      "before_bytes": 25391,
+      "after_bytes": 19125,
+      "removed_bytes": 6266
+    },
+    "initial_route": {
+      "before_bytes": 101324,
+      "after_bytes": 95058,
+      "removed_bytes": 6266
+    },
+    "complete_route": {
+      "before_bytes": 126928,
+      "after_bytes": 120662,
+      "removed_bytes": 6266
+    }
+  },
+  "retired_whole_owners": [
+    "duplicate Search3 booking-summary card and total projection",
+    "duplicate Search3 booking fact formatter",
+    "intermediate review-to-summary-to-lead presentation stage"
+  ],
+  "retained_contracts": [
+    "all eight public asset paths",
+    "canonical protected TourController source and selected tour facts",
+    "pending, confirmed and decimal flight price arithmetic",
+    "same-origin lazy selected runtime with retry and reset cancellation",
+    "canonical lead form, FormData field mapping and disabled-preview transport",
+    "URL, payload, Tourvisor/API and analytics owners",
+    "return focus and no-flight/retry fallback"
+  ],
+  "ci": {
+    "security_run": 34269579797,
+    "artifact_run": 34269579936,
+    "conclusion": "success",
+    "artifact": {
+      "id": 10073289828,
+      "name": "search3-site-preview-989e4a90048f76812021b221706fa1635a4884a2-34269579936-1",
+      "digest": "sha256:2def434e159e246459b6da0ff5761b8cfb99ec80a768a66ce9becd4b8303fb33",
+      "archive_sha256": "4391a159f75ad413926498186cab6ac02619090ed72dcaf2f7e8fbc381d75016",
+      "files": 717,
+      "published": false
+    },
+    "selected_evidence": {
+      "id": 10073289344,
+      "name": "search3-selected-geometry-989e4a90048f76812021b221706fa1635a4884a2-34269579936",
+      "digest": "sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb"
+    }
+  },
+  "actual_browser_verification": {
+    "selected_states": 8,
+    "widths": [375, 760, 1000, 1440],
+    "native_lead_handoff": true,
+    "lazy_scenarios": ["download failure then retry", "search reset cancels pending selection"],
+    "first_successful_selection": {"tour_requests": 1, "flight_requests": 1},
+    "decimal_selected_price": 150001.2,
+    "return_focus": true,
+    "fallback_lead_requests": 0,
+    "real_leads_sent": 0,
+    "manual_screenshots_inspected": false
+  },
+  "red_history": [
+    {
+      "pr": 1621,
+      "source_sha": "22cd42248131d00a6d8603de2b2edb8602a937a6",
+      "artifact_run": 34268071919,
+      "result": "superseded old-base attempt; native selected geometry passed but stale lazy fixture failed"
+    },
+    {
+      "source_sha": "e9d9ad35867f1b63f6e9cf14b90a2d171b1186d3",
+      "artifact_runs": [34268994255, 34269026898],
+      "result": "duplicate trigger on the same exact head; product geometry passed and the old booking-summary wait failed"
+    }
+  ],
+  "publication": {
+    "checked_release": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+    "published_preview_source": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "preview_updated": false,
+    "main_observed": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_updated": false,
+    "production_updated": false
+  },
+  "rollback": "Revert merge d5ff8203f47f7c3ccb48d9c5465f6549b08bc861; the preceding lazy-selected checkpoint remains intact.",
+  "deferred": [
+    "owner visual acceptance",
+    "manual screenshot inspection",
+    "physical Safari/safe-area",
+    "live current-source preview",
+    "full lead/responsive/site/SEO journey"
+  ],
+  "next_action": "Audit only coarse remaining public owners. Count a successor only if it removes an entire optional surface or produces at least 2KB real eight-asset savings while preserving protected lead, price, URL, payload, Tourvisor/API and analytics contracts; do not count late loading or source movement as deletion."
+}

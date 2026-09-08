@@ -1,4 +1,55 @@
 {
+  "latest_native_booking_handoff": {
+    "source_pr": 1623,
+    "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+    "release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+    "base_release_sha": "4b92586a8126b6b93f56b2c0463c8347a867867f",
+    "eight_assets": {
+      "before_bytes": 25391,
+      "after_bytes": 19125,
+      "removed_bytes": 6266
+    },
+    "initial_route": {
+      "before_bytes": 101324,
+      "after_bytes": 95058,
+      "removed_bytes": 6266
+    },
+    "complete_route": {
+      "before_bytes": 126928,
+      "after_bytes": 120662,
+      "removed_bytes": 6266
+    },
+    "ci": {
+      "security_run": 34269579797,
+      "artifact_run": 34269579936,
+      "conclusion": "success",
+      "artifact_id": 10073289828,
+      "artifact_digest": "sha256:2def434e159e246459b6da0ff5761b8cfb99ec80a768a66ce9becd4b8303fb33",
+      "archive_sha256": "4391a159f75ad413926498186cab6ac02619090ed72dcaf2f7e8fbc381d75016",
+      "selected_evidence_id": 10073289344,
+      "selected_evidence_digest": "sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb",
+      "preview_published": false
+    },
+    "browser": {
+      "selected_states": 8,
+      "selected_widths": [375, 760, 1000, 1440],
+      "native_lead_handoff": true,
+      "lazy_retry": true,
+      "reset_cancellation": true,
+      "decimal_price": 150001.2,
+      "return_focus": true,
+      "lead_sent": 0,
+      "manual_screenshot_inspection": false
+    },
+    "deferred": [
+      "owner visual acceptance",
+      "manual screenshot inspection",
+      "physical Safari/safe-area",
+      "live current-source preview",
+      "full lead/responsive/site/SEO journey"
+    ],
+    "next_action": "Audit only coarse remaining public owners; count a successor only for an entire optional-surface retirement or at least 2KB real eight-asset savings. Do not count late loading or source movement as deletion."
+  },
   "latest_native_entry_shared_compaction": {
     "source_pr": 1619,
     "source_sha": "efd0368b99f91533cb5538d433244a71fb303c25",
@@ -263,30 +314,30 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1618 integrated #1619 without duplicate compaction: initial 125043→101324 (−23719B), complete 125043→126928 (+1885B loader/return/native-details repairs). Final combined Security/exact green; not published.",
+    "last_material_progress": "#1623 retired the duplicate booking summary/formatter and intermediate review stage: eight assets 25391→19125 (−6266B), initial 101324→95058 (−6266B), complete 126928→120662 (−6266B). Final Security/exact green; not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction.",
+    "next_action": "Audit only coarse remaining public owners. Count a successor only if it removes an entire optional surface or produces at least 2KB real eight-asset savings while preserving protected lead, price, URL, payload, Tourvisor/API and analytics contracts; do not count late loading or source movement as deletion.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LAZY_SELECTED_RUNTIME",
-    "title": "Load selected tour on demand; preserve return focus and native details lifecycle",
+    "id": "S3_NATIVE_BOOKING_HANDOFF",
+    "title": "Retire duplicate booking review and hand off directly to the native lead form",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1618,
+    "source_pr": 1623,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
-    "release_sha": "5bb8595d870906c4eb67b07de3d86a26ff71ec1b",
-    "last_fully_checked_release_sha": "5bb8595d870906c4eb67b07de3d86a26ff71ec1b",
-    "security_run": 34268129179,
-    "exact_run": 34268129387,
-    "checked_release_asset_bytes": 25391,
-    "release_loaded_bytes": 126928,
-    "release_initial_bytes": 101324,
+    "implementation_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+    "release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+    "last_fully_checked_release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+    "security_run": 34269579797,
+    "exact_run": 34269579936,
+    "checked_release_asset_bytes": 19125,
+    "release_loaded_bytes": 120662,
+    "release_initial_bytes": 95058,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction."
+    "next_action": "Audit only coarse remaining public owners; count a successor only for an entire optional-surface retirement or at least 2KB real eight-asset savings. Do not count late loading or source movement as deletion."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1754,10 +1805,30 @@
         "digest": "sha256:426f134afdcffd19fe4721263dafb65ad28639edaf2800690f1622553dc0b6fc",
         "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
       }
+    },
+    "native_booking_handoff": {
+      "source_pr": 1623,
+      "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+      "checked_release_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+      "security_run": 34269579797,
+      "artifact_run": 34269579936,
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_id": 10073289828,
+      "artifact_digest": "sha256:2def434e159e246459b6da0ff5761b8cfb99ec80a768a66ce9becd4b8303fb33",
+      "archive_sha256": "4391a159f75ad413926498186cab6ac02619090ed72dcaf2f7e8fbc381d75016",
+      "selected_evidence_id": 10073289344,
+      "selected_evidence_digest": "sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb",
+      "selected_states": 8,
+      "selected_widths": [375, 760, 1000, 1440],
+      "lazy_scenarios": ["retry", "reset cancellation"],
+      "native_lead_handoff": true,
+      "lead_sent": 0,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "5bb8595d870906c4eb67b07de3d86a26ff71ec1b",
-  "last_verified_commit_scope": "Exact checked source b25ae3e8c72e300bbaf877a9df8010d7f3f108fe; combined release code, not published preview/production.",
+  "last_verified_commit": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+  "last_verified_commit_scope": "Exact checked source 989e4a90048f76812021b221706fa1635a4884a2; native booking handoff merged to release, not published preview/production.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -2163,53 +2234,39 @@
     "next_action": "Audit lead-review versus lead-state; delete only after sending/success/error and intermediate-width evidence."
   },
   "presentation_refactor_checkpoint": {
-    "stage": "CHECKED_RELEASE_LAZY_SELECTED_RUNTIME",
-    "implementation_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
-    "release_integration_sha": "5bb8595d870906c4eb67b07de3d86a26ff71ec1b",
-    "source_pr": 1618,
-    "audit": "docs/project/search3-compact-lazy-runtime.json",
+    "stage": "CHECKED_RELEASE_NATIVE_BOOKING_HANDOFF",
+    "implementation_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+    "release_integration_sha": "d5ff8203f47f7c3ccb48d9c5465f6549b08bc861",
+    "source_pr": 1623,
+    "audit": "docs/project/search3-native-booking-handoff.json",
     "ci": {
-      "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
-      "security_run": 34268129179,
-      "exact_run": 34268129387,
-      "boundary_run": 34268129237,
-      "navigation_run": 34268129190,
+      "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+      "security_run": 34269579797,
+      "exact_run": 34269579936,
       "conclusion": "success",
       "selected_artifact": {
-        "id": 10072719965,
-        "name": "search3-selected-geometry-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387",
-        "digest": "sha256:d7597922be29a95f938982b1863bf8d8a21edc11907baa5787effc0f6257b1da",
-        "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
-      },
-      "results_artifact": {
-        "id": 10072720408,
-        "name": "search3-results-geometry-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387",
-        "digest": "sha256:3b77de107c5c26e1012e8aa5dd572e1a07edb1e10fbbd236b7aab316df981410",
-        "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
-      },
-      "entry_artifact": {
-        "id": 10072719365,
-        "name": "search3-entry-owner-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387",
-        "digest": "sha256:426f134afdcffd19fe4721263dafb65ad28639edaf2800690f1622553dc0b6fc",
-        "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
+        "id": 10073289344,
+        "name": "search3-selected-geometry-989e4a90048f76812021b221706fa1635a4884a2-34269579936",
+        "digest": "sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb",
+        "source_sha": "989e4a90048f76812021b221706fa1635a4884a2"
       }
     },
     "artifact": {
-      "id": 10072720854,
-      "name": "search3-site-preview-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387-1",
-      "digest": "sha256:1936f778595c200da8251133ee38f2b10771fb9ffa8c59f4507ef04b9d7c4adf",
-      "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
-      "archive_sha256": "831dc290534fab55e69fa49f7d8c3ccd67594b93af9299c0b26c7517ec35003e",
+      "id": 10073289828,
+      "name": "search3-site-preview-989e4a90048f76812021b221706fa1635a4884a2-34269579936-1",
+      "digest": "sha256:2def434e159e246459b6da0ff5761b8cfb99ec80a768a66ce9becd4b8303fb33",
+      "source_sha": "989e4a90048f76812021b221706fa1635a4884a2",
+      "archive_sha256": "4391a159f75ad413926498186cab6ac02619090ed72dcaf2f7e8fbc381d75016",
       "files": 717,
-      "run_id": 34268129387,
+      "run_id": 34269579936,
       "rebuilt_for_release": false,
       "rebuilt_for_docs": false,
       "published": false
     },
     "public_assets": {
-      "before": 23506,
-      "after": 25391,
-      "saved": -1885
+      "before": 25391,
+      "after": 19125,
+      "saved": 6266
     },
     "shared_js": {
       "before": 101537,
@@ -2217,14 +2274,14 @@
       "saved": 0
     },
     "loaded_route": {
-      "before": 125043,
-      "after": 126928,
-      "saved": -1885
+      "before": 126928,
+      "after": 120662,
+      "saved": 6266
     },
     "initial_route": {
-      "before": 125043,
-      "after": 101324,
-      "saved": 23719
+      "before": 101324,
+      "after": 95058,
+      "saved": 6266
     },
     "deferred_file_payload_raw": 25604,
     "parallel_integration": {
@@ -2252,7 +2309,7 @@
         "return_focus": true,
         "no_selected_request_before_choice": true
       },
-      "selected_states": 12,
+      "selected_states": 8,
       "selected_widths": [
         375,
         760,
@@ -2274,6 +2331,7 @@
         1440
       ],
       "retry_fallback_decimal": "passed",
+      "native_lead_handoff": true,
       "external_requests": "blocked in fixtures",
       "real_leads_sent": 0,
       "screenshots_inspected": []
@@ -2285,7 +2343,7 @@
       "owner visual acceptance",
       "full site/SEO/responsive/lead journey"
     ],
-    "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction."
+    "next_action": "Audit only coarse remaining public owners; count a successor only for an entire optional-surface retirement or at least 2KB real eight-asset savings. Do not count late loading or source movement as deletion."
   },
   "presentation_refactor_history": [
     {

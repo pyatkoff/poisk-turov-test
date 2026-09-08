@@ -1,6 +1,48 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — on-demand selected runtime #1618 — 2026-09-08
+## Current resume point — native booking handoff #1623 — 2026-09-08
+
+Exact source `989e4a90048f76812021b221706fa1635a4884a2`, tree
+`c1642263d5fee92371b14d1a9c94d6692ce1e87e`; checked release
+`d5ff8203f47f7c3ccb48d9c5465f6549b08bc861`. Fresh base was
+`4b92586a8126b6b93f56b2c0463c8347a867867f`.
+
+The eight public assets are **25391→19125 raw B (−6266)**. Initial route file
+payload is **101324→95058 B (−6266)** and complete route file payload is
+**126928→120662 B (−6266)**. This is deletion, not deferred loading or a source
+move: the whole duplicate booking-summary card, duplicate fact formatter and
+intermediate review→summary→lead presentation stage are gone. The selected-tour
+CTA now hands off directly to the canonical native lead form.
+
+All eight paths, protected TourController, pending/confirmed/decimal price,
+selected lazy retry/reset, return focus, canonical facts/FormData/lead transport,
+URL/payload/Tourvisor/API and analytics remain. Security `34269579797` and exact
+artifact `34269579936` passed. Reuse artifact `10073289828`, digest
+`sha256:2def434e159e246459b6da0ff5761b8cfb99ec80a768a66ce9becd4b8303fb33`,
+archive `4391a159f75ad413926498186cab6ac02619090ed72dcaf2f7e8fbc381d75016`.
+Selected evidence `10073289344`, digest
+`sha256:9963f0d4fb963ac1cf08a5fb8e6ef563cc04e8d89d373e75f04ed24de4088cbb`.
+
+Actual isolated Chromium passed 8 selected states at 375/760/1000/1440, direct
+native lead handoff, lazy download retry, reset cancellation, one tour and one
+flight request on the successful selection, decimal price `150001.2`, fallback
+with zero lead requests and return focus. Real leads0. The earlier old-base #1621
+and duplicate red runs on `e9d9ad35` are retained as red fixture history, not
+called green. The final exact head fixed only the stale booking-summary fixture.
+
+**Checked release is not published preview.** Preview remains
+`c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; neither main nor production changed.
+Manual screenshots, live current-source preview, physical Safari/safe-area, owner
+acceptance and the full lead/responsive/site/SEO journey are deferred. Revert
+`d5ff8203` for rollback. Audit: `docs/project/search3-native-booking-handoff.json`.
+
+Next: audit only coarse remaining public owners. Count a successor only if it
+removes an entire optional surface or saves at least 2KB in the eight real assets
+while preserving protected lead, price, URL, payload, Tourvisor/API and analytics.
+Do not count late loading or source movement as deletion; do not start a micro-PR.
+
+## Historical checkpoint — on-demand selected runtime #1618 — 2026-09-08
 
 Exact combined source `b25ae3e8c72e300bbaf877a9df8010d7f3f108fe`, tree `9ee238b4e9745cb95311d0d09add462c6bdee476`;
 checked code release `5bb8595d870906c4eb67b07de3d86a26ff71ec1b`. Concurrent #1619 merged first as
