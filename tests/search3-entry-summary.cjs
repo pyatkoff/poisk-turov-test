@@ -20,6 +20,7 @@ for (const marker of ['search3-price-calendar', 'search3-entry-summary-detail', 
   assert.ok(!bundle.includes(marker), `retired entry projection stays absent: ${marker}`);
 }
 assert.match(formOwner, /dataset\.search3Ready='1'/, 'compatibility ready marker remains');
+assert.match(formOwner, /v2:search-started/, 'native extras close when search starts');
 for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
   'count_people', 'child_count', 'child_age[]', 'food', 'price_from', 'price_till']) {
   assert.ok(markup.includes(`name="${name}"`), `canonical server field remains: ${name}`);
