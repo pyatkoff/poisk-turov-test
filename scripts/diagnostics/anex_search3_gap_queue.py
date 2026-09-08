@@ -33,6 +33,7 @@ def ssh_progress(stderr):
     return {
         'tcp_connected': 'debug1: Connection established.' in message,
         'authenticated': 'Authenticated to ' in message or 'debug1: Authentication succeeded' in message,
+        'multiplexing_seen': 'mux_client' in message or 'multiplexing control connection' in message,
         'command_sent': 'debug1: Sending command:' in message,
         'remote_exit_seen': 'debug1: Exit status ' in message,
     }
@@ -71,7 +72,8 @@ def failure_report(error, phase):
               'error_kind': type(error).__name__ if type(error).__name__ in kinds else 'other'}
     if isinstance(error, SSHBatchError):
         report.update(error_kind='SSHBatchError', reason_code=error.reason_code,
-                      exit_code=error.exit_code, ssh_progress=error.progress)
+                      exit_code=error.exit_code, ssh_progress=error.progress,
+                      ssh_attempts=getattr(error, 'attempts', 1))
     if isinstance(error, RemoteBatchError):
         value = error.diagnostic
         report['error_kind'] = value.get('remote_error') if value.get('remote_error') in kinds else 'other'
@@ -269,6 +271,25 @@ def remote_batch(selected, catalog_rows, country_id, observations=False):
     return {'rows': rows, 'preservation': after}
 
 
+def run_ssh(command, payload, env):
+    for attempt in (1, 2):
+        result = subprocess.run(command, input=payload, text=True, capture_output=True,
+                                timeout=310, env=env)
+        if not result.returncode:
+            return result, attempt
+        error = SSHBatchError(result.returncode, result.stderr)
+        error.attempts = attempt
+        # Only a direct connection closed before authentication is retryable.
+        # Never replay a command, an authentication refusal, or a mux session.
+        if (attempt == 1 and error.exit_code == 255 and error.reason_code == 'ssh_connection_closed'
+                and error.progress['tcp_connected'] and not any(error.progress[k]
+                    for k in ('authenticated', 'command_sent', 'multiplexing_seen', 'remote_exit_seen'))
+                and not result.stdout):
+            time.sleep(2)
+            continue
+        raise error
+
+
 def ssh_batch(selected, catalog_rows, country_id, observations=False):
     names = ('ANYTOOUR_DEPLOY_SSH_KEY', 'ANYTOOUR_DEPLOY_HOST', 'ANYTOOUR_DEPLOY_USER')
     if any(not os.environ.get(name, '').strip() for name in names):
@@ -288,22 +309,24 @@ def ssh_batch(selected, catalog_rows, country_id, observations=False):
         key = Path(temp) / 'ssh_key'
         key.write_text(os.environ[names[0]].rstrip() + '\n')
         key.chmod(0o600)
+        control = Path(os.environ.get('RUNNER_TEMP') or temp) / 'anex-observed-ssh'
+        control.mkdir(mode=0o700, exist_ok=True)
         command = ['ssh', '-T', '-i', str(key), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
+            '-o', 'ControlMaster=auto', '-o', 'ControlPersist=45', '-o', 'ControlPath=' + str(control / '%C'),
             '-o', 'StrictHostKeyChecking=accept-new', '-o', 'UserKnownHostsFile=' + str(Path(temp) / 'known_hosts'),
             '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=2',
             '-o', 'LogLevel=DEBUG1', '-l', user, host,
             'cd "$HOME/www/anytoour.ru" && python3 -c ' + shlex.quote(source)]
-        result = subprocess.run(command, input=json.dumps({'selected': selected, 'catalog_rows': catalog_rows,
-            'country_id': country_id, 'observations': observations}), text=True, capture_output=True, timeout=310,
-            env={k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
-    if result.returncode:
-        raise SSHBatchError(result.returncode, result.stderr)
+        result, attempts = run_ssh(command, json.dumps({'selected': selected, 'catalog_rows': catalog_rows,
+            'country_id': country_id, 'observations': observations}),
+            {k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
     if len(result.stdout) > 4000000:
         raise SSHBatchError(result.returncode, result.stderr, oversized=True)
     payload = json.loads(result.stdout)
     if 'remote_error' in payload:
         raise RemoteBatchError(payload)
     payload['ssh_progress'] = ssh_progress(result.stderr)
+    payload['ssh_attempts'] = attempts
     return payload
 
 
@@ -386,7 +409,7 @@ def main():
         try:
             result = ssh_batch([], {}, 1)
             report = {'status': 'ok', 'supplier_requests': 0, 'preservation': result['preservation'],
-                      'ssh_progress': result.get('ssh_progress', {})}
+                      'ssh_progress': result.get('ssh_progress', {}), 'ssh_attempts': result.get('ssh_attempts', 1)}
         except Exception as error:
             report = dict(failure_report(error, 'preflight'), status='preflight_failed', supplier_requests=0)
         (directory / 'anex-initial-search-preflight.json').write_text(json.dumps(report, indent=2) + '\n')

@@ -67,10 +67,45 @@ class GapQueueTests(unittest.TestCase):
         report = gaps.failure_report(error, 'preflight')
         self.assertEqual(report['reason_code'], 'ssh_session_rejected')
         self.assertEqual(report['ssh_progress'], {'tcp_connected': True, 'authenticated': True,
-                                                'command_sent': True, 'remote_exit_seen': False})
+                                                'multiplexing_seen': False, 'command_sent': True, 'remote_exit_seen': False})
         self.assertNotIn(secret, json.dumps(report) + str(error))
         self.assertIn('stage=command_sent', str(error))
         self.assertEqual(gaps.ssh_progress(''), dict.fromkeys(report['ssh_progress'], False))
+
+    def test_only_direct_preauth_close_retries_once(self):
+        from types import SimpleNamespace
+        closed = SimpleNamespace(returncode=255, stdout='', stderr=
+            'debug1: auto-mux: Trying existing master\nControl socket does not exist\n'
+            'debug1: Connection established.\nkex_exchange_identification: Connection closed by remote host')
+        ok = SimpleNamespace(returncode=0, stdout='{}', stderr='')
+        with patch.object(gaps.subprocess, 'run', side_effect=[closed, ok]) as run, \
+                patch.object(gaps.time, 'sleep') as wait:
+            self.assertEqual(gaps.run_ssh(['ssh'], '{}', {}), (ok, 2))
+            self.assertEqual(run.call_count, 2)
+            wait.assert_called_once_with(2)
+        with patch.object(gaps.subprocess, 'run', return_value=closed) as run, \
+                patch.object(gaps.time, 'sleep'), self.assertRaises(gaps.SSHBatchError) as caught:
+            gaps.run_ssh(['ssh'], '{}', {})
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(caught.exception.attempts, 2)
+
+    def test_uncertain_command_mux_and_auth_failure_are_never_replayed(self):
+        from types import SimpleNamespace
+        prefix = 'debug1: Connection established.\n'
+        for message, stdout in (
+            ('Authenticated to host\nConnection closed', ''),
+            ('debug1: Sending command: work\nConnection closed', ''),
+            ('debug1: mux_client_request_session: master session id: 2\nConnection closed', ''),
+            ('Permission denied (publickey)', ''),
+            ('Host key verification failed', ''),
+            ('Connection closed', '{"partial":"response"}'),
+        ):
+            failed = SimpleNamespace(returncode=255, stdout=stdout, stderr=prefix + message)
+            with patch.object(gaps.subprocess, 'run', return_value=failed) as run, \
+                    patch.object(gaps.time, 'sleep') as wait, self.assertRaises(gaps.SSHBatchError):
+                gaps.run_ssh(['ssh'], '{}', {})
+            self.assertEqual(run.call_count, 1)
+            wait.assert_not_called()
 
     def test_merge_preserves_old_rows_and_rejects_replay(self):
         first, second = [r['anex_hotel_id'] for r in self.queue['rows'][:2]]
