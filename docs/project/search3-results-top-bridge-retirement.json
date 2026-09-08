@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-08",
+  "stage": "SOURCE_PACKAGE_PREPARED_CI_PENDING",
+  "baseline_release_sha": "0f62674722787bf3b1156f2fa708e0d3a5b5fb3d",
+  "scope": "Retire the whole Search3 results-top state bridge. Canonical renderer/lifecycle owners retain result and tool rendering; compact native form state keeps only aria-busy, result-shell visibility and edit focus. Selected visibility uses the existing selected-open class.",
+  "retired_whole_sources": [
+    "src/search3/behavior/results-top.js"
+  ],
+  "public_assets": {
+    "paths": 8,
+    "before_raw_bytes": 10097,
+    "after_raw_bytes": 9073,
+    "removed_raw_bytes": 1024,
+    "removed_percent": 10.14,
+    "changed": {
+      "v2/search3-results-filters-v1.js": {
+        "before_raw_bytes": 4720,
+        "after_raw_bytes": 3625
+      },
+      "v2/search3-results-filters-v1.css": {
+        "before_raw_bytes": 4573,
+        "after_raw_bytes": 4644
+      }
+    }
+  },
+  "accounting": "The retired bridge contributed 1556 built bytes. A 461-byte compact native state owner and 71 bytes of CSS salvage preserve required behavior, for 1024 bytes net deletion; no code was moved to shared assets.",
+  "protected_owners_not_changed": [
+    "v2/results-renderer-v5.js",
+    "v2/search-lifecycle-v6.js",
+    "v2/tour-controller-v4.js",
+    "v2/flight-empty-recovery-v1.js",
+    "v2/flight-price-sync-v1.js",
+    "v2/lead-form-guard-v1.js",
+    "v2/analytics-v4.js"
+  ],
+  "required_behavior": [
+    "initial and local-empty results shell visibility",
+    "search start/error/complete aria-busy state",
+    "edit-search value preservation and first-field focus",
+    "selected state hides existing results without clearing them",
+    "return from selected reveals the existing result order without replay"
+  ],
+  "verification": {
+    "source_build": "SEARCH3_SOURCE_BUILD_OK assets=8 in write and check modes",
+    "security_ci": "pending",
+    "exact_artifact_ci": "pending"
+  },
+  "publication": {
+    "published": false,
+    "published_preview_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
+    "production_changed": false,
+    "main_changed": false
+  },
+  "rollback": "Revert this package independently to restore results-top.js.",
+  "next_action": "Build once and keep the package only if the eight public assets save at least approximately 1KB after the compact state salvage."
+}

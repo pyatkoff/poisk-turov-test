@@ -7,7 +7,6 @@
       "behavior/search-form/secondary-controls.js",
       "behavior/filter-rail.js",
       "behavior/mobile-search-entry.js",
-      "behavior/results-top.js",
       "behavior/results/toolbar.js",
       "behavior/selected-tour-mobile-styles.js",
       "behavior/maket7-lock.js",

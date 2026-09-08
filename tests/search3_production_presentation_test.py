@@ -968,6 +968,24 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn("v2_search3_enabled() ? 'initial' : 'all'", index)
         self.assertIn("v2_bundle_asset('js', null, 'all')", index)
 
+    def test_results_top_bridge_is_retired_with_compact_native_state(self):
+        self.assertFalse((ROOT / 'src/search3/behavior/results-top.js').exists())
+        self.assertNotIn('behavior/results-top.js', json.dumps(self.source))
+        form = (ROOT / 'src/search3/behavior/search-form.js').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        compiled = (ROOT / 'v2/search3-results-filters-v1.js').read_text()
+        for event in (
+            'v2:search-started', 'v2:search-error', 'v2:results-rendered',
+            'v2:search-reset',
+        ):
+            self.assertIn(event, form)
+        self.assertIn("setAttribute('aria-busy'", form)
+        self.assertIn("classList.add('search3-editing-search')", form)
+        self.assertIn('&.search3-selected-open :is(.results-tools,.results-layout){display:none!important}', results)
+        self.assertIn(':has(#results>*)', results)
+        self.assertNotIn('search3-results-active', compiled)
+        self.assertNotIn('search3-has-results', compiled)
+
     def test_native_controls_and_isolation_remain(self):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
         results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
