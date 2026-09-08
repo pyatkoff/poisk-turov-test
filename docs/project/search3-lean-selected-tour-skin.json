@@ -1,10 +1,11 @@
 {
   "id": "S3_LEAN_SELECTED_TOUR_SKIN",
-  "status": "EXPERIMENTAL_RELEASE_SECURITY_GREEN_EXACT_VISUAL_RED_NOT_PUBLISHED",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
   "implementationSourceSha": "33395ab79eb4148c4c440edb0ea1bcb2fddd48e1",
   "experimentalReleaseSha": "20df2019ea2948ef725526bc896ca290fdd154ab",
-  "lastFullyCheckedReleaseSha": "f1a7fe122d878918157cb27f4c83165569f0638e",
-  "sourcePr": 1588,
+  "repairSourceSha": "7e02d38bb8da64a63efad18ce5089a2afa388183",
+  "checkedReleaseSha": "c155faa2cfcbb2e04dbafa841022d491ee863abe",
+  "sourcePrs": [1588, 1590],
   "scope": "Search3 only; full legacy manifest and /poisk-turov-old/ unchanged",
   "removedLayers": [
     {
@@ -15,8 +16,10 @@
   "bytes": {
     "loadedRaw": {
       "before": 458693,
-      "after": 447863,
-      "saved": 10830
+      "afterSelectedRepair": 449095,
+      "afterCheckedReleaseIncludingPr1587": 448524,
+      "selectedLayerSaved": 9598,
+      "checkedReleaseSaved": 10169
     },
     "sharedCss": {
       "before": 96535,
@@ -28,7 +31,9 @@
     },
     "eightPublicAssets": {
       "before": 178418,
-      "after": 181778
+      "afterInitialRetirement": 181778,
+      "afterSelectedRepair": 183010,
+      "afterCheckedReleaseIncludingPr1587": 182439
     }
   },
   "retainedCurrentOwners": [
@@ -54,6 +59,16 @@
       "states": 12,
       "equalNodeCounts": true,
       "horizontalOverflow": false
+    },
+    "repair": {
+      "securityRun": 34225808267,
+      "exactRun": 34225808272,
+      "conclusion": "success",
+      "artifactId": 10055697968,
+      "artifactDigest": "sha256:374ddaf86efdfad49a82d46c31d17bdb37d20428ae58e67f1d2586462d6da4f6",
+      "selectedGeometryArtifactId": 10055697041,
+      "selectedGeometryDigest": "sha256:53de20c17c1ef2f1b025ae225a7c867069484d999b00b9c48b160cc0312a8415",
+      "states": "12 detail/review/lead states at 375/760/1000/1440"
     }
   },
   "publication": {
@@ -63,9 +78,8 @@
     "productionChanged": false
   },
   "deferred": [
-    "manual inspection of changed selected-tour visuals",
     "physical Safari/safe-area",
     "live current-source interaction"
   ],
-  "next": "Continue with an independent whole-layer audit (app.css/search-states-design.css); do not restore retired selected-tour pixels unless an actual functional regression is confirmed."
+  "next": "Audit the next complete shared presentation layer against current Search3 owners; keep the old route intact and take only a substantial package with a positive final loaded-byte result."
 }

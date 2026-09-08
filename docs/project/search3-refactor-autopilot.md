@@ -2550,3 +2550,29 @@ Implementation `33395ab79eb4148c4c440edb0ea1bcb2fddd48e1`; experimental release 
 Preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Manual inspection of changed selected-tour visuals, live current-source interaction and physical Safari remain deferred.
 
 Next: continue an independent whole-layer audit of `app.css` / `search-states-design.css`. Do not restore retired selected-tour pixels unless an actual functional regression is confirmed. Keep the reduced owner-requested policy: one Security plus one build/smoke run per substantial source package, no automatic ready-transition repeat.
+
+### S3_LEAN_SELECTED_TOUR_AND_RUNTIME_OWNERS — checked release, not published
+
+The experimental #1588 result was not left red. Its retained DOM was intact, but exact run `34223970803` exposed omitted live flight/detail/lead geometry. #1590 restores only that active slice in current owners; `selected-tour-ux.css` stays completely excluded from Search3 and unchanged for `/poisk-turov-old/`. Security `34225808267` and exact artifact/browser `34225808272` passed all 12 detail/review/lead states at 375/760/1000/1440. Reusable artifact `10055697968`, digest `sha256:374ddaf86efdfad49a82d46c31d17bdb37d20428ae58e67f1d2586462d6da4f6`; selected evidence `10055697041`, digest `sha256:53de20c17c1ef2f1b025ae225a7c867069484d999b00b9c48b160cc0312a8415`.
+
+In parallel, #1587 retires the standalone `flight-price-presentation.js` and `filter-rail.js` runtimes. Their live display-only decimal correction and bounded zero-result bridge now run inside the existing selected/results schedulers; authoritative `v2/flight-price-sync-v1.js`, price events and protected contracts are unchanged. Its eight generated assets are **178,418 → 177,847 raw bytes (−571 B)**. Security `34224138160` and exact artifact `34224138265` passed; artifact `10055011556`, digest `sha256:5fb3eba01d21851bea83b2701907a2f7ab134105234b3f5b16eed9707d32807a`.
+
+Final checked release `c155faa2cfcbb2e04dbafa841022d491ee863abe` is **458,693 → 448,524 loaded raw bytes (−10,169 B)** across the retired selected-tour layer, retained current-owner repair and JS consolidation. The eight generated assets are 182,439 B at that combined release; only #1587 contributes a real eight-asset reduction, while the selected CSS layer saves bytes in the scoped shared endpoint. The original red run remains recorded and is not called green.
+
+Preview was not published and remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction and physical Safari remain deferred. Audits: `docs/project/search3-lean-selected-tour-skin.json` and `docs/project/search3-current-presentation-runtime-consolidation.json`.
+
+Next: audit the next complete shared presentation layer against current Search3 owners. Keep the old route intact and take only a substantial package with a positive final loaded-byte result.
+
+### S3_LEAN_APP_PRESENTATION_LAYER — checked release, not published
+
+[#1591](https://github.com/pyatkoff/poisk-turov-test/pull/1591) removes the complete 12,911-byte `app.css` layer from Search3 only. The unchanged full manifest continues to serve it to `/poisk-turov-old/`. Exact artifact failures were used as a repair list: current owners retain only scoped box sizing/body baseline, entry grid and native-control dimensions, selected/flight/lead primitives, and the result-card container/image/typography geometry that is still live.
+
+Final checked Search3 payload is **448,524 → 438,274 raw bytes (−10,250 B)**. Shared CSS is **82,345 → 69,434 B** and shared JS remains **183,740 B**. The eight generated public assets are **182,439 → 185,100 B (+2,661 B)** because the live replacement slice now belongs to current modules; this package is therefore recorded as a real route payload reduction, not as an eight-asset reduction. Across the preceding selected/runtime package and this layer, the checked route moved **458,693 → 438,274 B (−20,419 B)**.
+
+Final source `7fe04821c961c48243a69d6edee0e345bcc43d8a`; checked release `de49b39989891945b8e47434e72d5e79d9f4080b`. Security `34230516546` and exact artifact/browser `34230516579` passed. Reusable whole-site artifact `10057632192`, digest `sha256:8248e14765ed95dce5f84ff16799e893a16a1dd479aebb07910e7282a7bdbb4f`; selected evidence `10057629961`, digest `sha256:d854e0350839288dd2da6635f5dc6ed6bca8fcf7876be24df0e32cebb700cc22`; results/entry evidence `10057631078`, digest `sha256:dfb7988688678d2a4907dcda54c6bc612ce427f2620ddb9c0c3285a8364a653f`.
+
+Exact Chromium retained selected detail/review/lead at 375/760/1000/1440, entry lifecycle and breakpoint resize, and result-card/drawer collapsed/expanded geometry at 375/760/761/999/1000/1440. No external API or lead request was made. Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping, Metrika/analytics/goals, logo and native-browser/nesting contracts remain protected.
+
+Preview was not published and remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, manual screenshot inspection, physical Safari/safe-area and owner acceptance remain deferred. Audit: `docs/project/search3-lean-app-layer.json`.
+
+Next: re-audit the complete `search-states-design.css` layer after `app.css` retirement. Its previous fallback assumptions are obsolete; preserve explicit current status, skeleton and empty-state ownership and proceed only with a positive final loaded-byte result.
