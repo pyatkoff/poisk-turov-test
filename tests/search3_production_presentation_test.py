@@ -929,23 +929,22 @@ class Search3HalfSizeResetTest(unittest.TestCase):
 
     def test_reset_css_allowlist_and_empty_public_slots(self):
         assets = self.source['assets']
-        self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/base.css', 'styles/results-layout.css'])
+        self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/results-layout.css'])
         self.assertEqual(assets['search3-entry-v1.css'], ['styles/entry-native-controls.css'])
         self.assertEqual(assets['search3-results-cards-v2.css'], ['styles/result-cards.css'])
         self.assertEqual(assets['search3-selected-flow-v2.css'], ['styles/selected-tour.css'])
+        self.assertFalse((ROOT / 'src/search3/styles/base.css').exists())
+        self.assertLessEqual((ROOT / 'v2/search3-results-filters-v1.css').stat().st_size, 5490)
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertLessEqual((ROOT / 'v2/search3-selected-flow-v2.css').stat().st_size, 1)
 
     def test_native_controls_and_isolation_remain(self):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
-        base = (ROOT / 'src/search3/styles/base.css').read_text()
         results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
         for marker in ('input:not([type=checkbox])', 'font-size:16px!important', 'min-height:44px!important'):
             self.assertIn(marker, native)
         self.assertNotIn('search3-direct-control', native)
-        for marker in ('box-sizing:border-box!important', '.v2-product-hero{display:none!important}', '--at-font:'):
-            self.assertIn(marker, base)
-        for marker in ('.results-layout', '.direct-tour', '[hidden]'):
+        for marker in ('.results-layout', '.direct-tour', '[hidden]', '.v2-product-hero'):
             self.assertIn(marker, results)
 
     def test_optional_shared_layers_are_search3_only_exclusions(self):
