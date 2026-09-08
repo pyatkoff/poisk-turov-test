@@ -58,6 +58,8 @@ html body.search3-candidate.search3-results-active #resultsSearchSummary~#result
 
 @media(min-width:761px) and (max-width:999px){
 html body.search3-candidate.search3-results-active #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results{
+& .hotel-main{display:grid!important;gap:17px!important}
+& .hotel-body{display:flex!important;flex-direction:column!important;min-width:0!important}
 & .hotel-bottom{grid-column:2!important;grid-row:1/4!important;align-self:start!important;margin:0!important;padding:1px 0 0 12px!important;border-top:0!important;border-left:1px solid #eef1f5!important;text-align:right!important}
 & .hotel-bottom>.hotel-best-offer>.hotel-price{font-size:21px!important;line-height:1!important;white-space:nowrap!important}
 & .search3-hotel-facts{grid-column:1!important}
