@@ -610,20 +610,29 @@ def clean_report(report):
 
 def ssh_probe():
     global SENSITIVE_VALUES
-    prices = "--prices" in sys.argv
+    price_evidence = "--price-evidence" in sys.argv
+    prices = "--prices" in sys.argv or price_evidence
     hotels = "--hotels" in sys.argv
     adapter = "--adapter" in sys.argv
     catalog = "--catalog" in sys.argv
-    names = ("ANEX_API_TOKEN", "ANEX_REFERENCE_TOKEN", "ANYTOOUR_DEPLOY_SSH_KEY",
-             "ANYTOOUR_DEPLOY_HOST", "ANYTOOUR_DEPLOY_USER")
-    missing = [name for name in names if not os.environ.get(name, "").strip()]
+    secret_names = ("ANEX_API_TOKEN", "ANEX_REFERENCE_TOKEN", "ANYTOOUR_DEPLOY_SSH_KEY",
+                    "ANYTOOUR_DEPLOY_HOST", "ANYTOOUR_DEPLOY_USER")
+    selection_names = (("ANEX_PRICE_HOTEL_IDS", "ANEX_PRICE_DESTINATION")
+                       if price_evidence else ())
+    required_names = secret_names + selection_names
+    missing = [name for name in required_names if not os.environ.get(name, "").strip()]
     if missing:
         # Names are our fixed configuration vocabulary, never secret values.
         print("MISSING_SECRETS: " + ", ".join(missing))
         return {"ok": False, "checks": [
             {"check": "configuration", "status": "missing_secret"}]}
-    tokens = {name: os.environ[name] for name in names[:2]}
-    SENSITIVE_VALUES = tuple(value for name in names
+    tokens = {name: os.environ[name] for name in secret_names[:2]}
+    if price_evidence:
+        tokens.update({name: os.environ[name] for name in selection_names})
+        requested_price_hotel_ids(tokens)
+        if len(" ".join(tokens["ANEX_PRICE_DESTINATION"].split())) > 200:
+            raise ValueError("invalid price destination")
+    SENSITIVE_VALUES = tuple(value for name in secret_names
                              for value in (os.environ[name], os.environ[name].strip()) if value)
     host = os.environ["ANYTOOUR_DEPLOY_HOST"].strip()
     user = os.environ["ANYTOOUR_DEPLOY_USER"].strip()
@@ -673,9 +682,9 @@ def ssh_probe():
             "-o", "ServerAliveCountMax=2", "-o", "LogLevel=ERROR",
             "-l", user, host,
             'cd "$HOME/www/anytoour.ru" && python3 -B -c ' + shlex.quote(source)
-            + " --remote" + (" --catalog" if catalog else " --adapter" if adapter else " --hotels" if hotels else " --prices" if prices else ""),
+            + " --remote" + (" --catalog" if catalog else " --adapter" if adapter else " --hotels" if hotels else " --price-evidence" if price_evidence else " --prices" if prices else ""),
         ]
-        child_env = {k: v for k, v in os.environ.items() if k not in names}
+        child_env = {k: v for k, v in os.environ.items() if k not in required_names}
         payload = json.dumps(tokens)
         if len(payload) >= 1_048_576:
             raise ValueError("checkpoint request exceeds input budget")
@@ -715,7 +724,7 @@ def main():
             exec(Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8"), globals())
         if "--catalog" in sys.argv and "load_geo_checkpoint" not in globals():
             exec(Path(__file__).with_name("anex_geo_enrichment.py").read_text(encoding="utf-8"), globals())
-        remote = remote_full_catalog_probe if "--catalog" in sys.argv else remote_adapter_probe if "--adapter" in sys.argv else remote_hotel_probe if "--hotels" in sys.argv else remote_price_probe if "--prices" in sys.argv else remote_probe
+        remote = remote_full_catalog_probe if "--catalog" in sys.argv else remote_adapter_probe if "--adapter" in sys.argv else remote_hotel_probe if "--hotels" in sys.argv else remote_price_probe if "--prices" in sys.argv or "--price-evidence" in sys.argv else remote_probe
         report = remote(json.loads(sys.stdin.read(1_048_576))) if "--remote" in sys.argv else ssh_probe()
         if "--catalog" not in sys.argv:
             report = clean_report(report)
