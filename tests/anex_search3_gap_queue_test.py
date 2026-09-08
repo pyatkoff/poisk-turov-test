@@ -59,6 +59,19 @@ class GapQueueTests(unittest.TestCase):
                 gaps.ssh_batch([], {}, 1)
         self.assertEqual(gaps.failure_report(caught.exception, 'observed_batch')['reason_code'], 'response_size_limit')
 
+    def test_verbose_ssh_progress_preserves_only_fixed_flags(self):
+        secret = 'private-host-key-path-and-command'
+        message = ('debug1: Connection established.\nAuthenticated to ' + secret
+                   + '\ndebug1: Sending command: ' + secret + '\nexec request failed on channel 0')
+        error = gaps.SSHBatchError(255, message)
+        report = gaps.failure_report(error, 'preflight')
+        self.assertEqual(report['reason_code'], 'ssh_session_rejected')
+        self.assertEqual(report['ssh_progress'], {'tcp_connected': True, 'authenticated': True,
+                                                'command_sent': True, 'remote_exit_seen': False})
+        self.assertNotIn(secret, json.dumps(report) + str(error))
+        self.assertIn('stage=command_sent', str(error))
+        self.assertEqual(gaps.ssh_progress(''), dict.fromkeys(report['ssh_progress'], False))
+
     def test_merge_preserves_old_rows_and_rejects_replay(self):
         first, second = [r['anex_hotel_id'] for r in self.queue['rows'][:2]]
         self.cp['in_flight'] = [first]

@@ -26,11 +26,23 @@ class RemoteBatchError(RuntimeError):
         self.diagnostic = diagnostic
 
 
+def ssh_progress(stderr):
+    # Only fixed booleans leave this function; debug text can include credentials
+    # paths, hosts and the embedded program, so it must never be persisted.
+    message = str(stderr)
+    return {
+        'tcp_connected': 'debug1: Connection established.' in message,
+        'authenticated': 'Authenticated to ' in message or 'debug1: Authentication succeeded' in message,
+        'command_sent': 'debug1: Sending command:' in message,
+        'remote_exit_seen': 'debug1: Exit status ' in message,
+    }
+
+
 class SSHBatchError(RuntimeError):
     def __init__(self, returncode, stderr='', oversized=False):
-        super().__init__('ssh_batch_failed')
         self.exit_code = returncode if type(returncode) is int and -255 <= returncode <= 255 else None
         self.reason_code = 'response_size_limit' if oversized else 'ssh_exit_nonzero'
+        self.progress = ssh_progress(stderr)
         # Classify locally; never retain or report stderr, hosts, users or keys.
         if not oversized:
             message = str(stderr).lower()
@@ -41,11 +53,14 @@ class SSHBatchError(RuntimeError):
                 ('ssh_connection_refused', ('connection refused',)),
                 ('ssh_name_resolution_failed', ('could not resolve hostname', 'name or service not known')),
                 ('ssh_network_unreachable', ('no route to host', 'network is unreachable')),
-                ('ssh_connection_closed', ('connection reset', 'connection closed', 'kex_exchange_identification', 'banner exchange')),
+                ('ssh_session_rejected', ('exec request failed', 'shell request failed', 'session open refused', 'administratively prohibited')),
+                ('ssh_connection_closed', ('connection reset', 'connection closed', 'closed by remote host', 'broken pipe', 'kex_exchange_identification', 'banner exchange')),
             ):
                 if any(marker in message for marker in markers):
                     self.reason_code = reason
                     break
+        stage = next((name for name in reversed(self.progress) if self.progress[name]), 'before_tcp')
+        super().__init__('ssh_batch_failed:' + self.reason_code + ':exit=' + str(self.exit_code) + ':stage=' + stage)
 
 
 def failure_report(error, phase):
@@ -55,7 +70,8 @@ def failure_report(error, phase):
     report = {'status': 'batch_unconfirmed', 'phase': phase,
               'error_kind': type(error).__name__ if type(error).__name__ in kinds else 'other'}
     if isinstance(error, SSHBatchError):
-        report.update(error_kind='SSHBatchError', reason_code=error.reason_code, exit_code=error.exit_code)
+        report.update(error_kind='SSHBatchError', reason_code=error.reason_code,
+                      exit_code=error.exit_code, ssh_progress=error.progress)
     if isinstance(error, RemoteBatchError):
         value = error.diagnostic
         report['error_kind'] = value.get('remote_error') if value.get('remote_error') in kinds else 'other'
@@ -275,7 +291,7 @@ def ssh_batch(selected, catalog_rows, country_id, observations=False):
         command = ['ssh', '-T', '-i', str(key), '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes',
             '-o', 'StrictHostKeyChecking=accept-new', '-o', 'UserKnownHostsFile=' + str(Path(temp) / 'known_hosts'),
             '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=2',
-            '-o', 'LogLevel=ERROR', '-l', user, host,
+            '-o', 'LogLevel=DEBUG1', '-l', user, host,
             'cd "$HOME/www/anytoour.ru" && python3 -c ' + shlex.quote(source)]
         result = subprocess.run(command, input=json.dumps({'selected': selected, 'catalog_rows': catalog_rows,
             'country_id': country_id, 'observations': observations}), text=True, capture_output=True, timeout=310,
@@ -283,10 +299,11 @@ def ssh_batch(selected, catalog_rows, country_id, observations=False):
     if result.returncode:
         raise SSHBatchError(result.returncode, result.stderr)
     if len(result.stdout) > 4000000:
-        raise SSHBatchError(result.returncode, oversized=True)
+        raise SSHBatchError(result.returncode, result.stderr, oversized=True)
     payload = json.loads(result.stdout)
     if 'remote_error' in payload:
         raise RemoteBatchError(payload)
+    payload['ssh_progress'] = ssh_progress(result.stderr)
     return payload
 
 
@@ -368,7 +385,8 @@ def main():
     if '--preflight' in __import__('sys').argv:
         try:
             result = ssh_batch([], {}, 1)
-            report = {'status': 'ok', 'supplier_requests': 0, 'preservation': result['preservation']}
+            report = {'status': 'ok', 'supplier_requests': 0, 'preservation': result['preservation'],
+                      'ssh_progress': result.get('ssh_progress', {})}
         except Exception as error:
             report = dict(failure_report(error, 'preflight'), status='preflight_failed', supplier_requests=0)
         (directory / 'anex-initial-search-preflight.json').write_text(json.dumps(report, indent=2) + '\n')
