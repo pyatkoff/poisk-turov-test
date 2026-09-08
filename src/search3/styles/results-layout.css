@@ -14,6 +14,7 @@ margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
 & :is(.at-global-header__logo,.ds2-site-footer__logo) img{width:150px;max-width:100%}
 & .at-global-header__mobile{display:none}
 & .v2-product-hero{padding:24px 0}
+& .v2-product-hero__trust span{margin-right:12px}
 & h1{font-size:clamp(24px,3vw,36px);line-height:1.2;max-width:720px;margin:12px 0}
 & .ds2-site-footer{margin-top:40px;border-top:1px solid #dbe2ed;font-size:14px}
 & :is(.ds2-site-footer__inner,.ds2-site-footer__navigation){display:flex;flex-wrap:wrap;gap:32px}
@@ -23,11 +24,11 @@ margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
 & .results-tools{margin:16px 0}
 & #results{display:grid;gap:16px}
 & .results-filter-rail,&:not(.search3-has-results) .results-layout{display:none!important}
-&:not(.search3-has-results) :is(.results-tools--ds2,.search3-mobile-toolbar){display:none!important}
-&.search3-has-results :is(.v2-product-hero,#tourSearch,#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
+&:not(.search3-has-results) .results-tools--ds2{display:none!important}
+&.search3-has-results :is(.v2-product-hero,#tourSearch){display:none!important}
 &.search3-has-results.search3-editing-search #tourSearch{display:block!important}
 @media(max-width:999px){
-& .at-global-header__nav,& .at-global-header__actions{display:none}
+& .at-global-header :is(.at-global-header__nav,.at-global-header__actions){display:none}
 & .at-global-header__mobile{display:block}
 & .at-global-header__mobile summary span{display:block;width:20px;height:2px;background:#2743cb;margin:4px}
 & .at-global-header__mobile-panel{position:absolute;right:20px;z-index:5;background:white;padding:20px;box-shadow:0 8px 24px #17233b26;border-radius:12px}
@@ -41,7 +42,7 @@ margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
 & .hotel-card{background:#fff;border:1px solid #dbe2ed;border-radius:18px;overflow:hidden}
 & .hotel-main{display:grid;grid-template-columns:minmax(140px,30%) 1fr}
 & .hotel-photo{position:relative;background:#e7edf5}
-& .hotel-photo img{display:block;width:100%;height:100%;min-height:180px;object-fit:cover}
+& .hotel-photo img{display:block;width:100%;height:100%;object-fit:cover}
 & .stars-badge{position:absolute;top:12px;left:12px;background:white;padding:4px 8px;border-radius:8px}
 & .hotel-body{padding:20px}
 & .hotel-title{font-size:20px;font-weight:700}

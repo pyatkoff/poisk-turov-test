@@ -17,7 +17,7 @@
   },
   "assets_after_raw_bytes": {
     "search3-results-filters-v1.js": 6607,
-    "search3-results-filters-v1.css": 4576,
+    "search3-results-filters-v1.css": 4564,
     "search3-entry-v1.css": 753,
     "search3-entry-v1.js": 0,
     "search3-results-cards-v2.css": 1,
@@ -26,12 +26,12 @@
     "search3-selected-flow-v2.js": 0
   },
   "eight_assets_before_raw_bytes": 8867,
-  "eight_assets_after_raw_bytes": 11987,
-  "raw_bytes_added": 3120,
+  "eight_assets_after_raw_bytes": 11975,
+  "raw_bytes_added": 3108,
   "accounting": "Intentional CSS growth for the confirmed bare native UI, not a size reduction. Budget <=12000 raw bytes across eight public assets.",
   "verification": {
     "local": "Pinned compiler successful; no JS asset byte changes; git diff --check. Initial CSS parse error (missing explicit nested selector) fixed before compilation; budget adjusted within same package.",
-    "ci": "First exact run34284706152 rejected restored card CSS/nonempty selected CSS and native marker drift. Keep existing allowlist/empty layers/image rule exact; put compact styles in current results-layout owner, retain native 16px/44px important markers. No guard changes. Corrected CI pending.",
+    "ci": "First exact run34284706152 rejected restored card CSS/nonempty selected CSS and native marker drift. Keep existing allowlist/empty layers/image rule exact; put compact styles in current results-layout owner, retain native 16px/44px important markers. No guard changes. Corrected CI pending. Second exact34284889596 passed source/selected8/lazy3 but entry failed because added screenshot time let aborted catalogs race lifecycle snapshots. Mock exact departures/countries and await completed catalogs/food in both versions; retain exact values comparisons. Mobile screenshot also exposed menu specificity, fixed in current CSS.",
     "focused": "Existing entry comparison retains exact values/lifecycle and no-overflow in all phases; changed dimensions recorded, readable 16px/44px controls asserted. Existing results and selected matrices retained.",
     "live": "not yet published or visually checked"
   },

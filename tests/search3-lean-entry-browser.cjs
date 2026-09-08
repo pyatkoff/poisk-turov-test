@@ -21,6 +21,8 @@ async function inspect(browser, width, previous) {
   await page.route('**/*', route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin !== new URL(base).origin || request.method() !== 'GET') return route.abort();
+    if (url.pathname.endsWith('/data/departures-v1.php')) return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,items:[{id:1,russianName:'Москва'}]})});
+    if (/\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'countries') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{id:4,russianName:'Турция'}])});
     if (/\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'meals') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'BB', russianName: 'Завтраки' }, { id: 'AI', russianName: 'Всё включено' }]) });
     if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
     const name = url.pathname.split('/').pop();
@@ -42,7 +44,13 @@ async function inspect(browser, width, previous) {
     const response = await page.goto(base + '/poisk-turov/?food=AI', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
     await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1');
-    await page.waitForTimeout(400); // Drain canonical catalog/control initialization.
+    // Observe the same completed catalogs in both versions: screenshot duration
+    // must not race aborted departure/country fallback or deferred meal loading.
+    await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'anytour-departures');
+    await page.locator('#tourSearch details.extras').evaluate(node => { node.open = true; });
+    await page.waitForFunction(() => document.querySelector('[name=food]').value === 'AI');
+    await page.locator('#tourSearch details.extras').evaluate(node => { node.open = false; });
+    await page.waitForTimeout(100); // Drain native toggle event before lifecycle snapshots.
     const initial = await state();
     if (!previous) {
       const controls = await page.locator('#tourSearch .main-fields input,#tourSearch .main-fields select').evaluateAll(nodes => nodes.map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize)})));
