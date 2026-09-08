@@ -54,10 +54,20 @@ async function run(browser, width, previous) {
     assert.equal(await logo.isVisible(), true, 'canonical logo remains visible');
     const logoSource = await logo.getAttribute('src');
     const menu = page.locator('.at-global-header__mobile');
-    await menu.locator('summary').click();
-    assert.equal(await menu.evaluate(node => node.open), true, 'native header opens');
-    await menu.locator('summary').click();
-    assert.equal(await menu.evaluate(node => node.open), false, 'native header closes');
+    const nav = page.locator('.at-global-header__nav');
+    if (width < 1000) {
+      assert.equal(await nav.isVisible(), false, 'mobile uses the native disclosure');
+      await menu.locator('summary').click();
+      assert.equal(await menu.evaluate(node => node.open), true, 'native header opens');
+      assert.equal(await menu.locator('[aria-current=page]').isVisible(), true, 'active search link is reachable');
+      await menu.locator('summary').click();
+      assert.equal(await menu.evaluate(node => node.open), false, 'native header closes');
+    } else {
+      assert.equal(await menu.isVisible(), false, 'desktop does not duplicate navigation');
+      assert.equal(await nav.isVisible(), true, 'desktop navigation is directly available');
+      assert.equal(await nav.locator('a').count(), 6, 'all canonical destinations remain');
+      assert.equal(await nav.locator('[aria-current=page]').isVisible(), true, 'active search link is reachable');
+    }
     await page.evaluate(items => window.V2Results.render(items), hotels);
     await page.waitForSelector('#results .direct-tour');
     const parameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);

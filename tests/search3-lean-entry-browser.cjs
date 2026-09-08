@@ -21,6 +21,8 @@ async function inspect(browser, width, previous) {
   await page.route('**/*', route => {
     const request = route.request(), url = new URL(request.url());
     if (url.origin !== new URL(base).origin || request.method() !== 'GET') return route.abort();
+    if (url.pathname.endsWith('/data/departures-v1.php')) return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,items:[{id:1,russianName:'Москва'}]})});
+    if (/\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'countries') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{id:4,russianName:'Турция'}])});
     if (/\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'meals') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'BB', russianName: 'Завтраки' }, { id: 'AI', russianName: 'Всё включено' }]) });
     if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
     const name = url.pathname.split('/').pop();
@@ -42,8 +44,20 @@ async function inspect(browser, width, previous) {
     const response = await page.goto(base + '/poisk-turov/?food=AI', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
     await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1');
-    await page.waitForTimeout(400); // Drain canonical catalog/control initialization.
+    // Observe the same completed catalogs in both versions: screenshot duration
+    // must not race aborted departure/country fallback or deferred meal loading.
+    await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'anytour-departures');
+    await page.locator('#tourSearch details.extras').evaluate(node => new Promise(resolve => { node.addEventListener('toggle', resolve, {once:true}); node.open = true; }));
+    await page.locator('[name=food]').focus();
+    await page.waitForFunction(() => { const meal=document.querySelector('[name=food]'); return meal.value === 'AI' && [...meal.options].some(option => option.value === 'BB'); });
+    await page.locator('#tourSearch details.extras').evaluate(node => new Promise(resolve => { node.addEventListener('toggle', resolve, {once:true}); node.open = false; }));
+    await page.waitForTimeout(100); // Drain native toggle event before lifecycle snapshots.
     const initial = await state();
+    if (!previous) {
+      const controls = await page.locator('#tourSearch .main-fields input,#tourSearch .main-fields select').evaluateAll(nodes => nodes.map(n => ({height:n.getBoundingClientRect().height,font:parseFloat(getComputedStyle(n).fontSize)})));
+      assert.ok(controls.length >= 8 && controls.every(n => n.height >= 44 && n.font >= 16), 'native primary controls stay readable and touchable');
+      if (width === 375 || width === 1440) await page.screenshot({ path: path.join(process.env.SEARCH3_GEOMETRY_OUTPUT, `entry-current-${width}.png`), fullPage: true });
+    }
     assert.ok(initial.visible && !initial.overflow, 'usable initial form');
     if (!previous) {
       assert.deepEqual(await page.evaluate(() => ({
@@ -114,7 +128,14 @@ async function inspect(browser, width, previous) {
     for (const width of [375, 700, 701, 760, 761, 1440]) {
       const before = await inspect(browser, width, true), after = await inspect(browser, width, false);
       evidence.widths[width] = { before, after };
-      assert.deepEqual(after, before, `form geometry, values and lifecycle preserved at ${width}`);
+      // Compact native presentation intentionally changes dimensions. Keep exact
+      // values/visibility in every phase and reject overflow at both breakpoints.
+      for (const phase of Object.keys(before)) {
+        assert.deepEqual(after[phase].fields, before[phase].fields, `${width} ${phase}: exact form values`);
+        assert.equal(after[phase].visible, before[phase].visible, `${width} ${phase}: lifecycle visibility`);
+        assert.equal(after[phase].overflow, false, `${width} ${phase}: no horizontal overflow`);
+        assert.ok(after[phase].width > 0, `${width} ${phase}: bounded native form`);
+      }
     }
   } finally {
     await browser.close();

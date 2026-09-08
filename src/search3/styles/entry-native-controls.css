@@ -1,4 +1,12 @@
-/* Native Search3 entry safety; all layout and values remain canonical. */
-html body.search3-candidate #tourSearch :is(input:not([type=checkbox]),select,button,summary){min-height:44px!important}
-html body.search3-candidate #tourSearch :is(input:not([type=checkbox]),select,textarea){font-size:16px!important}
-html body.search3-candidate:not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}
+/* Native labels, fields and disclosures; values and lifecycle remain canonical. */
+.search3-candidate #tourSearch{
+padding:20px;background:#fff;border:1px solid #dbe2ed;border-radius:18px;
+& :is(.main-fields,.extra-grid,.child-ages){display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:16px;margin:16px 0}
+& .field>span{display:block;font-size:14px;color:#526078;margin-bottom:4px}
+& .field :is(input:not([type=checkbox]),select){display:block;width:100%;font-size:16px!important;min-height:44px!important}
+& .search-section-title{font-weight:700}
+& :is(.search-section-title small,summary span){font-weight:400;font-size:14px;color:#526078;margin-left:4px}
+& .extras{margin:20px 0}
+& .search-submit{padding:12px 24px;background:#ff510c;font-weight:700}
+& .search-submit small{display:block;font-size:12px;font-weight:400}
+}
