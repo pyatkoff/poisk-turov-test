@@ -1,6 +1,50 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — native results repair #1629 and exact preview — 2026-09-08
+## Current resume point — selected-flow adapter retirement #1633 — 2026-09-08
+
+Exact source `c1990a4cda2bb3ab6623e18b4fd2c5a17be6884b`, tree
+`8f8cfa872dc552cc6ecb17850b2c58a410daccb1`; checked release
+`df923cf2035c02d75c819c22fbeb15c5b803dcb6`. The whole selected-flow adapter and
+its private flight-fallback source are retired. The public compatibility JS path
+remains and is now an empty 0 B asset. Canonical flight-empty recovery is loaded
+once in the selected phase; canonical price and lead transport owners are unchanged.
+
+Eight public assets are **11814→8867 raw B (−2947, −24.94%)**. Selected JS is
+4483→0 B; the current results JS owner is 5120→6607 B because it now contains the
+small remaining selected state/native-lead glue. Selected CSS is 1→50 B for the
+only necessary bounded-image rule. This is a real net reduction, not a source move.
+All eight URLs remain.
+
+Security `34281178946` and exact artifact `34281178998` passed. Reuse artifact
+`10077692756`, digest
+`sha256:dbf96e19360253fc1b43ddcc9be3076c7958b4feb595a4e366c09c26d13a2af5`,
+archive `883d649d017577c67a1bfe2e4cfb8b7d4a0b2ee485c9e9fc8763f8ea4aa56fe7`;
+717 files, 769513 B. Selected evidence `10077690903`, digest
+`sha256:2601c6f380f079e9a03e05101cf5f7f1cd976213af876ef49f1cf31d19302ec9`.
+
+Actual isolated Chromium passed 8 selected states at 375/760/1000/1440, three
+lazy retry/reset/tour-retry scenarios, 30 entry states at
+375/700/701/760/761/1440, native lead handoff, empty-flight recovery, return focus,
+phone validation and decimal price/tradeoff behavior. External requests were
+blocked and real leads were 0. Exact CI found and the source repaired a 375 px
+remote-image overflow, a missing CTA after empty-flight subtree replacement and
+a repeated same-value mutation loop. No failed state is called green.
+
+**Checked release is not published preview.** The isolated preview still contains
+source `a960efd5ed65143bc111554689a5deb9e52a3f69`; this package was not published.
+No current-source live or manual screenshot claim is made. Main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; main and production were unchanged.
+Physical Safari/safe-area, owner visual/design acceptance and the full
+lead/site/SEO/responsive journey remain deferred. Rollback: revert #1633
+independently. Audit: `docs/project/search3-selected-flow-adapter-retirement.json`.
+
+Next: no optional whole public owner larger than 2 KB remains. Do not return to
+micro-trims. A successor must remove a real current architectural boundary, likely
+the selected lazy proxy or a results-state owner, and show an actual reduction in
+the eight built assets. Preserve price arithmetic, URL/payload, Tourvisor/API,
+lead transport/mapping, analytics and browser contracts; source movement does not count.
+
+## Historical checkpoint — native results repair #1629 and exact preview — 2026-09-08
 
 Exact combined source `a960efd5ed65143bc111554689a5deb9e52a3f69`, tree `9ef663d955ad9750f17ac53c13fd9f832480c142`;
 checked code release `b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6`. This includes independently integrated
