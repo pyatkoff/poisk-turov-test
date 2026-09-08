@@ -2191,3 +2191,19 @@ The two-package payload is **574518 → 556977 raw bytes (−17541)**: scoped sh
 Final exact Chromium retained 12 selected detail/review/lead states, 30 entry states, 12 result-card/drawer states and all ten header widths. No supplier request or lead was sent. Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area, owner visual acceptance and the pre-existing browser-default result-only retry styling remain deferred. Audit: `docs/project/search3-lean-header-and-selected-description.json`.
 
 Next: audit the complete 4295-byte `header-current-site.js` runtime. The Search3 hero target is hidden by the current form owner and legacy mobile-menu nodes are absent, but server-rendered phone/navigation and any remaining native-header behavior must be proved before whole-owner exclusion. Preserve the full legacy route and require focused header behavior plus exact artifact CI.
+
+## S3_LEAN_HEADER_RUNTIME — checked release, 2026-09-08
+
+Source PR #1538 / `9a7ff81f041cf13d643deaf2eb73d57bc51e871b`; checked code release `602124449fbe8595b86e55119304df355d82cc0e`. Search3 no longer loads the complete 4295-byte `header-current-site.js` runtime. The full legacy route retains the unchanged runtime and its compatibility global.
+
+The current header renders the phone value/link and ordered desktop/mobile navigation on the server. Its mobile menu is native `details`/`summary`; focused browser coverage now opens and closes it by clicking the summary at every applicable width. The obsolete `.at-site-header`/`.at-mobile-menu` mutation paths target markup absent from Search3, and the current Search3 owner already hides the old product hero. No compensation runtime was added.
+
+Loaded raw is **556977 → 552682 bytes (−4295)**: scoped shared JavaScript 199300→195005; shared CSS and the eight Search3 assets remain 186118 and 171559. Exact emitted endpoints plus the eight independent files gzip is **124085 → 122720 (−1365)**.
+
+The initial exact run `34182323940` correctly failed because the selected-tour guard still combined a pre-#1536 generated CSS baseline with a runtime base that no longer contained the retired injected theme. The geometry baseline was advanced to final checked #1536 source `cc35208f740cd957ca450f7b19fa2acfe6af7e6d`; no assertion or compared property was removed. Final Security `34182736622` and exact artifacts `34182736594` / `34182975846` passed.
+
+Reusable final artifact `10039560348`, digest `sha256:ca5d0f292acc46e75bbca8cc9a774d5a39fd055050ac889106af54673f731f45`; selected evidence `10039559706`, digest `sha256:dbeca28e0b285d4a37f4b4c45bfe23f6794a87e7687238e1efc37549b3b7b027`; results/header evidence `10039560064`, digest `sha256:05bc19d1dfa73de02a581c3c98afdb456d723facca6944a74a6fdc628e3b9b17`. Final exact Chromium retained 12 selected states, 30 entry states, 12 result states and the header matrix at 375/520/521/768/769/1024/1025/1100/1101/1440. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area, owner visual acceptance and the pre-existing browser-default result-only retry styling remain deferred. Audit: `docs/project/search3-lean-header-runtime.json`.
+
+Next: audit the complete 2526-byte `selected-tour-return-v1.js` owner against `tour-controller-v4.js` and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, `aria-hidden` state and `v2:tour-returned`; retire only through one current owner after focused return lifecycle and exact browser CI.
