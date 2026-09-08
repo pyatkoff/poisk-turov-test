@@ -1,5 +1,33 @@
 # Search3 technical refactor autopilot
 
+
+## Latest checked layer retirement — enhancements.css — 2026-09-08
+
+PR #1554 / source `d42367668ebfbfc13938f8b6c07a2106d7e51b8d`, integrated
+release `942ed8d0f895ea17d69e7c41b9d77b3a77224ca8`, removes the complete
+11,744-byte `enhancements.css` presentation layer from Search3. The unchanged
+layer remains in the full old-search manifest.
+
+The first exact run `34197097949` passed source/build/isolation guards and exposed
+only two live declarations: positioning contexts for the selected picture and
+flight variant. Those 53 bytes now live in `selected-tour-ux.css`. Final Search3
+route payload is **535,608 → 523,917 raw bytes (−11,691)**; CSS is
+178,591 → 166,900, JS remains 183,740, and carried same-method gzip is
+119,180 → 117,126 (−2,054). The eight generated assets rise 53 bytes solely for
+the retained positioning declarations.
+
+Security `34197557533` and exact artifact runs `34197557413` /
+`34197764610` pass. Reuse artifact `10044609590`, digest
+`sha256:c935859742995af5186953d99910c964e5a5096d9a94234dae1db9b1cc0c4ec0`.
+Selected/result/entry geometry is green; no external API or lead request occurred.
+Preview remains source `c9ba7952`; `main` and production are unchanged. Live
+current-source interaction, manual screenshots, Safari/safe-area and owner visual
+acceptance remain deferred.
+
+Next: audit `tour-design-v1.css` as one reversible whole-layer candidate. Keep
+its unchanged old-search owner and restore only exact current-owner geometry
+identified by focused CI. Do not repeat `design-v1.css` or `enhancements.css`.
+
 Owner request recorded on 2026-09-06: «давай на автопилот поставь».
 
 ## Hourly development resumed — 2026-09-06
