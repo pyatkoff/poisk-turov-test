@@ -1,11 +1,24 @@
 {
   "schema_version": 1,
-  "status": "SOURCE_READY_REQUIRED_CI_PENDING_NOT_PUBLISHED",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
   "base_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
-  "eight_assets": { "before_raw_bytes": 54605, "after_raw_bytes": 41959, "saved_raw_bytes": 12646 },
-  "selected_js": { "before_raw_bytes": 18705, "after_raw_bytes": 5589 },
-  "main_js": { "before_raw_bytes": 22600, "after_raw_bytes": 23070 },
-  "loaded_route": { "before_raw_bytes": 173218, "after_raw_bytes": 160572 },
+  "eight_assets": {
+    "before_raw_bytes": 54605,
+    "after_raw_bytes": 41959,
+    "saved_raw_bytes": 12646
+  },
+  "selected_js": {
+    "before_raw_bytes": 18705,
+    "after_raw_bytes": 5589
+  },
+  "main_js": {
+    "before_raw_bytes": 22600,
+    "after_raw_bytes": 23070
+  },
+  "loaded_route": {
+    "before_raw_bytes": 173218,
+    "after_raw_bytes": 160572
+  },
   "removed": [
     "selected confidence/trust decoration, mobile action rail, description/facts/optional-lead-field disclosure wrappers",
     "whole selected/flight-disclosure.js: original flight variants remain directly available",
@@ -19,14 +32,70 @@
     "all eight public paths, shared V2 closure and source/PHP/path/presentation/isolation guards"
   ],
   "confirmed_repair": "#1607 removed results/empty-result edit handoffs while current CSS still hides the native form. Restore both clicks in the existing minimal results-top owner; no shared renderer or request change. Costs 470 main-JS bytes, included in net saving.",
-  "local_checks": ["one source --write and --check", "retained selected scheduler/no-flight/review/decimal contracts", "syntax/diff checks"],
-  "required_ci": { "security": "pending", "exact_artifact": "pending" },
-  "actual_browser_checks": [],
-  "planned_smoke": "Existing exact fixture: 12 detail/review/lead states at375/760/1000/1440 against current def1cf84; protected facts/prices/lead-field/state equality and bounded geometry, not retired pixel-tree equality. Pending base and confirmed total, native-entry lifecycle, results/empty editor handoffs at375/1440, no-flight retry/review/lead and decimal labels. Requests blocked; zero real leads.",
+  "local_checks": [
+    "one source --write and --check",
+    "retained selected scheduler/no-flight/review/decimal contracts",
+    "syntax/diff checks"
+  ],
+  "required_ci": {
+    "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+    "checked_release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+    "security_run": 34247520934,
+    "artifact_run": 34247521545,
+    "conclusion": "success",
+    "required_passed": 2,
+    "artifact_id": 10064661836,
+    "artifact_digest": "sha256:a5a5774cd9ea7388fbd0140417beb04ebcd7d6c7bafd7e5125c2930fb2ddd0e9",
+    "evidence_id": 10064661265,
+    "evidence_digest": "sha256:ea81152b3927abb80d535c4113093ac3ff429075fb4ad6060056c4a93c558004",
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false,
+    "preview_published": false
+  },
+  "actual_browser_checks": {
+    "widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "states": [
+      "detail",
+      "review",
+      "lead"
+    ],
+    "protected_content_parity": true,
+    "pixel_parity_claimed": false,
+    "overflow": false,
+    "pending_and_confirmed_total": true,
+    "native_entry_lifecycle_states": 30,
+    "result_and_empty_editor_widths": [
+      375,
+      1440
+    ],
+    "fallback_retry_review_lead": true,
+    "decimal_tradeoff": true,
+    "stable_observer_writes": 0,
+    "external_requests_blocked": true,
+    "lead_sent": 0,
+    "screenshots_inspected": [
+      "current-375-review",
+      "current-1440-detail"
+    ],
+    "visual_scope": "Intentionally stripped current design, full original facts/flight variants visible. Not polished UI or owner visual acceptance."
+  },
   "test_expectation_change": "Intentional visual reset: retired trust/mobile/disclosure wrappers are expected absent and original facts visible. Baseline moved to checked current route after #1604/#1607/#1610; no new skips or geometry condition bypass. Unchanged native entry still compared exactly.",
   "preview_published": false,
   "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
   "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
-  "deferred": ["owner visual acceptance", "physical Safari/safe-area", "published-preview smoke", "full live lead/responsive/site/SEO journey"],
-  "next_step": "After green required CI merge and checkpoint, reuse exact artifact. Audit remaining native search-form and booking presentation owners as a single coarse package; no protected-core deletion or micro-PR."
+  "deferred": [
+    "owner visual acceptance",
+    "physical Safari/safe-area",
+    "published-preview smoke",
+    "full live lead/responsive/site/SEO journey"
+  ],
+  "next_step": "Next candidate is the duplicate booking/services.js presentation block (about2022 raw B estimated, not built/counted). Accumulate it with another useful coarse owner package, not a standalone micro-PR/deploy. Retain booking total/pending, summary CTA, original tour/fuel/baggage facts and lead mapping. Native search-form and full summary CTA are live protected-flow owners, not deletion candidates.",
+  "source_pr": 1612,
+  "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+  "checked_release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e"
 }

@@ -1,4 +1,66 @@
 {
+  "latest_selected_owner_retirement": {
+    "source_pr": 1612,
+    "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+    "release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+    "before_bytes": 54605,
+    "after_bytes": 41959,
+    "newly_removed_bytes": 12646,
+    "ci": {
+      "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+      "checked_release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+      "security_run": 34247520934,
+      "artifact_run": 34247521545,
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_id": 10064661836,
+      "artifact_digest": "sha256:a5a5774cd9ea7388fbd0140417beb04ebcd7d6c7bafd7e5125c2930fb2ddd0e9",
+      "evidence_id": 10064661265,
+      "evidence_digest": "sha256:ea81152b3927abb80d535c4113093ac3ff429075fb4ad6060056c4a93c558004",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "preview_published": false
+    },
+    "visual": {
+      "widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
+      "states": [
+        "detail",
+        "review",
+        "lead"
+      ],
+      "protected_content_parity": true,
+      "pixel_parity_claimed": false,
+      "overflow": false,
+      "pending_and_confirmed_total": true,
+      "native_entry_lifecycle_states": 30,
+      "result_and_empty_editor_widths": [
+        375,
+        1440
+      ],
+      "fallback_retry_review_lead": true,
+      "decimal_tradeoff": true,
+      "stable_observer_writes": 0,
+      "external_requests_blocked": true,
+      "lead_sent": 0,
+      "screenshots_inspected": [
+        "current-375-review",
+        "current-1440-detail"
+      ],
+      "visual_scope": "Intentionally stripped current design, full original facts/flight variants visible. Not polished UI or owner visual acceptance."
+    },
+    "deferred": [
+      "owner visual acceptance",
+      "physical Safari/safe-area",
+      "published-preview current-source smoke",
+      "full lead/responsive/site/SEO matrix"
+    ],
+    "next_action": "Next candidate is the duplicate booking/services.js presentation block (about2022 raw B estimated, not built/counted). Accumulate it with another useful coarse owner package, not a standalone micro-PR/deploy. Retain booking total/pending, summary CTA, original tour/fuel/baggage facts and lead mapping. Native search-form and full summary CTA are live protected-flow owners, not deletion candidates."
+  },
   "latest_entry_owner_retirement": {
     "source_pr": 1610,
     "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
@@ -104,29 +166,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1610 retired the full entry-presentation owner, popup and obsolete mobile wrappers: eight assets 60811→54605 raw (new saving 6206 B); loaded route 179424→173218. Security and one exact artifact/native-entry pass succeeded; no publication.",
+    "last_material_progress": "PR #1612 retired selected trust/mobile/disclosure/duplicate projection owners, preserving flight/price/lead contracts and repairing results/empty-result edit. Eight assets54605→41959 (new saving12646 B), route173218→160572. One Security and exact artifact passed first attempt; no publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures.",
+    "next_action": "Next candidate is the duplicate booking/services.js presentation block (about2022 raw B estimated, not built/counted). Accumulate it with another useful coarse owner package, not a standalone micro-PR/deploy. Retain booking total/pending, summary CTA, original tour/fuel/baggage facts and lead mapping. Native search-form and full summary CTA are live protected-flow owners, not deletion candidates.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_ENTRY_OWNER_RETIREMENT",
-    "title": "Retire entry decorators and expose canonical guest controls",
+    "id": "S3_SELECTED_OWNER_RETIREMENT",
+    "title": "Retire selected decorators and repair result-search editing",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1610,
+    "source_pr": 1612,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
-    "release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
-    "last_fully_checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
-    "security_run": 34244914013,
-    "exact_run": 34244914086,
-    "checked_release_asset_bytes": 54605,
-    "release_loaded_bytes": 173218,
+    "implementation_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+    "release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+    "last_fully_checked_release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+    "security_run": 34247520934,
+    "exact_run": 34247521545,
+    "checked_release_asset_bytes": 41959,
+    "release_loaded_bytes": 160572,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures."
+    "next_action": "Next candidate is the duplicate booking/services.js presentation block (about2022 raw B estimated, not built/counted). Accumulate it with another useful coarse owner package, not a standalone micro-PR/deploy. Retain booking total/pending, summary CTA, original tour/fuel/baggage facts and lead mapping. Native search-form and full summary CTA are live protected-flow owners, not deletion candidates."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -178,6 +240,21 @@
     "visual_ci": 33934082023
   },
   "last_ci": {
+    "selected_owner_retirement": {
+      "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+      "checked_release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+      "security_run": 34247520934,
+      "artifact_run": 34247521545,
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_id": 10064661836,
+      "artifact_digest": "sha256:a5a5774cd9ea7388fbd0140417beb04ebcd7d6c7bafd7e5125c2930fb2ddd0e9",
+      "evidence_id": 10064661265,
+      "evidence_digest": "sha256:ea81152b3927abb80d535c4113093ac3ff429075fb4ad6060056c4a93c558004",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "preview_published": false
+    },
     "entry_owner_retirement": {
       "artifact_digest": "sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38",
       "artifact_id": 10063598031,
@@ -1536,8 +1613,8 @@
       "preview_published": false
     }
   },
-  "last_verified_commit": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
-  "last_verified_commit_scope": "Checked release after #1610: 54605 raw bytes across eight assets, 173218 loaded route; native entry at375/1440 and Security/exact source/PHP/path/presentation/isolation guards passed. No current-source preview, main or production change.",
+  "last_verified_commit": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+  "last_verified_commit_scope": "Checked release after #1612:41959 raw bytes across eight assets,160572 loaded route. Security/exact guards,12 selected content/stage/overflow states, pending/confirmed totals, native-entry and result-editor/fallback/decimal checks passed. Intentional pixel-tree change, no live preview or owner visual acceptance; main/production unchanged.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -1944,33 +2021,33 @@
   },
   "presentation_refactor_checkpoint": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
-    "implementation_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
-    "release_integration_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
-    "audit": "docs/project/search3-entry-owner-retirement.json",
-    "source_pr": 1610,
+    "implementation_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+    "release_integration_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+    "audit": "docs/project/search3-selected-owner-retirement.json",
+    "source_pr": 1612,
     "ci": {
-      "artifact_digest": "sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38",
-      "artifact_id": 10063598031,
-      "artifact_rebuilt_for_docs": false,
-      "artifact_rebuilt_on_release": false,
-      "artifact_run": 34244914086,
-      "checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+      "source_sha": "26c7200ae676d1d35581680f64f1fda5a4806955",
+      "checked_release_sha": "7eadf95d1164f51530fe545a5e42fb1ea977096e",
+      "security_run": 34247520934,
+      "artifact_run": 34247521545,
       "conclusion": "success",
-      "evidence_digest": "sha256:90572d15f4f4a850fd73393fc5af6aeaa6e5a66e355b2a72582866d328bffd24",
-      "evidence_id": 10063597221,
-      "preview_published": false,
       "required_passed": 2,
-      "security_run": 34244914013,
-      "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055"
+      "artifact_id": 10064661836,
+      "artifact_digest": "sha256:a5a5774cd9ea7388fbd0140417beb04ebcd7d6c7bafd7e5125c2930fb2ddd0e9",
+      "evidence_id": 10064661265,
+      "evidence_digest": "sha256:ea81152b3927abb80d535c4113093ac3ff429075fb4ad6060056c4a93c558004",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "preview_published": false
     },
     "public_assets": {
-      "before_bytes": 60811,
-      "after_bytes": 54605,
-      "newly_removed_bytes": 6206
+      "before_bytes": 54605,
+      "after_bytes": 41959,
+      "newly_removed_bytes": 12646
     },
     "loaded_route": {
-      "before_bytes": 179424,
-      "after_bytes": 173218
+      "before_bytes": 173218,
+      "after_bytes": 160572
     },
     "preview_updated": false,
     "production_updated": false,
@@ -1978,23 +2055,34 @@
     "visual_verification": {
       "widths": [
         375,
+        760,
+        1000,
         1440
       ],
       "states": [
-        "native entry",
-        "URL guest hydration",
-        "changed adults/children/child ages",
-        "night range FormData"
+        "detail",
+        "review",
+        "lead"
       ],
+      "protected_content_parity": true,
+      "pixel_parity_claimed": false,
+      "overflow": false,
+      "pending_and_confirmed_total": true,
+      "native_entry_lifecycle_states": 30,
+      "result_and_empty_editor_widths": [
+        375,
+        1440
+      ],
+      "fallback_retry_review_lead": true,
+      "decimal_tradeoff": true,
+      "stable_observer_writes": 0,
       "external_requests_blocked": true,
       "lead_sent": 0,
-      "overflow": false,
-      "tap_targets_min_px": 44,
       "screenshots_inspected": [
-        "entry-375",
-        "entry-1440"
+        "current-375-review",
+        "current-1440-detail"
       ],
-      "visual_scope": "Native form controls and labels visible; intentionally unstyled shell remains from prior reset. Catalog/image requests blocked; not live or owner visual acceptance."
+      "visual_scope": "Intentionally stripped current design, full original facts/flight variants visible. Not polished UI or owner visual acceptance."
     },
     "deferred": [
       "owner visual acceptance",
@@ -2002,7 +2090,7 @@
       "published-preview current-source smoke",
       "full lead/responsive/site/SEO matrix"
     ],
-    "next_action": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures."
+    "next_action": "Next candidate is the duplicate booking/services.js presentation block (about2022 raw B estimated, not built/counted). Accumulate it with another useful coarse owner package, not a standalone micro-PR/deploy. Retain booking total/pending, summary CTA, original tour/fuel/baggage facts and lead mapping. Native search-form and full summary CTA are live protected-flow owners, not deletion candidates."
   },
   "presentation_refactor_history": [
     {
@@ -7866,7 +7954,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T15:31:10Z",
+  "updated_at": "2026-09-08T15:57:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
