@@ -39,6 +39,6 @@ function v2_bundle_phase_files(string $type, string $scope, string $phase = 'all
     if ($type !== 'js' || $scope !== 'search3' || !in_array($phase, ['initial', 'selected'], true)) {
         throw new InvalidArgumentException('Invalid V2 bundle phase');
     }
-    $selected = ['tour-controller-v4.js', 'lead-form-guard-v1.js', 'flight-price-sync-v1.js', 'unpriced-flight-price-reset-v1.js'];
+    $selected = ['tour-controller-v4.js', 'flight-price-sync-v1.js', 'unpriced-flight-price-reset-v1.js'];
     return array_values($phase === 'selected' ? array_intersect($files, $selected) : array_diff($files, $selected));
 }

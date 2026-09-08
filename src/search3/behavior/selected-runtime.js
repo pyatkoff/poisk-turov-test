@@ -15,21 +15,8 @@
       const script = document.createElement('script');
       script.src = url.href;
       script.onload = () => {
-        const guard = window.V2LeadFormGuard;
-        ready = window.V2TourController !== proxy && !!guard && !!window.V2FlightPriceSync && !!window.V2UnpricedFlightPriceResetV1;
-        if (ready) {
-          // The unchanged guard's DOMContentLoaded bootstrap has already elapsed.
-          // Install its selected-root observer before replaying the first action.
-          const root = document.getElementById('selectedTour');
-          guard.decorate(root);
-          if (root && root.dataset.v2TourErrorWatch !== '1') {
-            root.dataset.v2TourErrorWatch = '1';
-            new MutationObserver(() => guard.decorateRecoverableErrors(root)).observe(root, { childList: true, subtree: true });
-            guard.decorateRecoverableErrors(root);
-          }
-          guard.scheduleLeadSelectionSummary(root);
-          resolve();
-        }
+        ready = window.V2TourController !== proxy && !!window.V2FlightPriceSync && !!window.V2UnpricedFlightPriceResetV1;
+        if (ready) resolve();
         else reject(new Error('Selected tour runtime unavailable'));
       };
       script.onerror = () => { script.remove(); loading = null; reject(new Error('Selected tour runtime unavailable')); };

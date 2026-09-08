@@ -37,6 +37,10 @@
       || message.indexOf('Данные по рейсам пока не получены.') === 0;
   }
 
+  function flowLabel() {
+    return 'Оставить заявку';
+  }
+
   function localizedMoneyNumber(value) {
     var compact = String(value == null ? '' : value)
       .replace(/[\s\u00a0\u202f]/g, '').replace(/[^0-9,.-]/g, '');
@@ -89,6 +93,10 @@
     selected.querySelectorAll('[data-search3-selected-flow-owned="1"]').forEach(function (node) {
       node.remove();
     });
+    var retained = selected.querySelector('.search3-flight-continue--fallback');
+    if (retained && retained.classList.contains('search3-flight-continue--fallback')) {
+      retained.classList.remove('search3-flight-continue--fallback');
+    }
   }
 
   function sync() {
@@ -104,9 +112,7 @@
       }
       setData(selected, 'search3FlightFallback', '1');
       ensureEmptyFlightRecovery(flights);
-      if (!flights.querySelector('.search3-flight-continue') && window.Search3SummaryCta) {
-        window.Search3SummaryCta.ensure();
-      }
+      ensureReviewAction(flights);
     } else {
       clearFallback();
     }
@@ -126,7 +132,7 @@
     schedule();
   });
   ['v2:tour-price-updated', 'v2:flight-selected', 'v2:selected-tour-opened',
-    'v2:selected-tour-closed', 'v2:results-rendered',
+    'v2:selected-tour-closed', 'v2:results-rendered', 'v2:booking-review',
     'search3:lead-entry', 'v2:lead-started', 'v2:lead-success', 'v2:lead-error'].forEach(function (name) {
     window.addEventListener(name, schedule);
   });
@@ -141,10 +147,11 @@
 
   schedule();
   window.Search3SelectedFlowV2 = Object.freeze({
-    version: 6,
+    version: 5,
     sync: sync,
     noFlightState: noFlightState,
     ensureEmptyFlightRecovery: ensureEmptyFlightRecovery,
+    activateReview: activateReview,
     localizedMoneyNumber: localizedMoneyNumber,
     correctFlightTradeoffs: correctFlightTradeoffs
   });

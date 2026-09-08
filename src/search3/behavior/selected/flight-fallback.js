@@ -24,3 +24,35 @@
     }
     return retry;
   }
+
+  function ensureReviewAction(flights) {
+    flights = flights || selected.querySelector('.tour-flights');
+    if (!flights) return null;
+    var action = flights.querySelector('.search3-flight-continue');
+    if (!action) {
+      action = document.createElement('div');
+      action.className = 'search3-flight-continue search3-flight-continue--fallback';
+      setData(action, 'search3SelectedFlowOwned', '1');
+      action.innerHTML = '<button type="button" class="primary">' + flowLabel('flight') + '</button>';
+      flights.appendChild(action);
+    } else if (!action.classList.contains('search3-flight-continue--fallback')) {
+      action.classList.add('search3-flight-continue--fallback');
+    }
+    var button = action.querySelector('button');
+    setText(button, selected.classList.contains('search3-final-review') ? 'Изменить рейс' : flowLabel());
+    return button;
+  }
+
+  function activateReview(event) {
+    var flights = selected.querySelector('.tour-flights');
+    if (!noFlightState(flights) || selected.classList.contains('search3-final-review')) return false;
+    var review = ensureReviewAction(flights);
+    if (!review) return false;
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+    }
+    review.click();
+    return true;
+  }

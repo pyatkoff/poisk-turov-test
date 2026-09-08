@@ -5,8 +5,6 @@ const vm = require('node:vm');
 
 const events = new Map();
 const frames = [];
-const tasks = [];
-const notifications = [];
 const bodyClasses = new Set(['search3-candidate']);
 const selectedClasses = new Set();
 let flightRootReads = 0;
@@ -17,9 +15,7 @@ let fallbackAction = null;
 let fallbackButton = null;
 let retryInsertions = 0;
 let actionInsertions = 0;
-let leadClicks = 0;
-let leadFocuses = 0;
-let nativeClick;
+let reviewClicks = 0;
 let fallbackDataWrites = 0;
 let fallbackDataValue;
 let priceVariants = [];
@@ -72,15 +68,7 @@ function element(tag) {
     setAttribute(name, value) { attributes.set(name, value); }
   };
   if (tag === 'div') {
-    let label = '';
-    const button = fallbackButton = {
-      get textContent() { return label; },
-      set textContent(value) { label = value; mutateSelected(); },
-      click() {
-        leadClicks += 1;
-        nativeClick({ target: { closest(selector) { return selector === '#selectedTour .search3-flight-continue button' ? button : null; } }, preventDefault() {} });
-      }
-    };
+    const button = fallbackButton = { textContent: '', click() { reviewClicks += 1; } };
     Object.defineProperty(node, 'innerHTML', {
       set(value) {
         button.textContent = /<button[^>]*>([^<]*)<\/button>/.exec(value)?.[1] || '';
@@ -134,8 +122,8 @@ const selected = {
         mutateSelected();
       }
     },
-    remove(...names) {
-      names.forEach(name => { if (selectedClasses.delete(name)) mutateSelected(); });
+    remove(name) {
+      if (selectedClasses.delete(name)) mutateSelected();
     },
     contains(name) { return selectedClasses.has(name); }
   },
@@ -144,16 +132,13 @@ const selected = {
       flightRootReads += 1;
       return flights;
     }
-    if (selector === '.lead-form') return {
-      scrollIntoView() {},
-      querySelector(name) { return name === 'input[name="phone"]' ? { focus() { leadFocuses += 1; } } : null; }
-    };
+    if (selector === '.search3-flight-continue--fallback') return fallbackAction;
     return null;
   },
   querySelectorAll(selector) {
     if (selector === '.flight-variant') return priceVariants;
     if (selector === '[data-search3-selected-flow-owned="1"]') {
-      return [flightRetry, fallbackAction].filter(node => node && !node.removed && node.dataset.search3SelectedFlowOwned === '1');
+      return [flightRetry, fallbackAction].filter(node => node && !node.removed);
     }
     return [];
   }
@@ -167,20 +152,17 @@ const document = {
     }
   },
   getElementById(id) { return id === 'selectedTour' ? selected : null; },
-  addEventListener(name, handler) { if (name === 'click') nativeClick = handler; },
   createElement: element
 };
 
 const window = {
-  addEventListener(name, handler) {
-    const previous = events.get(name);
-    events.set(name, previous ? event => { previous(event); handler(event); } : handler);
-  },
-  dispatchEvent(event) { notifications.push(event.type); if (events.has(event.type)) events.get(event.type)(event); },
+  addEventListener(name, handler) { events.set(name, handler); },
   requestAnimationFrame(handler) { frames.push(handler); }
 };
 
-const context = vm.createContext({
+vm.runInNewContext(
+  fs.readFileSync(path.join(__dirname, '../v2/search3-selected-flow-v2.js'), 'utf8'),
+  {
     document,
     window,
     MutationObserver: function (callback) {
@@ -192,22 +174,12 @@ const context = vm.createContext({
     Number,
     String,
     Object,
-    setTimeout(handler) { tasks.push(handler); },
-    CustomEvent: function (type, options) { this.type = type; this.detail = options && options.detail; },
     getComputedStyle() { return { display: 'block' }; }
-});
-vm.runInContext(fs.readFileSync(path.join(__dirname, '../src/search3/behavior/summary-cta.js'), 'utf8'), context);
-const selectedSource = process.argv.includes('--source')
-  ? fs.readFileSync(path.join(__dirname, '../src/search3/behavior/selected-flow-v2.js'), 'utf8')
-    .replace('/* @include behavior/selected/flight-fallback.js */', fs.readFileSync(path.join(__dirname, '../src/search3/behavior/selected/flight-fallback.js'), 'utf8'))
-  : fs.readFileSync(path.join(__dirname, '../v2/search3-selected-flow-v2.js'), 'utf8');
-vm.runInContext(selectedSource, context);
+  }
+);
 
 const flush = () => {
-  let rounds = 0;
-  while (frames.length || tasks.length || mutationPending) {
-    assert.ok(++rounds < 20, 'native handoff and selected observer settle without a mutation loop');
-    while (tasks.length) tasks.shift()();
+  while (frames.length || mutationPending) {
     while (frames.length) frames.shift()();
     if (mutationPending) {
       mutationPending = false;
@@ -218,8 +190,7 @@ const flush = () => {
 
 flush();
 assert.ok(bodyClasses.has('search3-selected-open'), 'selected visibility remains synchronized');
-assert.equal(window.Search3SelectedFlowV2.version, 6);
-assert.equal(window.Search3SelectedFlowV2.activateReview, undefined, 'duplicate review action API is retired');
+assert.equal(window.Search3SelectedFlowV2.version, 5);
 assert.equal(window.Search3SelectedTourMobile, undefined, 'retired mobile presentation API is not rebuilt');
 assert.equal(window.Search3CandidateSelectedPresentationV1, undefined, 'retired detail formatter API is not rebuilt');
 assert.equal(window.Search3SelectedFlowV2Helpers, undefined, 'retired aggregate helper API is not rebuilt');
@@ -257,16 +228,13 @@ assert.equal(decimal.textContent.replace(/\s/g, ' '), '+17 217,6 ₽ к мини
 
 priceVariants = [];
 flightDataPresent = false;
-// The controller replaces its flight markup when an asynchronous empty response arrives.
-fallbackAction.remove();
-const previousActionInsertions = actionInsertions;
 flightRootReads = 0;
 window.Search3SelectedFlowV2.sync();
 window.Search3SelectedFlowV2.sync();
-assert.equal(flightRootReads, 3, 'native handoff reads its flight root only while recreating a missing action');
+assert.equal(flightRootReads, 2, 'each sync reads the flight root once');
 assert.equal(fallbackDataWrites, 1, 'stable no-flight marker is written once');
 assert.equal(retryInsertions, 1, 'no-flight state creates one delegated retry');
-assert.equal(actionInsertions - previousActionInsertions, 1, 'no-flight state delegates exactly one missing CTA to its native owner');
+assert.equal(actionInsertions, 1, 'no-flight state creates one review action');
 assert.equal(flightRetry.getAttribute('data-tid'), 'tour-1');
 assert.equal(flightRetry.textContent, 'Проверить рейсы ещё раз');
 assert.match(emptyMessage.textContent, /менеджер уточнит перелёт по заявке/);
@@ -276,14 +244,14 @@ observerCallback();
 assert.equal(frames.length, 1, 'the observer coalesces no-flight DOM changes into one settling frame');
 flush();
 assert.equal(frames.length, 0, 'settled no-flight DOM does not wake the observer again');
-assert.equal(fallbackButton.textContent, 'Оставить заявку', 'fallback uses the native lead entry label');
-fallbackButton.click();
-assert.equal(leadClicks, 1);
-assert.equal(leadFocuses, 1, 'native fallback handoff focuses the canonical phone field once');
-assert.ok(selectedClasses.has('search3-lead-entry'));
-assert.deepEqual(notifications, ['search3:lead-entry']);
-flush();
-assert.equal(actionInsertions - previousActionInsertions, 1, 'lead entry does not create a duplicate CTA');
+selectedClasses.add('search3-final-review');
+window.Search3SelectedFlowV2.sync();
+assert.equal(fallbackButton.textContent, 'Изменить рейс', 'fallback sync preserves the review exit label');
+selectedClasses.delete('search3-final-review');
+window.Search3SelectedFlowV2.sync();
+assert.equal(fallbackButton.textContent, 'Оставить заявку', 'fallback sync restores the native lead entry label');
+assert.equal(window.Search3SelectedFlowV2.activateReview(), true);
+assert.equal(reviewClicks, 1, 'fallback lead entry delegates to the primary continue action');
 
 flightErrorPresent = true;
 emptyMessage.textContent = 'Не удалось загрузить рейсы';
@@ -294,12 +262,12 @@ flightDataPresent = true;
 window.Search3SelectedFlowV2.sync();
 assert.ok(!selectedClasses.has('search3-flight-fallback'));
 assert.equal(flightRetry, null, 'owned empty-state retry is removed after recovery');
-assert.ok(fallbackAction && !fallbackAction.removed, 'fallback cleanup preserves the native handoff owner');
+assert.equal(fallbackAction, null, 'owned empty-state continue action is removed after recovery');
 
 selected.hidden = true;
 window.Search3SelectedFlowV2.sync();
 assert.ok(!bodyClasses.has('search3-selected-open'), 'hidden selected tour clears shared selected state');
-console.log('PASS: selected owner retains state, no-flight recovery/native lead handoff, and decimal-safe price labels');
+console.log('PASS: selected owner retains state, no-flight recovery/review, and decimal-safe price labels');
 
 // The primary continue owner changes booking phase without classifying or
 // rearranging supplier flight segments. Exercise it separately from fallback.
