@@ -2,13 +2,14 @@
 require_once __DIR__ . '/assets.php';
 $type = strtolower((string)($_GET['type'] ?? ''));
 $scope = strtolower((string)($_GET['scope'] ?? 'full'));
+$phase = strtolower((string)($_GET['phase'] ?? 'all'));
 try {
-    $files = v2_bundle_files($type, $scope);
+    $files = v2_bundle_phase_files($type, $scope, $phase);
 } catch (InvalidArgumentException $error) {
     http_response_code(404);
     exit;
 }
-$version = v2_bundle_content_version($type, $scope);
+$version = v2_bundle_content_version($type, $scope, $phase);
 $requestedVersion = (string)($_GET['v'] ?? '');
 header('X-Content-Type-Options: nosniff');
 header('Content-Type: ' . ($type === 'css' ? 'text/css; charset=UTF-8' : 'application/javascript; charset=UTF-8'));

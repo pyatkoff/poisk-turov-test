@@ -30,3 +30,15 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
     ];
     return array_values(array_diff($manifest[$type], $excluded[$type]));
 }
+
+/** Selected-tour transport and price owners are needed only after a tour is chosen. */
+function v2_bundle_phase_files(string $type, string $scope, string $phase = 'all'): array
+{
+    $files = v2_bundle_files($type, $scope);
+    if ($phase === 'all') return $files;
+    if ($type !== 'js' || $scope !== 'search3' || !in_array($phase, ['initial', 'selected'], true)) {
+        throw new InvalidArgumentException('Invalid V2 bundle phase');
+    }
+    $selected = ['tour-controller-v4.js', 'flight-price-sync-v1.js', 'unpriced-flight-price-reset-v1.js'];
+    return array_values($phase === 'selected' ? array_intersect($files, $selected) : array_diff($files, $selected));
+}

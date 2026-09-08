@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "task": "Search3 on-demand selected runtime and return-focus repair, integrated with parallel core compaction",
+  "date": "2026-09-08",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW",
+  "baseline_release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
+  "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
+  "release_sha": "5bb8595d870906c4eb67b07de3d86a26ff71ec1b",
+  "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "assets": {
+    "search3-results-filters-v1.js": {
+      "before": 9164,
+      "after": 11049
+    },
+    "search3-results-filters-v1.css": {
+      "before": 8420,
+      "after": 8420
+    },
+    "search3-entry-v1.css": {
+      "before": 331,
+      "after": 331
+    },
+    "search3-entry-v1.js": {
+      "before": 0,
+      "after": 0
+    },
+    "search3-results-cards-v2.css": {
+      "before": 1,
+      "after": 1
+    },
+    "search3-results-cards-v2.js": {
+      "before": 0,
+      "after": 0
+    },
+    "search3-selected-flow-v2.css": {
+      "before": 1,
+      "after": 1
+    },
+    "search3-selected-flow-v2.js": {
+      "before": 5589,
+      "after": 5589
+    }
+  },
+  "eight_assets_raw": {
+    "before": 23506,
+    "after": 25391,
+    "saved": -1885
+  },
+  "shared_file_payload_raw": {
+    "before": 101537,
+    "after": 101537,
+    "saved": 0
+  },
+  "complete_route_file_payload_raw": {
+    "before": 125043,
+    "after": 126928,
+    "saved": -1885
+  },
+  "initial_route_file_payload_raw": {
+    "before": 125043,
+    "after": 101324,
+    "saved": 23719
+  },
+  "deferred_file_payload_raw": 25604,
+  "http_bundle_boundaries_raw": {
+    "all": 727,
+    "initial": 590,
+    "selected": 137
+  },
+  "deferred_owners": [
+    "tour-controller-v4.js",
+    "flight-price-sync-v1.js",
+    "unpriced-flight-price-reset-v1.js"
+  ],
+  "compaction_method": "Reuse #1619 exact source-SHA-locked normalization and existing guarded local-binding compaction, unchanged. No additional shared-byte reduction claimed by this integration.",
+  "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager. Confirmed browser regression repaired in current results owner: reveal the retained results on return capture, before the unchanged controller resolves the focus target. The integration retained native details close-on-search in the compact entry owner after the #1619 projection retirement omitted it.",
+  "local_checks": [
+    "8-asset final build once",
+    "generated shared map once",
+    "syntax and compaction semantic fixtures",
+    "one affected asset rebuild after confirmed return-visibility regression",
+    "one 8-asset integration build after concurrent native-entry manifest merge; shared artifact map reused byte-identically",
+    "affected asset rebuild after confirmed native-details integration repair"
+  ],
+  "ci": {
+    "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
+    "security_run": 34268129179,
+    "exact_run": 34268129387,
+    "boundary_run": 34268129237,
+    "navigation_run": 34268129190,
+    "conclusion": "success",
+    "selected_artifact": {
+      "id": 10072719965,
+      "name": "search3-selected-geometry-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387",
+      "digest": "sha256:d7597922be29a95f938982b1863bf8d8a21edc11907baa5787effc0f6257b1da",
+      "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
+    },
+    "results_artifact": {
+      "id": 10072720408,
+      "name": "search3-results-geometry-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387",
+      "digest": "sha256:3b77de107c5c26e1012e8aa5dd572e1a07edb1e10fbbd236b7aab316df981410",
+      "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
+    },
+    "entry_artifact": {
+      "id": 10072719365,
+      "name": "search3-entry-owner-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387",
+      "digest": "sha256:426f134afdcffd19fe4721263dafb65ad28639edaf2800690f1622553dc0b6fc",
+      "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe"
+    }
+  },
+  "published": false,
+  "production_modified": false,
+  "main_modified": false,
+  "visual_checks": {
+    "scope": "Actual isolated Chromium, automated assertions; no manual screenshot inspection or owner visual acceptance.",
+    "lazy_scenarios": [
+      "download failure then explicit retry",
+      "search reset cancels pending selection"
+    ],
+    "first_successful_selection": {
+      "tour_calls": 1,
+      "flight_calls": 1,
+      "decimal_price": 150001.2,
+      "return_focus": true,
+      "no_selected_request_before_choice": true
+    },
+    "selected_states": 12,
+    "selected_widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "native_entry_lifecycle_states": 30,
+    "results_raw_served_states": 12,
+    "results_widths": [
+      375,
+      760,
+      761,
+      999,
+      1000,
+      1440
+    ],
+    "native_form_payload_widths": [
+      375,
+      1440
+    ],
+    "retry_fallback_decimal": "passed",
+    "external_requests": "blocked in fixtures",
+    "real_leads_sent": 0,
+    "screenshots_inspected": []
+  },
+  "deferred": [
+    "physical Safari/safe-area",
+    "live current-source preview",
+    "manual screenshot inspection",
+    "owner visual acceptance",
+    "full site/SEO/responsive/lead journey"
+  ],
+  "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction.",
+  "failed_runs": [
+    {
+      "source": "516f0c413f20a847a1d66e56194c230a423e72c3",
+      "exact_run": 34265372642,
+      "failure": "PHP harness treated valid empty rejected-phase output as subprocess failure; fixed harness with exit-status-aware subprocess."
+    },
+    {
+      "source": "59d539664c8e3684e0f8f146712476e005cbbb7b",
+      "exact_run": 34265521359,
+      "failure": "Guard counted text occurrences in phase allowlist instead of delivered owners. Preserved exact protected SHA checks and strengthened delivery check to exactly one owner in full, Search3, and union of initial/selected closures."
+    },
+    {
+      "source": "1dc64daaf7bbc73ab09085ef7bac432471b0e280",
+      "exact_run": 34265737512,
+      "failure": "12 selected geometry states passed; actual lazy return test exposed hidden results and missing return focus. Fixed in results-top owner before canonical return handler."
+    },
+    {
+      "source": "9d8cdbcb948ebf5c566d5e30ba1c613b31ea3039",
+      "exact_run": 34266516178,
+      "failure": "Selected12 and lazy retry/reset/return scenarios passed. Existing native lifecycle check caught details left open after search; restored only close-on-search in current native form owner."
+    },
+    {
+      "source": "23c1da27d78af79e2fd81d2e3efb7c28c81f37e2",
+      "exact_run": 34266851626,
+      "failure": "Native extras close correctly; meal fixture dispatched synthetic focus on a hidden control. Reopen native extras and focus the actual select before awaiting catalog."
+    },
+    {
+      "source": "a51401595e70b73a96877aa0d06d2edb5fd5ca65",
+      "exact_run": 34267454310,
+      "failure": "Selected and lazy scenarios plus current catalog assertions passed. Entry parity reference still contained the pre-#1619 projection and reordered controls. Pin entry-only baseline to already merged native-entry release fa9917bf; retain full geometry/value/lifecycle equality and original selected/runtime baseline."
+    }
+  ],
+  "invocation_start_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
+  "parallel_integration": {
+    "pr": 1619,
+    "source_sha": "efd0368b99f91533cb5538d433244a71fb303c25",
+    "release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
+    "policy": "Keep its native-entry retirement and exact SHA-locked shared compaction. Supersede our overlapping token compaction; do not double count savings.",
+    "original_own_source_before_integration": "36d3661f8947a90d9d22d6d9340927c15aac4b84",
+    "original_own_exact_run": 34266026172,
+    "original_own_ci": "success; superseded by combined source, not merged by itself"
+  },
+  "source_pr": 1618,
+  "source_tree": "9ee238b4e9745cb95311d0d09add462c6bdee476",
+  "artifact": {
+    "id": 10072720854,
+    "name": "search3-site-preview-b25ae3e8c72e300bbaf877a9df8010d7f3f108fe-34268129387-1",
+    "digest": "sha256:1936f778595c200da8251133ee38f2b10771fb9ffa8c59f4507ef04b9d7c4adf",
+    "source_sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
+    "archive_sha256": "831dc290534fab55e69fa49f7d8c3ccd67594b93af9299c0b26c7517ec35003e",
+    "files": 717,
+    "run_id": 34268129387,
+    "rebuilt_for_release": false,
+    "rebuilt_for_docs": false,
+    "published": false
+  },
+  "http_route_payload_raw": {
+    "before": 125770,
+    "complete_after": 127655,
+    "initial_after": 101914,
+    "selected_phase": 25741,
+    "scope": "CSS/JS response bodies including shared script boundaries; excludes HTTP headers/HTML and compression."
+  }
+}

@@ -25,6 +25,11 @@
     if(field)field.focus({preventScroll:true});
   });
   window.addEventListener('v2:tour-selected',function(){active(false);});
+  // Reveal results before the canonical controller resolves its return-focus target.
+  window.addEventListener('click',function(event){
+    var back=event.target&&event.target.closest&&event.target.closest('#selectedTour .back-results,#selectedTour .lead-success-back');
+    if(back&&!back.disabled)active(results.children.length>0);
+  },true);
   window.addEventListener('v2:selected-tour-closed',function(){active(results.children.length>0);});
   window.addEventListener('v2:search-reset',function(){busy(true);active(false);});
 }());

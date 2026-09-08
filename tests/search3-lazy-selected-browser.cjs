@@ -1,0 +1,76 @@
+/* Actual isolated page: one chunk, failed download retry, reset cancellation and first click. */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { chromium } = require('playwright');
+const base = process.env.SEARCH3_VISUAL_BASE;
+assert.ok(base && new URL(base).hostname === '127.0.0.1');
+
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const evidence = [];
+  try {
+    for (const scenario of ['retry', 'reset']) {
+      const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
+      const errors = [];
+      let chunks = 0, release;
+      page.on('pageerror', error => errors.push(String(error)));
+      await page.route('**/*', async route => {
+        const request = route.request(), url = new URL(request.url());
+        if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
+        if (url.pathname.endsWith('/bundle-v1.php') && url.searchParams.get('phase') === 'selected') {
+          chunks++;
+          if (scenario === 'retry' && chunks === 1) return route.abort('failed');
+          if (scenario === 'reset' && chunks === 1) await new Promise(resolve => { release = resolve; });
+        }
+        return route.continue();
+      });
+      await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.V2Results && window.V2TourController && window.Search3SummaryCta);
+      assert.equal(chunks, 0, 'no selected chunk before selection');
+      assert.equal(await page.evaluate(() => typeof window.V2FlightPriceSync), 'undefined', 'flight-price code is deferred');
+      await page.evaluate(() => {
+        const tour = { id: 'lazy-tour', price: 148500.6, hotel: { name: 'Проверочный отель' }, adults: 2, nights: 9 };
+        window.__lazyCalls = [];
+        window.V2Runtime.api = async (action, payload) => {
+          window.__lazyCalls.push([action, payload && payload.tourId]);
+          if (action === 'tour') return tour;
+          if (action === 'flights') return [{ price: { value: 150001.2 }, isDefault: true, forward: [], backward: [] }];
+          throw Error('Unexpected API action ' + action);
+        };
+        window.__lazyHotels = [{ id: 'lazy-hotel', name: 'Проверочный отель', price: tour.price, tours: [tour] }];
+        window.V2Results.render(window.__lazyHotels);
+      });
+      const action = page.locator('#results .direct-tour');
+      await action.click();
+      if (scenario === 'retry') {
+        await page.waitForFunction(() => document.querySelector('.direct-tour')?.textContent.includes('Повторить'));
+        assert.deepEqual(await page.evaluate(() => window.__lazyCalls), [], 'download failure makes no tour request');
+        await action.click();
+      } else {
+        await page.waitForFunction(() => document.querySelector('.direct-tour')?.getAttribute('aria-busy') === 'true');
+        // Wait for the intercepted resource without polling the external API.
+        while (!release) await new Promise(resolve => setTimeout(resolve, 10));
+        await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset')));
+        release();
+        await page.waitForFunction(() => window.V2FlightPriceSync && !document.querySelector('.direct-tour')?.disabled);
+        assert.deepEqual(await page.evaluate(() => window.__lazyCalls), [], 'reset cancels pending selection');
+        await page.evaluate(() => window.V2Results.render(window.__lazyHotels));
+        await action.click();
+      }
+      await page.waitForSelector('#selectedTour .flight-variant');
+      await page.waitForFunction(() => document.querySelector('.search3-booking-summary__total strong')?.textContent.includes('150'));
+      assert.deepEqual(await page.evaluate(() => window.__lazyCalls), [['tour', 'lazy-tour'], ['flights', 'lazy-tour']], 'first successful click selects exactly once');
+      const price = await page.locator('#selectedTour .selected-price').innerText();
+      assert.match(price, /150[\s\u00a0]*001,2/, 'decimal selected price retained');
+      await page.locator('#selectedTour .back-results').click();
+      await page.waitForFunction(() => document.activeElement?.matches('.direct-tour'));
+      assert.equal(chunks, scenario === 'retry' ? 2 : 1, 'loaded chunk is reused');
+      assert.deepEqual(errors, []);
+      evidence.push({ scenario, chunks, tourRequests: 1, flightRequests: 1, returnFocus: true, price });
+      await page.close();
+    }
+  } finally { await browser.close(); }
+  if (process.env.SEARCH3_GEOMETRY_OUTPUT) fs.writeFileSync(path.join(process.env.SEARCH3_GEOMETRY_OUTPUT, 'lazy-selected.json'), JSON.stringify(evidence, null, 2));
+  console.log('SEARCH3_LAZY_SELECTED_OK ' + JSON.stringify(evidence));
+})().catch(error => { console.error(error); process.exitCode = 1; });
