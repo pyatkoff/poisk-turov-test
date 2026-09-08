@@ -62,8 +62,8 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1');
         await action.click();
       }
       if (scenario === 'tour-retry') {
-        await page.waitForSelector('#selectedTour .tour-load-retry');
-        await page.locator('#selectedTour .tour-load-retry').click();
+        await page.waitForSelector('#selectedTour .retry-tour');
+        await page.locator('#selectedTour .retry-tour').click();
       }
       await page.waitForSelector('#selectedTour .flight-variant');
       await page.waitForSelector('#selectedTour .search3-flight-continue button');

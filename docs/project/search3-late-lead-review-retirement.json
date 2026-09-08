@@ -93,5 +93,13 @@
     "Owner visual acceptance",
     "Full lead/site/SEO journey"
   ],
-  "next_action": "Complete Security and exact source artifact, integrate release, then assess justified reuse of the accumulated artifact for existing isolated whole-site preview; no repeat asset build. Do not count deferral as deletion."
+  "next_action": "Complete Security and exact source artifact, integrate release, then assess justified reuse of the accumulated artifact for existing isolated whole-site preview; no repeat asset build. Do not count deferral as deletion.",
+  "failed_runs": [
+    {
+      "source_sha": "5bcc3125df763b6d415ec2c58716b960a70e98ca",
+      "exact_run": 34270925550,
+      "result": "failure",
+      "reason": "Selected8 and lazy download/reset/phone/race assertions passed; added tour retry scenario awaited obsolete guard decorator .tour-load-retry. Canonical controller already owns .retry-tour; fixture now clicks that actual action. No production code or asset rebuild for this fixture correction."
+    }
+  ]
 }
