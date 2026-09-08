@@ -140,6 +140,47 @@
     };
   }
 
+  function ensureDescriptionDisclosure() {
+    var description = selected.querySelector('.hotel-desc');
+    if (!description || description.dataset.v2Disclosure === '1' || text(description).length < 280) return;
+    description.dataset.v2Disclosure = '1';
+    addClass(description, 'is-collapsed');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'hotel-desc-toggle';
+    setAttribute(button, 'aria-expanded', 'false');
+    setText(button, 'Подробнее об отеле');
+    button.addEventListener('click', function () {
+      var expanded = button.getAttribute('aria-expanded') === 'true';
+      setAttribute(button, 'aria-expanded', expanded ? 'false' : 'true');
+      setText(button, expanded ? 'Подробнее об отеле' : 'Свернуть описание');
+      description.classList.toggle('is-collapsed', expanded);
+    });
+    description.insertAdjacentElement('afterend', button);
+  }
+
+  function ensureFactsDisclosure() {
+    var facts = selected.querySelector('.facts');
+    if (!facts || facts.dataset.v2Disclosure === '1' || facts.children.length <= 5) return;
+    facts.dataset.v2Disclosure = '1';
+    var secondary = Array.from(facts.children).slice(5);
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary facts-secondary-toggle';
+    button.style.display = 'flex';
+    function update(expanded) {
+      facts.classList.toggle('facts-secondary-collapsed', !expanded);
+      secondary.forEach(function (item) { setHidden(item, !expanded); });
+      setAttribute(button, 'aria-expanded', expanded ? 'true' : 'false');
+      setText(button, expanded ? 'Скрыть детали' : 'Все детали тура');
+    }
+    button.addEventListener('click', function () {
+      update(button.getAttribute('aria-expanded') !== 'true');
+    });
+    update(false);
+    facts.insertAdjacentElement('afterend', button);
+  }
+
   function syncPresentation() {
     if (!currentTour || selected.hidden || !format) return;
     var values = displayValues(currentTour);
@@ -153,6 +194,7 @@
     });
     var scope = 'За весь тур · ' + format.partyLabel(number(currentTour.adults) || 2, number(currentTour.childs));
     var selectedPrice = selected.querySelector('.selected-price');
+    setText(selected.querySelector('.selected-head .eyebrow'), 'ВАШ ТУР');
     setText(selectedPrice && selectedPrice.querySelector('small'), scope);
     if (selectedPrice && currentTotal > 0) setAttribute(selectedPrice, 'aria-label', money(currentTotal) + ', ' + scope.toLowerCase());
     var flightContinue = selected.querySelector('.search3-flight-continue button');
@@ -252,9 +294,12 @@
     var description = selected.querySelector('.hotel-desc');
     var facts = selected.querySelector('.facts');
     var form = selected.querySelector('.lead-form');
+    addClass(selected, 'v2-approved-selected-tour');
     addClass(head, 'checkout-head');
     addClass(picture, 'checkout-picture');
     addClass(description, 'checkout-description');
+    ensureDescriptionDisclosure();
+    ensureFactsDisclosure();
     if (facts) {
       addClass(facts, 'checkout-facts');
       if (facts.getAttribute && facts.setAttribute) setAttribute(facts, 'role', 'list');

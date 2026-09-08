@@ -75,6 +75,44 @@ const dateRow = {
     return null;
   }
 };
+const descriptionClasses = new Set();
+let descriptionToggle;
+const description = {
+  textContent: 'Длинное проверенное описание отеля. '.repeat(12),
+  dataset: {},
+  classList: {
+    add(name) { descriptionClasses.add(name); },
+    toggle(name, enabled) { enabled ? descriptionClasses.add(name) : descriptionClasses.delete(name); },
+    contains(name) { return descriptionClasses.has(name); }
+  },
+  insertAdjacentElement(position, node) {
+    assert.equal(position, 'afterend');
+    descriptionToggle = node;
+  }
+};
+const factsClasses = new Set();
+let factsToggle;
+const factItems = Array.from({ length: 10 }, () => ({
+  hidden: false,
+  getAttribute() { return null; },
+  setAttribute() {}
+}));
+const facts = {
+  children: factItems,
+  dataset: {},
+  classList: {
+    add(name) { factsClasses.add(name); },
+    toggle(name, enabled) { enabled ? factsClasses.add(name) : factsClasses.delete(name); },
+    contains(name) { return factsClasses.has(name); }
+  },
+  getAttribute() { return null; },
+  setAttribute() {},
+  insertAdjacentElement(position, node) {
+    assert.equal(position, 'afterend');
+    factsToggle = node;
+  }
+};
+const eyebrow = { textContent: 'ВЫБРАННЫЙ ТУР' };
 let flightDataPresent = true;
 let fallbackDataWrites = 0;
 let fallbackDataValue;
@@ -114,6 +152,9 @@ const selected = {
     assert.ok(!selector.includes('search3-tour-detail-rail'), 'retired rail is not queried during selected-flow updates');
     if (selector === '.selected-price > small') return selectedPriceLabel;
     if (selector === '.selected-price') return selectedPrice;
+    if (selector === '.selected-head .eyebrow') return eyebrow;
+    if (selector === '.hotel-desc') return description;
+    if (selector === '.facts') return facts;
     if (selector === '.lead-form') return leadForm;
     if (selector === '.search3-flight-continue button') return fallbackButton;
     if (selector === '.tour-flights') {
@@ -145,7 +186,20 @@ const document = {
     return null;
   },
   addEventListener(name, handler) { if (name === 'click') documentClick = handler; },
-  createElement() { throw new Error('unexpected createElement'); }
+  createElement() {
+    const attributes = new Map();
+    const listeners = new Map();
+    return {
+      type: '',
+      className: '',
+      textContent: '',
+      style: { display: '' },
+      getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },
+      setAttribute(name, value) { attributes.set(name, value); },
+      addEventListener(name, handler) { listeners.set(name, handler); },
+      click() { const handler = listeners.get('click'); if (handler) handler(); }
+    };
+  }
 };
 const window = {
   addEventListener(name, handler) { events.set(name, handler); },
@@ -186,6 +240,24 @@ assert.equal(mobileBar.hidden, false, 'shared owner exposes the mobile action fo
 assert.equal(window.Search3SelectedTourMobile.version, 14, 'legacy compatibility API remains available');
 assert.equal(window.Search3SelectedTourMobile.sync, window.Search3SelectedFlowV2.sync,
   'legacy compatibility API delegates to the single selected-flow owner');
+assert.equal(description.dataset.v2Disclosure, '1', 'current owner adopts the long description disclosure');
+assert.ok(descriptionClasses.has('is-collapsed'), 'long description starts collapsed');
+assert.equal(descriptionToggle.getAttribute('aria-expanded'), 'false');
+assert.equal(descriptionToggle.textContent, 'Подробнее об отеле');
+descriptionToggle.click();
+assert.equal(descriptionToggle.getAttribute('aria-expanded'), 'true');
+assert.equal(descriptionToggle.textContent, 'Свернуть описание');
+assert.ok(!descriptionClasses.has('is-collapsed'), 'description expands without losing text');
+descriptionToggle.click();
+assert.ok(descriptionClasses.has('is-collapsed'), 'description can be collapsed again');
+assert.equal(facts.dataset.v2Disclosure, '1', 'current owner adopts secondary facts disclosure');
+assert.ok(factsClasses.has('facts-secondary-collapsed'));
+assert.ok(factItems.slice(0, 5).every(item => item.hidden === false));
+assert.ok(factItems.slice(5).every(item => item.hidden === true));
+assert.equal(factsToggle.getAttribute('aria-expanded'), 'false');
+factsToggle.click();
+assert.equal(factsToggle.getAttribute('aria-expanded'), 'true');
+assert.ok(factItems.every(item => item.hidden === false), 'all facts restore on expansion');
 flightRootReads = 0;
 priceWrites = 0;
 priceAttributeWrites = 0;
@@ -205,6 +277,7 @@ assert.equal(priceAttributeWrites, 1, 'latest price aria-label is written once')
 assert.match(mobileAmount.textContent, /120[\s\u00a0]?000/, 'mobile price shares the latest selected total');
 assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
 assert.equal(dateValue.textContent, '7 сентября', 'selected facts use the canonical date formatter');
+assert.equal(eyebrow.textContent, 'ВАШ ТУР', 'selected detail keeps its concise owner copy');
 assert.equal(selectedPriceLabel.textContent, 'За весь тур · 2 взрослых, 1 ребёнок', 'party scope is owned by selected-flow');
 assert.equal(selectedDataset.search3SelectedPresentation, '1', 'compatibility presentation marker is retained');
 strongText = '';
