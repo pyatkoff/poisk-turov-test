@@ -7,7 +7,7 @@ const bundledIife = require('./search3-bundle-iife.cjs');
 const root = path.join(__dirname, '..');
 const bundle = fs.readFileSync(process.argv[2] || path.join(root, 'v2/search3-results-filters-v1.js'), 'utf8');
 const owner = bundledIife(bundle, { global: 'Search3CandidateSelectedHandoffV1' });
-const canonicalReturn = fs.readFileSync(path.join(root, 'v2/selected-tour-return-v1.js'), 'utf8');
+const canonicalReturn = fs.readFileSync(path.join(root, 'v2/tour-controller-v4.js'), 'utf8');
 const events = new Map();
 const frames = [];
 const attributes = new Map();
@@ -92,6 +92,8 @@ assert.ok(!owner.includes('data.search3ReturnFocus'));
 assert.ok(!owner.includes('getClientRects'));
 assert.ok(!Object.hasOwn(window.Search3CandidateSelectedHandoffV1, 'focusReturnedContext'));
 assert.match(canonicalReturn, /requestAnimationFrame\(\(\)=>\{if\(target\)focusAndReveal\(target\)/,
-  'base return owner keeps the exact initiating tour focus');
+  'current controller keeps the exact initiating tour focus');
+assert.match(canonicalReturn, /closest\('\.back-results,\.lead-success-back'\)/,
+  'current controller owns every selected-tour return action');
 
-console.log('PASS: selected handoff owns one-frame entry focus; base runtime owns return focus');
+console.log('PASS: selected handoff owns one-frame entry focus; current controller owns return focus');

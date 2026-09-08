@@ -17,7 +17,7 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
-        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-booking-services.cjs', 'search3-lead-note-owner.cjs', 'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-entry-summary.cjs', 'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs', 'search3-progress-owner.cjs'):
+        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-booking-services.cjs', 'search3-lead-note-owner.cjs', 'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-selected-return-owner.cjs', 'search3-entry-summary.cjs', 'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs', 'search3-progress-owner.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for filter ownership regression')
@@ -237,6 +237,18 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("document.querySelector('.at-mobile-menu')", legacy)
         self.assertIn("document.querySelector('.v2-product-hero')", legacy)
         self.assertNotIn('.at-mobile-menu', current_markup)
+
+    def test_legacy_selected_return_runtime_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        controller = (ROOT / 'v2/tour-controller-v4.js').read_text()
+        legacy = (ROOT / 'v2/selected-tour-return-v1.js').read_text()
+        self.assertIn("'selected-tour-return-v1.js'", scoped)
+        self.assertIn("closest('.back-results,.lead-success-back')", controller)
+        self.assertIn("emit('tour-returned'", controller)
+        self.assertIn("root.setAttribute('aria-hidden','true')", controller)
+        self.assertIn("sourceButton", controller)
+        self.assertIn("window.V2SelectedTourReturnV1", legacy)
 
     def test_legacy_selected_description_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
