@@ -53,32 +53,32 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1540 retires the complete 2526-byte selected-tour-return-v1.js runtime from Search3 and moves exact source/fallback focus into the current tour controller. Raw route payload falls 552682 to 551591 (-1091); exact gzip recount falls 122724 to 122454 (-270). Full legacy route and protected contracts remain; no preview or production publication.",
+    "last_material_progress": "PR #1542 retires the complete 1855-byte flight-empty-recovery-v1.js runtime from Search3 and keeps one friendly retry affordance in the current selected-flow owner. Raw route payload falls 551591 to 550542 (-1049) and exact gzip falls 122454 to 122288 (-166). Full legacy route and protected contracts remain; no preview or production publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete 1855-byte flight-empty-recovery-v1.js owner against the current selected/flight-fallback owner. Retain friendly no-flight copy and exactly one delegated retry button, preserve fallback review/lead and price behavior, and require empty-retry-recovery plus exact selected browser CI.",
+    "next_action": "Audit price-confidence-v1.js as the next whole Search3 runtime owner. Preserve truthful total, pending-price and flight price arithmetic in current owners; proceed only if focused price snapshots prove the legacy layer is presentation-only.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_SELECTED_RETURN_RUNTIME",
-    "title": "Retire selected-tour return runtime",
+    "id": "S3_LEAN_FLIGHT_EMPTY_RUNTIME",
+    "title": "Retire flight-empty recovery runtime",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1540],
+    "source_prs": [1542],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "dddbaa5d9ead9b3178766a44eeba329418b4e497"
+      "0301f3bf9c2ab77d7f837e86f6915c344f9f87fe"
     ],
-    "release_sha": "269233aba77ac17817c810256cd1c84bfc62dd78",
-    "artifact_run": 34184702799,
-    "artifact_id": 10040123280,
-    "artifact_digest": "sha256:6b40ec5faf8e19e1f5cfe20f38e149fbb7c4f8cabffdeab4c06f8ad0b7da3542",
-    "checked_release_asset_bytes": 171559,
-    "checked_release_loaded_bytes": 551591,
+    "release_sha": "dac375ad4c0f4d366cab3c8a1be4855f3ad6dfcd",
+    "artifact_run": 34186184019,
+    "artifact_id": 10040600906,
+    "artifact_digest": "sha256:fa390f4dc397d04cf7a9c940d8051d3d416e309c2892c91bab14c3d6c43cc73c",
+    "checked_release_asset_bytes": 172365,
+    "checked_release_loaded_bytes": 550542,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the complete 1855-byte flight-empty-recovery-v1.js owner against the current selected/flight-fallback owner. Retain friendly no-flight copy and exactly one delegated retry button, preserve fallback review/lead and price behavior, and require empty-retry-recovery plus exact selected browser CI."
+    "next_action": "Audit price-confidence-v1.js as the next whole Search3 runtime owner. Preserve truthful total, pending-price and flight price arithmetic in current owners; proceed only if focused price snapshots prove the legacy layer is presentation-only."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1216,10 +1216,25 @@
       "focused_return_states": "original source, rerendered source, results fallback, lead-success return and temporary tabindex cleanup",
       "required_passed": 2,
       "preview_published": false
+    },
+    "flight_empty_runtime_retirement": {
+      "source_pr": 1542,
+      "source_sha": "0301f3bf9c2ab77d7f837e86f6915c344f9f87fe",
+      "security_run": 34186013087,
+      "artifact_runs": [34186013106, 34186184019],
+      "artifact_id": 10040600906,
+      "artifact_digest": "sha256:fa390f4dc397d04cf7a9c940d8051d3d416e309c2892c91bab14c3d6c43cc73c",
+      "results_geometry_artifact": 10040600381,
+      "results_geometry_digest": "sha256:b7619849afd13b93d6913481889e1007dd73cd27f510dd7b19644c2a02c3fabf",
+      "selected_geometry_artifact": 10040599919,
+      "selected_geometry_digest": "sha256:3cf61cca1b18f87ae2ef4a1a980c5d8c4aa2e5900406160137ed15f21a5a49cb",
+      "focused_source_states": "one current-tour retry, stable friendly copy, duplicate prevention, error exclusion and no-flight review handoff",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "269233aba77ac17817c810256cd1c84bfc62dd78",
-  "last_verified_commit_scope": "Checked Search3 release after #1540; legacy selected-tour return runtime excluded while the current controller preserves exact source/fallback focus, hidden/aria-hidden, reveal/scroll and v2:tour-returned. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "dac375ad4c0f4d366cab3c8a1be4855f3ad6dfcd",
+  "last_verified_commit_scope": "Checked Search3 release after #1542; legacy flight-empty recovery runtime excluded while the current selected-flow owner preserves one delegated retry, friendly copy, error isolation and fallback review. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -8409,6 +8424,26 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-selected-return-runtime.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_flight_empty_runtime_retirement": {
+    "source_pr": 1542,
+    "source_sha": "0301f3bf9c2ab77d7f837e86f6915c344f9f87fe",
+    "checked_code_release_sha": "dac375ad4c0f4d366cab3c8a1be4855f3ad6dfcd",
+    "retired_search3_owner": "flight-empty-recovery-v1.js",
+    "legacy_runtime_bytes_removed": 1855,
+    "current_owner_bytes_added": 806,
+    "raw_before": 551591,
+    "raw_after": 550542,
+    "raw_saved": 1049,
+    "gzip_before": 122454,
+    "gzip_after": 122288,
+    "gzip_saved": 166,
+    "eight_assets_before": 171559,
+    "eight_assets_after": 172365,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-flight-empty-runtime.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
