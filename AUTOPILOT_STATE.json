@@ -53,34 +53,33 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1533 retires the complete legacy search-progress-ux-v1.js/.css pair from Search3, retaining progress, empty/error recovery, continue-search and result-only retry in one current owner. This invocation is 577381 to 574518 raw (-2863), gzip 128290 to 127657 (-633). Full legacy route and protected contracts remain; no preview or production publication.",
+    "last_material_progress": "PRs #1535 and #1536 retire the complete legacy header-current-site.css and selected-tour-description-v1.js owners from Search3. Current header geometry and selected description/facts disclosures remain in current owners. Since the preceding recorded raw point, #1533/#1535/#1536 reduce 577381 to 556977 raw (-20404) and gzip 128290 to 124085 (-4205). Full legacy route and protected contracts remain; no preview or production publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Exclude the complete 6266-byte header-current-site.css owner from Search3 after focused global-header geometry proves it only targets absent legacy header classes. Keep the file in the full legacy manifest; do not touch selected-tour-layout-guard-v1.css.",
+    "next_action": "Audit the complete 4295-byte header-current-site.js runtime. Prove server-rendered phone/navigation and native header behavior before whole-owner exclusion; preserve the full legacy route and require focused header behavior plus exact artifact CI.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_PROGRESS_OWNER",
-    "title": "Retire legacy progress and recovery presentation pair",
+    "id": "S3_LEAN_HEADER_AND_SELECTED_DESCRIPTION",
+    "title": "Retire legacy header CSS and selected-tour description runtime",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [
-      1533
-    ],
+    "source_prs": [1535, 1536],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "a9653110264e6b47c0f4467afb14300c6a80c16d"
+      "bb7ed9e3f4eefcda01a2f49f0a1ff186c7064e0a",
+      "cc35208f740cd957ca450f7b19fa2acfe6af7e6d"
     ],
-    "release_sha": "aad34a0590b94bf3b140097411e935e9be33116f",
-    "artifact_run": 34178849497,
-    "artifact_id": 10038202718,
-    "artifact_digest": "sha256:86cf62bcbe99f2a3619550c740f6d3e78b2dd1e19b006e96ce90a414cf76eda8",
-    "checked_release_asset_bytes": 169877,
-    "checked_release_loaded_bytes": 574518,
+    "release_sha": "7d7cadd20fb890cf81423f0ae3c9abf11f218868",
+    "artifact_run": 34181265652,
+    "artifact_id": 10039007717,
+    "artifact_digest": "sha256:67a3c704cccb21dd254c91a774d91ce35d327ec06e1cfcdd1ebbd720614235f3",
+    "checked_release_asset_bytes": 171559,
+    "checked_release_loaded_bytes": 556977,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Exclude the complete 6266-byte header-current-site.css owner from Search3 after focused global-header geometry proves it only targets absent legacy header classes. Keep the file in the full legacy manifest; do not touch selected-tour-layout-guard-v1.css."
+    "next_action": "Audit the complete 4295-byte header-current-site.js runtime. Prove server-rendered phone/navigation and native header behavior before whole-owner exclusion; preserve the full legacy route and require focused header behavior plus exact artifact CI."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1155,10 +1154,39 @@
       "results_geometry_digest": "sha256:a9ab05fde18a7702063793e1c6083b437523ae227ec4d38e9c3471a555c43dad",
       "required_passed": 2,
       "preview_published": false
+    },
+    "header_css_owner_retirement": {
+      "source_pr": 1535,
+      "source_sha": "bb7ed9e3f4eefcda01a2f49f0a1ff186c7064e0a",
+      "security_run": 34179958602,
+      "artifact_runs": [34179958601, 34180190441],
+      "artifact_id": 10038644238,
+      "artifact_digest": "sha256:bb4e598493804b4072972cf88311a0b8e6d15119c93a048bc20bde5718993ff8",
+      "header_results_artifact": 10038643910,
+      "header_results_digest": "sha256:560e3fe15e150303701918c08e80e2b9aaef747f896654681f9b87d643f4878b",
+      "selected_geometry_artifact": 10038643590,
+      "selected_geometry_digest": "sha256:42271c8554265f2b102fcf7ae9d5cf69b80dcf742434159266a8cd5fe742dd68",
+      "required_passed": 2,
+      "preview_published": false
+    },
+    "selected_description_owner_retirement": {
+      "source_pr": 1536,
+      "source_sha": "cc35208f740cd957ca450f7b19fa2acfe6af7e6d",
+      "security_runs": [34180675058, 34181078426],
+      "initial_exact_failure": 34180675055,
+      "artifact_runs": [34181078436, 34181265652],
+      "artifact_id": 10039007717,
+      "artifact_digest": "sha256:67a3c704cccb21dd254c91a774d91ce35d327ec06e1cfcdd1ebbd720614235f3",
+      "results_header_artifact": 10039007339,
+      "results_header_digest": "sha256:53da57a12ad70134250d8002525fcaa601e8ab9d8597284359e3ce4c9aa76daf",
+      "selected_geometry_artifact": 10039006960,
+      "selected_geometry_digest": "sha256:17b6d18ce3d2ea350ea6f0bec56e41873d88103e2839f7a9e43b1f325fe779c1",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "aad34a0590b94bf3b140097411e935e9be33116f",
-  "last_verified_commit_scope": "Checked Search3 release after #1533; legacy progress JS/CSS excluded while one current owner retains all 13 lifecycle/recovery states and guarded result-only retry. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "7d7cadd20fb890cf81423f0ae3c9abf11f218868",
+  "last_verified_commit_scope": "Checked Search3 release after #1536; legacy header CSS and selected-tour description runtime excluded while current owners retain exact header geometry and selected description/facts disclosure. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -8281,6 +8309,32 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-progress-owner.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_header_and_selected_description_retirement": {
+    "source_prs": [1535, 1536],
+    "source_shas": [
+      "bb7ed9e3f4eefcda01a2f49f0a1ff186c7064e0a",
+      "cc35208f740cd957ca450f7b19fa2acfe6af7e6d"
+    ],
+    "checked_code_release_sha": "7d7cadd20fb890cf81423f0ae3c9abf11f218868",
+    "retired_search3_owners": [
+      "header-current-site.css",
+      "selected-tour-description-v1.js"
+    ],
+    "legacy_owner_bytes_removed": 19223,
+    "current_owner_bytes_added": 1682,
+    "raw_before": 574518,
+    "raw_after": 556977,
+    "raw_saved": 17541,
+    "gzip_before": 127657,
+    "gzip_after": 124085,
+    "gzip_saved": 3572,
+    "eight_assets_before": 169877,
+    "eight_assets_after": 171559,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-header-and-selected-description.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }
