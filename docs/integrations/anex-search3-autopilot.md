@@ -3,7 +3,77 @@
 Дата: 2026-09-07. Проект: только AnyTour / pyatkoff/poisk-turov-test.
 Рабочая ветка: feature/anex-search-adapter-20260907; draft PR #1493.
 
-## Живая очередь восстановлена; ожидаются новые наблюдения — 8 сентября
+## Очереди разбора с полными доказательствами — 8 сентября
+
+Исполняемый SHA **6f369f3eab59efe1fe9773fbb09b3c3be3a7d1a4** добавляет
+только экспорт разбора в observed-handler и его узкие проверки. Matching,
+импортёр, SSH, ограничения API, preview и workflows не изменены. Локально
+прошли13 observed-тестов; штатные проверки существующего workflow зелёные.
+
+**Run34266287831 attempt1/job102196377883**, success, восстановил
+**artifact10071403371**. Новых eligible ID0, reserved0, новых completed0,
+повторов0 и новых связей0. Hotels_DETAILS/PRICES не выполнялись; использованы
+сохранённые результаты и read-only observations. Checkpoint:
+completed260=inherited90+live170, in_flight0, batch_needs_finalization=false.
+Старые row digests и обратное чтение checkpoint проверены.
+
+Fresh DB readback: mappings12878, observations445/mapped193/pending252;
+staging8362/manual0 подтверждены preflight. Preflight hash mappings:
+`406984ed4ff72eb55e1bf9093b991c91cb3c9c4cc2c22897beb2cf68cfbdff73`.
+Importer input0/inserted0/no_new_strong_candidates. Catalog_hotels и ручные
+решения не изменялись. Нулевой прирост отражает отсутствие новых наблюдений,
+а не транспортный блокер или окончание сопоставления.
+
+Новые файлы в artifact:
+- `anex-observed-hotel-triage.json`:252 досье; наблюдаемое название,
+  страна/ID страны, частота/свежесть и полный исходный результат отдельно.
+- `anex-observed-hotel-triage.csv`:приоритетный список отелей,
+  данные карточки ANEX, причина непринятия и ID кандидатов.
+- `anex-observed-hotel-candidates.csv`:11074 сохранённых строк кандидатов
+  для119 отелей; название, страна, курорт, координаты, расстояние, сходство,
+  оценка и курортные признаки. Это альтернативы, не11074 принятые связи.
+
+Для90 наследованных результатов полный evidence восстанавливается из
+неизменённого legacy checkpoint с проверкой каждого row digest. Это чтение,
+не повтор legacy-очереди. Исторические hints фиксированной112-очереди
+отделены от проверенных кандидатов; у6 ошибок есть только такие hints.
+Приоритет — search_count DESC/last_seen DESC/ID ASC, он не меняет confidence.
+Принятые/manual/новые/in_flight ID в досье нерешённых completed не попадают.
+CSV защищён от формул; JSON/CSV прочитаны обратно и имеют digest в report.
+
+Состав252 нерешённых: Турция142/Египет110.
+
+| Статус/причина | Отелей | Следующая отдельная работа |
+| --- | ---: | --- |
+| review / insufficient_independent_evidence | 55 | Дополнить независимые признаки по сохранённым кандидатам |
+| review / competing_candidates | 23 | Сравнить альтернативы и корпуса |
+| review / candidate_limit_reached | 33 | Проверить полноту выборки кандидатов; лимит не снимать как критерий уверенности |
+| review / hotel_section_difference | 8 | Разобрать части отельного комплекса |
+| source_error / interrupted_result_unknown | 119 | Разбирать обрыв без автоматического повторения неизвестных запросов |
+| source_error / details_empty | 12 | Пустая карточка — не no_match; отдельная диагностика |
+| unmatched / no_candidates | 2 | Отдельный поиск независимых кандидатов |
+
+Первые приоритетные ID (каждый наблюдался13 раз):
+8121,8227,8554,8595,8665,8803,9153,15439,15918,16193.
+Обычный observed-autopilot по-прежнему берёт только новые ID максимум30;
+эти252 досье не являются разрешением переиграть completed или принять review.
+
+Финальный **artifact10071963915**, digest
+`1676d1467e0490ce1227cc4af7a37dc7c545c30e5866266414d23dad12fa89a4`;
+reservation10071958016. Финальные file digests:
+- triage.json: `a961cf2e7585cac90edadf52edd38d5d68b3a85b6459a333cf4d1c91fa6c898c`
+- triage.csv: `cb78be0238c2876c89cc20c70cff320be2c26f29bbedc5e9c763827aff5001f3`
+- candidates.csv: `852c486b55b6c759d4acf70ca1daf9ddc728e9db6b4091c3de1844fad38ec473`
+
+Сверены runner file/checkpoint readback, DB snapshot и artifact metadata/digest;
+независимое скачивание ZIP не заявляется. Текущий проверенный observed-run:
+34266287831 на6f369f3e. Прежний34264656754/7e578e33 теперь устарел по exporter,
+не повторять после изменения исполняемого кода. Автоматизация остаётся
+включённой и ожидает новых наблюдений; неизменный triage отчёт не присылать
+повторно. Разбор кандидатов — следующий самостоятельный шаг по поручению
+владельца, без ослабления условий принятия.
+
+## История: живая очередь восстановлена — 8 сентября
 
 Владелец поручил продолжить работу после паузы. Диагностический SHA
 `e151ed34069ee70af556faf78205c67c236ff648`, run34264149676/job102189179753,
