@@ -6,6 +6,7 @@
       "behavior/filter-rail.js",
       "behavior/mobile-search-entry.js",
       "behavior/results-top.js",
+      "behavior/results/toolbar.js",
       "behavior/selected-tour-mobile-styles.js",
       "behavior/maket7-lock.js",
       "behavior/lead-flow.js",
@@ -20,7 +21,6 @@
       "behavior/summary-cta.js",
       "behavior/lead-note.js",
       "behavior/tour-detail-rail.js",
-      "behavior/results-presentation.js",
       "behavior/tour-presentation.js",
       "behavior/flight-price-presentation.js",
       "behavior/selected-tour-handoff.js"

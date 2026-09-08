@@ -51,7 +51,7 @@ async function run(browser, width) {
     const response = await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200, 'isolated Search3 route loads');
     assert.equal(await page.locator('body').evaluate(node => node.classList.contains('search3-candidate')), true);
-    await page.waitForFunction(() => window.V2Runtime && window.V2TourController && window.Search3SelectedFlowV2);
+    await page.waitForFunction(() => window.V2Runtime && window.V2Results && window.V2TourController && window.Search3SelectedFlowV2);
 
     for (const selector of ['#tourSearch input[type=date]', '#tourSearch select.search3-direct-control', '#tourSearch .search-submit']) {
       const control = page.locator(selector).first();
@@ -60,7 +60,7 @@ async function run(browser, width) {
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'entry has no horizontal overflow');
 
-    await page.evaluate(({ tour, flights }) => {
+    await page.evaluate(({ tour, flights, picture }) => {
       window.__resetSmokeCalls = { tour: 0, flights: 0, other: 0 };
       window.V2Runtime.api = async action => {
         if (action === 'tour') { window.__resetSmokeCalls.tour++; return tour; }
@@ -68,8 +68,14 @@ async function run(browser, width) {
         window.__resetSmokeCalls.other++;
         throw new Error('unexpected fixture API action ' + action);
       };
-      window.V2TourController.selectTour(tour.id);
-    }, { tour, flights });
+      window.V2Results.render([{
+        id: 'reset-smoke-hotel', name: tour.hotel.name, country: tour.hotel.country,
+        region: tour.hotel.region, price: tour.price, picturelink: picture, tours: [tour]
+      }]);
+    }, { tour, flights, picture });
+    const directTour = page.locator('#results .direct-tour').first();
+    await directTour.waitFor();
+    await directTour.click();
     await page.waitForSelector('#selectedTour .search3-flight-continue button');
     assert.match(await page.locator('#selectedTour').innerText(), /148[\s\u00a0]*500/, 'selected price remains visible');
     await page.locator('#selectedTour .search3-flight-continue button').click();

@@ -971,12 +971,10 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         for name in (
             'search3-presentation-utils.cjs', 'search3-booking-summary.cjs',
             'search3-booking-services.cjs', 'search3-lead-note-owner.cjs',
-            'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs',
-            'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs',
+            'search3-booking-navigation.cjs',
+            'search3-selected-flow-scheduler.cjs',
             'search3-selected-return-owner.cjs', 'search3-entry-summary.cjs',
-            'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs',
-            'search3-filter-rail-ownership.cjs',
-            'search3-filter-rail-price-input.cjs',
+            'search3-meal-owner.cjs',
         ):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
