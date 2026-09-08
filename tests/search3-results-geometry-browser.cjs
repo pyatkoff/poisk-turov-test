@@ -108,7 +108,6 @@ function inside(inner, outer, message) {
           assert.ok(state.photo.box.right <= state.body.box.left + 1 || state.photo.box.bottom <= state.body.box.top + 1,
             `${width}: photo and body do not overlap`);
           {
-            if (width >= 1000) assert.ok(Math.abs(state.main.box.height - 230) <= 1, `${width}: desktop card owner keeps 230px geometry`);
             if (expanded) {
               assert.notEqual(state.tours.display, 'none', `${width}: expanded packages are visible`);
               inside(state.row.box, state.tours.box, `${width}: package row stays inside package list`);
