@@ -60,3 +60,14 @@ body.search3-candidate{
 /* Native radio and selected border already convey selection; no price overlay. */
 body.search3-candidate #selectedTour .flight-variant.is-selected:before{content:none!important}
 @media(max-width:430px){body.search3-candidate #selectedTour .tour-flights.checkout-flights .flight-variant{margin:0!important}}
+
+/* Live flight chrome retained after retiring the broad legacy design layer. */
+body.search3-candidate #selectedTour{
+& .back-results{gap:6px!important}
+& .flight-route{padding:10px 12px!important;border-radius:14px!important;background:#fafbfe!important}
+& .flight-arrow{width:34px!important;height:34px!important;border-radius:50%!important;background:#edf2ff!important}
+}
+@media(max-width:560px){body.search3-candidate #selectedTour{
+& .flight-route{padding:9px!important;border-radius:12px!important}
+& .flight-arrow{width:24px!important;height:20px!important;background:transparent!important}
+}}

@@ -227,5 +227,12 @@ html body.search3-candidate{
   }
 }
 }
+
+@media(max-width:560px){
+  html body.search3-candidate #tourSearch{
+    & .search3-primary-grid{gap:10px!important}
+    & .search3-primary-grid>.field>select{height:49px!important}
+  }
+}
 /* Search collapse belongs to the current form; the hidden legacy sticky UI is not loaded. */
 @media(max-width:700px){.mobile-search-collapsed{display:none!important}}

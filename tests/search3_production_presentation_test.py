@@ -204,6 +204,23 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for contract in ['.results-layout', '.hotel-card', '.hotel-photo', '.hotel-tours', '.tour-row']:
             self.assertIn(contract, current)
 
+    def test_design_v1_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/design-v1.css').read_text()
+        current = ''.join(path.read_text() for path in (ROOT / 'src/search3/styles').rglob('*.css'))
+        self.assertIn("'design-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'design-v1.css'", scoped)
+        for legacy_contract, current_contract in [
+            ('.search-card', '#tourSearch'),
+            ('.hotel-card', '.hotel-card'),
+            ('.selected-tour', '#selectedTour'),
+            ('.flight-variant', '.flight-variant'),
+            ('.lead-form', '.lead-form'),
+        ]:
+            self.assertIn(legacy_contract, legacy)
+            self.assertIn(current_contract, current)
+
     def test_tablet_legacy_extras_are_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
