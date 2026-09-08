@@ -2508,3 +2508,19 @@ Next: retire the complete `selected-tour-layout-guard-v1.css` and audit
 `br3-control-consistency-v1.css` in one substantial reversible package. Preserve
 current progress/error controls, focus/touch targets, selected return/description
 geometry, and keep both legacy files unchanged on the old route.
+
+## S3_LEAN_CONTROL_GUARDS_LAYER — checked release, 2026-09-08
+
+Source PR #1580 / `5b07409fdacb9b5cd8912f0c117eabd9e5378172`; checked code release `4a8b279deda40075817013653bf03dcd51f927eb`. Search3 no longer loads the complete 4357-byte `br3-control-consistency-v1.css` and 916-byte `selected-tour-layout-guard-v1.css` layers. Both unchanged files remain in the full manifest used by `/poisk-turov-old/`.
+
+Current owners retain only active secondary/progress/retry/filter controls, focus and reduced-motion behavior, direct-tour CTA state, hotel-description disclosure, and the tablet/phone selected-head and price geometry. The first exact run `34218075137` correctly exposed an over-specific retained selector that moved review content at 760px and left the phone review grid template wrong. The selector was reduced to donor specificity and the phone one-column head restored; no guard or compared property was removed.
+
+Loaded raw is **472663 → 470476 bytes (−2187 net)**: scoped shared CSS **113833 → 108560**, shared JavaScript remains **183740**, and the eight generated public assets are **175090 → 178176** (+3086 retained current-owner CSS). Carried same-method gzip is **107843 → 107522 (−321)**.
+
+Security `34220520877`, exact source run `34220520872` and ready repeat `34220737644` passed. Reusable artifact `10053671415`, digest `sha256:101937e4872190abb5126f9280f6103596918ceb1d20def4d2de5afaf2516d08`. Results/entry evidence `10053670660`, digest `sha256:c6caf779e233c7b3220d9d21a7b077947a5b6c91e50addae0ee8e405141c8bc8`; selected evidence `10053669978`, digest `sha256:35b64a1363a68353f446656709ea1f4436e60d86e67f28a50d8109804ab30931`.
+
+Exact source/PHP/path/presentation/isolation guards passed. Chromium retained all 12 selected detail/review/lead states at 375/760/1000/1440 and the guarded results/entry states, with no external API or lead request. Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping, Metrika/analytics/goals, logo and native-browser/nesting contracts are preserved.
+
+Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; this source was not published. Main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Live current-source interaction, representative manual screenshot inspection, physical Safari/safe-area and owner acceptance remain deferred. Audit: `docs/project/search3-lean-control-guards-layer.json`.
+
+Next: audit `search-filters-ux-v1.css` and `selected-tour-ux.css` as whole-owner candidates. Retire only the stronger substantial candidate after compactly preserving active Search3 lifecycle/geometry in current owners; keep the old route unchanged.

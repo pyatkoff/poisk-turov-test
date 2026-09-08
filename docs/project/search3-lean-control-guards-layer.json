@@ -1,0 +1,102 @@
+{
+  "task": "S3_LEAN_CONTROL_GUARDS_LAYER",
+  "date": "2026-09-08",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "source": {
+    "pr": 1580,
+    "sha": "5b07409fdacb9b5cd8912f0c117eabd9e5378172",
+    "release_sha": "4a8b279deda40075817013653bf03dcd51f927eb"
+  },
+  "retirement": {
+    "files": [
+      {
+        "file": "v2/br3-control-consistency-v1.css",
+        "raw_bytes": 4357
+      },
+      {
+        "file": "v2/selected-tour-layout-guard-v1.css",
+        "raw_bytes": 916
+      }
+    ],
+    "search3_excluded": true,
+    "legacy_full_manifest_retained": true,
+    "current_owner_compensation_bytes": 3086,
+    "rationale": "Current owners retain active secondary/progress/retry/filter, focus/reduced-motion, direct-tour, description disclosure and selected tablet/phone geometry. Legacy-only search controls, summary/sticky, nights/toggle and duplicated geometry remain excluded."
+  },
+  "metrics": {
+    "before": {
+      "shared_css": 113833,
+      "shared_js": 183740,
+      "eight_assets": 175090,
+      "raw_total": 472663,
+      "gzip_total": 107843
+    },
+    "after": {
+      "shared_css": 108560,
+      "shared_js": 183740,
+      "eight_assets": 178176,
+      "raw_total": 470476,
+      "gzip_total": 107522
+    },
+    "saved": {
+      "raw": 2187,
+      "gzip": 321
+    }
+  },
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS contents and the eight generated public paths. Gzip carries the preceding exact absolute with a same-method delta calculated from the final and preceding reusable artifact payloads; the 3086 generated compensation bytes are included.",
+  "verification": {
+    "local": [
+      "python3 scripts/build/search3_assets.py --write and --check",
+      "46 presentation tests passed with one local PHP-dependent skip"
+    ],
+    "diagnostic_failure": {
+      "run": 34218075137,
+      "reason": "Over-specific retained tablet selector overrode review align-items at 375/760 and left the 375 review grid template two-column."
+    },
+    "security": {
+      "run": 34220520877,
+      "conclusion": "success"
+    },
+    "exact_artifact_runs": [
+      34220520872,
+      34220737644
+    ],
+    "final_artifact": {
+      "id": 10053671415,
+      "digest": "sha256:101937e4872190abb5126f9280f6103596918ceb1d20def4d2de5afaf2516d08"
+    },
+    "results_geometry": {
+      "id": 10053670660,
+      "digest": "sha256:c6caf779e233c7b3220d9d21a7b077947a5b6c91e50addae0ee8e405141c8bc8"
+    },
+    "selected_geometry": {
+      "id": 10053669978,
+      "digest": "sha256:35b64a1363a68353f446656709ea1f4436e60d86e67f28a50d8109804ab30931"
+    },
+    "scope": "Exact source/PHP/path/presentation/isolation guards plus 12 selected detail/review/lead states at 375/760/1000/1440 and guarded results/entry geometry. No external API or lead request."
+  },
+  "protected_contracts": [
+    "eight public Search3 paths",
+    "price arithmetic",
+    "URL/payload",
+    "Tourvisor/API",
+    "lead transport and field mapping",
+    "Metrika/analytics/goals",
+    "canonical /images/logo.svg",
+    "native browser/nesting"
+  ],
+  "publication": {
+    "published": false,
+    "published_preview_source": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "main_changed": false,
+    "production_changed": false
+  },
+  "deferred": [
+    "live current-source interaction",
+    "representative manual screenshot inspection",
+    "physical Safari and safe-area",
+    "owner visual acceptance"
+  ],
+  "next_action": "Audit search-filters-ux-v1.css and selected-tour-ux.css as whole-owner candidates; preserve active filter lifecycle and selected detail/review/lead geometry before another exclusion."
+}
