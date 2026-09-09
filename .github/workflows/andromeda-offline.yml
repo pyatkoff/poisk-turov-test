@@ -18,6 +18,8 @@ on:
       - 'app/integrations/andromeda-hotel-resolver.php'
       - 'tests/andromeda-hotel-resolver-smoke.php'
       - 'tests/andromeda-offer-store-smoke.php'
+      - 'scripts/diagnostics/andromeda_hotel_evidence.py'
+      - 'tests/andromeda_hotel_evidence_test.py'
 permissions:
   contents: read
   actions: read
@@ -44,6 +46,7 @@ jobs:
           php tests/andromeda-offer-store-smoke.php
           php -l app/integrations/andromeda-hotel-resolver.php
           php tests/andromeda-hotel-resolver-smoke.php
+          python3 -B tests/andromeda_hotel_evidence_test.py
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -58,4 +61,25 @@ jobs:
         with:
           name: andromeda-normalized-offers
           path: ${{ runner.temp }}/normalized.json
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/saved-catalog
+      - name: Build unresolved hotel evidence from pinned saved inputs
+        run: |
+          python3 -B scripts/diagnostics/andromeda_hotel_evidence.py \
+            --normalized "$RUNNER_TEMP/normalized.json" \
+            --normalized-sha256 eef484d6d879181ee478c1b050f3e972b2b1b54daf554d65f6da5e7557f975d6 \
+            --catalog "$RUNNER_TEMP/saved-catalog/all.json" \
+            --catalog-sha256 01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641 \
+            --output "$RUNNER_TEMP/andromeda-hotel-evidence.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-hotel-evidence
+          path: ${{ runner.temp }}/andromeda-hotel-evidence.json
           if-no-files-found: error
