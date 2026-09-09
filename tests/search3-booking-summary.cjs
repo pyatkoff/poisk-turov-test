@@ -17,4 +17,7 @@ assert.match(price, /new CustomEvent\('v2:tour-price-updated'/, 'canonical price
 assert.match(price, /Стоимость с выбранным рейсом/, 'selected price keeps confirmed flight total');
 const controller = read('v2/tour-controller-v4.js');
 assert.match(controller, /leadPayload\(new FormData\(form\)\)/, 'canonical controller retains lead payload');
+const lead = read('v2/lead-form-guard-v1.js');
+assert.match(lead, /function directText\(node\)/, 'lead summary reads only the visible price and flight label owner');
+assert.match(lead, /priceText=directText\(price\),flightText=directText\(flight\)/, 'lead summary excludes nested captions and tradeoffs');
 console.log('PASS: duplicate booking card retired; canonical selected price and lead payload remain');
