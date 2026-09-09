@@ -1,9 +1,7 @@
 <?php
 declare(strict_types=1);
 
-function sp_e($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
-
-require_once __DIR__ . '/../v2/seo-price-calendar-v1.php';
+require_once __DIR__ . '/../v2/country-page-v1.php';
 
 function cal_fail(string $message): never
 {
@@ -119,6 +117,16 @@ cal_assert(str_contains($shell, "sp_inline_css('seo-price-calendar-v1.css')"), '
 cal_assert(str_contains($country, "v2_seo_country_snapshot_offers(\$countryId, 12)"), 'country_candidates');
 cal_assert(str_contains($country, "array_slice(\$offerCandidates, 0, 6)"), 'country_visible_six');
 cal_assert(str_contains($country, 'v2_seo_render_price_calendar'), 'country_calendar');
+cal_assert(cp_offer_freshness_label([
+    ['snapshotObservedAt'=>'2026-09-08 23:59:59'],
+    ['snapshotObservedAt'=>'2026-09-09 07:12:00'],
+    ['snapshotObservedAt'=>'not-a-date'],
+    ['snapshotObservedAt'=>'2026-02-31 00:00:00'],
+]) === 'Цены обновлены 09.09.2026', 'country_offer_latest_valid_date');
+cal_assert(cp_offer_freshness_label([['snapshotObservedAt'=>'2026-01-05T10:00:00Z']]) === 'Цены обновлены 05.01.2026', 'country_offer_iso_date');
+cal_assert(cp_offer_freshness_label([[], 'bad-row', ['snapshotObservedAt'=>'']]) === '', 'country_offer_invalid_date_hidden');
+cal_assert(str_contains($country, 'data-country-offer-freshness'), 'country_offer_freshness_marker');
+cal_assert(str_contains($country, 'sp_e($offerFreshnessLabel)'), 'country_offer_freshness_escaped');
 cal_assert(str_contains($resort, "v2_seo_resort_snapshot_offers(\$countryId, \$regionId, 12)"), 'resort_candidates');
 cal_assert(str_contains($resort, "array_slice(\$offerCandidates, 0, 6)"), 'resort_visible_six');
 cal_assert(str_contains($resort, 'v2_seo_render_price_calendar'), 'resort_calendar');
@@ -127,4 +135,4 @@ cal_assert(str_contains($seasonal, "v2_seo_seasonal_snapshot_offers(\$pageKey,12
 cal_assert(str_contains($seasonal, "modify('last day of this month')"), 'seasonal_month_clamp');
 cal_assert(str_contains($seasonal, 'v2_seo_render_price_calendar'), 'seasonal_calendar');
 
-echo "SEO_PRICE_CALENDAR_UI_OK unknown_not_zero=1 seasonal_month_clamp=1 server_rendered=1 search_handoff=1\n";
+echo "SEO_PRICE_CALENDAR_UI_OK unknown_not_zero=1 seasonal_month_clamp=1 server_rendered=1 search_handoff=1 countryFreshness=1\n";
