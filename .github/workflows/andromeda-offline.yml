@@ -2,6 +2,8 @@ name: Andromeda offline protocol
 on:
   pull_request:
     paths:
+      - 'app/integrations/andromeda-search.php'
+      - 'tests/andromeda-search-smoke.php'
       - 'app/integrations/andromeda-client.php'
       - 'tests/andromeda-client-smoke.php'
       - 'app/integrations/andromeda-transport.php'
@@ -35,6 +37,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: PHP lint and offline fixtures
         run: |
+          php -l app/integrations/andromeda-search.php
+          php tests/andromeda-search-smoke.php
           php -l app/integrations/andromeda-client.php
           php -l tests/andromeda-client-smoke.php
           php tests/andromeda-client-smoke.php
@@ -64,6 +68,13 @@ jobs:
           path: ${{ runner.temp }}/real-price
       - name: Normalize pinned real offers offline
         run: php tests/andromeda-normalizer-smoke.php "$RUNNER_TEMP/real-price/price.json" "$RUNNER_TEMP/normalized.json"
+      - name: Execute provider start and resume against the saved real page
+        run: php tests/andromeda-search-smoke.php "$RUNNER_TEMP/real-price/price.json" "$RUNNER_TEMP/andromeda-search-response.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-search-response
+          path: ${{ runner.temp }}/andromeda-search-response.json
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: andromeda-normalized-offers

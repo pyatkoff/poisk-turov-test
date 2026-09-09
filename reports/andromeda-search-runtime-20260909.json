@@ -1,0 +1,40 @@
+{
+  "issue": 1717,
+  "status": "checked_not_published",
+  "source_sha": "73cb5956ddb0503a4a96daaaf4dac0bff1db157e",
+  "pr": 1782,
+  "base_commit": "d829a13130ef70e767157408f1c5a78957b801b6",
+  "input_capture_run": 34365549508,
+  "input_capture_artifact": 10109677472,
+  "input_capture_sha256": "c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9",
+  "implementation": "Provider start/resume connects client, normalizer and private offer store. Durable reservation precedes network; unknown results cannot replay. Unresolved hotels remain in separate namespaced groups.",
+  "verification": {
+    "workflow": 34375204139,
+    "job": 102546144740,
+    "security_run": 34375204180,
+    "conclusion": "success",
+    "new_checks": 33,
+    "real_saved_offers": 50,
+    "hotel_groups": 16,
+    "status": "partial",
+    "response_sha256": "3735a266aa089d99d100beba9cb902d18e0ce4e9ea35104b31e78418c40cb5d2",
+    "readback": true,
+    "artifact": 10113547043,
+    "artifact_digest": "sha256:9b5b1c8256d3658b340a92172d42effc0c9cc6efae64d82f5073a5c6503cff2d",
+    "independent_zip_download": false
+  },
+  "supplier_calls": 0,
+  "database_writes": 0,
+  "accepted_mappings": 0,
+  "published": false,
+  "selection_enabled": false,
+  "next_action": "Connect a scoped HTTP route using existing owner-login.php authority and durable private state before network. Adopt this response in the current SEARCH renderer through #996, coordinated with #1779. No hotel matching prerequisite for standalone source cards.",
+  "deferred": [
+    "HTTP route/auth/storage integration",
+    "account-wide request budget at the route boundary",
+    "general form criteria translation",
+    "SEARCH renderer consumption and visual checks",
+    "preview publication",
+    "quote and selection"
+  ]
+}
