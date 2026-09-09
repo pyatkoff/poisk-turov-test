@@ -1,4 +1,54 @@
 {
+  "latest_shared_control_owner_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1658,
+    "baseline_release_sha": "5d9ea19a8fa44864c70b87e34cc9d4c39b411fc0",
+    "source_sha": "d68c0989e949afde8fcb1051c3fc9ab9716a2907",
+    "source_tree": "872c096e7eb8d0baee9b6dd478747b2914910e65",
+    "release_integration_sha": "6304d128429e999e97ba1dbdc9fc4c3933f7574c",
+    "product_result": [
+      "Shared content pages keep the approved blue primary CTA and 44px telephone targets under one canonical owner.",
+      "The later site-coherence corrections were removed and the owner guard now rejects their return.",
+      "Computed visuals, homepage search, Search3 and protected contracts are unchanged."
+    ],
+    "size": {
+      "search3_eight_assets_raw_bytes": 13574,
+      "search3_eight_assets_delta_raw_bytes": 0,
+      "shared_css_before_raw_bytes": 17699,
+      "shared_css_after_raw_bytes": 17530,
+      "shared_css_removed_raw_bytes": 169,
+      "homepage_css_delta_raw_bytes": -332,
+      "js_delta_raw_bytes": 0
+    },
+    "ci": {
+      "security_run": 34301707589,
+      "standalone_content_run": 34301712871,
+      "exact_artifact_run": 34301712792,
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 10085158687,
+      "digest": "sha256:5fda4c63be5b5f2192ceddb928c8022a73b8fed0d9596948acbf2543d6a65f8b"
+    },
+    "publication": {
+      "published": false,
+      "reason": "Computed visuals are intentionally unchanged; no additional preview deployment is justified.",
+      "published_preview_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "audit": "docs/project/search3-shared-control-owner.json",
+    "deferred": [
+      "physical Safari and safe-area verification",
+      "owner production visual acceptance"
+    ],
+    "rollback": "Revert 6304d128429e999e97ba1dbdc9fc4c3933f7574c independently.",
+    "next_action": "Continue S3_PRODUCT_SHARED_SITE with a bounded audit of shared header, navigation, footer, container, secondary button and link states; consolidate only confirmed duplicate ownership or mismatch, otherwise advance to S3_PRODUCT_PAGES_HANDOFF."
+  },
   "latest_selected_lead_product_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -792,23 +842,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1655 makes six flight variants scannable, leaves one Search3 handoff CTA and carries the selected flight into the existing lead summary. Source ef8ce1d8 is checked, merged as d6b71962 and published exactly in the isolated preview.",
+    "last_material_progress": "#1658 moves approved shared content CTA and telephone geometry into one canonical owner and removes the later duplicate layer. Source d68c0989 is checked and merged as 6304d128; published preview remains exact source ef8ce1d8 because computed visuals are unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Converge shared DS2 content controls into one current owner across representative public routes, removing superseded site-coherence overrides in the same package.",
+    "next_action": "Audit shared header, navigation, footer, container, secondary button and link states; consolidate only confirmed duplicate ownership or mismatch, otherwise advance to pages and handoff.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
     "id": "S3_PRODUCT_SHARED_SITE",
     "title": "Converge shared site components and ownership",
-    "status": "QUEUED_OWNER_AUTHORIZED",
+    "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "d6b71962c2a1fa47de2ffeab9158e2f3133f2d28",
+    "last_fully_checked_release_sha": "6304d128429e999e97ba1dbdc9fc4c3933f7574c",
     "published_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
-    "next_action": "Fold the approved blue .sp-primary and 44px .sp-office-phone rules into shared-content-primitives-v1.css, remove the superseded site-coherence-v1.css overrides and verify representative shared routes at mobile and desktop widths.",
-    "baseline_release_sha": "d6b71962c2a1fa47de2ffeab9158e2f3133f2d28",
+    "next_action": "Audit shared header, navigation, footer, container, secondary button and link states; consolidate only confirmed duplicate ownership or mismatch, otherwise advance to S3_PRODUCT_PAGES_HANDOFF.",
+    "baseline_release_sha": "6304d128429e999e97ba1dbdc9fc4c3933f7574c",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9502,7 +9552,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T02:02:00.000Z",
+  "updated_at": "2026-09-09T02:12:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
