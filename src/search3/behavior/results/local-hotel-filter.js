@@ -1,7 +1,7 @@
 (function(){'use strict';
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions');
 if(!results||!actions)return;
-let field=null,input=null,status=null,categoryField=null,categorySelect=null,mealField=null,mealSelect=null,sourceItems=[],unmatched=new Set();
+let field=null,input=null,status=null,categoryField=null,categorySelect=null,mealField=null,mealSelect=null,sourceItems=[],projectedItems=[],unmatched=new Set();
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function cards(){return Array.from(results.querySelectorAll('.hotel-card'));}
 function itemCategories(list){
@@ -50,12 +50,13 @@ function project(items){
   mealSelect.value=available&&labels.has(previous)?previous:'';
   mealField.hidden=!available;
   const selected=mealSelect.value;
-  if(!selected)return items;
-  return items.map(h=>{
+  if(!selected){projectedItems=items;return projectedItems;}
+  projectedItems=items.map(h=>{
     const tours=h.tours.filter(t=>normalize(api.mealLabel(t))===selected);
     if(!tours.length)unmatched.add(String(h.id));
     return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});
   });
+  return projectedItems;
 }
 function syncCategory(list){
   const values=itemCategories(list),complete=list.length>1&&values.length===sourceItems.length&&values.every(value=>value>0);
@@ -69,22 +70,26 @@ function syncCategory(list){
 function apply(){
   ensure();
   const list=cards(),query=normalize(input.value),category=syncCategory(list),categories=itemCategories(list);
+  const visibleIds=new Set();
   let shown=0;
   list.forEach((card,index)=>{
     const title=card.querySelector('.hotel-title');
     const matchesName=!query||normalize(title&&title.textContent).includes(query);
     const matchesCategory=!category||categories[index]===category;
     card.hidden=!(matchesName&&matchesCategory&&!unmatched.has(String(card.dataset.hotelId)));
-    if(!card.hidden)shown++;
+    if(!card.hidden){shown++;visibleIds.add(String(card.dataset.hotelId||''));}
   });
   field.hidden=list.length<2;
   status.textContent=query||category||mealSelect.value?'Показано '+shown+' из '+list.length+' загруженных отелей':'';
+  const items=projectedItems.filter(item=>visibleIds.has(String(item&&item.id!==undefined&&item.id!==null?item.id:'')));
+  window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:!!(query||category||mealSelect.value)}}));
 }
 function clear(event){
   ensure();
   // Editing keeps the prior result projection intact until a real new search.
   if(event&&event.detail&&event.detail.dirty){field.hidden=true;categoryField.hidden=true;mealField.hidden=true;return;}
   sourceItems=[];
+  projectedItems=[];
   unmatched=new Set();
   input.value='';
   categorySelect.value='0';
@@ -100,5 +105,5 @@ ensure();
 window.addEventListener('v2:results-rendered',rendered);
 window.addEventListener('v2:search-started',clear);
 window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,version:3};
+window.Search3LocalHotelFilter={apply,clear,project,version:4};
 })();

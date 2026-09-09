@@ -92,7 +92,7 @@ jobs:
           global.document={addEventListener(){},getElementById(){return null;}};
           require('./v2/current-price-calendar-v1.js');
           const c=window.V2CurrentPriceCalendar;
-          if(!c||c.version!==1)throw new Error('calendar API missing');
+          if(!c||c.version!==2)throw new Error('calendar API missing');
           const rows=c.collect([
             {tours:[{date:'01.09.2026',price:150000},{date:'2026-09-02',price:140000}]},
             {tours:[{date:'01.09.2026',price:125000},{date:'03.09.2026',price:0},{date:'bad',price:90000}]}
