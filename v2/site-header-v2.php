@@ -34,6 +34,18 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
         ['/contacts/', 'Контакты'],
     ];
     ?>
+<?php if ($activePath !== '/' && $activePath !== '/poisk-turov/'): ?>
+<script data-anytour-favicon-bootstrap>
+(function(){
+  var head=document.head;if(!head)return;
+  var href='/favicon.php?v=20260903';
+  head.querySelectorAll('link[rel~="icon"]').forEach(function(node){node.remove();});
+  [['icon','image/png'],['shortcut icon','image/png']].forEach(function(spec){
+    var link=document.createElement('link');link.rel=spec[0];link.type=spec[1];link.href=href;head.appendChild(link);
+  });
+})();
+</script>
+<?php endif; ?>
 <header class="at-global-header">
   <div class="at-global-header__inner">
     <a class="at-global-header__logo" href="/" aria-label="AnyTour — на главную"><img src="/images/logo.svg" alt="AnyTour"></a>
