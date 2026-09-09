@@ -5,6 +5,8 @@ on:
     branches: ['feature/anex-search-adapter-20260907']
     paths:
       - '.github/workflows/anex-access-probe.yml'
+      - 'scripts/diagnostics/anex_review_storage*'
+      - 'app/admin/anex-review/schema-manager.php'
       - 'scripts/diagnostics/anex_access_probe.py'
       - 'scripts/diagnostics/anex_hotel_match_probe.py'
       - 'scripts/diagnostics/anex_catalog_reader.php'
@@ -45,7 +47,7 @@ on:
     inputs:
       operation:
         type: choice
-        options: [observed, gaps, preview, paired, segments, content, topup]
+        options: [observed, gaps, preview, paired, segments, content, topup, review]
         default: observed
         description: Focused hotel queue, isolated preview, or reserved search experiment
 
@@ -78,17 +80,21 @@ jobs:
               mode = requested or 'observed'
           else:
               paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
+              review = any(p.startswith('scripts/diagnostics/anex_review_storage') or p == 'app/admin/anex-review/schema-manager.php' for p in paths)
               content = any(p.startswith('scripts/diagnostics/anex_search3_catalog_content') or p == 'scripts/diagnostics/anex_search3_hotel_content.php' for p in paths)
               topup = any(p.startswith('scripts/diagnostics/anex_search3_topup_') or p in ('tests/anex_search3_topup_experiment_test.py', 'tests/anex-search3-topup-runner-smoke.php') for p in paths)
               paired = any(p.startswith('scripts/diagnostics/anex_search3_paired_') for p in paths)
               segments = any(p.startswith('scripts/diagnostics/anex_search3_segment_') for p in paths)
-              mode = 'topup' if topup else 'content' if content else 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
-          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content', 'topup'): raise SystemExit('Invalid ANEX operation')
+              mode = 'review' if review else 'topup' if topup else 'content' if content else 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
+          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content', 'topup', 'review'): raise SystemExit('Invalid ANEX operation')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
           print('ANEX operation:', mode)
           PYTHON
       - name: Verify request and credential boundaries locally
         run: |
+          python3 -B tests/anex_review_storage_test.py
+          php -l app/admin/anex-review/schema-manager.php
+          php -l scripts/diagnostics/anex_review_storage_runner.php
           python3 -B tests/anex_search3_topup_experiment_test.py
           php -l scripts/diagnostics/anex_search3_topup_runner.php
           php tests/anex-search3-topup-runner-smoke.php
@@ -177,12 +183,34 @@ jobs:
           jq -e '.counts.anex_hotels > 0 and .counts.anex_hotels == (.matches | length)' \
             "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" >/dev/null
       - name: Check gap runtime without supplier requests
+        if: steps.operation.outputs.mode != 'review'
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
+      - name: Bind existing dossiers and schema before review storage operation
+        if: steps.operation.outputs.mode == 'review'
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_review_storage.py --prepare
+      - name: Preserve review storage reservation before database access
+        if: steps.operation.outputs.mode == 'review'
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}-review-reserved
+          path: ${{ runner.temp }}/anex-catalog/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Inspect or apply pinned local review storage through existing DB helper
+        if: steps.operation.outputs.mode == 'review'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_review_storage.py
       - name: Reserve one owner-approved Tourvisor hotel batch
         if: steps.operation.outputs.mode == 'topup'
         env:

@@ -1,0 +1,40 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../app/admin/anex-review/schema-manager.php';
+$dsn=getenv('ANEX_REVIEW_TEST_DSN');
+if($dsn!=='mysql:host=127.0.0.1;port=3306;dbname=anex_review_test;charset=utf8mb4')throw new RuntimeException('test_db_required');
+$db=new PDO($dsn,'root',getenv('ANEX_REVIEW_TEST_PASSWORD')?:'',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$files=[];foreach(['schema.sql','dossier-schema.sql'] as $name)$files[$name]=(string)file_get_contents(__DIR__.'/../app/admin/anex-review/'.$name);
+$hash=hash('sha256',$files['schema.sql']."\n".$files['dossier-schema.sql']);$manager=new AnexReviewSchemaManager($db);$checks=0;
+function check_schema(bool $condition,string $message):void{global $checks;++$checks;if(!$condition)throw new RuntimeException($message);}
+function reject_schema(callable $fn,string $reason):void{try{$fn();}catch(Throwable $e){check_schema($e->getMessage()===$reason,$e->getMessage());return;}throw new RuntimeException('expected '.$reason);}
+$before=$manager->preservation();
+$read=$manager->run($files,$hash);
+check_schema($read['read_only']&&$read['created']===[]&&$read['status']==='migration_required','default read only');
+check_schema($read['after_schema']['missing']===['anex_review_dossier_batches','anex_review_dossiers'],'existing partial panel schema preserved');
+reject_schema(fn()=>$manager->run($files,str_repeat('0',64),true),'schema_source_mismatch');
+$bad=$files;$bad['schema.sql'].="\nDROP TABLE catalog_hotels;";
+reject_schema(fn()=>AnexReviewSchemaManager::definitions($bad,hash('sha256',$bad['schema.sql']."\n".$bad['dossier-schema.sql'])),'schema_grammar');
+$applied=$manager->run($files,$hash,true);
+check_schema($applied['status']==='ready'&&count($applied['created'])===2,'creates only missing two');
+check_schema($manager->run($files,$hash,true)['created']===[],'repeat creates nothing');
+AnexReviewSchemaManager::assertPreserved($before,$manager->preservation());++$checks;
+$db->exec('ALTER TABLE anex_review_dossiers ADD COLUMN unexpected INT NULL');
+reject_schema(fn()=>$manager->run($files,$hash,true),'schema_columns_mismatch');
+$db->exec('ALTER TABLE anex_review_dossiers DROP COLUMN unexpected');
+$db->exec('ALTER TABLE anex_review_dossiers ENGINE=MyISAM');
+reject_schema(fn()=>$manager->run($files,$hash),'schema_engine_mismatch');
+$db->exec('ALTER TABLE anex_review_dossiers ENGINE=InnoDB');
+$db->exec('CREATE TRIGGER unexpected_dossier BEFORE INSERT ON anex_review_dossiers FOR EACH ROW SET NEW.country_id=1');
+reject_schema(fn()=>$manager->run($files,$hash,true),'schema_unexpected_trigger');
+$db->exec('DROP TRIGGER unexpected_dossier');
+$db->exec('DROP TABLE anex_review_dossiers');
+check_schema($manager->run($files,$hash)['after_schema']['missing']===['anex_review_dossiers'],'interrupted ddl retains installed batch table');
+check_schema($manager->run($files,$hash,true)['created']===['anex_review_dossiers'],'resume creates only missing table');
+$changed=$before;$changed['catalog_hotels']['count']++;reject_schema(fn()=>AnexReviewSchemaManager::assertPreserved($before,$changed),'preservation_changed');
+$db->beginTransaction();reject_schema(fn()=>$manager->run($files,$hash,true),'schema_transaction_owned');$db->rollBack();
+$other=new PDO($dsn,'root',getenv('ANEX_REVIEW_TEST_PASSWORD')?:'');$other->query("SELECT GET_LOCK('anytour_anex_review_schema_v1',0)");
+reject_schema(fn()=>$manager->run($files,$hash,true),'schema_operation_busy');$other->query("SELECT RELEASE_LOCK('anytour_anex_review_schema_v1')");
+$db->exec('DROP TABLE anex_review_dossiers');$db->exec('DROP TABLE anex_review_dossier_batches');
+check_schema($manager->preservation()===$before,'original data unchanged');
+echo 'ANEX_REVIEW_SCHEMA_OK checks='.$checks.' live_db=untouched supplier_calls=0'.PHP_EOL;
