@@ -53,7 +53,7 @@ function syncHotelFacets(){
 }
 function prices(items){const result=[];items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const value=Number(t&&t.price||0);if(value>0)result.push(value);}));return result;}
 function syncBudget(items){
-  const list=prices(items),tourCount=items.reduce((sum,h)=>sum+(Array.isArray(h&&h.tours)?h.tours.length:0),0),available=items.length>1&&list.length===tourCount&&new Set(list).size>1;
+  const list=prices(items),available=items.length>1&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>Number(t&&t.price||0)>0))&&new Set(list).size>1;
   if(!available){budgetActive=false;budgetInput.min='0';budgetInput.max='0';budgetInput.value='0';budgetField.hidden=true;syncBudgetLabel();return 0;}
   const minimum=Math.floor(Math.min(...list)/5000)*5000,maximum=Math.ceil(Math.max(...list)/5000)*5000,previous=Number(budgetInput.value||0);
   budgetInput.min=String(minimum);budgetInput.max=String(Math.max(minimum+5000,maximum));budgetInput.value=String(budgetActive?Math.min(Math.max(previous,minimum),Number(budgetInput.max)):budgetInput.max);
@@ -81,7 +81,7 @@ function apply(){
 }
 function reset(){ensure();input.value='';categorySelect.value='0';mealSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();}
 function clear(event){
-  ensure();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});resetButton.hidden=true;return;}
+  ensure();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});resetButton.hidden=true;rail.hidden=true;return;}
   sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';count.textContent='0';fields().forEach(node=>{node.hidden=true;});resetButton.hidden=true;rail.hidden=true;
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
