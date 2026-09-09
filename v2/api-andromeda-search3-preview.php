@@ -209,4 +209,3 @@ function anytour_andromeda_search3_http(): void {
     }catch(Throwable $e){anytour_anex_search3_out(['ok'=>false,'error'=>'supplier_unavailable'],502);}
 }
 if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();
-

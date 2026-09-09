@@ -1,26 +1,37 @@
 {
   "browser": {
-    "route_opened": true,
+    "andromeda_hotels_before_continuation_fix": 107,
+    "combined_hotels_before_continuation_fix": 167,
+    "continuation_fix_verification": "passed",
     "owner_login_required": false,
-    "live_offers_verified": true,
-    "andromeda_hotels": 9,
+    "route_opened": true,
     "source_filter_verified": true,
-    "disclosure_verified": true,
-    "example": {
-      "hotel": "TIVOLI HOTEL AQUA PARK",
-      "photo_source": "Tourvisor",
-      "offers": [
-        {
-          "operator": "Intourist",
-          "rub": "117722"
-        },
-        {
-          "operator": "Anex Tour",
-          "rub": "118059"
-        }
+    "unresolved_disclosure_verified": {
+      "hotel": "Life Resorts Coral Hills",
+      "offers": 5,
+      "operators": [
+        "Anex Tour",
+        "Intourist"
       ]
     },
-    "other_sources_remain_visible": true
+    "pages_loaded": 39,
+    "final_pages_count": 39,
+    "andromeda_hotels": 218,
+    "combined_hotels": 251,
+    "unresolved_hotels_visible": 62,
+    "operator_rows_in_dom": {
+      "Anex Tour": 97,
+      "Fun&Sun": 917,
+      "Intourist": 381
+    },
+    "operators_observed": [
+      "Anex Tour",
+      "Fun&Sun",
+      "Intourist"
+    ],
+    "biblioglobus_observed": false,
+    "all_enabled_operators_coverage_claimed": false,
+    "completed": true
   },
   "catalog_sync": {
     "accepted": 584,
@@ -34,10 +45,12 @@
     "table": "andromeda_hotel_identities"
   },
   "checks": {
-    "addon_tests": 46,
-    "handler_checks": 33,
-    "protocol_run_id": 34377107324,
-    "security_run_id": 34377107365
+    "addon_tests": 47,
+    "continuation_protocol_run_id": 34380948828,
+    "continuation_security_run_id": 34380948812,
+    "pagination_protocol_run_id": 34379961918,
+    "pagination_security_run_id": 34379961740,
+    "whole_site_gate_failure_before_report_commit": "git diff --check: trailing blank line at endpoint EOF; formatting fixed in report commit. Whole-site artifact is not the deployed integration."
   },
   "date": "2026-09-09",
   "deployment": {
@@ -119,61 +132,142 @@
     "run_id": 34377383810
   },
   "deployment_control_sha": "dcfc29ebfffe6661b4960416116dbc7f009911bf",
+  "history_before_pagination": {
+    "browser": {
+      "andromeda_hotels": 9,
+      "disclosure_verified": true,
+      "example": {
+        "hotel": "TIVOLI HOTEL AQUA PARK",
+        "offers": [
+          {
+            "operator": "Intourist",
+            "rub": "117722"
+          },
+          {
+            "operator": "Anex Tour",
+            "rub": "118059"
+          }
+        ],
+        "photo_source": "Tourvisor"
+      },
+      "live_offers_verified": true,
+      "other_sources_remain_visible": true,
+      "owner_login_required": false,
+      "route_opened": true,
+      "source_filter_verified": true
+    },
+    "limitations": [
+      "Only saved Egypt catalog is enabled.",
+      "First supplier page only; 26 pages in the observed response.",
+      "Only accepted catalog matches currently enter existing hotel cards; 11 of the 50 observed offers remain outside cards.",
+      "Offers are read-only; quote, selection and booking not enabled.",
+      "Fresh whole-site preview and production are unchanged."
+    ],
+    "live": {
+      "displayed_hotels": 9,
+      "displayed_offers": 39,
+      "mapped_offers": 39,
+      "observed_at_initial_server_probe": "2026-09-09T16:33:07Z",
+      "operators": [
+        "Anex Tour",
+        "Intourist"
+      ],
+      "owner_auth_required": false,
+      "pages_count": 26,
+      "public_checks_observed_before_public_patch": [
+        {
+          "method": "GET",
+          "path": "api-andromeda-search3-preview.php",
+          "status": 405
+        },
+        {
+          "method": "POST",
+          "path": "api-andromeda-search3-preview.php",
+          "status": 403
+        },
+        {
+          "method": "GET",
+          "path": ".andromeda-private.php",
+          "status": 403
+        }
+      ],
+      "received_offers": 50,
+      "response_sha256": "dc73dd35765ec1706a28a45d4497be8a262a012411d1544715b19295da473030",
+      "resume_verified": true,
+      "source_sha": "825b865a20af40c9434f3c8ca14a9ca438fd717e"
+    },
+    "rate_limit": {
+      "cached_resume_supplier_calls": 0,
+      "new_price_searches_per_minute_per_account": 6,
+      "origin": "temporary application budget, not a documented supplier limit"
+    },
+    "runtime_source_sha": "64bca6e0946e55f597eda2e6d06624b642ea3437"
+  },
+  "hotel_content": {
+    "documentation_url": "https://dokuwiki.samo.ru/doku.php?id=andromeda:search",
+    "fields": [
+      "hotelImage",
+      "hotelUrl"
+    ],
+    "full_text_description_in_price_contract": false,
+    "image_render_acceptance": "Not verified: inspected supplier image became fallback after load; other images still lazy/unloaded",
+    "saved_sample": {
+      "artifact_id": 10115236208,
+      "audit_run_id": 34379474359,
+      "hotelImage": 46,
+      "hotelUrl": 50,
+      "offers": 50,
+      "operators": [
+        "Anex Tour"
+      ]
+    },
+    "ui": "Supplier image fallback and supplier description link on standalone cards"
+  },
+  "image_identity_evidence": {
+    "andromeda_hotel_id": 3414,
+    "andromeda_image_url": "https://gateway.samo.ru/web/data/hotel/200x200/5.5844.3414.jpg",
+    "anex_hotel_id": 5844,
+    "basis": "hotelCode=5844 explicit in owner-provided ANEX URL; matches middle filename component in saved Andromeda response; local identity already accepted",
+    "external_page_fetch_verified": false,
+    "hotel": "Swiss Heaven Sharming Inn",
+    "mapping_writes_this_step": 0,
+    "owner_supplied_anex_media_url": "https://files.anextour.ru/hotel/egypt/hotel/sharming-inn-hotel-sharm-el-sheikh/o417822?&hotelCode=5844",
+    "tourvisor_hotel_id": 453,
+    "universal_filename_rule_verified": false
+  },
   "issue": 1717,
   "limitations": [
-    "Only saved Egypt catalog is enabled.",
-    "First supplier page only; 26 pages in the observed response.",
-    "Only accepted catalog matches currently enter existing hotel cards; 11 of the 50 observed offers remain outside cards.",
-    "Offers are read-only; quote, selection and booking not enabled.",
+    "Only saved Egypt catalog is enabled; current form restrictions remain.",
+    "Offers are read-only; quote, selection and booking are not enabled.",
+    "Supplier total page count can change during search; results are not a frozen supplier snapshot.",
+    "Full supplier description text/gallery are not supplied by the price contract.",
+    "Direct supplier photo rendering is not yet verified in this browser.",
     "Fresh whole-site preview and production are unchanged."
   ],
-  "live": {
-    "displayed_hotels": 9,
-    "displayed_offers": 39,
-    "mapped_offers": 39,
-    "operators": [
-      "Anex Tour",
-      "Intourist"
-    ],
-    "owner_auth_required": false,
-    "pages_count": 26,
-    "received_offers": 50,
-    "response_sha256": "dc73dd35765ec1706a28a45d4497be8a262a012411d1544715b19295da473030",
-    "resume_verified": true,
-    "source_sha": "825b865a20af40c9434f3c8ca14a9ca438fd717e",
-    "public_checks_observed_before_public_patch": [
-      {
-        "method": "GET",
-        "path": "api-andromeda-search3-preview.php",
-        "status": 405
-      },
-      {
-        "method": "POST",
-        "path": "api-andromeda-search3-preview.php",
-        "status": 403
-      },
-      {
-        "method": "GET",
-        "path": ".andromeda-private.php",
-        "status": 403
-      }
-    ],
-    "observed_at_initial_server_probe": "2026-09-09T16:33:07Z"
-  },
   "operator_policy": {
     "andromeda_excluded_operator_ids": [],
     "owner_plan": "Later exclude Anex from Andromeda and Anex/Fun&Sun/BiblioGlobus/Intourist from Tourvisor after direct integration.",
     "tourvisor_exclusions_unchanged": true
   },
+  "pagination_deployment": {
+    "artifact_digest": "sha256:ce769230e0719e365cdca106bf64d52e070ead063375f5a61ec6da11191e74dc",
+    "artifact_id": 10115493782,
+    "continuation_fix_artifact_id": 10115848594,
+    "continuation_fix_control": "f543fa1065ab1a4e358536efb8c723ed5ec04567",
+    "continuation_fix_digest": "sha256:076e926f57282b6ba63ec0cd0af91c0afc9afd991ed422a70829ec74915f6857",
+    "continuation_fix_run_id": 34381046363,
+    "continuation_fix_source": "365e30fa11dc86d0e7750d16ca52c9d72661120c",
+    "control_sha": "cb178d8411d1472c4614e30c7a1f41026a7a31e2",
+    "run_id": 34380113098,
+    "saved_search_before_fix": {
+      "first_pages_count": 46,
+      "last_pages_count": 39,
+      "saved_pages": 13
+    },
+    "source_sha": "ff33b5212d7949a50fac2784ac4e11386684d576"
+  },
   "pr": 1781,
-  "route": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
-  "runtime_source_sha": "64bca6e0946e55f597eda2e6d06624b642ea3437",
-  "state": "preview_published_public_search",
   "public_patch": {
-    "run_id": 34378262556,
-    "job_id": 102556435303,
-    "source_sha": "64bca6e0946e55f597eda2e6d06624b642ea3437",
-    "control_sha": "8704b354f404cf0e94342d4d6438222e5791b209",
     "artifacts": [
       {
         "archive_download_url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10114771460/zip",
@@ -194,11 +288,21 @@
           "repository_id": 1345518271
         }
       }
-    ]
+    ],
+    "control_sha": "8704b354f404cf0e94342d4d6438222e5791b209",
+    "job_id": 102556435303,
+    "run_id": 34378262556,
+    "source_sha": "64bca6e0946e55f597eda2e6d06624b642ea3437"
   },
   "rate_limit": {
-    "new_price_searches_per_minute_per_account": 6,
-    "origin": "temporary application budget, not a documented supplier limit",
-    "cached_resume_supplier_calls": 0
-  }
+    "cached_resume_supplier_calls": 0,
+    "counter_scope": "Requests through this integration since deployment; not historical or other-client account usage",
+    "counts_login_and_price": true,
+    "origin": "Owner-provided SAMO account quota",
+    "per_minute_limit": null,
+    "requests_per_month": 5000000
+  },
+  "route": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+  "runtime_source_sha": "365e30fa11dc86d0e7750d16ca52c9d72661120c",
+  "state": "preview_published_public_paginated_search"
 }
