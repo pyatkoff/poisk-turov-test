@@ -1547,3 +1547,13 @@ test('Andromeda explicit expansion keeps criteria, partial offers and avoids red
   assert.match(page.results.textContent,/Полученные предложения сохранены/);
   page.reset(2,snapshot());await tick();assert.doesNotMatch(page.results.textContent,/Expansion retained room/);
 });
+
+
+test('expanded offer context compares serialized scope values and rejects changed identity', () => {
+  const expected={provider:'andromeda',search_ref:'a',offer_ref:'b',generation:2,page:1,hotel_scope:{local_id:447,seed:{search_ref:'parent',offer_ref:'seed',page:2,generation:2}}};
+  const same=helpers().sameOfferContext;
+  assert.equal(same(expected,plain(expected)),true);
+  for(const key of ['search_ref','offer_ref','generation','page'])assert.equal(same(expected,{...plain(expected),[key]:'changed'}),false);
+  const other=plain(expected);other.hotel_scope.local_id=999;assert.equal(same(expected,other),false);
+  assert.equal(same(expected,null),false);
+});

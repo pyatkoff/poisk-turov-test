@@ -158,7 +158,10 @@
       && Number.isInteger(c.page) && c.page > 0 && c.page <= 1000 ? Object.assign({}, c) : null;
   }
   function sourceLabel(tour) { return tour.provider === 'andromeda' ? 'Андромеда' : 'ANEX API'; }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, version: 2 };
+  function sameOfferContext(expected, actual) {
+    return !!actual && Object.keys(expected).every(key => JSON.stringify(actual[key]) === JSON.stringify(expected[key]));
+  }
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, sameOfferContext, version: 2 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -328,7 +331,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       const payload = await response.json(), data = payload.data;
       if (offerDialog !== dialog || active !== run || !isCurrent(run, window.V2SearchLifecycle)) { if (offerDialog === dialog) closeOffer(); return; }
       if (!response.ok || !payload.ok || data?.provider !== 'andromeda'
-        || Object.keys(context).some(key => data.offer_context?.[key] !== context[key])) throw new Error('Offer unavailable');
+        || !sameOfferContext(context, data.offer_context)) throw new Error('Offer unavailable');
       content.replaceChildren(node('h2', '', data.hotel));
       [data.operator, data.checkin.split('-').reverse().join('.') + ' · ' + data.nights + ' ноч.',
         data.adults + ' взр.' + (data.children ? ' · ' + data.children + ' дет.' : ''),
