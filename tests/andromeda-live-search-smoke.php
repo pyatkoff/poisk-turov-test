@@ -114,3 +114,15 @@ foreach(['2'=>'OB','3'=>'BB','4'=>'HB','5'=>'FB','7'=>'AI','9'=>'UAI'] as $food=
     if(count($mealHotels)!==1||$mealHotels[0]['tours'][0]['meal']!==$label)throw new RuntimeException('same-offer meal filtering failed');
 }
 echo "All Search3 meal choices: supplier dictionary and same-offer projection passed\n";
+
+$turkey=$dictionary;$turkey['local_country_id']=4;$turkey['local_country_name']='Турция';$turkey['all']['params']=['STATEINC'=>6];
+$turkeyRequest=$request;$turkeyRequest['params']['countryId']='4';$turkeyRequest['params']['hotelIds']=[];
+if(anytour_andromeda_search3_params($turkeyRequest,$pdo,$turkey)['STATEINC']!==6)throw new RuntimeException('country ID translation failed');
+try{anytour_andromeda_search3_params($turkeyRequest,$pdo,$dictionary);throw new LogicException('Egypt dictionary used for Turkey');}catch(DomainException $expected){}
+$pdo->exec("INSERT INTO catalog_hotels VALUES(6319,'Aperion',4,1); INSERT INTO andromeda_hotel_identities VALUES(6319,'10101','andromeda_catalog','accepted')");
+$turkey['all']['payload']['HOTELS'][]=['id'=>10101];
+if(anytour_andromeda_search3_hotels([6319],$pdo,$turkey)!=='10101'||anytour_andromeda_search3_hotels([447],$pdo,$turkey)!==null)throw new RuntimeException('hotel mapping escaped country');
+$filter['params']['countryId']='4';unset($filter['params']['priceTo']);
+$cards=anytour_andromeda_search3_project($filter,$pdo,$page,$turkey)['hotels'];
+if(!$cards||array_unique(array_column($cards,'country'))!==['Турция'])throw new RuntimeException('unresolved country label incorrect');
+echo "Turkey country scope: translated supplier ID, isolated mappings and card country passed\n";

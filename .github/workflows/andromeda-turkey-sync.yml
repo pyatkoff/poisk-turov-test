@@ -1,0 +1,54 @@
+name: Andromeda Turkey catalog and identity import
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-turkey-sync.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-turkey-sync-20260909, cancel-in-progress: false}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: One capture and validated country matcher
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-turkey-sync.yml/runs" -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" --jq '[.workflow_runs[].id] | min' > "$RUNNER_TEMP/first-run"
+          test "$(cat "$RUNNER_TEMP/first-run")" = "$GITHUB_RUN_ID"
+          php -l scripts/diagnostics/andromeda_turkey_sync.php
+          python3 -B tests/andromeda_turkey_sync_test.py
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/turkey
+      - name: Capture Turkey and compare complete local catalog
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_turkey_sync.py prepare --directory "$RUNNER_TEMP/turkey"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-turkey-import-reservation
+          path: ${{ runner.temp }}/turkey
+          if-no-files-found: error
+      - name: Append accepted identities and preserve existing rows
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_turkey_sync.py apply --directory "$RUNNER_TEMP/turkey"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-turkey-import-result
+          path: ${{ runner.temp }}/turkey
+          if-no-files-found: error

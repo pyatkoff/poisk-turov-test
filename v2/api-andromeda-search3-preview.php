@@ -8,9 +8,10 @@ foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','androm
 /** Restrict upstream only with complete accepted catalog coverage; otherwise retain local filtering. */
 function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $saved): ?string {
     if(!$localIds)return null;
+    $country=(int)($saved['local_country_id']??1);
     $wanted=array_values(array_unique(array_map('strval',$localIds)));
-    $query=$pdo->prepare("SELECT i.local_hotel_id,i.external_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=1 AND h.id IN (".implode(',',array_fill(0,count($wanted),'?')).")");
-    $query->execute($wanted);
+    $query=$pdo->prepare("SELECT i.local_hotel_id,i.external_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND h.id IN (".implode(',',array_fill(0,count($wanted),'?')).")");
+    $query->execute(array_merge([$country],$wanted));
     $catalog=[];foreach($saved['all']['payload']['HOTELS']??[] as $hotel)$catalog[(string)$hotel['id']]=true;
     $covered=[];$external=[];
     foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
@@ -61,7 +62,8 @@ function anytour_andromeda_search3_meal_matches($value, $label): bool {
 function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved): array {
     if(!is_int($request['generation']??null) || $request['generation']<1 || $request['generation']>2147483647 || !is_array($request['params']??null)) throw new InvalidArgumentException();
     $p=$request['params'];
-    if((string)($p['countryId']??'')!=='1') throw new DomainException('country_not_loaded');
+    $country=(int)($saved['local_country_id']??1);
+    if((string)($p['countryId']??'')!==(string)$country) throw new DomainException('country_not_loaded');
     foreach(['arrivalId','operatorIds','hotelServices','hotelTypes'] as $key) if(!empty($p[$key]))throw new DomainException('filter_not_supported');
     foreach(['onlyDirect','onlyCharter'] as $key) if(!in_array($p[$key]??false,[false,'false',0,'0',''],true))throw new DomainException('filter_not_supported');
     if(($p['currency']??'RUB')!=='RUB')throw new DomainException('filter_not_supported');
@@ -83,7 +85,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     $ages=$p['childs']??[];
     if(!is_array($ages)||count($ages)>3)throw new InvalidArgumentException();
     foreach($ages as $age)if(!is_scalar($age)||!ctype_digit((string)$age)||(int)$age>17)throw new InvalidArgumentException();
-    $params=['TOWNFROMINC'=>$departure,'STATEINC'=>3,'CHECKIN_BEG'=>$dates[0],'CHECKIN_END'=>$dates[1],
+    $params=['TOWNFROMINC'=>$departure,'STATEINC'=>(int)($saved['all']['params']['STATEINC']??3),'CHECKIN_BEG'=>$dates[0],'CHECKIN_END'=>$dates[1],
         'NIGHTS_FROM'=>(int)($p['nightsFrom']??0),'NIGHTS_TILL'=>(int)($p['nightsTo']??0),
         'ADULT'=>(int)($p['adults']??0),'CHILD'=>count($ages),'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>$request['page']??1];
     if($ages)$params['AGES']=implode(',',$ages);
@@ -107,7 +109,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     return $params;
 }
 
-function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page): array {
+function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[]): array {
     $converted=[];$ids=[];
     $requestedMeal=$request['params']['meal']??'';
     foreach($page['offers'] as $offer){
@@ -153,7 +155,7 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         if((!empty($p['priceFrom'])&&$amount<(float)$p['priceFrom'])||(!empty($p['priceTo'])&&$amount>(float)$p['priceTo']))continue;
         $key='andromeda:'.$offer['supplier_namespace'].':'.$offer['external_hotel_id'];
         if(!isset($unresolved[$key]))$unresolved[$key]=['local_id'=>null,'card_key'=>$key,'provider'=>'andromeda','mapping_status'=>'unresolved',
-            'name'=>$offer['hotel'],'category'=>$offer['hotel_content']['category']??null,'rating'=>null,'country'=>'Египет',
+            'name'=>$offer['hotel'],'category'=>$offer['hotel_content']['category']??null,'rating'=>null,'country'=>(string)($saved['local_country_name']??'Египет'),
             'region'=>$offer['hotel_content']['region']??'','catalog'=>null,'andromeda_content'=>$offer['hotel_content']??null,'tours'=>[]];
         $unresolved[$key]['tours'][]=['provider'=>'andromeda','operator'=>$offer['operator'],'offer_ref'=>$offer['offer_ref'],
             'price'=>$offer['price'],'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
@@ -222,7 +224,8 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
         $handler=new AnyTourAndromedaSearch($state,static function($next)use($path){return anytour_andromeda_search3_save($path,$next);},true,true);
         if($state){$page=$handler->resume($ref,$state['generation'],time());}
         else{
-            $identities=$pdo->query("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id AS catalog_hotel_id,h.id AS existing_catalog_hotel_id,i.decision_status FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=1 ORDER BY i.external_hotel_id")->fetchAll(PDO::FETCH_ASSOC);
+            $lookup=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id AS catalog_hotel_id,h.id AS existing_catalog_hotel_id,i.decision_status FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? ORDER BY i.external_hotel_id");
+            $lookup->execute([(int)($saved['local_country_id']??1)]);$identities=$lookup->fetchAll(PDO::FETCH_ASSOC);
             $resolver=AnyTourAndromedaHotelResolver::fromRows($identities,hash('sha256',json_encode($identities)));
             $transport=new AnyTourAndromedaTransport(true);
             $client=new AnyTourAndromedaClient(static function($url,$options)use($transport,$directory){
@@ -238,8 +241,20 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
             if($number===1 && $client->privateSession())anytour_andromeda_search3_save($authPath,['created_at'=>$state['store']['created_at'],'session'=>$client->privateSession()]);
         }
         if(in_array($page['status'],['pending','unavailable'],true))throw new RuntimeException('supplier_unavailable');
-        return anytour_andromeda_search3_project($request,$pdo,$page);
+        return anytour_andromeda_search3_project($request,$pdo,$page,$saved);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
+}
+
+
+/** Only explicitly installed country catalogs are eligible for live search. */
+function anytour_andromeda_search3_catalog(array $config, array $request): array {
+    $id=$request['params']['countryId']??null;
+    if(!is_scalar($id)||!preg_match('/^[1-9][0-9]{0,8}$/D',(string)$id))throw new InvalidArgumentException();
+    $path=(string)$id==='1'?$config['catalog_path']:dirname($config['catalog_path']).'/countries/'.(string)$id.'.json';
+    if(!is_file($path)||is_link($path))throw new DomainException('country_not_loaded');
+    $saved=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
+    if((string)($saved['local_country_id']??1)!==(string)$id)throw new DomainException('country_not_loaded');
+    return $saved;
 }
 
 function anytour_andromeda_search3_http(): void {
@@ -263,7 +278,7 @@ function anytour_andromeda_search3_http(): void {
         $request=json_decode($raw,true,16,JSON_THROW_ON_ERROR);if(!is_array($request))throw new InvalidArgumentException();
         $root=realpath($_SERVER['DOCUMENT_ROOT']??'');if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException();
         require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
-        $pdo=v2_data_db();$saved=json_decode(file_get_contents($config['catalog_path']),true,32,JSON_THROW_ON_ERROR);
+        $pdo=v2_data_db();$saved=anytour_andromeda_search3_catalog($config,$request);
         $saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
         // Reject unsupported form conditions before spending supplier requests.
         anytour_andromeda_search3_params($request,$pdo,$saved);
