@@ -143,7 +143,7 @@ async function checkJourney(browser, width) {
       window.V2Results.render(value.slice().reverse());
       window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { searchId: 731, items: value } }));
     }, items);
-    assert.match((await shortlist.locator('[data-offer-id="offer-standard"]').innerText()).replace(/\s/g, ''), /120000₽/, 'sort/progressive rerender cannot replace the saved representative');
+    assert.match((await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-standard"]').innerText()).replace(/\s/g, ''), /120000₽/, 'sort/progressive rerender cannot replace the saved representative');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'three-item comparison does not overflow');
     await shortlist.screenshot({ path: path.join(output, `shortlist-${width}-three.png`), animations: 'disabled' });
 
