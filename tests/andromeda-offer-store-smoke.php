@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../app/integrations/andromeda-offer-store.php';
+require_once __DIR__.'/../app/integrations/andromeda-hotel-resolver.php';
 $n=0;
 function ok($v): void { global $n; ++$n; if (!$v) throw new RuntimeException('CHECK_'.$n); }
 function denied(callable $f,string $why): void {
@@ -52,4 +53,8 @@ $large=$p; $large['PRICES']=[];
 for($i=0;$i<600;$i++){ $v=$r; $v['id']='id_'.$i; $v['hotel']=str_repeat('x',4096); $large['PRICES'][]=$v; }
 denied(fn()=>$a->capture($large,$c,'search_c',3,1201),'SNAPSHOT_TOO_LARGE');
 ok($s['snapshot']===null && $s['raw_ids']===[]);
+$a->begin('search_d',4,1300);
+$resolver=AnyTourAndromedaHotelResolver::fromRows([['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>'3414','decision_status'=>'accepted','catalog_hotel_id'=>'900','existing_catalog_hotel_id'=>'900']],str_repeat('b',64));
+$out=$a->capture($p,$c,'search_d',4,1301,$resolver);
+ok($out['offers'][0]['local_hotel_id']===900 && $out['selection_enabled']===false);
 echo "Andromeda offer store: $n checks passed\n";

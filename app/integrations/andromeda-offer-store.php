@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/andromeda-normalizer.php';
+require_once __DIR__.'/andromeda-hotel-resolver.php';
 
 /**
  * Disabled integration building block. Pass ONLY a private server-session subarray,
@@ -32,11 +33,13 @@ final class AnyTourAndromedaOfferStore {
     }
 
     /** Capture one bounded page once. Later pages require a separately reviewed collector. */
-    public function capture(array $payload, array $criteria, string $searchRef, int $generation, int $now): array {
+    public function capture(array $payload, array $criteria, string $searchRef, int $generation, int $now,
+        ?AnyTourAndromedaHotelResolver $resolver=null): array {
         $this->guard($searchRef,$generation,$now);
         if ($this->state['snapshot']!==null) throw new RuntimeException('SNAPSHOT_ALREADY_CAPTURED');
         if (($payload['PAGE']??null)!==1) throw new InvalidArgumentException('FIRST_PAGE_REQUIRED');
         $projection=AnyTourAndromedaNormalizer::page($payload,$criteria,$searchRef,$generation);
+        if ($resolver!==null) $projection=$resolver->apply($projection);
         $rejected=array_fill_keys(array_column($projection['rejected'],'index'),true);
         $raw=[]; $offerIndex=0;
         foreach ($payload['PRICES'] as $index=>$row) {
