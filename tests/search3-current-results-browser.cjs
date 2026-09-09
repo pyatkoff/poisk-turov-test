@@ -213,7 +213,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
   control.failSecond = false;
   try {
     await start(73);
-    const card = page.locator('#results [data-hotel-id="21477"]');
+    const card = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     if (width >= 1025) {
       assert.equal(await page.locator('.results-filter-rail').isVisible(), false, 'one loaded hotel does not expose unusable local facets');
       assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results reclaim the hidden filter-rail track');
@@ -237,7 +237,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     control.failSecond = true;
     control.requests.length = 0;
     await start(74);
-    const partialCard = page.locator('#results [data-hotel-id="21477"]');
+    const partialCard = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     await partialCard.locator('[data-andromeda-expand]').click();
     await partialCard.locator('.tour-selection-note[role=status]').filter({ hasText: 'Не все варианты Андромеды загрузились' }).waitFor();
     assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'partial expansion stops after the failed scoped page without background replay');
