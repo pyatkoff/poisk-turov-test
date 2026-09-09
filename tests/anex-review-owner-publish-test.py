@@ -55,6 +55,76 @@ class PublicationTest(unittest.TestCase):
         self.assertEqual(repaired['database_calls'],0);self.assertIn('runtime-'+('b'*40),(private/'entry-login.php').read_text())
         self.assertEqual(self.run_payload()['status'],'failed')
 
+    def install_repaired(self):
+        name='v2/anex-owner-login.php'
+        current=self.payload['files'][name]['content']
+        self.payload['files'][name]['content']=current.replace('Referrer-Policy: same-origin','Referrer-Policy: no-referrer')
+        self.payload['files'][name]['sha256']=hashlib.sha256(self.payload['files'][name]['content'].encode()).hexdigest()
+        before=self.run_payload();self.payload.update(action='apply',setup_hash='a'*64,expected_before=before['before'])
+        old=self.run_payload();self.assertEqual(old['status'],'published')
+        self.payload.update(action='repair',source_sha='b'*40,expected_source='a'*40,expected_runtime=old['runtime_files'])
+        self.payload['files'][name]={'content':current,'sha256':hashlib.sha256(current.encode()).hexdigest()}
+        repaired=self.run_payload();self.assertEqual(repaired['status'],'published')
+        self.payload.update(action='panel_links',source_sha='c'*40,expected_source='b'*40,expected_runtime=repaired['runtime_files'])
+        self.payload['allowed_delta']={}
+        for path in publisher.LINK_PATHS:
+            raw=self.payload['files'][path]['content']+'\n// bounded panel-links test fixture\n'
+            digest=hashlib.sha256(raw.encode()).hexdigest()
+            self.payload['files'][path]={'content':raw,'sha256':digest};self.payload['allowed_delta'][path]=digest
+        return self.home/'.anytoour-anex/review-owner'
+
+    def test_panel_links_preserves_activated_account_session_and_repair_receipt(self):
+        private=self.install_repaired()
+        account=json.loads((private/'owner.json').read_text());account['password_hash']='synthetic-existing-password-hash';account['setup_hash']=None
+        (private/'owner.json').write_text(json.dumps(account));(private/'owner.json').chmod(0o600)
+        session=private/'sessions/sess_fixture';session.write_text('synthetic-active-session');session.chmod(0o600)
+        preserved={name:(private/name).read_bytes() for name in ['owner.json','config.php','sessions/sess_fixture','repair-state.json']}
+        done=self.run_payload();self.assertEqual(done['status'],'published');self.assertTrue(done['owner_activated'])
+        self.assertTrue(done['account_preserved']);self.assertTrue(done['config_preserved']);self.assertFalse(done['write_enabled'])
+        self.assertEqual(done['database_calls'],0);self.assertEqual(done['supplier_requests'],0)
+        for name,raw in preserved.items():self.assertEqual((private/name).read_bytes(),raw)
+        self.assertEqual(json.loads((private/'links-state.json').read_text())['state'],'completed')
+        self.assertIn('runtime-'+('c'*40),(private/'entry-panel.php').read_text())
+        self.assertEqual(self.run_payload()['status'],'failed')
+
+    def test_panel_links_rejects_auth_change_before_write(self):
+        private=self.install_repaired();name='app/admin/anex-review/owner-auth.php'
+        raw=self.payload['files'][name]['content']+'\n// disallowed auth edit\n'
+        self.payload['files'][name]={'content':raw,'sha256':hashlib.sha256(raw.encode()).hexdigest()}
+        account=(private/'owner.json').read_bytes()
+        self.assertEqual(self.run_payload()['reason'],'links_delta_not_allowed')
+        self.assertFalse((private/'links-state.json').exists());self.assertFalse((private/('runtime-'+('c'*40))).exists())
+        self.assertEqual((private/'owner.json').read_bytes(),account)
+
+    def test_panel_links_rejects_unpinned_or_expanded_delta(self):
+        private=self.install_repaired()
+        self.payload['allowed_delta'][publisher.LINK_PATHS[0]]='f'*64
+        self.assertEqual(self.run_payload()['reason'],'links_delta_digest')
+        self.payload['allowed_delta']['app/admin/anex-review/owner-auth.php']='f'*64
+        self.assertEqual(self.run_payload()['reason'],'links_delta_paths')
+        self.assertFalse((private/'links-state.json').exists())
+
+    def test_panel_links_checkpoint_uses_only_completed_repair_lineage(self):
+        artifact=Path(self.temp.name)/'artifact';artifact.mkdir();(artifact/'anex-checkpoint-source.json').write_text('{"artifact_id":9}')
+        runtime={name:file['sha256'] for name,file in self.payload['files'].items()}
+        for path in publisher.LINK_PATHS:runtime[path]='d'*64
+        report={'source_sha':'b'*40,'runtime_files':runtime}
+        cp={'state':'completed','report':report,'report_sha256':publisher.canonical(report)}
+        plan={'action':'panel_links','published_report_sha256':publisher.canonical(report),'allowed_delta':{p:self.payload['files'][p]['sha256'] for p in publisher.LINK_PATHS}}
+        (artifact/'anex-owner-repair-checkpoint.json').write_text(json.dumps(cp))
+        with unittest.mock.patch.dict(os.environ,{'GITHUB_RUN_ID':'1','GITHUB_RUN_ATTEMPT':'1'}):
+            reserved,payload=publisher.prepare(artifact,'c'*40,plan)
+            self.assertEqual(payload['expected_source'],'b'*40)
+            self.assertTrue((artifact/'anex-owner-links-checkpoint.json').exists())
+            self.assertEqual(json.loads((artifact/'anex-owner-repair-checkpoint.json').read_text()),cp)
+            self.assertFalse((artifact/publisher.CHECKPOINT).exists())
+            done={**reserved,'state':'completed','report':report,'report_sha256':publisher.canonical(report)}
+            (artifact/'anex-owner-links-checkpoint.json').write_text(json.dumps(done))
+            self.assertIsNone(publisher.prepare(artifact,'c'*40,plan)[1])
+            (artifact/'anex-owner-links-checkpoint.json').unlink()
+            broken={**cp,'state':'executing'};(artifact/'anex-owner-repair-checkpoint.json').write_text(json.dumps(broken))
+            with self.assertRaisesRegex(ValueError,'owner_repair_lineage'):publisher.prepare(artifact,'c'*40,plan)
+
     def test_drift_rejected_before_write(self):
         before=self.run_payload();self.payload.update(action='apply',setup_hash='a'*64,expected_before=before['before'])
         with (self.target/'.htaccess').open('a') as stream:stream.write('# changed\n')
