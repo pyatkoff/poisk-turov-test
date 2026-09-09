@@ -31,8 +31,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-state--done{border-color:#b8dcc8;background:#f5fff9}
 & .results-tools{margin:20px 0;padding:20px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-hotel-filter{flex:2 1 250px}
-& :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter){flex:1 1 185px}
-& :is(.search3-hotel-filter,.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter)[hidden]{display:none}
+& :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-rating-filter,.search3-sea-filter){flex:1 1 185px}
+& :is(.search3-hotel-filter,.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-rating-filter,.search3-sea-filter)[hidden]{display:none}
 & :is(.search3-category-filter,.search3-meal-filter){display:grid;gap:8px}
 & .search3-filter-presets{display:flex;flex-wrap:wrap;gap:6px}
 & .search3-filter-presets[hidden]{display:none}
@@ -92,7 +92,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-mobile-filter-panel__body{grid-template-columns:1fr}
 & .search3-mobile-filter-panel__body>.search3-hotel-filter{grid-column:auto}
 & .search3-hotel-filter{flex-basis:100%}
-& :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter){flex-basis:160px}
+& :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-rating-filter,.search3-sea-filter){flex-basis:160px}
 & #resultsSearchEdit{flex:1 1 120px}
 & .search3-shortlist{padding:16px;margin-block:16px}
 & .search3-shortlist__head{display:grid}
