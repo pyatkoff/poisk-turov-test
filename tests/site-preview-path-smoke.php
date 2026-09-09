@@ -37,6 +37,8 @@ $fail = static function (string $message): never {
 $expectedSearch = $prefix . '/poisk-turov/';
 if (v2_site_base_path() !== $prefix) $fail('site base mismatch');
 if (v2_site_href('/poisk-turov/') !== $expectedSearch) $fail('search path mismatch');
+if (v2_seo_search_handoff_url('/poisk-turov/', []) !== $expectedSearch) $fail('generic handoff path mismatch');
+if (v2_seo_search_handoff_url('/poisk-turov/', ['country'=>4]) !== $expectedSearch . '?country=4') $fail('country handoff path mismatch');
 if (v2_site_href($expectedSearch) !== $expectedSearch) $fail('site path helper is not idempotent');
 if (v2_site_href('https://example.com/') !== 'https://example.com/') $fail('external URL changed');
 $sample = '<a href="/country/turkey/">Turkey</a><form action="/poisk-turov/"></form><img src="/images/logo.svg">';
