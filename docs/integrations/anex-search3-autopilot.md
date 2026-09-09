@@ -23,7 +23,7 @@ Inherited root `AUTOPILOT_STATE.json` этой ветки содержит ст�
 
 | Задача / владелец | Готово | Следующий доступный шаг / граница |
 | --- | --- | --- |
-| SEARCH #1646 | All Inclusive, сохранность offers/фильтров, контент по принятому localID, явный point-TV #1703/#1708, reveal после20 #1716 опубликованы | Сохранить собственный point searchId/offer identity по всему пути выбора и возврата. До этого point только сравнение. Проекция ANEX тоже требует полного offer/search context; поля не выдумывать |
+| SEARCH #1646 | Опубликованы All Inclusive/retention/catalog cards/point-TV/reveal #1716. Immutable point searchId/offer context подготовлен в draft1731,50 Node и CI passed; НЕ опубликован | Не повторять подготовку. Согласованный handoff в свежий SEARCH controller/selected context и lead race guard; draft1731 не включает выбор. Внешний lead-контракт прежний, удержанный snapshot не authority: getter перепроверяется при действии. Проекция ANEX тоже требует полного offer/search context; поля не выдумывать |
 | INT #1647 | Source panel/formatter/pair guards/archive; PR1728 применил пять additive таблиц и сохранил263 досье, readback263/263; прежние catalogue/mappings/manual сохранены | Trusted owner auth вне DOCUMENT_ROOT, затем isolated panel manifest и реальные gates. Bitrix bootstrap/CSRF найден в коде, но owner authority не установлена; write_enabled=false, панель не опубликована. Completed storage не повторять. Audit: reports/anex-review-storage-once-20260909.json |
 | INT #1717 | План будущей Андромеды | Получить официальный API-контракт/доступ; затем выключенный adapter и ограниченные fixtures. Не копировать ANEX лимиты/параметры |
 | INT #1685 | Отдельная работа по составу цены/топливному сбору, собственный diagnostic draft | Прочитать свежий отдельный checkpoint/PR перед действиями. Этот исполнитель не дублирует его запросы или изменения. Не утверждать final price/fuel по минимуму поиска |
@@ -34,6 +34,13 @@ catalog/price/TV/курортные эксперименты не являютс
 Pending — нерешённый статус, не доказанное различие отелей или отсутствие в TV-каталоге.
 
 ## Последняя опубликованная P1 точка
+
+Подготовленный, НЕ опубликованный SEARCH source: draft1731,
+`e5627a5c5127fd05aca8d01817bd2a1a30132eeb`,50/50 Node, Security34344748010,
+artifact build34344748007 success. Исходный broad searchId/lead/UI/requests не менялись.
+CI artifact10101226654 (sha256 `d87f7267e08ca8b82338dfbafc70973cfc3e92e6f9ba6be212452fe1288b89cf`)
+собран со старой ANEX-основы: НЕ публиковать как whole-site. Публикация и включение
+выбора ждут согласованного SEARCH context; повторные live поиски не запускались.
 
 - Source #1716 `f7f4b546aa9883353cea2469605a753a93df9d95`;
   merged/published `f690ff035964a1debf3d03ed7e63c33f715f2aa9`.
