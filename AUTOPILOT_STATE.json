@@ -1248,7 +1248,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Completed independent photo port, refreshed release, implemented and checked meal facet, published both from one exact artifact and verified focused live states. Save continuation after these two source packets, source CI repair and accumulated publication; current run resource reserved for durable checkpoint. Development remains active."
+    "last_execution_continuation": "Completed #1693 homepage handoff readiness/race repair, refreshed release, then completed #1694 shared CTA single-owner consolidation. Both source packets are checked and integrated; preview remains on the prior published meal source because only the first packet adds a brief loading state and the second is computed-neutral. Continue S3_PRODUCT_PAGES_HANDOFF; development remains active."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1260,23 +1260,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1686 photo URL port and #1687 truthful meal facet integrated sequentially and published together via exact artifact10092207048 / deploy34322213328.",
+    "last_material_progress": "#1693 fixes homepage handoff readiness and stale country-response races; #1694 removes the second generic shared CTA owner. Both integrated through release865ee7b6 with Security, exact artifact and applicable standalone CI green.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
+    "next_action": "Refresh release/main/open PRs, then continue S3_PRODUCT_PAGES_HANDOFF: audit remaining public country/resort/hot/rb offer CTAs for loss of destination, date, night and party parameters on the Search3 transition. Implement only the first confirmed user-visible mismatch in the current route/helper owner. Homepage loading and stale-response defects are completed in #1693; shared CTA ownership is completed in #1694. Do not duplicate ANEX work.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_SHARED_SITE",
-    "title": "Continue shared-site DS2 convergence from completed #1658 primitives",
+    "id": "S3_PRODUCT_PAGES_HANDOFF",
+    "title": "Preserve useful parameters across public-page transitions into Search3",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "last_fully_checked_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
     "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
-    "baseline_release_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "next_action": "Refresh release/main/open PRs, then audit remaining public country/resort/hot/rb offer CTAs for loss of destination, date, night and party parameters on the Search3 transition. Implement only a confirmed mismatch in the current route/helper owner; do not duplicate ANEX work.",
+    "baseline_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -6426,15 +6426,17 @@
     {
       "id": "S3_PRODUCT_SHARED_SITE",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "ACTIVE",
+      "status": "COMPLETED_CHECKED_RELEASE",
       "title": "Shared DS2 site components",
-      "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work."
+      "result": "#1658 and #1694 leave public primary/secondary CTA presentation in shared-content-primitives-v1.css; #1694 removes567B of generic duplicates while preserving contextual variants. Checked release865ee7b6; preview publication not required for computed-neutral cleanup."
     },
     {
       "id": "S3_PRODUCT_PAGES_HANDOFF",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "QUEUED",
-      "title": "Whole-site content and parameter-preserving handoff"
+      "status": "ACTIVE",
+      "title": "Whole-site content and parameter-preserving handoff",
+      "result": "#1693 completed homepage loading/race safety for both GET handoffs; further route/helper audit remains active.",
+      "next_action": "Audit remaining country/resort/hot/rb offer CTAs for confirmed destination/date/night/party loss before Search3."
     },
     {
       "id": "S3_PRODUCT_USEFUL_FEATURES",
@@ -13139,6 +13141,24 @@
     "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
     "eight_assets_delta": 1524,
     "route_delta": 1604,
-    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work."
+    "next_action": "Superseded by latest_shared_site_handoff_package and active S3_PRODUCT_PAGES_HANDOFF."
+  },
+  "latest_shared_site_handoff_package": {
+    "audit": "docs/project/search3-shared-control-owner.json",
+    "source_prs": [1693, 1694],
+    "source_shas": ["276fca32150cb5f4d0dff28736293e6bae98670a", "514d7fa92def05c65a1945266367dc8623c0d142"],
+    "checked_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
+    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "eight_assets_delta": 0,
+    "homepage_css_delta": 166,
+    "homepage_inline_controller_delta": 785,
+    "shared_page_css_delta": -567,
+    "security_runs": [34325953808, 34326518960],
+    "exact_runs": [34326140281, 34326631635],
+    "standalone_runs": [34326140349, 34326140267, 34326631536],
+    "preview_published": false,
+    "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+    "real_leads_submitted": 0,
+    "next_action": "Continue S3_PRODUCT_PAGES_HANDOFF with a bounded remaining-route audit and fix only a confirmed parameter-loss defect."
   }
 }

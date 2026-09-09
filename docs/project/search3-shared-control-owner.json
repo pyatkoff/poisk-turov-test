@@ -75,5 +75,41 @@
     "owner production visual acceptance"
   ],
   "rollback": "Revert release merge 6304d128429e999e97ba1dbdc9fc4c3933f7574c independently.",
-  "next_action": "Continue S3_PRODUCT_SHARED_SITE with a bounded read-only audit of shared header, navigation, footer, container, secondary button and link states; consolidate only a confirmed duplicate owner or mismatch, otherwise advance to S3_PRODUCT_PAGES_HANDOFF."
+  "next_action": "S3_PRODUCT_SHARED_SITE is complete through #1694. Continue S3_PRODUCT_PAGES_HANDOFF and fix only a confirmed parameter-loss defect.",
+  "followup_2026_09_09": {
+    "source_prs": [1693, 1694],
+    "source_shas": ["276fca32150cb5f4d0dff28736293e6bae98670a", "514d7fa92def05c65a1945266367dc8623c0d142"],
+    "checked_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
+    "scope": [
+      "Homepage disables both Search3 handoffs until country data is complete and ignores stale country responses after rapid departure changes.",
+      "Generic primary/secondary CTA geometry, colours, hover and mobile width were removed from site-page-v1.css; shared-content-primitives-v1.css remains the single later owner.",
+      "Card-primary and dark search-callout contextual variants remain in site-page-v1.css."
+    ],
+    "size": {
+      "search3_eight_assets_delta_raw_bytes": 0,
+      "homepage_css_before_raw_bytes": 10415,
+      "homepage_css_after_raw_bytes": 10581,
+      "homepage_inline_controller_before_raw_bytes": 3458,
+      "homepage_inline_controller_after_raw_bytes": 4243,
+      "site_page_css_before_raw_bytes": 11283,
+      "site_page_css_after_raw_bytes": 10716
+    },
+    "verification": {
+      "security_runs": [34325953808, 34326518960],
+      "exact_artifact_runs": [34326140281, 34326631635],
+      "navigation_run": 34326140349,
+      "standalone_content_runs": [34326140267, 34326631536],
+      "homepage_loading_race_test": "passed",
+      "shared_owner_and_source_order_guard": "passed",
+      "real_leads_submitted": 0
+    },
+    "publication": {
+      "published": false,
+      "reason": "The first packet changes only a brief loading state; the second is computed-style neutral. Accumulate before the next exact preview publication.",
+      "published_preview_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+      "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+      "main_changed": false,
+      "production_changed": false
+    }
+  }
 }

@@ -14,6 +14,14 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
+## Current product checkpoint — homepage handoff and shared CTA owner #1693/#1694 — 2026-09-09
+
+#1693 keeps both homepage GET handoffs unavailable until country data is complete, preserves country after readiness, and ignores stale country responses after rapid departure changes. #1694 removes567B of generic primary/secondary CTA duplicates from `site-page-v1.css`; `shared-content-primitives-v1.css` is the single later owner and contextual variants remain.
+
+Sources `276fca32150cb5f4d0dff28736293e6bae98670a` / `514d7fa92def05c65a1945266367dc8623c0d142`; checked release `865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a`. Eight Search3 assets delta0; homepage CSS +166B, inline controller +785B, shared page CSS −567B. Security, exact artifact, navigation and standalone content CI passed. Preview remains on source `8382d1bd8543fd3f0efb623673d1b70fa2be823d`; main/production unchanged, real leads0.
+
+Next: `S3_PRODUCT_PAGES_HANDOFF`, bounded audit of remaining country/resort/hot/rb offer transitions for destination/date/night/party loss. Do not restart completed homepage/shared-owner work or separate ANEX work. Audit: `docs/project/search3-shared-control-owner.json`.
+
 ## Текущий checkpoint — правдивый фильтр питания и фото #1686/#1687 — 2026-09-09
 
 Два source-пакета завершены последовательно и опубликованы вместе. #1686 переносит ровно два файла owner main#1679: CDN URL вида `//…` нормализуются в HTTPS, опасные URL отклоняются. Source `d75d21d31520142b864d965997f310840de80280`, release `f814829e2c7e397a83191e24836cb599d9db3ef8`. CSS/JS delta0; это подготовка нормализации, не обещание восстановления старых записей БД. Collector/DB не запускались.
