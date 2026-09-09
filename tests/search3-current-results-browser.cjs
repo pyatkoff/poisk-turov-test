@@ -14,8 +14,8 @@ const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
 const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
-  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, picturelink: picture, tours: [tour, { ...tour, id: 'other-tour', price: 159000 }] },
-  { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
+  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, picturelink: picture, tours: [tour, { ...tour, id: 'other-tour', price: 159000 }] },
+  { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
 ];
 const calendarHotels = [
   { id: 'calendar-a', tours: [
@@ -109,15 +109,29 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'cheap', 'price sorting retained');
     const localHotelFilter = page.locator('.search3-hotel-filter');
     const localHotelInput = localHotelFilter.locator('input');
+    const localCategoryFilter = page.locator('.search3-category-filter');
+    const localCategorySelect = localCategoryFilter.locator('select');
     assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
+    assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
+    await localCategorySelect.selectOption('5');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'category facet filters only the already loaded hotels');
+    assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'category facet reports a truthful loaded-card count');
     await localHotelInput.fill('  ВТОРОЙ  ');
-    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'local hotel filter matches normalized loaded-card names');
-    assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'local filter reports its own truthful loaded-card count');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and rating filters combine locally');
+    assert.match(await localHotelFilter.locator('small').innerText(), /Показано 0 из 2 загруженных отелей/, 'combined filters report their truthful loaded-card count');
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');
-    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'sorting reapplies the local filter to rerendered cards');
+    assert.equal(await localCategorySelect.inputValue(), '5', 'sorting preserves the local category');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'sorting reapplies both local filters to rerendered cards');
     await localHotelInput.fill('');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'clearing the name keeps the active category');
+    await localCategorySelect.selectOption('0');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'clearing the local query restores every loaded card');
+    await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], category: 0 }]);
+    assert.equal(await localCategoryFilter.isVisible(), false, 'category facet hides when any loaded hotel lacks category data');
+    assert.equal(await localCategorySelect.inputValue(), '0', 'incomplete category data resets the local choice');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'an incomplete facet never silently removes a loaded hotel');
+    await page.evaluate(items => window.V2Results.render(items), hotels);
     await page.locator('#sortResults').selectOption('price');
     const card = page.locator('#results [data-hotel-id=expensive].hotel-card');
     assert.equal(await card.locator('.hotel-title').evaluate(node => node.tagName), 'H3', 'hotel name keeps a semantic card heading');
@@ -168,6 +182,8 @@ async function run(browser, width, previous) {
     assert.match(await page.locator('#status').innerText(), /Параметры поиска изменены/, 'dirty reset retains its actionable explanation');
     assert.equal(await localHotelInput.inputValue(), '', 'search reset clears the local hotel query');
     assert.equal(await localHotelFilter.isVisible(), false, 'search reset hides the stale local hotel filter');
+    assert.equal(await localCategorySelect.inputValue(), '0', 'search reset clears the local category');
+    assert.equal(await localCategoryFilter.isVisible(), false, 'search reset hides the stale local category facet');
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => window.V2Results.render([]));
