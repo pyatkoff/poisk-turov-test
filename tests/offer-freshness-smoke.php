@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/v2/seo-offer-snapshot-v1.php';
+require_once dirname(__DIR__) . '/v2/seo-seasonal-offer-snapshot-v1.php';
 require_once dirname(__DIR__) . '/v2/data/hot-tours-read-v1.php';
 
 function freshness_check(bool $ok, string $message): void
@@ -56,6 +57,18 @@ foreach ([v2_seo_country_snapshot_offers(4, 1), v2_seo_resort_snapshot_offers(4,
     freshness_check($offers[0]['departureId'] === 1 && $offers[0]['departureName'] === 'Москва', 'city retained');
 }
 freshness_check(count(v2_seo_country_snapshot_offers(4, 6)) === 2, 'today and future retained');
+
+// Seasonal pages share the same departure-date policy before ranking/limits.
+$pdo->exec('ALTER TABLE seo_offer_snapshots ADD COLUMN page_key TEXT');
+$stmt = $pdo->prepare("INSERT INTO seo_offer_snapshots (departure_id,country_id,region_id,hotel_id,page_type,offers_json,observed_at,expires_at,offer_count,currency,min_price,page_key) SELECT departure_id,country_id,region_id,hotel_id,?,offers_json,observed_at,expires_at,offer_count,currency,min_price,? FROM seo_offer_snapshots WHERE page_type='country'");
+foreach (['month'=>'month:1:4:2026-09', 'resort_month'=>'resort_month:1:4:5:2026-09'] as $type => $pageKey) {
+    $stmt->execute([$type, $pageKey]);
+    $offers = v2_seo_seasonal_snapshot_offers($pageKey, 1);
+    freshness_check(count($offers) === 1 && $offers[0]['departureDate'] === $today && $offers[0]['price'] === 102, 'seasonal stale cheap and invalid dates removed before ranking/limit');
+    freshness_check($offers[0]['departureId'] === 1 && $offers[0]['departureName'] === 'Москва', 'seasonal city retained');
+    freshness_check(count(v2_seo_seasonal_snapshot_offers($pageKey, 6)) === 2, 'seasonal today/future retained and expired snapshot excluded');
+}
+
 $pdo->exec("UPDATE seo_offer_snapshots SET offers_json='[]'");
 freshness_check(v2_seo_country_snapshot_offers(4) === [], 'empty snapshot');
 
@@ -68,4 +81,4 @@ $stmt->execute([$tomorrow, 1, '2000-01-01']);
 $offers = v2_data_hot_tours(['departureId'=>1, 'countryId'=>4, 'limit'=>1]);
 freshness_check(count($offers) === 1 && $offers[0]['departure_date'] === $today && (float)$offers[0]['price'] === 102.0, 'hot dates, TTL and limit');
 freshness_check(v2_data_hot_tours(['departureId'=>2]) === [], 'hot city filter preserved');
-echo "OFFER_FRESHNESS_OK readers=country,resort,hotel,hot timezone=Europe/Moscow sameDay=preserved liveRequests=0\n";
+echo "OFFER_FRESHNESS_OK readers=country,resort,hotel,hot,month,resort_month timezone=Europe/Moscow sameDay=preserved liveRequests=0\n";
