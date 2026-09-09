@@ -77,6 +77,7 @@ async function checkMealFacet(page, width, previous) {
     if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
     assert.equal(await mealPreset.isVisible(), true, 'a truthful existing all-inclusive option exposes one quick choice');
+    assert.ok((await mealPreset.boundingBox()).height >= 44, 'meal quick choice keeps a full touch target');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'calendar starts from the lowest offer in the terminal result set');
@@ -278,6 +279,7 @@ async function run(browser, width, previous) {
     assert.equal(await localBudgetFilter.isVisible(), true, 'complete loaded offer prices expose a budget facet');
     assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
     assert.deepEqual(await localCategoryPresets.locator('button').allTextContents(), ['5★', '4★'], 'complete category values expose quick exact choices without inventing a threshold');
+    assert.ok((await localCategoryPresets.locator('button').first().boundingBox()).height >= 44, 'category quick choice keeps a full touch target');
     assert.equal(await localRatingFilter.isVisible(), true, 'rating facet appears when every loaded hotel has a rating');
     assert.equal(await localSeaFilter.isVisible(), true, 'sea facet appears when every loaded hotel has a distance');
     const rail = page.locator('.results-filter-rail'), actions = page.locator('#resultsTools .results-tools__actions');
