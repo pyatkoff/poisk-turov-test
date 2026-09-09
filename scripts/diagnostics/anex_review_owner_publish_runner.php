@@ -71,6 +71,8 @@ try {
     owner_publish_write($private.'/manifest.json',json_encode($manifest,JSON_THROW_ON_ERROR),0600);
     // Public manifest contains source/file provenance only, never account/session/setup state.
     owner_publish_write($target.'/anex-owner-panel-manifest.json',json_encode(['source_sha'=>$input['source_sha'],'files'=>$published,'write_enabled'=>false],JSON_THROW_ON_ERROR),0644);
+    owner_publish_write($private.'/publication-state.next',json_encode(['state'=>'completed','source_sha'=>$input['source_sha'],'manifest_sha256'=>hash_file('sha256',$private.'/manifest.json')],JSON_THROW_ON_ERROR),0600);
+    if(!rename($private.'/publication-state.next',$private.'/publication-state.json'))throw new RuntimeException('publish_install_failed');
     echo json_encode($manifest,JSON_THROW_ON_ERROR).PHP_EOL;
 }catch(Throwable $e){
     $reason=$e instanceof RuntimeException&&preg_match('/\A[a-z_]+\z/D',$e->getMessage())?$e->getMessage():'publish_runtime_failure';

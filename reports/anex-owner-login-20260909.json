@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-09",
+  "task": 1647,
+  "owner_authorization": "Separate owner login approved after confirmation AnyTour has no existing admin/auth/Bitrix.",
+  "source_checked": "7b9edd2025f627e1748a209181ff289ef3120f38",
+  "source_merged": "25c577ded8b87848331371fb758fb3ed09fe2553",
+  "pr": 1741,
+  "tests": {
+    "core": 39,
+    "owner_http": 21,
+    "publisher": 4,
+    "existing_panel": "passed",
+    "security_run": 34348968709,
+    "build_run": 34348968708,
+    "panel_run": 34348968700,
+    "identity": "synthetic",
+    "live_owner": "deferred"
+  },
+  "readiness": {
+    "run": 34349122412,
+    "job": 102457749503,
+    "artifact": 10102950128,
+    "artifact_digest": "196a3c6e37a089109174227fcea511ed8eadeb0c7178e0de8c1bd6131364ce40",
+    "report_sha256": "e576855701725bda511dd5eaadc942f5103e249af784621150db14ffe74ee430",
+    "database_calls": 0,
+    "supplier_requests": 0,
+    "ssh_attempts": 1,
+    "private_exists": false
+  },
+  "publication": "pinned apply prepared; not yet executed",
+  "write_enabled": false,
+  "next_action": "Apply checked bounded publication once, verify file/artifact readback, then owner uses private one-time activation link. No replay after unknown execution."
+}
