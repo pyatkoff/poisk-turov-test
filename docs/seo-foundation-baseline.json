@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "artifact": "anytour_seo_foundation_source_inventory",
+  "status": "baseline_only",
+  "scope": {
+    "domain": "anytoour.ru",
+    "evidence_kind": "repository_source_inventory",
+    "live_validation": "separate_workflow_required",
+    "publication_side_effects": false,
+    "traffic_metrics_measured": false,
+    "conversion_metrics_measured": false,
+    "ranking_metrics_measured": false
+  },
+  "inventory": {
+    "publication": {
+      "owner": [
+        "v2/seo-launch-slice-v1.php",
+        "v2/seo-publication-manifest-v1.php",
+        "v2/seo-sitemap-candidates-v1.php"
+      ],
+      "policy": "Publication candidates are review-only until an explicit, path-selective launch decision. A global flag without an allowlist emits no sitemap URLs.",
+      "ci_owner": ".github/workflows/validate-v2-seo-publication-manifest.yml"
+    },
+    "canonical": {
+      "owner": [
+        "v2/seo-config.php",
+        "v2/seo-production-identity-collector-v1.php"
+      ],
+      "policy": "Canonical identity is checked against the exact public path by the production identity collector; source inventory does not assert live parity.",
+      "ci_owner": ".github/workflows/verify-anytoour-seo-launch.yml"
+    },
+    "indexability": {
+      "owner": [
+        "v2/seo-config.php",
+        "v2/seo-launch-slice-v1.php",
+        "v2/seo-production-identity-registry-v1.php"
+      ],
+      "policy": "Indexability is host- and exact-path-gated. hotel_tours remain noindex,follow and outside the sitemap in the production identity contract.",
+      "ci_owner": ".github/workflows/validate-seo-production-identity-boundary.yml"
+    },
+    "sitemap": {
+      "owner": [
+        "v2/robots.txt",
+        "v2/sitemap.xml",
+        "v2/seo-sitemap-candidates-v1.php"
+      ],
+      "source_snapshot": {
+        "static_url_count": 104,
+        "country_url_count": 3,
+        "resort_url_count": 5,
+        "seasonal_url_count": 96,
+        "hotel_tours_url_count": 0,
+        "duplicates": 0
+      },
+      "policy": "Generated Egypt/Maldives resort routes are materializer-gated and must be proven by the live production collector rather than inferred from this static snapshot.",
+      "ci_owner": ".github/workflows/verify-anytoour-seo-launch.yml"
+    },
+    "internal_links": {
+      "owner": [
+        "v2/seo-internal-links-v1.php",
+        "v2/seo-page-graph-v1.php",
+        "v2/seo-page-primitives-v1.php"
+      ],
+      "policy": "Only curated stable first-party paths are eligible; query, fragment and external URLs are rejected from editorial link groups.",
+      "ci_owner": ".github/workflows/validate-v2-seo-structure.yml"
+    },
+    "schema": {
+      "owner": [
+        "v2/seo-config.php",
+        "v2/seo-structured-data-v1.php"
+      ],
+      "policy": "Schema helpers are constrained to clean AnyTour URLs and escaped JSON-LD. This baseline does not claim visible-content parity for each public page family.",
+      "ci_owner": "tests/seo-structured-data-smoke.php"
+    },
+    "performance": {
+      "owner": [
+        "v2/bundle-manifest-v1.php",
+        "v2/bundle-v1.php",
+        "v2/assets.php"
+      ],
+      "policy": "The V2 startup bundle contract verifies deterministic versions, immutable cache headers and two startup bundle requests. No page-family Core Web Vitals result is claimed by this source baseline.",
+      "ci_owner": ".github/workflows/validate-v2-bundles.yml"
+    }
+  },
+  "known_gaps": [
+    {
+      "priority": "P1",
+      "id": "compatibility_route_documentation_drift",
+      "finding": "v2/SEO_FOUNDATION.md describes the temporary V2 route as having no canonical, while v2/seo-config.php currently returns https://anytoour.ru/poisk-turov/ for a non-anytoour host.",
+      "next_decision": "Reconcile the documented compatibility-route contract with the approved runtime policy before the next canonical or route change.",
+      "evidence_required": "Read-only render evidence for the compatibility route and /poisk-turov/, followed by an explicit owner decision if behaviour must change.",
+      "change_authorization": "No runtime change authorized by this baseline."
+    },
+    {
+      "priority": "P1",
+      "id": "single_publication_source_of_truth",
+      "finding": "The repository intentionally has a review-only editorial manifest and a separate controlled runtime launch allowlist; readers need one reconciled handoff before expansion.",
+      "next_decision": "Publish a source-to-live reconciliation report that names the approved candidate set, controlled launch set, sitemap set and hotel_tours exclusions together.",
+      "evidence_required": "Fresh successful output from the existing production identity collector; no publish action.",
+      "change_authorization": "Read-only evidence only."
+    },
+    {
+      "priority": "P2",
+      "id": "public_page_schema_parity",
+      "finding": "Schema generation is tested structurally, but this baseline has no family-level proof that rendered JSON-LD matches visible country, resort and seasonal content.",
+      "next_decision": "Add a representative rendered-page parity audit after the public page templates are identified.",
+      "evidence_required": "Deterministic render fixtures plus a live sample audit; do not add new schema types without an explicit content contract.",
+      "change_authorization": "Validation-only unless a separately approved schema change is needed."
+    },
+    {
+      "priority": "P2",
+      "id": "internal_link_graph_coverage",
+      "finding": "Link sanitisation and registry graph validity are protected, but this baseline does not measure orphaned public pages or graph coverage against the live sitemap.",
+      "next_decision": "Build a read-only sitemap-to-link-graph coverage report for the controlled public cohort.",
+      "evidence_required": "Exact sitemap input and rendered link extraction, with approved exclusions documented.",
+      "change_authorization": "Read-only evidence only."
+    },
+    {
+      "priority": "P3",
+      "id": "seo_page_performance_evidence",
+      "finding": "V2 bundle/cache behaviour has an owner, but no source-backed Core Web Vitals baseline exists for the public SEO page families.",
+      "next_decision": "Choose a non-invasive synthetic page-performance measurement contract for representative country, resort and seasonal URLs.",
+      "evidence_required": "Repeatable synthetic measurements and thresholds approved without changing Metrika, goals or analytics contracts.",
+      "change_authorization": "Measurement design may proceed; analytics instrumentation changes require explicit approval."
+    }
+  ],
+  "validation": {
+    "local_command": "php tests/seo-foundation-baseline-smoke.php",
+    "ci_owner": ".github/workflows/validate-v2-seo-publication-manifest.yml",
+    "guarantees": [
+      "The inventory references only tracked source owners.",
+      "The static sitemap counts and exclusions remain reproducible from v2/sitemap.xml.",
+      "The artifact cannot be represented as a live, traffic, conversion or ranking report.",
+      "The foundation slice has no V2 runtime file changes."
+    ]
+  }
+}

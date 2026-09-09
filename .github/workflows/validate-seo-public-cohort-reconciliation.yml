@@ -1,0 +1,65 @@
+name: Validate SEO public cohort reconciliation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/seo-public-cohort-reconciliation.json'
+      - 'docs/seo-public-cohort-reconciliation.md'
+      - 'docs/seo-foundation-baseline.json'
+      - 'scripts/ci/validate_seo_public_cohort_reconciliation.py'
+      - 'tests/seo-public-cohort-reconciliation-test.py'
+      - '.github/workflows/validate-seo-public-cohort-reconciliation.yml'
+      - 'v2/seo-core-resort-launch-state-v1.php'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-postlaunch-feedback-v1.php'
+      - 'v2/seo-production-identity-collector-v1.php'
+      - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/seo-publication-manifest-v1.php'
+      - 'v2/seo-sitemap-candidates-v1.php'
+      - 'v2/sitemap.xml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/seo-public-cohort-reconciliation.json'
+      - 'docs/seo-public-cohort-reconciliation.md'
+      - 'docs/seo-foundation-baseline.json'
+      - 'scripts/ci/validate_seo_public_cohort_reconciliation.py'
+      - 'tests/seo-public-cohort-reconciliation-test.py'
+      - '.github/workflows/validate-seo-public-cohort-reconciliation.yml'
+      - 'v2/seo-core-resort-launch-state-v1.php'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-postlaunch-feedback-v1.php'
+      - 'v2/seo-production-identity-collector-v1.php'
+      - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/seo-publication-manifest-v1.php'
+      - 'v2/seo-sitemap-candidates-v1.php'
+      - 'v2/sitemap.xml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seo-public-cohort-reconciliation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-only-cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate review-only cohort dossier
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 scripts/ci/validate_seo_public_cohort_reconciliation.py --enforce-diff
+          else
+            python3 scripts/ci/validate_seo_public_cohort_reconciliation.py
+          fi
+          python3 tests/seo-public-cohort-reconciliation-test.py
+          git diff --check

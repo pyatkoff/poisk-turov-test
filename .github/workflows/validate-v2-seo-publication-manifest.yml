@@ -21,6 +21,9 @@ on:
       - 'v2/seo-page-graph-v1.php'
       - 'tests/seo-launch-slice-smoke.php'
       - 'tests/seo-runtime-launch-gate-smoke.php'
+      - 'tests/seo-foundation-baseline-smoke.php'
+      - 'docs/seo-foundation-baseline.json'
+      - 'docs/seo-foundation-baseline.md'
       - '.github/workflows/validate-v2-seo-publication-manifest.yml'
   workflow_dispatch:
 
@@ -43,6 +46,7 @@ jobs:
           php -l v2/site-page-shell-v1.php
           php -l tests/seo-launch-slice-smoke.php
           php -l tests/seo-runtime-launch-gate-smoke.php
+          php -l tests/seo-foundation-baseline-smoke.php
           php <<'PHP'
           <?php
           require 'v2/seo-sitemap-candidates-v1.php';
@@ -118,3 +122,4 @@ jobs:
           PHP
           php tests/seo-launch-slice-smoke.php
           php tests/seo-runtime-launch-gate-smoke.php
+          php tests/seo-foundation-baseline-smoke.php
