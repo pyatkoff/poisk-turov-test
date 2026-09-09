@@ -2,7 +2,8 @@
 (function(){'use strict';
 function root(){return document.getElementById('selectedTour')}
 function selectedState(open){document.body.classList.toggle('search3-selected-open',!!open)}
-function ensure(){const r=root(),flights=r&&r.querySelector('.tour-flights'),form=r&&r.querySelector('.lead-form');if(!flights||!form)return null;let action=flights.querySelector('.search3-flight-continue');if(!action){action=document.createElement('div');action.className='search3-flight-continue';action.innerHTML='<button type="button" class="primary">Продолжить к заявке</button>';flights.appendChild(action)}if(action.hidden)action.hidden=false;const button=action.querySelector('button');if(button&&button.textContent!=='Продолжить к заявке')button.textContent='Продолжить к заявке';return button}
+function ensureLeadReturn(form){if(!form||typeof form.querySelector!=='function'||typeof form.insertBefore!=='function')return null;let button=form.querySelector('.search3-lead-return');if(button)return button;button=document.createElement('button');button.type='button';button.className='secondary back-results search3-lead-return';button.textContent='Изменить тур';button.setAttribute('aria-label','Изменить тур и вернуться к предложениям');const heading=form.querySelector('.section-heading');form.insertBefore(button,heading&&heading.nextSibling||form.firstChild);return button}
+function ensure(){const r=root(),flights=r&&r.querySelector('.tour-flights'),form=r&&r.querySelector('.lead-form');if(!flights||!form)return null;ensureLeadReturn(form);let action=flights.querySelector('.search3-flight-continue');if(!action){action=document.createElement('div');action.className='search3-flight-continue';action.innerHTML='<button type="button" class="primary">Продолжить к заявке</button>';flights.appendChild(action)}if(action.hidden)action.hidden=false;const button=action.querySelector('button');if(button&&button.textContent!=='Продолжить к заявке')button.textContent='Продолжить к заявке';return button}
 /* Keep original radio nodes/order; only large lists need a local disclosure. */
 function ensureFlightChoices(){
   const r=root(),list=r&&r.querySelector('.flight-variants');if(!list)return;
@@ -39,5 +40,5 @@ window.addEventListener('v2:selected-tour-opened',()=>selectedState(true));
 ['v2:tour-returned','v2:selected-tour-closed','v2:search-reset'].forEach(name=>window.addEventListener(name,()=>selectedState(false)));
 window.addEventListener('click',event=>{if(event.target&&event.target.closest&&event.target.closest('#selectedTour .back-results,#selectedTour .lead-success-back,#selectedTour .other-hotel-offers'))selectedState(false)},true);
 document.addEventListener('click',event=>{if(event.target&&event.target.closest&&event.target.closest('#selectedTour .search3-flight-continue button')){event.preventDefault();enterLead('flight')}});
-window.Search3SummaryCta={ensure,enterLead,correctTradeoffs,syncLeadFlight,version:13};
+window.Search3SummaryCta={ensure,enterLead,correctTradeoffs,syncLeadFlight,version:14};
 })();

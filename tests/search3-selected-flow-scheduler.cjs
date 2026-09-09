@@ -72,6 +72,6 @@ assert.equal(bodyClasses.has('search3-selected-open'), false);
 window.Search3SummaryCta.enterLead('flight');
 assert.ok(selectedClasses.has('search3-lead-entry'));
 assert.equal(focused, 1);
-assert.equal(window.Search3SummaryCta.version, 13);
+assert.equal(window.Search3SummaryCta.version, 14);
 
 console.log('PASS: selected public adapter is retired; canonical recovery/price and native handoff remain');

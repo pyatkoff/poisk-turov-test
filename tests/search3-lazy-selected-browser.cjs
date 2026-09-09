@@ -91,7 +91,7 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1');
       });
       assert.deepEqual(leadState, { locked: true, staleBlocked: true, unlocked: true, error: 'error' }, 'race guard still blocks stale lead state');
       assert.equal(await page.locator('.search3-booking-summary,.search3-summary-submit').count(), 0, 'duplicate booking review remains absent');
-      await page.locator('#selectedTour .back-results').click();
+      await page.locator('#selectedTour > .back-results').click();
       await page.waitForFunction(() => document.activeElement?.matches('.direct-tour'));
       assert.equal(selectedPhaseRequests, 0, 'selected runtime remains single-request after return');
       assert.deepEqual(errors, []);

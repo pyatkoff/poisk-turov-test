@@ -43,5 +43,5 @@ assert.ok(classes.has('search3-lead-entry'));
 assert.ok(!classes.has('search3-final-review'));
 assert.deepEqual(trace.map(row => row[0]), ['prevent', 'event', 'scroll', 'focus']);
 assert.ok(classes.has('search3-selected-open'));
-assert.equal(window.Search3SummaryCta.version, 13);
+assert.equal(window.Search3SummaryCta.version, 14);
 console.log('PASS: native CTA enters the canonical lead form with one click');
