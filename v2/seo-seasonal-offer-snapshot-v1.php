@@ -71,6 +71,7 @@ function v2_seo_seasonal_snapshot_offers(string $pageKey, int $limit=6): array
     $pageKey=trim($pageKey);
     if(!preg_match('/^(month:\d+:\d+:\d{4}-\d{2}|resort_month:\d+:\d+:\d+:\d{4}-\d{2})$/',$pageKey)) return [];
     $limit=max(1,min(12,$limit));
+    $businessDate=v2_offer_business_date();
     try{
         $pdo=v2_data_db();
         $stmt=$pdo->prepare("SELECT s.departure_id,s.offers_json,s.observed_at,s.expires_at,COALESCE(d.name,'') departure_name
@@ -95,7 +96,7 @@ function v2_seo_seasonal_snapshot_offers(string $pageKey, int $limit=6): array
             if(!is_array($offer))continue;
             $hotelId=(int)($offer['hotelId']??0);$price=(float)($offer['price']??0);
             $date=trim((string)($offer['departureDate']??''));$nights=(int)($offer['nights']??0);
-            if($hotelId<=0||$price<=0||$date===''||$nights<=0)continue;
+            if($hotelId<=0||$price<=0||!v2_offer_departure_is_current($date,$businessDate)||$nights<=0)continue;
             $departureId=(int)($row['departure_id']??0);
             $key=$departureId.':'.$hotelId.':'.$date.':'.$nights;
             if(isset($seen[$key]))continue;$seen[$key]=true;
