@@ -32,6 +32,32 @@ cal_assert(($plan['dateFrom'] ?? '') === '2026-09-05', 'earliest_observed_date')
 cal_assert(($plan['dateTo'] ?? '') === '2026-09-18', 'fourteen_day_window');
 cal_assert(!str_starts_with((string)($plan['dateTo'] ?? ''), '2026-10'), 'seasonal_scope_crossed_month');
 
+// An earlier offer with another duration must not move the selected segment's
+// window away from all of its known observations.
+$mixedNightsOffers = [
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-10','nights'=>10],
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-10-10','nights'=>7],
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-10-11','nights'=>7],
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-10-12','nights'=>7],
+];
+foreach ([$mixedNightsOffers, array_reverse($mixedNightsOffers)] as $mixedOffers) {
+    $mixedPlan = v2_seo_price_calendar_plan($mixedOffers, 14, $today);
+    cal_assert(($mixedPlan['departureId'] ?? 0) === 1, 'mixed_nights_departure');
+    cal_assert(($mixedPlan['nights'] ?? 0) === 7, 'mixed_nights_dominant_duration');
+    cal_assert(($mixedPlan['dateFrom'] ?? '') === '2026-10-10', 'mixed_nights_matching_start');
+    cal_assert(($mixedPlan['dateTo'] ?? '') === '2026-10-23', 'mixed_nights_matching_window');
+}
+$mixedMonthEnd = [
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-05','nights'=>10],
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-27','nights'=>7],
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-28','nights'=>7],
+    ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-29','nights'=>7],
+];
+$mixedEndPlan = v2_seo_price_calendar_plan($mixedMonthEnd, 14, $today, '2026-09-01', '2026-09-30');
+cal_assert(($mixedEndPlan['dateFrom'] ?? '') === '2026-09-27', 'mixed_nights_month_end_from');
+cal_assert(($mixedEndPlan['dateTo'] ?? '') === '2026-09-30', 'mixed_nights_month_end_clamp');
+cal_assert(($mixedEndPlan['days'] ?? 0) === 4, 'mixed_nights_month_end_span');
+
 $endOfMonthOffers = [
     ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-27','nights'=>7],
     ['departureId'=>1,'departureName'=>'Москва','departureDate'=>'2026-09-28','nights'=>7],
