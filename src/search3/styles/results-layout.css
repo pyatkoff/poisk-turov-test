@@ -36,6 +36,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & :is(.search3-hotel-filter,.search3-budget-filter) small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
 & :is(.search3-hotel-filter,.search3-budget-filter) small:empty{display:none}
 & .search3-budget-filter input[type=range]{padding:0;accent-color:#2743cb}
+& .results-tools__actions>.search3-filter-reset{flex:1 1 180px;width:auto;color:#2743cb;font-weight:600}
+& .search3-filter-reset[hidden]{display:none}
 & .search3-shortlist{display:grid;gap:18px;margin:20px 0;padding:20px;border:1px solid #cbd6ef;border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-shortlist[hidden]{display:none!important}
 & .search3-shortlist__head{display:flex;align-items:start;justify-content:space-between;gap:16px}
@@ -94,7 +96,6 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-filter-rail :is(input:not([type=range]),select){width:100%;min-height:44px;padding:9px 10px;background:var(--at-soft,#f5f8ff);font-size:15px;font-weight:400}
 & .results-filter-rail input[type=range]{width:100%;min-height:32px}
 & .search3-filter-reset{width:100%;color:#2743cb;font-weight:600}
-& .search3-filter-reset[hidden]{display:none}
 & #results .hotel-main{grid-template-columns:minmax(200px,32%) minmax(0,1fr)}
 }
 }
