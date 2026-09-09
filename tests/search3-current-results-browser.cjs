@@ -83,10 +83,11 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
-    await page.evaluate(items => {
+    await page.evaluate(() => {
+      const items = window.__mealOriginal;
       window.V2Results.render(items);
       window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
-    }, items);
+    });
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'raw continuation event cannot overwrite the matching meal projection');
     const a = page.locator('#results [data-hotel-id=meal-a]');
     assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'representative choice keeps its original tour ID');
@@ -101,10 +102,11 @@ async function checkMealFacet(page, width, previous) {
     await category.selectOption('4');
     assert.deepEqual(await visible(), [], 'name/category/meal combine through one hidden-state owner');
     assert.equal(await calendar.isVisible(), false, 'zero local matches hide the stale price calendar');
-    await page.evaluate(items => {
+    await page.evaluate(() => {
+      const items = window.__mealOriginal;
       window.V2Results.render(items);
       window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
-    }, items);
+    });
     assert.equal(await calendar.isVisible(), false, 'empty local projection remains empty after raw continuation');
     assert.match(await page.locator('#search3HotelFilterStatus').innerText(), /Показано 0 из 3/);
     await page.locator('#sortResults').selectOption('rating');
