@@ -7,14 +7,18 @@ on:
     paths:
       - 'v2/data/build-hot-from-observations-v1.php'
       - 'v2/data/hot-tours-read-v1.php'
+      - 'v2/offer-freshness-v1.php'
       - 'v2/hot/index.php'
+      - 'tests/offer-freshness-smoke.php'
       - '.github/workflows/build-anytour-hot.yml'
   push:
     branches: [main]
     paths:
       - 'v2/data/build-hot-from-observations-v1.php'
       - 'v2/data/hot-tours-read-v1.php'
+      - 'v2/offer-freshness-v1.php'
       - 'v2/hot/index.php'
+      - 'tests/offer-freshness-smoke.php'
       - '.github/workflows/build-anytour-hot.yml'
   schedule:
     - cron: '13 * * * *'
@@ -47,7 +51,9 @@ jobs:
           set -euo pipefail
           php -l v2/data/build-hot-from-observations-v1.php >/dev/null
           php -l v2/data/hot-tours-read-v1.php >/dev/null
+          php -l v2/offer-freshness-v1.php >/dev/null
           php -l v2/hot/index.php >/dev/null
+          php tests/offer-freshness-smoke.php
           grep -Fq "o.source='user_search'" v2/data/build-hot-from-observations-v1.php
           grep -Fq 'o.adults=2 AND o.children_count=0' v2/data/build-hot-from-observations-v1.php
           grep -Fq 'hot_tours_current' v2/data/build-hot-from-observations-v1.php

@@ -3,8 +3,7 @@ require_once dirname(__DIR__).'/site-page-shell-v1.php';
 require_once dirname(__DIR__).'/seo-page-primitives-v1.php';
 require_once dirname(__DIR__).'/data/hot-tours-read-v1.php';
 $c=sp_context('/hot/','Горящие туры — AnyTour','Горящие туры AnyTour: предложения на ближайшие даты с проверкой стоимости и наличия перед бронированием.');
-$hotFrom=(new DateTimeImmutable('tomorrow'))->format('Y-m-d');
-$hotTo=(new DateTimeImmutable('tomorrow +14 days'))->format('Y-m-d');
+[$hotFrom,$hotTo]=v2_offer_hot_search_window();
 $hotBase=['dateFrom'=>$hotFrom,'dateTo'=>$hotTo];
 $hotSearch=v2_seo_search_handoff_url('/poisk-turov/',$hotBase);
 $hotScenarios=[

@@ -65,6 +65,7 @@ jobs:
           php tests/site-preview-path-smoke.php production
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php
+          php tests/offer-freshness-smoke.php
           node tests/home-search-loading-handoff.cjs
           python3 -B scripts/build/search3_assets.py --check
           node scripts/build/search3-js/shared-runtime.cjs --check
