@@ -995,9 +995,26 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         for marker in ('.results-layout', '.direct-tour', '[hidden]', '.v2-product-hero'):
             self.assertIn(marker, results)
 
-    def test_optional_shared_layers_are_search3_only_exclusions(self):
+    def test_native_form_groups_and_shared_footer_keep_single_owners(self):
+        index = (ROOT / 'v2/index.php').read_text()
+        native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        self.assertEqual(index.count('<fieldset class="search-group '), 4)
+        for label in ('Направление', 'Даты вылета', 'Продолжительность', 'Туристы'):
+            self.assertIn(label, index)
         for name in (
-            'site-footer-v1.css', 'ds2-search-intro-v1.css', 'ds2-search.css',
+            'from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
+            'count_people', 'child_count',
+        ):
+            self.assertEqual(index.count(f'name="{name}"'), 1, name)
+        self.assertIn('& .search-group{', native)
+        self.assertIn('@media(max-width:430px){& .search-group{grid-template-columns:1fr}', native)
+        self.assertNotIn('.ds2-site-footer', results)
+
+    def test_optional_shared_layers_are_search3_only_exclusions(self):
+        self.assertEqual(self.bundle.count("'site-footer-v1.css'"), 1)
+        for name in (
+            'ds2-search-intro-v1.css', 'ds2-search.css',
             'hotel-actions-v3.js', 'room-details-v3.js', 'hotel-autocomplete-v1.js',
             'search-filters-ux-v1.js', 'current-price-calendar-v1.js',
             'mobile-results-filters-v1.js', 'ds2-results-filters.js',
