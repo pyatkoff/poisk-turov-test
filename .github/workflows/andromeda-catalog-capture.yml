@@ -1,0 +1,53 @@
+name: Andromeda one-direction catalog
+on:
+  push:
+    branches: ['feat/int-andromeda-client-20260909']
+    paths: ['.github/workflows/andromeda-catalog-capture.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-andromeda-first-access
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 6cba9861544a607c233efcf17147392dd1834de5
+          persist-credentials: false
+      - name: Reserve one catalog stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.request
+          if os.environ['GITHUB_RUN_ATTEMPT'] != '1': raise SystemExit('REPLAY_REFUSED')
+          url = 'https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/workflows/andromeda-catalog-capture.yml/runs?branch=feat%2Fint-andromeda-client-20260909&per_page=100'
+          req = urllib.request.Request(url, headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req, timeout=20) as response: runs=json.load(response)
+          if runs['total_count'] != 1 or any(r['id'] != int(os.environ['GITHUB_RUN_ID']) for r in runs['workflow_runs']): raise SystemExit('PREVIOUS_STAGE_REQUIRES_REVIEW')
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-catalog'
+          root.mkdir(mode=0o700)
+          report={'state':'reserved','stage':'catalog_moscow_egypt_v1','source':'6cba9861544a607c233efcf17147392dd1834de5','max_calls':4,'actions':['login','townfrom','state','all']}
+          with (root/'reservation.json').open('x') as f: json.dump(report,f)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-catalog-reservation
+          path: ${{ runner.temp }}/andromeda-catalog/reservation.json
+          if-no-files-found: error
+      - name: Capture and read back dictionaries
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/andromeda-catalog-capture.php --execute "$RUNNER_TEMP/andromeda-catalog"
+      - name: Preserve catalog evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-catalog-evidence
+          path: ${{ runner.temp }}/andromeda-catalog/*.json
+          if-no-files-found: error
