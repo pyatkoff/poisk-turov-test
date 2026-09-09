@@ -55,10 +55,10 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     </div>
   </section>
 
-  <form class="at-home-search" action="<?=home_e(v2_site_href('/poisk-turov/'))?>" method="get" autocomplete="off" data-home-search>
+  <form class="at-home-search" action="<?=home_e(v2_site_href('/poisk-turov/'))?>" method="get" autocomplete="off" data-home-search data-countries-busy="true" aria-busy="true">
     <div class="at-home-search__grid">
       <label class="at-home-field"><span>Вылет из</span><select name="from" data-home-departures required><option value="<?=home_e($homeForm['from'])?>">Загружаем города…</option></select></label>
-      <label class="at-home-field"><span>Страна</span><select name="country" data-home-countries required><option value="<?=home_e($homeForm['country'])?>">Загружаем страны…</option></select></label>
+      <label class="at-home-field"><span>Страна</span><select name="country" data-home-countries required disabled><option value="<?=home_e($homeForm['country'])?>">Загружаем страны…</option></select></label>
       <label class="at-home-field"><span>Вылет с</span><input type="date" name="dateFrom" value="<?=home_e($homeForm['date_from'])?>" required></label>
       <label class="at-home-field"><span>Вылет до</span><input type="date" name="dateTo" value="<?=home_e($homeForm['date_till'])?>" required></label>
       <label class="at-home-field"><span>Ночей от</span><select name="daysFrom" required><?php for($i=1;$i<=28;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['nights_from']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
@@ -66,9 +66,9 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <label class="at-home-field"><span>Взрослых</span><select name="count_people"><?php for($i=1;$i<=6;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['count_people']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
       <label class="at-home-field"><span>Детей</span><select data-home-children><?php for($i=0;$i<=3;$i++): ?><option value="<?=$i?>" <?=$i===count($homeForm['child_ages'])?'selected':''?>><?=$i===0?'Без детей':$i?></option><?php endfor; ?></select></label>
       <div class="at-home-child-ages" data-home-child-ages></div>
-      <button type="submit">Найти туры</button>
+      <button type="submit" disabled>Найти туры</button>
     </div>
-    <a class="at-home-search__more" href="<?=home_e(v2_site_href('/poisk-turov/'))?>">Расширенный поиск и все фильтры →</a>
+    <a class="at-home-search__more" href="<?=home_e(v2_site_href('/poisk-turov/'))?>" aria-disabled="true" tabindex="-1">Расширенный поиск и все фильтры →</a>
   </form>
 
   <section class="at-home-section at-home-section--discovery">
@@ -106,16 +106,19 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   }
   childCount.addEventListener('change',renderAges);renderAges();
   const more=form.querySelector('.at-home-search__more');
+  const submit=form.querySelector('button[type="submit"]');
+  let countriesBusy=true,countryRevision=0;
+  function setCountriesBusy(busy){countriesBusy=busy;form.dataset.countriesBusy=busy?'true':'false';form.setAttribute('aria-busy',busy?'true':'false');country.disabled=busy;submit.disabled=busy;more.setAttribute('aria-disabled',busy?'true':'false');if(busy)more.setAttribute('tabindex','-1');else more.removeAttribute('tabindex');}
   const syncMore=()=>{more.href=form.action+'?'+new URLSearchParams(new FormData(form)).toString();};
-  form.addEventListener('input',syncMore);form.addEventListener('change',syncMore);more.addEventListener('click',event=>{if(!form.reportValidity()){event.preventDefault();return;}syncMore();});
+  form.addEventListener('input',syncMore);form.addEventListener('change',syncMore);form.addEventListener('submit',event=>{if(countriesBusy)event.preventDefault();});more.addEventListener('click',event=>{if(countriesBusy||!form.reportValidity()){event.preventDefault();return;}syncMore();});
   const validateRange=()=>{form.elements.daysTill.setCustomValidity(Number(form.elements.daysTill.value)<Number(form.elements.daysFrom.value)?'Максимум ночей должен быть не меньше минимума':'');};
   form.addEventListener('change',validateRange);
   if(!dep||!country)return;
   const initialDeparture=String(dep.value||'1'),initialCountry=String(country.value||'4');
   async function get(action,params){const u=new URL('/api-v2.php',location.origin);u.searchParams.set('action',action);Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));const r=await fetch(u,{credentials:'same-origin'});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
   function options(select,items,wanted,placeholder){select.innerHTML='';(Array.isArray(items)?items:[]).forEach(item=>{const o=document.createElement('option');o.value=String(item.id);o.textContent=String(item.name||item.title||('ID '+item.id));select.appendChild(o);});if(wanted&&Array.from(select.options).some(o=>o.value===String(wanted)))select.value=String(wanted);if(!select.options.length){const o=document.createElement('option');o.value='';o.textContent=placeholder;select.appendChild(o);}}
-  async function loadCountries(wanted){country.disabled=true;try{const list=await get('countries',{departureId:dep.value||1});options(country,list,wanted,'Страны не найдены');}catch(e){options(country,[],null,'Не удалось загрузить страны');}finally{country.disabled=false;}}
-  get('departures').then(list=>{options(dep,list,initialDeparture,'Города не найдены');return loadCountries(initialCountry);}).catch(()=>{options(dep,[],null,'Не удалось загрузить города');});
+  async function loadCountries(wanted){const revision=++countryRevision;setCountriesBusy(true);try{const list=await get('countries',{departureId:dep.value||1});if(revision===countryRevision)options(country,list,wanted,'Страны не найдены');}catch(e){if(revision===countryRevision)options(country,[],null,'Не удалось загрузить страны');}finally{if(revision===countryRevision){setCountriesBusy(false);syncMore();}}}
+  get('departures').then(list=>{options(dep,list,initialDeparture,'Города не найдены');return loadCountries(initialCountry);}).catch(()=>{options(dep,[],null,'Не удалось загрузить города');options(country,[],null,'Не удалось загрузить страны');setCountriesBusy(false);syncMore();});
   dep.addEventListener('change',()=>loadCountries(''));
 })();
 </script>

@@ -13,6 +13,7 @@ on:
       - 'v2/form-defaults.php'
       - 'v2/poisk-turov/**'
       - 'v2/header-current-site.js'
+      - 'tests/home-search-loading-handoff.cjs'
       - '.github/workflows/validate-standalone-navigation.yml'
 
 jobs:
@@ -100,6 +101,7 @@ jobs:
             if (strpos($html, "https://anytour.online/country/") !== false) exit(14);
           '
           php tests/search-handoff-smoke.php
+          node tests/home-search-loading-handoff.cjs
           grep -Fq "'/country/'" v2/header-current-site.js
           grep -Fq "'/hot/'" v2/header-current-site.js
           grep -Fq "'/contacts/'" v2/header-current-site.js
