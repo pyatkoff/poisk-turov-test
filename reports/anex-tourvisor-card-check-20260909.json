@@ -1,0 +1,125 @@
+{
+  "behavior": {
+    "anex_request_by_point_button": false,
+    "automatic_topup": false,
+    "booking_from_point_offers": false,
+    "only_accepted_local_id": true,
+    "reason_booking_deferred": "Point search ID must be retained through selected-tour and lead context before enabling booking.",
+    "render_starts_search": false,
+    "requires_raw_broad_absence_and_completion": true,
+    "same_snapshot_existing_hotelIds": true
+  },
+  "date": "2026-09-09",
+  "implementation": {
+    "merged_sha": "482aa01e878c900534211c83f570f4f8c8c4e056",
+    "pr": 1703,
+    "source_sha": "2e210787c64c01dac7057897e1706c09df67d9e3"
+  },
+  "limits": [
+    "No guarantee of complete Tourvisor catalogue/search coverage.",
+    "Source minima are not proof of identical packages or final payable price.",
+    "Panel remains unpublished; see readonly readiness report."
+  ],
+  "polling_fix": {
+    "deadline_ms": 60000,
+    "global_concurrent_checks": 1,
+    "hotel_limit_per_generation": 3,
+    "initial_search_limit_per_hotel": 1,
+    "interval_ms": 7500,
+    "old_interval_ms": 2500,
+    "pr": 1708,
+    "published_sha": "5a76d38fea1064ccb2d38e7b8c2a84566ca656e9",
+    "source_sha": "4970324c2f98b4152c27442406ad445b23e0687e",
+    "status_limit": 8
+  },
+  "requests": {
+    "deployment_probe": {
+      "new_supplier_content_requests": 0,
+      "prior_observations_updated": [
+        158,
+        297
+      ],
+      "supplier_requests": 8
+    },
+    "explicit_point_checks": 2,
+    "no_claim_of_zero_anex_calls_for_whole_packet": true,
+    "point_hotel_ids": [
+      1959,
+      99284
+    ],
+    "point_total_http_requests": "not recorded in browser",
+    "two_live_broad_searches": 2
+  },
+  "schema_version": 1,
+  "scope": "isolated_anex_preview_only",
+  "url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+  "verification": {
+    "artifact_id": 10096927331,
+    "artifact_run": 34333725922,
+    "artifact_sha256": "efb125f28d84ffe2506c56301f997f89a0a2095969a2a3388111eb5e4d578833",
+    "deploy_job": 102408654685,
+    "deploy_run": 34333898486,
+    "lead_submission": false,
+    "live_after_fix": {
+      "anex_min_rub": 140345,
+      "broad_before": {
+        "anex": 44,
+        "overlap": 10,
+        "tourvisor": 58,
+        "union": 92
+      },
+      "combined_after": {
+        "anex": 44,
+        "overlap": 11,
+        "tourvisor": 59,
+        "union": 92
+      },
+      "desktop_screenshot_css_width": 1348,
+      "horizontal_overflow": false,
+      "hotel_card_copies": 1,
+      "initial_point_clicks": 1,
+      "local_id": 99284,
+      "name": "BEACH SAFARI NUBIAN RESORT",
+      "observed_by_ms": 30135,
+      "observed_completion_time_note": "Completion was already visible at the first read 30135ms after clicking; exact supplier duration was not recorded.",
+      "operators": [
+        "Анекс Тур",
+        "Pegas Touristik"
+      ],
+      "original_tourvisor_count_unchanged": 58,
+      "params": {
+        "adults": 2,
+        "childs": [],
+        "countryId": 1,
+        "currency": "RUB",
+        "dateFrom": "2026-09-18",
+        "dateTo": "2026-09-18",
+        "departureId": 1,
+        "meal": "7",
+        "nightsFrom": 8,
+        "nightsTo": 8
+      },
+      "status": "success",
+      "tv_min_rub": 155079,
+      "tv_tours": 16
+    },
+    "live_before_fix": {
+      "anex_min_rub": 136385,
+      "broad": {
+        "anex": 44,
+        "overlap": 2,
+        "tourvisor": 15,
+        "union": 57
+      },
+      "initial_point_clicks": 1,
+      "local_id": 1959,
+      "name": "AMC ROYAL HOTEL",
+      "replayed": false,
+      "status": "timeout"
+    },
+    "mobile_live": "deferred: browser does not expose viewport resizing",
+    "node_checks": 42,
+    "security_run": 34333564314
+  },
+  "related_readiness_report": "reports/anex-review-readiness-and-saved-search-20260909.json"
+}
