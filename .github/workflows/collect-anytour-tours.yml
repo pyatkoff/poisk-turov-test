@@ -20,8 +20,10 @@ on:
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
+      - 'v2/data/top500-monthly-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
       - 'tests/top500-daily-plan-smoke.php'
+      - 'tests/top500-monthly-plan-smoke.php'
       - 'tests/price-intelligence-smoke.php'
       - 'tests/seo-offer-image-smoke.php'
       - 'v2/data/rollup-price-daily-v1.php'
@@ -48,8 +50,10 @@ on:
       - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
+      - 'v2/data/top500-monthly-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
       - 'tests/top500-daily-plan-smoke.php'
+      - 'tests/top500-monthly-plan-smoke.php'
       - 'tests/price-intelligence-smoke.php'
       - 'tests/seo-offer-image-smoke.php'
       - 'v2/data/rollup-price-daily-v1.php'
@@ -58,7 +62,8 @@ on:
       - 'v2/seo-price-promo-v1.css'
       - '.github/workflows/collect-anytour-tours.yml'
   schedule:
-    - cron: '12 2 * * *'
+    # Small resumable passes; each successful/empty target is refreshed once/24h.
+    - cron: '12 * * * *'
   workflow_dispatch:
     inputs:
       budget:
@@ -72,9 +77,24 @@ on:
         default: '9'
         type: string
       matrix_months:
-        description: 'Upcoming calendar months for optional manual matrix rotation (1-18)'
+        description: 'Calendar months for TOP500 collection (1-18)'
         required: true
         default: '12'
+        type: string
+      monthly_budget:
+        description: 'Maximum due weekly TOP500 batches in this pass (1-100)'
+        required: true
+        default: '64'
+        type: string
+      target_month:
+        description: 'Optional targeted backfill month YYYY-MM; blank covers every month'
+        required: false
+        default: ''
+        type: string
+      target_country:
+        description: 'Optional target country ID; 0 covers all countries'
+        required: false
+        default: '0'
         type: string
 
 concurrency:
@@ -87,14 +107,16 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Validate exact daily TOP500 contract
+      - name: Validate daily freshness and full-month TOP500 coverage
         shell: bash
         run: |
           set -euo pipefail
           php -l v2/data/sync-priority-hotels-v1.php >/dev/null
           php -l v2/data/top500-daily-plan-v1.php >/dev/null
+          php -l v2/data/top500-monthly-plan-v1.php >/dev/null
           php -l v2/data/top500-daily-collector-v1.php >/dev/null
           php -l tests/top500-daily-plan-smoke.php >/dev/null
+          php -l tests/top500-monthly-plan-smoke.php >/dev/null
           php -l v2/data/price-observer-v1.php >/dev/null
           php -l v2/data/price-segment-v1.php >/dev/null
           php -l v2/data/price-intelligence-v1.php >/dev/null
@@ -109,6 +131,7 @@ jobs:
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php -l v2/seo-offer-snapshot-v1.php >/dev/null
           php tests/top500-daily-plan-smoke.php
+          php tests/top500-monthly-plan-smoke.php
           php tests/price-intelligence-smoke.php
           php tests/seo-offer-image-smoke.php
           php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492) exit(1); echo 'TOP500_PRIORITY_SET_OK count=492'.PHP_EOL;"
@@ -119,7 +142,7 @@ jobs:
           grep -Fq 'segmentFingerprint' v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq 'hotelImage' v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq 'picturelink' v2/data/price-observer-v1.php
-          echo ANYTOUR_TOP500_DAILY_TOOLING_OK
+          echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
   collect-production:
     if: github.event_name != 'pull_request'
@@ -144,21 +167,28 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Collect full TOP500 and refresh production aggregates
+      - name: Collect due TOP500 months and refresh production aggregates
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           BUDGET_VALUE: ${{ inputs.budget || '2' }}
           MATRIX_BUDGET_VALUE: ${{ inputs.matrix_budget || '9' }}
           MATRIX_MONTHS_VALUE: ${{ inputs.matrix_months || '12' }}
+          MONTHLY_BUDGET_VALUE: ${{ inputs.monthly_budget || '64' }}
+          TARGET_MONTH_VALUE: ${{ inputs.target_month || '' }}
+          TARGET_COUNTRY_VALUE: ${{ inputs.target_country || '0' }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
           [[ "$BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$MATRIX_BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$MATRIX_MONTHS_VALUE" =~ ^[0-9]+$ ]]
+          [[ "$MONTHLY_BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$TARGET_COUNTRY_VALUE" =~ ^[0-9]+$ ]]
+          [[ -z "$TARGET_MONTH_VALUE" || "$TARGET_MONTH_VALUE" =~ ^[0-9]{4}-(0[1-9]|1[0-2])$ ]]
           test "$BUDGET_VALUE" -ge 0 && test "$BUDGET_VALUE" -le 20
           test "$MATRIX_BUDGET_VALUE" -ge 1 && test "$MATRIX_BUDGET_VALUE" -le 30
           test "$MATRIX_MONTHS_VALUE" -ge 1 && test "$MATRIX_MONTHS_VALUE" -le 18
+          test "$MONTHLY_BUDGET_VALUE" -ge 1 && test "$MONTHLY_BUDGET_VALUE" -le 100
+          test "$TARGET_COUNTRY_VALUE" -ge 0 && test "$TARGET_COUNTRY_VALUE" -le 1000000
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
@@ -179,6 +209,7 @@ jobs:
             v2/data/sync-priority-hotels-v1.php \
             v2/data/top500-coverage-v1.php \
             v2/data/top500-daily-plan-v1.php \
+            v2/data/top500-monthly-plan-v1.php \
             v2/data/top500-daily-collector-v1.php \
             v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
@@ -189,6 +220,7 @@ jobs:
             root=\"\$HOME/www/anytoour.ru/data\"
             php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
+            php -l \"\$root/top500-monthly-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-collector-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
@@ -198,13 +230,17 @@ jobs:
             php \"\$root/sync-priority-hotels-v1.php\" --limit=500 || reconcile_status=\$?
             if [ \"\$reconcile_status\" -ne 0 ]; then echo \"PRIORITY_HOTEL_SYNC_WARNING status=\$reconcile_status\"; fi
             php \"\$root/top500-coverage-v1.php\"
-            php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --start-days=1
+            # A failed supplier batch must not prevent good partial/user data
+            # already in the DB from reaching SEO snapshots.
+            collector_status=0
+            php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --months='$MATRIX_MONTHS_VALUE' --budget='$MONTHLY_BUDGET_VALUE' --max-seconds=1500 --only-month='$TARGET_MONTH_VALUE' --only-country='$TARGET_COUNTRY_VALUE' || collector_status=\$?
             if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
-              php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
-              php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE'
+              php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE' || collector_status=\$?
+              php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE' || collector_status=\$?
             fi
             php \"\$root/top500-coverage-v1.php\"
             php \"\$root/rollup-price-daily-v1.php\" --days=31
             php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            exit \"\$collector_status\"
           "
