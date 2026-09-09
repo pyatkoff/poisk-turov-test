@@ -1,24 +1,14 @@
 {
   "browser": {
-    "andromeda_hotels_before_continuation_fix": 107,
-    "combined_hotels_before_continuation_fix": 167,
-    "continuation_fix_verification": "passed",
-    "owner_login_required": false,
-    "route_opened": true,
-    "source_filter_verified": true,
-    "unresolved_disclosure_verified": {
-      "hotel": "Life Resorts Coral Hills",
-      "offers": 5,
-      "operators": [
-        "Anex Tour",
-        "Intourist"
-      ]
-    },
-    "pages_loaded": 39,
-    "final_pages_count": 39,
+    "all_enabled_operators_coverage_claimed": false,
     "andromeda_hotels": 218,
+    "andromeda_hotels_before_continuation_fix": 107,
+    "biblioglobus_observed": false,
     "combined_hotels": 251,
-    "unresolved_hotels_visible": 62,
+    "combined_hotels_before_continuation_fix": 167,
+    "completed": true,
+    "continuation_fix_verification": "passed",
+    "final_pages_count": 39,
     "operator_rows_in_dom": {
       "Anex Tour": 97,
       "Fun&Sun": 917,
@@ -29,9 +19,19 @@
       "Fun&Sun",
       "Intourist"
     ],
-    "biblioglobus_observed": false,
-    "all_enabled_operators_coverage_claimed": false,
-    "completed": true
+    "owner_login_required": false,
+    "pages_loaded": 39,
+    "route_opened": true,
+    "source_filter_verified": true,
+    "unresolved_disclosure_verified": {
+      "hotel": "Life Resorts Coral Hills",
+      "offers": 5,
+      "operators": [
+        "Anex Tour",
+        "Intourist"
+      ]
+    },
+    "unresolved_hotels_visible": 62
   },
   "catalog_sync": {
     "accepted": 584,
@@ -303,6 +303,15 @@
     "requests_per_month": 5000000
   },
   "route": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
-  "runtime_source_sha": "365e30fa11dc86d0e7750d16ca52c9d72661120c",
-  "state": "preview_published_public_paginated_search"
+  "runtime_source_sha": "544366a2008222bab0ba7b594026243326a9a112",
+  "state": "preview_published_public_paginated_search",
+  "previous_runtime_source_sha": "365e30fa11dc86d0e7750d16ca52c9d72661120c",
+  "latest_media_and_identity_step": {
+    "report": "reports/andromeda-anex-media-20260909.json",
+    "run_id": 34383446650,
+    "identity_run_id": 34382905510,
+    "accepted": 586,
+    "pending": 316,
+    "conflict": 3
+  }
 }
