@@ -254,5 +254,37 @@
       "owner approval for a concrete production release"
     ],
     "next_action": "S3_OTA_SITE_CONFIDENCE: one truthful populated site entry and exact Search3 handoff through SITE #1719."
+  },
+  "ota_quality_benchmark_20260909": {
+    "stage": "TECHNICAL_BASELINE_COMPLETE_USER_PILOT_NOT_MEASURED",
+    "exact_preview_source": "aa4790d95166367f6e6b111709ce3b9f04768238",
+    "checked_release": "e6c3e3cafad52ddf836113d2c3d3b80a63b06c06",
+    "evidence_basis": [
+      "shortlist browser acceptance from exact run 34376890165",
+      "selected and results geometry from exact run 34376890165",
+      "hotel offer handoff helper/renderer contracts from exact run 34379192101",
+      "preview containment evidence 10114544908 and 10115256484"
+    ],
+    "five_tasks": {
+      "find_suitable_hotel": "passed on fixed loaded-result fixtures with current name/category/meal filters and sort; no supplier request from local actions",
+      "compare_two_exact_trips": "passed for exact source/searchId/offerId snapshots, including two rooms in one hotel, persistence, repricing and unavailable/corrupt storage states",
+      "explain_price_and_package": "passed for date, nights, room, meal, placement, operator, selected total and chosen flight; no invented fees or availability",
+      "edit_conditions_and_return": "passed at 375/1440 with filters, sort, expanded card, shortlist, contact draft and exact focus preserved; consent resets after another offer",
+      "reach_phone_with_intended_offer": "passed through exact offer -> selected -> flight -> phone without POST, then return to the same offer context"
+    },
+    "technical_contract_counts": {
+      "wrong_offer_substitutions_observed": 0,
+      "supplier_requests_from_local_filter_sort_compare_return": 0,
+      "lead_posts": 0
+    },
+    "not_measured": [
+      "five-participant unassisted completion rate",
+      "production conversion or lead quality",
+      "live cold/warm median and p95 timings on a sufficient sample",
+      "physical iPhone/Safari native controls, keyboard and safe-area",
+      "direct interactive competitor parity"
+    ],
+    "interpretation": "This proves reproducible technical task coverage, not OTA superiority, production conversion improvement or a statistically valid speed result.",
+    "next_action": "S3_OTA_PROVIDER_PARITY remains blocked until a fresh bounded INT handoff supplies source/destination SHA, identity fixtures, unknown-field and partial-failure evidence."
   }
 }

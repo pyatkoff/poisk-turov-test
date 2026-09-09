@@ -28,8 +28,10 @@ INT читает собственный ANEX-план; SEO ведёт #1720. И�
   generic hero остаётся generic, свежесть и empty fallback не выдают snapshot за наличие.
 - `S3_OTA_PROVIDER_PARITY`: остаётся в очереди, но ждёт свежий bounded INT→SEARCH
   handoff с source/destination SHA и fixtures identity; старый addon не переносить.
-- `S3_OTA_QUALITY_BENCHMARK`: следующий независимый пакет — воспроизводимый baseline
-  пяти задач на текущем exact preview без выдуманной конверсии или превосходства.
+- `S3_OTA_QUALITY_BENCHMARK`: технический baseline пяти задач зафиксирован на
+  текущем exact preview по прошедшим fixture/evidence: все пять путей покрыты,
+  подмен offer и локальных supplier/lead запросов не обнаружено. Пользовательский
+  пилот, live timings/conversion и физический Safari остаются `not_measured`/deferred.
 - Порядок новых пакетов дан ниже; только `continuation_policy.active_queue_ids`
   задаёт исполняемую очередь. Детали SEARCH — [существующий профильный план](anytour-roadmap/search.md).
 - Миграция остаётся за отдельным визуальным одобрением конкретной production-версии.
