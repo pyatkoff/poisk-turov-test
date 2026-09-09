@@ -17,7 +17,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-turkey-sync.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '[.workflow_runs[].id] | min' > "$RUNNER_TEMP/first-run"
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-turkey-sync.yml/runs" -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" --jq '[.workflow_runs[].id] | min' > "$RUNNER_TEMP/first-run"
           test "$(cat "$RUNNER_TEMP/first-run")" = "$GITHUB_RUN_ID"
           php -l scripts/diagnostics/andromeda_turkey_sync.php
           python3 -B tests/andromeda_turkey_sync_test.py
