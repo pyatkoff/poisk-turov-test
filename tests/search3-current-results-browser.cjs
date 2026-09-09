@@ -86,9 +86,10 @@ async function checkMealFacet(page, width, previous) {
     const budget = page.locator('.search3-budget-filter input');
     await budget.evaluate(node => { node.value = '110000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.deepEqual(await visible(), ['meal-b'], 'budget and meal must match the same loaded offer');
-    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'budget calendar uses the same matching offer projection');
+    assert.equal(await calendar.isVisible(), false, 'one matching departure hides a calendar that has no dates left to compare');
     await budget.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'restoring the budget keeps the active meal projection');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'restoring the budget restores the matching meal calendar minimum');
     await page.evaluate(() => {
       const items = window.__mealOriginal;
       window.V2Results.render(items);
