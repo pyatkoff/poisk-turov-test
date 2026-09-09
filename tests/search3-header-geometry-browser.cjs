@@ -55,6 +55,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
             legacy: document.querySelectorAll('.at-site-header,.at-mobile-menu').length,
             header: box('.at-global-header__inner'),
             logo: box('.at-global-header__logo'),
+            navTargets: Array.from(document.querySelectorAll('.at-global-header__nav a'), node => node.getBoundingClientRect().height),
+            phone: box('.at-global-header__phone'),
             nav: visible('.at-global-header__nav'),
             actions: visible('.at-global-header__actions'),
             mobile: visible('.at-global-header__mobile'),
@@ -69,15 +71,18 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
         assert.equal(before.headers, 1, `${width}: current header count`);
         assert.equal(before.legacy, 0, `${width}: legacy header markup leaked`);
         assert.ok(before.header.width > 0 && before.header.height > 0 && before.logo.width > 0, `${width}: header geometry missing`);
+        assert.ok(before.logo.height >= 44, `${width}: logo target collapsed`);
         assert.ok(Math.abs(before.header.width - (tablet ? width : Math.min(1180, width - 40))) <= 1,
           `${width}: canonical shared header width drifted (${before.header.width})`);
         assert.equal(before.nav, !tablet, `${width}: canonical navigation breakpoint drifted`);
         assert.equal(before.actions, !compact, `${width}: canonical header actions breakpoint drifted`);
+        if (!tablet) assert.ok(before.navTargets.every(height => height >= 44), `${width}: desktop navigation target collapsed`);
+        if (!compact) assert.ok(before.phone.height >= 44, `${width}: support phone target collapsed`);
         assert.equal(before.mobile, tablet, `${width}: canonical mobile-menu breakpoint drifted`);
         assert.equal(before.panel, false, `${width}: closed native menu panel leaked`);
         assert.ok(parseFloat(before.ctaMinHeight) >= 44, `${width}: canonical header CTA target collapsed`);
         if (tablet) {
-          assert.ok(before.menuButton.height >= (width <= 520 ? 44 : 40), `${width}: native menu target collapsed`);
+          assert.ok(before.menuButton.height >= 44, `${width}: native menu target collapsed`);
           await page.locator('.at-global-header__mobile > summary').click();
           const open = await page.evaluate(() => {
             const node = document.querySelector('.at-global-header__mobile-panel');
