@@ -7,6 +7,9 @@ on:
       - 'v2/data/observe-search-v1.php'
       - 'v2/data/observe-search-batches-v1.php'
       - 'v2/data/price-observer-v1.php'
+      - 'v2/data/build-seo-offer-snapshots-v1.php'
+      - 'v2/seo-seasonal-offer-snapshot-v1.php'
+      - 'tests/seo-seasonal-observation-fallback-smoke.php'
       - 'tests/passive-price-observer-smoke.cjs'
       - 'tests/observe-search-batches-smoke.php'
       - '.github/workflows/validate-search-observation.yml'
@@ -26,3 +29,9 @@ jobs:
           node --check v2/passive-price-observer-v1.js
           node tests/passive-price-observer-smoke.cjs
           php tests/observe-search-batches-smoke.php
+      - name: Validate committed observations reach exact seasonal cards
+        run: |
+          set -euo pipefail
+          php -l v2/seo-seasonal-offer-snapshot-v1.php
+          php -l v2/data/build-seo-offer-snapshots-v1.php
+          php tests/seo-seasonal-observation-fallback-smoke.php
