@@ -92,7 +92,8 @@ def prepare(directory, source_sha, plan=None):
             or any(type(i) is not int or i <= 0 for i in identifiers)
             or len(set(identifiers)) != len(identifiers)):
         raise ValueError('completed live checkpoint required')
-    raw = (directory / 'anex-observed-hotel-triage.json').read_bytes()
+    with (directory / 'anex-observed-hotel-triage.json').open('rb') as stream:
+        raw = stream.read(32_000_001)
     sha = digest(raw)
     envelope = packer().pack(raw, sha, restored['artifact_id'])
     if envelope['checkpoint_digest'] != gaps.digest(cp):
@@ -102,6 +103,7 @@ def prepare(directory, source_sha, plan=None):
     reservation = {'schema_version': 1, 'source_sha': source_sha, 'action': plan['action'],
                    'schema_sha256': schema_sha, 'triage_sha256': sha,
                    'source_artifact_id': restored['artifact_id'], 'rows': len(envelope['rows']),
+                   'formatted_bytes':len(raw),'compact_bytes':len(packer().canonical(json.loads(raw)).encode()),
                    'supplier_requests': 0}
     path = directory / 'anex-review-storage-reservation.json'
     path.write_text(json.dumps(reservation, sort_keys=True, indent=2) + '\n')
@@ -186,7 +188,7 @@ if __name__ == '__main__':
     except Exception as error:
         allowed = {'completed live checkpoint required', 'triage checkpoint mismatch', 'review plan/schema mismatch',
                    'apply requires pinned inspected evidence', 'reserved source changed', 'source_digest_or_bound',
-                   'source_contract', 'row_contract', 'evidence_digest', 'source_count'}
+                   'source_contract', 'row_contract', 'evidence_digest', 'source_count','source_compact_bound'}
         reason = str(error) if isinstance(error, ValueError) and str(error) in allowed else 'see_failure_kind'
         print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reason': reason, 'reset_performed': False}))
         raise SystemExit(1)

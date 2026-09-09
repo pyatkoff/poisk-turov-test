@@ -27,6 +27,17 @@ class StorageTests(unittest.TestCase):
             reservation,envelope=storage.prepare(d,'b'*40)
             self.assertEqual(reservation['action'],'inspect');self.assertEqual(envelope['artifact_id'],10094445724)
             self.assertEqual(json.loads((d/'anex-review-storage-reservation.json').read_bytes()),reservation)
+    def test_formatted_source_keeps_original_hash_and_compact_bound(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d)
+            path=d/'anex-observed-hotel-triage.json';raw=path.read_bytes()+b' '*8_000_001
+            path.write_bytes(raw)
+            reservation,envelope=storage.prepare(d,'b'*40)
+            self.assertEqual(envelope['source_digest'],storage.digest(raw))
+            self.assertGreater(reservation['formatted_bytes'],8_000_000)
+            data=json.loads(raw);data['padding']='x'*8_000_001
+            raw=json.dumps(data).encode()
+            with self.assertRaisesRegex(ValueError,'compact_bound'):storage.packer().pack(raw,storage.digest(raw),5)
     def test_apply_requires_pinned_digest(self):
         with tempfile.TemporaryDirectory() as temp:
             d=Path(temp);self.fixture(d)
