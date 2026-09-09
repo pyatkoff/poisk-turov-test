@@ -1,4 +1,93 @@
 {
+  "latest_current_price_calendar_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1665,
+    "deploy_control_pr": 1666,
+    "baseline_release_sha": "b417c6df0b95ea2f3b56d0156fd41364bd814273",
+    "source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+    "source_tree": "8e80442911a4fc328d870e8fbca4341e7f460f5a",
+    "release_integration_sha": "946ee3b7c2c035dd391a66731d2315de740f4bbb",
+    "product_result": [
+      "Search3 reuses the existing shared current-price calendar instead of adding a second route-specific implementation.",
+      "The calendar reports daily minima only from the already received result set and explicitly says that it is not price history.",
+      "Continued results refresh the dates and highlighted minimum; selecting a date preserves every non-date parameter and submits once through the canonical lifecycle."
+    ],
+    "size": {
+      "search3_eight_assets_raw_bytes": 12865,
+      "search3_eight_assets_delta_raw_bytes": 0,
+      "calendar_js_source_before_raw_bytes": 3585,
+      "calendar_js_source_after_raw_bytes": 3673,
+      "calendar_css_raw_bytes": 2919,
+      "served_js_added_raw_bytes": 3721,
+      "served_css_added_raw_bytes": 2965,
+      "eager_route_before_raw_bytes": 77532,
+      "eager_route_after_raw_bytes": 84218,
+      "full_route_before_raw_bytes": 119950,
+      "full_route_after_raw_bytes": 126636,
+      "route_delta_raw_bytes": 6686,
+      "selected_phase_raw_bytes": 42418,
+      "accounting": "The eight Search3-owned public assets are unchanged. Reusing the shared calendar adds6686 served bytes to initial and full Search3 CSS/JS; this is intentional product growth, not removal or lazy-loading."
+    },
+    "ci": {
+      "security_run": 34306214649,
+      "exact_artifact_run": 34306214593,
+      "conclusion": "success",
+      "browser_widths": [375, 760, 761, 999, 1000, 1024, 1025, 1440],
+      "browser_contracts": [
+        "per-day minimum and zero-price exclusion",
+        "continued-results refresh",
+        "one canonical lifecycle submission",
+        "all non-date parameters preserved",
+        "minimum 44px date targets",
+        "no horizontal overflow"
+      ]
+    },
+    "artifact": {
+      "id": 10086760175,
+      "digest": "sha256:573a3fccd7ed3bb9e5e5618129195d35384fb2d10fa1c635680284c7457a132d",
+      "archive_sha256": "bbfb3936f06967f7433fd9b0e0d9573e20c67bf17c359a6057757100e5f95d9f",
+      "manifest_sha256": "42e6b6acd025593013855d880458af569ff2880439098ecdef1afca579f6f16a",
+      "payload_sha256": "c6bca4bc5a470a2f69f8bacfb19c16f8b1523a058dc822922cb7cc639806d93e",
+      "file_count": 717
+    },
+    "publication": {
+      "published": true,
+      "deploy_run": 34306579270,
+      "deployment_evidence_artifact": 10086859273,
+      "deployment_evidence_digest": "sha256:9abe9582a212ee996c8f16468cc88fa538d1a7a1978ee430b68c744ef3440b52",
+      "published_preview_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+      "routes_checked": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "preview_metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+      "main_changed_by_package": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "visual_verification": {
+      "live_desktop_width": 1363,
+      "live_result_hotels": 100,
+      "live_calendar_dates": 14,
+      "live_best_date": "2026-09-10",
+      "live_minimum_target_px": 77.390625,
+      "horizontal_overflow": false,
+      "calendar_screenshot_inspected": true,
+      "mobile_status": "Exact artifact browser assertions passed at 375/760/761/999/1000/1024/1025/1440; no separate physical-device claim."
+    },
+    "deferred": [
+      "Physical Safari and owner production acceptance remain deferred.",
+      "Do not treat the first 100 received hotels as the whole market; the UI explicitly scopes the calendar to current found tours."
+    ],
+    "audit": "docs/project/search3-current-price-calendar-product.json",
+    "rollback": "Restore the retained preview backup and revert release merge 946ee3b7c2c035dd391a66731d2315de740f4bbb independently.",
+    "next_action": "Continue S3_PRODUCT_USEFUL_FEATURES with a bounded product audit of existing local result filters; require a demonstrated user gap and do not duplicate ANEX work or restore retired filter layers wholesale."
+  },
   "latest_site_handoff_owner_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -957,9 +1046,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1663 routes country and hot-tour transitions through one allowlisted Search3 handoff owner while preserving exact URLs and unmapped-country fallback. Source e010aa32 is checked and merged as f3b3ef3e; published preview remains exact source 0c87e1ff because visuals and URLs are unchanged.",
+    "last_material_progress": "#1665 reuses the shared truthful current-price calendar in Search3 and fixes stale minima after continued results. Source 049ceba4 is checked, merged as 946ee3b7 and published exact through #1666.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the existing price calendar and filters for the first useful owner-safe improvement; do not duplicate the separate ANEX branch.",
+    "next_action": "Audit existing local result filters for one demonstrated user-facing gap; do not duplicate ANEX work or restore retired filter layers wholesale.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -970,10 +1059,10 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
-    "published_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
-    "next_action": "Audit the existing price calendar and filters for the first useful owner-safe improvement; do not duplicate the separate ANEX branch.",
-    "baseline_release_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
+    "last_fully_checked_release_sha": "946ee3b7c2c035dd391a66731d2315de740f4bbb",
+    "published_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+    "next_action": "Audit existing local result filters for one demonstrated user-facing gap; do not duplicate ANEX work or restore retired filter layers wholesale.",
+    "baseline_release_sha": "946ee3b7c2c035dd391a66731d2315de740f4bbb",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9667,7 +9756,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T02:57:00.000Z",
+  "updated_at": "2026-09-09T03:26:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",

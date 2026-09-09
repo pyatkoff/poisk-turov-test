@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "source_pr": 1665,
+  "deploy_control_pr": 1666,
+  "baseline_release_sha": "b417c6df0b95ea2f3b56d0156fd41364bd814273",
+  "source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+  "source_tree_sha": "8e80442911a4fc328d870e8fbca4341e7f460f5a",
+  "checked_release_sha": "946ee3b7c2c035dd391a66731d2315de740f4bbb",
+  "product_result": "Search3 reuses the shared current-price calendar. It reports daily minima only from received results, refreshes after continued results and preserves all non-date parameters when one date is selected.",
+  "served_bytes": {
+    "search3_eight_assets_before": 12865,
+    "search3_eight_assets_after": 12865,
+    "eager_route_before": 77532,
+    "eager_route_after": 84218,
+    "full_route_before": 119950,
+    "full_route_after": 126636,
+    "selected_phase": 42418,
+    "delta": 6686
+  },
+  "ci": {
+    "security_run": 34306214649,
+    "exact_artifact_run": 34306214593,
+    "artifact_id": 10086760175,
+    "artifact_digest": "sha256:573a3fccd7ed3bb9e5e5618129195d35384fb2d10fa1c635680284c7457a132d",
+    "result": "success"
+  },
+  "publication": {
+    "deploy_run": 34306579270,
+    "evidence_artifact": 10086859273,
+    "published_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+    "route_count": 9,
+    "noindex": true,
+    "production_lead_delivery": false,
+    "preview_counter": 0,
+    "rollback_backup_retained": true,
+    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+    "production_fingerprint_unchanged": true,
+    "real_leads_submitted": 0
+  },
+  "verification": {
+    "ci_widths": [375, 760, 761, 999, 1000, 1024, 1025, 1440],
+    "live_desktop_width": 1363,
+    "live_result_hotels": 100,
+    "live_calendar_dates": 14,
+    "live_best_date": "2026-09-10",
+    "minimum_target_px": 77.390625,
+    "horizontal_overflow": false,
+    "visual_screenshot_inspected": true
+  },
+  "deferred": [
+    "Physical Safari and owner production acceptance.",
+    "The calendar is not a whole-market or price-history dataset; the UI explicitly scopes it to current found tours."
+  ],
+  "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "main_changed_by_package": false,
+  "production_changed": false,
+  "rollback": "Restore the retained preview backup and revert release merge 946ee3b7c2c035dd391a66731d2315de740f4bbb independently.",
+  "next_action": "Audit local result filters for one demonstrated user-facing gap without duplicating ANEX work or restoring retired layers wholesale."
+}
