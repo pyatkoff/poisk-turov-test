@@ -1,0 +1,54 @@
+name: Andromeda full catalog database sync
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-catalog-sync.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-catalog-sync-20260909, cancel-in-progress: false}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Refuse repeat and validate code
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-catalog-sync.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count' > "$RUNNER_TEMP/run-count"
+          test "$(cat "$RUNNER_TEMP/run-count")" = 1
+          php -l scripts/diagnostics/andromeda_catalog_sync.php
+          python3 -B tests/andromeda_catalog_sync_test.py
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/sync
+      - name: Compare complete catalogs
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_catalog_sync.py prepare --directory "$RUNNER_TEMP/sync"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-catalog-import-reservation
+          path: ${{ runner.temp }}/sync
+          if-no-files-found: error
+      - name: Persist owner-authorized identities and verify readback
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_catalog_sync.py apply --directory "$RUNNER_TEMP/sync"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-catalog-database-sync
+          path: ${{ runner.temp }}/sync
+          if-no-files-found: warn
