@@ -43,8 +43,18 @@
     "exact_artifact_run": 34297070107,
     "conclusion": "success",
     "results_states": 12,
-    "results_widths": [375, 760, 761, 999, 1000, 1440],
-    "entry_widths": [375, 1440],
+    "results_widths": [
+      375,
+      760,
+      761,
+      999,
+      1000,
+      1440
+    ],
+    "entry_widths": [
+      375,
+      1440
+    ],
     "raw_served_parity": true,
     "native_header": true,
     "external_calls": 0,
@@ -76,7 +86,10 @@
   },
   "live_preview": {
     "route": "/_preview/search3-site-candidate/poisk-turov/",
-    "viewport": [1363, 936],
+    "viewport": [
+      1363,
+      936
+    ],
     "hotels_rendered": 100,
     "first_card_authoritative_price_count": 1,
     "horizontal_overflow": false,
@@ -91,5 +104,34 @@
     "selected-tour flight-list and contact-handoff product work belongs to S3_PRODUCT_SELECTED_LEAD"
   ],
   "rollback": "Revert 4554e34b4cfed32d290a82b0ae05f3adaa828c80 for code; restore the retained preview backup recorded by deploy run34297374511 for preview.",
-  "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller."
+  "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller.",
+  "ota_results_decision_20260909": {
+    "stage": "IMPLEMENTED_PENDING_CI",
+    "baseline_release_sha": "9237deb7af50707c5f6d28dc77d8a3b97a0db0a8",
+    "before": "Live desktop first REIS MARIS card 1080px wide, 511.56px high; 220px hotel header then repetitive 3-column facts. Expanding rebuilt the list in raw order and discarded disclosure focus.",
+    "after_intent": "Current DS2 owner:180px desktop photo/header; date plus nights; primary meal/room and inline secondary operator/placement; compact mobile price/action row. Same representative stays first, other offers retain raw order; disclosure focus restored. Mobile photo proportions unchanged.",
+    "fields": "Only existing date/nights/meal/room/placement/operator/category/rating/seaDistance/picture fields; no invented data or new provider calls.",
+    "size": {
+      "public_css_delta_bytes": 459,
+      "shared_served_js_delta_bytes": 196,
+      "shared_source_js_delta_bytes": 296,
+      "initial_full_external_delta_bytes": 655,
+      "inline_delta_bytes": 0,
+      "accounting": "Current compiled CSS and shared served renderer; no lazy-loading or transfer claimed as deletion."
+    },
+    "verification": {
+      "source_build": "passed",
+      "js_syntax": "passed",
+      "meal_owner": "passed",
+      "honest_results_controls": "passed",
+      "ci": "pending",
+      "visual": "pending"
+    },
+    "published": false,
+    "deferred": [
+      "physical Safari/iPhone",
+      "five-participant product benchmark"
+    ],
+    "next_action": "Applicable Security/exact CI and changed-state visual review, then exact isolated preview; advance to selected-options only after checked integration."
+  }
 }

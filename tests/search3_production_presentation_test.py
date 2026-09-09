@@ -940,8 +940,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
         self.assertLessEqual(
             (ROOT / 'v2/search3-results-filters-v1.css').stat().st_size,
-            17000,
-            'owner-approved DS2 results and selected-tour restoration use one CSS owner (16408 B measured)',
+            17500,
+            'OTA decision rows reuse one CSS owner: 16943 B baseline +459 B authorized layout =17402 B',
         )
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(

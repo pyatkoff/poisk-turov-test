@@ -14,7 +14,7 @@ const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
 const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
-  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, picturelink: picture, tours: [tour, { ...tour, id: 'other-tour', price: 159000 }] },
+  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, picturelink: picture, tours: [{ ...tour, id: 'other-tour', price: 159000 }, tour, { ...tour, id: 'third-tour', price: 155000 }] },
   { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
 ];
 const calendarHotels = [
@@ -53,7 +53,7 @@ async function snapshot(page) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14')] },
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12')] },
     { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11')] },
     { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Без питания' }, '2026-09-13')] }
   ];
@@ -93,9 +93,16 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'representative choice keeps its original tour ID');
     assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'selected meal sets the actual displayed offer price');
     assert.match(await a.locator('.hotel-choice-hint').innerText(), /2 варианта/, 'counts only matching offers');
-    await a.locator('.tour-more-toggle').click();
+    await a.locator('.tour-more-toggle').focus();
+    await a.locator('.tour-more-toggle').press('Enter');
+    assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion cannot reintroduce an excluded meal');
     assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
+    assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
+    await a.locator('.tour-more-toggle').press('Space');
+    assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal collapse keeps focus on the replacement disclosure');
+    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai'], 'collapse returns to the same nonfirst matching offer');
+    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'collapse retains the selected meal price');
     assert.equal(await page.evaluate(() => window.V2Results.state.items.length === 3 && window.V2Results.state.items.every((h, i) => h === window.__mealOriginal[i]) && window.__mealEvents.every(list => list.length === 3 && list.every((h, i) => h === window.__mealOriginal[i]))), true, 'original result state, event items and continuation count remain intact');
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(items), 'frozen source tours and prices are unchanged');
     await name.fill('Отель А');
@@ -255,7 +262,11 @@ async function run(browser, width, previous) {
     assert.equal(await localCategoryFilter.isVisible(), false, 'category facet hides when any loaded hotel lacks category data');
     assert.equal(await localCategorySelect.inputValue(), '0', 'incomplete category data resets the local choice');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'an incomplete facet never silently removes a loaded hotel');
-    await page.evaluate(items => window.V2Results.render(items), hotels);
+    await page.evaluate(items => {
+      const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+      window.__decisionOriginal = freeze(items);
+      window.V2Results.render(window.__decisionOriginal);
+    }, hotels);
     await page.locator('#sortResults').selectOption('price');
     const card = page.locator('#results [data-hotel-id=expensive].hotel-card');
     assert.equal(await card.locator('.hotel-title').evaluate(node => node.tagName), 'H3', 'hotel name keeps a semantic card heading');
@@ -266,6 +277,10 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-row').count(), 1, 'representative tour shown immediately');
     assert.ok((await card.locator('.direct-tour').boundingBox()).height >= 44, 'real selection action retains a full touch target');
     assert.match(await card.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName expands the abbreviation in offer facts');
+    assert.equal(await card.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
+    assert.equal(await card.locator('.tour-meta>strong').innerText(), tour.date, 'compact facts preserve the actual departure date');
+    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW']], 'primary comparison facts keep their labels and original values');
+    assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Размещение', 'DBL'], ['Оператор', 'TEST OPERATOR']], 'secondary facts remain available with unambiguous labels');
     const photo = await card.locator('.hotel-photo').boundingBox();
     const body = await card.locator('.hotel-body').boundingBox();
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
@@ -277,16 +292,24 @@ async function run(browser, width, previous) {
     if (collapsed.overflow) console.error(JSON.stringify({width,previous,offenders:collapsed.offenders}));
     assert.equal(collapsed.overflow, false, width + ': results fit viewport');
     if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
-    await card.locator('.tour-more-toggle').click();
-    assert.equal(await card.locator('.tour-row').count(), 2, 'actual toggle reveals all tours');
+    await card.locator('.tour-more-toggle').focus();
+    await card.locator('.tour-more-toggle').press('Enter');
+    assert.equal(await card.locator('.tour-row').count(), 3, 'actual toggle reveals all tours');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['current-tour', 'other-tour', 'third-tour'], 'expansion pins the nonfirst representative and preserves the order of all remaining offers');
+    assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard expansion retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
     const expanded = await snapshot(page);
     assert.equal(expanded.overflow, false, width + ': expanded results fit viewport');
     if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
-    await card.locator('.tour-more-toggle').click();
+    await card.locator('.tour-more-toggle').press('Space');
     assert.equal(await card.locator('.tour-row').count(), 1, 'actual toggle collapses');
+    assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard collapse retains focus on the replacement disclosure');
+    assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), tour.id, 'collapse retains the representative identity');
+    assert.equal(await page.evaluate(() => window.V2Results.state.items.every((hotel, i) => hotel === window.__decisionOriginal[i]) && window.V2Results.representativeTour(window.__decisionOriginal[0]) === window.__decisionOriginal[0].tours[1]), true, 'render and disclosure preserve original hotel and representative tour objects');
+    assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(hotels), 'disclosure leaves frozen source prices, tour order and contents unchanged');
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'expensive', 'rating sorting retained');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 44 } })));
