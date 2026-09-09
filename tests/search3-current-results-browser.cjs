@@ -187,11 +187,85 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(supplierRequests, [], 'local filtering issues no supplier or lead requests');
   } finally { page.off('request', record); }
 }
+async function checkAndromedaExpansion(page, width, previous, control) {
+  const tvHotel = {
+    id: 21477,
+    name: 'Movenpick Resort',
+    country: { name: 'Египет' },
+    region: { name: 'Шарм-эль-Шейх' },
+    category: 4,
+    rating: 4.7,
+    price: 165000,
+    tours: [{ ...tour, id: 'tv-andromeda-control', price: 165000, operator: { name: 'TEST OPERATOR' } }]
+  };
+  const snapshot = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
+  const start = async generation => {
+    await page.evaluate(({ generation, snapshot, tvHotel }) => {
+      Object.defineProperty(window.V2SearchLifecycle, 'generation', { configurable: true, get: () => generation });
+      Object.defineProperty(window.V2SearchLifecycle, 'snapshot', { configurable: true, get: () => ({ ...snapshot }) });
+      window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation } }));
+      window.V2Results.render([tvHotel], { empty: true });
+    }, { generation, snapshot, tvHotel });
+    await page.locator('[data-andromeda-expand="21477"]').waitFor();
+  };
+  control.enabled = true;
+  control.requests.length = 0;
+  control.failSecond = false;
+  try {
+    await start(73);
+    const card = page.locator('#results [data-hotel-id="21477"]');
+    assert.equal(await card.locator('.tour-row').count(), 1, 'accepted grouped Andromeda offer keeps one compact representative');
+    assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
+    assert.equal(await card.locator('[data-andromeda-expand]').innerText(), 'Все варианты Андромеды', 'current card exposes one explicit provider expansion action');
+    await card.locator('[data-andromeda-expand]').click();
+    await card.locator('.tour-selection-note[role=status]').filter({ hasText: 'Варианты Андромеды загружены: 2' }).waitFor();
+    assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'one discovery and two scoped provider pages load sequentially');
+    await card.locator('.tour-more-toggle').click();
+    assert.equal(await card.locator('.tour-row').count(), 3, 'complete expansion replaces the grouped representative with exact provider variants and retains Tourvisor');
+    assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
+    assert.equal(await card.locator('.tour-secondary-facts').filter({ hasText: 'Андромеда' }).count(), 2, 'expanded provider variants remain visibly attributed');
+    assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'перед выбором нужна проверка' }).count(), 2, 'every Andromeda variant keeps the quote-required boundary');
+    assert.equal((await snapshot(page)).overflow, false, width + ': complete provider expansion fits the viewport');
+    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-expanded-${width}.png`), fullPage: true });
+    await page.evaluate(() => window.AnyTourAndromedaProvider.expandHotel('21477'));
+    assert.equal(control.requests.length, 3, 'rerender or repeated expansion cannot replay provider pages');
+
+    control.failSecond = true;
+    control.requests.length = 0;
+    await start(74);
+    const partialCard = page.locator('#results [data-hotel-id="21477"]');
+    await partialCard.locator('[data-andromeda-expand]').click();
+    await partialCard.locator('.tour-selection-note[role=status]').filter({ hasText: 'Не все варианты Андромеды загрузились' }).waitFor();
+    assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'partial expansion stops after the failed scoped page without background replay');
+    await partialCard.locator('.tour-more-toggle').click();
+    assert.equal(await partialCard.locator('.tour-row').count(), 3, 'partial failure retains Tourvisor, grouped representative and received exact variant');
+    assert.equal(await partialCard.locator('.direct-tour').count(), 1, 'partial provider data cannot enter the selection controller');
+    assert.equal((await snapshot(page)).overflow, false, width + ': partial provider status fits the viewport');
+  } finally {
+    control.enabled = false;
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
+  }
+}
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
+  const andromeda = { enabled: false, failSecond: false, requests: [] };
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', route => {
     const request = route.request(), url = new URL(request.url());
+    if (andromeda.enabled && url.pathname.endsWith('/api-andromeda-search3-preview.php')) {
+      const input = JSON.parse(request.postData() || '{}');
+      andromeda.requests.push(input);
+      if (input.action === 'hotel_offers' && andromeda.failSecond && input.page === 2) return route.abort('failed');
+      const offerRef = 'offer_' + String(input.action === 'hotel_offers' ? input.page : 9).repeat(64);
+      const seed = { provider: 'andromeda', search_ref: 'd'.repeat(64), generation: input.generation, page: 1, offer_ref: 'offer_' + '9'.repeat(64) };
+      const context = input.action === 'hotel_offers'
+        ? { ...seed, page: input.page, offer_ref: offerRef, hotel_scope: input.hotel_scope }
+        : seed;
+      const hotel = { local_id: 21477, name: 'Movenpick Resort', provider: 'andromeda', mapping_status: 'resolved', country: 'Египет', category: 4,
+        andromeda_content: { source: 'andromeda', region: 'Шарм-эль-Шейх' },
+        tours: [{ provider: 'andromeda', offer_ref: offerRef, offer_context: context, price: { amount: input.action === 'hotel_offers' ? String(154000 + input.page * 1000) : '155079.00', currency: 'RUB' }, checkin: '2026-09-18', nights: 8, meal: 'AI', room: input.action === 'hotel_offers' ? 'ROOM ' + input.page : 'GROUPED ROOM', placement: '2 ADL', operator: 'ANEX' }] };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', generation: input.generation, page: input.page, pages_count: input.action === 'hotel_offers' ? 2 : 1, grouped: input.action === 'hotel_offers' ? false : true, hotels: [hotel] } }) });
+    }
     if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
     if (previous && url.pathname.endsWith('/bundle-v1.php') && url.searchParams.get('type') === 'js') return route.fulfill({ status: 200, contentType: 'application/javascript', body: raw });
     return route.continue();
@@ -458,7 +532,10 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
-    if ([375, 1440].includes(width)) await checkMealFacet(page, width, previous);
+    if ([375, 1440].includes(width)) {
+      await checkMealFacet(page, width, previous);
+      await checkAndromedaExpansion(page, width, previous, andromeda);
+    }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
     return { collapsed, expanded, logoSource };
