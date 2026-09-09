@@ -124,8 +124,8 @@
       "js_syntax": "passed",
       "meal_owner": "passed",
       "honest_results_controls": "passed",
-      "ci": "pending",
-      "visual": "pending"
+      "ci": "passed; exact34363657776, ready34363992600, Security34363657679",
+      "visual": "passed; 375/1440 fixtures and live results/disclosure/return inspected"
     },
     "published": true,
     "deferred": [
