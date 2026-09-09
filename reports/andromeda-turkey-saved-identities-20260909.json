@@ -1,0 +1,176 @@
+{
+  "date": "2026-09-09",
+  "scope": "Andromeda saved Turkey ANEX first page; scoped preview only",
+  "audit": {
+    "run": 34387966241,
+    "artifact": 10118445603,
+    "sha256": "7366e5eed8505537a449da25bf00b2f995251ceac413f334d92ef4900d9fbfc5",
+    "anex_offer_rows": 50,
+    "counts": {
+      "no_unique_identity": 4,
+      "unique_turkey_current_or_former_name_and_accepted_anex_id": 1
+    },
+    "csp_source_lines": [],
+    "database_writes": 0,
+    "operator_filter": "5",
+    "rows": [
+      {
+        "anex_accepted_local_id": null,
+        "anex_candidate_id": 11966,
+        "external_hotel_id": "454228",
+        "hotel": "Rosella Hotel",
+        "hotel_url": "https://agent.anextour.ru/hotels/turkey/rosella-hotel",
+        "identity": {
+          "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+          "decision_status": "pending",
+          "evidence_json": "{\"candidate_ids\":[],\"reason\":\"no_unique_country_name\",\"source\":{\"id\":454228,\"lName\":\"Rosella\",\"name\":\"Rosella\",\"properties\":null,\"selected\":0,\"star\":\"3\",\"starKey\":3,\"starLName\":\"3*\",\"state\":\"Турция\",\"stateKey\":5,\"stateLName\":\"Turkey\",\"town\":\"Аланья\",\"townKey\":7,\"townLName\":\"Alanya\"},\"target_name\":null}",
+          "evidence_sha256": "dd04e537f31c23d8315fbded64b4098697d4f70a850c918340cb67192702d9f8",
+          "external_hotel_id": "454228",
+          "local_hotel_id": null,
+          "supplier_namespace": "andromeda_catalog"
+        },
+        "image_url": "https://gateway.samo.ru/web/data/hotel/200x200/5.11966.454228.jpg",
+        "name_candidates": [],
+        "proposed_local_id": null,
+        "reason": "no_unique_identity",
+        "region": "Аланья",
+        "supplier_namespace": "andromeda_catalog",
+        "target": null
+      },
+      {
+        "anex_accepted_local_id": 1389,
+        "anex_candidate_id": 8320,
+        "external_hotel_id": "203605",
+        "hotel": "More Hotel",
+        "hotel_url": "https://agent.anextour.ru/hotels/turkey/more-hotel",
+        "identity": {
+          "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+          "decision_status": "pending",
+          "evidence_json": "{\"candidate_ids\":[],\"reason\":\"no_unique_country_name\",\"source\":{\"id\":203605,\"lName\":\"More Hotel\",\"name\":\"More Hotel\",\"properties\":null,\"selected\":0,\"star\":\"3\",\"starKey\":3,\"starLName\":\"3*\",\"state\":\"Турция\",\"stateKey\":5,\"stateLName\":\"Turkey\",\"town\":\"Кемер\",\"townKey\":2000007881,\"townLName\":\"Kemer\"},\"target_name\":null}",
+          "evidence_sha256": "fb8287e8553511fed8a66a00f088a7abd371fbec987122cb0791fc6bdd394831",
+          "external_hotel_id": "203605",
+          "local_hotel_id": null,
+          "supplier_namespace": "andromeda_catalog"
+        },
+        "image_url": "https://gateway.samo.ru/web/data/hotel/200x200/5.8320.203605.jpg",
+        "name_candidates": [],
+        "proposed_local_id": null,
+        "reason": "no_unique_identity",
+        "region": "Белдиби",
+        "supplier_namespace": "andromeda_catalog",
+        "target": null
+      },
+      {
+        "anex_accepted_local_id": 1280,
+        "anex_candidate_id": 19610,
+        "external_hotel_id": "5354",
+        "hotel": "Kaftans Hotel By Rrh&r",
+        "hotel_url": "https://agent.anextour.ru/hotels/turkey/kaftans-hotel-by-rrhr",
+        "identity": {
+          "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+          "decision_status": "pending",
+          "evidence_json": "{\"candidate_ids\":[],\"reason\":\"no_unique_country_name\",\"source\":{\"id\":5354,\"lName\":\"Kaftans City Hotel by RRH & R\",\"name\":\"Kaftans City Hotel by RRH & R\",\"properties\":null,\"selected\":0,\"star\":\"3\",\"starKey\":3,\"starLName\":\"3*\",\"state\":\"Турция\",\"stateKey\":5,\"stateLName\":\"Turkey\",\"town\":\"Кемер\",\"townKey\":2000007881,\"townLName\":\"Kemer\"},\"target_name\":null}",
+          "evidence_sha256": "f27e2dbf4c381c1b9ce4792798c67030faec8f9bee6011e0a54f4da642868113",
+          "external_hotel_id": "5354",
+          "local_hotel_id": null,
+          "supplier_namespace": "andromeda_catalog"
+        },
+        "image_url": "https://gateway.samo.ru/web/data/hotel/200x200/5.19610.5354.jpg",
+        "name_candidates": [
+          1280
+        ],
+        "proposed_local_id": 1280,
+        "reason": "unique_turkey_current_or_former_name_and_accepted_anex_id",
+        "region": "Кемер Центр",
+        "supplier_namespace": "andromeda_catalog",
+        "target": {
+          "category": 3,
+          "country_id": 4,
+          "id": 1280,
+          "name": "KAFTANS HOTEL BY RRH&R",
+          "region_name": "Кемер"
+        }
+      },
+      {
+        "anex_accepted_local_id": 3406,
+        "anex_candidate_id": 8230,
+        "external_hotel_id": "46462",
+        "hotel": "Arsi Hotel",
+        "hotel_url": "https://agent.anextour.ru/hotels/turkey/arsi-hotel",
+        "identity": {
+          "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+          "decision_status": "pending",
+          "evidence_json": "{\"candidate_ids\":[],\"reason\":\"no_unique_country_name\",\"source\":{\"id\":46462,\"lName\":\"Arsi\",\"name\":\"Arsi\",\"properties\":null,\"selected\":0,\"star\":\"4\",\"starKey\":4,\"starLName\":\"4*\",\"state\":\"Турция\",\"stateKey\":5,\"stateLName\":\"Turkey\",\"town\":\"Аланья\",\"townKey\":7,\"townLName\":\"Alanya\"},\"target_name\":null}",
+          "evidence_sha256": "f868897fc37e45b2a8529d4f2e3f4596d949eb9f12f1a3e5a42f17621f31bce6",
+          "external_hotel_id": "46462",
+          "local_hotel_id": null,
+          "supplier_namespace": "andromeda_catalog"
+        },
+        "image_url": "https://gateway.samo.ru/web/data/hotel/200x200/5.8230.46462.jpg",
+        "name_candidates": [],
+        "proposed_local_id": null,
+        "reason": "no_unique_identity",
+        "region": "Аланья",
+        "supplier_namespace": "andromeda_catalog",
+        "target": null
+      },
+      {
+        "anex_accepted_local_id": 1229,
+        "anex_candidate_id": 8638,
+        "external_hotel_id": "5464",
+        "hotel": "Green Peace Hotel",
+        "hotel_url": "https://agent.anextour.ru/hotels/turkey/green-peace-hotel",
+        "identity": {
+          "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+          "decision_status": "pending",
+          "evidence_json": "{\"candidate_ids\":[1229,42914],\"reason\":\"no_unique_country_name\",\"source\":{\"id\":5464,\"lName\":\"Green Peace\",\"name\":\"Green Peace\",\"properties\":null,\"selected\":0,\"star\":\"3\",\"starKey\":3,\"starLName\":\"3*\",\"state\":\"Турция\",\"stateKey\":5,\"stateLName\":\"Turkey\",\"town\":\"Аланья\",\"townKey\":7,\"townLName\":\"Alanya\"},\"target_name\":null}",
+          "evidence_sha256": "950020d18db9ad6593190a5057e5b6479c54f197b105abb247776260aefbe334",
+          "external_hotel_id": "5464",
+          "local_hotel_id": null,
+          "supplier_namespace": "andromeda_catalog"
+        },
+        "image_url": "https://gateway.samo.ru/web/data/hotel/200x200/5.8638.5464.jpg",
+        "name_candidates": [
+          1229,
+          42914
+        ],
+        "proposed_local_id": null,
+        "reason": "no_unique_identity",
+        "region": "Махмутлар",
+        "supplier_namespace": "andromeda_catalog",
+        "target": null
+      }
+    ],
+    "saved_pages_read": 1,
+    "supplier_calls": 0
+  },
+  "promotion": {
+    "source_sha": "576b69628956115507daae6faf86b261b0888b8b",
+    "control_sha": "8c6baafb072f270f04a34575dedb6d7d6a7edabf",
+    "run": 34388366170,
+    "result_artifact": 10118604345,
+    "result_artifact_sha256": "5d0a5665124e4c238d8c2b4e9435a547a3ecce59fa944a42ce32e751ddf557c6",
+    "status": "accepted",
+    "updated": 1,
+    "rows": [
+      {
+        "external_hotel_id": "5354",
+        "local_hotel_id": 1280,
+        "decision_status": "accepted",
+        "evidence_sha256": "49d511a75d6f2591af3918da2cc45d252f4e36a7d1cc3589186a7913102e0316"
+      }
+    ],
+    "counts": {
+      "accepted": 2846,
+      "pending": 1310,
+      "conflict": 7
+    },
+    "other_identities_unchanged": true,
+    "supplier_calls": 0
+  },
+  "limitations": [
+    "Four saved first-page identities remain pending: 454228,203605,46462,5464; photo filename alone not accepted as proof.",
+    "No runtime deployment or fresh browser/search acceptance in this step.",
+    "Turkey second page not retrieved. Preserve earlier unknown/failed checkpoints."
+  ]
+}
