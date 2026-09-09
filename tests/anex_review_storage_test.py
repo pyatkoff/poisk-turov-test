@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts/diagnostics'))
@@ -60,6 +61,23 @@ class StorageTests(unittest.TestCase):
         self.assertIn('class AnexReviewSchemaManager',source)
         self.assertIn('class AnexReviewDossierStore',source)
         self.assertNotIn('AnyTourAnexClient',source)
+    def test_saved_search_candidate_overlap_is_not_acceptance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp)
+            result={'status':'ok','offers':[{'hotel_id':123},{'hotel_id':'123'}]}
+            cp={'cases':{'tv_day':{'state':'completed','result':result,'result_sha256':storage.gaps.digest(result)}}}
+            raw=json.dumps(cp).encode();(d/'saved.json').write_bytes(raw)
+            def row(i,candidates,hints):
+                return {'id':i,'row_json':json.dumps({'status':'review','observation':{'hotel_name':'Example'},'evidence':{'candidates':candidates},'prior_fixed_queue_hints':hints})}
+            envelope={'artifact_id':5,'source_digest':'a'*64,'rows':[row(1,[{'id':123}],[]),row(2,[],[{'id':123}])]}
+            with patch.object(storage,'SAVED_SOURCES',{'saved.json':(storage.digest(raw),('tv_day',))}):
+                audit=storage.saved_search_audit(d,envelope)
+                self.assertEqual(audit['saved_tv_unique_hotels'],1)
+                self.assertEqual(audit['with_candidate_seen_in_saved_tv'],1)
+                self.assertEqual(audit['with_historical_hint_only_seen_in_saved_tv'],1)
+                self.assertEqual(audit['new_bindings'],0)
+                (d/'saved.json').write_bytes(raw+b' ')
+                with self.assertRaisesRegex(ValueError,'changed'):storage.saved_search_audit(d,envelope)
     def test_review_mode_isolated(self):
         import yaml
         workflow=yaml.safe_load((ROOT/'.github/workflows/anex-access-probe.yml').read_text())
