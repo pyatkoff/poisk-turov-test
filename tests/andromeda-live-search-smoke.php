@@ -34,7 +34,11 @@ $pdo=new PDO('sqlite::memory:');$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMOD
 $pdo->exec("CREATE TABLE catalog_hotels(id INTEGER,name TEXT,country_id INTEGER,is_active INTEGER); CREATE TABLE andromeda_hotel_identities(local_hotel_id INTEGER,external_hotel_id TEXT,supplier_namespace TEXT,decision_status TEXT); CREATE TABLE catalog_departures(id INTEGER,name TEXT,is_active INTEGER)");
 $pdo->exec("INSERT INTO catalog_hotels VALUES(447,'Verginia',1,1),(9365,'Life',1,1),(501,'Conflict',1,1),(999,'Inactive',1,0),(888,'Other country',2,1); INSERT INTO catalog_departures VALUES(1,'Moscow',1)");
 $pdo->exec("INSERT INTO andromeda_hotel_identities VALUES(447,'2000042763','andromeda_catalog','accepted'),(9365,'416247','andromeda_catalog','accepted'),(501,'2000073714','andromeda_catalog','conflict'),(447,'655','operator_5','accepted'),(999,'900','andromeda_catalog','accepted'),(888,'800','andromeda_catalog','accepted')");
-$dictionary=['townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'name'=>'Moscow']]]],'all'=>['payload'=>['HOTELS'=>[['id'=>2000042763],['id'=>416247],['id'=>2000073714],['id'=>900],['id'=>800]]]]];
+$dictionary=['townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'name'=>'Moscow']]]],'all'=>['payload'=>[
+    'HOTELS'=>[['id'=>2000042763],['id'=>416247],['id'=>2000073714],['id'=>900],['id'=>800]],
+    'MEAL'=>[['id'=>5,'name'=>'AI','alias'=>'Все включено'],['id'=>7,'name'=>'UAI','alias'=>'Ультра все включено'],
+        ['id'=>1,'name'=>'BB','alias'=>'Завтрак'],['id'=>4,'name'=>'FB','alias'=>'Трех разовое'],
+        ['id'=>3,'name'=>'HB','alias'=>'Завтрак и ужин'],['id'=>8,'name'=>'OB','alias'=>'Без питания']]]]];
 if(anytour_andromeda_search3_hotels([9365,447,447],$pdo,$dictionary)!=='2000042763,416247')throw new RuntimeException('accepted catalog filter missing or operator ID mixed in');
 foreach([[],[501],[447,501],[999],[888],[12345]] as $ids)if(anytour_andromeda_search3_hotels($ids,$pdo,$dictionary)!==null)throw new RuntimeException('incomplete coverage narrowed search');
 $missing=$dictionary;$missing['all']['payload']['HOTELS']=[];
@@ -42,6 +46,14 @@ if(anytour_andromeda_search3_hotels([447],$pdo,$missing)!==null)throw new Runtim
 $request=['generation'=>1,'andromeda_operator_ids'=>['5'],'params'=>['countryId'=>'1','departureId'=>'1','dateFrom'=>gmdate('Y-m-d',time()+86400),'dateTo'=>gmdate('Y-m-d',time()+86400),'nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'meal'=>'7','hotelIds'=>['447']]];
 $point=anytour_andromeda_search3_params($request,$pdo,$dictionary);
 if($point['HOTELS']!=='2000042763'||$point['OPERATORS']!=='5')throw new RuntimeException('HTTP criteria lost hotel/operator filter');
+foreach(['2'=>'8','3'=>'1','4'=>'3','5'=>'4','7'=>'5','9'=>'7'] as $food=>$supplierMeal){
+    $mealRequest=$request;$mealRequest['params']['meal']=$food;
+    if((anytour_andromeda_search3_params($mealRequest,$pdo,$dictionary)['MEAL']??null)!==$supplierMeal)
+        throw new RuntimeException('Search3 meal was not translated through supplier dictionary');
+}
+$badMeal=$request;$badMeal['params']['meal']='6';
+try{anytour_andromeda_search3_params($badMeal,$pdo,$dictionary);throw new LogicException('unsupported meal accepted');}
+catch(DomainException $expected){}
 $request['page']=2;
 if(anytour_andromeda_search3_params($request,$pdo,$dictionary)['HOTELS']!==$point['HOTELS'])throw new RuntimeException('later page changed hotel filter');
 $wire=[];$pointClient=new AnyTourAndromedaClient(static function($url)use(&$wire){
@@ -88,3 +100,17 @@ foreach(['hotelIds'=>['447'],'regionIds'=>['1'],'subregionIds'=>['1'],'hotelRati
 $filter['params']['priceTo']='90000';
 if(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels']!==[])throw new RuntimeException('category bypassed price filter');
 echo "Unresolved supplier categories: minimum stars, unknowns, local identity filters and price passed\n";
+
+$mealOffers=[];
+foreach(['OB','BB','HB','FB','AI','UAI'] as $n=>$label)$mealOffers[]=[
+ 'local_hotel_id'=>null,'price'=>['currency'=>'RUB','amount'=>(string)(110000+$n)],'hotel_content'=>['category'=>4,'region'=>'Sharm'],
+ 'meal'=>['label'=>$label],'supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>(string)(9100+$n),
+ 'hotel'=>'Meal fixture '.$label,'offer_ref'=>'meal'.$n,'operator'=>'Anex Tour',
+ 'check_in'=>'2027-01-02','nights'=>8,'adults'=>2,'children'=>0,'room'=>'Standard'];
+$mealPage=['offers'=>$mealOffers,'page'=>1,'pages_count'=>1,'search_ref'=>'meal_filter','status'=>'complete'];
+foreach(['2'=>'OB','3'=>'BB','4'=>'HB','5'=>'FB','7'=>'AI','9'=>'UAI'] as $food=>$label){
+    $mealFilter=['generation'=>1,'params'=>['countryId'=>'1','dateFrom'=>'2027-01-02','dateTo'=>'2027-01-02','meal'=>$food]];
+    $mealHotels=anytour_andromeda_search3_project($mealFilter,$pdo,$mealPage)['hotels'];
+    if(count($mealHotels)!==1||$mealHotels[0]['tours'][0]['meal']!==$label)throw new RuntimeException('same-offer meal filtering failed');
+}
+echo "All Search3 meal choices: supplier dictionary and same-offer projection passed\n";
