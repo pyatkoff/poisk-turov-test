@@ -119,7 +119,7 @@ async function checkOfferJourney(page,width){
   const posts=[],record=request=>{if(request.method()!=='GET')posts.push({method:request.method(),url:request.url()});};
   page.on('request',record);
   try{
-    await page.locator('#selectedTour .back-results').click();
+    await page.locator('#selectedTour > .back-results').click();
     await page.evaluate(({items,offers,segment})=>{
       window.dispatchEvent(new CustomEvent('v2:search-reset'));
       window.V2Runtime.state.searchId=731;
