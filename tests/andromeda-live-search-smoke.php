@@ -75,19 +75,12 @@ $unmapped=[];foreach([3,4,5,null] as $n=>$category)$unmapped[]=[
 $page=['offers'=>$unmapped,'page'=>1,'pages_count'=>1,'search_ref'=>'unmapped_stars','status'=>'complete'];
 $filter=['generation'=>1,'params'=>['countryId'=>'1','dateFrom'=>'2027-01-02','dateTo'=>'2027-01-02','hotelCategory'=>'4','meal'=>'7']];
 $projected=anytour_andromeda_search3_project($filter,$pdo,$page);
-if(array_column($projected['hotels'],'category')!==[4,5])throw new RuntimeException('supplier minimum category lost unresolved hotels');
-$filter['params']['hotelCategory']='5';
-if(array_column(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels'],'category')!==[5])throw new RuntimeException('lower category admitted');
-unset($filter['params']['hotelCategory']);
-if(count(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels'])!==4)throw new RuntimeException('unfiltered unknown category hidden');
-$filter['params']['hotelCategory']='4';
-foreach(['hotelIds'=>['447'],'regionIds'=>['1'],'subregionIds'=>['1'],'hotelRating'=>'4'] as $key=>$value){
+if($projected['hotels']!==[]||$projected['received_offers']!==4||$projected['mapped_offers']!==0)throw new RuntimeException('unresolved supplier identities escaped into customer output');
+foreach(['hotelCategory'=>'5','hotelIds'=>['447'],'regionIds'=>['1'],'subregionIds'=>['1'],'hotelRating'=>'4','priceTo'=>'90000'] as $key=>$value){
  $f=$filter;$f['params'][$key]=$value;
- if(anytour_andromeda_search3_project($f,$pdo,$page)['hotels']!==[])throw new RuntimeException('unresolved identity borrowed local filter metadata');
+ if(anytour_andromeda_search3_project($f,$pdo,$page)['hotels']!==[])throw new RuntimeException('unresolved supplier identity became a card through filter');
 }
-$filter['params']['priceTo']='90000';
-if(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels']!==[])throw new RuntimeException('category bypassed price filter');
-echo "Unresolved supplier categories: minimum stars, unknowns, local identity filters and price passed\n";
+echo "Customer projection: unresolved supplier identities always hidden until accepted local_id passed\n";
 
 $turkey=$dictionary;$turkey['local_country_id']=4;$turkey['local_country_name']='Турция';$turkey['all']['params']=['STATEINC'=>6];
 $turkeyRequest=$request;$turkeyRequest['params']['countryId']='4';$turkeyRequest['params']['hotelIds']=[];
@@ -98,5 +91,5 @@ $turkey['all']['payload']['HOTELS'][]=['id'=>10101];
 if(anytour_andromeda_search3_hotels([6319],$pdo,$turkey)!=='10101'||anytour_andromeda_search3_hotels([447],$pdo,$turkey)!==null)throw new RuntimeException('hotel mapping escaped country');
 $filter['params']['countryId']='4';unset($filter['params']['priceTo']);
 $cards=anytour_andromeda_search3_project($filter,$pdo,$page,$turkey)['hotels'];
-if(!$cards||array_unique(array_column($cards,'country'))!==['Турция'])throw new RuntimeException('unresolved country label incorrect');
-echo "Turkey country scope: translated supplier ID, isolated mappings and card country passed\n";
+if($cards!==[])throw new RuntimeException('unresolved Turkey identity exposed');
+echo "Turkey country scope: translated supplier ID, isolated mappings and unresolved output guard passed\n";
