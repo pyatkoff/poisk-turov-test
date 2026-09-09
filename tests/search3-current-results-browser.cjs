@@ -50,6 +50,87 @@ async function snapshot(page) {
     return { html: result.innerHTML, nodes, overflow, offenders };
   });
 }
+async function checkMealFacet(page, width, previous) {
+  const sample = (id, price, meal) => ({ ...tour, id, price, meal });
+  const items = [
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }), sample('a-ai-extra', 125000, { fullName: 'Всё включено' })] },
+    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' })] },
+    { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Без питания' })] }
+  ];
+  const supplierRequests = [];
+  const record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) supplierRequests.push(request.url()); };
+  page.on('request', record);
+  try {
+    await page.evaluate(items => {
+      const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
+      window.__mealOriginal = freeze(items);
+      window.__mealEvents = [];
+      window.addEventListener('v2:results-rendered', event => window.__mealEvents.push(event.detail.items));
+      window.V2Results.render(items);
+    }, items);
+    await page.locator('#sortResults').selectOption('price');
+    const field = page.locator('.search3-meal-filter'), select = field.locator('select');
+    const name = page.locator('.search3-hotel-filter input'), category = page.locator('.search3-category-filter select');
+    const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
+    assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
+    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
+    const eventCount = await page.evaluate(() => window.__mealEvents.length);
+    await select.selectOption('всё включено');
+    assert.equal(await page.evaluate(() => window.__mealEvents.length), eventCount + 1, 'one local projection, no render loop');
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
+    const a = page.locator('#results [data-hotel-id=meal-a]');
+    assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'representative choice keeps its original tour ID');
+    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'selected meal sets the actual displayed offer price');
+    assert.match(await a.locator('.hotel-choice-hint').innerText(), /2 варианта/, 'counts only matching offers');
+    await a.locator('.tour-more-toggle').click();
+    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion cannot reintroduce an excluded meal');
+    assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
+    assert.equal(await page.evaluate(() => window.V2Results.state.items.length === 3 && window.V2Results.state.items.every((h, i) => h === window.__mealOriginal[i]) && window.__mealEvents.every(list => list.length === 3 && list.every((h, i) => h === window.__mealOriginal[i]))), true, 'original result state, event items and continuation count remain intact');
+    assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(items), 'frozen source tours and prices are unchanged');
+    await name.fill('Отель А');
+    await category.selectOption('4');
+    assert.deepEqual(await visible(), [], 'name/category/meal combine through one hidden-state owner');
+    assert.match(await page.locator('#search3HotelFilterStatus').innerText(), /Показано 0 из 3/);
+    await page.locator('#sortResults').selectOption('rating');
+    assert.equal(await select.inputValue(), 'всё включено');
+    assert.equal(await name.inputValue(), 'Отель А');
+    assert.equal(await category.inputValue(), '4');
+    assert.deepEqual(await visible(), [], 'sort preserves all local choices, including zero matches');
+    await name.fill(''); await category.selectOption('0');
+    assert.deepEqual(await visible(), ['meal-a', 'meal-b']);
+    await page.locator('#sortResults').selectOption('price');
+    assert.equal((await snapshot(page)).overflow, false, 'meal controls and projected cards fit the viewport');
+    assert.ok((await select.boundingBox()).height >= 44, 'meal selector keeps a usable touch target');
+    if (!previous) await page.screenshot({ path: path.join(output, `meal-filter-${width}.png`), fullPage: true });
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
+    assert.equal(await field.isVisible(), false, 'dirty edit hides stale controls');
+    assert.equal(await select.inputValue(), 'всё включено', 'dirty edit preserves the retained result projection');
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'dirty event does not reveal excluded stale offers');
+    await page.evaluate(() => window.V2Results.rerender());
+    assert.equal(await field.isVisible(), true);
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'returning to the retained results preserves meal selection');
+    await select.selectOption('');
+    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'clear restores every loaded hotel and original ordering');
+    assert.equal(await a.locator('[data-tid=a-ro]').count(), 1, 'clear restores original tours, including earlier excluded meals');
+    await select.selectOption('всё включено');
+    await page.evaluate(items => window.V2Results.render(items.concat([{ id: 'meal-incomplete', name: 'Неполные данные', price: 70000, tours: [{ id: 'unknown', price: 70000, meal: { id: 7 } }] }])), items);
+    assert.equal(await field.isVisible(), false, 'incomplete progressive set hides the facet');
+    assert.equal(await select.inputValue(), '', 'incomplete set resets selection before rendering prices');
+    assert.equal((await visible()).length, 4, 'no silent filtering remains on incomplete data');
+    await page.evaluate(items => window.V2Results.render(items), items);
+    await select.selectOption('всё включено');
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 101 } })));
+    assert.equal(await select.inputValue(), '', 'a real new search clears the local meal');
+    assert.equal(await field.isVisible(), false);
+    await page.evaluate(items => window.V2Results.render(items), items);
+    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
+    const longLabel = '<img src=x onerror=bad()> Очень длинное описание питания от поставщика без сокращений';
+    await page.evaluate(({ items, longLabel }) => { items[0].tours[0].meal = { fullName: longLabel }; window.V2Results.render(items); }, { items, longLabel });
+    assert.equal(await select.locator('img').count(), 0, 'supplier labels are rendered as text, never HTML');
+    assert.equal((await snapshot(page)).overflow, false, 'long supplier label does not widen the toolbar');
+    assert.deepEqual(supplierRequests, [], 'local filtering issues no supplier or lead requests');
+  } finally { page.off('request', record); }
+}
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -208,6 +289,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
+    if ([375, 1440].includes(width)) await checkMealFacet(page, width, previous);
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
     return { collapsed, expanded, logoSource };
