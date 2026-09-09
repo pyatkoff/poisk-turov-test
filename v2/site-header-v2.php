@@ -1,5 +1,13 @@
 <?php
 require_once __DIR__ . '/phone-value.php';
+require_once __DIR__ . '/asset-version-v1.php';
+
+/** Emit the unchanged owner artwork before the browser parses the page body. */
+function v2_render_site_favicon(): void {
+    $version = rawurlencode(v2_asset_content_version(__DIR__ . '/favicon.svg'));
+    echo '<link rel="icon" href="/favicon.ico?v='.$version.'" type="image/x-icon" sizes="64x64">';
+    echo '<link rel="icon" href="/favicon.png?v='.$version.'" type="image/png" sizes="64x64">';
+}
 
 function v2_header_e($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -26,16 +34,6 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
         ['/contacts/', 'Контакты'],
     ];
     ?>
-<script data-anytour-favicon-bootstrap>
-(function(){
-  var head=document.head;if(!head)return;
-  var href='/favicon.php?v=20260903';
-  head.querySelectorAll('link[rel~="icon"]').forEach(function(node){node.remove();});
-  [['icon','image/png'],['shortcut icon','image/png']].forEach(function(spec){
-    var link=document.createElement('link');link.rel=spec[0];link.type=spec[1];link.href=href;head.appendChild(link);
-  });
-})();
-</script>
 <header class="at-global-header">
   <div class="at-global-header__inner">
     <a class="at-global-header__logo" href="/" aria-label="AnyTour — на главную"><img src="/images/logo.svg" alt="AnyTour"></a>
