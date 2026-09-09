@@ -1,21 +1,98 @@
 {
-  "status": "deployment_control_repair",
-  "runtime_source": "b0440edafe54cc9c413c8c999b52a69cd6965cd3",
-  "failed_before_ssh_runs": [
-    34384958596,
-    34384960418
-  ],
-  "cause": "Duplicate push workflow deliveries for the same commit made the count==1 guard reject both before SSH.",
-  "repair": "Elect only the lowest run ID for the exact control commit; refuse reruns; retain concurrency, checked-source CI and private source release fence. No failed supplier checkpoint replay.",
-  "previous_probe": {
-    "run": 34384773321,
-    "status": "deployed_then_probe_failed",
-    "hotel": 447,
-    "checkpoint": "preserved; not replayed"
+  "behavior": {
+    "accepted_only": true,
+    "active_local_country": 1,
+    "cache": "HOTELS participates in existing criteria hash and is persisted in private offer criteria.",
+    "complete_coverage_required": true,
+    "fallback": "Preserve existing broad API search and local projection if coverage is incomplete; never silently omit an unmatched selected hotel.",
+    "local_hotel_limit": 30,
+    "saved_catalog_membership_required": true,
+    "supplier_namespace": "andromeda_catalog",
+    "upstream_hotel_limit": 30
   },
-  "next_distinct_probe": {
-    "hotel": 9365,
-    "andromeda_hotel": 416247,
-    "operator": 5
-  }
+  "checks": {
+    "job": 102578502892,
+    "protocol": 34384872229,
+    "results": [
+      "accepted catalog IDs only; exclude operator namespace",
+      "complete coverage and missing dictionary fallback",
+      "active country boundary",
+      "same filter on subsequent page",
+      "actual client URL includes HOTELS and OPERATORS",
+      "invalid/oversized hotel lists rejected",
+      "full handler -> private store -> resume keeps HOTELS without another request",
+      "50 existing addon tests passed"
+    ],
+    "security": 34384871931
+  },
+  "corrections": [
+    {
+      "result": "Two files deployed; live Verginia verification failed because private offer store did not allow HOTELS. Fixed in b0440edafe54cc9c413c8c999b52a69cd6965cd3. Failed checkpoint preserved; not replayed.",
+      "run": 34384773321
+    },
+    {
+      "result": "Duplicate push runs rejected before SSH. Elect one first run per exact control SHA; retain private source fence and attempt=1.",
+      "runs": [
+        34384958596,
+        34384960418
+      ]
+    },
+    {
+      "result": "No SSH: shallow clone lacked pinned runtime. Explicit fetch added before unchanged source comparison.",
+      "run": 34385040131
+    }
+  ],
+  "database_writes": 0,
+  "date": "2026-09-09",
+  "initial_source": "63c5fbdb8fd02fceff47a23f14253b6a18229246",
+  "other_countries_supported": false,
+  "production_changed": false,
+  "runtime_source": "b0440edafe54cc9c413c8c999b52a69cd6965cd3",
+  "scope": "Selected local hotels -> accepted Andromeda catalog HOTELS before API request, retaining ANEX OPERATORS=5 mode.",
+  "selection_booking_enabled": false,
+  "status": "published_and_verified",
+  "deploy": {
+    "run": 34385124698,
+    "job": 102579350395,
+    "control_source": "b3eba3a02e3db008684dc6cc80b470fb484bc5f2",
+    "artifacts": [
+      {
+        "id": 10117397217,
+        "digest": "sha256:38f76432c632416cc45302d45b845301a822be20fa960965c31b6a50c303bc7a"
+      }
+    ]
+  },
+  "readback": {
+    "status": "deployed",
+    "source_sha": "b0440edafe54cc9c413c8c999b52a69cd6965cd3",
+    "owner_login_required": false,
+    "sha256": {
+      "app/integrations/andromeda-client.php": "1c25d3e27ded11e52d2023d70c7e4ce0debdd1fe516f5abcf9f32e4c3d954ae4",
+      "api-andromeda-search3-preview.php": "4c3ea5c4c7ad2c16d9506f2110015c53fa33fb4f9be245401efe578b51288cd7",
+      "app/integrations/andromeda-offer-store.php": "7161ce8611057c17dacd4b621dd2fbcd504316fd56a6a41de07289dd94488cf5"
+    },
+    "private_credentials_unchanged": true,
+    "database_changed": false,
+    "production_changed": false,
+    "verification": {
+      "status": "checked",
+      "criteria": {
+        "HOTELS": "416247",
+        "OPERATORS": "5"
+      },
+      "page": 1,
+      "pages_count": 1,
+      "received_offers": 8,
+      "displayed_offers": 8,
+      "local_hotel_ids": [
+        9365
+      ],
+      "operator_labels": [
+        "Anex Tour"
+      ],
+      "resume_equal": true,
+      "resume_budget_unchanged": true
+    }
+  },
+  "verification_scope": "Real server search handler and public HTTP validation; no new browser/visual acceptance claimed. UI markup/styles unchanged."
 }
