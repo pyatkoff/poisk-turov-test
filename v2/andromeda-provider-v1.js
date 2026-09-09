@@ -14,10 +14,10 @@ function merge(base,provider){const rows=new Map();(Array.isArray(base)?base:[])
 function endpoint(value){if(!value||!root.location)return null;try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&/^\/(?:_preview\/[A-Za-z0-9._-]+\/)?api-andromeda-search3-preview\.php$/.test(url.pathname)&&!url.search&&!url.hash?url:null;}catch(_){return null;}}
 const api={safeUrl,operatorHotelCodeFromImage,context,normalizeTour,normalizeHotel,merge,endpoint,version:1};root.AnyTourAndromedaProvider=api;
 const document=root.document,renderer=root.V2Results,lifecycle=root.V2SearchLifecycle,target=endpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaApi);if(!document||!renderer||!lifecycle||!target||typeof root.fetch!=='function')return;
-const originalRender=renderer.render.bind(renderer);let rendering=false,baseItems=[],providerPages=new Map(),lastOptions={},active=null,expansions=new Map();
+const originalRender=renderer.render.bind(renderer);let rendering=false,baseItems=[],providerPages=new Map(),lastOptions={},active=null,expansions=new Map(),details=new Map(),detailRequest=null;
 function providerItems(){const all=[];Array.from(providerPages.keys()).sort((a,b)=>a-b).forEach(page=>all.push(...providerPages.get(page).map(h=>{const expansion=expansions.get(String(h.local_id));if(!expansion||!expansion.tours.length)return h;const extra=expansion.tours,refs=new Set(extra.map(t=>t.offer_ref));return Object.assign({},h,{tours:(expansion.status==='complete'?[]:h.tours.filter(t=>!refs.has(t.offer_ref))).concat(extra)});})));return all;}
 function current(run){return active===run&&lifecycle.generation===run.generation&&!lifecycle.dirty;}
-function render(options){rendering=true;try{const items=merge(baseItems,providerItems()).map(h=>{const key=String(h.id),expansion=expansions.get(key);if(!(h.tours||[]).some(t=>t.provider==='andromeda'))return h;return Object.assign({},h,{andromedaExpansion:expansion?{status:expansion.status,count:expansion.tours.length}: {status:'idle',count:0}});});return originalRender(items,options||lastOptions);}finally{rendering=false;}}
+function render(options){rendering=true;try{const items=merge(baseItems,providerItems()).map(h=>{const key=String(h.id),expansion=expansions.get(key);if(!(h.tours||[]).some(t=>t.provider==='andromeda'))return h;return Object.assign({},h,{tours:h.tours.map(t=>t.provider==='andromeda'?Object.assign({},t,{providerDetail:details.get(t.offerRef)}):t),andromedaExpansion:expansion?{status:expansion.status,count:expansion.tours.length}: {status:'idle',count:0}});});return originalRender(items,options||lastOptions);}finally{rendering=false;}}
 renderer.render=function(list,options){if(rendering)return originalRender(list,options);baseItems=Array.isArray(list)?list.filter(hotel=>hotel&&hotel.provider!=='andromeda'):[];lastOptions=Object.assign({},options||{});return render(active&&!active.done?Object.assign({},lastOptions,{empty:false}):lastOptions);};
 function emit(status,detail){root.dispatchEvent(new CustomEvent('v2:provider-status',{detail:Object.assign({provider:'andromeda',status},detail||{})}));}
 async function request(run,page){const response=await root.fetch(target.href,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify({generation:run.generation,page,params:run.params}),signal:run.controller.signal});const payload=await response.json().catch(()=>null),data=payload&&payload.data;if(!response.ok||!payload||payload.ok!==true||!data||data.provider!=='andromeda'||data.generation!==run.generation||data.page!==page||!Array.isArray(data.hotels))throw new Error(payload&&payload.error||'andromeda_unavailable');return data;}
@@ -38,7 +38,27 @@ async function expandHotel(key){
  }catch(error){if(!current(run))return;state.status='unavailable';}
  if(current(run))render(lastOptions);
 }
+async function openDetail(ref){
+ const run=active;if(!run||!current(run))return;
+ const tour=merge([],providerItems()).flatMap(h=>h.tours).find(t=>t.offerRef===ref);if(!tour)return;
+ const previous=details.get(ref);if(previous&&previous.open){previous.open=false;if(detailRequest&&detailRequest.ref===ref)detailRequest.controller.abort();render(lastOptions);return;}
+ if(previous&&previous.status==='complete'){previous.open=true;render(lastOptions);return;}
+ if(detailRequest){detailRequest.controller.abort();const old=details.get(detailRequest.ref);if(old)old.open=false;}
+ const state={open:true,status:'loading'},request={ref,controller:new AbortController()};details.set(ref,state);detailRequest=request;render(lastOptions);
+ let timedOut=false;const timer=root.setTimeout(()=>{timedOut=true;request.controller.abort();},15000);
+ try{
+  const body={generation:run.generation,params:run.params,action:'offer_detail',page:tour.offerContext.page,offer_context:tour.offerContext};if(tour.offerContext.hotel_scope)body.hotel_scope=tour.offerContext.hotel_scope;
+  const response=await root.fetch(target.href,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body),signal:request.controller.signal});
+  const payload=await response.json(),data=payload&&payload.data;if(!current(run)||detailRequest!==request)return;
+  if(!response.ok||!payload.ok){state.retry=response.status>=500;throw new Error('request_failed');}
+  if(!data||JSON.stringify(context(data.offer_context))!==JSON.stringify(tour.offerContext)||data.provider!=='andromeda'||!amount(data.price)||data.price.currency!=='RUB'){state.retry=false;throw new Error('context_failed');}
+  state.status='complete';state.data={hotel:String(data.hotel||''),operator:String(data.operator||''),room:String(data.room||''),placement:String(data.placement||''),checkin:String(data.checkin||''),nights:data.nights,adults:data.adults,children:data.children,meal:String(data.meal||''),price:amount(data.price)};
+ }catch(error){if(!current(run)||detailRequest!==request||!state.open)return;state.status='error';state.retry=state.retry!==false;state.message=timedOut?'Подробности не успели загрузиться.':state.retry?'Не удалось загрузить подробности. Список предложений сохранён.':'Не удалось подтвердить выбранное предложение. Повторите поиск.';}
+ finally{root.clearTimeout(timer);if(detailRequest===request)detailRequest=null;}
+ if(current(run))render(lastOptions);
+}
+api.openDetail=openDetail;
 api.expandHotel=expandHotel;
-if(typeof document.addEventListener==='function')document.addEventListener('click',event=>{const button=event.target&&event.target.closest&&event.target.closest('[data-andromeda-expand]');if(!button)return;event.preventDefault();expandHotel(button.dataset.andromedaExpand);});
-root.addEventListener('v2:search-reset',event=>{expansions.forEach(s=>s.controller.abort());expansions=new Map();if(active&&active.controller)active.controller.abort();active=null;providerPages=new Map();baseItems=[];lastOptions={};const detail=event.detail||{},snapshot=lifecycle.snapshot;if(detail.dirty||!snapshot||!Number.isInteger(detail.generation)||detail.generation<1)return;start(snapshot,detail.generation);});
+if(typeof document.addEventListener==='function')document.addEventListener('click',event=>{const detail=event.target&&event.target.closest&&event.target.closest('[data-andromeda-detail]');if(detail){event.preventDefault();const ref=detail.dataset.andromedaDetail;if(detail.dataset.detailRetry==='1'){const state=details.get(ref);if(state)state.open=false;}openDetail(ref);return;}const button=event.target&&event.target.closest&&event.target.closest('[data-andromeda-expand]');if(!button)return;event.preventDefault();expandHotel(button.dataset.andromedaExpand);});
+root.addEventListener('v2:search-reset',event=>{if(detailRequest)detailRequest.controller.abort();detailRequest=null;details=new Map();expansions.forEach(s=>s.controller.abort());expansions=new Map();if(active&&active.controller)active.controller.abort();active=null;providerPages=new Map();baseItems=[];lastOptions={};const detail=event.detail||{},snapshot=lifecycle.snapshot;if(detail.dirty||!snapshot||!Number.isInteger(detail.generation)||detail.generation<1)return;start(snapshot,detail.generation);});
 })(typeof window!=='undefined'?window:globalThis);
