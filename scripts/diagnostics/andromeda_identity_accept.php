@@ -8,7 +8,7 @@ function andromeda_current_name($value){
 try{
  $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException();
  $request=json_decode(file_get_contents('php://stdin'),true,32,JSON_THROW_ON_ERROR);
- $allowed=['416247'=>9365,'2000042763'=>447];$actual=[];
+ $allowed=['5354'=>1280];$actual=[];
  foreach($request['rows']??[] as $r){if(isset($actual[$r['external_hotel_id']]))throw new RuntimeException();$actual[$r['external_hotel_id']]=$r['local_hotel_id'];}
  if($actual!==$allowed)throw new RuntimeException();
  require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
@@ -16,9 +16,9 @@ try{
  $pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$pdo->beginTransaction();
  $all=$pdo->query('SELECT * FROM andromeda_hotel_identities ORDER BY supplier_namespace,external_hotel_id FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC);
  $index=[];$preserve=[];foreach($all as $row){$key=$row['supplier_namespace'].':'.$row['external_hotel_id'];$index[$key]=$row;if($row['supplier_namespace']!=='andromeda_catalog'||!isset($allowed[$row['external_hotel_id']]))$preserve[$key]=$row;}
- $locals=$pdo->query('SELECT id,name,country_id FROM catalog_hotels WHERE is_active=1 AND country_id=1 ORDER BY id LIMIT 10001')->fetchAll(PDO::FETCH_ASSOC);
- $aliases=$pdo->query('SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.country_id=1 AND h.is_active=1 LIMIT 30001')->fetchAll(PDO::FETCH_ASSOC);
- if(count($locals)>10000||count($aliases)>30000)throw new RuntimeException();
+ $locals=$pdo->query('SELECT id,name,country_id FROM catalog_hotels WHERE is_active=1 AND country_id=4 ORDER BY id LIMIT 20001')->fetchAll(PDO::FETCH_ASSOC);
+ $aliases=$pdo->query('SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.country_id=4 AND h.is_active=1 LIMIT 50001')->fetchAll(PDO::FETCH_ASSOC);
+ if(count($locals)>20000||count($aliases)>50000)throw new RuntimeException();
  $nameIndex=[];foreach($locals as $h)$nameIndex[andromeda_current_name($h['name'])][(int)$h['id']]=true;
  foreach($aliases as $h)$nameIndex[andromeda_current_name($h['alias'])][(int)$h['hotel_id']]=true;
  $registry=AnyTourAnexSearchMappingRegistry::fromPdo($pdo);$updated=0;
@@ -28,10 +28,10 @@ try{
   if($old&&$old['decision_status']==='accepted'&&(int)$old['local_hotel_id']===$r['local_hotel_id']&&$old['evidence_sha256']===$newHash)continue;
   if(!$old||$old['decision_status']!=='pending'||$old['local_hotel_id']!==null||$old['evidence_sha256']!==$r['previous_evidence_sha256'])throw new RuntimeException();
   $prior=json_decode($old['evidence_json'],true,32,JSON_THROW_ON_ERROR);$evidence=json_decode($r['evidence_json'],true,32,JSON_THROW_ON_ERROR);
-  if(($prior['source']['stateKey']??null)!==3||($evidence['prior_evidence']??null)!==$prior)throw new RuntimeException();
+  if(($prior['source']['stateKey']??null)!==5||($evidence['prior_evidence']??null)!==$prior)throw new RuntimeException();
   $candidates=array_keys($nameIndex[andromeda_current_name($evidence['observed_hotel'])]??[]);
   if(count($candidates)!==1||$candidates[0]!==$r['local_hotel_id'])throw new RuntimeException();
-  if($r['external_hotel_id']==='416247'&&$registry->resolve('anex_online',5196,'preview')!==9365)throw new RuntimeException();
+  if($registry->resolve('anex_online',19610,'preview')!==1280)throw new RuntimeException();
   $update->execute([$r['local_hotel_id'],$newHash,$r['evidence_json'],$r['external_hotel_id'],$r['previous_evidence_sha256']]);if($update->rowCount()!==1)throw new RuntimeException();++$updated;
  }
  $after=$pdo->query('SELECT * FROM andromeda_hotel_identities ORDER BY supplier_namespace,external_hotel_id')->fetchAll(PDO::FETCH_ASSOC);$remaining=[];$readback=[];

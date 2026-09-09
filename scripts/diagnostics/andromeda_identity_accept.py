@@ -1,10 +1,10 @@
-"""Promote two reviewed pending identities with original evidence retained."""
+"""Promote one reviewed pending identities with original evidence retained."""
 import argparse,hashlib,json,os
 from pathlib import Path
 import anex_search3_owner_decisions as owner
 from andromeda_anex_saved_audit import analyse
 from andromeda_hotel_candidates import save
-DIGEST='4c9e1a1525946ded5111d5868b455e82fcbbf4fac68147492b2fca005094edee'
+DIGEST='03a34edf75f895b6ccc4dacd819e75ff213bb50ecbc99fa680751de06f4d6bee'
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('phase',choices=['prepare','apply']);a=p.parse_args()
@@ -13,7 +13,7 @@ def main():
         raw=(Path(os.environ['RUNNER_TEMP'])/'saved'/'saved-hotel-evidence.json').read_bytes()
         if hashlib.sha256(raw).hexdigest()!=DIGEST:raise ValueError('saved evidence changed')
         proposals=[r for r in analyse(json.loads(raw))['rows'] if r['proposed_local_id']]
-        if {r['external_hotel_id']:r['proposed_local_id'] for r in proposals}!={'416247':9365,'2000042763':447}:raise ValueError('reviewed pair set changed')
+        if {r['external_hotel_id']:r['proposed_local_id'] for r in proposals}!={'5354':1280}:raise ValueError('reviewed pair set changed')
         rows=[]
         for r in proposals:
             old=r['identity'];evidence={'prior_evidence':json.loads(old['evidence_json']),'source':'owner_authorized_saved_anex_correlation_20260909','saved_evidence_sha256':DIGEST,'observed_hotel':r['hotel'],'image_url':r['image_url'],'hotel_url':r['hotel_url'],'anex_candidate_id':r['anex_candidate_id'],'anex_accepted_local_id':r['anex_accepted_local_id'],'target':r['target'],'reason':r['reason']}
