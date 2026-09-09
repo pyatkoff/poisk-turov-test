@@ -309,7 +309,10 @@ def approved_delta(path):
                 'reason': 'observed_cached_detail_alias_review:name_country_coordinates',
                 'source_row_digest': gaps.digest(result),
             })
-    sources = dict(cp['sources'], cached_detail_alias_sha256=CHECKED_CHECKPOINT_SHA)
+    # The append-only writer deliberately accepts one independent-evidence
+    # digest under the established gap_sha256 protocol key. Keep this pinned
+    # checkpoint SHA as that digest instead of expanding the remote protocol.
+    sources = dict(cp['sources'], gap_sha256=CHECKED_CHECKPOINT_SHA)
     return {'schema_version': 1, 'scope': 'preview',
             'approval_policy': 'owner_exact_and_strong_20260908',
             'append_only': True, 'sources': sources,
