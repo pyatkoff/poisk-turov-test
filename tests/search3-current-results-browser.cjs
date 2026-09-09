@@ -142,6 +142,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await select.inputValue(), 'всё включено', 'dirty edit preserves the retained result projection');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'dirty event does not reveal excluded stale offers');
     await page.evaluate(() => window.V2Results.rerender());
+    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.equal(await field.isVisible(), true);
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'returning to completed results restores the meal-filtered calendar');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'returning to the retained results preserves meal selection');
