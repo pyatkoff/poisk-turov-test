@@ -62,6 +62,11 @@ async function run(browser, width, previous) {
   try {
     assert.equal((await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' })).status(), 200);
     await page.waitForFunction(() => window.V2Results && window.V2TourController && document.querySelector('#tourSearch')?.dataset.search3Ready === '1');
+    // This offline fixture aborts every supplier/catalog request. Wait for its
+    // real recovery UI before comparing geometry; otherwise that asynchronous
+    // sibling can be inserted between raw/served snapshots (160px at 375px).
+    await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+    assert.equal(await page.locator('.catalog-recovery').isVisible(), true, 'blocked catalogs expose their canonical recovery before result measurement');
     assert.equal(await page.locator('#resultsSearchSummary').count(), 0, 'Search3 does not render the retired placeholder summary');
     const logo = page.locator('.at-global-header__logo img');
     assert.equal(await logo.isVisible(), true, 'canonical logo remains visible');
