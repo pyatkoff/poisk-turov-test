@@ -1244,7 +1244,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Completed SITE-02 route/prefix audit and shared header accessibility repairs #1742/#1744. All 7 internal preview destinations and 8 Search3 assets were live/manifest-correct; source build13/13. Live keyboard audit at1363 measured nav38px, phone17px, logo41px, CTA44px; checked source now enforces at least44px for logo/nav/phone/CTA/menu across12 widths. Security, standalone navigation, boundary where applicable and exact artifact CI passed. Shared CSS5526→5615B (+89B), JS0B. Exact source f3cf1146/artifact10102602949 checked in release85832414. Preview publication was attempted through direct ref and PR-merge control #1745, but connector writes emitted no push run; preview remains source7fdde8e1. No real lead, main/production/indexation change."
+    "last_execution_continuation": "Completed and published #1749 homepage catalog retry (inline JS +936 B, CSS/external JS 0) and #1751 search-error editable form (+44 B external JS, CSS 0). Security/exact and scoped recovery fixtures green. Direct push deployments 34351636731 and 34352451364 succeeded. Independent selected return/empty-flight audit found no additional confirmed defect. Physical Safari deferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1269,9 +1269,9 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "858324140319d3668bb899d7eaf7b9ec40dcba10",
-    "published_source_sha": "7fdde8e1d90574960437a0618855b8755223b470",
-    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published 7fdde8e1. Physical Safari/live mobile remain deferred. SITE-02 route/prefix audit is complete: no broken destination; #1742/#1744 repaired all shared header targets to at least44px and are checked in release 85832414. Preview still serves 7fdde8e1 because connector-created control refs/merge #1745 emitted no push Actions run; do not repeat that blocked mechanism. Reuse exact artifact10102602949 when a push-capable one-shot path is available or with the next meaningful visual packet. Independently run a bounded SITE keyboard/focus and homepage-to-Search3 recovery audit; change code only for a confirmed current-owner defect. Do not repeat completed seasonal, route-prefix or handoff work. Production migration remains owner-visual gated.",
+    "last_fully_checked_release_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+    "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+    "next_action": "Continue bounded keyboard acceptance of opening a selected tour on published 2695163c; source-only audit did not establish a focus defect, so verify live before changing code. Physical Safari/live mobile safe-area and owner visual approval remain deferred. Do not repeat completed catalog/error recovery, calendar/filter/route work or duplicate #1731 INT handoff.",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -6292,42 +6292,24 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "artifact_id": 10092207048,
-    "artifact_run": 34321878643,
-    "http_status": 200,
-    "internal_php_denied": true,
-    "lead_probe_status": 403,
+    "artifact_id": 10104097131,
+    "artifact_run": 34351875286,
+    "conclusion": "success",
+    "control_sha": "e4ee64c842c4989782fef3a30cd9d5f2b9c67099",
+    "deploy_run": 34352451364,
     "metrika_counter": 0,
     "payload_file_count": 717,
-    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
     "production_fingerprint_unchanged": true,
     "production_lead_delivery": false,
-    "robots": "noindex,follow",
+    "published": true,
+    "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+    "real_leads_submitted": 0,
+    "release_pin_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+    "robots": "noindex",
     "rollback_backup_retained": true,
     "route": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "route_count": 9,
-    "schema_version": 1,
-    "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-    "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
-    "published": true,
-    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-    "release_pin_sha": "598269e241391aae34112d835596f56d089fd6d7",
-    "control_pr": 1689,
-    "control_sha": "218648814cbc83087ff399f5c6aba66ab4046a8d",
-    "control_closed_without_merge": true,
-    "deploy_run": 34322213328,
-    "conclusion": "success",
-    "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
-    "archive_sha256": "24b9e8526a3958f4e2188aa40d5b2f2390c251e85f5323e5b2d5c113a6392cc8",
-    "manifest_sha256": "d0a7ea672974b2761259cb60d7723dddc03fc3fd5a8c20b694c26f7d2bd27049",
-    "payload_sha256": "0e3a9784d7b75b69ee970fd9a383aed84686bb97fb8e79cf0fe8aea5e21d348f",
-    "deployment_evidence_artifact": 10092314613,
-    "deployment_evidence_digest": "sha256:7491e023b2ee5951075e76a56967e6e492c156c78b1b4f2707fb8c47bd83a848",
-    "production_fingerprint_files": 13,
-    "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
-    "main_changed_by_this_work": false,
-    "production_changed_by_this_work": false,
-    "real_leads_submitted": 0
+    "source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+    "source_tree": "aa65d9a4bb6807193ca468af26b1e0c3fe251a7f"
   },
   "preview_verification_policy": {
     "batch_execution": {
@@ -6581,54 +6563,35 @@
       "pr": 1334,
       "branch": "release/search3-production-ready-v1",
       "status": "PUBLISHED_ISOLATED_PREVIEW_OWNER_ACCEPTANCE_DEFERRED",
-      "implementation_verified_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-      "release_integration_sha": "598269e241391aae34112d835596f56d089fd6d7",
-      "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+      "implementation_verified_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+      "release_integration_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+      "source_tree": "aa65d9a4bb6807193ca468af26b1e0c3fe251a7f",
       "source_prs": [
-        1686,
-        1687
+        1749,
+        1751
       ],
-      "exact_artifact": 10092207048,
+      "exact_artifact": 10104097131,
       "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
-      "preview_deploy_pr": 1689,
-      "preview_deploy_run": 34322213328,
+      "preview_deploy_run": 34352451364,
       "latest_publication_verification": {
-        "artifact_id": 10092207048,
-        "artifact_run": 34321878643,
-        "http_status": 200,
-        "internal_php_denied": true,
-        "lead_probe_status": 403,
+        "artifact_id": 10104097131,
+        "artifact_run": 34351875286,
+        "conclusion": "success",
+        "control_sha": "e4ee64c842c4989782fef3a30cd9d5f2b9c67099",
+        "deploy_run": 34352451364,
         "metrika_counter": 0,
         "payload_file_count": 717,
-        "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
         "production_fingerprint_unchanged": true,
         "production_lead_delivery": false,
-        "robots": "noindex,follow",
+        "published": true,
+        "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+        "real_leads_submitted": 0,
+        "release_pin_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+        "robots": "noindex",
         "rollback_backup_retained": true,
         "route": "https://anytoour.ru/_preview/search3-site-candidate/",
-        "route_count": 9,
-        "schema_version": 1,
-        "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-        "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
-        "published": true,
-        "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-        "release_pin_sha": "598269e241391aae34112d835596f56d089fd6d7",
-        "control_pr": 1689,
-        "control_sha": "218648814cbc83087ff399f5c6aba66ab4046a8d",
-        "control_closed_without_merge": true,
-        "deploy_run": 34322213328,
-        "conclusion": "success",
-        "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
-        "archive_sha256": "24b9e8526a3958f4e2188aa40d5b2f2390c251e85f5323e5b2d5c113a6392cc8",
-        "manifest_sha256": "d0a7ea672974b2761259cb60d7723dddc03fc3fd5a8c20b694c26f7d2bd27049",
-        "payload_sha256": "0e3a9784d7b75b69ee970fd9a383aed84686bb97fb8e79cf0fe8aea5e21d348f",
-        "deployment_evidence_artifact": 10092314613,
-        "deployment_evidence_digest": "sha256:7491e023b2ee5951075e76a56967e6e492c156c78b1b4f2707fb8c47bd83a848",
-        "production_fingerprint_files": 13,
-        "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
-        "main_changed_by_this_work": false,
-        "production_changed_by_this_work": false,
-        "real_leads_submitted": 0
+        "source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+        "source_tree": "aa65d9a4bb6807193ca468af26b1e0c3fe251a7f"
       },
       "live_browser_verification": {
         "date": "2026-09-09",
@@ -6761,7 +6724,7 @@
         ]
       },
       "audit": "docs/project/search3-local-meal-facet-product.json",
-      "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
+      "next_action": "Continue bounded keyboard acceptance of opening a selected tour on published 2695163c; source-only audit did not establish a focus defect, so verify live before changing code. Physical Safari/live mobile safe-area and owner visual approval remain deferred. Do not repeat completed catalog/error recovery, calendar/filter/route work or duplicate #1731 INT handoff.",
       "deferred": [
         "Live mobile, physical Safari/safe-area, full site/SEO and production visual acceptance; no real lead submission.",
         "Live selected-tour/flight/lead handoff not repeated for this local result-filter packet; protected controller/payload/source guards pass.",
@@ -10248,7 +10211,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T12:12:00Z",
+  "updated_at": "2026-09-09T12:42:56.611Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -13284,7 +13247,7 @@
   "latest_site_header_target_package": {
     "schema_version": 1,
     "date": "2026-09-09",
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "status": "PUBLISHED",
     "source_prs": [
       1742,
       1744
@@ -13294,7 +13257,7 @@
       "f3cf11465b8e0e99a3e66a701537bde934d6bb4e"
     ],
     "checked_release_sha": "858324140319d3668bb899d7eaf7b9ec40dcba10",
-    "published_source_sha": "7fdde8e1d90574960437a0618855b8755223b470",
+    "published_source_sha": "f3cf11465b8e0e99a3e66a701537bde934d6bb4e",
     "product_result": [
       "The native mobile menu target is44px at every shared header breakpoint instead of40px at521-1024px.",
       "Logo, desktop navigation, support phone and CTA now expose at least44px focus/touch targets without changing destinations or renderer ownership.",
@@ -13347,11 +13310,11 @@
       "source_build": "13/13 and search3_assets.py --check passed"
     },
     "publication": {
-      "published": false,
-      "blocker": "Direct connector ref update and PR-merge control #1745 emitted no push Actions workflow run. Do not repeat this mechanism in the same environment.",
-      "attempted_control_pr": 1745,
-      "published_preview_source_sha": "7fdde8e1d90574960437a0618855b8755223b470",
+      "correction": "Direct push deploy succeeded. Prior workflow-runs wrapper omitted push events. Duplicate #1745 run34348974306 failed parent binding before upload; it did not block the successful publication.",
+      "deploy_run": 34348768843,
       "production_changed": false,
+      "published": true,
+      "published_preview_source_sha": "f3cf11465b8e0e99a3e66a701537bde934d6bb4e",
       "real_leads_submitted": 0
     },
     "deferred": [
@@ -13359,6 +13322,55 @@
       "Live mobile verification of the newly checked source after publication.",
       "Owner visual approval and production migration."
     ],
-    "next_action": "Reuse exact artifact10102602949 through a push-capable one-shot path or coalesce it with the next meaningful visual package; meanwhile audit homepage-to-Search3 keyboard/error recovery without repeating SITE-02."
+    "next_action": "Completed and included in subsequent preview sources; do not redeploy separately."
+  },
+  "latest_search_site_recovery_package": {
+    "benefit": [
+      "Homepage catalog failures expose explicit retry, preserve initial parameters and reject stale responses.",
+      "Search error opens the existing edit form while retaining parameters and loaded offers."
+    ],
+    "checked_release_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+    "date": "2026-09-09",
+    "deferred": [
+      "Physical Safari and live mobile safe-area",
+      "Keyboard focus on selected-tour opening",
+      "Owner visual production approval"
+    ],
+    "deploy_runs": [
+      34351636731,
+      34352451364
+    ],
+    "next_action": "Continue bounded keyboard acceptance of opening a selected tour on published 2695163c; source-only audit did not establish a focus defect, so verify live before changing code. Physical Safari/live mobile safe-area and owner visual approval remain deferred. Do not repeat completed catalog/error recovery, calendar/filter/route work or duplicate #1731 INT handoff.",
+    "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+    "size": {
+      "css_delta_bytes": 0,
+      "homepage_inline_js_delta_bytes": 936,
+      "search_external_js_delta_bytes": 44,
+      "search_initial_and_full_scenario_delta_bytes": 44
+    },
+    "source_prs": [
+      1749,
+      1751
+    ],
+    "source_shas": [
+      "ceb9c08995cea184643716270bca8523fd9d9bb7",
+      "2695163ce95f5b9b981da55201c6cad5cf44f1e8"
+    ],
+    "status": "PUBLISHED",
+    "validation": {
+      "exact_runs": [
+        34351369058,
+        34351875286
+      ],
+      "home_fixture": "initial departure failure, country failure, double click and stale-response recovery passed",
+      "independent_audit": "No additional confirmed empty-flight/return/new-search defect; keyboard selected opening unverified",
+      "live_retry": "existing search recovered100 hotels after one explicit retry",
+      "real_leads_submitted": 0,
+      "search_fixture": "error edit form visible and FormData preserved; served screenshots375/1440 inspected",
+      "security_runs": [
+        34351368964,
+        34351875254
+      ]
+    }
   }
 }
