@@ -411,12 +411,21 @@
   },
   "ota_operator_filter_and_active_summary_20260910": {
     "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
-    "source_prs": [1824, 1826],
+    "source_prs": [
+      1824,
+      1826
+    ],
     "source_sha": "e63f81006604b30c7c8cb6feefbe5aeafa30f28e",
     "source_tree": "e0eda6d3f4772dbf5e0486b55481f9456d01ad70",
     "checked_release_sha": "690e6b2fc6ed67883bc53809c9304803bc6d153e",
-    "security_runs": [34408842117, 34409844680],
-    "exact_runs": [34408842110, 34409844421],
+    "security_runs": [
+      34408842117,
+      34409844680
+    ],
+    "exact_runs": [
+      34408842110,
+      34409844421
+    ],
     "exact_artifact": 10126849843,
     "results_geometry_artifact": 10126849232,
     "deploy_run": 34410427365,
@@ -435,6 +444,87 @@
       "owner approval for a concrete production release"
     ],
     "next_action": "Continue only a newly confirmed independent SEARCH/SITE gap until INT supplies the bounded identity/status and quote/revalidation handoffs; do not add another filter or renderer runtime."
+  },
+  "ota_andromeda_current_card_expansion_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_prs": [
+      1829,
+      1831
+    ],
+    "baseline_release_sha": "6a43e8ce3769945fd1bf0520a1406d04c1f848c3",
+    "source_sha": "fa55758a81de0cae13b74591acd77e7f4af4e223",
+    "source_tree": "e68c7fed431fdb71cae6834d583fb4cc9f652078",
+    "release_integration_sha": "43d874d97283a8d4fb302167bb7303e6712f4bb6",
+    "product_result": [
+      "Accepted mapped Andromeda hotels can expand all scoped provider offer pages inside the one current Search3 renderer without replay or duplicate UI ownership.",
+      "Complete non-empty expansion replaces grouped representatives; a partial failure retains already received offers and exposes retry without discarding the Tourvisor card.",
+      "Provider offers remain visibly quote-required and cannot enter canonical selection, flight or lead paths until a separate quote/selection handoff exists.",
+      "Fresh search clears old expanded disclosures while dirty edit/return preserves retained results; a one-hotel desktop result uses the full content width and mobile provider prices remain readable."
+    ],
+    "ownership": "Current v2/andromeda-provider-v1.js and v2/results-renderer-v5.js remain the only provider/renderer owners. #1831 changed those owners and the existing Search3 results-layout owner; it added no DS2/ANEX overlay, third renderer, filter runtime or handler layer.",
+    "size": {
+      "provider_js_source_delta_raw_bytes": 3228,
+      "served_compact_renderer_js_delta_raw_bytes": 529,
+      "served_css_delta_raw_bytes": 105,
+      "eager_route_css_js_delta_raw_bytes": 3862,
+      "full_route_css_js_delta_raw_bytes": 3862,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0,
+      "generated_shared_runtime_json_delta_raw_bytes": 676,
+      "accounting": "Served JS counts the standalone provider (+3228 B) and compact renderer body (+529 B) once; the generated runtime JSON growth (+676 B including metadata/hashes) is reported separately and is not double-counted as an additional browser asset."
+    },
+    "verification": {
+      "security_run": 34414945640,
+      "exact_artifact_run": 34414945631,
+      "exact_artifact_id": 10128743598,
+      "exact_artifact_digest": "sha256:ec2c53b62caeb21f3e219dd1158e596e853a7e748ec7a303e367438422b1a8fd",
+      "results_geometry_artifact": 10128742780,
+      "widths": [
+        375,
+        1440
+      ],
+      "checks": [
+        "complete two-page scoped expansion",
+        "partial-failure retention and retry",
+        "no replay and current-provider eligibility",
+        "quote-required and selection-disabled boundary",
+        "fresh-search disclosure reset with dirty-return preservation",
+        "single-hotel desktop width and mobile price readability",
+        "raw/served parity, screenshots, overflow0 and lead_sent0"
+      ],
+      "conclusion": "success"
+    },
+    "publication": {
+      "published": true,
+      "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+      "published_source_sha": "fa55758a81de0cae13b74591acd77e7f4af4e223",
+      "release_pin_sha": "43d874d97283a8d4fb302167bb7303e6712f4bb6",
+      "control_pr": 1835,
+      "control_sha": "be6b370f763af950c82b23605fb2da798368ea73",
+      "deploy_run": 34417558385,
+      "deployment_evidence_artifact": 10129672331,
+      "deployment_evidence_digest": "sha256:1f8993014a06eb2b96cd9e57acd4d4bf7297b4a20e0910475040baf2f1087547",
+      "route_count": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "preview_metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprints_unchanged": true,
+      "control_closed_without_merge": true,
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "The live external hotel_offers endpoint remains INT-owned and needs a deterministic saved mapped offer/status handoff; the existing failed sample is not repeated blindly.",
+      "Andromeda quote/revalidation, canonical selection, flights and lead transport remain disabled pending a separate bounded contract.",
+      "Physical iPhone/Safari safe-area acceptance and unassisted user pilot.",
+      "Owner approval for a concrete production release."
+    ],
+    "rollback": "Restore the retained isolated-preview backup and revert release merges 43d874d97283a8d4fb302167bb7303e6712f4bb6 and cf0ab86d82a75e56ed677fe9dc53c3eb38dee965 independently.",
+    "next_action": "Advance to S3_PRODUCT_CURRENT_ACCEPTANCE: collect one reproducible accumulated-preview performance and five-task interaction baseline without a real lead, record physical Safari/user pilot as deferred, and do not reopen completed form/filter/calendar/provider-card packages. Consume further provider work only from a fresh bounded INT quote/selection handoff."
   }
 }
-
