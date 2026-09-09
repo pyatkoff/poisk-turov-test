@@ -1,6 +1,13 @@
 name: Deploy AnyTour favicon
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/favicon.svg'
+      - 'v2/favicon.php'
+      - 'v2/site-header-v2.php'
+      - '.github/workflows/deploy-favicon.yml'
   push:
     branches: [main]
     paths:
@@ -9,11 +16,67 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-anytoour-favicon
+  group: deploy-anytoour-favicon-${{ github.event.pull_request.number || 'production' }}
   cancel-in-progress: true
 
 jobs:
+  inspect-public:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public page declarations and favicon responses
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, pathlib, re, struct, urllib.request, urllib.error, zlib
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+          root='https://anytoour.ru'
+          class Head(HTMLParser):
+              def __init__(self): super().__init__(); self.icons=[]; self.in_head=False
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if tag=='head': self.in_head=True
+                  if tag=='link' and 'icon' in a.get('rel','').split(): self.icons.append(dict(a,in_head=self.in_head))
+              def handle_endtag(self,tag):
+                  if tag=='head': self.in_head=False
+          def get(path):
+              req=urllib.request.Request(root+path,headers={'Cache-Control':'no-cache','User-Agent':'AnyTour-Favicon-Check'})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r: return r.status,dict(r.headers),r.read()
+              except urllib.error.HTTPError as e: return e.code,dict(e.headers),e.read()
+          expected=base64.b64decode(re.search(r'data:image/png;base64,([^"\']+)',pathlib.Path('v2/favicon.svg').read_text()).group(1),validate=True)
+          print('FAVICON_OWNER_SOURCE '+json.dumps({'png_bytes':len(expected),'png_sha256':hashlib.sha256(expected).hexdigest()}))
+          failures=[]
+          for path in ['/','/poisk-turov/','/country/turkey/kemer/november/']:
+              status,headers,body=get(path); html=body.decode('utf-8','replace'); parser=Head(); parser.feed(html)
+              boot=re.search(r'<script[^>]*data-anytour-favicon-bootstrap[^>]*>(.*?)</script>',html,re.S)
+              selected=re.search(r"var href=['\"]([^'\"]+)",boot.group(1)) if boot else None
+              print('FAVICON_PAGE '+json.dumps({'path':path,'status':status,'icons':parser.icons,'bootstrap_href':selected.group(1) if selected else None}))
+              if status!=200: failures.append(path)
+          for path in ['/favicon.svg','/favicon.png','/favicon.ico','/favicon.php?v=20260903']:
+              status,headers,body=get(path)
+              row={'path':path,'status':status,'type':headers.get('Content-Type'),'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}
+              if path.endswith('.svg'):
+                  match=re.search(rb'data:image/png;base64,([^"\']+)',body)
+                  row['owner_artwork_match']=bool(match) and base64.b64decode(match.group(1))==expected
+              elif path.endswith('.ico'):
+                  row['owner_artwork_match']=body[:6]==struct.pack('<HHH',0,1,1) and body[22:]==expected
+              else: row['owner_artwork_match']=body==expected
+              if body.startswith(b'\x89PNG\r\n\x1a\n'): row['dimensions']=struct.unpack('>II',body[16:24])
+              print('FAVICON_ASSET '+json.dumps(row))
+              if status!=200 or not row['owner_artwork_match']: failures.append(path)
+          print('FAVICON_PUBLIC_BASELINE '+json.dumps({'ok':not failures,'failures':failures}))
+          # Baseline report only: these are existing production files, not PR files.
+          # The deployment job below retains its strict public file assertions.
+          PY
+
   deploy-favicon:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
