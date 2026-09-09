@@ -12,8 +12,11 @@ on:
       - 'tests/andromeda-catalog-capture-smoke.php'
       - 'scripts/diagnostics/andromeda-price-probe.php'
       - 'tests/andromeda-price-smoke.php'
+      - 'app/integrations/andromeda-normalizer.php'
+      - 'tests/andromeda-normalizer-smoke.php'
 permissions:
   contents: read
+  actions: read
 jobs:
   protocol:
     runs-on: ubuntu-latest
@@ -31,3 +34,20 @@ jobs:
           php tests/andromeda-catalog-capture-smoke.php
           php -l scripts/diagnostics/andromeda-price-probe.php
           php tests/andromeda-price-smoke.php
+          php -l app/integrations/andromeda-normalizer.php
+          php tests/andromeda-normalizer-smoke.php
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34365549508
+          artifact-ids: 10109677472
+          merge-multiple: true
+          path: ${{ runner.temp }}/real-price
+      - name: Normalize pinned real offers offline
+        run: php tests/andromeda-normalizer-smoke.php "$RUNNER_TEMP/real-price/price.json" "$RUNNER_TEMP/normalized.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-normalized-offers
+          path: ${{ runner.temp }}/normalized.json
+          if-no-files-found: error
