@@ -408,5 +408,33 @@
       "owner approval for a concrete production release"
     ],
     "next_action": "Wait for a fresh deterministic INT mapped-offer/quote handoff; meanwhile continue an independent unclaimed SEARCH/SITE owner without duplicating the renderer or filter runtime."
+  },
+  "ota_operator_filter_and_active_summary_20260910": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_prs": [1824, 1826],
+    "source_sha": "e63f81006604b30c7c8cb6feefbe5aeafa30f28e",
+    "source_tree": "e0eda6d3f4772dbf5e0486b55481f9456d01ad70",
+    "checked_release_sha": "690e6b2fc6ed67883bc53809c9304803bc6d153e",
+    "security_runs": [34408842117, 34409844680],
+    "exact_runs": [34408842110, 34409844421],
+    "exact_artifact": 10126849843,
+    "results_geometry_artifact": 10126849232,
+    "deploy_run": 34410427365,
+    "deploy_evidence_artifact": 10127014216,
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "product_result": "The current local filter owner exposes complete-data tour operators and keeps operator, meal and budget predicates on the same exact offer. The collapsed mobile/tablet disclosure names the first active values and exposes the complete active set in its accessible label.",
+    "ownership": "One existing local-hotel-filter runtime and one existing results-layout stylesheet own the behavior. No historical DS2/ANEX filter, second drawer, supplier request, renderer, price or lead owner was restored.",
+    "weight": "Combined public JS 28299->29814 B (+1515); public CSS 24626->24771 B (+145); total +1660 B; PHP/inline 0 B. Product growth is accepted under the one-owner rule; no file-size cap applies.",
+    "verification": "Both Security and exact runs passed. The exact matrix covers eight widths, same-offer operator/meal/budget truth, incomplete-data reset, progressive rerender, sorting, collapsed summary labels, keyboard use, overflow0, external_calls0 and lead_sent0. Exact 375/1440 geometry was inspected.",
+    "publication": "Exact artifact10126849843 from source e63f81006604b30c7c8cb6feefbe5aeafa30f28e was reused by deploy34410427365. Evidence10127014216 confirms nine noindex routes, disabled lead403, counter0, rollback and unchanged production fingerprints. Main/production were not changed by this package.",
+    "deferred": [
+      "fresh deterministic release-targeted INT provider handoff",
+      "separate Andromeda quote/selection contract",
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "Continue only a newly confirmed independent SEARCH/SITE gap until INT supplies the bounded identity/status and quote/revalidation handoffs; do not add another filter or renderer runtime."
   }
 }
+

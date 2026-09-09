@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "One bounded published-preview Turkey search loaded 69 Tourvisor hotel cards with duplicate card IDs0 and no visible mapped Andromeda offer marker. The current provider script and same-origin endpoint configuration were present, but transport/provider-status success was not independently observable, so no repeat supplier search or provider-success claim was made. Independent PR1817 extended the same local-hotel-filter owner to canonical RO/BB/HB/FB/AI/SC/On Request families across Russian and English labels while preserving each exact offer label, price and selection identity. Source041c2e2b7fe3c68d013749438a5159d4fcc37d47 merged as release e909e9bbac70a0bdc6469d713db975b1b67a5fcb. Public JS +700B; CSS/PHP/inline unchanged. Security34403340447 and exact34403340308/artifact10124396056 passed; exact mobile/desktop meal-filter evidence was inspected. Deploy34403874094/evidence10124537266 published only the isolated preview with noindex, disabled leads, counter0, rollback and production fingerprints. No source-package supplier call or real lead. Wait for a fresh deterministic mapped-offer/quote handoff before another provider acceptance; physical Safari/user pilot and production approval remain deferred."
+    "last_execution_continuation": "PR1824 added a truthful local tour-operator facet to the existing filter owner; meal, operator and budget are projected from the same exact loaded offer, incomplete operator data hides and resets the facet, and no supplier request is added. PR1826 makes the collapsed mobile/tablet disclosure name active values instead of reporting only their count, with the complete value list in its accessible label. Source e63f81006604b30c7c8cb6feefbe5aeafa30f28e merged as release 690e6b2fc6ed67883bc53809c9304803bc6d153e and was published by exact deploy34410427365. Combined public growth is JS +1515B and CSS +145B; PHP/inline 0B. Security34408842117/34409844680 and exact34408842110/34409844421 passed; mobile/desktop geometry was inspected, external_calls0 and lead_sent0. Evidence10127014216 confirms nine noindex routes, disabled lead403, counter0, rollback and unchanged production fingerprints. Fresh INT grouped discovery remains outside release and still lacks the separate quote/selection contract, so provider selection stays disabled; physical Safari/user pilot and production approval remain deferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,11 +1273,71 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "e909e9bbac70a0bdc6469d713db975b1b67a5fcb",
-    "published_source_sha": "041c2e2b7fe3c68d013749438a5159d4fcc37d47",
-    "acceptance_status": "PROVIDER_CONSUMER_AND_CANONICAL_MEAL_FAMILIES_PUBLISHED_SELECTION_DISABLED_LIVE_MAPPED_OFFER_NOT_OBSERVED",
+    "last_fully_checked_release_sha": "690e6b2fc6ed67883bc53809c9304803bc6d153e",
+    "published_source_sha": "e63f81006604b30c7c8cb6feefbe5aeafa30f28e",
+    "acceptance_status": "CURRENT_FILTER_OWNER_OPERATOR_PARITY_AND_ACTIVE_MOBILE_SUMMARY_PUBLISHED_PROVIDER_SELECTION_DISABLED",
     "next_action": "Do not repeat the same live provider search. Consume the next fresh INT handoff only when it supplies deterministic mapped-offer criteria plus source/destination SHA and an observable provider-status result; require a separate bounded quote/selection contract before any Andromeda offer can enter the Tourvisor selection or lead path. Until then continue an independent unclaimed current SEARCH/SITE owner without adding another renderer/filter runtime. Physical Safari/user pilot and production approval remain deferred.",
     "audit": "docs/project/search3-results-clarity-product.json"
+  },
+  "latest_search3_operator_and_active_summary_package": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "status": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "packages": [
+      {
+        "pr": 1824,
+        "source_sha": "abb9c798f4d50d6682dfc33c752f2c7f500bab99",
+        "checked_release_sha": "b3be1591bee7cfeb481569017a3badcf54f794a2",
+        "security_run": 34408842117,
+        "exact_run": 34408842110,
+        "exact_artifact": 10126468238,
+        "geometry_artifact": 10126467828,
+        "weight": "public JS 28299->29267 B (+968); public CSS 24626->24701 B (+75); total +1043 B; PHP/inline 0 B"
+      },
+      {
+        "pr": 1826,
+        "source_sha": "e63f81006604b30c7c8cb6feefbe5aeafa30f28e",
+        "source_tree": "e0eda6d3f4772dbf5e0486b55481f9456d01ad70",
+        "checked_release_sha": "690e6b2fc6ed67883bc53809c9304803bc6d153e",
+        "security_run": 34409844680,
+        "exact_run": 34409844421,
+        "exact_artifact": 10126849843,
+        "exact_artifact_digest": "sha256:e80c25a8b25d1ba8abc0e99cdcb5b6fb1afb4b33203e14df8838ef4e1a2e2a1c",
+        "geometry_artifact": 10126849232,
+        "weight": "public JS 29267->29814 B (+547); public CSS 24701->24771 B (+70); total +617 B; PHP/inline 0 B"
+      }
+    ],
+    "publication": {
+      "published_source_sha": "e63f81006604b30c7c8cb6feefbe5aeafa30f28e",
+      "release_pin_sha": "690e6b2fc6ed67883bc53809c9304803bc6d153e",
+      "control_sha": "42d7d6cec575d5e7b3ef2a8484861ad5571c03d3",
+      "deploy_run": 34410427365,
+      "deployment_evidence_artifact": 10127014216,
+      "deployment_evidence_digest": "sha256:e194372bde681694ba71c28e54ff1d0f246a6218e8686f64dcac4252a80c77ac",
+      "route_count": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprint_sha256": "f02285a4b938a21a221cc46979fdf56ad36e24fc40554e9f0c1d1a7bfab45702",
+      "production_fingerprint_unchanged": true,
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed_by_package": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "product_result": "The one current responsive filter owner now offers a truthful operator facet when every loaded offer has operator data and at least two operators exist. Exact-offer meal, operator and budget predicates stay coupled. On mobile/tablet the collapsed native summary names active values, truncates safely and exposes the complete list accessibly.",
+    "verification": "Security and exact artifact passed for both source packages. The focused matrix covered 375/760/761/999/1000/1024/1025/1440, same-offer projection, incomplete-data reset, sort, progressive rerender, reset, keyboard disclosure, overflow0, external_calls0 and lead_sent0. Current 375/1440 geometry was inspected; physical Safari is not claimed.",
+    "ownership": "Only the existing local-hotel-filter owner and results-layout stylesheet changed, with their generated assets/import hash and focused fixture. No second renderer, drawer, click owner, supplier request, price calculation, lead mapping or override-only stylesheet was added.",
+    "deferred": [
+      "fresh release-targeted deterministic INT mapped-offer and provider-status handoff",
+      "separate Andromeda quote/selection contract",
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "Do not repeat the same provider search. Consume only a fresh bounded INT handoff with source/destination SHA, accepted identity fixtures and observable provider status; keep provider selection disabled until a separate quote/revalidation contract. Meanwhile continue a newly confirmed independent SEARCH/SITE issue in its current owner."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
