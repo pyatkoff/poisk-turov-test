@@ -139,7 +139,7 @@ async function checkOfferJourney(page,width){
     },{items,offers,segment});
     const meal=page.locator('.search3-meal-filter select');
     await meal.selectOption('всё включено');
-    const card=page.locator('#results [data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
+    const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard'],'collapsed filtered card selects the complete STANDARD AI offer');
     const selectOffer=async(id,price,room)=>{
       await card.locator('.direct-tour[data-tid="'+id+'"]').click();
