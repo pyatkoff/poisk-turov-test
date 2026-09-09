@@ -7,7 +7,6 @@
     "details_requests": 25,
     "job": 102365838346,
     "limit": 25,
-    "new_descriptions": 25,
     "new_photos": 0,
     "new_ready": 25,
     "old_pilot_repeated": false,
@@ -599,9 +598,10 @@
     ],
     "run": 34320503266,
     "status": "completed",
-    "total_ready_including_original_pilot": 30
+    "records_with_nonempty_description": 25,
+    "total_saved_api_records_including_original_pilot": 30
   },
-  "next": "Continue actual owner-session/access integration and persistent review dossiers, then publish the authenticated comparison page through the isolated preview workflow. Use prepared content stores; missing media is explicit; no automatic disputed matches.",
+  "next": "Continue search improvements and protected review-panel access/queue/decision integration. Do not create further standard-API hotel-content batches. Obtain ANEX-confirmed content delivery and verify preserved description values before treating them as full hotel descriptions.",
   "official_source": {
     "anex_hotel_id": 16193,
     "explicit_room_photo_links": 12,
@@ -650,5 +650,16 @@
         320
       ]
     }
+  },
+  "provider_contract_correction": {
+    "source": "Owner relayed ANEX support answer on 2026-09-09",
+    "statement": "По стандартному АПИ вы не получаете фото и описание",
+    "standard_api_as_hotel_content_source": "not_supported_per_provider",
+    "new_content_batches": "stopped",
+    "prior_complete_description_claim": "withdrawn",
+    "verified_observation": "30 saved API records had a nonempty normalized description field; semantic content and completeness were not validated",
+    "full_hotel_descriptions_confirmed": false,
+    "existing_raw_records": "preserved",
+    "next_content_dependency": "ANEX-confirmed separate content API/feed or other permitted delivery with hotel IDs; availability not established"
   }
 }
