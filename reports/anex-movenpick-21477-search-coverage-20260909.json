@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-09-09",
+  "hotel": {
+    "name": "MOVENPICK WATERPARK RESORT & SPA SOMA BAY",
+    "catalog_hotel_id": 21477,
+    "tourvisor_hotel_id": 21477,
+    "anex_hotel_id": 5200,
+    "country": "Египет",
+    "region": "Хургада"
+  },
+  "finding": "BROAD_TV_SEARCH_OMITS_HOTEL_RETURNED_BY_TARGETED_SEARCH",
+  "criteria": {
+    "departure": "Москва",
+    "departure_id": 1,
+    "country_id": 1,
+    "date_from": "2026-09-18",
+    "date_to": "2026-09-18",
+    "nights_from": 8,
+    "nights_to": 8,
+    "adults": 2,
+    "children": 0,
+    "meal": 7,
+    "only_direct": false,
+    "only_charter": false,
+    "currency": "RUB"
+  },
+  "broad_search": {
+    "url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+    "parameters_set_in_form": true,
+    "tourvisor_completed": true,
+    "tourvisor_raw_count_inferred_from_completion_event": 53,
+    "tourvisor_rendered_count": 53,
+    "anex_rendered_count": 45,
+    "overlap": 11,
+    "total": 87,
+    "target_in_tourvisor_cards": false,
+    "target_in_anex_cards": true,
+    "target_dom_hotel_id": "21477",
+    "target_dom_anex_card_id": "21477",
+    "target_anex_min_price_rub": 165578,
+    "target_offer": "18.09.2026 · 8 ноч. · Всё включено · Classic Mountain Or Garden View Room · 2 взр."
+  },
+  "targeted_search": {
+    "url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/?from=1&country=1&date_from=2026-09-18&date_till=2026-09-18&days_from=8&days_till=8&count_people=2&food=7&hotel=21477",
+    "only_added_initial_filter": {
+      "hotelIds": [
+        21477
+      ]
+    },
+    "tourvisor_completed": true,
+    "tourvisor_hotel_count": 1,
+    "target_dom_hotel_id": "21477",
+    "tourvisor_tour_count": 103,
+    "tourvisor_min_price_rub": 180188,
+    "first_displayed_operator": "Интурист",
+    "image_url": "https://static.tourvisor.ru/hotel_pics/main400/21477.jpg",
+    "anex_result_not_used": true
+  },
+  "evidence": {
+    "browser": "Existing isolated ANEX preview; two new search scenarios, no supplier content collection.",
+    "repository_sha": "af4aee7d5556ddd3b468e0850581856be89b0eaa",
+    "raw_response_directly_captured": false,
+    "raw_count_proof": [
+      "runtime-v3.js returns parsed API JSON unchanged",
+      "search-lifecycle-v6.js loadResults renders list then returns original list",
+      "results-renderer-v5.js uses list.slice()",
+      "search-complete event carries original items",
+      "search-progress-ux-v1.js completion note reads event.detail.items.length",
+      "Top completion note 53 and TV DOM count 53; no local hotel removal in this scenario"
+    ],
+    "historical_mapping": {
+      "artifact_id": 10082810433,
+      "catalog_generated_at": "2026-09-08T11:57:56.497313+00:00",
+      "anex_hotel_id": 5200,
+      "catalog_hotel_id": 21477,
+      "match_class": "exact",
+      "reason": "catalog_verified_auto",
+      "source_row_digest": "fa9bfc06da737ac42f97c63d4fd2c70a68537860b0224b74668277e8c0c5c5a9"
+    }
+  },
+  "ruled_out": [
+    "Hotel absent from our catalog",
+    "Missing accepted ANEX→Tourvisor mapping for this example",
+    "The local 100-hotel result cap in this 53-hotel response",
+    "Frontend filters dropping the hotel in this reproduction"
+  ],
+  "limitations": [
+    "Tourvisor internal reason for broad/targeted response differences is not established",
+    "Two supplier minima do not prove identical package or included fuel/other charges",
+    "Original user search session was not captured; same quoted ANEX offer and price reproduced with provided criteria",
+    "Targeted preview had an ANEX reset message; only successful Tourvisor output is used for that case"
+  ],
+  "presentation_gap": "Mapped ANEX-only-in-current-results cards omit the normal catalog photo/card information, making an already-known hotel look unidentified.",
+  "next_actions": [
+    "Use existing catalog identity/content for complete hotel cards when only ANEX offers are present; preserve source attribution and supplier prices",
+    "Treat absence from broad TV results as search coverage, never absence from catalog or a new mapping task",
+    "Investigate bounded targeted TV completion separately through existing hotelIds contract; do not automatically add mass searches or change protected gateway limits"
+  ],
+  "changes": {
+    "mapping_writes": 0,
+    "supplier_content_calls": 0,
+    "production_changes": false,
+    "application_code_changed": false
+  }
+}
