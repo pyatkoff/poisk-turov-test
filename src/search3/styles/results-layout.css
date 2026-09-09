@@ -115,48 +115,108 @@ margin:0;background:#f5f7fb;color:#17233b;
 }
 
 
-/* Canonical controller markup; native visibility and form behavior stay intact. */
+/* Canonical controller markup, with the DS2 composition from 17b674fc.
+ * Flight tradeoff text keeps its existing flight-price-sync presentation owner. */
 .search3-candidate #selectedTour {
-  padding:20px;
-  border-radius:18px;
+  padding:clamp(18px,2.4vw,28px);
+  border:1px solid var(--at-line,#e1e7f3);
+  border-radius:20px;
   background:#fff;
+  box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b);
   overflow-wrap:anywhere;
-  & .selected-head,& .flight-choice {display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between}
-  & .selected-price {color:#2743cb;font-size:24px;font-weight:700}
-  & small,& .facts span,& .section-heading span,& .flight-route span {display:block;font-size:14px;color:#526078}
-  & .selected-picture img {max-height:320px;border-radius:12px}
-  & .facts,& .lead-fields {display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 16px}
-  & .facts>div {padding:12px;border-radius:10px;background:#f8faff}
-  & .facts,& .hotel-desc,& .tour-flights {margin-top:24px}
-  & .section-heading {display:grid;gap:4px;margin-bottom:16px}
-  & .lead-form {margin-top:32px;padding-top:28px;border-top:1px solid #dbe2ed}
-  & .lead-selection-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 20px;padding:16px;border-radius:12px;background:#f8faff}
-  & .lead-selection-summary>span {display:grid;gap:3px}
-  & .lead-selection-summary b {display:block;line-height:1.45}
-  & .flight-variant {border:1px solid #dbe2ed;border-radius:12px;padding:16px;margin-top:12px}
-  & .is-selected {border-color:#2743cb;background:#f5f7fb}
+  &[hidden],& [hidden] {display:none!important}
+  &>.back-results {display:inline-flex;align-items:center;min-height:44px;margin:0 0 20px;padding:10px 14px;border-color:#c4cfeb;color:#2743cb;font-weight:600}
+  & .selected-head {display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,250px);align-items:start;gap:24px;margin-bottom:24px}
+  & .selected-head .eyebrow {display:inline-flex;padding:5px 9px;border-radius:999px;background:var(--at-soft-blue,#eef2ff);color:#2743cb;font-size:11px;font-weight:700;letter-spacing:.06em}
+  & .selected-head h2 {margin:12px 0 8px;font-size:clamp(25px,3vw,36px);line-height:1.15;letter-spacing:-.03em;color:var(--at-ink,#151b24)}
+  & .selected-head p {margin:0;color:#526078;font-size:15px;line-height:1.5}
+  & .selected-price {padding:16px 18px;border:1px solid #cbd6ef;border-radius:14px;background:var(--at-soft,#f5f8ff);color:#2743cb;font-size:30px;line-height:1.2;font-weight:700;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+  & .selected-price>small {display:block;margin-bottom:6px;color:#526078;font-size:13px;line-height:1.4;font-weight:400;letter-spacing:0}
+  & .selected-picture {position:relative;overflow:hidden;aspect-ratio:16/6;max-height:320px;border-radius:16px;background:#e8edf5}
+  & .selected-picture img {position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+  & .facts {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:24px}
+  & .facts>div {display:grid;align-content:start;gap:5px;min-height:76px;padding:14px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:12px;background:var(--at-soft,#f5f8ff)}
+  & .facts span {display:block;font-size:12px;line-height:1.4;color:#526078}
+  & .facts b {font-size:15px;line-height:1.45;font-weight:600}
+  & .hotel-desc {margin-top:24px;padding:20px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:14px;color:#34425a;font-size:15px;line-height:1.65}
+  & :is(.tour-flights,.lead-form) {margin-top:28px;padding:24px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:var(--at-soft,#f5f8ff);scroll-margin-top:24px}
+  & .section-heading {display:grid;gap:6px;margin-bottom:20px}
+  & .section-heading strong {color:var(--at-ink,#151b24);font-size:23px;line-height:1.25;letter-spacing:-.02em}
+  & .section-heading span {display:block;color:#526078;font-size:14px;line-height:1.5}
+  & .flight-variant {margin-top:12px;padding:16px;border:1px solid var(--at-line,#e1e7f3);border-radius:14px;background:#fff}
+  & .flight-variant.is-selected {border-color:#9aa9e8;box-shadow:0 5px 18px #2743cb0d}
   & .flight-variant:not(.is-selected) :is(.flight-segment,.flight-fuel) {display:none}
-  & .flight-choice {padding:12px;border-radius:10px;background:#f8faff;cursor:pointer}
-  & .flight-choice input {width:20px;height:20px;accent-color:#2743cb}
-  & .flight-choice>span {flex:1 1 220px;font-weight:700}
-  & .flight-choice>b {text-align:right;white-space:nowrap}
-  & .flight-route {display:grid;grid-template-columns:1fr auto 1fr;gap:12px}
-  & .flight-segment {margin:16px 0;padding-top:16px;border-top:1px solid #e6ebf3}
-  & .flight-baggage {margin-top:10px;color:#526078;font-size:14px}
-  & .lead-form>label,& .lead-consent {margin:16px 0}
-  & .lead-form label {display:block}
-  & .lead-form :is(input:not([type=checkbox]),& textarea) {width:100%;display:block}
-  & .lead-consent {display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:10px}
-  & .lead-consent input {margin-top:4px}
+  & .flight-choice {display:grid;grid-template-columns:20px minmax(0,1fr) minmax(160px,210px);align-items:center;gap:10px 14px;min-height:54px;cursor:pointer}
+  & .flight-choice input {width:20px;height:20px;margin:0;accent-color:#2743cb;cursor:pointer}
+  & .flight-choice>span {font-size:16px;line-height:1.45;font-weight:600}
+  & .flight-choice>b {color:#2743cb;font-size:18px;line-height:1.35;text-align:right;white-space:normal;font-variant-numeric:tabular-nums}
+  & .flight-segment {margin-top:16px;padding:16px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:12px;background:var(--at-soft,#f5f8ff)}
+  & .flight-segment-title {display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 14px;margin-bottom:12px}
+  & .flight-segment-title strong {font-size:15px}
+  & .flight-segment-title span {font-size:13px;line-height:1.45;color:#526078}
+  & .flight-route {display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);align-items:start;gap:12px}
+  & .flight-route b {font-size:15px;line-height:1.45}
+  & .flight-route span {display:block;margin-top:4px;font-size:14px;line-height:1.45;color:#526078}
+  & .flight-arrow {color:#2743cb;text-align:center;font-size:22px;line-height:1.2}
+  & .flight-baggage {margin-top:14px;padding-top:12px;border-top:1px solid #dfe6f3;color:#526078;font-size:13px;line-height:1.5}
+  & .flight-fuel {margin-top:14px;color:#526078;font-size:14px}
+  & :is(.selected-loading,.flight-error,.lead-message:not(:empty)) {padding:16px;border:1px solid #cbd6ef;border-radius:12px;background:#fff;color:#526078;font-size:14px;line-height:1.5}
+  & :is(.flight-error,.lead-message[data-state=error],.selected-loading[role=alert]) {border-color:#e8b9b9;background:#fff8f8;color:#8a3030}
+  & .load-flights,& .tour-load-retry {margin-top:12px;color:#2743cb;font-weight:600}
+  & .lead-form {background:#fff}
+  & .lead-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  & .lead-form label {display:block;font-size:14px;line-height:1.5;color:#34425a;font-weight:600}
+  & .lead-form :is(input:not([type=checkbox]),textarea) {display:block;width:100%;margin-top:6px;min-height:46px;padding:12px;border-color:#cbd6ef;background:#fff;font-size:16px;line-height:1.5;font-weight:400}
+  & .lead-form textarea {resize:vertical;min-height:100px}
+  & .lead-form>label {margin:18px 0}
+  & .lead-phone-hint {display:block;margin-top:7px;color:#526078;font-size:12px;line-height:1.45;font-weight:400}
+  & .lead-selection-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:16px;margin:0 0 22px;padding:18px;border:1px solid #cbd6ef;border-radius:12px;background:var(--at-soft,#f5f8ff)}
+  & .lead-selection-summary>span {display:grid;align-content:start;gap:5px}
+  & .lead-selection-summary small {display:block;color:#526078;font-size:12px;line-height:1.4}
+  & .lead-selection-summary b {display:block;font-size:16px;line-height:1.45}
+  & .lead-form .lead-consent {display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:10px;color:#526078;font-size:13px;font-weight:400}
+  & .lead-consent input {width:18px;height:18px;margin:2px 0 0;accent-color:#2743cb}
+  & .lead-consent a {text-decoration:underline;text-underline-offset:3px}
+  & .lead-trust-note {max-width:720px;margin:16px 0;color:#526078;font-size:13px;line-height:1.5}
+  & .lead-message {margin:14px 0 0}
+  & .lead-success-panel {display:grid;justify-items:start;gap:12px;padding:20px;border:1px solid #b8dcc8;border-radius:12px;background:#f5fff9;color:#24623b}
+  & .lead-success-panel>strong {font-size:20px;line-height:1.3}
+  & .lead-success-panel>span {font-size:14px}
+  & .lead-success-handoff {display:grid;gap:12px;margin-top:4px;color:#34425a}
+  & .lead-success-handoff__copy {display:grid;gap:5px;font-size:14px}
+  & .lead-success-handoff__actions {display:flex;flex-wrap:wrap;gap:10px}
+  & .lead-success-messenger {display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid #c4cfeb;border-radius:10px;background:#fff;font-weight:600}
   &>.selected-lead-cta,&>.selected-lead-cta-note {display:none}
   & .search3-flight-continue {display:flex;justify-content:flex-end;margin-top:20px}
-  & .search3-flight-continue .primary,& .lead-form>.primary {min-width:min(100%,260px)}
-  &.search3-lead-entry .lead-form {padding:24px;border:1px solid #b9c7e8;border-radius:14px;background:#fff}
+  & .search3-flight-continue .primary,& .lead-form>.primary {min-width:min(100%,260px);min-height:48px;padding:12px 18px;border-radius:11px;font-size:16px;font-weight:700}
+  & .primary:disabled {opacity:.65;cursor:wait}
+  &.search3-lead-entry .lead-form {border-color:#9aa9e8;box-shadow:0 8px 24px #2743cb0d}
+  @media(max-width:900px){
+    & .facts {grid-template-columns:repeat(3,minmax(0,1fr))}
+  }
+  @media(max-width:820px){
+    & .selected-head {grid-template-columns:1fr;gap:16px}
+    & .selected-price {justify-self:start;min-width:min(100%,250px)}
+    & .flight-choice {grid-template-columns:20px minmax(0,1fr)}
+    & .flight-choice>b {grid-column:2;text-align:left}
+  }
   @media(max-width:600px){
     & {padding:16px}
-    & .flight-choice>b {flex-basis:100%;text-align:left}
-    & .flight-route {gap:6px;font-size:14px}
+    &>.back-results {margin-bottom:16px}
+    & .selected-head {margin-bottom:20px}
+    & .selected-price {justify-self:stretch;font-size:28px}
+    & .selected-picture {aspect-ratio:16/9;max-height:260px}
+    & .facts {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:20px}
+    & .facts>div {padding:12px;min-height:70px}
+    & .hotel-desc {padding:16px;margin-top:20px}
+    & :is(.tour-flights,.lead-form) {padding:16px;margin-top:24px}
+    & .section-heading strong {font-size:21px}
+    & .flight-variant {padding:12px}
+    & .flight-segment {padding:12px}
+    & .flight-route {grid-template-columns:1fr;gap:8px}
+    & .flight-arrow {justify-self:start;transform:rotate(90deg);font-size:18px}
+    & .lead-fields {grid-template-columns:1fr}
+    & .lead-selection-summary {padding:14px;gap:12px}
     & .search3-flight-continue .primary,& .lead-form>.primary {width:100%}
-    &.search3-lead-entry .lead-form {padding:16px}
   }
 }
