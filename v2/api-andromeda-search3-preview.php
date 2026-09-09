@@ -4,6 +4,26 @@ require_once __DIR__.'/api-anex-search3-preview.php';
 $andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.'/app/integrations':__DIR__.'/../app/integrations';
 foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
 
+
+/** Restrict upstream only with complete accepted catalog coverage; otherwise retain local filtering. */
+function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $saved): ?string {
+    if(!$localIds)return null;
+    $wanted=array_values(array_unique(array_map('strval',$localIds)));
+    $query=$pdo->prepare("SELECT i.local_hotel_id,i.external_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=1 AND h.id IN (".implode(',',array_fill(0,count($wanted),'?')).")");
+    $query->execute($wanted);
+    $catalog=[];foreach($saved['all']['payload']['HOTELS']??[] as $hotel)$catalog[(string)$hotel['id']]=true;
+    $covered=[];$external=[];
+    foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
+        $id=(string)$row['external_hotel_id'];
+        if(!preg_match('/^[1-9][0-9]*$/D',$id)||!isset($catalog[$id]))return null;
+        $covered[(string)$row['local_hotel_id']]=true;$external[$id]=true;
+    }
+    foreach($wanted as $id)if(!isset($covered[$id]))return null;
+    $ids=array_map('strval',array_keys($external));sort($ids,SORT_STRING);
+    $value=implode(',',$ids);
+    return count($ids)<=30 && strlen($value)<=300 ? $value : null;
+}
+
 function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved): array {
     if(!is_int($request['generation']??null) || $request['generation']<1 || $request['generation']>2147483647 || !is_array($request['params']??null)) throw new InvalidArgumentException();
     $p=$request['params'];
@@ -46,6 +66,8 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
         if ($request['andromeda_operator_ids'] !== ['5'] || in_array('5',array_map('strval',$excluded),true)) throw new DomainException('operator_not_supported');
         $params['OPERATORS']='5';
     }
+    $hotels=anytour_andromeda_search3_hotels($p['hotelIds']??[],$pdo,$saved);
+    if($hotels!==null)$params['HOTELS']=$hotels;
     AnyTourAndromedaClient::validatePriceParams($params);
     return $params;
 }

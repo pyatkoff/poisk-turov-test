@@ -28,3 +28,30 @@ if($out['status']!=='complete'||$out['date_range']['to']!=='2027-01-04'||count($
 $again=$handler->resume('dynamic1',1,time());
 if($again!==$out||count($dynamicCalls)!==2)throw new RuntimeException('resume requested supplier');
 echo "Dynamic handler checkpoint and resume passed\n";
+
+require_once __DIR__.'/../v2/api-andromeda-search3-preview.php';
+$pdo=new PDO('sqlite::memory:');$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+$pdo->exec("CREATE TABLE catalog_hotels(id INTEGER,name TEXT,country_id INTEGER,is_active INTEGER); CREATE TABLE andromeda_hotel_identities(local_hotel_id INTEGER,external_hotel_id TEXT,supplier_namespace TEXT,decision_status TEXT); CREATE TABLE catalog_departures(id INTEGER,name TEXT,is_active INTEGER)");
+$pdo->exec("INSERT INTO catalog_hotels VALUES(447,'Verginia',1,1),(9365,'Life',1,1),(501,'Conflict',1,1),(999,'Inactive',1,0),(888,'Other country',2,1); INSERT INTO catalog_departures VALUES(1,'Moscow',1)");
+$pdo->exec("INSERT INTO andromeda_hotel_identities VALUES(447,'2000042763','andromeda_catalog','accepted'),(9365,'416247','andromeda_catalog','accepted'),(501,'2000073714','andromeda_catalog','conflict'),(447,'655','operator_5','accepted'),(999,'900','andromeda_catalog','accepted'),(888,'800','andromeda_catalog','accepted')");
+$dictionary=['townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'name'=>'Moscow']]]],'all'=>['payload'=>['HOTELS'=>[['id'=>2000042763],['id'=>416247],['id'=>2000073714],['id'=>900],['id'=>800]]]]];
+if(anytour_andromeda_search3_hotels([9365,447,447],$pdo,$dictionary)!=='2000042763,416247')throw new RuntimeException('accepted catalog filter missing or operator ID mixed in');
+foreach([[],[501],[447,501],[999],[888],[12345]] as $ids)if(anytour_andromeda_search3_hotels($ids,$pdo,$dictionary)!==null)throw new RuntimeException('incomplete coverage narrowed search');
+$missing=$dictionary;$missing['all']['payload']['HOTELS']=[];
+if(anytour_andromeda_search3_hotels([447],$pdo,$missing)!==null)throw new RuntimeException('unknown catalog key used');
+$request=['generation'=>1,'andromeda_operator_ids'=>['5'],'params'=>['countryId'=>'1','departureId'=>'1','dateFrom'=>gmdate('Y-m-d',time()+86400),'dateTo'=>gmdate('Y-m-d',time()+86400),'nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'meal'=>'7','hotelIds'=>['447']]];
+$point=anytour_andromeda_search3_params($request,$pdo,$dictionary);
+if($point['HOTELS']!=='2000042763'||$point['OPERATORS']!=='5')throw new RuntimeException('HTTP criteria lost hotel/operator filter');
+$request['page']=2;
+if(anytour_andromeda_search3_params($request,$pdo,$dictionary)['HOTELS']!==$point['HOTELS'])throw new RuntimeException('later page changed hotel filter');
+$wire=[];$pointClient=new AnyTourAndromedaClient(static function($url)use(&$wire){
+ parse_str(parse_url($url,PHP_URL_QUERY),$q);$wire[]=$q;
+ return ['status'=>200,'body'=>json_encode($q['action']==='login'?['sid'=>'point_fixture_session']:['PAGE'=>1,'PAGES_COUNT'=>0,'PRICES'=>[]])];
+},true);
+$pointClient->login('test','test');$pointClient->price($point);
+if($wire[1]['HOTELS']!=='2000042763'||$wire[1]['OPERATORS']!=='5')throw new RuntimeException('upstream hotel filter absent');
+foreach(['0','1,0','1&OPERATORS=7',implode(',',range(1,31))] as $badHotels){
+ $bad=$point;$bad['HOTELS']=$badHotels;
+ try{AnyTourAndromedaClient::validatePriceParams($bad);throw new LogicException('invalid HOTELS accepted');}catch(InvalidArgumentException $expected){}
+}
+echo "Andromeda hotel filter: accepted catalog IDs, full coverage, country/activity, pagination and upstream request passed\n";

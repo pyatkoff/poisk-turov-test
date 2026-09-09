@@ -122,7 +122,7 @@ final class AnyTourAndromedaClient
     public static function validatePriceParams(array $params): void
     {
         $required=['TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TILL','ADULT','CHILD','CURRENCYINC','PACKETTYPE','PAGE'];
-        if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES','HOTELS']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         foreach(['TOWNFROMINC','STATEINC','NIGHTS_FROM','NIGHTS_TILL','ADULT','CURRENCYINC'] as $key)
             if(!is_int($params[$key]) || $params[$key]<1) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         if(!is_int($params['PAGE']) || $params['PAGE']<1 || $params['PAGE']>1000 || $params['PACKETTYPE']!==0 || !is_int($params['CHILD']) || $params['CHILD']<0 || $params['CHILD']>3
@@ -132,7 +132,8 @@ final class AnyTourAndromedaClient
             if(!$date || $date->format('Ymd')!==$params[$key]) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         }
         if($params['CHECKIN_BEG']>$params['CHECKIN_END'] || (new DateTimeImmutable($params['CHECKIN_BEG']))->diff(new DateTimeImmutable($params['CHECKIN_END']))->days>21) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
-        foreach(['MEAL','OPERATORS','AGES'] as $key) if(isset($params[$key]) && (!is_string($params[$key]) || strlen($params[$key])>300 || !preg_match('/^[0-9]+(?:,[0-9]+)*$/D',$params[$key]))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['MEAL','OPERATORS','AGES','HOTELS'] as $key) if(isset($params[$key]) && (!is_string($params[$key]) || strlen($params[$key])>300 || !preg_match('/^[0-9]+(?:,[0-9]+)*$/D',$params[$key]))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if(isset($params['HOTELS']) && (count(explode(',',$params['HOTELS']))>30 || preg_match('/(?:^|,)0(?:,|$)/D',$params['HOTELS']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
     }
 
     public function price(array $params): array
