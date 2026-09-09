@@ -487,12 +487,44 @@ test('point polling is bounded and never loads incomplete results or creates a r
     assert.ok(request, 'status poll ' + index);
     request.respond({ progress: 20 });
     await tick();
-    if (index < 7) { assert.equal(page.runTimer(2500), true); await tick(); }
+    if (index < 7) {
+      assert.equal(page.runTimer(2500), false, 'the eight-read budget must not expire after only 17.5 seconds');
+      assert.equal(page.runTimer(7500), true); await tick();
+    }
   }
   assert.equal(actionRequests(page, 'search_status').length, 8);
   assert.equal(actionRequests(page, 'search_results').length, 0);
   assert.equal(actionRequests(page, 'search_start').length, 1);
-  assert.equal(page.runTimer(2500), false);
+  assert.equal(page.runTimer(7500), false);
+});
+
+test('point polling accepts a slow completed search within the unchanged one-minute deadline', async () => {
+  const page = await pointReady();
+  page.click(pointButton(page)); await tick();
+  actionRequests(page, 'search_start')[0].respond({ searchId: 9900 }); await tick();
+  for (let index = 0; index < 4; index++) {
+    actionRequests(page, 'search_status')[index].respond({ progress: 20 }); await tick();
+    assert.equal(page.runTimer(7500), true); await tick();
+  }
+  actionRequests(page, 'search_status')[4].respond({ progress: 100 }); await tick();
+  actionRequests(page, 'search_results')[0].respond([pointHotel()]); await tick();
+  assert.ok(page.results.querySelector('.anex-search3-tv-offers'), 'a completion at 30 seconds is displayed');
+  assert.equal(actionRequests(page, 'search_start').length, 1);
+  assert.equal(actionRequests(page, 'search_status').length, 5);
+  assert.equal(page.runTimer(60000), false, 'completion cancels the deadline');
+});
+
+test('point deadline stops a waiting poll without starting another request', async () => {
+  const page = await pointReady();
+  page.click(pointButton(page)); await tick();
+  actionRequests(page, 'search_start')[0].respond({ searchId: 9900 }); await tick();
+  actionRequests(page, 'search_status')[0].respond({ progress: 20 }); await tick();
+  assert.equal(page.runTimer(60000), true); await tick();
+  assert.equal(actionRequests(page, 'search_start').length, 1);
+  assert.equal(actionRequests(page, 'search_status').length, 1);
+  assert.equal(actionRequests(page, 'search_results').length, 0);
+  assert.equal(page.runTimer(7500), false);
+  assert.match(page.results.textContent, /Tourvisor не завершил расчёт/);
 });
 
 test('point offers obey local filters even when ANEX drops out, and a later native TV card wins without duplicates', async () => {
