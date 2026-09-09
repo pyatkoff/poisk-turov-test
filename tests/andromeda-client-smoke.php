@@ -71,4 +71,49 @@ $echo = new AnyTourAndromedaClient(function ($url) {
 }, true);
 $echo->login('fixture-account', 'fixture-password');
 fails(fn() => $echo->catalog('townfrom'), 'ANDROMEDA_SECRET_ECHO');
+
+function dictionaryClient(array $reply, int &$calls): AnyTourAndromedaClient {
+    return new AnyTourAndromedaClient(function ($url) use ($reply, &$calls) {
+        ++$calls;
+        parse_str(parse_url($url, PHP_URL_QUERY), $params);
+        return ['status' => 200, 'body' => $params['action'] === 'login'
+            ? '{"sid":"dictionary-fixture-session"}' : json_encode($reply)];
+    }, true);
+}
+$valid = [['id' => 85, 'name' => 'Архангельск', 'selected' => 1],
+    ['id' => '9007199254740993', 'name' => 'Synthetic opaque ID', 'selected' => 0]];
+foreach (['townfrom' => ['TOWNFROM', []], 'state' => ['STATE', ['TOWNFROMINC' => 85]]] as $action => [$key, $params]) {
+    $calls = 0;
+    $ok = dictionaryClient([$key => $valid], $calls);
+    $ok->login('fixture-account', 'fixture-password');
+    check($ok->catalog($action, $params) === [$key => $valid]);
+    check($calls === 2);
+    foreach ([
+        ['error' => 'not a list'],
+        ['not a row'],
+        [['id' => 1]],
+        [['id' => 1, 'name' => '  ']],
+        [['id' => false, 'name' => 'bad']],
+        [['id' => 1.5, 'name' => 'bad']],
+        [['id' => '1e2', 'name' => 'bad']],
+        [['id' => 0, 'name' => 'bad']],
+        [['id' => 1, 'name' => 'first'], ['id' => '1', 'name' => 'duplicate']],
+    ] as $badRows) {
+        $calls = 0;
+        $bad = dictionaryClient([$key => $badRows], $calls);
+        $bad->login('fixture-account', 'fixture-password');
+        fails(fn() => $bad->catalog($action, $params), 'ANDROMEDA_INVALID_DICTIONARY');
+        check($calls === 2);
+    }
+}
+$all = array_fill_keys(['CHECKIN_BEG', 'TOWNTO', 'STARS', 'HOTELS', 'MEAL', 'CURRENCY', 'OPERATORS'], []);
+$all['HOTELS'] = [['id' => 2791, 'name' => 'Acropol Beach Hotel', 'townKey' => 27]];
+$calls = 0;
+$ok = dictionaryClient($all, $calls); $ok->login('fixture-account', 'fixture-password');
+check($ok->catalog('all', ['TOWNFROMINC' => 1, 'STATEINC' => 2]) === $all);
+$all['HOTELS'][] = ['id' => '2791', 'name' => 'Duplicate hotel'];
+$calls = 0;
+$bad = dictionaryClient($all, $calls); $bad->login('fixture-account', 'fixture-password');
+fails(fn() => $bad->catalog('all', ['TOWNFROMINC' => 1, 'STATEINC' => 2]), 'ANDROMEDA_INVALID_DICTIONARY');
+
 echo 'Andromeda offline checks: ' . $checks . " passed\n";

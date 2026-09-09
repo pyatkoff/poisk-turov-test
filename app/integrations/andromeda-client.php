@@ -80,7 +80,30 @@ final class AnyTourAndromedaClient
         }
         // Fail closed if a supplier echo contains the session, including encoded forms.
         $this->rejectSessionEcho($result, $sid);
+        foreach ($result as $key => $rows) {
+            if ($key !== 'CHECKIN_BEG') $this->validateDictionaryRows($rows);
+        }
         return $result;
+    }
+
+    private function validateDictionaryRows(array $rows): void
+    {
+        $seen = [];
+        $index = 0;
+        foreach ($rows as $key => $row) {
+            if ($key !== $index++ || !is_array($row)
+                || !isset($row['id'], $row['name'])
+                || (!is_int($row['id']) && !is_string($row['id']))
+                || !preg_match('/^[1-9][0-9]*$/D', (string) $row['id'])
+                || strlen((string) $row['id']) > 32
+                || !is_string($row['name']) || trim($row['name']) === '') {
+                throw new RuntimeException('ANDROMEDA_INVALID_DICTIONARY');
+            }
+            // Preserve opaque numeric strings; reject duplicate logical IDs.
+            $id = 'id:' . (string) $row['id'];
+            if (isset($seen[$id])) throw new RuntimeException('ANDROMEDA_INVALID_DICTIONARY');
+            $seen[$id] = true;
+        }
     }
 
     private function rejectSessionEcho(array $value, string $sid): void
