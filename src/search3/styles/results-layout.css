@@ -36,7 +36,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & :is(.search3-category-filter,.search3-meal-filter){display:grid;gap:8px}
 & .search3-filter-presets{display:flex;flex-wrap:wrap;gap:6px}
 & .search3-filter-presets[hidden]{display:none}
-& .search3-filter-presets>button{flex:1 1 auto;min-height:40px;padding:7px 9px;border-color:#c4cfeb;border-radius:9px;color:#2743cb;font-size:13px;font-weight:600}
+& .search3-filter-presets>button{flex:1 1 auto;min-height:44px;padding:7px 9px;border-color:#c4cfeb;border-radius:9px;color:#2743cb;font-size:13px;font-weight:600}
 & .search3-filter-presets>button[aria-pressed=true]{border-color:#2743cb;background:#eef2ff;color:#172a86}
 & :is(.search3-hotel-filter,.search3-budget-filter) small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
 & :is(.search3-hotel-filter,.search3-budget-filter) small:empty{display:none}
