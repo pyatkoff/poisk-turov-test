@@ -1244,7 +1244,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Integrated #1710 matching-duration window and #1713 terminal projection; published accumulated exact840cd279; live homepage/AI calendar/zero/continued/month/selected/radio/phone/return checked without leads. Two identical deploys occurred because the commit helper omitted push events; use complete branch-filtered Actions REST before any future retry. Remaining bounded acceptance saved; no production approval inferred."
+    "last_execution_continuation": "Completed #1723 safe hotel-description entity decoding, #1726 read-only SEO page inventory, and #1727 factual country-offer freshness disclosure. Published exact source 847afb6e via run 34344408257: 717 files, 9 noindex routes, preview lead 403, Metrika counter 0, rollback retained, production fingerprints unchanged. CSS delta 0 for SITE; emitted shared JS +420 B for entity fix. No real lead, main/production/indexation change. Next: physical Safari/live mobile when available and independent seasonal empty-state/data-sufficiency review."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1269,9 +1269,9 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "ea3c146c1c5f6ab92a520eb71732db6fb1a7364e",
-    "published_source_sha": "840cd2793932e67e0377f5bfc13b325ad4801569",
-    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published840cd279: remaining live mobile/physical Safari and bounded site/SEO checks. First inspect the observed literal &#178; in the selected hotel's description; if reproduced in canonical display owner, correct text decoding without HTML injection or payload changes. Keep completed homepage/calendar/selected desktop checks; no repeat deploy for documents. Production migration remains owner-visual gated.",
+    "last_fully_checked_release_sha": "228573bdb5b5eddafd95745193350f3aeb1ca791",
+    "published_source_sha": "847afb6e81ad980e5b6971ffed9596a5d94de734",
+    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published 847afb6e: physical Safari and live mobile remain deferred until the required device is available. Independently review seasonal landing-page empty states and offer-data sufficiency with SITE/SEO; hand confirmed data gaps to INT without new API experiments or indexation changes. The literal hotel-description entity defect is completed in #1723 and included in the published source. Production migration remains owner-visual gated.",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -10248,7 +10248,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T09:39:56Z",
+  "updated_at": "2026-09-09T11:18:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
