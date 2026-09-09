@@ -144,5 +144,73 @@
       "Live REIS MARIS card 511.56 ->441.27px, full conditions retained",
       "Live disclosure retains representative and button focus; no horizontal overflow"
     ]
+  },
+  "ota_shortlist_contract_20260909": {
+    "stage": "READ_ONLY_CONTRACT_READY_IMPLEMENTATION_PENDING",
+    "basis_source": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+    "audit_conclusion": "No active Search3 shortlist owner. Legacy conversion-confidence/compare-refresh-guard are excluded; search-redesign localStorage is unrelated list/grid. Do not restore these layers.",
+    "scope": "Up to three explicit complete offer snapshots, including two different rooms in the same hotel; persistent local-only TV first step.",
+    "identity": {
+      "record_key": [
+        "source",
+        "searchId",
+        "offerId"
+      ],
+      "hotel_key": [
+        "source",
+        "hotelId"
+      ],
+      "source": "tourvisor only, never inferred from operator",
+      "accepted_local_hotel_id": "unknown unless already explicitly supplied; do not manufacture by numeric/name match"
+    },
+    "storage_whitelist": [
+      "schemaVersion",
+      "savedAt",
+      "source",
+      "hotelId",
+      "hotelName",
+      "country",
+      "region",
+      "searchId",
+      "offerId",
+      "date",
+      "nights",
+      "meal",
+      "room",
+      "placement",
+      "operator",
+      "adults",
+      "childs",
+      "observedPrice",
+      "currency"
+    ],
+    "rules": [
+      "Only data from one complete current projection offer, never independent room/meal combinations",
+      "savedAt means snapshot time, not supplier availability or price confirmation",
+      "Saved price always labelled historical; refresh does not implicitly make it current",
+      "Persisted snapshot is never passed directly to selectTour; require one unique match in current projection and current in-memory search generation, then existing detail/flights recheck",
+      "Filtered-out, removed, ambiguous or stale offers retain display snapshot but cannot select a substitute",
+      "No auto supplier queries, personal fields, raw payload, tokens, cookies or attribution stored",
+      "Max3 validated whitelist records; malformed/old schema/corrupt/quota/blocked storage gracefully uses in-memory fallback with explicit non-persistence message",
+      "Clear deletes stored records; accessible inline comparison preferred over a second overlay/focus trap"
+    ],
+    "proposed_owned_paths": [
+      "src/search3/behavior/results/shortlist.js (new single owner)",
+      "src/search3/manifest.json",
+      "src/search3/README.md",
+      "v2/results-renderer-v5.js",
+      "src/search3/styles/results-layout.css",
+      "generated public assets/shared-runtime/import hash",
+      "tests/search3-current-results-browser.cjs"
+    ],
+    "acceptance": [
+      "AI STANDARD120k and FAMILY125k keep exact price/conditions while RO90k excluded",
+      "add/remove/clear/max3/reload",
+      "sort/progressive/filter never replace saved representative",
+      "new search with reused offerId, missing/ambiguous identity invalidates selection",
+      "blocked/corrupt/quota storage do not break search",
+      "375/1440 keyboard save/remove/compare/return, no overflow or POST"
+    ],
+    "next_action": "Fresh release/#996/current_task, claim exact shortlist paths; implement canonical projection resolver and local snapshot owner together, then focused CI and exact preview."
   }
 }
