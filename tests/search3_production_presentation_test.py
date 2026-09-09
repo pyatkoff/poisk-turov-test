@@ -1089,7 +1089,16 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             'analytics-v4.js', 'tour-controller-v4.js', 'flight-price-sync-v1.js',
             'lead-search-context.js', 'lead-form-guard-v1.js', 'runtime-v3.js',
         ):
-            digest = hashlib.sha256((ROOT / 'v2' / name).read_bytes()).hexdigest()
+            source = (ROOT / 'v2' / name).read_bytes()
+            if name == 'tour-controller-v4.js':
+                # Owner-authorized display-only meal label: reversing this exact
+                # one expression must recover the entire protected controller.
+                # Lead mapping, arithmetic, selection and transport stay hash-locked.
+                display = b"esc((window.V2Results&&typeof window.V2Results.mealLabel==='function'?window.V2Results.mealLabel(t):mealName(t))||'\xe2\x80\x94')"
+                original = b"esc(mealName(t)||'\xe2\x80\x94')"
+                self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
+                source = source.replace(display, original, 1)
+            digest = hashlib.sha256(source).hexdigest()
             self.assertEqual(digest, protected[name], name)
             for closure in closures:
                 self.assertEqual(closure.count(name), 1, name)
