@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "scope": "isolated_anex_preview",
+  "issue": 1646,
+  "pr": 1716,
+  "source_sha": "f7f4b546aa9883353cea2469605a753a93df9d95",
+  "published_source_sha": "f690ff035964a1debf3d03ed7e63c33f715f2aa9",
+  "status": "published",
+  "route": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+  "problem": "Point Tourvisor responses retained up to 1000 tours, but only the first 20 filtered offers were reachable in the UI.",
+  "behavior": {
+    "first_visible": 20,
+    "reveal_batch": 20,
+    "source_cap_changed": false,
+    "reveal_api_calls": 0,
+    "per_hotel_state": true,
+    "filter_sort_state_preserved": true,
+    "new_search_resets_state": true,
+    "stale_buttons_ignored": true,
+    "final_button_focus_preserved": true,
+    "point_offers_selectable": false
+  },
+  "changed_paths": [
+    "v2/anex-search3-preview-v1.js",
+    "tests/anex-search3-preview.test.js",
+    "docs/integrations/multi-provider-search-plan.md"
+  ],
+  "asset_bytes": {
+    "addon_before": 46500,
+    "addon_after": 47839,
+    "addon_delta": 1339,
+    "css_delta": 0,
+    "shared_assets_delta": 0,
+    "total_initial_load_measurement": "deferred"
+  },
+  "validation": {
+    "node_passed": 45,
+    "node_failed": 0,
+    "security_run": 34335494744,
+    "exact_build_run": 34335579068,
+    "build_artifact": 10097582660,
+    "build_artifact_digest": "sha256:854187abb9d040df8e39b5357ca9769ed59a4d2d687800cbeb5f2054630b42de",
+    "whole_site_artifact_deployed": false,
+    "synthetic_cases": [
+      "53 offers: 20/40/53, sorted, rerender preserved, final focus, original response/searchId retained",
+      "Two hotels with independent counters; new-generation reset and stale-button guard",
+      "Meal and budget applied to same offer, 41 filtered / 63 retained, reset and reveal, no network"
+    ],
+    "browser_visual": "deferred",
+    "browser_reason": "Local file fixture navigation rejected by browser URL policy. No workaround or alternate browser; no fresh desktop/mobile visual claim."
+  },
+  "deployment": {
+    "run_id": 34335715680,
+    "job_id": 102414501174,
+    "conclusion": "success",
+    "artifact_id": 10097668551,
+    "artifact_digest": "sha256:770d183c60ccff1537f1ce33879825f8fae6d40c68e882010d9bde8c49001021",
+    "artifact_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34335715680/artifacts/10097668551",
+    "restored_artifact_id": 10096966061,
+    "production_entry_changes": false,
+    "independent_zip_download": false,
+    "evidence": "Workflow job logs, artifact metadata, runner verification and database readback"
+  },
+  "live_probe": {
+    "at_utc": "2026-09-09T09:38:48Z",
+    "ok": true,
+    "anex_calls": 8,
+    "new_manual_tv_or_point_calls": 0,
+    "new_content_calls": 0,
+    "egypt_offers": 158,
+    "egypt_projected_hotels": 57,
+    "turkey_offers": 297,
+    "turkey_projected_hotels": 154,
+    "all_observations_previously_saved": true,
+    "observed": 706,
+    "mapped": 347,
+    "pending": 359,
+    "new_bindings": 0
+  },
+  "preservation": {
+    "policy": 12890,
+    "manual": 9,
+    "effective": 12899,
+    "unique_local": 11067,
+    "staging": 8362,
+    "policy_hash": "4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc",
+    "manual_hash": "ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1",
+    "catalog_mutation": false,
+    "manual_decision_mutation": false,
+    "p2_migration_applied": false
+  },
+  "future_provider": {
+    "issue": 1717,
+    "provider": "Андромеда",
+    "status": "planned_api_contract_pending",
+    "calls": 0,
+    "plan": "docs/integrations/multi-provider-search-plan.md"
+  },
+  "next_steps": [
+    "P1: preserve point searchId and offer identity throughout concrete-offer selection before enabling selection, respecting lead contract ownership",
+    "P2: existing owner authentication, additive schema/persistent dossier import, pair exclusions and isolated panel publication",
+    "P3 #1717: obtain official Andromeda contract and bounded sample; reuse common cards and filters"
+  ],
+  "deferred": [
+    "Fresh desktop/mobile visual validation",
+    "Actual Andromeda integration and contract verification",
+    "P2 live authentication/migration/publication"
+  ]
+}
