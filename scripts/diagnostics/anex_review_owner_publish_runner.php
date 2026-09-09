@@ -16,7 +16,7 @@ try {
     $raw=stream_get_contents(STDIN,2000001);
     if(!is_string($raw)||strlen($raw)>2000000) throw new RuntimeException('publish_bound');
     $input=json_decode($raw,true,32,JSON_THROW_ON_ERROR);
-    if(!is_array($input)||!in_array($input['action']??'', ['inspect','apply'],true)||!preg_match('/\A[0-9a-f]{40}\z/D',$input['source_sha']??'')) throw new RuntimeException('publish_contract');
+    if(!is_array($input)||!in_array($input['action']??'', ['inspect','apply','repair'],true)||!preg_match('/\A[0-9a-f]{40}\z/D',$input['source_sha']??'')) throw new RuntimeException('publish_contract');
     $root=realpath(getcwd());$home=realpath((string)getenv('HOME'));
     if(!$root||!$home||$root!==$home.'/www/anytoour.ru'||is_link(getcwd())) throw new RuntimeException('publish_anytour_root');
     $parent=$home.'/.anytoour-anex';$private=$parent.'/review-owner';$target=$root.'/_preview/search3-anex-candidate';
@@ -27,6 +27,67 @@ try {
     foreach(['anex-owner-login.php','anex-hotel-review.php'] as $name) $before[$name]=file_exists($target.'/'.$name)?owner_publish_file($target.'/'.$name):null;
     $helper=null;foreach(['data/db-v1.php','v2/data/db-v1.php'] as $name) { $p=realpath($root.'/'.$name);if($p&&strpos($p,$root.'/')===0&&is_file($p)&&!is_link($root.'/'.$name)){$helper=$p;break;} }
     if(!$helper) throw new RuntimeException('publish_db_helper_missing');
+    if($input['action']==='repair') {
+        // One bounded repair: only the login response policy may differ. Account is never reset.
+        if(realpath($private)!==$private||(fileperms($private)&0777)!==0700)throw new RuntimeException('repair_private_invalid');
+        $manifestPath=$private.'/manifest.json';owner_publish_file($manifestPath);
+        $old=json_decode(file_get_contents($manifestPath),true,32,JSON_THROW_ON_ERROR);
+        $oldSource=$old['source_sha']??'';
+        if(($old['status']??'')!=='published'||!preg_match('/\A[0-9a-f]{40}\z/D',$oldSource)||$oldSource!==($input['expected_source']??null)
+            ||($old['runtime_files']??null)!=($input['expected_runtime']??null)||($old['after']??null)!=$before||($old['write_enabled']??null)!==false)throw new RuntimeException('repair_manifest_drift');
+        $receipt=json_decode(file_get_contents($private.'/publication-state.json'),true,16,JSON_THROW_ON_ERROR);
+        if(($receipt['state']??'')!=='completed'||($receipt['manifest_sha256']??'')!==hash_file('sha256',$manifestPath))throw new RuntimeException('repair_publication_incomplete');
+        $oldRuntime=$private.'/runtime-'.$oldSource;$runtime=$private.'/runtime-'.$input['source_sha'];
+        if(realpath($oldRuntime)!==$oldRuntime||file_exists($runtime)||is_link($runtime)||file_exists($private.'/repair-state.json'))throw new RuntimeException('repair_already_started');
+        if(!is_array($input['files']??null)||array_keys($input['files'])!==array_keys($old['runtime_files']))throw new RuntimeException('repair_paths');
+        foreach($input['files'] as $name=>$file){
+            if(!is_string($file['content']??null)||strlen($file['content'])>1000000||hash('sha256',$file['content'])!==($file['sha256']??''))throw new RuntimeException('repair_content');
+            $oldPath=$oldRuntime.'/'.$name;
+            if(owner_publish_file($oldPath)!==$old['runtime_files'][$name])throw new RuntimeException('repair_runtime_drift');
+            $expected=file_get_contents($oldPath);
+            if($name==='v2/anex-owner-login.php')$expected=str_replace("header('Referrer-Policy: no-referrer');","header('Referrer-Policy: same-origin');",$expected,$count);
+            if($file['content']!==$expected)throw new RuntimeException('repair_delta_not_allowed');
+        }
+        if(($count??0)!==1)throw new RuntimeException('repair_delta_missing');
+        owner_publish_file($private.'/owner.lock');
+        $lock=fopen($private.'/owner.lock','r+');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException('repair_lock');
+        try {
+            $accountHash=owner_publish_file($private.'/owner.json');$configHash=owner_publish_file($private.'/config.php');
+            $account=json_decode(file_get_contents($private.'/owner.json'),true,16,JSON_THROW_ON_ERROR);
+            // Private receipt blocks retries after any partial write. Old immutable runtime stays available.
+            owner_publish_write($private.'/repair-state.json',json_encode(['state'=>'executing','source_sha'=>$input['source_sha']]),0600);
+            mkdir($runtime,0700);
+            foreach($input['files'] as $name=>$file){$p=$runtime.'/'.$name;if(!is_dir(dirname($p)))mkdir(dirname($p),0700,true);owner_publish_write($p,$file['content'],0600);}
+            foreach(['anex-owner-login.php'=>'login','anex-hotel-review.php'=>'panel'] as $name=>$kind){
+                $entry=$private.'/entry-'.$kind.'.php';$existing=file_get_contents($entry);
+                $expected='<?php define("ANYTOUR_ANEX_OWNER_CONFIG",__DIR__."/config.php");require __DIR__."/runtime-'.$oldSource.'/v2/'.$name.'";';
+                if($existing!==$expected)throw new RuntimeException('repair_entry_drift');
+                owner_publish_write($private.'/repair-backup-entry-'.$kind.'.php',$existing,0600);
+                $next=str_replace('runtime-'.$oldSource,'runtime-'.$input['source_sha'],$existing);
+                owner_publish_write($private.'/repair-next-'.$kind.'.php',$next,0600);
+                if(!rename($private.'/repair-next-'.$kind.'.php',$entry)||file_get_contents($entry)!==$next)throw new RuntimeException('repair_entry_readback');
+            }
+            $report=$old;$report['source_sha']=$input['source_sha'];$report['previous_source_sha']=$oldSource;
+            $report['runtime_files']=array_map(static fn($f)=>$f['sha256'],$input['files']);
+            $report['owner_activated']=is_string($account['password_hash']??null);$report['activation_expires_at']=$account['setup_expires_at']??0;
+            $report['account_preserved']=owner_publish_file($private.'/owner.json')===$accountHash;
+            $report['config_preserved']=owner_publish_file($private.'/config.php')===$configHash;
+            if(!$report['account_preserved']||!$report['config_preserved'])throw new RuntimeException('repair_preservation');
+            owner_publish_write($private.'/repair-backup-manifest.json',file_get_contents($manifestPath),0600);
+            owner_publish_write($private.'/repair-next-manifest.json',json_encode($report,JSON_THROW_ON_ERROR),0600);
+            if(!rename($private.'/repair-next-manifest.json',$manifestPath))throw new RuntimeException('repair_manifest_write');
+            $public=$target.'/anex-owner-panel-manifest.json';
+            owner_publish_write($private.'/repair-backup-public-manifest.json',file_get_contents($public),0600);
+            owner_publish_write($private.'/repair-next-public.json',json_encode(['source_sha'=>$input['source_sha'],'files'=>$before,'write_enabled'=>false],JSON_THROW_ON_ERROR),0644);
+            if(!rename($private.'/repair-next-public.json',$public))throw new RuntimeException('repair_manifest_write');
+            foreach(['publication-state','repair-state'] as $state){
+                owner_publish_write($private.'/'.$state.'.next',json_encode(['state'=>'completed','source_sha'=>$input['source_sha'],'manifest_sha256'=>hash_file('sha256',$manifestPath)],JSON_THROW_ON_ERROR),0600);
+                if(!rename($private.'/'.$state.'.next',$private.'/'.$state.'.json'))throw new RuntimeException('repair_receipt');
+            }
+            echo json_encode($report,JSON_THROW_ON_ERROR).PHP_EOL;
+        }finally{flock($lock,LOCK_UN);fclose($lock);}
+        exit;
+    }
     if(file_exists($private)||is_link($private)) throw new RuntimeException('publish_owner_already_exists');
     if(file_exists($target.'/anex-owner-panel-manifest.json')||is_link($target.'/anex-owner-panel-manifest.json'))throw new RuntimeException('publish_manifest_exists');
     foreach(['anex-owner-login.php','anex-hotel-review.php'] as $name)if(strpos($htRaw,'<Files "'.$name.'">')!==false)throw new RuntimeException('publish_htaccess_conflict');

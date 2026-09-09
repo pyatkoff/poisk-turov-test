@@ -40,6 +40,21 @@ class PublicationTest(unittest.TestCase):
         rejected=subprocess.run(['php',str(ROOT/'scripts/diagnostics/anex_review_owner_preserve.php'),str(self.root),str(stage)],env={**os.environ,'HOME':str(self.home)},capture_output=True)
         self.assertNotEqual(rejected.returncode,0)
         self.assertEqual(self.run_payload()['reason'],'publish_owner_already_exists')
+    def test_policy_repair_preserves_account_and_refuses_replay(self):
+        # Install the published old policy fixture, then repair only its response header.
+        name='v2/anex-owner-login.php'
+        self.payload['files'][name]['content']=self.payload['files'][name]['content'].replace('Referrer-Policy: same-origin','Referrer-Policy: no-referrer')
+        self.payload['files'][name]['sha256']=hashlib.sha256(self.payload['files'][name]['content'].encode()).hexdigest()
+        before=self.run_payload();self.payload.update(action='apply',setup_hash='a'*64,expected_before=before['before'])
+        old=self.run_payload();self.assertEqual(old['status'],'published')
+        private=self.home/'.anytoour-anex/review-owner';account=(private/'owner.json').read_bytes()
+        self.payload.update(action='repair',source_sha='b'*40,expected_source='a'*40,expected_runtime=old['runtime_files'])
+        self.payload['files'][name]={'content':(ROOT/name).read_text(),'sha256':hashlib.sha256((ROOT/name).read_bytes()).hexdigest()}
+        repaired=self.run_payload();self.assertEqual(repaired['status'],'published');self.assertTrue(repaired['account_preserved'])
+        self.assertEqual((private/'owner.json').read_bytes(),account);self.assertFalse(repaired['write_enabled'])
+        self.assertEqual(repaired['database_calls'],0);self.assertIn('runtime-'+('b'*40),(private/'entry-login.php').read_text())
+        self.assertEqual(self.run_payload()['status'],'failed')
+
     def test_drift_rejected_before_write(self):
         before=self.run_payload();self.payload.update(action='apply',setup_hash='a'*64,expected_before=before['before'])
         with (self.target/'.htaccess').open('a') as stream:stream.write('# changed\n')
