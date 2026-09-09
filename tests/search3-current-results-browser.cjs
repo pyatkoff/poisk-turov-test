@@ -132,7 +132,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await calendar.isVisible(), false, 'empty local projection remains empty after raw continuation');
     assert.match(await page.locator('#search3HotelFilterStatus').innerText(), /Показано 0 из 3/);
     await page.locator('#sortResults').selectOption('rating');
-    assert.equal(await select.inputValue(), 'всё включено');
+    assert.equal(await select.inputValue(), 'meal:all-inclusive');
     assert.equal(await name.inputValue(), 'Отель А');
     assert.equal(await category.inputValue(), '4');
     assert.deepEqual(await visible(), [], 'sort preserves all local choices, including zero matches');
