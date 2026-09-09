@@ -4,6 +4,9 @@ on:
     paths:
       - 'app/integrations/andromeda-client.php'
       - 'tests/andromeda-client-smoke.php'
+      - 'app/integrations/andromeda-transport.php'
+      - 'scripts/diagnostics/andromeda-access-probe.php'
+      - 'tests/andromeda-transport-smoke.php'
       - '.github/workflows/andromeda-offline.yml'
 permissions:
   contents: read
@@ -17,3 +20,6 @@ jobs:
           php -l app/integrations/andromeda-client.php
           php -l tests/andromeda-client-smoke.php
           php tests/andromeda-client-smoke.php
+          php -l app/integrations/andromeda-transport.php
+          php -l scripts/diagnostics/andromeda-access-probe.php
+          php tests/andromeda-transport-smoke.php

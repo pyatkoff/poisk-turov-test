@@ -1,8 +1,8 @@
 # Andromeda: offline authorization and dictionaries
 
 Issue #1717. This first client is disabled by default and requires an injected
-transport. There is no cURL implementation, runtime consumer, secret loader,
-price request, booking, database write or deployment in this package.
+transport. A separate explicit cURL transport and CLI probe are prepared. There is no
+runtime consumer, price request, booking, database write or deployment.
 
 Official wiki read on 2026-09-09 through its normal index navigation:
 - [Protocol](https://dokuwiki.samo.ru/doku.php?id=andromeda): JSON, version 1.01.
@@ -32,10 +32,28 @@ timeout and a reviewed account-wide request budget. It must never log full URLs,
 credentials, response bodies or exception argument traces. Debugging/serialization
 of this client cannot expose sid. Auth secrets and sid must stay server-side.
 
-Next: provision credentials through an approved private mechanism, validate digest
-against the service, then add a separately reviewed bounded read-only transport
-and probe. Do not merge this preparation blindly: the existing ANEX branch push
+Next: provision credentials through an approved private mechanism and validate
+the digest with the prepared bounded read-only transport and probe. Do not merge this preparation blindly: the existing ANEX branch push
 workflow can deploy integrations. Price normalizer and shared SEARCH handoff follow
 actual sanitized samples, preserving provider/operator/hotel/offer identity.
 
 Check: `php tests/andromeda-client-smoke.php`; CI uses fixtures only, no secrets/API.
+
+## Prepared live probe (not executed)
+
+`andromeda-transport.php` fixes the HTTPS origin, verifies TLS, refuses redirects,
+streams at most 2 MiB, and has no retries. Its 1.05s spacing is only a conservative
+pilot budget inside this process, not account-wide rate enforcement. Do not attach
+it to concurrent search workers before the account limits are established.
+
+The CLI accepts only `--execute <new-reservation-path>` and reads
+`ANDROMEDA_USERNAME` / `ANDROMEDA_PASSWORD` from the private environment. Never
+put their values in a command, issue, artifact or tracked file. Default invocation
+or absent credentials exits before any API call. An exclusive 0600 reservation
+precedes login + townfrom (two maximum calls), with summary-only readback.
+Reusing a reservation is refused, including unknown interrupted results. Do not
+delete it or switch paths to replay an unknown attempt. Keep it outside web roots.
+
+This turn has not provisioned secrets or executed the probe. Transport guards and
+CLI disabled/missing-secret paths are offline-tested; real TLS/service compatibility
+and streaming behavior against a server remain deferred.
