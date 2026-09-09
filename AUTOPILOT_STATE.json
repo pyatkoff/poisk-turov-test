@@ -1,4 +1,48 @@
 {
+  "latest_local_hotel_filter_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1668,
+    "source_sha": "0fedbcb5ffb426af4069305d06f446a571dc5254",
+    "source_tree": "f9f462c682b328786e4b4e5393d3c52f00f8041f",
+    "release_integration_sha": "fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56",
+    "product_result": [
+      "One responsive owner filters already loaded hotel cards by normalized title.",
+      "The query survives renderer sort and owns a truthful shown-versus-loaded count.",
+      "New search/reset clears the filter without supplier API or lead calls; retired filter owners remain excluded."
+    ],
+    "size": {
+      "eight_assets_before_raw_bytes": 12865,
+      "eight_assets_after_raw_bytes": 14677,
+      "eager_route_before_raw_bytes": 84218,
+      "eager_route_after_raw_bytes": 86030,
+      "full_route_before_raw_bytes": 126636,
+      "full_route_after_raw_bytes": 128448,
+      "selected_phase_raw_bytes": 42418,
+      "delta_raw_bytes": 1812
+    },
+    "ci": {
+      "security_run": 34308196296,
+      "exact_artifact_runs": [34308196297, 34308433190],
+      "artifact_id": 10087423395,
+      "artifact_digest": "sha256:07c21112bdbc6107086d4b93a765257314f2cc37c74dc8a0e6c03c58983c476a",
+      "conclusion": "success"
+    },
+    "publication": {
+      "published": false,
+      "published_preview_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+      "closed_control_prs": [1669, 1670],
+      "reason": "Connector-created control updates emitted Security PR checks but no push deploy-event; both controls closed without merge or deployment. Exact artifact remains reusable.",
+      "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "audit": "docs/project/search3-local-hotel-filter-product.json",
+    "rollback": "Revert release merge fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56 independently; published preview is unchanged.",
+    "next_action": "Audit completeness of loaded-result rating/category/sea-distance/meal data and add at most one truthful local facet only when complete."
+  },
   "latest_current_price_calendar_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -1046,9 +1090,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1665 reuses the shared truthful current-price calendar in Search3 and fixes stale minima after continued results. Source 049ceba4 is checked, merged as 946ee3b7 and published exact through #1666.",
+    "last_material_progress": "#1668 adds one responsive local hotel-name filter for loaded results. Source 0fedbcb5 is checked and merged as fd0d0cf6; exact artifact retained, preview still publishes calendar source 049ceba4 because control push did not trigger.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit existing local result filters for one demonstrated user-facing gap; do not duplicate ANEX work or restore retired filter layers wholesale.",
+    "next_action": "Audit completeness of loaded-result rating/category/sea-distance/meal data; expose at most one truthful local facet only when complete.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -1059,10 +1103,10 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "946ee3b7c2c035dd391a66731d2315de740f4bbb",
+    "last_fully_checked_release_sha": "fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56",
     "published_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
-    "next_action": "Audit existing local result filters for one demonstrated user-facing gap; do not duplicate ANEX work or restore retired filter layers wholesale.",
-    "baseline_release_sha": "946ee3b7c2c035dd391a66731d2315de740f4bbb",
+    "next_action": "Audit completeness of loaded-result rating/category/sea-distance/meal data; expose at most one truthful local facet only when complete.",
+    "baseline_release_sha": "fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9756,7 +9800,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T03:26:00.000Z",
+  "updated_at": "2026-09-09T04:00:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",

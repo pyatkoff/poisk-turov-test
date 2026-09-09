@@ -14,6 +14,38 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
+## Current product checkpoint — local loaded-hotel filter #1668 — 2026-09-09
+
+Source `0fedbcb5ffb426af4069305d06f446a571dc5254`, tree
+`f9f462c682b328786e4b4e5393d3c52f00f8041f`; checked release
+`fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56`. One responsive source owner now
+filters only already rendered hotel cards by normalized title. It preserves the
+query after renderer sort, owns a truthful shown/loaded count and clears on new
+search/reset. It does not call the canonical lifecycle, supplier APIs or lead code;
+the excluded legacy desktop and mobile filter owners remain excluded.
+
+Eight Search3 assets are **12865→14677 raw B (+1812)**. Because the changed public
+asset is eager, initial CSS/JS is **84218→86030 B** and full scenario CSS/JS is
+**126636→128448 B**; selected phase remains42418 B. This is disclosed useful
+product growth, not a removal or lazy-loading saving.
+
+Security `34308196296` and exact artifact runs `34308196297` / `34308433190`
+passed. Artifact `10087423395`, digest
+`sha256:07c21112bdbc6107086d4b93a765257314f2cc37c74dc8a0e6c03c58983c476a`.
+Browser assertions cover 375/760/761/999/1000/1024/1025/1440, normalized match,
+truthful count, sort persistence, clear/reset, raw/served parity and no overflow.
+
+The checked source is not published. Control PRs #1669/#1670 were closed without
+merge or deploy because connector-created ref/content updates emitted PR Security
+checks but no push event for the one-shot workflow. The exact artifact remains
+reusable. Published preview therefore stays on `049ceba47ee170699cc7792b050c7af47224c7ee`;
+main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`, production unchanged,
+real leads0. Audit: `docs/project/search3-local-hotel-filter-product.json`.
+
+Next: audit completeness of rating/category/sea-distance/meal across the loaded
+payload. Expose at most one useful local facet only when every loaded card has
+complete data; do not restore retired filter layers or duplicate ANEX work.
+
 ## Current product checkpoint — truthful current-price calendar #1665 — 2026-09-09
 
 Source `049ceba47ee170699cc7792b050c7af47224c7ee`, tree
