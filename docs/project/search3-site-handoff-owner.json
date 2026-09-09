@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "source_pr": 1663,
+  "baseline_release_sha": "bae59d9f275a1623f5c52eff6c46186635e1e7d4",
+  "source_sha": "e010aa325d110091f244b3abed789038e1f3288c",
+  "source_tree": "ca14dc6045bf7e1bcf9f004a7517fc2d157be54e",
+  "release_integration_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
+  "scope": "Route all remaining country and hot-tour Search3 transitions through the existing fail-closed, allowlisted and preview-aware handoff owner.",
+  "result": {
+    "manual_country_builders_removed": 1,
+    "manual_hot_builders_removed": 3,
+    "canonical_hot_builders": 3,
+    "production_and_preview_urls_unchanged": true,
+    "generic_unmapped_country_fallback_preserved": true,
+    "destination_ids_added": 0,
+    "anex_changed": false
+  },
+  "size": {
+    "search3_eight_assets_raw_bytes": 12865,
+    "eager_route_raw_bytes": 77532,
+    "full_route_raw_bytes": 119950,
+    "css_js_delta_raw_bytes": 0
+  },
+  "verification": {
+    "security_run": 34305077898,
+    "standalone_content_run": 34305077886,
+    "preview_boundary_run": 34305077951,
+    "exact_artifact_run": 34305077962,
+    "conclusion": "success",
+    "static_equivalence_cases": 4,
+    "static_equivalence_modes": 2,
+    "real_leads_submitted": 0
+  },
+  "artifact": {
+    "id": 10086355909,
+    "digest": "sha256:0b328cc7fc5e48a486f3d5cc5cfa726f01d41a8810fc1b7a9f79e0c3d28302fe"
+  },
+  "publication": {
+    "published": false,
+    "reason": "Exact visible output and URLs are unchanged; no extra preview publication is justified.",
+    "published_preview_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
+    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_changed": false,
+    "production_changed": false
+  },
+  "rollback": "Revert f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134 independently.",
+  "next_action": "Begin S3_PRODUCT_USEFUL_FEATURES with an audit of the current price calendar and filters; keep separate ANEX work isolated."
+}

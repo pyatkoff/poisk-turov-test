@@ -1,4 +1,49 @@
 {
+  "latest_site_handoff_owner_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1663,
+    "baseline_release_sha": "bae59d9f275a1623f5c52eff6c46186635e1e7d4",
+    "source_sha": "e010aa325d110091f244b3abed789038e1f3288c",
+    "source_tree": "ca14dc6045bf7e1bcf9f004a7517fc2d157be54e",
+    "release_integration_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
+    "product_result": [
+      "Country and hot-tour transitions now use one canonical allowlisted Search3 handoff owner.",
+      "Current production/preview URLs, query order, values and generic unmapped-country fallback remain exact.",
+      "No destination IDs were invented and separate ANEX work was untouched."
+    ],
+    "size": {
+      "search3_eight_assets_raw_bytes": 12865,
+      "search3_eight_assets_delta_raw_bytes": 0,
+      "eager_route_raw_bytes": 77532,
+      "full_route_raw_bytes": 119950,
+      "css_js_delta_raw_bytes": 0
+    },
+    "ci": {
+      "security_run": 34305077898,
+      "standalone_content_run": 34305077886,
+      "preview_boundary_run": 34305077951,
+      "exact_artifact_run": 34305077962,
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 10086355909,
+      "digest": "sha256:0b328cc7fc5e48a486f3d5cc5cfa726f01d41a8810fc1b7a9f79e0c3d28302fe"
+    },
+    "publication": {
+      "published": false,
+      "reason": "The package preserves exact visible output and URLs, so another preview deployment is not justified.",
+      "published_preview_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "audit": "docs/project/search3-site-handoff-owner.json",
+    "rollback": "Revert release merge f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134 independently.",
+    "next_action": "Start S3_PRODUCT_USEFUL_FEATURES with a bounded audit of the existing price calendar and filters; do not duplicate the separate ANEX branch."
+  },
   "latest_canonical_header_owner_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -912,23 +957,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1660 makes the canonical DS2/header/footer CSS the single shared shell owner in Search3 and removes its private header layer. Source 0c87e1ff is checked, merged as 984c6389 and published exactly in the isolated preview.",
+    "last_material_progress": "#1663 routes country and hot-tour transitions through one allowlisted Search3 handoff owner while preserving exact URLs and unmapped-country fallback. Source e010aa32 is checked and merged as f3b3ef3e; published preview remains exact source 0c87e1ff because visuals and URLs are unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit parameter-preserving transitions between shared content pages and Search3, then implement the first confirmed pages/handoff mismatch without duplicating ANEX work.",
+    "next_action": "Audit the existing price calendar and filters for the first useful owner-safe improvement; do not duplicate the separate ANEX branch.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_PAGES_HANDOFF",
-    "title": "Converge whole-site pages and parameter-preserving Search3 handoff",
+    "id": "S3_PRODUCT_USEFUL_FEATURES",
+    "title": "Improve useful calendar and filters without duplicating ANEX work",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "984c63891fd786044264071d5dbe5cb71eed4029",
+    "last_fully_checked_release_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
     "published_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
-    "next_action": "Audit parameter-preserving transitions between shared content pages and Search3, then implement the first confirmed pages/handoff mismatch without duplicating ANEX work.",
-    "baseline_release_sha": "984c63891fd786044264071d5dbe5cb71eed4029",
+    "next_action": "Audit the existing price calendar and filters for the first useful owner-safe improvement; do not duplicate the separate ANEX branch.",
+    "baseline_release_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9622,7 +9667,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T02:44:00.000Z",
+  "updated_at": "2026-09-09T02:57:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",

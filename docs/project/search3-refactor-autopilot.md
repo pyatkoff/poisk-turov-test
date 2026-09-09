@@ -14,7 +14,30 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — canonical Search3 site header #1660 — 2026-09-09
+## Current product checkpoint — canonical site-to-Search3 handoff #1663 — 2026-09-09
+
+Source `e010aa325d110091f244b3abed789038e1f3288c`, tree
+`ca14dc6045bf7e1bcf9f004a7517fc2d157be54e`; checked release
+`f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134`. The remaining manual country and
+hot-tour Search3 URLs now use `v2_seo_search_handoff_url`, the existing allowlisted
+and preview-aware owner. Exact query order/values and generic fallback for destinations
+without verified IDs are unchanged; no IDs or ANEX behavior were added.
+
+Security `34305077898`, standalone content `34305077886`, preview boundary
+`34305077951` and exact artifact `34305077962` passed. Artifact `10086355909`, digest
+`sha256:0b328cc7fc5e48a486f3d5cc5cfa726f01d41a8810fc1b7a9f79e0c3d28302fe`.
+Search3 CSS/JS and assets are unchanged: eight assets 12865 B, eager route 77532 B,
+full scenario 119950 B.
+
+The package was not republished because visible output and URLs are intentionally
+identical. Published preview remains exact source `0c87e1ff07b17723b819ae83a15fc3449a693b54`.
+Main observed `86fc165277a13ae9bef1369659e9b150399f0e35`; main/production unchanged,
+real leads0. Audit: `docs/project/search3-site-handoff-owner.json`.
+
+Next: start `S3_PRODUCT_USEFUL_FEATURES` with a bounded audit of the existing price
+calendar and filters; do not duplicate the separate ANEX branch.
+
+## Previous product checkpoint — canonical Search3 site header #1660 — 2026-09-09
 
 Source `0c87e1ff07b17723b819ae83a15fc3449a693b54`, tree
 `b56839cd16c3dda7de4dc3bb6c1e0b6939d556d6`; checked release
