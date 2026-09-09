@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-09",
+  "source_sha": "cca041137dd015f608dca478d7dc67453c455366",
+  "control_sha": "97d70d023e74a76b65f29c4783ecb1e85a82ab2c",
+  "deployment_run": 34389847242,
+  "artifact_id": 10119176721,
+  "artifact_sha256": "ea45065bfa8ae6b239dde3fdee598b8196aab89f1747259e22051b27954e0db2",
+  "deployment": {
+    "status": "deployed",
+    "source_sha": "cca041137dd015f608dca478d7dc67453c455366",
+    "owner_login_required": false,
+    "sha256": {
+      "api-andromeda-search3-preview.php": "fa968565ffe3831beba0aaefacf2f2c7085a6c6934bcb329eb81dbf4cf15409e",
+      "anex-search3-preview-v1.js": "721d7d6a2da151d6a78ee99811753ddba8db2f153262ed9baec94b3e5217f872",
+      "search-page-v2.php": "e9f3828d207192962163b73e571e5803236410569289941c2975c679d0021bc7"
+    },
+    "private_credentials_unchanged": true,
+    "database_changed": false,
+    "production_changed": false,
+    "verification": {
+      "status": "checked",
+      "historic_saved_pages": 3,
+      "expired_rejected": 3,
+      "supplier_calls": 0,
+      "budget_unchanged": true,
+      "browser_acceptance": false
+    }
+  },
+  "checks": {
+    "protocol": 34389551889,
+    "security": 34389551794,
+    "php": "page/search/generation/offer mismatch, expiry, raw supplier ID isolation",
+    "browser": {
+      "status": "passed_desktop",
+      "operator": "Anex Tour",
+      "hotel": "Roulette 3* Sharm El Sheikh",
+      "date": "2026-09-18",
+      "nights": 8,
+      "adults": 2,
+      "meal": "AI",
+      "room": "Standard Room",
+      "amounts": [
+        "107561",
+        "115665"
+      ],
+      "returned_to_results": true,
+      "distinct_offer_prices": true
+    },
+    "publication_supplier_calls": 0,
+    "browser_supplier_calls": "search exercised; count not measured; detail action is saved-only"
+  },
+  "limitations": [
+    "Read-only offer details; quote/final price/flights/booking/lead handoff not enabled.",
+    "Physical Safari/mobile not verified.",
+    "Initial URL search became dirty during form initialization; manual search completed. Editing cleared preselected hotel and browser test used broader Egypt search (31 Andromeda hotels,2pages). Track form initialization separately; do not claim narrow hotel test.",
+    "Initial deployment34389629095 had stale script URL; corrected by34389847242 without repeating supplier calls."
+  ],
+  "next_action": "Connect source-qualified quote/selection to current SEARCH controller; preserve Tourvisor and lead contracts."
+}
