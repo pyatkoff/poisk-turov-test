@@ -24,7 +24,7 @@ Inherited root `AUTOPILOT_STATE.json` этой ветки содержит ст�
 | Задача / владелец | Готово | Следующий доступный шаг / граница |
 | --- | --- | --- |
 | SEARCH #1646 | All Inclusive, сохранность offers/фильтров, контент по принятому localID, явный point-TV #1703/#1708, reveal после20 #1716 опубликованы | Сохранить собственный point searchId/offer identity по всему пути выбора и возврата. До этого point только сравнение. Проекция ANEX тоже требует полного offer/search context; поля не выдумывать |
-| INT #1647 | Panel source, formatter, pair-exclusion guards, immutable dossier packer/archive, bounded schema readiness #1704/#1706/#1709; one-shot storage guard checked (15 Python tests) | Выполнить закреплённый перенос263 досье из artifact10097668551 через review workflow и проверить readback. Reserved/executing неизвестного запуска не повторять; completed возвращает сохранённый report без SQL. Затем trusted owner auth и isolated panel manifest. Live owner authority ещё не установлена; write_enabled=false. Audit: reports/anex-review-storage-once-20260909.json |
+| INT #1647 | Source panel/formatter/pair guards/archive; PR1728 применил пять additive таблиц и сохранил263 досье, readback263/263; прежние catalogue/mappings/manual сохранены | Trusted owner auth вне DOCUMENT_ROOT, затем isolated panel manifest и реальные gates. Bitrix bootstrap/CSRF найден в коде, но owner authority не установлена; write_enabled=false, панель не опубликована. Completed storage не повторять. Audit: reports/anex-review-storage-once-20260909.json |
 | INT #1717 | План будущей Андромеды | Получить официальный API-контракт/доступ; затем выключенный adapter и ограниченные fixtures. Не копировать ANEX лимиты/параметры |
 | INT #1685 | Отдельная работа по составу цены/топливному сбору, собственный diagnostic draft | Прочитать свежий отдельный checkpoint/PR перед действиями. Этот исполнитель не дублирует его запросы или изменения. Не утверждать final price/fuel по минимуму поиска |
 | Координация #996/#1493 | Четыре направления, один UI-владелец; общая модель в multi-provider-search-plan.md | Отдельный bounded handoff в свежую release; не merge старую ANEX-основу и не создавать третий renderer |
@@ -56,11 +56,18 @@ Pending — нерешённый статус, не доказанное раз�
 
 ## Точка сохранности P2 и исторических данных
 
-Readiness run34333956876/job102409045342 наe9083cbfe8d337e218e2ef3b2490e8ff98c40d70,
-artifact10096966061:263 досье, formatted10132204/semantic5456105 bytes; digest сохранены,
-created=[], import0, preservation=true, supplier0. Панель не опубликована.
-CLI auth env=false не доказывает отсутствие web-auth. Canonical code #1709;
-дублирующий #1712 закрыт без merge. Не вводить альтернативный schema CLI.
+Storage PR1728 наc9e0bbba89251c92254537fdbc35870e7536c91e завершён:
+run34344152765/job102441647242, artifact10100996931,
+sha256 `64a2a46f30abd1a976059a6d79f21499c6bc288c75468b1caee492d8f26fe099`.
+Восстановлен10097668551; резерв10100986635 сохранён до SQL. Созданы ровно пять
+review/archive таблиц, импорт263 и readback263/263; supplier0, SSH1, preservation=true.
+Live checkpoint/evidence не переписаны. Storage checkpoint completed; последующие
+запуски восстанавливают его report без SQL. Потеря/unknown блокируют replay.
+Report canonical sha256 `c93da26e0792d1af94712ae0bd3f016e680fe3907fd9e94256dee52880950cb9`.
+Файлы проверены обратно на runner; независимое скачивание ZIP не заявляется.
+Readiness34333956876/10096966061 остаётся историей до переноса, не текущим отсутствием таблиц.
+CLI auth env=false и существующий Bitrix prolog/CSRF не устанавливают owner authority.
+Панель не опубликована; trusted adapter/реальный вход остаются отдельными gates.
 
 Исторический triage263 не равен свежим359 pending: это разные наборы/даты.
 25 пересечений его кандидатов с69 сохранёнными TV ID — приоритет, не25 новых связей.

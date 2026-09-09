@@ -2,19 +2,279 @@
   "date": "2026-09-09",
   "issue": 1647,
   "scope": "INT own ANEX branch; persistent historic dossiers only",
-  "state": "implementation_checked_awaiting_workflow",
+  "state": "live_storage_completed",
   "schema_sha256": "712c83a682b62763f8daf710739e831fd1a2a8a604d39dac10bff4fa5a756c0e",
   "triage_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a",
   "bootstrap_artifact_id": 10097668551,
   "expected_dossiers": 263,
-  "planned_tables": ["anex_review_state", "anex_review_pair_exclusions", "anex_review_audit", "anex_review_dossier_batches", "anex_review_dossiers"],
+  "planned_tables": [
+    "anex_review_state",
+    "anex_review_pair_exclusions",
+    "anex_review_audit",
+    "anex_review_dossier_batches",
+    "anex_review_dossiers"
+  ],
   "checkpoint": "anex-review-storage-checkpoint.json",
-  "guards": ["reservation artifact before SQL", "executing recorded before SSH", "unknown outcomes never replay", "exact bootstrap lineage and schema/triage/row pins", "completed report and reservation readback without SQL", "existing schema manager and immutable archive; no alternate migration", "existing preservation hashes and per-ID readback"],
-  "checked": {"python_storage_tests": 15, "independent_code_review": "three findings addressed: semantic pins, schema readiness, report restoration"},
-  "live_apply": "not_yet_executed",
+  "guards": [
+    "reservation artifact before SQL",
+    "executing recorded before SSH",
+    "unknown outcomes never replay",
+    "exact bootstrap lineage and schema/triage/row pins",
+    "completed report and reservation readback without SQL",
+    "existing schema manager and immutable archive; no alternate migration",
+    "existing preservation hashes and per-ID readback"
+  ],
+  "checked": {
+    "python_storage_tests": 15,
+    "independent_code_review": "three findings addressed: semantic pins, schema readiness, report restoration",
+    "panel_mysql": 96,
+    "schema_mysql": 16,
+    "dossier_mysql": 29,
+    "packer_python": 8,
+    "security_run": 34344001140,
+    "panel_run": 34344001132,
+    "browser": "synthetic HTTP Chromium 1280/820/390/320; auth/CSRF/replay/stale; overflow=false",
+    "live_owner_login": "deferred"
+  },
+  "live_apply": {
+    "run_id": 34344152765,
+    "job_id": 102441647242,
+    "artifact_id": 10100996931,
+    "artifact_sha256": "64a2a46f30abd1a976059a6d79f21499c6bc288c75468b1caee492d8f26fe099",
+    "reservation_artifact_id": 10100986635,
+    "report_canonical_sha256": "c93da26e0792d1af94712ae0bd3f016e680fe3907fd9e94256dee52880950cb9",
+    "created": [
+      "anex_review_state",
+      "anex_review_pair_exclusions",
+      "anex_review_audit",
+      "anex_review_dossier_batches",
+      "anex_review_dossiers"
+    ],
+    "inserted": 263,
+    "verified_ids": 263,
+    "preserved": true,
+    "ssh_attempts": 1,
+    "checkpoint_state": "completed",
+    "checkpoint_verification": "runner atomic write + byte readback before successful report; not independent ZIP download",
+    "schema": {
+      "status": "ready",
+      "read_only": false,
+      "schema_sha256": "712c83a682b62763f8daf710739e831fd1a2a8a604d39dac10bff4fa5a756c0e",
+      "before_schema": {
+        "missing": [
+          "anex_review_state",
+          "anex_review_pair_exclusions",
+          "anex_review_audit",
+          "anex_review_dossier_batches",
+          "anex_review_dossiers"
+        ],
+        "installed": [],
+        "ready": false
+      },
+      "after_schema": {
+        "missing": [],
+        "installed": [
+          "anex_review_state",
+          "anex_review_pair_exclusions",
+          "anex_review_audit",
+          "anex_review_dossier_batches",
+          "anex_review_dossiers"
+        ],
+        "ready": true
+      },
+      "created": [
+        "anex_review_state",
+        "anex_review_pair_exclusions",
+        "anex_review_audit",
+        "anex_review_dossier_batches",
+        "anex_review_dossiers"
+      ],
+      "before": {
+        "catalog_hotels": {
+          "count": 133703,
+          "sha256": "ea6d2068f0749abd0856e5696fd6ab3c014c99f3181fbc0bf84a03d5685d1384"
+        },
+        "anex_hotels": {
+          "count": 8362,
+          "sha256": "db93eb7a5afdc063c7f812bb51b54a539d3bb661ddf465786db6f54ae10e6ef7"
+        },
+        "anex_hotel_auto_matches": {
+          "count": 8362,
+          "sha256": "57f4c95318299f8da7af21648e6884476220ce86209054da1589392e42ae6c8f"
+        },
+        "anex_hotel_candidates": {
+          "count": 25077,
+          "sha256": "3666a9d14b1bb41f5bd5f374a5483dfaf3b198797c54a02cbb5e6e0f2eb3d093"
+        },
+        "anex_hotel_search_mappings": {
+          "count": 12890,
+          "sha256": "a0bae51642bdd871380922d049b95abb1893f3d85a133171d02f96ad60b7de92"
+        },
+        "anex_hotel_decisions": {
+          "count": 9,
+          "sha256": "ea904af4ffc46be31b066518f7603790fec89de79a9d00f597cf1f787c473411"
+        }
+      },
+      "after": {
+        "catalog_hotels": {
+          "count": 133703,
+          "sha256": "ea6d2068f0749abd0856e5696fd6ab3c014c99f3181fbc0bf84a03d5685d1384"
+        },
+        "anex_hotels": {
+          "count": 8362,
+          "sha256": "db93eb7a5afdc063c7f812bb51b54a539d3bb661ddf465786db6f54ae10e6ef7"
+        },
+        "anex_hotel_auto_matches": {
+          "count": 8362,
+          "sha256": "57f4c95318299f8da7af21648e6884476220ce86209054da1589392e42ae6c8f"
+        },
+        "anex_hotel_candidates": {
+          "count": 25077,
+          "sha256": "3666a9d14b1bb41f5bd5f374a5483dfaf3b198797c54a02cbb5e6e0f2eb3d093"
+        },
+        "anex_hotel_search_mappings": {
+          "count": 12890,
+          "sha256": "a0bae51642bdd871380922d049b95abb1893f3d85a133171d02f96ad60b7de92"
+        },
+        "anex_hotel_decisions": {
+          "count": 9,
+          "sha256": "ea904af4ffc46be31b066518f7603790fec89de79a9d00f597cf1f787c473411"
+        },
+        "anex_review_state": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_pair_exclusions": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_audit": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_dossier_batches": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_dossiers": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "preserved": true
+    },
+    "import": {
+      "status": "stored",
+      "inserted": 263,
+      "rows": 263,
+      "artifact_id": 10097668551,
+      "verified_ids": 263,
+      "before": {
+        "catalog_hotels": {
+          "count": 133703,
+          "sha256": "ea6d2068f0749abd0856e5696fd6ab3c014c99f3181fbc0bf84a03d5685d1384"
+        },
+        "anex_hotels": {
+          "count": 8362,
+          "sha256": "db93eb7a5afdc063c7f812bb51b54a539d3bb661ddf465786db6f54ae10e6ef7"
+        },
+        "anex_hotel_auto_matches": {
+          "count": 8362,
+          "sha256": "57f4c95318299f8da7af21648e6884476220ce86209054da1589392e42ae6c8f"
+        },
+        "anex_hotel_candidates": {
+          "count": 25077,
+          "sha256": "3666a9d14b1bb41f5bd5f374a5483dfaf3b198797c54a02cbb5e6e0f2eb3d093"
+        },
+        "anex_hotel_search_mappings": {
+          "count": 12890,
+          "sha256": "a0bae51642bdd871380922d049b95abb1893f3d85a133171d02f96ad60b7de92"
+        },
+        "anex_hotel_decisions": {
+          "count": 9,
+          "sha256": "ea904af4ffc46be31b066518f7603790fec89de79a9d00f597cf1f787c473411"
+        },
+        "anex_review_state": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_pair_exclusions": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_audit": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_dossier_batches": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_dossiers": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "after": {
+        "catalog_hotels": {
+          "count": 133703,
+          "sha256": "ea6d2068f0749abd0856e5696fd6ab3c014c99f3181fbc0bf84a03d5685d1384"
+        },
+        "anex_hotels": {
+          "count": 8362,
+          "sha256": "db93eb7a5afdc063c7f812bb51b54a539d3bb661ddf465786db6f54ae10e6ef7"
+        },
+        "anex_hotel_auto_matches": {
+          "count": 8362,
+          "sha256": "57f4c95318299f8da7af21648e6884476220ce86209054da1589392e42ae6c8f"
+        },
+        "anex_hotel_candidates": {
+          "count": 25077,
+          "sha256": "3666a9d14b1bb41f5bd5f374a5483dfaf3b198797c54a02cbb5e6e0f2eb3d093"
+        },
+        "anex_hotel_search_mappings": {
+          "count": 12890,
+          "sha256": "a0bae51642bdd871380922d049b95abb1893f3d85a133171d02f96ad60b7de92"
+        },
+        "anex_hotel_decisions": {
+          "count": 9,
+          "sha256": "ea904af4ffc46be31b066518f7603790fec89de79a9d00f597cf1f787c473411"
+        },
+        "anex_review_state": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_pair_exclusions": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_audit": {
+          "count": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "anex_review_dossier_batches": {
+          "count": 1,
+          "sha256": "49421023cbeca006cedff8a759518155e4ca1a5f87d26bf11c39c340ebc8b08d"
+        },
+        "anex_review_dossiers": {
+          "count": 263,
+          "sha256": "47e2fd42fa39697ad567e0eda88a842c212d5a10adbd8cab73993317b7c8fc9f"
+        }
+      }
+    }
+  },
   "supplier_calls": 0,
   "panel_published": false,
   "write_enabled": false,
-  "next_action": "Run the checked exact-source review workflow once, verify report/checkpoint/artifact and DB preservation, then trusted owner auth and isolated panel manifest.",
-  "search_handoff": "Point comparison loses its local searchId after success; shared lead assembly and race guard use broad searchId. Coordinate current release controller/selected context under #996 before enabling point selection. Do not overwrite fresh release with the old ANEX controller. No transport or field mapping changed."
+  "next_action": "Establish actual AnyTour owner session/authorization authority, reviewed adapter outside DOCUMENT_ROOT, then isolated panel manifest and authenticated gates. Do not repeat completed schema/import or historic supplier/matching stages.",
+  "search_handoff": "Point comparison loses its local searchId after success; shared lead assembly and race guard use broad searchId. Coordinate current release controller/selected context under #996 before enabling point selection. Do not overwrite fresh release with the old ANEX controller. No transport or field mapping changed.",
+  "source_sha": "827e5c54521a96e62ea90aea18bef6edadd61a8e",
+  "merged_source_sha": "c9e0bbba89251c92254537fdbc35870e7536c91e",
+  "pr": 1728,
+  "auth_evidence": {
+    "repo_bitrix_session_bootstrap": true,
+    "owner_authorization_established": false,
+    "cli_auth_env": false,
+    "meaning": "Bitrix prolog/CSRF code is not proof of owner role; synthetic test adapter must not deploy."
+  }
 }

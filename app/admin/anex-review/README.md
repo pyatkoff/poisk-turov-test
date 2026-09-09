@@ -1,7 +1,8 @@
 # P2 protected hotel review — implementation, not a live panel
 
-Issue #1647; own ANEX preview only. This packet does not deploy, apply a migration,
-call a supplier, or change a real decision. No production Search3/DS2 modules are used.
+Issue #1647; own ANEX preview only. Source UI and persistent storage are implemented;
+the panel is not deployed or authorized for real decisions. Pinned CLI storage migration
+completed in #1728; no supplier calls or production Search3/DS2 modules are used.
 
 ## Implemented
 
@@ -46,21 +47,22 @@ call a supplier, or change a real decision. No production Search3/DS2 modules ar
    Adapter must leave its verified session active. Panel rotates its own CSRF token
    when actor changes. No public login scheme/password or new server configuration
    has been created in this packet.
-3. Apply `schema.sql` through an approved, bounded CLI migration with registry/manual/
-   staging preservation hashes and readback. Web requests never execute DDL.
+3. DONE: PR #1728 applied both pinned schema files through the existing bounded CLI;
+   five additive tables, registry/manual/staging/catalog preservation and readback.
+   Run34344152765/artifact10100996931, sourcec9e0bbba. Web requests never execute DDL.
 4. Shared importer and effective-resolver pair exclusions are implemented in
    PR #1698. The writer uses the same observation-row mutex as panel decisions,
    then a fresh locking rejection read inside its transaction. Reimports and a
    concurrent committed rejection are covered by real MySQL writer tests.
    Only verified legacy table absence is optional; inaccessible/broken review
    tables fail closed. Before enabling web writes, confirm the deployed acceptance
-   paths use these guards and complete live migration/readback. Historical finalized
+   paths use these guards; live migration/readback completed in #1728. Historical finalized
    paired/cached batches must not be rerun. Web writes remain **disabled** while
    the remaining real deployment gates are incomplete.
 5. Durable dossier source code is implemented in PR #1697 (see dossier-bridge.md):
    offline packer, immutable archive and optional panel read path. Live archive
-   migration and import are still pending; complete them from a verified finalized
-   triage artifact with provenance, preservation and byte/hash readback. Observations
+   migration and import completed in #1728:263 immutable historical dossiers,263/263
+   DB readback, original triage/source digests and previous data preserved. Observations
    are already persistent. Missing live evidence and historical hints must never be
    replaced by fabricated candidates. The separate content store remains separate.
 6. Add only this page/admin package to the isolated preview deployment manifest with
@@ -117,8 +119,13 @@ resolver: `8c9378315277dbabb9405d8dcde1f98725f2bb21`.
 Push panel run34327629394 passed96 MySQL checks and HTTP/Chromium tests at
 1280/820/390/320 with synthetic identity; the full ANEX workflow34327629358
 also passed, including90 registry checks and isolated preview publication.
-The panel itself is still unpublished; no live schema migration or owner decision
-was made. See `reports/anex-review-pair-exclusions-20260909.json` for evidence.
-The next independent code packet is a bounded CLI schema readiness/migration
-runner (read-only by default), followed by verified live dossier import and the actual
-authentication/deployment integration above.
+The panel itself is still unpublished; no owner decision was made. Subsequent live
+schema/dossier migration completed in #1728; see `reports/anex-review-storage-once-20260909.json`.
+Its pinned apply plan is protected by a persistent one-shot checkpoint: reservation
+artifact before SQL, executing before SSH, completed report/preservation/readback.
+Unknown or missing post-bootstrap checkpoints never replay. Completed storage does
+not repackage evidence under a newer artifact ID or re-read SQL. The historical263
+dossiers are not the whole current pending population.
+Next: establish the actual owner authority and reviewed adapter outside DOCUMENT_ROOT,
+then isolated publication and real authenticated gates. Existing Bitrix bootstrap and
+CSRF helpers alone do not identify an authorized owner; synthetic fixtures never deploy.
