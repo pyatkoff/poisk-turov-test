@@ -36,6 +36,26 @@ function cp_related_destinations(string $slug): array
     return $items;
 }
 
+/** Latest valid snapshot date already carried by the displayed offer rows. */
+function cp_offer_freshness_label(array $offers): string
+{
+    $latest = '';
+    foreach ($offers as $offer) {
+        if (!is_array($offer)) continue;
+        $observedAt = trim((string)($offer['snapshotObservedAt'] ?? ''));
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[ T]|$)/D', $observedAt, $match)) continue;
+        $year = (int)$match[1];
+        $month = (int)$match[2];
+        $day = (int)$match[3];
+        if (!checkdate($month, $day, $year)) continue;
+        $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
+        if ($date > $latest) $latest = $date;
+    }
+    if ($latest === '') return '';
+    [$year, $month, $day] = array_map('intval', explode('-', $latest));
+    return sprintf('Цены обновлены %02d.%02d.%04d', $day, $month, $year);
+}
+
 function cp_render(array $page): void
 {
     $slug = trim((string)($page['slug'] ?? ''), '/');
@@ -62,6 +82,7 @@ function cp_render(array $page): void
     $searchLabel = $countryId > 0 ? ('Найти туры в ' . $name) : 'Открыть поиск туров';
     $offerCandidates = $countryId > 0 ? v2_seo_country_snapshot_offers($countryId, 12) : [];
     $offers = array_slice($offerCandidates, 0, 6);
+    $offerFreshnessLabel = cp_offer_freshness_label($offers);
     $priceCalendar = $countryId > 0 ? v2_seo_price_calendar($offerCandidates, $countryId, 0, 14) : [];
     $countryPath = '/country/' . $slug . '/';
     $launchedResortLinks = v2_seo_core_resort_country_links($countryPath);
@@ -78,7 +99,7 @@ function cp_render(array $page): void
       <?php foreach ($editorialSections as $section): $sectionTitle=trim((string)($section['title']??'')); $paragraphs=array_values(array_filter(array_map(fn($p)=>trim((string)$p),(array)($section['paragraphs']??[])))); if($sectionTitle===''||!$paragraphs) continue; ?><section class="sp-card"><h2><?=sp_e($sectionTitle)?></h2><?php foreach($paragraphs as $paragraph): ?><p><?=sp_e($paragraph)?></p><?php endforeach; ?></section><?php endforeach; ?>
       <?=v2_seo_render_core_month_navigation($countryPath, 'Туры по месяцам')?>
       <?php if ($launchedResortLinks): ?><section class="sp-card" data-core-resort-links><h2>Курорты <?=sp_e($name)?></h2><p>Выберите курорт, чтобы посмотреть актуальные варианты отдыха и перейти к подбору тура с уже выбранным регионом.</p><div class="sp-actions"><?php foreach($launchedResortLinks as $href=>$label): ?><a class="sp-secondary" href="<?=sp_e($href)?>"><?=sp_e($label)?></a><?php endforeach; ?></div></section><?php endif; ?>
-      <?php if ($offers): ?><section class="sp-card sp-offer-snapshot" data-country-offer-snapshot><h2>Актуальные туры</h2><p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p><div class="sp-offer-list"><?php foreach ($offers as $offer): $hotel=trim((string)($offer['hotelName']??''))?:'Отель'; $departure=trim((string)($offer['departureName']??'')); $date=v2_seo_offer_date_label((string)($offer['departureDate']??'')); $nights=(int)($offer['nights']??0); $priceMarkup=v2_seo_offer_price_markup($offer); $offerSearchState=$searchState; $departureId=(int)($offer['departureId']??0); if($departureId>0)$offerSearchState['from']=$departureId; $offerHref=v2_seo_search_handoff_url('/poisk-turov/',v2_seo_offer_search_state($offerSearchState,$offer)); ?><article class="sp-offer-item"><h3><?=sp_e($hotel)?></h3><div class="sp-offer-meta"><?php if($departure!==''): ?><span class="sp-offer-fact">Вылет из <?=sp_e($departure)?></span><?php endif; ?><span class="sp-offer-fact"><?=sp_e($date)?></span><span class="sp-offer-fact"><?=sp_e((string)$nights)?> ночей</span></div><div class="sp-offer-bottom"><?=$priceMarkup?><a class="sp-secondary sp-offer-action" href="<?=sp_e($offerHref)?>">Посмотреть туры</a></div></article><?php endforeach; ?></div></section><?php endif; ?>
+      <?php if ($offers): ?><section class="sp-card sp-offer-snapshot" data-country-offer-snapshot><h2>Актуальные туры</h2><p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p><?php if ($offerFreshnessLabel !== ''): ?><p data-country-offer-freshness><?=sp_e($offerFreshnessLabel)?>.</p><?php endif; ?><div class="sp-offer-list"><?php foreach ($offers as $offer): $hotel=trim((string)($offer['hotelName']??''))?:'Отель'; $departure=trim((string)($offer['departureName']??'')); $date=v2_seo_offer_date_label((string)($offer['departureDate']??'')); $nights=(int)($offer['nights']??0); $priceMarkup=v2_seo_offer_price_markup($offer); $offerSearchState=$searchState; $departureId=(int)($offer['departureId']??0); if($departureId>0)$offerSearchState['from']=$departureId; $offerHref=v2_seo_search_handoff_url('/poisk-turov/',v2_seo_offer_search_state($offerSearchState,$offer)); ?><article class="sp-offer-item"><h3><?=sp_e($hotel)?></h3><div class="sp-offer-meta"><?php if($departure!==''): ?><span class="sp-offer-fact">Вылет из <?=sp_e($departure)?></span><?php endif; ?><span class="sp-offer-fact"><?=sp_e($date)?></span><span class="sp-offer-fact"><?=sp_e((string)$nights)?> ночей</span></div><div class="sp-offer-bottom"><?=$priceMarkup?><a class="sp-secondary sp-offer-action" href="<?=sp_e($offerHref)?>">Посмотреть туры</a></div></article><?php endforeach; ?></div></section><?php endif; ?>
       <?=v2_seo_render_price_calendar($priceCalendar, $searchState, 'Цены на туры в ' . $name . ' по датам вылета')?>
       <?php if ($hotelTourLinks): ?><section class="sp-card" data-hotel-tour-links><h2>Туры в отели</h2><p>Перейдите на страницу конкретного отеля, чтобы посмотреть свежие пакетные предложения и продолжить подбор с уже выбранным отелем.</p><div class="sp-actions"><?php foreach ($hotelTourLinks as $href=>$label): ?><a class="sp-secondary" href="<?=sp_e($href)?>"><?=sp_e($label)?></a><?php endforeach; ?></div></section><?php endif; ?>
       <?php if ($relatedDestinations): ?><section aria-labelledby="country-related-title" data-related-destinations><div class="sp-section-head"><h2 id="country-related-title">Сравните похожие направления</h2><p>Если даты или формат отдыха ещё не окончательные, посмотрите несколько альтернатив и затем сравните живые предложения в общем поиске.</p></div><div class="sp-country-grid sp-country-grid--related"><?php foreach ($relatedDestinations as [$relatedName,$relatedHref,$relatedNote]): ?><a class="sp-country" href="<?=sp_e($relatedHref)?>"><span><?=sp_e($relatedName)?></span><small><?=sp_e($relatedNote)?></small><span class="sp-country-action">Открыть направление</span></a><?php endforeach; ?></div></section><?php endif; ?>
