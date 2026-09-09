@@ -1,0 +1,56 @@
+{
+  "baseline": {
+    "max_offers_per_hotel": 6,
+    "operators": {
+      "5": "Anex Tour"
+    },
+    "page": 1,
+    "pages_count": 2,
+    "rows": 50,
+    "unique_hotels": 16
+  },
+  "baseline_sha256": "c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9",
+  "comparison": "historical baseline; availability can change; no total-tour inference from grouped pages",
+  "db_writes": 0,
+  "elapsed_ms": 5389,
+  "finished_at": "2026-09-09T21:06:47+00:00",
+  "grouped": {
+    "max_offers_per_hotel": 1,
+    "operators": {
+      "5": "Anex Tour"
+    },
+    "page": 1,
+    "pages_count": 2,
+    "rows": 50,
+    "unique_hotels": 50
+  },
+  "mapping_writes": 0,
+  "params": {
+    "ADULT": 2,
+    "CHECKIN_BEG": "20260918",
+    "CHECKIN_END": "20260918",
+    "CHILD": 0,
+    "CURRENCYINC": 643,
+    "GROUP_BY": 32,
+    "MEAL": "5",
+    "NIGHTS_FROM": 8,
+    "NIGHTS_TILL": 8,
+    "OPERATORS": "5",
+    "PACKETTYPE": 0,
+    "PAGE": 1,
+    "STATEINC": 3,
+    "TOWNFROMINC": 1
+  },
+  "published": false,
+  "response_sha256": "daaac58b0643b0b13516b3a8ff938320b24125d28653e2cbebc6e00820dd527e",
+  "retry": false,
+  "source_sha": "e8757c4231b50e7c3bcbe81075866a845487fbe7",
+  "state": "completed",
+  "supplier_calls": 2,
+  "run": 34405002427,
+  "job": 102645801042,
+  "artifact": 10124963330,
+  "artifact_digest": "sha256:20ebf2cd631e5cd0f9b2982ed89ca432672fd12922c92172e8bab139844c1147",
+  "next_step": "Design grouped discovery plus explicit hotel-offer expansion; do not replace full offer listing with grouped representative offers without this path.",
+  "checks": "GROUP_BY validation/transport/namespace tests, Andromeda offline protocol and Security passed"
+}
