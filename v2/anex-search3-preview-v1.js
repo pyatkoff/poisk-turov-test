@@ -158,10 +158,18 @@
       && Number.isInteger(c.page) && c.page > 0 && c.page <= 1000 ? Object.assign({}, c) : null;
   }
   function sourceLabel(tour) { return tour.provider === 'andromeda' ? 'Андромеда' : 'ANEX API'; }
+  function expandedTours(hotel, expansion) {
+    const extra = expansion?.tours || [];
+    const complete = expansion?.status === 'complete' && extra.length > 0;
+    const refs = new Set(extra.map(t => t.provider + ':' + t.offer_ref));
+    return hotel.tours.filter(t => !(complete && t.provider === 'andromeda')
+      && !refs.has(t.provider + ':' + t.offer_ref)).concat(extra)
+      .sort((a, b) => Number(a.price.amount) - Number(b.price.amount));
+  }
   function sameOfferContext(expected, actual) {
     return !!actual && Object.keys(expected).every(key => JSON.stringify(actual[key]) === JSON.stringify(expected[key]));
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, sameOfferContext, version: 2 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, sameOfferContext, expandedTours, version: 2 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -377,7 +385,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       } while (number <= total && number <= 1000 && !state.abort.signal.aborted);
       state.status = 'complete';
     } catch (_) { state.status = 'unavailable'; }
-    if (active === run && isCurrent(run, window.V2SearchLifecycle)) queueRender();
+    if (active === run && isCurrent(run, window.V2SearchLifecycle)) { updateSupplemental(); queueRender(); }
   }
   function offers(hotel, embedded = false) {
     const details = node(embedded ? 'section' : 'details', 'anex-search3-offers');
@@ -643,10 +651,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     return '';
   }
   function withExpandedTours(hotel) {
-    const extra = hotelExpansions.get(hotelKey(hotel))?.tours || [];
-    const refs = new Set(extra.map(t => t.offer_ref));
-    const tours = hotel.tours.filter(t => !refs.has(t.offer_ref)).concat(extra).sort((a, b) => Number(a.price.amount) - Number(b.price.amount));
-    return Object.assign({}, hotel, { tours });
+    return Object.assign({}, hotel, { tours: expandedTours(hotel, hotelExpansions.get(hotelKey(hotel))) });
   }
   function updateSupplemental() {
     const filter = window.DS2ResultsFilters;
