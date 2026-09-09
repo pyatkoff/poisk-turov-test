@@ -36,6 +36,9 @@ saved candidates and historical hints, without converting hints to verified evid
 
 The panel shows original observed demand ordering and never claims a capped list
 is complete. Gallery/description formatting and owner acceptance policy are unchanged.
+The `no_candidates` filter uses the latest dossier's validated country and projected
+candidate count, matching the detail view; only absent archives fall back to staging.
+Those derived fields are checked against immutable raw evidence on import/readback.
 
 ## Connection still required
 

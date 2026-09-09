@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-09",
+  "scope": "AnyTour isolated ANEX panel P2",
+  "issue": 1647,
+  "pr": 1697,
+  "source_sha": "dd2da243651c544e67b95bcd86a5e25e1dfc65fa",
+  "merge_anex_only": "f165f7b4c1fe324a16280a394e1746e08f5d331d",
+  "status": "implemented_and_ci_verified_not_live",
+  "changes": [
+    "Bounded offline packing of existing triage, raw evidence and provenance",
+    "Immutable additive dossier archive, idempotent imports and transactional byte/hash readback",
+    "Optional panel read integration and latest-dossier-aware no_candidates filter",
+    "Historical hints and unknown source results never promoted to candidate suggestions",
+    "Dossier changes invalidate stale decision forms; missing archive preserves staging fallback"
+  ],
+  "verification": {
+    "python_pack_tests": 8,
+    "mysql_dossier_checks": 29,
+    "existing_panel_checks": 96,
+    "panel_run": 34327783363,
+    "panel_job": 102388958150,
+    "security_run": 34327783371,
+    "ci_status": "success",
+    "browser_widths": [1280, 820, 390, 320],
+    "browser_overflow": false,
+    "browser_identity": "synthetic_only",
+    "browser_artifact": 10094482824,
+    "browser_artifact_sha256": "b2a715ce85c74870016341c3cdcffe88eca09a950a335db488324eaf3ea9af26",
+    "manual_screenshot_inspection": "deferred",
+    "independent_artifact_zip_download": false
+  },
+  "supplier_requests": 0,
+  "live_db_writes": 0,
+  "live_schema_migration": false,
+  "live_dossier_import": false,
+  "new_bindings": 0,
+  "panel_published": false,
+  "preservation": "Disposable MySQL tests verify original catalog, staging, candidates, policy and manual rows unchanged; no live DB changes attempted.",
+  "next_step": "Add approved bounded migration and exact CLI wiring to existing restoration workflow, verify latest real triage/DB digests; integrate verified owner auth and separate pair-exclusion guards before isolated panel publication.",
+  "coordination": "Targeted Tourvisor experiment and pair-exclusion importer work belong to the adjacent lane; no shared Search3 component changed.",
+  "automation": "continue independent permitted P1/P2 work; no supplier retries or finished matching-stage reruns"
+}

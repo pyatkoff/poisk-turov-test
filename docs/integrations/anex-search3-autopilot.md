@@ -3,6 +3,31 @@
 Дата: 2026-09-07. Проект: только AnyTour / pyatkoff/poisk-turov-test.
 Рабочая ветка: feature/anex-search-adapter-20260907; draft PR #1493.
 
+## Текущая точка P2 — durable live dossiers, source packet готов (9 сентября 2026)
+
+PR #1697 объединён **только в ANEX-ветку**, merge f165f7b4c1fe324a16280a394e1746e08f5d331d;
+исполняемый source dd2da243651c544e67b95bcd86a5e25e1dfc65fa.
+Добавлены offline packer существующего triage и immutable DB archive с полными raw
+кандидатами, origin/source/checkpoint/row digest, историей и идемпотентным readback.
+Панель читает архив опционально; unknown/hints не становятся кандидатами. На экране
+до20 кандидатов, исходные полные наборы сохраняются. Фильтр «без кандидатов»
+учитывает последнее досье и актуальную страну; новая версия делает старую форму stale.
+
+Проверено на disposable MySQL:29 новых archive checks,8 Python tests,96 panel checks;
+Security34327783371 и panel34327783363/job102388958150 success. HTTP/Chromium1280/820/390/320,
+overflow=false, synthetic owner only. Artifact10094482824,
+digest b2a715ce85c74870016341c3cdcffe88eca09a950a335db488324eaf3ea9af26.
+Ручной просмотр снимков и реальный owner auth deferred; независимое ZIP-скачивание не заявляется.
+
+**Не опубликовано и не загружено в liveDB**: миграция и runtime wiring ещё не выполнены.
+Supplier calls/live writes/new bindings=0; старые matching/content стадии не запускались.
+Следующий шаг: ограниченная CLI-миграция только новых archive tables и перенос последнего
+проверенного triage через существующее восстановление artifact с полным preservation readback.
+Затем реальная owner auth, отдельные pair-exclusion guards и isolated panel manifest.
+Соседняя работа владеет точечным TV-экспериментом и pair-exclusion импортёрами; не дублировать.
+Отчёт: reports/anex-review-durable-dossiers-20260909.json; инструкция dossier-bridge.md.
+Это закрывает source-пакет хранения, **не** готовность всей панели; расписание не приостанавливается.
+
 ## Текущая точка P1 — карточки ANEX из сохранённого каталога опубликованы (9 сентября 2026)
 
 PR #1692 объединён только в feature/anex-search-adapter-20260907.
