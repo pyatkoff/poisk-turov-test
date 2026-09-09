@@ -24,7 +24,7 @@ def analyse(data):
         elif len(ids)==1:
             candidate=next(iter(ids))
             if accepted is not None and int(accepted)!=candidate:reason='anex_name_conflict'
-            else:proposed=candidate;reason='unique_egypt_current_or_former_name'+('_and_accepted_anex_id' if accepted else '')
+            else:proposed=candidate;reason='unique_turkey_current_or_former_name'+('_and_accepted_anex_id' if accepted else '')
         rows.append({**row,'name_candidates':sorted(ids),'proposed_local_id':proposed,'reason':reason,'target':hotels.get(proposed)})
     return {'operator_filter':'5','supplier_calls':0,'database_writes':0,'saved_pages_read':data['saved_pages_read'],'anex_offer_rows':data['anex_offer_rows'],'counts':{s:sum(r['reason']==s for r in rows) for s in sorted(set(r['reason'] for r in rows))},'rows':rows,'csp_source_lines':data['csp_source_lines']}
 
