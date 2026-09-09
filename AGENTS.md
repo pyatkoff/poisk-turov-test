@@ -1,5 +1,15 @@
 # poisk-turov-test — Autopilot Rules
 
+## Current AnyTour work routing — 2026-09-09
+
+Read the [central development plan](https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/anytour-development.md) on the fresh release, then
+[the current ANEX work](docs/integrations/anex-search3-autopilot.md) on this branch.
+The inherited root AUTOPILOT_STATE and old Search3 next_action below are historical
+for this integration branch, not the current whole-site queue. Keep all existing
+owner/security/production gates. INT, temporary addon SEARCH, SITE and SEO have
+separate owners under #996; do not copy this old base over the current release.
+
+
 ## Product mission
 
 ### Primary goal
