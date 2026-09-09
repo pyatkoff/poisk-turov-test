@@ -117,6 +117,7 @@ class FakeElement {
     this.listeners.get(name).push(listener);
   }
   dispatchEvent(event) { (this.listeners.get(event.type) || []).forEach(listener => listener(event)); }
+  focus(options) { this.focusOptions = options; this.focused = true; }
   matches(selector) {
     const attribute = selector.match(/\[([^\]]+)\]$/);
     if (attribute) {
@@ -436,6 +437,77 @@ test('one explicit point click preserves broad state and renders readonly Tourvi
   page.sort.dispatchEvent({ type: 'change' });
   await tick();
   assert.equal(page.results.querySelector('.anex-search3-tv-offers').open, true);
+});
+
+test('all retained point offers can be revealed locally in price order and survive rerender', async () => {
+  const page = await pointReady();
+  const tours = Array.from({ length: 53 }, (_, i) => ({ id: 'tv-' + i, date: '2027-02-01', nights: 7,
+    price: 50000 + i, meal: 'AI', roomType: 'Room ' + i }));
+  const returned = [pointHotel(900, tours.slice().reverse())], original = plain(returned);
+  page.click(pointButton(page)); await tick(); await pointFinish(page, returned);
+  const offers = () => page.results.querySelector('.anex-search3-tv-offers');
+  const rows = () => offers().querySelectorAll('.anex-search3-offer');
+  const more = () => offers().querySelector('.anex-search3-tv-more');
+  const requests = page.requests.length;
+  assert.equal(rows().length, 20); assert.match(more().textContent, /ещё 20/);
+  page.click(more());
+  assert.equal(rows().length, 40); assert.match(more().textContent, /ещё 13/);
+  assert.equal(offers().open, true);
+  page.sort.dispatchEvent({ type: 'change' }); await tick();
+  assert.equal(rows().length, 40, 'revealed count is preserved when cards are sorted');
+  const lastButton = more(); page.document.activeElement = lastButton;
+  page.click(lastButton);
+  assert.equal(rows().length, 53); assert.equal(more(), null);
+  assert.match(rows()[0].textContent, /Room 0/); assert.match(rows()[52].textContent, /Room 52/);
+  assert.match(offers().querySelector('.anex-search3-tv-visible').textContent, /53 из 53/);
+  assert.equal(offers().querySelector('.anex-search3-tv-visible').tabIndex, -1, 'final reveal leaves a focus target');
+  assert.equal(offers().querySelector('.anex-search3-tv-visible').focused, true);
+  assert.equal(page.requests.length, requests, 'revealing and sorting never request another supplier result');
+  assert.equal(page.lifecycle.searchId, 1001); assert.equal(page.window.V2Runtime.state.searchId, 777);
+  assert.deepEqual(returned, original);
+});
+
+test('point reveal is per hotel and resets only with a new search generation', async () => {
+  const page = await pointReady(preview(), [hotel({ local_id: 900 }), hotel({ local_id: 901 })]);
+  const tours = Array.from({ length: 21 }, (_, i) => ({ date: '2027-02-01', nights: 7, price: 50000 + i, meal: 'AI' }));
+  const box = id => page.results.querySelector('[data-anex-search3-card="' + id + '"]').querySelector('.anex-search3-tv-offers');
+  page.click(pointButton(page, 900)); await tick(); await pointFinish(page, [pointHotel(900, tours)]);
+  const oldMore = box(900).querySelector('.anex-search3-tv-more');
+  page.click(oldMore);
+  page.click(pointButton(page, 901)); await tick(); await pointFinish(page, [pointHotel(901, tours)], 9901);
+  assert.equal(box(900).querySelectorAll('.anex-search3-offer').length, 21);
+  assert.equal(box(901).querySelectorAll('.anex-search3-offer').length, 20);
+  page.reset(2, snapshot());
+  page.requests.at(-1).respond(response(2, [hotel({ local_id: 900 })]));
+  page.complete([{ id: 245 }]); await tick();
+  page.click(oldMore);
+  page.click(pointButton(page, 900)); await tick(); await pointFinish(page, [pointHotel(900, tours)], 9910);
+  assert.equal(box(900).querySelectorAll('.anex-search3-offer').length, 20, 'old reveal does not leak into the new search');
+});
+
+test('revealing point offers obeys current meal and budget and retains offers after reset', async () => {
+  const page = preview(true), broad = [{ id: 245, price: 80000, tours: [{ price: 80000, meal: 'AI' }] }];
+  page.lifecycle.params = () => plain(page.lifecycle.snapshot || {});
+  page.reset(1, snapshot()); page.window.V2Results.render(broad);
+  page.requests[0].respond(response(1, [hotel({ local_id: 900 })])); page.complete(broad); await tick();
+  const tours = Array.from({ length: 63 }, (_, i) => ({ id: 'tv-'+i, date: '2027-02-01', nights: 7,
+    price: i < 10 ? 40000+i : 50000+i*100, meal: i < 10 ? 'HB' : 'AI' }));
+  page.click(pointButton(page)); await tick(); await pointFinish(page, [pointHotel(900, tours)]);
+  const box = () => page.results.querySelector('.anex-search3-tv-offers');
+  page.click(box().querySelector('.anex-search3-tv-more'));
+  const requests = page.requests.length;
+  page.controls.price.value = '55000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.meal.find(input => input.value === 'ai') }); await tick();
+  assert.match(box().querySelector('.anex-search3-tv-visible').textContent, /40 из 41/);
+  page.click(box().querySelector('.anex-search3-tv-more'));
+  assert.equal(box().querySelectorAll('.anex-search3-offer').length, 41);
+  assert.doesNotMatch(box().textContent, /HB|55\s*100/);
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset }); await tick();
+  assert.match(box().querySelector('.anex-search3-tv-visible').textContent, /41 из 63/);
+  page.click(box().querySelector('.anex-search3-tv-more')); page.click(box().querySelector('.anex-search3-tv-more'));
+  assert.equal(box().querySelectorAll('.anex-search3-offer').length, 63);
+  assert.equal(page.requests.length, requests);
 });
 
 test('point starts are one-shot after unknown or empty outcomes and limited to three unique hotels', async () => {

@@ -125,7 +125,7 @@
   let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', dates = '', panel = null;
   let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null, renderQueued = false;
   const openDescriptions = new Set(), failedImages = new Set();
-  const pointChecks = new Map(), openPointOffers = new Set();
+  const pointChecks = new Map(), openPointOffers = new Set(), pointVisible = new Map();
   let pointPending = null, broadComplete = false, broadHotelIds = new Set();
   let calendarBox = null, calendarObserver = null;
   let sourceMode = 'all';
@@ -382,14 +382,39 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       details.setAttribute('data-anex-search3-row', String(id));
       details.open = openPointOffers.has(id);
       details.appendChild(node('summary', '', 'Предложения Tourvisor: ' + value.tours.length + ' · от ' + money.format(value.price) + ' ₽'));
-      value.tours.slice(0, 20).forEach(tour => {
+      const offerRow = tour => {
         const row = node('div', 'anex-search3-offer');
         row.appendChild(node('p', '', [pointText(tour.date), tour.nights + ' ноч.', pointText(tour.meal),
           pointText(tour.roomType), pointText(tour.placement), pointText(tour.operator)].filter(Boolean).join(' · ')));
         row.appendChild(node('strong', '', money.format(Number(tour.price)) + ' ₽'));
-        details.appendChild(row);
-      });
-      if (value.tours.length > 20) details.appendChild(node('p', 'anex-search3-note', 'Показаны первые 20 предложений по цене.'));
+        return row;
+      };
+      let shown = Math.min(pointVisible.get(id) || 20, value.tours.length);
+      value.tours.slice(0, shown).forEach(tour => details.appendChild(offerRow(tour)));
+      const count = node('p', 'anex-search3-tv-visible anex-search3-note');
+      count.setAttribute('role', 'status');
+      const updateCount = () => { count.textContent = 'Показано ' + shown + ' из ' + value.tours.length + ' предложений'; };
+      updateCount();
+      if (shown < value.tours.length) {
+        const more = node('button', 'anex-search3-tv-check anex-search3-tv-more');
+        more.type = 'button';
+        const updateLabel = () => { more.textContent = 'Показать ещё ' + Math.min(20, value.tours.length - shown); };
+        updateLabel();
+        more.addEventListener('click', () => {
+          if (!document.contains(box) || !isCurrent(active, window.V2SearchLifecycle)) return;
+          const next = Math.min(shown + 20, value.tours.length);
+          value.tours.slice(shown, next).forEach(tour => details.insertBefore(offerRow(tour), more));
+          shown = next; pointVisible.set(id, shown); updateCount();
+          if (shown < value.tours.length) updateLabel();
+          else {
+            const focused = document.activeElement === more;
+            more.remove();
+            if (focused) { count.tabIndex = -1; count.focus({ preventScroll: true }); }
+          }
+        });
+        details.appendChild(more);
+      }
+      details.appendChild(count);
       details.appendChild(node('p', 'anex-search3-note', 'Цены из отдельной проверки Tourvisor по вашим условиям. Итоговую стоимость подтвердит менеджер.'));
       box.appendChild(details);
     } else {
@@ -637,7 +662,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     controller = null;
     active = null; hotels = []; message = ''; dates = ''; sourceMode = 'all'; clear(); openHotels.clear(); openDescriptions.clear(); failedImages.clear();
     pointChecks.forEach(check => { check.abort.abort(); clearTimeout(check.timer); if (check.wake) check.wake(); });
-    pointChecks.clear(); pointPending = null; openPointOffers.clear(); broadComplete = false; broadHotelIds = new Set();
+    pointChecks.clear(); pointPending = null; openPointOffers.clear(); pointVisible.clear(); broadComplete = false; broadHotelIds = new Set();
     updateSupplemental();
     tvItems = []; tvCards = [];
     const existing = window.V2Results && window.V2Results.state;
