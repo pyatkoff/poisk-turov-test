@@ -14,7 +14,49 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — local loaded-hotel filter #1668 — 2026-09-09
+## Current product checkpoint — exact local category facet #1672 — 2026-09-09
+
+Source `d69bb12907cf6bb890f9f86565b16a173825d96d`, tree
+`c6ab0497bb375ed5effb10ef79908c055a981c6a`; checked release
+`b6c1837a817562100355586205366d5bad6c208a`. The single loaded-results filter
+owner now combines normalized hotel-name matching with exact category matching
+before one `card.hidden` assignment. Category appears only when every current
+normalized hotel has a positive category and at least two distinct categories
+exist. It survives sort, resets on new search, and hides/resets as soon as a
+progressive result set becomes incomplete. No supplier/API/lead call was added and
+retired filter owners remain excluded.
+
+The fresh Turkey/Egypt/UAE audit covered234 hotels /843 tours. Category was complete
+for220 hotels (94.0%), rating212 (90.6%), sea distance101 (43.2%), and currently
+displayed representative meal210 (89.7%). Raw `meal.fullName` was present for all843
+tours, but the canonical renderer does not yet normalize that field, so rating,
+sea-distance and meal facets remain hidden rather than misleading.
+
+Eight assets are **14677→15986 raw B (+1309)**; eager route
+**86030→87339 B**, full scenario **128448→129757 B**, selected phase unchanged at
+42418 B. Security `34312454899` and exact runs `34312455035` / `34312459604`
+passed. Reused artifact `10088877773`, digest
+`sha256:6f905758b370e581b618b16bd80cb9c3b9c01f094c82e5e38cab9ea16fd5fe6b`.
+Focused CI covered16 result states at375/760/761/999/1000/1024/1025/1440,
+raw/served parity, exact match, sort persistence, incomplete reset/hide, native
+entry375/1440, no overflow, external calls0 and leads0.
+
+Deploy `34312777229` through closed-without-merge control #1673 published exact
+source only to the isolated preview. Evidence `10088967073`, digest
+`sha256:272ec5c425952db66cef1cc7d0d05ef7b35d650488b3ff79c2113c3ab3da8c15`.
+All9 routes, noindex, disabled production leads, counter0, rollback and unchanged
+production fingerprints passed. Live1363 showed the exact 2/3/4-star facet at25
+complete hotels, then its fail-closed disappearance after100 hotels introduced
+incomplete category data; overflow0 and real leads0. Main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; main/production unchanged.
+
+Next: add `meal.fullName` to the canonical renderer text normalization with focused
+source/fixture coverage and no price/API/lead/lifecycle change; then re-audit a
+truthful meal facet. Physical Safari/safe-area, full site/SEO/lead journey and owner
+production acceptance remain deferred. Audit:
+`docs/project/search3-local-category-facet-product.json`.
+
+## Previous product checkpoint — local loaded-hotel filter #1668 — 2026-09-09
 
 Source `0fedbcb5ffb426af4069305d06f446a571dc5254`, tree
 `f9f462c682b328786e4b4e5393d3c52f00f8041f`; checked release
@@ -35,16 +77,14 @@ passed. Artifact `10087423395`, digest
 Browser assertions cover 375/760/761/999/1000/1024/1025/1440, normalized match,
 truthful count, sort persistence, clear/reset, raw/served parity and no overflow.
 
-The checked source is not published. Control PRs #1669/#1670 were closed without
-merge or deploy because connector-created ref/content updates emitted PR Security
-checks but no push event for the one-shot workflow. The exact artifact remains
-reusable. Published preview therefore stays on `049ceba47ee170699cc7792b050c7af47224c7ee`;
-main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`, production unchanged,
-real leads0. Audit: `docs/project/search3-local-hotel-filter-product.json`.
+The first connector-only controls did not emit the needed push event, but a later
+push-control retry `96d18e15a9fd3afbbd5acb09408756c3ee2736b2` did publish this exact
+source through successful deploy `34309036334`. Evidence artifact `10087692143`,
+digest `sha256:159d9f76bdf1ae19b78702c9633a314ed2a53efc0e824364500e73fe4e7b3de5`.
+This corrects the earlier not-published note. Main/production unchanged, real leads0.
+Audit: `docs/project/search3-local-hotel-filter-product.json`.
 
-Next: audit completeness of rating/category/sea-distance/meal across the loaded
-payload. Expose at most one useful local facet only when every loaded card has
-complete data; do not restore retired filter layers or duplicate ANEX work.
+The next step from this checkpoint was completed by #1672 above.
 
 ## Current product checkpoint — truthful current-price calendar #1665 — 2026-09-09
 

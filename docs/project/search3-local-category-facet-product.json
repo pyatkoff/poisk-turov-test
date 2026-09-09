@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "task": "S3_PRODUCT_USEFUL_FEATURES",
+  "source": {
+    "pr": 1672,
+    "sha": "d69bb12907cf6bb890f9f86565b16a173825d96d",
+    "tree": "c6ab0497bb375ed5effb10ef79908c055a981c6a",
+    "release_integration_sha": "b6c1837a817562100355586205366d5bad6c208a"
+  },
+  "decision": {
+    "implemented": "Exact hotel category facet inside the existing loaded-results filter owner",
+    "visibility_rule": "Show only when every currently loaded normalized hotel has a positive category and at least two distinct categories exist",
+    "filter_rule": "Combine normalized hotel-name and exact category predicates before the owner's single card.hidden assignment",
+    "progressive_rule": "Reset and hide the category control as soon as an incomplete progressive result set is received",
+    "not_implemented": [
+      "rating facet because only 212/234 audited hotels were complete",
+      "sea-distance facet because only 101/234 audited hotels were complete",
+      "meal facet because the current renderer does not yet normalize meal.fullName"
+    ],
+    "new_supplier_requests": 0,
+    "new_lead_requests": 0,
+    "legacy_filter_layers_restored": false
+  },
+  "fresh_supplier_audit": {
+    "observed_at": "2026-09-09",
+    "searches": [
+      {"country": "Turkey", "hotels": 100, "tours": 401},
+      {"country": "Egypt", "hotels": 34, "tours": 199},
+      {"country": "UAE", "hotels": 100, "tours": 243}
+    ],
+    "totals": {"hotels": 234, "tours": 843},
+    "completeness": {
+      "category": {"hotels": 220, "percent": 94.0},
+      "rating": {"hotels": 212, "percent": 90.6},
+      "sea_distance": {"hotels": 101, "percent": 43.2},
+      "displayed_representative_meal": {"hotels": 210, "percent": 89.7},
+      "displayed_all_tours_meal": {"hotels": 202, "percent": 86.3},
+      "raw_meal_full_name": {"tours": 843, "percent": 100.0}
+    }
+  },
+  "size_raw_bytes": {
+    "eight_search3_assets": {"before": 14677, "after": 15986, "delta": 1309},
+    "eager_route_css_js": {"before": 86030, "after": 87339, "delta": 1309},
+    "full_scenario_css_js": {"before": 128448, "after": 129757, "delta": 1309},
+    "selected_phase_css_js": {"before": 42418, "after": 42418, "delta": 0},
+    "interpretation": "Intentional functional growth in the eager result-filter owner; no deletion or lazy-loading saving is claimed."
+  },
+  "validation": {
+    "security": {"run": 34312454899, "conclusion": "success"},
+    "exact_artifact": {
+      "runs": [34312455035, 34312459604],
+      "conclusion": "success",
+      "artifact_id": 10088877773,
+      "artifact_digest": "sha256:6f905758b370e581b618b16bd80cb9c3b9c01f094c82e5e38cab9ea16fd5fe6b",
+      "archive_sha256": "52cdbfa67198667b09fac6549effa93f09e9f3d5e2550289b1b30837ddfe6251",
+      "manifest_sha256": "8aea01581c942af0863e126beadf31c81a5bad92b7a06a08b34ce8ec1d897109",
+      "payload_sha256": "b3b276a246792bcd6126366ca47f7711df8f1bdc7ff7ec4b1eda96f530d0fa0c",
+      "payload_file_count": 717
+    },
+    "focused_browser": {
+      "states": 16,
+      "widths": [375, 760, 761, 999, 1000, 1024, 1025, 1440],
+      "raw_served_parity": true,
+      "native_entry_widths": [375, 1440],
+      "category_exact_match": true,
+      "sort_persistence": true,
+      "new_search_reset": true,
+      "incomplete_payload_hides_and_resets": true,
+      "horizontal_overflow": false,
+      "external_calls": 0,
+      "real_leads_submitted": 0
+    }
+  },
+  "publication": {
+    "scope": "/_preview/search3-site-candidate/",
+    "control_pr": 1673,
+    "control_sha": "f334340dd2167d0c8dd097545a548dfa77461fd9",
+    "control_closed_without_merge": true,
+    "deploy_run": 34312777229,
+    "conclusion": "success",
+    "deployment_evidence_artifact": 10088967073,
+    "deployment_evidence_digest": "sha256:272ec5c425952db66cef1cc7d0d05ef7b35d650488b3ff79c2113c3ab3da8c15",
+    "source_sha": "d69bb12907cf6bb890f9f86565b16a173825d96d",
+    "release_pin_sha": "b6c1837a817562100355586205366d5bad6c208a",
+    "route_count": 9,
+    "robots": "noindex,follow",
+    "production_leads_enabled": false,
+    "metrika_counter": 0,
+    "rollback_backup_retained": true,
+    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+    "production_fingerprint_unchanged": true,
+    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_changed": false,
+    "production_changed": false,
+    "real_leads_submitted": 0
+  },
+  "live_verification": {
+    "viewport": {"width": 1363, "height": 936, "device_pixel_ratio": 1},
+    "entry": "Moscow/Turkey catalogs loaded; exact versioned Search3 filter asset served; noindex present; document overflow 0px.",
+    "progressive_complete_set": "At 25 hotels the control was visible with exact 2-star, 3-star and 4-star options.",
+    "progressive_incomplete_set": "At 100 hotels an incomplete category made the control unavailable, confirming the fail-closed reset/hide rule.",
+    "lead_submitted": false,
+    "scope": "Short targeted live check only; exact CI owns mobile/breakpoint coverage."
+  },
+  "deferred": [
+    "physical Safari and safe-area verification",
+    "owner visual and design acceptance for production",
+    "full lead, site, SEO and responsive journey",
+    "rating and sea-distance facets until complete",
+    "meal facet until canonical meal.fullName normalization is fixed and re-audited"
+  ],
+  "next_action": "Repair canonical meal text normalization so meal.fullName is displayed when present, add focused source/fixture coverage without changing price/API/lead/lifecycle behavior, then re-audit a truthful meal facet."
+}
