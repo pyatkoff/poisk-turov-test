@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "scope": "isolated_owner_panel_and_owner_authorized_tourvisor_browser",
+  "issue": 1647,
+  "pr": 1756,
+  "source_sha": "f1c6e43c729f79207d5e7cd3fcd7d62004ddb108",
+  "published_source_sha": "1d2c3592aa2c18d2b3ab434505e4a4cbdf8bfdd9",
+  "publication": {
+    "run_id": 34355057656,
+    "job_id": 102477500412,
+    "artifact_id": 10105375379,
+    "artifact_digest": "sha256:048ee725c83cf7aede6885f797b503b8a64746b32684420bf477d953e39cab34",
+    "reserved_artifact_id": 10105370401,
+    "restored_artifact_id": 10104219046,
+    "report_sha256": "1e06632b8fd323b736a9e26b5139d4ffebcd5504d0d98ac6d937daed4abd4a37",
+    "checkpoint": "anex-owner-links-checkpoint.json",
+    "account_preserved": true,
+    "config_preserved": true,
+    "owner_activated": true,
+    "write_enabled": false,
+    "database_calls": 0,
+    "supplier_requests": 0,
+    "ssh_attempts": 1,
+    "independent_zip_download": false,
+    "runtime_files": {
+      "app/admin/anex-review/access.php": "ee2fe0f9f16506e80fea95ed4287cf1c465f1405bc05d3a0a08e1e4cf7a1e817",
+      "app/admin/anex-review/dossier-store.php": "11a76e43415db0bb6de22aad94c010f5e66f6688f02396fb1369dcbcaba97d3f",
+      "app/admin/anex-review/owner-auth.php": "6f81a21490f641a9310dbf4594d1d95d43727d88989ee3f5dfb70d8db1c45cab",
+      "app/admin/anex-review/owner-login.php": "2bca9668943912deab20e68a16158aec2124d7dc90a960fee4dec40941076118",
+      "app/admin/anex-review/public-cards.json": "8af1e10bc997cb9f27fc4705344b96ab90b3c542361dc86e2ab632712f30bccc",
+      "app/admin/anex-review/service.php": "2c2f4166ea067dfa6d68ab8698550c006a5d29649b0281cef3af5391adfe874b",
+      "app/admin/anex-review/view.php": "7b9a6373506bb3a01bdf25407cccf053db21c85391238c6e31cc9516e212ce93",
+      "v2/anex-hotel-review.php": "ab39063ffbb148230c52cc217d98a407d255c3fc2c16899b62a7b4093ad9e62c",
+      "v2/anex-owner-login.php": "e0503c4f95793cb3caf84452460bb6b174655d6e3d12a2e69eda5c6841cc9909"
+    }
+  },
+  "feature": {
+    "candidate_identity": "current local catalog_hotel_id and country_id",
+    "external_origin": "https://tourvisor.ru/search.php",
+    "defaults": "Owner-provided example, explicitly labelled; not attributed to stored search",
+    "editable_criteria": [
+      "date",
+      "nights",
+      "adults",
+      "meal_id",
+      "departure_id"
+    ],
+    "render_requests": 0,
+    "automatic_acceptance": false
+  },
+  "checks": {
+    "tourvisor_link_php": 42,
+    "publisher_tests": 9,
+    "mysql_panel": 96,
+    "durable_dossier": 29,
+    "chromium_widths": [
+      1280,
+      820,
+      390,
+      320
+    ],
+    "overflow": false,
+    "synthetic_identity": true,
+    "live_owner_panel_browser": false,
+    "manual_panel_screenshot_review": "deferred",
+    "physical_safari": "deferred"
+  },
+  "browser_control": {
+    "date_utc": "2026-09-09",
+    "authorization": "Owner volunteered and completed secure browserAuth for Tourvisor PRO",
+    "source_page": "https://pro.tourvisor.ru/search",
+    "new_pro_searches": 1,
+    "initial_parameters": {
+      "operator": "Anex only",
+      "hotel_name": "Movenpick Waterpark Resort & Spa Soma Bay",
+      "local_tourvisor_id": 21477,
+      "departure": "Moscow",
+      "country": "Egypt",
+      "date_from": "2026-09-18",
+      "date_to": "2026-09-18",
+      "nights": 8,
+      "adults": 2,
+      "meal": "AI and better",
+      "charter_only": false
+    },
+    "visible_offer": {
+      "operator": "Anex",
+      "date": "2026-09-18",
+      "nights": 8,
+      "adults": 2,
+      "room": "classic mountain / garden view",
+      "meal": "AI - Все Включено",
+      "displayed_rub": 185837,
+      "final_price_confirmed": false
+    },
+    "evidence": {
+      "method": "Read href of visible operator link in selected offer details",
+      "link_label": "Перейти в кабинет туроператора",
+      "destination_origin": "https://agent.anextour.ru",
+      "destination_path": "/search/tour",
+      "hotel_parameter": "HOTELLIST",
+      "anex_id": 5200,
+      "country_parameter": {
+        "STATEINC": 11
+      },
+      "matches_previously_accepted_pair": true,
+      "operator_destination_not_opened": true
+    },
+    "new_mappings": 0,
+    "crm_submissions": 0,
+    "bookings": 0,
+    "limitation": "One known control confirms this link route and namespace for this offer. Do not infer other IDs from names, prices, availability, tour keys or unrelated URL parameters.",
+    "next_step": "Bounded review of unresolved local candidates in the authenticated Tourvisor UI; retain candidate ID/name/country and visible ANEX operator href, check registry/evidence before any separately approved append-only decision. No wholesale browser scanning or automatic acceptance."
+  }
+}

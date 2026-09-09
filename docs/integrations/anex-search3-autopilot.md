@@ -24,8 +24,8 @@ Inherited root `AUTOPILOT_STATE.json` этой ветки содержит ст�
 | Задача / владелец | Готово | Следующий доступный шаг / граница |
 | --- | --- | --- |
 | SEARCH #1646 | Опубликованы All Inclusive/retention/catalog cards/point-TV/reveal #1716. Immutable point searchId/offer context подготовлен в draft1731,50 Node и CI passed; НЕ опубликован | Не повторять подготовку. Согласованный handoff в свежий SEARCH controller/selected context и lead race guard; draft1731 не включает выбор. Внешний lead-контракт прежний, удержанный snapshot не authority: getter перепроверяется при действии. Проекция ANEX тоже требует полного offer/search context; поля не выдумывать |
-| INT #1647 | PR1728: пять таблиц/263 persistent досье/readback. PR1741/1747: отдельный owner login. #1752 исправил native form Origin (no-referrer→same-origin); published e5b086b2/run34352245496/artifact10104219046. Account/config preserved, SSH1/SQL0/supplier0; HTTP24/publisher5/Security/build passed | Владелец активирует доступ и задаёт пароль по приватной одноразовой ссылке. Реальный login/HTTP/readback ещё не подтверждены: web tool отклонил URL non-retryable, отказ не обходить. Write=false. Setup/publication/storage/repair не повторять; далее verified owner session и включение решений по gates. Audit: reports/anex-owner-login-20260909.json |
-| INT #1717 | План будущей Андромеды | Получить официальный API-контракт/доступ; затем выключенный adapter и ограниченные fixtures. Не копировать ANEX лимиты/параметры |
+| INT #1647 | PR1728: 263 persistent досье. Owner login исправлен #1752; аккаунт уже активирован. #1756: опубликованы внешние ссылки Tourvisor для текущих local кандидатов, редактируемые условия из примера владельца; source1d2c3592/run34355057656/artifact10105375379. Account/config preserved, SQL0/supplier0, write=false; 42 link/publisher9 и panel/browser CI passed | В Tourvisor PRO через безопасный вход проверена контрольная пара local21477→ANEX5200 по видимой ссылке оператора HOTELLIST=5200. Далее ограниченный разбор спорных кандидатов с сохранением прямых ссылок как доказательств, без автопринятия. Реальный браузер панели/физический Safari deferred; прежний отказ URL не обходить. Не повторять setup/storage/repair/links publication. Audit: reports/anex-review-tourvisor-links-20260909.json |
+| INT #1717 | Владелец передал официальный gateway и ссылки на документацию Andromeda; фактический пароль не передан | Чтение указанных docs отклонено web URL policy; отказ не обходить. Нужен доступный официальный PDF/HTML контракт и безопасное подключение credentials, затем выключенный adapter/fixtures. Не отправлять пароль в публичный digest-helper и не копировать ANEX лимиты |
 | INT #1685 | Отдельная работа по составу цены/топливному сбору, собственный diagnostic draft | Прочитать свежий отдельный checkpoint/PR перед действиями. Этот исполнитель не дублирует его запросы или изменения. Не утверждать final price/fuel по минимуму поиска |
 | Координация #996/#1493 | Четыре направления, один UI-владелец; общая модель в multi-provider-search-plan.md | Отдельный bounded handoff в свежую release; не merge старую ANEX-основу и не создавать третий renderer |
 
@@ -73,8 +73,10 @@ Live checkpoint/evidence не переписаны. Storage checkpoint completed
 Report canonical sha256 `c93da26e0792d1af94712ae0bd3f016e680fe3907fd9e94256dee52880950cb9`.
 Файлы проверены обратно на runner; независимое скачивание ZIP не заявляется.
 Readiness34333956876/10096966061 остаётся историей до переноса, не текущим отсутствием таблиц.
-CLI auth env=false и существующий Bitrix prolog/CSRF не устанавливают owner authority.
-Панель не опубликована; trusted adapter/реальный вход остаются отдельными gates.
+Историческая CLI-инвентаризация не определяла web authority; установлен отдельный owner auth.
+Приватный runtime панели опубликован #1741/#1747/#1752/#1756, account activated=true
+подтверждён readback публикации #1756. Это не браузерная проверка панели; write=false.
+Сохранность account/config и всех прежних данных проверена, реальные решения ещё не включены.
 
 Исторический triage263 не равен свежим359 pending: это разные наборы/даты.
 25 пересечений его кандидатов с69 сохранёнными TV ID — приоритет, не25 новых связей.
