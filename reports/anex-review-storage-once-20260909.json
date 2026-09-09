@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-09",
+  "issue": 1647,
+  "scope": "INT own ANEX branch; persistent historic dossiers only",
+  "state": "implementation_checked_awaiting_workflow",
+  "schema_sha256": "712c83a682b62763f8daf710739e831fd1a2a8a604d39dac10bff4fa5a756c0e",
+  "triage_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a",
+  "bootstrap_artifact_id": 10097668551,
+  "expected_dossiers": 263,
+  "planned_tables": ["anex_review_state", "anex_review_pair_exclusions", "anex_review_audit", "anex_review_dossier_batches", "anex_review_dossiers"],
+  "checkpoint": "anex-review-storage-checkpoint.json",
+  "guards": ["reservation artifact before SQL", "executing recorded before SSH", "unknown outcomes never replay", "exact bootstrap lineage and schema/triage/row pins", "completed report and reservation readback without SQL", "existing schema manager and immutable archive; no alternate migration", "existing preservation hashes and per-ID readback"],
+  "checked": {"python_storage_tests": 15, "independent_code_review": "three findings addressed: semantic pins, schema readiness, report restoration"},
+  "live_apply": "not_yet_executed",
+  "supplier_calls": 0,
+  "panel_published": false,
+  "write_enabled": false,
+  "next_action": "Run the checked exact-source review workflow once, verify report/checkpoint/artifact and DB preservation, then trusted owner auth and isolated panel manifest.",
+  "search_handoff": "Point comparison loses its local searchId after success; shared lead assembly and race guard use broad searchId. Coordinate current release controller/selected context under #996 before enabling point selection. Do not overwrite fresh release with the old ANEX controller. No transport or field mapping changed."
+}

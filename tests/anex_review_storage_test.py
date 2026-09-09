@@ -11,7 +11,15 @@ sys.path.insert(0,str(ROOT/'scripts/diagnostics'))
 import anex_review_storage as storage
 
 class StorageTests(unittest.TestCase):
+    def setUp(self):
+        env=patch.dict(storage.os.environ,{'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'1'})
+        env.start();self.addCleanup(env.stop)
+
     def fixture(self, directory):
+        # Fixtures never inherit an explicit live apply manifest.
+        plan_path=directory/'inspect-plan.json'
+        plan_path.write_text(json.dumps({'action':'inspect','schema_sha256':storage.schema_files()[1]}))
+        plan_patch=patch.object(storage,'PLAN',plan_path);plan_patch.start();self.addCleanup(plan_patch.stop)
         cp={'inherited':[{'external_id':i} for i in range(1,91)],
             'rows':[{'external_id':i} for i in range(91,293)],'completed_total':292,
             'in_flight':[],'batch_needs_finalization':False}
@@ -43,8 +51,85 @@ class StorageTests(unittest.TestCase):
             d=Path(temp);self.fixture(d)
             plan={'action':'apply','schema_sha256':storage.schema_files()[1]}
             with self.assertRaisesRegex(ValueError,'pinned'):storage.prepare(d,'b'*40,plan)
-            plan.update(triage_sha256=storage.digest((d/'anex-observed-hotel-triage.json').read_bytes()),readiness_schema_sha256=plan['schema_sha256'])
+            plan.update(triage_sha256=storage.digest((d/'anex-observed-hotel-triage.json').read_bytes()),readiness_schema_sha256=plan['schema_sha256'],bootstrap_artifact_id=10094445724,expected_rows=0)
             self.assertEqual(storage.prepare(d,'b'*40,plan)[0]['action'],'apply')
+
+    def apply_plan(self,d):
+        return {'action':'apply','schema_sha256':storage.schema_files()[1],
+                'readiness_schema_sha256':storage.schema_files()[1],
+                'triage_sha256':storage.digest((d/'anex-observed-hotel-triage.json').read_bytes()),
+                'bootstrap_artifact_id':10094445724,'expected_rows':0}
+
+    def result(self,reservation):
+        preserved={k:{'count':0,'sha256':'a'*64} for k in ['catalog_hotels','anex_hotels',
+          'anex_hotel_auto_matches','anex_hotel_candidates','anex_hotel_search_mappings','anex_hotel_decisions',
+          'anex_review_state','anex_review_pair_exclusions','anex_review_audit']}
+        return {'status':'ok','supplier_requests':0,'source_sha':'b'*40,'panel_published':False,
+          'schema':{'schema_sha256':reservation['schema_sha256'],'preserved':True,'read_only':False,
+                    'status':'ready','after_schema':{'ready':True,'missing':[]}},
+          'import':{'status':'stored','artifact_id':10094445724,'rows':0,'verified_ids':0,'inserted':0,
+                    'before':preserved,'after':json.loads(json.dumps(preserved))}}
+
+    def test_apply_finalization_and_no_sql_on_later_restore(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d);plan=self.apply_plan(d)
+            reservation,_=storage.prepare(d,'b'*40,plan)
+            self.assertEqual(json.loads((d/storage.CHECKPOINT).read_bytes())['state'],'reserved')
+            with patch.object(storage,'execute',return_value=self.result(reservation)) as execute:
+                storage.run_operation(d,'b'*40,plan);self.assertEqual(execute.call_count,1)
+                self.assertEqual(json.loads((d/storage.CHECKPOINT).read_bytes())['state'],'completed')
+                # New live checkpoint, source and artifact do not repackage completed dossiers.
+                (d/'anex-observed-hotel-checkpoint.json').unlink()
+                (d/'anex-observed-hotel-triage.json').unlink()
+                (d/'anex-review-storage-report.json').unlink()
+                (d/'anex-checkpoint-source.json').write_text(json.dumps({'artifact_id':99999999999}))
+                with patch.dict(storage.os.environ,{'GITHUB_RUN_ATTEMPT':'2'}):
+                    storage.prepare(d,'c'*40,plan)
+                    self.assertEqual(storage.run_operation(d,'c'*40,plan)['status'],'already_finalized')
+                self.assertEqual(execute.call_count,1)
+                self.assertEqual(json.loads((d/'anex-review-storage-report.json').read_bytes())['import']['verified_ids'],0)
+
+    def test_reserved_previous_attempt_is_unknown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d);plan=self.apply_plan(d);storage.prepare(d,'b'*40,plan)
+            with patch.dict(storage.os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),patch.object(storage,'execute') as execute:
+                with self.assertRaisesRegex(ValueError,'outcome unknown'):storage.run_operation(d,'b'*40,plan)
+                execute.assert_not_called()
+
+    def test_interrupted_operation_cannot_repeat_even_in_same_job(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d);plan=self.apply_plan(d);storage.prepare(d,'b'*40,plan)
+            with patch.object(storage,'execute',side_effect=TimeoutError('unknown')) as execute:
+                with self.assertRaises(TimeoutError):storage.run_operation(d,'b'*40,plan)
+                self.assertEqual(json.loads((d/storage.CHECKPOINT).read_bytes())['state'],'executing')
+                with self.assertRaisesRegex(ValueError,'outcome unknown'):storage.run_operation(d,'b'*40,plan)
+                self.assertEqual(execute.call_count,1)
+
+    def test_missing_checkpoint_after_bootstrap_and_partial_write_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d);plan=self.apply_plan(d)
+            (d/'anex-checkpoint-source.json').write_text(json.dumps({'artifact_id':99999999999}))
+            with self.assertRaisesRegex(ValueError,'lineage'):storage.prepare(d,'b'*40,plan)
+            (d/storage.CHECKPOINT).with_suffix('.pending').write_bytes(b'{')
+            with self.assertRaisesRegex(ValueError,'outcome unknown'):storage.prepare(d,'b'*40,plan)
+
+    def test_completion_requires_readback_and_preservation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d);plan=self.apply_plan(d);reservation,_=storage.prepare(d,'b'*40,plan)
+            report=self.result(reservation);report['import']['after']['anex_hotel_decisions']['count']=1
+            with patch.object(storage,'execute',return_value=report):
+                with self.assertRaisesRegex(ValueError,'preservation'):storage.run_operation(d,'b'*40,plan)
+            self.assertEqual(json.loads((d/storage.CHECKPOINT).read_bytes())['state'],'executing')
+
+    def test_completed_report_corruption_and_plan_change_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d);plan=self.apply_plan(d);reservation,_=storage.prepare(d,'b'*40,plan)
+            with patch.object(storage,'execute',return_value=self.result(reservation)):storage.run_operation(d,'b'*40,plan)
+            changed=dict(plan,expected_rows=1)
+            with self.assertRaisesRegex(ValueError,'checkpoint mismatch'):storage.prepare(d,'b'*40,changed)
+            cp=json.loads((d/storage.CHECKPOINT).read_bytes());cp['report']['import']['verified_ids']=1
+            (d/storage.CHECKPOINT).write_text(json.dumps(cp))
+            with self.assertRaisesRegex(ValueError,'completion report mismatch'):storage.prepare(d,'b'*40,plan)
     def test_inflight_and_checkpoint_mismatch(self):
         with tempfile.TemporaryDirectory() as temp:
             d=Path(temp);cp,_=self.fixture(d);cp['in_flight']=[1]

@@ -13,6 +13,7 @@ import anex_search3_gap_queue as gaps
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAN = Path(__file__).with_name('anex_review_storage_plan.json')
+CHECKPOINT = 'anex-review-storage-checkpoint.json'
 SAVED_SOURCES = {
     'anex-paired-search-v2-checkpoint.json': ('013a231497da38399159167c25ebaa0aeb01079d776d7370d163a61bdc90603a', ('tv_day', 'tv_week')),
     'anex-segment-search-checkpoint.json': ('479bc48067e6147ade99f92e85462ebc73794044d5962f24cd4ff3a11f894cf8', ('tv_alanya', 'tv_5star', 'tv_alanya_5star'))}
@@ -20,6 +21,95 @@ SAVED_SOURCES = {
 
 def digest(raw):
     return hashlib.sha256(raw).hexdigest()
+
+
+def write_json(path, value):
+    raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n').encode()
+    # A partial write must not look like a missing checkpoint on the next invocation.
+    pending = path.with_suffix('.pending')
+    pending.write_bytes(raw)
+    if pending.read_bytes() != raw:
+        raise ValueError('storage checkpoint readback')
+    pending.replace(path)
+    if path.read_bytes() != raw:
+        raise ValueError('storage checkpoint readback')
+
+
+def execution_identity(source_sha):
+    run, attempt = os.environ.get('GITHUB_RUN_ID', ''), os.environ.get('GITHUB_RUN_ATTEMPT', '')
+    if not re.fullmatch('[1-9][0-9]*', run) or not re.fullmatch('[1-9][0-9]*', attempt):
+        raise ValueError('storage execution identity required')
+    return {'run_id': run, 'attempt': attempt, 'source_sha': source_sha}
+
+
+def apply_checkpoint(directory, plan):
+    path = directory / CHECKPOINT
+    if path.with_suffix('.pending').exists():
+        raise ValueError('storage outcome unknown')
+    if not path.exists():
+        return None
+    cp = json.loads(path.read_bytes())
+    if (cp.get('schema_version') != 1 or cp.get('plan_sha256') != gaps.digest(plan)
+            or cp.get('state') not in ('reserved', 'executing', 'completed')
+            or not isinstance(cp.get('reservation'), dict)
+            or cp.get('reservation_sha256') != gaps.digest(cp['reservation'])):
+        raise ValueError('storage checkpoint mismatch')
+    expected = {'action': 'apply', 'schema_sha256': plan['schema_sha256'],
+                'triage_sha256': plan['triage_sha256'], 'source_artifact_id': plan['bootstrap_artifact_id'],
+                'rows': plan['expected_rows'], 'supplier_requests': 0}
+    if any(cp['reservation'].get(k) != v for k, v in expected.items()):
+        raise ValueError('storage checkpoint mismatch')
+    if cp['state'] == 'completed':
+        if not isinstance(cp.get('report'), dict) or cp.get('report_sha256') != gaps.digest(cp['report']):
+            raise ValueError('storage completion report mismatch')
+        validate_completion(cp['report'], cp['reservation'])
+    return cp
+
+
+def validate_completion(report, reservation):
+    schema, imported = report.get('schema', {}), report.get('import', {})
+    if (report.get('status') != 'ok' or report.get('supplier_requests') != 0
+            or report.get('source_sha') != reservation['source_sha']
+            or report.get('reservation') != reservation or report.get('panel_published') is not False
+            or schema.get('schema_sha256') != reservation['schema_sha256']
+            or schema.get('status') != 'ready' or schema.get('after_schema', {}).get('ready') is not True
+            or schema.get('after_schema', {}).get('missing') != []
+            or schema.get('preserved') is not True or schema.get('read_only') is not False
+            or imported.get('status') not in ('stored', 'already_stored')
+            or imported.get('artifact_id') != reservation['source_artifact_id']
+            or imported.get('rows') != reservation['rows'] or imported.get('verified_ids') != reservation['rows']
+            or type(imported.get('inserted')) is not int or not 0 <= imported['inserted'] <= reservation['rows']):
+        raise ValueError('storage completion not verified')
+    before, after = imported.get('before', {}), imported.get('after', {})
+    required = {'catalog_hotels', 'anex_hotels', 'anex_hotel_auto_matches', 'anex_hotel_candidates',
+                'anex_hotel_search_mappings', 'anex_hotel_decisions', 'anex_review_state',
+                'anex_review_pair_exclusions', 'anex_review_audit'}
+    if not required.issubset(before) or set(before) != set(after) or any(before[k] != after[k] for k in required):
+        raise ValueError('storage preservation not verified')
+
+
+def run_operation(directory, source, plan=None):
+    original = json.loads((directory / 'anex-review-storage-reservation.json').read_bytes())
+    reservation, envelope = prepare(directory, source, plan)
+    if reservation != original:
+        raise ValueError('reserved source changed')
+    if envelope is None:
+        return {'status': 'already_finalized', 'new_database_operations': 0, 'supplier_requests': 0}
+    cp = None
+    if reservation['action'] == 'apply':
+        cp = json.loads((directory / CHECKPOINT).read_bytes())
+        cp['state'] = 'executing'
+        write_json(directory / CHECKPOINT, cp)
+    report = execute({'action': reservation['action'], 'source_sha': source, 'envelope': envelope})
+    report['reservation'] = reservation
+    write_json(directory / 'anex-review-storage-report.json', report)
+    if cp is not None:
+        validate_completion(report, reservation)
+        cp.update(state='completed', report=report, report_sha256=gaps.digest(report))
+        write_json(directory / CHECKPOINT, cp)
+    if report.get('status') != 'ok' or report.get('supplier_requests') != 0:
+        raise ValueError('storage failed')
+    return report
 
 
 def packer():
@@ -83,7 +173,25 @@ def prepare(directory, source_sha, plan=None):
     files, schema_sha = schema_files()
     if plan.get('action') not in ('inspect', 'apply') or plan.get('schema_sha256') != schema_sha:
         raise ValueError('review plan/schema mismatch')
+    ledger = None
+    if plan['action'] == 'apply':
+        if (type(plan.get('bootstrap_artifact_id')) is not int or plan['bootstrap_artifact_id'] <= 0
+                or type(plan.get('expected_rows')) is not int or not 0 <= plan['expected_rows'] <= 1000
+                or not re.fullmatch('[0-9a-f]{64}', plan.get('triage_sha256', ''))
+                or plan.get('readiness_schema_sha256') != schema_sha):
+            raise ValueError('apply requires pinned inspected evidence')
+        ledger = apply_checkpoint(directory, plan)
+        if ledger is not None:
+            if ledger['state'] == 'completed':
+                # Do not re-read a mutable live checkpoint or repackage historic evidence.
+                write_json(directory / 'anex-review-storage-reservation.json', ledger['reservation'])
+                write_json(directory / 'anex-review-storage-report.json', ledger['report'])
+                return ledger['reservation'], None
+            if ledger['state'] != 'reserved' or ledger.get('execution') != execution_identity(source_sha):
+                raise ValueError('storage outcome unknown')
     restored = json.loads((directory / 'anex-checkpoint-source.json').read_bytes())
+    if plan['action'] == 'apply' and restored['artifact_id'] != plan['bootstrap_artifact_id']:
+        raise ValueError('storage bootstrap lineage mismatch')
     cp = json.loads((directory / 'anex-observed-hotel-checkpoint.json').read_bytes())
     history = cp.get('inherited', []) + cp.get('rows', [])
     identifiers = [row.get('external_id') for row in history]
@@ -100,15 +208,21 @@ def prepare(directory, source_sha, plan=None):
         raise ValueError('triage checkpoint mismatch')
     if plan['action'] == 'apply' and (plan.get('triage_sha256') != sha or plan.get('readiness_schema_sha256') != schema_sha):
         raise ValueError('apply requires pinned inspected evidence')
+    if plan['action'] == 'apply' and plan['expected_rows'] != len(envelope['rows']):
+        raise ValueError('storage row count mismatch')
     reservation = {'schema_version': 1, 'source_sha': source_sha, 'action': plan['action'],
                    'schema_sha256': schema_sha, 'triage_sha256': sha,
                    'source_artifact_id': restored['artifact_id'], 'rows': len(envelope['rows']),
                    'formatted_bytes':len(raw),'compact_bytes':len(packer().canonical(json.loads(raw)).encode()),
                    'supplier_requests': 0}
-    path = directory / 'anex-review-storage-reservation.json'
-    path.write_text(json.dumps(reservation, sort_keys=True, indent=2) + '\n')
-    if json.loads(path.read_bytes()) != reservation:
-        raise ValueError('reservation readback failed')
+    if plan['action'] == 'apply':
+        next_ledger = {'schema_version': 1, 'plan_sha256': gaps.digest(plan), 'state': 'reserved',
+                       'execution': execution_identity(source_sha), 'reservation': reservation,
+                       'reservation_sha256': gaps.digest(reservation), 'envelope_sha256': gaps.digest(envelope)}
+        if ledger is not None and ledger != next_ledger:
+            raise ValueError('reserved source changed')
+        write_json(directory / CHECKPOINT, next_ledger)
+    write_json(directory / 'anex-review-storage-reservation.json', reservation)
     return reservation, envelope
 
 
@@ -159,27 +273,10 @@ def main():
     source = os.environ.get('GITHUB_SHA', '')
     if args.prepare:
         reservation, envelope = prepare(directory, source)
-        try:
-            saved_search_audit(directory, envelope)
-        except (ValueError, KeyError, OSError):
-            # Independent research cannot authorize writes or destroy storage progress.
-            failure={'status':'unavailable','reason':'saved_search_evidence_not_verified','new_supplier_requests':0,'new_bindings':0}
-            (directory/'anex-review-saved-search-audit.json').write_text(json.dumps(failure)+'\n')
-            print(json.dumps(failure))
+        # The historical saved-search audit is already finished. Storage is not a new search experiment.
         print(json.dumps(reservation)); return
-    original = json.loads((directory / 'anex-review-storage-reservation.json').read_bytes())
-    reservation, envelope = prepare(directory, source)
-    if reservation != original:
-        raise ValueError('reserved source changed')
-    report = execute({'action': reservation['action'], 'source_sha': source, 'envelope': envelope})
-    report['reservation'] = reservation
-    path = directory / 'anex-review-storage-report.json'
-    path.write_text(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2) + '\n')
-    if json.loads(path.read_bytes()) != report:
-        raise ValueError('storage report readback')
-    print(json.dumps({'report_sha256': digest(path.read_bytes()), **report}, ensure_ascii=False))
-    if report.get('status') != 'ok' or report.get('supplier_requests') != 0:
-        raise ValueError('storage failed')
+    report = run_operation(directory, source)
+    print(json.dumps({'report_sha256': gaps.digest(report), **report}, ensure_ascii=False))
 
 
 if __name__ == '__main__':
@@ -188,6 +285,9 @@ if __name__ == '__main__':
     except Exception as error:
         allowed = {'completed live checkpoint required', 'triage checkpoint mismatch', 'review plan/schema mismatch',
                    'apply requires pinned inspected evidence', 'reserved source changed', 'source_digest_or_bound',
+                   'storage checkpoint readback', 'storage execution identity required', 'storage outcome unknown',
+                   'storage checkpoint mismatch', 'storage completion report mismatch', 'storage completion not verified',
+                   'storage preservation not verified', 'storage bootstrap lineage mismatch', 'storage row count mismatch',
                    'source_contract', 'row_contract', 'evidence_digest', 'source_count','source_compact_bound'}
         reason = str(error) if isinstance(error, ValueError) and str(error) in allowed else 'see_failure_kind'
         print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reason': reason, 'reset_performed': False}))
