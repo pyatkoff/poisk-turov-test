@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "task": "S3_PRODUCT_PAGES_HANDOFF",
+  "source_prs": [1699, 1700],
+  "source_shas": [
+    "cbeaab4fc07f5c0ded25a50abbec301cc8ea25b2",
+    "e90286ed063b66e0c22845c6f8d22b002ce47e70"
+  ],
+  "release_integration_shas": [
+    "87e56008989060a54f40d42a5aab5a1eac16bfdc",
+    "b3da2002305b14a97d058de1d4b0edbe053c622a"
+  ],
+  "product_result": [
+    "Hot-tour CTA dates now use the same Europe/Moscow business day as fresh offer selection instead of the PHP server timezone.",
+    "Country and resort month pages preserve their destination and advertised month across the Search3 handoff while clamping expired dates.",
+    "The seasonal renderer no longer owns a duplicate system-timezone calculation; offer-freshness-v1.php is the canonical date-window owner.",
+    "Country and resort offer cards already preserve destination, departure, exact date, nights and the truthful two-adult snapshot party; the generic early-booking page has no concrete user parameters to retain."
+  ],
+  "size": {
+    "search3_public_paths": 8,
+    "search3_public_assets_delta_raw_bytes": 0,
+    "initial_external_css_js_delta_raw_bytes": 0,
+    "full_scenario_external_css_js_delta_raw_bytes": 0,
+    "accounting": "PHP route/helper and tests only; no CSS/JS transfer, lazy-loading or deletion claim."
+  },
+  "verification": {
+    "security_runs": [34328003803, 34328644467],
+    "exact_artifact_runs": [34328173433, 34328788619],
+    "boundary_run": 34328173404,
+    "standalone_run": 34328173427,
+    "exact_artifacts": [10094564717, 10094876078],
+    "exact_artifact_digests": [
+      "sha256:982874436dad0ea1f316b08a68b6e4421bac6dd9a8368033ee2213743624ed91",
+      "sha256:e903dfb3518fbc6377d1d3ff37654760284bebccf351d146860b2fd68dfae728"
+    ],
+    "covered_boundaries": [
+      "before and after Europe/Moscow midnight",
+      "month start and month expiry",
+      "year rollover",
+      "existing Search3 handoff allowlist, destination, nights and party contracts"
+    ],
+    "local_php": "unavailable; the exact CI executed PHP lint and deterministic freshness/handoff smoke tests",
+    "real_leads_submitted": 0,
+    "conclusion": "success"
+  },
+  "publication": {
+    "published": false,
+    "reason": "Nonvisual handoff correctness changes do not justify a separate preview deployment.",
+    "published_preview_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+    "main_changed": false,
+    "production_changed": false
+  },
+  "deferred": [
+    "physical Safari and live mobile acceptance",
+    "full whole-site and SEO acceptance at the accumulated release milestone",
+    "owner-approved production migration"
+  ],
+  "rollback": [
+    "Revert release merge 87e56008989060a54f40d42a5aab5a1eac16bfdc independently.",
+    "Revert release merge b3da2002305b14a97d058de1d4b0edbe053c622a independently."
+  ],
+  "next_action": "Start S3_PRODUCT_USEFUL_FEATURES by auditing the existing public/Search3 price-calendar path for a confirmed usability or state mismatch; keep ANEX work separate and do not repeat completed local name/category/meal facets."
+}
