@@ -23,6 +23,7 @@ EXPECTED_IDS = (16193, 23136, 24940, 29272, 31706, 32282, 32577, 32585, 32611,
 FINAL_STATES = {'completed', 'interrupted_result_unknown', 'not_started'}
 CHECKED_CHECKPOINT_SHA = '6676c6c1a13cb64a92fdb11543d03b6463583abbbf64679c3b431abee7b9da86'
 ACCEPTANCE = 'anex-cached-detail-alias-review-acceptance.json'
+BROKEN_PROTOCOL_DELTA_SHA = 'cc9a6034e1afb844eb6c163bf1de25fd15855d6a731ea136048a8a33491e61ce'
 
 
 def job():
@@ -327,8 +328,20 @@ def accept(directory):
     delta = approved_delta(directory / CHECKPOINT)
     path = directory / ACCEPTANCE
     previous = json.loads(path.read_bytes()) if path.exists() else None
-    if previous is not None and previous.get('delta_sha256') != gaps.digest(delta):
-        raise ValueError('cached-detail alias acceptance changed')
+    delta_sha = gaps.digest(delta)
+    if previous is not None and previous.get('delta_sha256') != delta_sha:
+        # One prepared record was durably saved before the remote writer
+        # rejected its extra source-key metadata. It never opened a DB
+        # transaction. Permit only that exact, pinned protocol migration.
+        legacy_prepared = (
+            previous.get('state') == 'prepared'
+            and previous.get('delta_sha256') == BROKEN_PROTOCOL_DELTA_SHA
+            and previous.get('checked_checkpoint_sha256') == CHECKED_CHECKPOINT_SHA
+            and previous.get('coverage_before') == {
+                'observed': 502, 'mapped': 239, 'pending': 263,
+                'manual_review': 0})
+        if not legacy_prepared:
+            raise ValueError('cached-detail alias acceptance changed')
     if previous is not None and previous.get('state') == 'finalized':
         return {'status': 'already_finalized', 'inserted': 0,
                 'supplier_requests': 0, 'new_catalog_reads': 0}
@@ -337,7 +350,7 @@ def accept(directory):
                 'supplier_requests': 0, 'new_catalog_reads': 0}
     before_history = protected(directory)
     before = live.snapshot()
-    checkpoint = {'state': 'prepared', 'delta_sha256': gaps.digest(delta),
+    checkpoint = {'state': 'prepared', 'delta_sha256': delta_sha,
                   'checked_checkpoint_sha256': CHECKED_CHECKPOINT_SHA,
                   'coverage_before': before['counts']}
     owner.save(path, checkpoint)

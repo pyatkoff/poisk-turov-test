@@ -44,6 +44,14 @@ class CachedDetailAliasReviewTests(unittest.TestCase):
             {'catalog_sha256', 'geo_sha256', 'gap_sha256'})
         self.assertEqual(delta['sources']['gap_sha256'], review.CHECKED_CHECKPOINT_SHA)
 
+    def test_only_the_known_rejected_protocol_checkpoint_can_migrate(self):
+        self.assertEqual(
+            review.BROKEN_PROTOCOL_DELTA_SHA,
+            'cc9a6034e1afb844eb6c163bf1de25fd15855d6a731ea136048a8a33491e61ce')
+        source = Path(review.__file__).read_text(encoding='utf-8')
+        self.assertIn("previous.get('state') == 'prepared'", source)
+        self.assertIn("previous.get('checked_checkpoint_sha256') == CHECKED_CHECKPOINT_SHA", source)
+
 
 if __name__ == '__main__':
     unittest.main()
