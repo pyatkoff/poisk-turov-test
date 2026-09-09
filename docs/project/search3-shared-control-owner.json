@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "source_pr": 1658,
+  "baseline_release_sha": "5d9ea19a8fa44864c70b87e34cc9d4c39b411fc0",
+  "source_sha": "d68c0989e949afde8fcb1051c3fc9ab9716a2907",
+  "source_tree": "872c096e7eb8d0baee9b6dd478747b2914910e65",
+  "release_integration_sha": "6304d128429e999e97ba1dbdc9fc4c3933f7574c",
+  "scope": "Make shared-content-primitives-v1.css the single current owner of public content-page primary CTA colours and contact phone touch targets, removing the later duplicate declarations from site-coherence-v1.css.",
+  "product_result": [
+    "Public content pages keep the approved blue primary action, blue hover and 44px target geometry.",
+    "All five contact telephone targets keep the existing 44px minimum geometry.",
+    "The same visual result no longer depends on a later higher-specificity correction layer.",
+    "Homepage search, Search3 and protected API, price, lead and analytics contracts are unchanged."
+  ],
+  "ownership": {
+    "primary_cta": "v2/shared-content-primitives-v1.css",
+    "office_and_contact_phone_targets": "v2/shared-content-primitives-v1.css",
+    "site_coherence_role": "layout and responsive hardening only",
+    "guard": ".github/workflows/validate-standalone-content-ux.yml requires canonical declarations and rejects their return to site-coherence-v1.css",
+    "duplicate_layers_removed": 1
+  },
+  "size": {
+    "search3_public_paths": 8,
+    "search3_public_assets_raw_bytes": 13574,
+    "search3_public_assets_delta_raw_bytes": 0,
+    "shared_content_primitives_before_raw_bytes": 13780,
+    "shared_content_primitives_after_raw_bytes": 13943,
+    "site_coherence_before_raw_bytes": 3919,
+    "site_coherence_after_raw_bytes": 3587,
+    "combined_before_raw_bytes": 17699,
+    "combined_after_raw_bytes": 17530,
+    "combined_removed_raw_bytes": 169,
+    "content_page_css_delta_raw_bytes": -169,
+    "homepage_css_delta_raw_bytes": -332,
+    "js_delta_raw_bytes": 0,
+    "accounting": "Content pages load both files and remove169B. Homepage loads only site-coherence and removes332B; it does not use the moved content-page selectors. Search3 eight assets and runtime loading are unchanged."
+  },
+  "verification": {
+    "security_run": 34301707589,
+    "standalone_content_run": 34301712871,
+    "exact_artifact_run": 34301712792,
+    "conclusion": "success",
+    "exact_artifact_browser_steps": "not applicable and skipped because no Search3 geometry source changed",
+    "standalone_routes": [
+      "/contacts/",
+      "/how-to-buy/",
+      "/rb/",
+      "/hot/",
+      "/country/",
+      "/country/turkey/"
+    ],
+    "computed_style_reasoning": "The canonical shared file is loaded before the removed coherence layer. No intervening stylesheet defines these selectors. The same blue/hover/44px declarations now occur once in the canonical owner.",
+    "local_owner_guard": true,
+    "local_php": "unavailable; CI PHP lint/rendering passed",
+    "real_leads_submitted": 0
+  },
+  "artifact": {
+    "id": 10085158687,
+    "name": "search3-site-preview-d68c0989e949afde8fcb1051c3fc9ab9716a2907-34301712792-1",
+    "digest": "sha256:5fda4c63be5b5f2192ceddb928c8022a73b8fed0d9596948acbf2543d6a65f8b"
+  },
+  "publication": {
+    "published": false,
+    "reason": "This package intentionally preserves computed visuals and only converges source ownership; it does not justify another preview deployment.",
+    "published_preview_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_changed": false,
+    "production_changed": false
+  },
+  "deferred": [
+    "physical Safari and safe-area verification",
+    "new shared visual mismatches only when confirmed by the next bounded shared-site audit",
+    "owner production visual acceptance"
+  ],
+  "rollback": "Revert release merge 6304d128429e999e97ba1dbdc9fc4c3933f7574c independently.",
+  "next_action": "Continue S3_PRODUCT_SHARED_SITE with a bounded read-only audit of shared header, navigation, footer, container, secondary button and link states; consolidate only a confirmed duplicate owner or mismatch, otherwise advance to S3_PRODUCT_PAGES_HANDOFF."
+}

@@ -14,7 +14,40 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — selected flight and lead handoff #1655 — 2026-09-09
+## Current product checkpoint — shared content control ownership #1658 — 2026-09-09
+
+Source `d68c0989e949afde8fcb1051c3fc9ab9716a2907`, tree
+`872c096e7eb8d0baee9b6dd478747b2914910e65`; checked release
+`6304d128429e999e97ba1dbdc9fc4c3933f7574c`. The current blue `.sp-primary`,
+blue hover and 44 px `.sp-office-phone`/`.sp-contact-phone` target geometry now
+live once in `shared-content-primitives-v1.css`. The later matching corrections were
+removed from `site-coherence-v1.css`; the standalone guard requires the canonical
+rules and rejects their return to the late layer. Computed visuals are intentionally
+unchanged. Homepage search, Search3 and protected price/API/lead/analytics contracts
+are untouched.
+
+The two shared CSS files are **17699→17530 raw B (-169)**; content pages load both.
+Homepage loads only the reduced coherence file and removes 332 B; it does not use the
+moved content selectors. Search3 eight assets remain 13574 B and JS is unchanged.
+
+Security `34301707589`, standalone route validation `34301712871` and exact artifact
+`34301712792` passed. Artifact `10085158687`, digest
+`sha256:5fda4c63be5b5f2192ceddb928c8022a73b8fed0d9596948acbf2543d6a65f8b`.
+The exact job correctly skipped Search3 browser geometry because no Search3 source
+changed; CI PHP lint/rendering covered contacts, how-to-buy, early-booking, hot,
+country catalog and representative country pages. Local PHP was unavailable.
+
+This behavior-preserving ownership package was not republished: the isolated preview
+remains exact source `ef8ce1d8e967ffc6945adbc75b4a726906503593`. Main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; main and production unchanged, real
+leads0. Rollback: revert #1658 independently. Audit:
+`docs/project/search3-shared-control-owner.json`.
+
+Next: continue `S3_PRODUCT_SHARED_SITE` with a bounded audit of shared header,
+navigation, footer, container, secondary-button and link states. Consolidate only a
+confirmed duplicate owner or mismatch; otherwise advance to `S3_PRODUCT_PAGES_HANDOFF`.
+
+## Previous product checkpoint — selected flight and lead handoff #1655 — 2026-09-09
 
 Exact source `ef8ce1d8e967ffc6945adbc75b4a726906503593`, tree
 `6e0eb20a8424c4be507c2ef484cde619bd6e2884`; checked release
