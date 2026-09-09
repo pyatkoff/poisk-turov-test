@@ -36,6 +36,38 @@ function cp_related_destinations(string $slug): array
     return $items;
 }
 
+/**
+ * Only the controlled Turkey country route may turn its already visible resort
+ * chips into links. The hrefs remain constrained to the exact launch allowlist
+ * so a page-data change cannot create a new public route or search-state URL.
+ */
+function cp_country_resort_links(string $countryPath, array $resorts, array $candidates): array
+{
+    if (rtrim($countryPath, '/') . '/' !== '/country/turkey/') return [];
+
+    $resortLabels = [];
+    foreach ($resorts as $resort) {
+        if (!is_scalar($resort)) continue;
+        $label = trim((string)$resort);
+        if ($label !== '') $resortLabels[$label] = true;
+    }
+
+    $allowed = array_fill_keys(v2_seo_turkey_launch_paths(), true);
+    unset($allowed['/country/turkey/']);
+    $links = [];
+    foreach ($candidates as $candidate) {
+        if (!is_array($candidate)) continue;
+        $rawLabel = $candidate['label'] ?? '';
+        $rawHref = $candidate['href'] ?? '';
+        if (!is_scalar($rawLabel) || !is_scalar($rawHref)) continue;
+        $label = trim((string)$rawLabel);
+        $href = trim((string)$rawHref);
+        if ($label === '' || !isset($resortLabels[$label]) || !isset($allowed[$href]) || isset($links[$label])) continue;
+        $links[$label] = $href;
+    }
+    return $links;
+}
+
 function cp_render(array $page): void
 {
     $slug = trim((string)($page['slug'] ?? ''), '/');
@@ -64,6 +96,7 @@ function cp_render(array $page): void
     $offers = array_slice($offerCandidates, 0, 6);
     $priceCalendar = $countryId > 0 ? v2_seo_price_calendar($offerCandidates, $countryId, 0, 14) : [];
     $countryPath = '/country/' . $slug . '/';
+    $countryResortLinks = cp_country_resort_links($countryPath, $resorts, (array)($page['resortLinks'] ?? []));
     $launchedResortLinks = v2_seo_core_resort_country_links($countryPath);
     $c = sp_context($countryPath, $title, $description);
     sp_head($c); sp_header($c);
@@ -72,7 +105,7 @@ function cp_render(array $page): void
     <main class="sp-main sp-country-page">
       <section class="sp-country-intent sp-country-intent--hero" aria-labelledby="country-intent-title">
         <div class="sp-country-intent__copy"><span class="sp-country-intent__eyebrow">AnyTour · направление</span><h1 id="country-intent-title"><?=sp_e($h1)?></h1><p><?=sp_e($intro)?></p><ul class="sp-country-intent__signals" aria-label="Что можно проверить в поиске"><li>Актуальные предложения</li><li>Перелёт и багаж, когда доступны</li><li>Цена перед заявкой</li></ul><div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>"><?=sp_e($searchLabel)?></a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div></div>
-        <div class="sp-country-intent__visual" data-country-visual-slot aria-label="Популярные курорты направления"><div class="sp-country-intent__visual-label">Направление AnyTour</div><?php if ($resorts): ?><div class="sp-country-intent__resorts"><span class="sp-country-intent__label">Популярные курорты</span><div class="sp-resort-list"><?php foreach ($resorts as $resort): ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endforeach; ?></div></div><?php else: ?><div class="sp-country-intent__resorts"><span class="sp-country-intent__label">Подбор по всей стране</span><p>Выберите даты и параметры поездки — актуальные курорты и отели появятся в поиске.</p></div><?php endif; ?></div>
+        <div class="sp-country-intent__visual" data-country-visual-slot aria-label="Популярные курорты направления"><div class="sp-country-intent__visual-label">Направление AnyTour</div><?php if ($resorts): ?><div class="sp-country-intent__resorts"><span class="sp-country-intent__label">Популярные курорты</span><div class="sp-resort-list"><?php foreach ($resorts as $resort): $resortLabel=trim((string)$resort); $resortHref=$countryResortLinks[$resortLabel]??''; ?><?php if($resortHref!==''): ?><a class="sp-resort-chip" data-country-resort-link href="<?=sp_e($resortHref)?>" aria-label="Туры в <?=sp_e($resortLabel)?>"><?=sp_e($resortLabel)?></a><?php else: ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endif; ?><?php endforeach; ?></div></div><?php else: ?><div class="sp-country-intent__resorts"><span class="sp-country-intent__label">Подбор по всей стране</span><p>Выберите даты и параметры поездки — актуальные курорты и отели появятся в поиске.</p></div><?php endif; ?></div>
       </section>
       <?php if ($facts): ?><section aria-labelledby="country-guide-title"><div class="sp-section-head"><h2 id="country-guide-title">Что важно при выборе</h2><p>Короткие ориентиры перед тем, как сравнивать отели, даты и конкретные варианты тура.</p></div><div class="sp-grid sp-grid--balanced-three"><?php foreach ($facts as $fact): ?><article class="sp-card"><h3><?=sp_e((string)($fact['title'] ?? 'Важно знать'))?></h3><p><?=sp_e((string)($fact['text'] ?? ''))?></p></article><?php endforeach; ?></div></section><?php endif; ?>
       <?php foreach ($editorialSections as $section): $sectionTitle=trim((string)($section['title']??'')); $paragraphs=array_values(array_filter(array_map(fn($p)=>trim((string)$p),(array)($section['paragraphs']??[])))); if($sectionTitle===''||!$paragraphs) continue; ?><section class="sp-card"><h2><?=sp_e($sectionTitle)?></h2><?php foreach($paragraphs as $paragraph): ?><p><?=sp_e($paragraph)?></p><?php endforeach; ?></section><?php endforeach; ?>

@@ -7,6 +7,7 @@ on:
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
       - 'v2/site-coherence-v1.css'
+      - 'v2/shared-content-primitives-v1.css'
       - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
       - 'v2/site-footer-v1.php'
@@ -28,6 +29,7 @@ on:
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
       - 'v2/site-coherence-v1.css'
+      - 'v2/shared-content-primitives-v1.css'
       - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
       - 'v2/site-footer-v1.php'
@@ -102,6 +104,11 @@ jobs:
             foreach(["/country/egypt/","/country/tunis/","/country/cyprus/"] as $href){ if(strpos($country,"href=\"$href\"")===false) exit(33); }
             if(strpos($country,"href=\"/poisk-turov/?country=4\"")===false) exit(34);
             if(strpos($country,"Помощь менеджера")===false) exit(35);
+            if(substr_count($country,"data-country-resort-link")!==5) exit(36);
+            foreach(["/country/turkey/antalya/","/country/turkey/alanya/","/country/turkey/kemer/","/country/turkey/side/","/country/turkey/belek/"] as $href){
+              if(substr_count($country,"href=\"$href\"")!==1) exit(37);
+            }
+            if(strpos($country,"<a class=\"sp-resort-chip\" data-country-resort-link")===false) exit(38);
             echo "STANDALONE_CONTENT_UX_OK\n";
           '
       - name: Validate Maldives hotel-tour family integrity
