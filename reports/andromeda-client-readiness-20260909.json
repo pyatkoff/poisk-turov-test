@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-09",
+  "issue": 1717,
+  "pr": 1763,
+  "source": "860cd5e5cb891f5af15bba44f4c0cbb5190441d6",
+  "status": "checked_draft_not_published",
+  "implemented": [
+    "authorization_and_catalog_protocol",
+    "explicit_https_transport",
+    "reserved_login_townfrom_probe",
+    "dictionary_row_identity_validation"
+  ],
+  "new_in_this_pass": "Reject malformed dictionary rows and duplicate IDs before counting a successful probe; preserve opaque numeric string IDs and source fields.",
+  "checks": {
+    "offline_run": 34360654617,
+    "job": 102496464272,
+    "security_run": 34360654636,
+    "protocol": 92,
+    "transport_cli": 10
+  },
+  "supplier_calls": 0,
+  "db_writes": 0,
+  "published": false,
+  "credentials": "not_confirmed_provisioned; no secrets endpoint inspected",
+  "next_action": "Privately provision credentials and review controlled invocation before one reserved auth+townfrom probe; do not trigger ANEX deployment by merging client preparation blindly.",
+  "deferred": [
+    "live_authentication",
+    "supplier_digest_compatibility",
+    "real_response_fixtures",
+    "account_wide_limits",
+    "shared_search_handoff"
+  ],
+  "docs": "Official wiki successfully read via its normal index; PDF blocker retired."
+}
