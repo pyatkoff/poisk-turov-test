@@ -16,13 +16,13 @@ try {
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/grouped-search-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
     $release=$private.'/grouped-search-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['api-andromeda-search3-preview.php'=>'d145433afc48f4d907c1a8424ee9d697fb5d08c9b7c94510a9cc193930b00a47','anex-search3-preview-v1.js'=>'721d7d6a2da151d6a78ee99811753ddba8db2f153262ed9baec94b3e5217f872','app/integrations/andromeda-client.php'=>'1c25d3e27ded11e52d2023d70c7e4ce0debdd1fe516f5abcf9f32e4c3d954ae4','app/integrations/andromeda-offer-store.php'=>'7161ce8611057c17dacd4b621dd2fbcd504316fd56a6a41de07289dd94488cf5'];
+    $expected=['anex-search3-preview-v1.js'=>'eefbe37df590c6e9114e65a7b268f42c4c229b6c7f86053b76883db0c0fc7a13'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
     if(is_link($target.'/search-page-v2.php'))throw new RuntimeException();
     $page=file_get_contents($target.'/search-page-v2.php');$count=0;
-    $files['search-page-v2.php']=str_replace('anex-search3-preview-v1.js?v=cca041137dd015f608dca478d7dc67453c455366','anex-search3-preview-v1.js?v='.$request['source_sha'],$page,$count);
+    $files['search-page-v2.php']=str_replace('anex-search3-preview-v1.js?v=99fa70e1d1d9222993f9caf07d9c48347a9ddf2d','anex-search3-preview-v1.js?v='.$request['source_sha'],$page,$count);
     if($count!==1)throw new RuntimeException();
     foreach($files as $path=>$data){
         $backups[$path]=file_get_contents($target.'/'.$path);
@@ -50,7 +50,7 @@ def main():
     directory=Path(os.environ['RUNNER_TEMP'])/'andromeda-grouped-search';directory.mkdir(exist_ok=True)
     root=Path(__file__).resolve().parents[2]
     request={'source_sha':os.environ['SOURCE_SHA'],'artifact_id':os.environ['ARTIFACT_ID'],'files':{}}
-    for name in ['v2/api-andromeda-search3-preview.php','v2/anex-search3-preview-v1.js','app/integrations/andromeda-client.php','app/integrations/andromeda-offer-store.php']:
+    for name in ['v2/anex-search3-preview-v1.js']:
         request['files'][name.removeprefix('v2/')]=base64.b64encode((root/name).read_bytes()).decode()
     save(directory/'reservation.json',{'state':'inflight','source_sha':request['source_sha']},exclusive=True)
     result=owner.ssh_php(SOURCE,request)
