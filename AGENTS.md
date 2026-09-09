@@ -1,5 +1,15 @@
 # poisk-turov-test — Autopilot Rules
 
+## Development routing — owner direction 2026-09-09
+
+Start with [AnyTour development](docs/project/anytour-development.md): four workstreams,
+one coordinator in #996, one owner per shared component. Use the fresh release
+`AUTOPILOT_STATE.json.current_task` for product execution; its historical snapshots
+and the inherited ANEX root state are not new queues. Integrations use their scoped
+ANEX plan; SITE #1719 and SEO #1720 remain independent within existing permissions.
+This routing preserves all protected contracts, production approval and applicable CI.
+
+
 ## Product mission
 
 ### Primary goal
