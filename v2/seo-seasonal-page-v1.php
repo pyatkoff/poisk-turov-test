@@ -6,6 +6,12 @@ require_once __DIR__.'/seo-seasonal-offer-snapshot-v1.php';
 require_once __DIR__.'/seo-price-calendar-v1.php';
 require_once __DIR__.'/offer-freshness-v1.php';
 
+/** Truthful fallback when the saved monthly snapshot has no current offers. */
+function v2_seo_render_seasonal_offer_empty(): string
+{
+    return '<section class="sp-card sp-offer-snapshot" data-seasonal-offers-empty><h2>Свежие предложения обновляются</h2><p>В сохранённых ценовых наблюдениях AnyTour сейчас нет актуальных вариантов на выбранный месяц. Это не означает, что туров нет: цены и доступность проверьте в поиске.</p></section>';
+}
+
 /** Render an approved/review seasonal page on its final clean URL. */
 function v2_seo_render_seasonal(array $record): void
 {
@@ -56,6 +62,8 @@ function v2_seo_render_seasonal(array $record): void
             echo '<span class="sp-offer-fact">'.sp_e($date).'</span><span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span></div><div class="sp-offer-bottom">'.$priceMarkup.'<a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть туры</a></div></article>';
         }
         echo '</div></section>';
+    }else{
+        echo v2_seo_render_seasonal_offer_empty();
     }
 
     $countryId=(int)($identity['country_id']??($page['search_state']['country']??0));
