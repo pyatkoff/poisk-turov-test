@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "batch_key": "owner_content_review_20260909_01",
+  "photos_batch_key": "owner_content_review_photos_20260909_01",
+  "limit": 25,
+  "priority": "unresolved_verified_frequency"
+}

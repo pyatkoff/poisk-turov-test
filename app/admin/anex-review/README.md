@@ -87,3 +87,8 @@ transfer, characteristics and room types are expandable. Up to 12 saved thumbnai
 per source are shown. CSP permits HTTPS images only; it still denies scripts and
 connections. Loading a photo requests its stored CDN URL, never a supplier search
 or a hotel-content API call. Existing authentication/deployment gates above remain.
+
+Verified official public-page links are pinned by ANEX ID in `public-cards.json`.
+For 16193, the official HTML proves the same ID and twelve explicit room-photo
+URLs. Media returned403 during research, so those URLs are evidence only and are
+not presented as a working gallery. No cross-source image substitution occurs.

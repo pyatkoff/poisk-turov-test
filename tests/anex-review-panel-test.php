@@ -54,6 +54,8 @@ $db->prepare("INSERT INTO anex_hotel_content VALUES (1,'ready',?,?,?,NULL,'2026-
 $db->prepare("INSERT INTO catalog_hotel_details VALUES (101,'success',?,'TV address','https://example.com',36,30,'2026-09-09 06:00:00',?,'Saved TV description',?)")
     ->execute([str_repeat('b',64),'https://images.example.com/main.jpg','["https://images.example.com/second.jpg","javascript:alert(1)"]']);
 $service = new AnexReviewService($db);
+check(AnexReviewService::publicCard(16193)['url'] === 'https://anextour.ru/hotels/turkey/dragut-point-north', 'exact official ANEX page identity');
+check(AnexReviewService::publicCard(16194) === null, 'official page is never inferred for another ID');
 $canonical = $db->query('SELECT * FROM catalog_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
 $policy = $db->query('SELECT * FROM anex_hotel_search_mappings ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC);
 $historic = $db->query('SELECT * FROM anex_hotel_decisions ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC);
