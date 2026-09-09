@@ -299,12 +299,16 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'intermediate empty response keeps the active loading state');
     assert.equal(await page.locator('#results .empty-actionable').count(), 0, 'intermediate empty response is not presented as final');
     await page.evaluate(items => window.V2Results.render(items), hotels);
+    const errorParameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
     await page.evaluate(() => {
       window.__resultsRetrySubmits = 0;
       window.V2SearchLifecycle.submit = () => { window.__resultsRetrySubmits += 1; };
       window.dispatchEvent(new CustomEvent('v2:search-error', { detail: { phase: 'status' } }));
     });
     assert.equal(await page.locator('#status .results-state--error').isVisible(), true, 'search failure exposes a distinct error state');
+    assert.equal(await page.locator('#tourSearch').isVisible(), true, 'search failure leaves parameters editable even with retained results');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), errorParameters, 'error recovery preserves every search parameter');
+    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `search-error-edit-${width}.png`), fullPage: true });
     await page.locator('#status .results-state-retry').click();
     assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 1, 'retry reuses the canonical search lifecycle');
     assert.equal(await page.locator('#results .hotel-card').count(), 2, 'error state preserves already rendered cards');
