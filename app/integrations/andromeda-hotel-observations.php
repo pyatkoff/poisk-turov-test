@@ -96,7 +96,7 @@ final class AnyTourAndromedaHotelObservations
         }
         $rows = [];
         foreach ($grouped as $row) {
-            $row['operator_refs'] = array_keys($row['operator_refs']);
+            $row['operator_refs'] = array_map('strval', array_keys($row['operator_refs']));
             $row['operator_names'] = array_keys($row['operator_names']);
             sort($row['operator_refs'], SORT_STRING);
             sort($row['operator_names'], SORT_STRING);
