@@ -136,7 +136,16 @@ final class AnexReviewService
         if ($status === 'mapped') $where[] = '(' . $mapped . ') IS NOT NULL';
         if ($status === 'later') $where[] = 's.deferred_at IS NOT NULL';
         if ($status === 'pair_rejected') $where[] = 'EXISTS (SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=o.anex_hotel_id)';
-        if ($status === 'no_candidates') $where[] = 'NOT EXISTS (SELECT 1 FROM anex_hotel_candidates c WHERE c.anex_hotel_id=o.anex_hotel_id)';
+        if ($status === 'no_candidates') {
+            $legacyEmpty = 'NOT EXISTS (SELECT 1 FROM anex_hotel_candidates c WHERE c.anex_hotel_id=o.anex_hotel_id)';
+            if ($this->hasTable('anex_review_dossiers') && $this->hasTable('anex_review_dossier_batches')) {
+                $from .= ' LEFT JOIN anex_review_dossiers rd ON rd.anex_hotel_id=o.anex_hotel_id'
+                    . ' AND rd.artifact_id=(SELECT MAX(v.artifact_id) FROM anex_review_dossiers v'
+                    . ' JOIN anex_review_dossier_batches vb ON vb.artifact_id=v.artifact_id WHERE v.anex_hotel_id=o.anex_hotel_id)';
+                $where[] = '(CASE WHEN rd.anex_hotel_id IS NULL THEN '.$legacyEmpty
+                    . ' ELSE (rd.display_candidate_count=0 OR rd.country_id<>o.country_id OR o.country_id<=0) END)';
+            } else $where[] = $legacyEmpty;
+        }
         $suffix = $from . ' WHERE ' . implode(' AND ', $where);
         $total = (int)$this->rows('SELECT COUNT(*) AS n' . $suffix, $args)[0]['n'];
         $items = $this->rows('SELECT o.*, (' . $mapped . ') AS mapped_id,s.deferred_at' . $suffix

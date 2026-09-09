@@ -37,6 +37,15 @@ must(count($service->detail(29)['candidates'])===2,'live candidates replace abse
 must($service->detail(29)['source']['api_address']==='Saved address','source projected');
 must($store->panel(29,2)['candidates']===[],'changed country fails closed');
 must($store->panel(29,2)['evidence']['automated_reason']==='observed_country_changed','country reason');
+must($service->queue(['status'=>'no_candidates','q'=>'29'])['total']===0,'live candidates excluded from empty filter');
+must($service->queue(['status'=>'no_candidates','q'=>'30'])['total']===1,'unknown hints remain in empty filter');
+$db->exec('UPDATE anex_search_hotel_observations SET country_id=2 WHERE anex_hotel_id=29');
+must($service->queue(['status'=>'no_candidates','q'=>'29'])['total']===1,'queue respects changed country');
+$db->exec('UPDATE anex_search_hotel_observations SET country_id=1 WHERE anex_hotel_id=29');
+$db->exec('UPDATE anex_review_dossiers SET display_candidate_count=0 WHERE artifact_id=100 AND anex_hotel_id=29');
+rejects(fn()=>$store->latest(29),'dossier_index_invalid');
+rejects(fn()=>$store->import($batch),'dossier_index_invalid');
+$db->exec('UPDATE anex_review_dossiers SET display_candidate_count=2 WHERE artifact_id=100 AND anex_hotel_id=29');
 $oldpage=$service->detail(29)['version'];
 $next=envelope(102,[item(29)]);$next['source_digest']=str_repeat('d',64);
 must($store->import($next)['inserted']===1,'new artifact adds immutable history');

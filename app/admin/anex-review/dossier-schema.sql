@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS anex_review_dossiers (
     row_digest CHAR(64) CHARACTER SET ascii NOT NULL,
     evidence_digest CHAR(64) CHARACTER SET ascii NOT NULL,
     status VARCHAR(32) NOT NULL,
+    country_id INT UNSIGNED NOT NULL,
+    display_candidate_count SMALLINT UNSIGNED NOT NULL,
     row_json MEDIUMTEXT NOT NULL,
     evidence_json MEDIUMTEXT NOT NULL,
     PRIMARY KEY (artifact_id, anex_hotel_id),

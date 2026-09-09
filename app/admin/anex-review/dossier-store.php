@@ -48,6 +48,27 @@ final class AnexReviewDossierStore
         return $row;
     }
 
+    private static function candidateRows(array $row): array
+    {
+        if ($row['status'] !== 'review' || (int)($row['observation']['country_id'] ?? 0) <= 0) return [];
+        $result = [];
+        foreach (is_array($row['evidence']['candidates'] ?? null) ? $row['evidence']['candidates'] : [] as $candidate) {
+            if (!is_array($candidate)) continue;
+            $target = $candidate['id'] ?? $candidate['catalog_hotel_id'] ?? null;
+            if (!is_int($target) || $target <= 0 || $target >= 100000000 || isset($result[$target])) continue;
+            $result[$target] = $candidate;
+            if (count($result) === 20) break;
+        }
+        return $result;
+    }
+
+    private static function validateIndex(array $stored, array $row): void
+    {
+        if ((int)$stored['country_id'] !== max(0,(int)($row['observation']['country_id'] ?? 0))
+            || (int)$stored['display_candidate_count'] !== count(self::candidateRows($row))
+            || $stored['status'] !== $row['status']) throw new RuntimeException('dossier_index_invalid');
+    }
+
     public function import(array $input): array
     {
         if ($this->db->inTransaction()) throw new RuntimeException('dossier_transaction_owned');
@@ -87,14 +108,16 @@ final class AnexReviewDossierStore
                 $existing = $this->rows('SELECT * FROM anex_review_dossiers WHERE artifact_id=? AND anex_hotel_id=? FOR UPDATE', [$artifact,$item['id']])[0] ?? null;
                 if ($existing !== null) {
                     foreach (['row_digest','evidence_digest','row_json','evidence_json'] as $key) if ($existing[$key] !== $item[$key]) throw new RuntimeException('dossier_existing_changed');
+                    self::validateIndex($existing,$row);
                 } else {
                     if ($old !== null) throw new RuntimeException('dossier_history_incomplete');
-                    $this->rows('INSERT INTO anex_review_dossiers (artifact_id,anex_hotel_id,row_digest,evidence_digest,status,row_json,evidence_json) VALUES (?,?,?,?,?,?,?)',
-                        [$artifact,$item['id'],$item['row_digest'],$item['evidence_digest'],$row['status'],$item['row_json'],$item['evidence_json']]);
+                    $this->rows('INSERT INTO anex_review_dossiers (artifact_id,anex_hotel_id,row_digest,evidence_digest,status,row_json,evidence_json,country_id,display_candidate_count) VALUES (?,?,?,?,?,?,?,?,?)',
+                        [$artifact,$item['id'],$item['row_digest'],$item['evidence_digest'],$row['status'],$item['row_json'],$item['evidence_json'],max(0,(int)($row['observation']['country_id'] ?? 0)),count(self::candidateRows($row))]);
                     $inserted++;
                 }
-                $back = $this->rows('SELECT row_json,evidence_json FROM anex_review_dossiers WHERE artifact_id=? AND anex_hotel_id=?', [$artifact,$item['id']])[0];
+                $back = $this->rows('SELECT * FROM anex_review_dossiers WHERE artifact_id=? AND anex_hotel_id=?', [$artifact,$item['id']])[0];
                 if ($back['row_json'] !== $item['row_json'] || $back['evidence_json'] !== $item['evidence_json']) throw new RuntimeException('dossier_readback_failed');
+                self::validateIndex($back,$row);
             }
             if ((int)$this->rows('SELECT COUNT(*) AS n FROM anex_review_dossiers WHERE artifact_id=?', [$artifact])[0]['n'] !== count($ids)) throw new RuntimeException('dossier_count_mismatch');
             $this->db->commit();
@@ -110,6 +133,7 @@ final class AnexReviewDossierStore
         if ($item === null) return null;
         $item['id'] = (int)$item['anex_hotel_id'];
         $row = self::validateRow($item);
+        self::validateIndex($item,$row);
         return ['artifact_id'=>(int)$item['artifact_id'],'source_sha'=>$item['source_sha'],
             'source_digest'=>$item['source_digest'],'checkpoint_digest'=>$item['checkpoint_digest'],
             'row_digest'=>$item['row_digest'],'row'=>$row];
@@ -128,12 +152,8 @@ final class AnexReviewDossierStore
         $source['checked_at'] = $raw['checked_at_utc'] ?? $raw['checked_at'] ?? null;
         $rawCandidates = is_array($raw['candidates'] ?? null) ? $raw['candidates'] : [];
         $validCountry = (int)($row['observation']['country_id'] ?? 0) === $country && $country > 0;
-        $candidates = []; $seen=[];
-        if ($row['status'] === 'review' && $validCountry) foreach ($rawCandidates as $candidate) {
-            $target = $candidate['id'] ?? $candidate['catalog_hotel_id'] ?? null;
-            if (!is_int($target) || $target <= 0 || $target >= 100000000 || isset($seen[$target])) continue;
-            $seen[$target] = true;
-            if (count($candidates) >= 20) continue;
+        $candidates = [];
+        if ($validCountry) foreach (self::candidateRows($row) as $target => $candidate) {
             $candidates[] = ['anex_hotel_id'=>$id,'candidate_rank'=>count($candidates)+1,'catalog_hotel_id'=>$target,
                 'score'=>$candidate['score'] ?? null,'name_similarity'=>$candidate['name_similarity'] ?? null,
                 'distance_m'=>$candidate['distance_m'] ?? null,
