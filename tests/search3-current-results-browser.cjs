@@ -161,6 +161,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await select.inputValue(), '', 'a real new search clears the local meal');
     assert.equal(await field.isVisible(), false);
     await page.evaluate(items => window.V2Results.render(items), items);
+    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
     assert.equal(await calendar.isVisible(), false, 'new search cannot show a calendar before its terminal event');
     await select.selectOption('всё включено');
