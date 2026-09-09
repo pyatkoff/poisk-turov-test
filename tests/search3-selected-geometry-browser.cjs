@@ -114,8 +114,8 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),6,'every flight radio remains visible');
       assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'selected flight exposes both directions');
       assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'unselected flight details stay compact');
-      assert.equal(await page.locator('#selectedTour .selected-lead-cta').count(),0,'duplicate top lead CTA is absent');
-      assert.equal(await page.locator('#selectedTour .search3-flight-continue button').count(),1,'one Search3 handoff CTA remains');
+      assert.equal(await page.locator('#selectedTour .selected-lead-cta:visible').count(),0,'duplicate top lead CTA is hidden in Search3');
+      assert.equal(await page.locator('#selectedTour .search3-flight-continue button:visible').count(),1,'one visible Search3 handoff CTA remains');
       await page.locator('#selectedTour .flight-variant').nth(1).locator('input[name="v2flight"]').click();
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="1"]')?.classList.contains('is-selected'));
       assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'radio switch expands the new selection');
