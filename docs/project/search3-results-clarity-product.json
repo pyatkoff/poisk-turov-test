@@ -286,5 +286,16 @@
     ],
     "interpretation": "This proves reproducible technical task coverage, not OTA superiority, production conversion improvement or a statistically valid speed result.",
     "next_action": "S3_OTA_PROVIDER_PARITY remains blocked until a fresh bounded INT handoff supplies source/destination SHA, identity fixtures, unknown-field and partial-failure evidence."
+  },
+  "ota_responsive_filter_rail_20260909": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_prs": [1793, 1796],
+    "published_source_sha": "cccb3cb34458585dbed071fd9900bc470561701d",
+    "checked_release_sha": "100a5f080e918cc5aaf0bbc9147d8f49889ff8b3",
+    "weight": "PR1793 +5541 B and PR1796 +97 B public CSS/JS; combined +5638 B; inline/shared PHP 0 B",
+    "verification": "Security and exact artifact passed for both packages. Live current preview filtered 100 hotels to 36 and common reset restored 100; no overflow, supplier request from local actions or lead POST.",
+    "product_result": "Desktop regains one left filter rail; mobile/tablet keep the same current owner and now expose a common reset. Exact-offer budget/meal and complete-data category/rating/sea-distance facets remain truthful.",
+    "historical_preview": "Use /_preview/search3/ only as a donor for compact presets/disclosure. Do not restore its overlapping filter, mobile, DS2, booking or simulator runtimes.",
+    "next_action": "Add one native accessible disclosure for the same current mobile/tablet controls without a parallel drawer owner."
   }
 }

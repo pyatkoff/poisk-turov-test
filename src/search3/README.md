@@ -15,7 +15,7 @@ comment does not establish an active owner.
 | --- | --- |
 | Native form markup, date/night/party fields and page composition | `v2/index.php`; defaults in `v2/form-defaults.php`, catalogs in `v2/catalogs-v2.js` |
 | Search3 result busy state and edit/focus glue | `src/search3/behavior/search-form.js` |
-| Loaded hotel name/category/meal filtering and renderer projection | `src/search3/behavior/results/local-hotel-filter.js` with `v2/results-renderer-v5.js` |
+| Loaded hotel name/budget/meal/category/rating/sea-distance filtering and renderer projection | `src/search3/behavior/results/local-hotel-filter.js` with `v2/results-renderer-v5.js` |
 | Local shortlist of exact loaded offer snapshots | `src/search3/behavior/results/shortlist.js`; current projection and canonical selection stay with the owners above |
 | Native selected-tour lead handoff, large flight-list disclosure and display corrections | `src/search3/behavior/summary-cta.js`; canonical selected markup/state remains in `v2/tour-controller-v4.js` |
 | Search form layout and native controls | `src/search3/styles/entry-native-controls.css` |
