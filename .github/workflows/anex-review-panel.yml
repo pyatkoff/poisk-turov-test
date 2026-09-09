@@ -17,6 +17,7 @@ on:
       - 'tests/anex-review-schema-test.php'
       - 'tests/anex_review_storage_test.py'
       - 'scripts/diagnostics/anex_review_storage*'
+      - 'scripts/diagnostics/anex_review_owner_*'
       - 'scripts/diagnostics/anex-review-dossier-*'
       - '.github/workflows/anex-review-panel.yml'
   pull_request:
@@ -35,6 +36,7 @@ on:
       - 'tests/anex-review-schema-test.php'
       - 'tests/anex_review_storage_test.py'
       - 'scripts/diagnostics/anex_review_storage*'
+      - 'scripts/diagnostics/anex_review_owner_*'
       - 'scripts/diagnostics/anex-review-dossier-*'
       - '.github/workflows/anex-review-panel.yml'
 permissions:
@@ -67,6 +69,9 @@ jobs:
         run: |
           for f in app/admin/anex-review/*.php v2/anex-hotel-review.php v2/anex-owner-login.php tests/anex-review-owner-*.php tests/anex-review-panel-test.php tests/anex-review-http-fixture.php; do php -l "$f"; done
           php tests/anex-review-owner-auth-test.php
+          php -l scripts/diagnostics/anex_review_owner_publish_runner.php
+          php -l scripts/diagnostics/anex_review_owner_preserve.php
+          python3 tests/anex-review-owner-publish-test.py
           php tests/anex-review-panel-test.php
           php tests/anex-review-schema-test.php
           python3 tests/anex_review_storage_test.py

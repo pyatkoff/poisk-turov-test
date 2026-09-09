@@ -24,6 +24,9 @@ function csrf(r){const m=r.html.match(/name="csrf" value="([0-9a-f]{64})"/);asse
   ok(first.headers.get('cache-control').includes('no-store')&&first.headers.get('x-robots-tag').includes('noindex'),'private headers');
   ok((await request(panel)).status===303,'anonymous panel redirects');
   ok((await request(login,c0,{action:'enroll',csrf:'bad',token:fixture.token,password:fixture.password,confirmation:fixture.password})).status===403,'CSRF blocks setup');
+  const mismatch=await request(login,c0,{action:'enroll',csrf:csrf(first),token:fixture.token,password:fixture.password,confirmation:'mismatch'});
+  ok(mismatch.status===403&&mismatch.html.includes('id="enroll">')&&mismatch.html.includes('id="setup-token" value="'+fixture.token+'"'),'enrollment retry preserves token, not password');
+  ok(!mismatch.html.includes(fixture.password),'password never echoed');
   const enrolled=await request(login,c0,{action:'enroll',csrf:csrf(first),token:fixture.token,password:fixture.password,confirmation:fixture.password});
   ok(enrolled.status===303&&enrolled.headers.get('location')===panel,'setup redirects to panel');
   const c1=cookie(enrolled);ok(c1!==c0&&c1.startsWith('ANYTOUR_REVIEW_OWNER='),'session rotated');

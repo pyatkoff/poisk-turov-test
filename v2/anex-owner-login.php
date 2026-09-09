@@ -30,7 +30,8 @@ try {
         }
     }
     try { $login->context(); $authenticated = true; } catch (Throwable $e) { $authenticated = false; }
-    echo anex_owner_login_html($login->csrf(), $nonce, $error, $authenticated);
+    $enrollmentToken = ($_POST['action'] ?? '') === 'enroll' && is_string($_POST['token'] ?? null) ? $_POST['token'] : '';
+    echo anex_owner_login_html($login->csrf(), $nonce, $error, $authenticated, $enrollmentToken);
 } catch (Throwable $e) {
     http_response_code(in_array($e->getCode(), [400,403,404,405], true) ? $e->getCode() : 503);
     echo '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Вход владельца</title><p>Защищённый вход пока недоступен.</p></html>';

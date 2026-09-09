@@ -239,7 +239,9 @@ def php_string(value):
     return "'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
-def execute(payload, inventory=False):
+def execute(payload, inventory=False, publish_owner=False):
+    if inventory and publish_owner:
+        raise ValueError('conflicting operation')
     names = ('ANYTOOUR_DEPLOY_SSH_KEY', 'ANYTOOUR_DEPLOY_HOST', 'ANYTOOUR_DEPLOY_USER')
     if any(not os.environ.get(n, '').strip() for n in names):
         raise ValueError('missing SSH configuration')
@@ -258,7 +260,8 @@ def execute(payload, inventory=False):
             '-o', 'LogLevel=DEBUG1', '-l', user, host,
             'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r ' + shlex.quote(
                 Path(__file__).with_name('anex_review_auth_inventory.php').read_text().removeprefix('<?php')
-                if inventory else php_source())]
+                if inventory else Path(__file__).with_name('anex_review_owner_publish_runner.php').read_text().removeprefix('<?php')
+                if publish_owner else php_source())]
         result, attempts = gaps.run_ssh(command, json.dumps(payload),
             {k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
     if len(result.stdout) > 200000:
