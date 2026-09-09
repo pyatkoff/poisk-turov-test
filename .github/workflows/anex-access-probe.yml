@@ -45,6 +45,12 @@ on:
       - 'tests/anex_search3_*'
       - 'tests/anex-*-smoke.php'
       - 'tests/anex_adapter_probe_test.py'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'app/integrations/provider-offer-context.php'
+      - 'tests/provider-offer-context-smoke.php'
+      - '.github/workflows/anex-access-probe.yml'
   workflow_dispatch:
     inputs:
       operation:
@@ -58,11 +64,30 @@ permissions:
   actions: read
 
 concurrency:
-  group: anytour-anex-access-probe
+  group: ${{ github.event_name == 'pull_request' && format('anytour-provider-context-pr-{0}', github.event.pull_request.number) || 'anytour-anex-access-probe' }}
   cancel-in-progress: false
 
 jobs:
+  provider-context:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify offline provider identity boundary
+        run: |
+          php -l app/integrations/provider-offer-context.php
+          php tests/provider-offer-context-smoke.php
+          php tests/anex-normalizer-smoke.php
+
   verify-access:
+    # PR validation must never restore live state, connect to suppliers or deploy.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
