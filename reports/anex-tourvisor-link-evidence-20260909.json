@@ -1,15 +1,9 @@
 {
   "schema_version": 1,
   "issue": 1759,
-  "state": "completed",
-  "created_at_utc": "2026-09-09T15:18:00Z",
+  "status": "checked_not_applied",
   "completed_at_utc": "2026-09-09T15:50:00Z",
-  "source": {
-    "artifact_id": 10100996931,
-    "artifact_digest": "sha256:64a2a46f30abd1a976059a6d79f21499c6bc288c75468b1caee492d8f26fe099",
-    "triage_file": "anex-observed-hotel-triage.json",
-    "triage_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a"
-  },
+  "checkpoint_sha256": "69de67f3cd6d0601d67c68fbef03f0003282b1313f7d668a5c182ac456aba354",
   "criteria": {
     "departure": "Москва",
     "country": "Турция",
@@ -34,17 +28,13 @@
     "crm_actions": 0,
     "bookings": 0
   },
-  "entries": [
+  "verified_pairs": [
     {
-      "anex_hotel_id": 8121,
-      "anex_name": "Aperion Beach Hotel",
       "local_hotel_id": 6319,
+      "anex_hotel_id": 8121,
       "local_name": "APERION BEACH (EX. SEA PARADISE)",
+      "anex_name": "Aperion Beach Hotel",
       "dossier_digest": "1ed0fe236ec7514c326bb4cc4b95cdad2a39d99865f909c4618d77b0b1a34b35",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -54,45 +44,14 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     },
     {
-      "anex_hotel_id": 8227,
-      "anex_name": "Ares City Hotel",
-      "local_hotel_id": 1282,
-      "local_name": "ARES CITY (EX. KAMI HOTEL)",
-      "dossier_digest": "b60bbb96b938a07255a00a2db4b3c195e17fd29011a992035925b7936107cc61",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "unknown",
-      "reason": "operator_link_not_observed_before_session_recovery",
-      "decision": "unknown_not_no_match"
-    },
-    {
-      "anex_hotel_id": 8665,
-      "anex_name": "Hotel Golden Sun +12 Adult",
-      "local_hotel_id": 1209,
-      "local_name": "GOLDEN SUN HOTEL",
-      "dossier_digest": "b5b41154df63b97b35a2ff6064eb1f579dce8adcf530c529215f3196d9655099",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "unknown",
-      "reason": "operator_link_not_observed_before_session_recovery",
-      "decision": "unknown_not_no_match"
-    },
-    {
-      "anex_hotel_id": 9153,
-      "anex_name": "Selen Hotel Marmaris",
       "local_hotel_id": 9332,
+      "anex_hotel_id": 9153,
       "local_name": "CLUB SELEN MARMARIS (EX. SELEN HOTEL)",
+      "anex_name": "Selen Hotel Marmaris",
       "dossier_digest": "648c8273167f2ee4d530c4de701d2b8bb6a1d1342cc8bd809b29bec9ce062dd3",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -102,19 +61,14 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     },
     {
-      "anex_hotel_id": 16193,
-      "anex_name": "Dragut Point North",
       "local_hotel_id": 27574,
+      "anex_hotel_id": 16193,
       "local_name": "DRAGUT POINT NORTH",
+      "anex_name": "Dragut Point North",
       "dossier_digest": "fc82c917e641e4402e6213068471832d35c2c8bb81e07df1e031cad30ee41bb9",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -124,19 +78,14 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     },
     {
-      "anex_hotel_id": 16275,
-      "anex_name": "Ares Blue Hotel",
       "local_hotel_id": 1326,
+      "anex_hotel_id": 16275,
       "local_name": "ARES BLUE (EX. LARISSA BLUE)",
+      "anex_name": "Ares Blue Hotel",
       "dossier_digest": "1c7c139662c68de41b37d463d2fb790bbd19dec2a44747020e4b5b7f88f0d14f",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -146,19 +95,14 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     },
     {
-      "anex_hotel_id": 19916,
-      "anex_name": "Club Selen Hotel",
       "local_hotel_id": 56492,
+      "anex_hotel_id": 19916,
       "local_name": "CLUB SELEN ICMELER",
+      "anex_name": "Club Selen Hotel",
       "dossier_digest": "6941afdd2d175a5c4ac4fd9c57173b91e9f5a7d9e309cdaad4a93d619e76bc8c",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -168,19 +112,14 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     },
     {
-      "anex_hotel_id": 20792,
-      "anex_name": "Meril Beach Hotel Turunc",
       "local_hotel_id": 42916,
+      "anex_hotel_id": 20792,
       "local_name": "MERIL BEACH HOTEL TURUNC ADULTS ONLY 16+",
+      "anex_name": "Meril Beach Hotel Turunc",
       "dossier_digest": "3acae6c40365dd4d26868c47c59407876c076a581cbd4d136b12e118d5b31584",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -190,32 +129,14 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     },
     {
-      "anex_hotel_id": 22881,
-      "anex_name": "Beso Hotel-Berke Ranch",
-      "local_hotel_id": 2122,
-      "local_name": "HOTEL BERKE RANCH & NATURE",
-      "dossier_digest": "4decf1f145daec1429281c1735060cfca3babffe94f7f26c36776150c12d8c3c",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "unknown",
-      "reason": "no_tours_for_fixed_criteria",
-      "decision": "unknown_not_no_match"
-    },
-    {
-      "anex_hotel_id": 22921,
-      "anex_name": "Villa Sun Flower Hotel",
       "local_hotel_id": 55925,
+      "anex_hotel_id": 22921,
       "local_name": "VILLA SUNFLOWER APARTS & SUITES",
+      "anex_name": "Villa Sun Flower Hotel",
       "dossier_digest": "680fbbb38a5cb65032b898ad90b56ce80d8cab86fc3d161c18304eaf3c46dc5a",
-      "country": "Турция",
-      "search_count": 20,
-      "last_seen_utc": "2026-09-08 21:03:31",
-      "status": "visible_operator_link",
       "operator_link": {
         "origin": "https://agent.anextour.ru",
         "path": "/search/tour",
@@ -225,8 +146,54 @@
         "origin_valid": true,
         "path_valid": true,
         "expected_id_matches": true
-      },
-      "decision": "evidence_saved_mapping_not_applied"
+      }
     }
-  ]
+  ],
+  "unknown": [
+    {
+      "local_hotel_id": 1282,
+      "expected_anex_hotel_id": 8227,
+      "local_name": "ARES CITY (EX. KAMI HOTEL)",
+      "anex_name": "Ares City Hotel",
+      "dossier_digest": "b60bbb96b938a07255a00a2db4b3c195e17fd29011a992035925b7936107cc61",
+      "reason": "operator_link_not_observed_before_session_recovery",
+      "classification": "unknown_not_no_match"
+    },
+    {
+      "local_hotel_id": 1209,
+      "expected_anex_hotel_id": 8665,
+      "local_name": "GOLDEN SUN HOTEL",
+      "anex_name": "Hotel Golden Sun +12 Adult",
+      "dossier_digest": "b5b41154df63b97b35a2ff6064eb1f579dce8adcf530c529215f3196d9655099",
+      "reason": "operator_link_not_observed_before_session_recovery",
+      "classification": "unknown_not_no_match"
+    },
+    {
+      "local_hotel_id": 2122,
+      "expected_anex_hotel_id": 22881,
+      "local_name": "HOTEL BERKE RANCH & NATURE",
+      "anex_name": "Beso Hotel-Berke Ranch",
+      "dossier_digest": "4decf1f145daec1429281c1735060cfca3babffe94f7f26c36776150c12d8c3c",
+      "reason": "no_tours_for_fixed_criteria",
+      "classification": "unknown_not_no_match"
+    }
+  ],
+  "validation": {
+    "operator_selected_in_initial_query": true,
+    "link_origin": "https://agent.anextour.ru",
+    "link_path": "/search/tour",
+    "required_query_field": "HOTELLIST",
+    "secrets_or_session_data_saved": false,
+    "control_pair_repeated": false
+  },
+  "effects": {
+    "accepted_mappings": 0,
+    "database_writes": 0,
+    "supplier_api_calls": 0,
+    "anex_prices_or_details_calls": 0,
+    "crm_actions": 0,
+    "bookings": 0,
+    "deployments": 0
+  },
+  "next_action": "Validate the seven evidence-backed pairs through the existing strict name/country/coordinates/qualifiers/ambiguity matcher and append-only importer with fresh manual/pair-exclusion and DB readback. Keep the three unknown rows completed and do not replay them automatically."
 }
