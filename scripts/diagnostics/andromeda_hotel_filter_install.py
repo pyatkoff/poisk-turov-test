@@ -16,8 +16,9 @@ try {
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/hotel-filter-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
     $release=$private.'/hotel-filter-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['app/integrations/andromeda-client.php'=>'aff1c400df4c2f62f85d537a3b4dc4305b4e1203ccccbf12e9674a8ecd43ea60',
-        'api-andromeda-search3-preview.php'=>'9929ce4574afbeaa24a9b29158c7bc1026694f4cc56a08b0d2627697cc000fc5'];
+    $expected=['app/integrations/andromeda-client.php'=>'1c25d3e27ded11e52d2023d70c7e4ce0debdd1fe516f5abcf9f32e4c3d954ae4',
+        'api-andromeda-search3-preview.php'=>'4c3ea5c4c7ad2c16d9506f2110015c53fa33fb4f9be245401efe578b51288cd7',
+        'app/integrations/andromeda-offer-store.php'=>'cc1d40b433df7f1ca39a1e5d005b7336adab0c6c06c4a9f9b8c472c6783e94de'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
@@ -41,9 +42,9 @@ try {
         $saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
         $search=['generation'=>1,'andromeda_operator_ids'=>['5'],'params'=>[
             'countryId'=>'1','departureId'=>'1','dateFrom'=>'2026-09-18','dateTo'=>'2026-09-18',
-            'nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'meal'=>'7','hotelIds'=>['447']]];
+            'nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'meal'=>'7','hotelIds'=>['9365']]];
         $criteria=anytour_andromeda_search3_params($search,$pdo,$saved);
-        if(($criteria['HOTELS']??null)!=='2000042763'||($criteria['OPERATORS']??null)!=='5')throw new RuntimeException();
+        if(($criteria['HOTELS']??null)!=='416247'||($criteria['OPERATORS']??null)!=='5')throw new RuntimeException();
         $session='hotel-filter-'.$request['source_sha'];
         $data=anytour_andromeda_search3_run($search,$pdo,$saved,$config,$session);
         $budgetPath=dirname($config['catalog_path']).'/monthly-requests.json';
@@ -55,7 +56,7 @@ try {
             'page'=>$data['page'],'pages_count'=>$data['pages_count'],'received_offers'=>$data['received_offers'],
             'displayed_offers'=>count($tours),'local_hotel_ids'=>$ids,'operator_labels'=>$operators,
             'resume_equal'=>$again===$data,'resume_budget_unchanged'=>$budget===(is_file($budgetPath)?hash_file('sha256',$budgetPath):null)];
-        if($again!==$data||$result['verification']['resume_budget_unchanged']!==true||count($tours)!==$data['received_offers']||array_diff($ids,[447])||array_diff($operators,['Anex Tour']))throw new RuntimeException();
+        if($again!==$data||$result['verification']['resume_budget_unchanged']!==true||count($tours)!==$data['received_offers']||array_diff($ids,[9365])||array_diff($operators,['Anex Tour']))throw new RuntimeException();
     }catch(Throwable $probeError){$result['verification']['status']='failed';}
     file_put_contents($release.'/manifest.json',json_encode($result));
 }catch(Throwable $ignored){
@@ -69,7 +70,7 @@ def main():
     directory=Path(os.environ['RUNNER_TEMP'])/'andromeda-hotel-filter';directory.mkdir(exist_ok=True)
     root=Path(__file__).resolve().parents[2]
     request={'source_sha':os.environ['SOURCE_SHA'],'files':{}}
-    for name in ['app/integrations/andromeda-client.php','v2/api-andromeda-search3-preview.php']:
+    for name in ['app/integrations/andromeda-client.php','v2/api-andromeda-search3-preview.php','app/integrations/andromeda-offer-store.php']:
         request['files'][name.removeprefix('v2/')]=base64.b64encode((root/name).read_bytes()).decode()
     save(directory/'reservation.json',{'state':'inflight','source_sha':request['source_sha']},exclusive=True)
     result=owner.ssh_php(SOURCE,request)
