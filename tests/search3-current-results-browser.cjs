@@ -71,15 +71,21 @@ async function checkMealFacet(page, width, previous) {
     }, items);
     await page.locator('#sortResults').selectOption('price');
     const field = page.locator('.search3-meal-filter'), select = field.locator('select');
+    const mealPreset = field.locator('.search3-filter-presets button', { hasText: 'Всё включено' });
     const name = page.locator('.search3-hotel-filter input'), category = page.locator('.search3-category-filter select');
     const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
     if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
+    assert.equal(await mealPreset.isVisible(), true, 'a truthful existing all-inclusive option exposes one quick choice');
+    assert.ok((await mealPreset.boundingBox()).height >= 44, 'meal quick choice keeps a full touch target');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'calendar starts from the lowest offer in the terminal result set');
     const eventCount = await page.evaluate(() => window.__mealEvents.length);
-    await select.selectOption('всё включено');
+    await mealPreset.click();
+    assert.equal(await select.inputValue(), 'всё включено', 'quick choice drives the canonical meal select value');
+    assert.equal(await mealPreset.getAttribute('aria-pressed'), 'true', 'quick choice exposes its selected state');
+    assert.equal(await mealPreset.evaluate(node => node === document.activeElement), true, 'quick choice keeps keyboard focus across the canonical rerender');
     assert.equal(await page.evaluate(() => window.__mealEvents.length), eventCount + 1, 'one local projection, no render loop');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
@@ -252,6 +258,7 @@ async function run(browser, width, previous) {
     const localHotelInput = localHotelFilter.locator('input');
     const localCategoryFilter = page.locator('.search3-category-filter');
     const localCategorySelect = localCategoryFilter.locator('select');
+    const localCategoryPresets = localCategoryFilter.locator('.search3-filter-presets');
     const localBudgetFilter = page.locator('.search3-budget-filter');
     const localBudgetInput = localBudgetFilter.locator('input');
     const localRatingFilter = page.locator('.search3-rating-filter');
@@ -271,6 +278,8 @@ async function run(browser, width, previous) {
     assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
     assert.equal(await localBudgetFilter.isVisible(), true, 'complete loaded offer prices expose a budget facet');
     assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
+    assert.deepEqual(await localCategoryPresets.locator('button').allTextContents(), ['5★', '4★'], 'complete category values expose quick exact choices without inventing a threshold');
+    assert.ok((await localCategoryPresets.locator('button').first().boundingBox()).height >= 44, 'category quick choice keeps a full touch target');
     assert.equal(await localRatingFilter.isVisible(), true, 'rating facet appears when every loaded hotel has a rating');
     assert.equal(await localSeaFilter.isVisible(), true, 'sea facet appears when every loaded hotel has a distance');
     const rail = page.locator('.results-filter-rail'), actions = page.locator('#resultsTools .results-tools__actions');
@@ -294,7 +303,10 @@ async function run(browser, width, previous) {
     await localSeaSelect.selectOption('200');
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'sea threshold filters only complete loaded distance data');
     await localSeaSelect.selectOption('0');
-    await localCategorySelect.selectOption('5');
+    const categoryFive = localCategoryPresets.locator('button[data-value="5"]');
+    await categoryFive.click();
+    assert.equal(await categoryFive.getAttribute('aria-pressed'), 'true', 'category quick choice exposes its selected state');
+    assert.equal(await categoryFive.evaluate(node => node === document.activeElement), true, 'category quick choice keeps focus after filtering');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'category facet filters only the already loaded hotels');
     assert.equal(await localReset.isVisible(), true, 'an active local facet exposes one reset action at every responsive width');
     assert.equal(await localReset.evaluate(node => node.parentElement.className), width >= 1025 ? 'results-filter-rail' : 'search3-mobile-filter-panel__body', 'reset action follows the current responsive filter owner');
@@ -314,8 +326,10 @@ async function run(browser, width, previous) {
     assert.equal(await localHotelInput.inputValue(), '', 'one reset clears the hotel query');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'one reset restores every loaded card');
     assert.equal(await localReset.isVisible(), false, 'reset action hides when no local filter remains active');
+    assert.equal(await categoryFive.getAttribute('aria-pressed'), 'false', 'common reset clears the mirrored quick choice state');
     await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], category: 0 }]);
     assert.equal(await localCategoryFilter.isVisible(), false, 'category facet hides when any loaded hotel lacks category data');
+    assert.equal(await localCategoryPresets.isVisible(), false, 'incomplete category data also hides its quick choices');
     assert.equal(await localCategorySelect.inputValue(), '0', 'incomplete category data resets the local choice');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'an incomplete facet never silently removes a loaded hotel');
     await page.evaluate(items => {
