@@ -23,9 +23,13 @@ INT читает собственный ANEX-план; SEO ведёт #1720. И�
   действие «Изменить тур» через существующий `.back-results` contract; exact offer,
   фильтры, сортировка, раскрытие, shortlist и контактный черновик переживают возврат,
   а согласие сбрасывается после выбора другого предложения.
-- `S3_OTA_SITE_CONFIDENCE`: следующий исполняемый пакет — одна существующая populated
-  страница входа с правдивой свежестью/помощью, точным Search3 handoff и полезным
-  stale/empty выходом; завершённые header/error-recovery пакеты не повторять.
+- `S3_OTA_SITE_CONFIDENCE`: опубликован #1787. Карточка сохранённого предложения
+  отеля передаёт в Search3 показанные дату и ночи через общий offer-state contract;
+  generic hero остаётся generic, свежесть и empty fallback не выдают snapshot за наличие.
+- `S3_OTA_PROVIDER_PARITY`: остаётся в очереди, но ждёт свежий bounded INT→SEARCH
+  handoff с source/destination SHA и fixtures identity; старый addon не переносить.
+- `S3_OTA_QUALITY_BENCHMARK`: следующий независимый пакет — воспроизводимый baseline
+  пяти задач на текущем exact preview без выдуманной конверсии или превосходства.
 - Порядок новых пакетов дан ниже; только `continuation_policy.active_queue_ids`
   задаёт исполняемую очередь. Детали SEARCH — [существующий профильный план](anytour-roadmap/search.md).
 - Миграция остаётся за отдельным визуальным одобрением конкретной production-версии.

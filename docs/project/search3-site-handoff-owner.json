@@ -1,50 +1,46 @@
 {
   "schema_version": 1,
   "date": "2026-09-09",
-  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
-  "source_pr": 1663,
-  "baseline_release_sha": "bae59d9f275a1623f5c52eff6c46186635e1e7d4",
-  "source_sha": "e010aa325d110091f244b3abed789038e1f3288c",
-  "source_tree": "ca14dc6045bf7e1bcf9f004a7517fc2d157be54e",
-  "release_integration_sha": "f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134",
-  "scope": "Route all remaining country and hot-tour Search3 transitions through the existing fail-closed, allowlisted and preview-aware handoff owner.",
+  "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "source_pr": 1787,
+  "baseline_release_sha": "2fff5a92cab4e744907e6d934d849e57365de635",
+  "source_sha": "aa4790d95166367f6e6b111709ce3b9f04768238",
+  "source_tree": "3a30156436d85abc35985ce8ec5ce0ca3b1d61d9",
+  "release_integration_sha": "e6c3e3cafad52ddf836113d2c3d3b80a63b06c06",
+  "scope": "Preserve the concrete date and duration shown by a hotel snapshot card when its CTA hands the visitor to Search3.",
   "result": {
-    "manual_country_builders_removed": 1,
-    "manual_hot_builders_removed": 3,
-    "canonical_hot_builders": 3,
-    "production_and_preview_urls_unchanged": true,
-    "generic_unmapped_country_fallback_preserved": true,
-    "destination_ids_added": 0,
-    "anex_changed": false
+    "confirmed_gap_fixed": true,
+    "displayed_snapshot_state_preserved": ["hotel", "departure", "dateFrom", "dateTo", "daysFrom", "daysTill"],
+    "existing_offer_state_helper_reused": true,
+    "generic_hero_and_callout_preserved": true,
+    "production_and_preview_route_contracts_unchanged": true,
+    "destination_or_hotel_ids_added": 0,
+    "anex_or_andromeda_changed": false
   },
   "size": {
-    "search3_eight_assets_raw_bytes": 12865,
-    "eager_route_raw_bytes": 77532,
-    "full_route_raw_bytes": 119950,
     "css_js_delta_raw_bytes": 0
   },
   "verification": {
-    "security_run": 34305077898,
-    "standalone_content_run": 34305077886,
-    "preview_boundary_run": 34305077951,
-    "exact_artifact_run": 34305077962,
+    "security_run": 34379191889,
+    "exact_artifact_run": 34379192101,
     "conclusion": "success",
-    "static_equivalence_cases": 4,
-    "static_equivalence_modes": 2,
+    "narrow_checks": ["search handoff helper", "hotel renderer contract", "production and preview site paths", "live snapshot source boundary"],
     "real_leads_submitted": 0
   },
   "artifact": {
-    "id": 10086355909,
-    "digest": "sha256:0b328cc7fc5e48a486f3d5cc5cfa726f01d41a8810fc1b7a9f79e0c3d28302fe"
+    "id": 10115148900,
+    "digest": "sha256:215c2239a12d4aa14dc9cec70ae30919b32baf1a7833ea01317a9c71eaeddecb"
   },
   "publication": {
-    "published": false,
-    "reason": "Exact visible output and URLs are unchanged; no extra preview publication is justified.",
-    "published_preview_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
-    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "published": true,
+    "published_preview_source_sha": "aa4790d95166367f6e6b111709ce3b9f04768238",
+    "deploy_run": 34379466986,
+    "deployment_evidence_artifact": 10115256484,
+    "main_observed_sha": "ab4b75ff6db5cadd59127399ba2d740d71b534d3",
     "main_changed": false,
-    "production_changed": false
+    "production_changed": false,
+    "evidence": "9 routes 200; noindex; disabled lead 403; counter0; internal PHP denied; rollback retained; production fingerprints unchanged"
   },
-  "rollback": "Revert f3b3ef3ed1dac758efeb6f3c56d6d5c456f72134 independently.",
-  "next_action": "Begin S3_PRODUCT_USEFUL_FEATURES with an audit of the current price calendar and filters; keep separate ANEX work isolated."
+  "rollback": "Revert release merge e6c3e3cafad52ddf836113d2c3d3b80a63b06c06 independently; preview retained the previous rollback copy.",
+  "next_action": "Provider parity waits for a fresh bounded INT handoff; continue the independent S3_OTA_QUALITY_BENCHMARK baseline on the current exact preview."
 }
