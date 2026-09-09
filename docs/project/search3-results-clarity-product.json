@@ -379,6 +379,34 @@
       "unassisted user pilot",
       "owner approval for a concrete production release"
     ],
-    "next_action": "Capture one bounded provider-status/live mapped-offer result without extra renderer or blind retries; keep provider selection disabled until a fresh quote/selection contract exists."
+    "next_action": "The bounded Turkey acceptance showed no mapped offer and must not be repeated blindly. Wait for fresh deterministic mapped-offer criteria and an observable provider-status/quote handoff; keep provider selection disabled."
+  },
+  "ota_canonical_meal_families_20260909": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "pr": 1817,
+    "source_sha": "041c2e2b7fe3c68d013749438a5159d4fcc37d47",
+    "source_tree": "668b6c1e7424915fe179282995587662c0210d1a",
+    "checked_release_sha": "e909e9bbac70a0bdc6469d713db975b1b67a5fcb",
+    "security_run": 34403340447,
+    "exact_run": 34403340308,
+    "exact_artifact": 10124396056,
+    "results_geometry_artifact": 10124395597,
+    "deploy_run": 34403874094,
+    "deploy_evidence_artifact": 10124537266,
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "product_result": "The one current local-hotel-filter owner groups Russian and English RO, BB, HB, FB, AI/UAI, SC and On Request synonyms into seven customer-facing Russian choices. Exact supplier labels, offer identity and prices remain unchanged in cards and selection.",
+    "ownership": "No new renderer, filter runtime, drawer or handler. Only the current local-hotel-filter source, generated asset/import hash and focused current-results fixture changed; INT provider and quote paths are untouched.",
+    "weight": "public JS 27599->28299 B (+700); CSS/PHP/inline 0 B. This is useful current-owner growth, not a transfer or deletion claim.",
+    "verification": "Security34403340447 and exact34403340308 passed. The focused fixture covers one option per bilingual meal family, exact-offer filtering, prices, sort, continuation, shortlist/selected return, mobile/desktop geometry, external_calls0 and lead_sent0. Exact 375/1440 meal-filter captures were inspected; local 14-shape probe and existing payload-owner test passed.",
+    "publication": "Exact artifact10124396056 was reused by deploy34403874094. Evidence10124537266 retains isolated noindex preview, disabled production leads, counter0, rollback and production fingerprints. Control PR1818 closed without merge.",
+    "live_preview": "Before the source package, one bounded Turkey search loaded 69 Tourvisor cards with duplicate card IDs0 and mapped Andromeda markers0. Provider script/endpoint configuration was present, but provider transport/status success was not independently observable; no repeat supplier search or success claim was made.",
+    "deferred": [
+      "fresh deterministic mapped-provider visibility and status evidence",
+      "Andromeda quote/selection handoff",
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "Wait for a fresh deterministic INT mapped-offer/quote handoff; meanwhile continue an independent unclaimed SEARCH/SITE owner without duplicating the renderer or filter runtime."
   }
 }
