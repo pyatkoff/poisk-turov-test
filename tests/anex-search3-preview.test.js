@@ -1557,3 +1557,26 @@ test('expanded offer context compares serialized scope values and rejects change
   const other=plain(expected);other.hotel_scope.local_id=999;assert.equal(same(expected,other),false);
   assert.equal(same(expected,null),false);
 });
+
+
+test('complete nonempty expansion replaces representative and preserves distinct equal-price offers', () => {
+  const merge = helpers().expandedTours;
+  const tour = (provider, offer_ref) => ({ provider, offer_ref, price: { amount: 100 } });
+  const original = hotel({ tours: [tour('andromeda', 'seed'), tour('anex', 'one')] });
+  const extra = [tour('andromeda', 'one'), tour('andromeda', 'two')];
+  const result = plain(merge(original, { status: 'complete', tours: extra }));
+  assert.deepEqual(result.map(t => t.provider + ':' + t.offer_ref), ['anex:one', 'andromeda:one', 'andromeda:two']);
+  assert.equal(original.tours.length, 2);
+});
+
+test('partial failed and empty expansions retain the original available offer', () => {
+  const merge = helpers().expandedTours;
+  const seed = { provider: 'andromeda', offer_ref: 'seed', price: { amount: 100 } };
+  const extra = { provider: 'andromeda', offer_ref: 'extra', price: { amount: 110 } };
+  const original = hotel({ tours: [seed] });
+  for (const status of ['loading', 'unavailable']) {
+    assert.deepEqual(plain(merge(original, { status, tours: [extra] })).map(t => t.offer_ref), ['seed', 'extra']);
+  }
+  assert.deepEqual(plain(merge(original, { status: 'complete', tours: [] })), [seed]);
+  assert.deepEqual(plain(merge(original, undefined)), [seed]);
+});

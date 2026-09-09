@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-09",
+  "issue": 1717,
+  "pr": 1825,
+  "source": "51111acb60dac001e2322b0eb5b96930c01af66c",
+  "publication": {
+    "run": 34409730231,
+    "job": 102661096660,
+    "artifacts": [
+      {
+        "digest": "sha256:4db7d2f24765161d1737be0bfc54d97ee69e3007b4d16b99848aaf8d465d7a34",
+        "id": 10126745901,
+        "name": "andromeda-grouped-publication-readback"
+      },
+      {
+        "digest": "sha256:bf17068f9030e33bd2ca84952301f1402b5395205a661bcffa6fdc5ef393dce5",
+        "id": 10126744437,
+        "name": "andromeda-expanded-summary-51111acb"
+      }
+    ],
+    "addon_sha256": "0f2e698d9670d5480e2179ea9881932aba4c04fa1fe95ae3047401272d9ebe2e"
+  },
+  "checks": {
+    "node": 54,
+    "protocol": 34409619644,
+    "security": 34409619627,
+    "build": 34409619645
+  },
+  "browser": {
+    "local_id": 9365,
+    "criteria": "Moscow Egypt 2026-09-18 8 nights 2 adults AI operator5",
+    "andromeda_variants": 8,
+    "representative_repeated": false,
+    "other_sources_preserved": true,
+    "return_retained": 8,
+    "desktop_visual": "checked",
+    "detail": "unavailable_or_expired displayed for Sea View 134968 RUB; cause not established",
+    "mobile": "deferred",
+    "physical_safari": "deferred"
+  },
+  "supplier_calls": {
+    "publication": 0,
+    "browser": "one search and one hotel expansion; HTTP count not measured"
+  },
+  "mapping_writes": 0,
+  "production_changed": false,
+  "next_action": "Diagnose saved offer detail failure after same-criteria repeat search, including generation/cache/seed expiry; do not claim cause or restart suppliers without evidence. Shared SEARCH handoff remains with its owner."
+}

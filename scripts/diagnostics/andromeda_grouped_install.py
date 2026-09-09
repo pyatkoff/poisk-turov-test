@@ -16,10 +16,13 @@ try {
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/grouped-search-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
     $release=$private.'/grouped-search-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['catalogs-v2.js'=>'fbad31a91e3503fafe654197a14ab85add6b81239e2168df1f8f91ee91213049'];
+    $expected=['anex-search3-preview-v1.js'=>'472aa521b2c6be5a886e28f86376069b805c85d3286e74059ba7e39210cabbe3'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
+    $page=file_get_contents($target.'/search-page-v2.php');
+    $files['search-page-v2.php']=str_replace('anex-search3-preview-v1.js?v=cfd8cc409c23d6603094ed39bb94916c70d229ab','anex-search3-preview-v1.js?v='.$request['source_sha'],$page,$count);
+    if($count!==1)throw new RuntimeException();
     foreach($files as $path=>$data){
         $backups[$path]=file_get_contents($target.'/'.$path);
         if(file_put_contents($release.'/'.str_replace('/','__',$path),$backups[$path])!==strlen($backups[$path]))throw new RuntimeException();
@@ -47,7 +50,7 @@ def main():
     directory=Path(os.environ['RUNNER_TEMP'])/'andromeda-grouped-search';directory.mkdir(exist_ok=True)
     root=Path(__file__).resolve().parents[2]
     request={'source_sha':os.environ['SOURCE_SHA'],'artifact_id':os.environ['ARTIFACT_ID'],'files':{}}
-    for name in ['v2/catalogs-v2.js']:
+    for name in ['v2/anex-search3-preview-v1.js']:
         request['files'][name.removeprefix('v2/')]=base64.b64encode((root/name).read_bytes()).decode()
     save(directory/'reservation.json',{'state':'inflight','source_sha':request['source_sha']},exclusive=True)
     result=owner.ssh_php(SOURCE,request)
