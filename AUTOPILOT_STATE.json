@@ -1244,7 +1244,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Completed and published #1749 homepage catalog retry (inline JS +936 B, CSS/external JS 0) and #1751 search-error editable form (+44 B external JS, CSS 0). Security/exact and scoped recovery fixtures green. Direct push deployments 34351636731 and 34352451364 succeeded. Independent selected return/empty-flight audit found no additional confirmed defect. Physical Safari deferred."
+    "last_execution_continuation": "Published #1760: canonical selected keyboard focus, shared JS+41 B; CSS/eight assets0. Security34358214621/exact34358214734 and deploy34358559449 passed. Live Enter/Tab/return verified. Independent audit found no further confirmed current SEARCH defect. Physical-device and owner approval deferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1269,10 +1269,11 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
-    "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
-    "next_action": "Continue bounded keyboard acceptance of opening a selected tour on published 2695163c; source-only audit did not establish a focus defect, so verify live before changing code. Physical Safari/live mobile safe-area and owner visual approval remain deferred. Do not repeat completed catalog/error recovery, calendar/filter/route work or duplicate #1731 INT handoff.",
-    "roadmap": "docs/project/search3-product-development-plan.md"
+    "last_fully_checked_release_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
+    "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+    "next_action": "Available Tourvisor-only preview acceptance is complete: #1760 live Enter→selectedTour→Tab return→Enter original direct-tour passed. Physical iPhone/Safari dates/nights, on-screen keyboard and safe-area/phone CTA remain deferred, as does owner visual approval of this exact preview before #1334. Do not repeat completed Search3 work. Continue only a newly confirmed independent SEARCH/SITE defect or separately coordinated bounded #1731 INT handoff; no next source defect is currently established.",
+    "roadmap": "docs/project/search3-product-development-plan.md",
+    "acceptance_status": "AVAILABLE_PREVIEW_ACCEPTANCE_COMPLETE_EXTERNAL_EVIDENCE_DEFERRED"
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -6292,24 +6293,24 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "artifact_id": 10104097131,
-    "artifact_run": 34351875286,
+    "artifact_id": 10106724156,
+    "artifact_run": 34358214734,
     "conclusion": "success",
-    "control_sha": "e4ee64c842c4989782fef3a30cd9d5f2b9c67099",
-    "deploy_run": 34352451364,
+    "control_sha": "8b6ed4a30bd238bc1144b05449f9f38713f24742",
+    "deploy_run": 34358559449,
     "metrika_counter": 0,
     "payload_file_count": 717,
     "production_fingerprint_unchanged": true,
     "production_lead_delivery": false,
     "published": true,
-    "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+    "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
     "real_leads_submitted": 0,
-    "release_pin_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+    "release_pin_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
     "robots": "noindex",
     "rollback_backup_retained": true,
     "route": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
-    "source_tree": "aa65d9a4bb6807193ca468af26b1e0c3fe251a7f"
+    "source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+    "source_tree": "581a52d140fa22355f7950f7e1a60bcf1e9c9d0f"
   },
   "preview_verification_policy": {
     "batch_execution": {
@@ -6563,35 +6564,34 @@
       "pr": 1334,
       "branch": "release/search3-production-ready-v1",
       "status": "PUBLISHED_ISOLATED_PREVIEW_OWNER_ACCEPTANCE_DEFERRED",
-      "implementation_verified_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
-      "release_integration_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
-      "source_tree": "aa65d9a4bb6807193ca468af26b1e0c3fe251a7f",
+      "implementation_verified_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+      "release_integration_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
+      "source_tree": "581a52d140fa22355f7950f7e1a60bcf1e9c9d0f",
       "source_prs": [
-        1749,
-        1751
+        1760
       ],
-      "exact_artifact": 10104097131,
+      "exact_artifact": 10106724156,
       "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
-      "preview_deploy_run": 34352451364,
+      "preview_deploy_run": 34358559449,
       "latest_publication_verification": {
-        "artifact_id": 10104097131,
-        "artifact_run": 34351875286,
+        "artifact_id": 10106724156,
+        "artifact_run": 34358214734,
         "conclusion": "success",
-        "control_sha": "e4ee64c842c4989782fef3a30cd9d5f2b9c67099",
-        "deploy_run": 34352451364,
+        "control_sha": "8b6ed4a30bd238bc1144b05449f9f38713f24742",
+        "deploy_run": 34358559449,
         "metrika_counter": 0,
         "payload_file_count": 717,
         "production_fingerprint_unchanged": true,
         "production_lead_delivery": false,
         "published": true,
-        "published_source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
+        "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
         "real_leads_submitted": 0,
-        "release_pin_sha": "2401f0927e57c88b6afbfb01a7ffcc2a07edf16c",
+        "release_pin_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
         "robots": "noindex",
         "rollback_backup_retained": true,
         "route": "https://anytoour.ru/_preview/search3-site-candidate/",
-        "source_sha": "2695163ce95f5b9b981da55201c6cad5cf44f1e8",
-        "source_tree": "aa65d9a4bb6807193ca468af26b1e0c3fe251a7f"
+        "source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+        "source_tree": "581a52d140fa22355f7950f7e1a60bcf1e9c9d0f"
       },
       "live_browser_verification": {
         "date": "2026-09-09",
@@ -6724,7 +6724,7 @@
         ]
       },
       "audit": "docs/project/search3-local-meal-facet-product.json",
-      "next_action": "Continue bounded keyboard acceptance of opening a selected tour on published 2695163c; source-only audit did not establish a focus defect, so verify live before changing code. Physical Safari/live mobile safe-area and owner visual approval remain deferred. Do not repeat completed catalog/error recovery, calendar/filter/route work or duplicate #1731 INT handoff.",
+      "next_action": "Available Tourvisor-only preview acceptance is complete: #1760 live Enter→selectedTour→Tab return→Enter original direct-tour passed. Physical iPhone/Safari dates/nights, on-screen keyboard and safe-area/phone CTA remain deferred, as does owner visual approval of this exact preview before #1334. Do not repeat completed Search3 work. Continue only a newly confirmed independent SEARCH/SITE defect or separately coordinated bounded #1731 INT handoff; no next source defect is currently established.",
       "deferred": [
         "Live mobile, physical Safari/safe-area, full site/SEO and production visual acceptance; no real lead submission.",
         "Live selected-tour/flight/lead handoff not repeated for this local result-filter packet; protected controller/payload/source guards pass.",
@@ -10211,7 +10211,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T12:42:56.611Z",
+  "updated_at": "2026-09-09T13:44:21.785Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -13372,5 +13372,47 @@
         34351875254
       ]
     }
+  },
+  "latest_selected_keyboard_package": {
+    "date": "2026-09-09",
+    "source_pr": 1760,
+    "source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+    "checked_release_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
+    "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+    "status": "PUBLISHED",
+    "size": {
+      "shared_emitted_js_delta_bytes": 41,
+      "initial_external_delta_bytes": 41,
+      "full_scenario_external_delta_bytes": 41,
+      "css_delta_bytes": 0,
+      "eight_assets_delta_bytes": 0,
+      "inline_delta_bytes": 0
+    },
+    "validation": {
+      "security_run": 34358214621,
+      "exact_run": 34358214734,
+      "initial_failed_exact_run": 34358067172,
+      "guard_correction": "Reverse only exact focus insertion then require original protected controller hash; business/security checks unchanged.",
+      "node_source_return": "passed",
+      "selected_browser_focus_tab": "passed",
+      "screenshots_reviewed": [
+        375,
+        1440
+      ],
+      "live": {
+        "hotel": "REIS MARIS",
+        "enter_focus": "selectedTour",
+        "tab_focus": "back-results",
+        "return_focus": "direct-tour",
+        "overflow": false,
+        "real_leads_submitted": 0
+      }
+    },
+    "deploy_run": 34358559449,
+    "deferred": [
+      "Physical iPhone/Safari controls and safe-area",
+      "Owner exact-release visual approval and production migration"
+    ],
+    "next_action": "Available Tourvisor-only preview acceptance is complete: #1760 live Enter→selectedTour→Tab return→Enter original direct-tour passed. Physical iPhone/Safari dates/nights, on-screen keyboard and safe-area/phone CTA remain deferred, as does owner visual approval of this exact preview before #1334. Do not repeat completed Search3 work. Continue only a newly confirmed independent SEARCH/SITE defect or separately coordinated bounded #1731 INT handoff; no next source defect is currently established."
   }
 }
