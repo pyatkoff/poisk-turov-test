@@ -104,7 +104,7 @@
     "selected-tour flight-list and contact-handoff product work belongs to S3_PRODUCT_SELECTED_LEAD"
   ],
   "rollback": "Revert 4554e34b4cfed32d290a82b0ae05f3adaa828c80 for code; restore the retained preview backup recorded by deploy run34297374511 for preview.",
-  "next_action": "Review active PR #1804 as the sole Andromeda provider-parity consumer against fresh release and exact identity/unknown/partial-failure/disabled-selection evidence; do not duplicate its renderer/provider paths. If blocked, continue only an independent unclaimed current owner.",
+  "next_action": "Run one bounded live provider-status acceptance to observe a mapped Andromeda offer in the shared preview without duplicates or selection; then require a separate quote/selection handoff before provider offers can enter the lead path.",
   "ota_results_decision_20260909": {
     "stage": "PUBLISHED_PREVIEW_AWAITING_PILOT",
     "baseline_release_sha": "9237deb7af50707c5f6d28dc77d8a3b97a0db0a8",
@@ -346,6 +346,39 @@
       "unassisted user pilot",
       "owner approval for a concrete production release"
     ],
-    "next_action": "Do not duplicate active provider-parity PR1804. Review its final exact evidence and freshness; if blocked, choose an independent unclaimed current owner rather than another filter patch."
+    "next_action": "Complete; cross-provider equivalent meals are covered separately by ota_provider_meal_canonical_20260909."
+  },
+  "ota_provider_meal_canonical_20260909": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_prs": [
+      1804,
+      1808,
+      1810
+    ],
+    "source_sha": "b78c5bacf65925a02e62c8160b4b47a1422b2cec",
+    "source_tree": "a4f49f6fe2b8f20592992ba73e1acc2a8979c88e",
+    "checked_release_sha": "2bd4b57d302586955005d2e842abcb96f7888e11",
+    "security_run": 34400177558,
+    "exact_run": 34400176737,
+    "exact_artifact": 10123240946,
+    "results_geometry_artifact": 10123239945,
+    "selected_geometry_artifact": 10123238727,
+    "deploy_run": 34400744779,
+    "deploy_evidence_artifact": 10123342926,
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "product_result": "The shared renderer can display accepted local-ID Andromeda offers without a second renderer and keeps them unselectable until quote verification. The one current meal-filter owner groups AI, UAI and equivalent all-inclusive labels across providers instead of hiding a valid offer because its label string differs.",
+    "ownership": "PR1810 changes only the current local-hotel-filter owner and its generated asset/tests. Provider, renderer, lifecycle, Tourvisor/API, price and lead owners remain those established by PR1804; unresolved provider hotels remain excluded by PR1808.",
+    "weight": "PR1810 public JS 27330->27599 B (+269); CSS/PHP/inline 0 B. No absolute size cap; one-owner and no-duplicate-runtime boundaries passed.",
+    "verification": "Security34400177558 and exact34400176737 passed source/PHP/path/presentation/isolation plus selected/results browser matrices. Fixtures cover Tourvisor AI/UAI and disabled Andromeda AI in one canonical all-inclusive projection, retained filter through sort/shortlist/selected return, exact offer prices, external_calls0 and lead_sent0. Earlier red runs identified stale retained-value test expectations and were corrected without weakening behavior assertions.",
+    "publication": "Exact artifact10123240946 was reused by deploy34400744779. Evidence10123342926 confirms noindex, disabled lead403, counter0, rollback and unchanged production fingerprints. Control PR1812 closed without merge.",
+    "live_preview": "A bounded desktop search loaded99 hotels and exposed the canonical all-inclusive preset. No mapped Andromeda offer was visibly observed in that sample, so live provider visibility and provider request outcome are not claimed.",
+    "deferred": [
+      "bounded live mapped-provider visibility/status evidence",
+      "Andromeda quote/selection handoff",
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "Capture one bounded provider-status/live mapped-offer result without extra renderer or blind retries; keep provider selection disabled until a fresh quote/selection contract exists."
   }
 }
