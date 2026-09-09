@@ -2,7 +2,7 @@
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions'),rail=document.querySelector('.results-filter-rail');
 if(!results||!actions||!rail)return;
 const desktop=window.matchMedia('(min-width:1025px)');
-let field=null,input=null,status=null,categoryField=null,categorySelect=null,mealField=null,mealSelect=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null;
+let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
@@ -24,6 +24,14 @@ function mount(){
   syncContainers(Number(count.textContent||0));
 }
 function option(value,label){const node=document.createElement('option');node.value=String(value);node.textContent=label;return node;}
+function syncPresets(group,select,choices,empty){
+  const signature=choices.map(item=>item.value+'\n'+item.label).join('\n');
+  if(group.dataset.options!==signature){group.dataset.options=signature;group.replaceChildren(...choices.map(item=>{const button=document.createElement('button');button.type='button';button.dataset.value=item.value;button.textContent=item.label;return button;}));}
+  group.hidden=!choices.length;Array.from(group.children).forEach(button=>button.setAttribute('aria-pressed',String(select.value===button.dataset.value)));group.dataset.empty=empty;
+}
+function bindPresets(group,select){
+  group.addEventListener('click',event=>{const button=event.target.closest('button[data-value]');if(!button||!group.contains(button))return;select.value=select.value===button.dataset.value?group.dataset.empty:button.dataset.value;select.dispatchEvent(new Event('change',{bubbles:true}));});
+}
 function ensure(){
   if(field)return;
   rail.hidden=true;
@@ -36,14 +44,15 @@ function ensure(){
   field.innerHTML='<span>Название отеля</span><input type="search" autocomplete="off" placeholder="Введите название" aria-describedby="search3HotelFilterStatus"><small id="search3HotelFilterStatus" aria-live="polite"></small>';
   budgetField=document.createElement('label');budgetField.className='search3-budget-filter';budgetField.hidden=true;
   budgetField.innerHTML='<span>Бюджет за весь тур</span><input type="range" min="0" max="0" step="5000" value="0" aria-describedby="search3BudgetLabel"><small id="search3BudgetLabel"></small>';
-  mealField=document.createElement('label');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<span>Питание</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любое питание</option></select>';
-  categoryField=document.createElement('label');categoryField.className='search3-category-filter';categoryField.hidden=true;categoryField.innerHTML='<span>Категория отеля</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любая категория</option></select>';
+  mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любое питание</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор питания" hidden></div>';
+  categoryField=document.createElement('div');categoryField.className='search3-category-filter';categoryField.hidden=true;categoryField.innerHTML='<label><span>Категория отеля</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любая категория</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор категории" hidden></div>';
   ratingField=document.createElement('label');ratingField.className='search3-rating-filter';ratingField.hidden=true;ratingField.innerHTML='<span>Рейтинг гостей</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любой рейтинг</option><option value="4">4,0 и выше</option><option value="4.5">4,5 и выше</option></select>';
   seaField=document.createElement('label');seaField.className='search3-sea-filter';seaField.hidden=true;seaField.innerHTML='<span>До моря</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любое расстояние</option><option value="200">До 200 м</option><option value="500">До 500 м</option><option value="1000">До 1 км</option></select>';
   resetButton=document.createElement('button');resetButton.type='button';resetButton.className='search3-filter-reset';resetButton.textContent='Сбросить фильтры';resetButton.hidden=true;
-  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');budgetLabel=budgetField.querySelector('small');mealSelect=mealField.querySelector('select');categorySelect=categoryField.querySelector('select');ratingSelect=ratingField.querySelector('select');seaSelect=seaField.querySelector('select');
+  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');budgetLabel=budgetField.querySelector('small');mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');seaSelect=seaField.querySelector('select');
   input.addEventListener('input',apply);categorySelect.addEventListener('change',apply);ratingSelect.addEventListener('change',apply);seaSelect.addEventListener('change',apply);
   mealSelect.addEventListener('change',()=>window.V2Results.rerender());
+  bindPresets(mealPresets,mealSelect);bindPresets(categoryPresets,categorySelect);
   budgetInput.addEventListener('input',()=>{budgetActive=Number(budgetInput.value)<Number(budgetInput.max);syncBudgetLabel();window.V2Results.rerender();});
   resetButton.addEventListener('click',reset);
   if(desktop.addEventListener)desktop.addEventListener('change',mount);else desktop.addListener(mount);
@@ -57,6 +66,7 @@ function syncSelect(fieldNode,select,list,baseLabel,format){
 function syncHotelFacets(){
   const categories=cardValues('category'),ratings=cardValues('rating'),seas=cardValues('seaDistance'),complete=list=>sourceItems.length>1&&list.length===sourceItems.length&&list.every(value=>value>0);
   const category=syncSelect(categoryField,categorySelect,complete(categories)?categories:[],'Любая категория',value=>value+'★');
+  syncPresets(categoryPresets,categorySelect,Array.from(categorySelect.options).slice(1).map(item=>({value:item.value,label:item.textContent})),'0');
   const ratingComplete=complete(ratings);ratingField.hidden=!ratingComplete;if(!ratingComplete)ratingSelect.value='0';
   const seaComplete=complete(seas);seaField.hidden=!seaComplete;if(!seaComplete)seaSelect.value='0';
   return{categories,ratings,seas,category,rating:Number(ratingSelect.value||0),sea:Number(seaSelect.value||0)};
@@ -75,7 +85,11 @@ function syncMeal(items){
   const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const label=api.mealLabel(t).replace(/\s+/g,' ').trim(),key=normalize(label);if(!key)return false;labels.set(key,label);return true;});});
   const previous=mealSelect.value,available=complete&&labels.size>1;mealSelect.replaceChildren(option('','Любое питание'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>mealSelect.appendChild(option(value,label)));
-  mealSelect.value=available&&labels.has(previous)?previous:'';mealField.hidden=!available;return mealSelect.value;
+  mealSelect.value=available&&labels.has(previous)?previous:'';mealField.hidden=!available;
+  const options=Array.from(mealSelect.options).slice(1),pick=test=>options.find(item=>test(normalize(item.textContent))),quick=[];
+  const breakfast=pick(label=>label.includes('только завтрак')||/^bb(?:\b|\s|-)/.test(label)),inclusive=pick(label=>/вс[её] включено/.test(label)||/^u?ai(?:\b|\s|-)/.test(label));
+  [breakfast,inclusive].forEach(item=>{if(item&&!quick.some(choice=>choice.value===item.value))quick.push({value:item.value,label:item===breakfast?'Завтрак':'Всё включено'});});
+  syncPresets(mealPresets,mealSelect,quick,'');return mealSelect.value;
 }
 function project(items){
   ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),budget=syncBudget(items);
@@ -96,5 +110,5 @@ function clear(event){
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:5};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:6};
 })();
