@@ -26,6 +26,8 @@ class IsolationTest(unittest.TestCase):
             for forbidden in ("$bitrixProlog", "$siteConf", "v2_metrika_counter_id()", "web-consultant/widget.js"):
                 self.assertNotIn(forbidden, search)
             self.assertIn("$metrikaCounter=0;", search)
+            self.assertIn("V2_ANDROMEDA_API_PUBLIC_PATH", search)
+            self.assertIn("/_preview/search3-anex-candidate/api-andromeda-search3-preview.php", search)
             self.assertIn("v2_public_path('api-v2.php')", search)
             self.assertIn("v2_public_path('lead-adapter-v2.php')", search)
             for name in ("index.php", "home-entry-v1.php", "site-page-shell-v1.php"):

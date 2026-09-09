@@ -138,7 +138,14 @@ async function checkOfferJourney(page,width){
       window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{searchId:731,items:window.__offerItems}}));
     },{items,offers,segment});
     const meal=page.locator('.search3-meal-filter select');
-    await meal.selectOption('всё включено');
+    const selectMeal=async()=>{
+      if(!await meal.isVisible()){
+        const mobileFilters=page.locator('.search3-mobile-filter-panel summary');
+        if(await mobileFilters.isVisible())await mobileFilters.click();
+      }
+      await meal.selectOption('всё включено');
+    };
+    await selectMeal();
     const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard'],'collapsed filtered card selects the complete STANDARD AI offer');
     const selectOffer=async(id,price,room)=>{
@@ -201,7 +208,7 @@ async function checkOfferJourney(page,width){
       window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{searchId:732,items:window.__offerItems}}));
     });
     assert.equal(await page.evaluate(()=>window.__staleAlternatives),null,'reset invalidates the old offer projection');
-    await meal.selectOption('всё включено');
+    await selectMeal();
     await selectOffer('offer-standard',120000,'STANDARD');
     for(const name of Object.keys(contact))assert.equal(await root.locator('[name="'+name+'"]').inputValue(),'','new search clears previous contact '+name);
     assert.equal(await root.locator('[name=consent]').isChecked(),false,'new search has unchecked consent');

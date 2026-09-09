@@ -8,6 +8,8 @@ on:
       - 'scripts/build/search3_assets.py'
       - 'scripts/build/search3-js/**'
       - 'tests/search3-js-compaction.cjs'
+      - 'tests/search3-andromeda-provider.cjs'
+      - 'tests/search3-andromeda-provider-config.php'
       - 'tests/search3-css-printing.cjs'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
@@ -75,6 +77,8 @@ jobs:
           php tests/search3-shared-runtime-smoke.php
           php tests/search3-lean-base-bundle-smoke.php
           node tests/search3-js-compaction.cjs
+          node tests/search3-andromeda-provider.cjs
+          php tests/search3-andromeda-provider-config.php
           node tests/search3-css-printing.cjs
           node tests/search3-honest-results-controls.cjs
           python3 -B tests/search3_source_build_test.py

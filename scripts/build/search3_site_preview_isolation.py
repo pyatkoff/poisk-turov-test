@@ -19,7 +19,8 @@ $bitrixProlog = $docRoot . '/bitrix/modules/main/include/prolog_before.php';
 if ($docRoot !== '' && is_file($bitrixProlog)) require($bitrixProlog);
 $siteConf = $docRoot . '/site_conf.php';
 if ($docRoot !== '' && is_file($siteConf)) require_once($siteConf);
-""", "// Preview: do not bootstrap the production document root.\n")
+""", "// Preview: do not bootstrap the production document root.\n"
+        "define('V2_ANDROMEDA_API_PUBLIC_PATH', '/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');\n")
     replace_once(search, "$metrikaCounter=v2_metrika_counter_id();", "$metrikaCounter=0;")
     replace_once(search, '<script src="https://app.anytoour.ru/web-consultant/widget.js" async></script>', '')
     home_bootstrap = """$docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
