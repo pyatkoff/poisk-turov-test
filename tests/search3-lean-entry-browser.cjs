@@ -58,7 +58,10 @@ async function inspect(browser, width, previous) {
       assert.ok(controls.length >= 8 && controls.every(n => n.height >= 44 && n.font >= 16), 'native primary controls stay readable and touchable');
       if (width === 375 || width === 1440) await page.screenshot({ path: path.join(process.env.SEARCH3_GEOMETRY_OUTPUT, `entry-current-${width}.png`), fullPage: true });
     }
-    assert.ok(initial.visible && !initial.overflow, 'usable initial form');
+    // The fixed historical reference predates the current shared header/footer
+    // markup, so its old CSS closure can overflow that newer shell. It remains a
+    // lifecycle/value reference only; the current candidate must stay overflow-free.
+    assert.ok(initial.visible && (previous || !initial.overflow), 'usable initial form');
     if (!previous) {
       assert.deepEqual(await page.evaluate(() => ({
         status: [document.getElementById('status').getAttribute('role'), document.getElementById('status').getAttribute('aria-live'), document.getElementById('status').getAttribute('aria-atomic')],
