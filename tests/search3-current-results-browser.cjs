@@ -198,14 +198,14 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     price: 165000,
     tours: [{ ...tour, id: 'tv-andromeda-control', price: 165000, operator: { name: 'TEST OPERATOR' } }]
   };
-  const snapshot = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
+  const searchParams = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
   const start = async generation => {
-    await page.evaluate(({ generation, snapshot, tvHotel }) => {
+    await page.evaluate(({ generation, searchParams, tvHotel }) => {
       Object.defineProperty(window.V2SearchLifecycle, 'generation', { configurable: true, get: () => generation });
-      Object.defineProperty(window.V2SearchLifecycle, 'snapshot', { configurable: true, get: () => ({ ...snapshot }) });
+      Object.defineProperty(window.V2SearchLifecycle, 'snapshot', { configurable: true, get: () => ({ ...searchParams }) });
       window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation } }));
       window.V2Results.render([tvHotel], { empty: true });
-    }, { generation, snapshot, tvHotel });
+    }, { generation, searchParams, tvHotel });
     await page.locator('[data-andromeda-expand="21477"]').waitFor();
   };
   control.enabled = true;
