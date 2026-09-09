@@ -1,5 +1,10 @@
 # ANEX → тестовый Search3: точка интеграции
 
+> Исторический initial audit от 2026-09-07. Его «ещё не подключено» описывает ту дату.
+> Текущая own-preview интеграция и следующие задачи: [ANEX work](anex-search3-autopilot.md).
+> Общая структура и передача в актуальную release: [AnyTour development](https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/anytour-development.md).
+
+
 Дата аудита: 2026-09-07. Проект: только `pyatkoff/poisk-turov-test`.
 
 ## Основа
