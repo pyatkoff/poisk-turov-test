@@ -24,7 +24,10 @@
     },
     "ci": {
       "security_run": 34308196296,
-      "exact_artifact_runs": [34308196297, 34308433190],
+      "exact_artifact_runs": [
+        34308196297,
+        34308433190
+      ],
       "artifact_id": 10087423395,
       "artifact_digest": "sha256:07c21112bdbc6107086d4b93a765257314f2cc37c74dc8a0e6c03c58983c476a",
       "conclusion": "success"
@@ -32,7 +35,10 @@
     "publication": {
       "published": true,
       "published_preview_source_sha": "0fedbcb5ffb426af4069305d06f446a571dc5254",
-      "closed_control_prs": [1669, 1670],
+      "closed_control_prs": [
+        1669,
+        1670
+      ],
       "deploy_run": 34309036334,
       "control_sha": "96d18e15a9fd3afbbd5acb09408756c3ee2736b2",
       "deployment_evidence_artifact": 10087692143,
@@ -62,7 +68,11 @@
       "Incomplete progressive data removes and resets the category control instead of presenting a partial or misleading facet; no supplier or lead request was added."
     ],
     "fresh_supplier_audit": {
-      "routes": ["Turkey", "Egypt", "UAE"],
+      "routes": [
+        "Turkey",
+        "Egypt",
+        "UAE"
+      ],
       "hotels": 234,
       "tours": 843,
       "category_complete_hotels": 220,
@@ -89,7 +99,10 @@
     },
     "ci": {
       "security_run": 34312454899,
-      "exact_artifact_runs": [34312455035, 34312459604],
+      "exact_artifact_runs": [
+        34312455035,
+        34312459604
+      ],
       "artifact_id": 10088877773,
       "artifact_digest": "sha256:6f905758b370e581b618b16bd80cb9c3b9c01f094c82e5e38cab9ea16fd5fe6b",
       "archive_sha256": "52cdbfa67198667b09fac6549effa93f09e9f3d5e2550289b1b30837ddfe6251",
@@ -173,7 +186,16 @@
       "security_run": 34306214649,
       "exact_artifact_run": 34306214593,
       "conclusion": "success",
-      "browser_widths": [375, 760, 761, 999, 1000, 1024, 1025, 1440],
+      "browser_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
       "browser_contracts": [
         "per-day minimum and zero-price exclusion",
         "continued-results refresh",
@@ -330,7 +352,22 @@
       "real_leads_submitted": 0
     },
     "visual_verification": {
-      "ci_widths": [375, 520, 521, 760, 761, 768, 769, 999, 1000, 1024, 1025, 1100, 1101, 1440],
+      "ci_widths": [
+        375,
+        520,
+        521,
+        760,
+        761,
+        768,
+        769,
+        999,
+        1000,
+        1024,
+        1025,
+        1100,
+        1101,
+        1440
+      ],
       "live_desktop_width": 1363,
       "one_visible_header": true,
       "logo_nav_actions_visible": true,
@@ -338,7 +375,10 @@
       "horizontal_overflow": false
     },
     "audit": "docs/project/search3-canonical-header-owner.json",
-    "deferred": ["physical Safari and safe-area verification", "owner production visual acceptance"],
+    "deferred": [
+      "physical Safari and safe-area verification",
+      "owner production visual acceptance"
+    ],
     "rollback": "Revert release merge 984c63891fd786044264071d5dbe5cb71eed4029; isolated preview retains the previous atomic backup.",
     "next_action": "Advance to S3_PRODUCT_PAGES_HANDOFF: audit parameter-preserving transitions between shared content pages and Search3, and implement the first confirmed mismatch without duplicating the separate ANEX work."
   },
@@ -446,7 +486,12 @@
     },
     "verification": {
       "selected_states": 8,
-      "selected_widths": [375, 760, 1000, 1440],
+      "selected_widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
       "flight_variants": 6,
       "single_visible_search3_handoff_cta": true,
       "lead_summary_flight": "AB123 09:30",
@@ -532,12 +577,25 @@
     },
     "verification": {
       "results_states": 12,
-      "results_widths": [375, 760, 761, 999, 1000, 1440],
-      "entry_widths": [375, 1440],
+      "results_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1440
+      ],
+      "entry_widths": [
+        375,
+        1440
+      ],
       "raw_served_parity": true,
       "native_header": true,
       "external_calls": 0,
-      "live_preview_viewport": [1363, 936],
+      "live_preview_viewport": [
+        1363,
+        936
+      ],
       "live_preview_hotels": 100,
       "live_preview_no_horizontal_overflow": true,
       "live_preview_first_card_price_count": 1,
@@ -624,8 +682,14 @@
       "selected_evidence_digest": "sha256:209ee558eadcd1c76b2249fe93c0a2a0b72d1eb879bea9675c4b2d097e7b00d0"
     },
     "verification": {
-      "entry_widths": [375, 1440],
-      "selected_widths": [375, 1440],
+      "entry_widths": [
+        375,
+        1440
+      ],
+      "selected_widths": [
+        375,
+        1440
+      ],
       "exact_results_selected_return_states": 12,
       "live_preview_width": 1348,
       "live_preview_no_horizontal_overflow": true,
@@ -697,9 +761,19 @@
     },
     "browser_evidence": {
       "results_states": 12,
-      "results_widths": [375, 760, 761, 999, 1000, 1440],
+      "results_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1440
+      ],
       "raw_served_parity": true,
-      "entry_widths": [375, 1440],
+      "entry_widths": [
+        375,
+        1440
+      ],
       "external_calls": 0,
       "real_leads_submitted": 0,
       "selected_return_current_source": "deferred"
@@ -1173,7 +1247,8 @@
       "S3_PRODUCT_CURRENT_ACCEPTANCE",
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
-    "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work."
+    "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
+    "last_execution_continuation": "Completed #1675, refreshed release, then completed #1676 and published both through one exact artifact. Next is the observed89-flight usability case; not blocked by production acceptance."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1185,23 +1260,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1672 extends the one loaded-results filter owner with a completeness-gated exact category facet. Source d69bb129 is checked, merged as b6c1837a and published only to the isolated preview.",
+    "last_material_progress": "Two DS2 donor restoration packets #1675/#1676 checked and integrated sequentially; one exact isolated preview publication34316577672.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Repair canonical meal text normalization for meal.fullName with focused coverage, then re-audit a truthful local meal facet.",
+    "next_action": "Improve the canonical flight chooser for large supplier sets (89 real options made the selected view about12509px tall): keep every radio/price/route reachable, selected details and one lead CTA, preserve price/lead payload and the existing inline tradeoff owner. Include the current retry selector mismatch (.tour-load-retry vs .retry-tour) in that coherent packet. Then re-evaluate human-readable meal labels and one truthful local meal facet; do not duplicate ANEX work.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_USEFUL_FEATURES",
-    "title": "Improve useful calendar and filters without duplicating ANEX work",
+    "id": "S3_PRODUCT_SELECTED_LEAD",
+    "title": "Make large flight choice sets practical inside the current selected-tour owner",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "b6c1837a817562100355586205366d5bad6c208a",
-    "published_source_sha": "d69bb12907cf6bb890f9f86565b16a173825d96d",
-    "next_action": "Repair canonical meal text normalization for meal.fullName with focused coverage, then re-audit a truthful local meal facet.",
-    "baseline_release_sha": "b6c1837a817562100355586205366d5bad6c208a",
+    "last_fully_checked_release_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+    "published_source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+    "next_action": "Improve the canonical flight chooser for large supplier sets (89 real options made the selected view about12509px tall): keep every radio/price/route reachable, selected details and one lead CTA, preserve price/lead payload and the existing inline tradeoff owner. Include the current retry selector mismatch (.tour-load-retry vs .retry-tour) in that coherent packet. Then re-evaluate human-readable meal labels and one truthful local meal facet; do not duplicate ANEX work.",
+    "baseline_release_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -2792,10 +2867,27 @@
         "id": 10079777190,
         "digest": "sha256:3ef3bcb93398b79447b403c184e2defa385d8ee4a1b71f6759fe8bf8b9c9e6e5"
       }
+    },
+    "ds2_restoration": {
+      "results": {
+        "security": 34315997361,
+        "exact": 34315997382,
+        "source": "c9d1ddd6add646616498ae501dd91be1db96837b",
+        "conclusion": "success"
+      },
+      "selected": {
+        "security": 34316326525,
+        "exact": 34316326507,
+        "source": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+        "conclusion": "success"
+      },
+      "deploy": 34316577672,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     }
   },
-  "last_verified_commit": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-  "last_verified_commit_scope": "Exact source 89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1; existing Security, exact artifact and focused browser checks passed. PhysicalSafari/owneracceptance deferred.",
+  "last_verified_commit": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+  "last_verified_commit_scope": "Checked code release for #1675/#1676; source3e33d4ad published only to isolated whole-site preview. Docs checkpoint is separate.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -3201,47 +3293,40 @@
     "next_action": "Audit lead-review versus lead-state; delete only after sending/success/error and intermediate-width evidence."
   },
   "presentation_refactor_checkpoint": {
-    "source_pr": 1637,
-    "stage": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
-    "implementation_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "source_tree": "833623851f9411e188dfe6915dd04f2b4211c675",
-    "release_integration_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-    "audit": "docs/project/search3-compact-native-presentation.json",
+    "source_prs": [
+      1675,
+      1676
+    ],
+    "stage": "PRODUCT_DS2_RESTORATION",
+    "implementation_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+    "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
+    "release_integration_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+    "audit": "docs/project/search3-ds2-restoration-product.json",
     "ci": {
-      "source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "security_run": 34286700375,
-      "exact_run": 34286700356,
-      "conclusion": "success",
-      "focused_browser": "Selected8 at375/760/1000/1440 including both duplicate entry surfaces hidden; lazy3 with native handoff/return focus; entry30 exact values/lifecycle; current results12 raw/served parity at375/760/761/999/1000/1440; native entry375/1440; empty-flight retry/recovery, phone/stale-lead guards and decimal tradeoffs. Real leads0.",
-      "results_artifact": {
-        "id": 10079777546,
-        "digest": "sha256:69e53f03fe41949dc65e7cef266618b9a4250a612747aa3bda84f21fd07f24e6"
+      "results": {
+        "security": 34315997361,
+        "exact": 34315997382,
+        "source": "c9d1ddd6add646616498ae501dd91be1db96837b",
+        "conclusion": "success"
       },
-      "selected_artifact": {
-        "id": 10079777190,
-        "digest": "sha256:3ef3bcb93398b79447b403c184e2defa385d8ee4a1b71f6759fe8bf8b9c9e6e5"
-      }
-    },
-    "artifact": {
-      "id": 10079777903,
-      "run": 34286700356,
-      "digest": "sha256:881720d851ead0efaee151cf3b428985c56949dc9c4cf36fe4b8623494eaf494",
-      "source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "source_tree": "833623851f9411e188dfe6915dd04f2b4211c675",
-      "archive_sha256": "e0a2b42cb58b37cc79ec2f1d7c6b65be9916e5d2fda9233069e3f5a3493b0f35",
-      "manifest_sha256": "41c8fae6568a30363d6198a9ecdd426a172710ff2c94fca260631ba429117df3",
-      "payload_sha256": "921769f1be583978e4bbffb7013de7cafbf24124283ff3b4f62445154b3c68cc",
-      "payload_file_count": 717
+      "selected": {
+        "security": 34316326525,
+        "exact": 34316326507,
+        "source": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+        "conclusion": "success"
+      },
+      "deploy": 34316577672,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     },
     "eight_assets": {
-      "before": 11975,
-      "after": 11984,
-      "added_css_bytes": 9,
-      "js_unchanged_bytes": 6607
+      "before": 15986,
+      "after": 25210,
+      "delta": 9224
     },
     "publication": {
-      "artifact_id": 10079777903,
-      "artifact_run": 34286700356,
+      "artifact_id": 10090230450,
+      "artifact_run": 34316326507,
       "http_status": 200,
       "internal_php_denied": true,
       "lead_probe_status": 403,
@@ -3255,46 +3340,69 @@
       "route": "https://anytoour.ru/_preview/search3-site-candidate/",
       "route_count": 9,
       "schema_version": 1,
-      "source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "source_tree": "833623851f9411e188dfe6915dd04f2b4211c675",
+      "source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+      "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
       "published": true,
-      "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "control_pr": 1638,
-      "control_sha": "c91116c0c79be0fa9402514cccb9a71befd527da",
-      "deploy_pr": 1638,
-      "deploy_run": 34286947471,
-      "conclusion": "success",
-      "deployment_evidence_artifact": 10079840278,
-      "deployment_evidence_digest": "sha256:2df0cf8c60bbcdda431b060ec8f6ca8fb1419667cbc033d3ae69bb9c9a9301c4",
-      "release_pin_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-      "artifact_digest": "sha256:881720d851ead0efaee151cf3b428985c56949dc9c4cf36fe4b8623494eaf494",
-      "archive_sha256": "e0a2b42cb58b37cc79ec2f1d7c6b65be9916e5d2fda9233069e3f5a3493b0f35",
-      "manifest_sha256": "41c8fae6568a30363d6198a9ecdd426a172710ff2c94fca260631ba429117df3",
-      "payload_sha256": "921769f1be583978e4bbffb7013de7cafbf24124283ff3b4f62445154b3c68cc",
-      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "physical_safari_tested": false,
-      "real_lead_submitted": false,
-      "production_unchanged": true,
-      "production_fingerprint_files": 13,
+      "published_source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+      "release_pin_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+      "control_pr": 1677,
+      "control_sha": "611dfc75451940c773509c10e711719bc453e30a",
       "control_closed_without_merge": true,
-      "supersedes_source_sha": "66cb0164b2523be69b1eee821dba4efb29d69265"
+      "deploy_run": 34316577672,
+      "conclusion": "success",
+      "artifact_digest": "sha256:85a6a7a9219446c930863307dbef867ed9991bd3476c29519ef999624e112e30",
+      "archive_sha256": "4a08f8c16919da5610346c6881da64aa83e2d812825edd90ae55fdbbb1e730dc",
+      "manifest_sha256": "4cd514428b184c3b918081798d5e206d9d94e8462e027da1fd3a00b38fb5361b",
+      "payload_sha256": "16263993ad712f419cbf09e29cb4dafaeb9a05f08ab0a9e3925679661d37cbad",
+      "deployment_evidence_artifact": 10090282179,
+      "deployment_evidence_digest": "sha256:18014aeaa4f3bd389ec056aa03dee3367c8b580fc3420506683d0fd08e316c2d",
+      "production_fingerprint_files": 13,
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
     },
     "visual_verification": {
-      "width": 1363,
-      "entry": "Native form visible on fresh reload; Turkey catalog loaded. Exact versioned CSS path58eadb7eba76eaa7 served.",
-      "results": "One live search completed with96 hotels; first ANAHTAR APART65487RUB. No real leads.",
-      "selected": "ANAHTAR APART selected; search3-selected-open set, both hero and search form hidden; no horizontal overflow. Canonical selected price65701RUB,214RUB flight adjustment; all offered flight options remain available. Live screenshot inspected.",
-      "return_to_results": "96 hotels restored, selected hidden; edit-search restores form and focuses from. All8 primary values retained; no overflow.",
-      "lead_submitted": false,
-      "scope": "Short targeted live correction check only. Previous package already inspected original logo, form/cards and phone focus. No extra lead/site/SEO traversal."
+      "date": "2026-09-09",
+      "viewport": {
+        "width": 1363,
+        "height": 936
+      },
+      "result_cards": 100,
+      "hotel": "ANAHTAR APART",
+      "result_photo_height": 220,
+      "result_photo_loaded": true,
+      "result_cta_height": 50,
+      "flight_options": 89,
+      "initial_total": 67314,
+      "selected_option": 2,
+      "selected_total": 84519,
+      "delta": 17205,
+      "selected_route": "SU2156 12:45 / SU2157 19:10",
+      "lead_summary_matches": true,
+      "phone_focused": true,
+      "phone_height": 50,
+      "returned_cards": 100,
+      "selected_hidden_after_return": true,
+      "horizontal_overflow": 0,
+      "screenshots_reviewed": [
+        "live desktop result panel/cards",
+        "live desktop contact form",
+        "CI current selected 375 detail",
+        "CI current selected 1440 lead",
+        "result 375/1440 captures with identical UI payload in earlier harness attempts"
+      ],
+      "real_leads_submitted": 0,
+      "full_journey_rerun": false
     },
     "deferred": [
-      "physical Safari/safe-area",
-      "owner visual/design acceptance for production",
-      "full lead/site/SEO/responsive journey",
-      "Group long native flight lists and space footer/lead-summary text in a future coherent UI package; not a new correctness regression."
+      "Large real flight sets need a coherent chooser usability pass;89 alternatives were reachable but made the page unnecessarily long.",
+      "Physical Safari/safe-area and live mobile browser (CI mobile widths passed).",
+      "Full site/SEO and real lead submission/production acceptance.",
+      "Selected controller meal.fullName fallback is not changed because the helper also supplies protected leadPayload.meal; first inspect actual payload and separate visual-only labeling.",
+      "Current selected retry CSS selector mismatch; generic44px button remains functional."
     ],
-    "next_action": "The compact native presentation and selected-entry duplication repair are published. Preserve the current11984B eight-asset total and all retired boundaries. Next coherent UI package: group the eight primary search fields into destination/date/nights/party pairs, and fix existing footer/lead-summary text spacing within the same12KB budget. Batch these visible refinements; do not create printer/micro-trim PRs or restore legacy skins. Keep canonical values, price arithmetic, API/lead transport/mapping/analytics and original logo. Production remains gated on explicit owner visual acceptance."
+    "next_action": "Improve the canonical flight chooser for large supplier sets (89 real options made the selected view about12509px tall): keep every radio/price/route reachable, selected details and one lead CTA, preserve price/lead payload and the existing inline tradeoff owner. Include the current retry selector mismatch (.tour-load-retry vs .retry-tour) in that coherent packet. Then re-evaluate human-readable meal labels and one truthful local meal facet; do not duplicate ANEX work."
   },
   "presentation_refactor_history": [
     {
@@ -5875,8 +5983,8 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "artifact_id": 10079777903,
-    "artifact_run": 34286700356,
+    "artifact_id": 10090230450,
+    "artifact_run": 34316326507,
     "http_status": 200,
     "internal_php_denied": true,
     "lead_probe_status": 403,
@@ -5890,29 +5998,27 @@
     "route": "https://anytoour.ru/_preview/search3-site-candidate/",
     "route_count": 9,
     "schema_version": 1,
-    "source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "source_tree": "833623851f9411e188dfe6915dd04f2b4211c675",
+    "source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+    "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
     "published": true,
-    "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "control_pr": 1638,
-    "control_sha": "c91116c0c79be0fa9402514cccb9a71befd527da",
-    "deploy_pr": 1638,
-    "deploy_run": 34286947471,
-    "conclusion": "success",
-    "deployment_evidence_artifact": 10079840278,
-    "deployment_evidence_digest": "sha256:2df0cf8c60bbcdda431b060ec8f6ca8fb1419667cbc033d3ae69bb9c9a9301c4",
-    "release_pin_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-    "artifact_digest": "sha256:881720d851ead0efaee151cf3b428985c56949dc9c4cf36fe4b8623494eaf494",
-    "archive_sha256": "e0a2b42cb58b37cc79ec2f1d7c6b65be9916e5d2fda9233069e3f5a3493b0f35",
-    "manifest_sha256": "41c8fae6568a30363d6198a9ecdd426a172710ff2c94fca260631ba429117df3",
-    "payload_sha256": "921769f1be583978e4bbffb7013de7cafbf24124283ff3b4f62445154b3c68cc",
-    "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "physical_safari_tested": false,
-    "real_lead_submitted": false,
-    "production_unchanged": true,
-    "production_fingerprint_files": 13,
+    "published_source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+    "release_pin_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+    "control_pr": 1677,
+    "control_sha": "611dfc75451940c773509c10e711719bc453e30a",
     "control_closed_without_merge": true,
-    "supersedes_source_sha": "66cb0164b2523be69b1eee821dba4efb29d69265"
+    "deploy_run": 34316577672,
+    "conclusion": "success",
+    "artifact_digest": "sha256:85a6a7a9219446c930863307dbef867ed9991bd3476c29519ef999624e112e30",
+    "archive_sha256": "4a08f8c16919da5610346c6881da64aa83e2d812825edd90ae55fdbbb1e730dc",
+    "manifest_sha256": "4cd514428b184c3b918081798d5e206d9d94e8462e027da1fd3a00b38fb5361b",
+    "payload_sha256": "16263993ad712f419cbf09e29cb4dafaeb9a05f08ab0a9e3925679661d37cbad",
+    "deployment_evidence_artifact": 10090282179,
+    "deployment_evidence_digest": "sha256:18014aeaa4f3bd389ec056aa03dee3367c8b580fc3420506683d0fd08e316c2d",
+    "production_fingerprint_files": 13,
+    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_changed": false,
+    "production_changed": false,
+    "real_leads_submitted": 0
   },
   "preview_verification_policy": {
     "batch_execution": {
@@ -6156,75 +6262,23 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:881720d851ead0efaee151cf3b428985c56949dc9c4cf36fe4b8623494eaf494",
+      "pr": 1334,
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 10079777903,
-      "exact_artifact_status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
-      "final_verification_artifact": 10077690903,
-      "final_verification_run": 34286700356,
-      "implementation_verified_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "includes": [
-        "home native independent night range and child ages",
-        "offer/month date/night/party handoff",
-        "customer-facing country/month copy",
-        "Search3 production import",
-        "old-search compatibility route",
-        "whole-site preview path containment",
-        "preview lead-disabled endpoint and exact artifact pipeline",
-        "preview-only forced noindex independent of production SEO allowlist",
-        "readable result cards with taller mobile photos and non-duplicated facts",
-        "localized decimal flight-price tradeoff display correction",
-        "declined resort destination copy from reviewed H1",
-        "unpublished 404 legal/payment footer links hidden",
-        "existing production price calendar restored in Search3 with responsive disclosure",
-        "mockup-7 footer social/store treatment",
-        "mockup-6 readable contact form with fewer repeated panels",
-        "supplier placeholder-flight and unknown-baggage summaries",
-        "one authoritative tour price in lead sidebar without misleading flight-price repetition",
-        "booking stage hides preserved results and search controls",
-        "readable search context, filter rows and lead navigation",
-        "desktop reset fits the narrow filter rail",
-        "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
-        "retained selected-tour DOM respects hidden after Back",
-        "selected-tour observer no longer rescans results; resize preserves open search editor",
-        "single CSS owner for initial/editor responsive grid",
-        "lead sidebar manager clarification when proceeding without flight",
-        "CSS source split and equal-specificity selector-prefix reduction",
-        "static injected styles separated from JS behavior without emitted-style changes",
-        "inactive Search3 footer replacement retired; canonical shared footer retained",
-        "concurrent price-facet completeness guard preserved",
-        "retired positive-class CSS rules removed; negative conditions retained",
-        "35 compound equal-specificity CSS groups",
-        "concurrent shared presentation text/plural and fact typography preserved",
-        "deterministic private CSS comment compaction preserving tokens and licenses",
-        "entry calendar/toolbar/native controls separated in original order",
-        "28 adjacent identical CSS declaration blocks consolidated",
-        "private results labels/cards/toolbar parts preserve compiled IIFE scope and bytes",
-        "private selected-flight fallback/disclosure parts preserve compiled adapter",
-        "results toolbar inline style helpers remove459 JS bytes with48 matching operation traces",
-        "CSS output indentation omitted with newline/escape token separators preserved",
-        "Native CSS nesting:131 identical single-parent groups across46 modules;33378 fewer CSS bytes; explicit-& browser boundary documented",
-        "Private injected CSS sources; 182 overridden declarations and 74 empty rules removed; 9997 fewer public CSS/JS bytes and 150 fewer lines.",
-        "138 descendant CSS groups and private booking layout: 38129 fewer public bytes; 225 additional lines from explicit groups.",
-        "Checked JS/CSS printing, private rail/form parts and inherited zero-match shell recovery: net 15475 fewer public bytes and 5741 fewer generated lines.",
-        "Local-name build reduction: 15133 fewer public JS bytes; owner-authorized focused draft checks replace repeated full suites.",
-        "Standard build minification: 6400 fewer CSS/JS bytes. Build once per source draft; reuse after release integration and docs, Security includes owner checks.",
-        "Published with#1426, source batch#1422: 5453 fewer served bytes from numeric CSS dominance and ordinary JS source-note filtering.",
-        "Published with#1426, source batch#1423: media-root grouping and 75 mandatory cross-asset CSS deletions save4026 bytes; JavaScript unchanged.",
-        "Published with#1426, source batch#1424:17 common CSS declaration groups and shorter JS spelling save684 bytes; executable JS trees unchanged.",
-        "Published#1425/#1426: ten entire historical CSS layers retired with four current-owner salvages;33,988 fewer CSS/JS bytes; focused desktop only.",
-        "Checked#1427,not published:2 further historical results layers retired with lifecycle/mobile fallback salvage;1609 fewerCSSbytes and all4JS unchanged.",
-        "Published#1430/#1432:3large presentation block families removed; native package and flight readability repaired by removing old six-column/tiny-font overrides,245491→235139 rawbytes.",
-        "Published#1434/#1435: complete responsive-review layer and earlier embedded mobile-review block retired,235139→225972 rawbytes; responsive mobile/tablet visual states deferred.",
-        "Published#1437/#1439: complete lead-review layer and embedded lead-entry owner retired,225972→219880 rawbytes; desktop search-to-empty-lead inspected, mobile/tablet/lifecycle visuals deferred.",
-        "Checked#1464: standalone booking-services and lead-note owners consolidated,166271→165508 raw bytes,11 settled markup snapshots retained; not yet published.",
-        "Checked#1466: standalone flight-continue retired into summary-cta; hidden card price-copy styling removed,165508→164762 bytes;13 complete compiled navigation snapshots retained. Not published.",
-        "Checked#1470: phone lead overlap repaired;12 targeted Chromium detail/review/lead states match pre-retirement source. Current pass adds434 CSS bytes and claims0 new removal. Not published.",
-        "#1633 whole selected-flow adapter retirement; current native selected/lead owner retained; eight assets 11814→8867 B"
+      "status": "PUBLISHED_ISOLATED_PREVIEW_OWNER_ACCEPTANCE_DEFERRED",
+      "implementation_verified_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+      "release_integration_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+      "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
+      "source_prs": [
+        1675,
+        1676
       ],
+      "exact_artifact": 10090230450,
+      "artifact_digest": "sha256:85a6a7a9219446c930863307dbef867ed9991bd3476c29519ef999624e112e30",
+      "preview_deploy_pr": 1677,
+      "preview_deploy_run": 34316577672,
       "latest_publication_verification": {
-        "artifact_id": 10079777903,
-        "artifact_run": 34286700356,
+        "artifact_id": 10090230450,
+        "artifact_run": 34316326507,
         "http_status": 200,
         "internal_php_denied": true,
         "lead_probe_status": 403,
@@ -6238,184 +6292,125 @@
         "route": "https://anytoour.ru/_preview/search3-site-candidate/",
         "route_count": 9,
         "schema_version": 1,
-        "source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-        "source_tree": "833623851f9411e188dfe6915dd04f2b4211c675",
+        "source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+        "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
         "published": true,
-        "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-        "control_pr": 1638,
-        "control_sha": "c91116c0c79be0fa9402514cccb9a71befd527da",
-        "deploy_pr": 1638,
-        "deploy_run": 34286947471,
-        "conclusion": "success",
-        "deployment_evidence_artifact": 10079840278,
-        "deployment_evidence_digest": "sha256:2df0cf8c60bbcdda431b060ec8f6ca8fb1419667cbc033d3ae69bb9c9a9301c4",
-        "release_pin_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-        "artifact_digest": "sha256:881720d851ead0efaee151cf3b428985c56949dc9c4cf36fe4b8623494eaf494",
-        "archive_sha256": "e0a2b42cb58b37cc79ec2f1d7c6b65be9916e5d2fda9233069e3f5a3493b0f35",
-        "manifest_sha256": "41c8fae6568a30363d6198a9ecdd426a172710ff2c94fca260631ba429117df3",
-        "payload_sha256": "921769f1be583978e4bbffb7013de7cafbf24124283ff3b4f62445154b3c68cc",
-        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-        "physical_safari_tested": false,
-        "real_lead_submitted": false,
-        "production_unchanged": true,
-        "production_fingerprint_files": 13,
+        "published_source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+        "release_pin_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+        "control_pr": 1677,
+        "control_sha": "611dfc75451940c773509c10e711719bc453e30a",
         "control_closed_without_merge": true,
-        "supersedes_source_sha": "66cb0164b2523be69b1eee821dba4efb29d69265"
+        "deploy_run": 34316577672,
+        "conclusion": "success",
+        "artifact_digest": "sha256:85a6a7a9219446c930863307dbef867ed9991bd3476c29519ef999624e112e30",
+        "archive_sha256": "4a08f8c16919da5610346c6881da64aa83e2d812825edd90ae55fdbbb1e730dc",
+        "manifest_sha256": "4cd514428b184c3b918081798d5e206d9d94e8462e027da1fd3a00b38fb5361b",
+        "payload_sha256": "16263993ad712f419cbf09e29cb4dafaeb9a05f08ab0a9e3925679661d37cbad",
+        "deployment_evidence_artifact": 10090282179,
+        "deployment_evidence_digest": "sha256:18014aeaa4f3bd389ec056aa03dee3367c8b580fc3420506683d0fd08e316c2d",
+        "production_fingerprint_files": 13,
+        "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+        "main_changed": false,
+        "production_changed": false,
+        "real_leads_submitted": 0
       },
       "live_browser_verification": {
-        "width": 1363,
-        "entry": "Native form visible on fresh reload; Turkey catalog loaded. Exact versioned CSS path58eadb7eba76eaa7 served.",
-        "results": "One live search completed with96 hotels; first ANAHTAR APART65487RUB. No real leads.",
-        "selected": "ANAHTAR APART selected; search3-selected-open set, both hero and search form hidden; no horizontal overflow. Canonical selected price65701RUB,214RUB flight adjustment; all offered flight options remain available. Live screenshot inspected.",
-        "return_to_results": "96 hotels restored, selected hidden; edit-search restores form and focuses from. All8 primary values retained; no overflow.",
-        "lead_submitted": false,
-        "scope": "Short targeted live correction check only. Previous package already inspected original logo, form/cards and phone focus. No extra lead/site/SEO traversal."
-      },
-      "pr": 1334,
-      "preview_deploy_pr": 1638,
-      "preview_deploy_run": 34286947471,
-      "preview_deploy_workflow_conclusion": "success",
-      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "release_merge_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-      "source_tree": "833623851f9411e188dfe6915dd04f2b4211c675",
-      "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
-      "superseded_artifact": 9999511038,
-      "pending_visual_verification": {
-        "source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-        "status": "TARGETED_CHECK_WITH_DEFERRED_DESIGN_ACCEPTANCE",
-        "passed": {
+        "date": "2026-09-09",
+        "viewport": {
           "width": 1363,
-          "entry": "Native form visible on fresh reload; Turkey catalog loaded. Exact versioned CSS path58eadb7eba76eaa7 served.",
-          "results": "One live search completed with96 hotels; first ANAHTAR APART65487RUB. No real leads.",
-          "selected": "ANAHTAR APART selected; search3-selected-open set, both hero and search form hidden; no horizontal overflow. Canonical selected price65701RUB,214RUB flight adjustment; all offered flight options remain available. Live screenshot inspected.",
-          "return_to_results": "96 hotels restored, selected hidden; edit-search restores form and focuses from. All8 primary values retained; no overflow.",
-          "lead_submitted": false,
-          "scope": "Short targeted live correction check only. Previous package already inspected original logo, form/cards and phone focus. No extra lead/site/SEO traversal."
+          "height": 936
         },
-        "states": [
-          "physical Safari/safe-area",
-          "owner visual/design acceptance for production",
-          "full lead/site/SEO/responsive journey",
-          "Group long native flight lists and space footer/lead-summary text in a future coherent UI package; not a new correctness regression."
-        ]
+        "result_cards": 100,
+        "hotel": "ANAHTAR APART",
+        "result_photo_height": 220,
+        "result_photo_loaded": true,
+        "result_cta_height": 50,
+        "flight_options": 89,
+        "initial_total": 67314,
+        "selected_option": 2,
+        "selected_total": 84519,
+        "delta": 17205,
+        "selected_route": "SU2156 12:45 / SU2157 19:10",
+        "lead_summary_matches": true,
+        "phone_focused": true,
+        "phone_height": 50,
+        "returned_cards": 100,
+        "selected_hidden_after_return": true,
+        "horizontal_overflow": 0,
+        "screenshots_reviewed": [
+          "live desktop result panel/cards",
+          "live desktop contact form",
+          "CI current selected 375 detail",
+          "CI current selected 1440 lead",
+          "result 375/1440 captures with identical UI payload in earlier harness attempts"
+        ],
+        "real_leads_submitted": 0,
+        "full_journey_rerun": false
       },
-      "combined_release_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-      "combined_release_artifact": 10079777903,
-      "checked_release": {
-        "schema_version": 1,
-        "date": "2026-09-08",
-        "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
-        "source_pr": 1633,
-        "base_release_sha": "454d4def6615cea2995ea23358a67429f5621e70",
-        "source_sha": "c1990a4cda2bb3ab6623e18b4fd2c5a17be6884b",
-        "source_tree": "8f8cfa872dc552cc6ecb17850b2c58a410daccb1",
-        "release_integration_sha": "df923cf2035c02d75c819c22fbeb15c5b803dcb6",
-        "public_assets": {
-          "paths": 8,
-          "before_raw_bytes": 11814,
-          "after_raw_bytes": 8867,
-          "removed_raw_bytes": 2947,
-          "removed_percent": 24.94,
-          "before": {
-            "search3-results-filters-v1.js": 5120,
-            "search3-results-filters-v1.css": 1878,
-            "search3-entry-v1.css": 331,
-            "search3-entry-v1.js": 0,
-            "search3-results-cards-v2.css": 1,
-            "search3-results-cards-v2.js": 0,
-            "search3-selected-flow-v2.css": 1,
-            "search3-selected-flow-v2.js": 4483
-          },
+      "public_assets": {
+        "eight_search3_assets": {
+          "before": 15986,
+          "after": 25210,
+          "delta": 9224
+        },
+        "eager_route_css_js": {
+          "before": 87339,
+          "after": 96599,
+          "delta": 9260
+        },
+        "full_scenario_css_js": {
+          "before": 129757,
+          "after": 139017,
+          "delta": 9260
+        },
+        "selected_phase_css_js": {
+          "before": 42418,
+          "after": 42418,
+          "delta": 0
+        },
+        "shared_emitted_js_delta": 36,
+        "inline_delta": 0,
+        "public_paths": {
           "after": {
-            "search3-results-filters-v1.js": 6607,
-            "search3-results-filters-v1.css": 1878,
-            "search3-entry-v1.css": 331,
+            "search3-entry-v1.css": 1683,
             "search3-entry-v1.js": 0,
             "search3-results-cards-v2.css": 1,
             "search3-results-cards-v2.js": 0,
+            "search3-results-filters-v1.css": 16408,
+            "search3-results-filters-v1.js": 7068,
             "search3-selected-flow-v2.css": 50,
             "search3-selected-flow-v2.js": 0
+          },
+          "before": {
+            "search3-entry-v1.css": 1683,
+            "search3-entry-v1.js": 0,
+            "search3-results-cards-v2.css": 1,
+            "search3-results-cards-v2.js": 0,
+            "search3-results-filters-v1.css": 7184,
+            "search3-results-filters-v1.js": 7068,
+            "search3-selected-flow-v2.css": 50,
+            "search3-selected-flow-v2.js": 0
+          },
+          "css": {
+            "after": 18142,
+            "before": 8918
+          },
+          "js": {
+            "after": 7068,
+            "before": 7068
           }
         },
-        "retired_whole_sources": [
-          "src/search3/behavior/selected-flow-v2.js",
-          "src/search3/behavior/selected/flight-fallback.js"
-        ],
-        "retained_current_owners": [
-          "selected state and native lead handoff in summary-cta.js",
-          "decimal-safe flight tradeoff correction in summary-cta.js",
-          "idempotent CTA recovery after empty-flight subtree replacement",
-          "bounded selected image media rule in the selected CSS owner",
-          "canonical flight-empty recovery, price owners and lead transport"
-        ],
-        "ci": {
-          "security_run": 34281178946,
-          "security_conclusion": "success",
-          "exact_artifact_run": 34281178998,
-          "exact_artifact_conclusion": "success"
-        },
-        "artifact": {
-          "id": 10077692756,
-          "digest": "sha256:dbf96e19360253fc1b43ddcc9be3076c7958b4feb595a4e366c09c26d13a2af5",
-          "archive_sha256": "883d649d017577c67a1bfe2e4cfb8b7d4a0b2ee485c9e9fc8763f8ea4aa56fe7",
-          "archive_bytes": 769513,
-          "file_count": 717
-        },
-        "selected_evidence": {
-          "id": 10077690903,
-          "digest": "sha256:2601c6f380f079e9a03e05101cf5f7f1cd976213af876ef49f1cf31d19302ec9"
-        },
-        "browser_evidence": {
-          "selected_geometry_states": 8,
-          "selected_geometry_widths": [
-            375,
-            760,
-            1000,
-            1440
-          ],
-          "lazy_selected_scenarios": 3,
-          "entry_states": 30,
-          "entry_widths": [
-            375,
-            700,
-            701,
-            760,
-            761,
-            1440
-          ],
-          "native_lead_handoff": true,
-          "flight_retry_recovery": true,
-          "localized_decimal_tradeoff": true,
-          "horizontal_overflow": false,
-          "external_requests_blocked": true,
-          "real_leads_submitted": 0
-        },
-        "confirmed_regressions_repaired": [
-          "remote selected-tour image exceeded the 375px viewport",
-          "empty-flight retry subtree replacement removed the native CTA",
-          "same-value CTA writes caused a repeated mutation loop",
-          "exact entry baseline still pointed at the superseded pre-package release"
-        ],
-        "publication": {
-          "published": false,
-          "published_preview_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
-          "checked_release_sha": "df923cf2035c02d75c819c22fbeb15c5b803dcb6",
-          "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
-          "main_changed": false,
-          "production_changed": false,
-          "real_leads_submitted": 0
-        },
-        "deferred": [
-          "publish and inspect the current-source isolated preview",
-          "manual screenshot review",
-          "physical Safari and safe-area verification",
-          "owner visual and design acceptance",
-          "full lead, site, SEO and responsive journey"
-        ],
-        "rollback": "Revert df923cf2035c02d75c819c22fbeb15c5b803dcb6 independently.",
-        "next_action": "No optional whole public owner larger than 2KB remains. The next coarse package must remove a real current architectural boundary, such as a selected lazy proxy or results state owner, with an actual eight-asset reduction; do not create micro-trims, count source moves, or remove protected business logic."
-      }
+        "interpretation": "Intentional eager visual growth; no deletion, transfer or lazy-loading saving claimed."
+      },
+      "audit": "docs/project/search3-ds2-restoration-product.json",
+      "next_action": "Improve the canonical flight chooser for large supplier sets (89 real options made the selected view about12509px tall): keep every radio/price/route reachable, selected details and one lead CTA, preserve price/lead payload and the existing inline tradeoff owner. Include the current retry selector mismatch (.tour-load-retry vs .retry-tour) in that coherent packet. Then re-evaluate human-readable meal labels and one truthful local meal facet; do not duplicate ANEX work.",
+      "deferred": [
+        "Large real flight sets need a coherent chooser usability pass;89 alternatives were reachable but made the page unnecessarily long.",
+        "Physical Safari/safe-area and live mobile browser (CI mobile widths passed).",
+        "Full site/SEO and real lead submission/production acceptance.",
+        "Selected controller meal.fullName fallback is not changed because the helper also supplies protected leadPayload.meal; first inspect actual payload and separate visual-only labeling.",
+        "Current selected retry CSS selector mismatch; generic44px button remains functional."
+      ]
     }
   },
   "results_geometry_queue": {
@@ -9895,7 +9890,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T06:55:00.000Z",
+  "updated_at": "2026-09-09T05:58:56.143986+00:00",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -12407,5 +12402,279 @@
     "useful_css_js_growth": "allowed_for_real_visual_usability_accessibility_or_functional_improvement",
     "zero_growth_required": false
   },
-  "product_roadmap": "docs/project/search3-product-development-plan.md"
+  "product_roadmap": "docs/project/search3-product-development-plan.md",
+  "latest_ds2_restoration_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "task": "S3_PRODUCT_SELECTED_LEAD",
+    "owner_direction": "Reuse proven earlier visual components as donors, replacing the current component owner in place; useful CSS/JS growth authorized.",
+    "donor": {
+      "sha": "17b674fc54fa6b49aaa73379bcbdc35bfccfda28",
+      "files": [
+        "v2/search3-results-cards-v2.css",
+        "v2/ds2-search.css",
+        "v2/search3-results-filters-v1.css",
+        "v2/ds2-selected-tour-convergence-v1.css"
+      ]
+    },
+    "packages": [
+      {
+        "donor_sha": "17b674fc54fa6b49aaa73379bcbdc35bfccfda28",
+        "exact_run": 34315997382,
+        "failed_ci_runs": [
+          34315595792,
+          34315802644
+        ],
+        "fixture_repair": "Await canonical catalogSource=partial and recovery UI in the offline fixture before full raw/served DOM and geometry comparison; no production code or assertion relaxation.",
+        "release_integration_sha": "dc0abe36a9b9844f7078f666a67150b35eb3692f",
+        "security_run": 34315997361,
+        "size_raw_bytes": {
+          "eager_route_css_js": {
+            "after": 90967,
+            "before": 87339,
+            "delta": 3628
+          },
+          "eight_search3_assets": {
+            "after": 19578,
+            "before": 15986,
+            "delta": 3592
+          },
+          "full_scenario_css_js": {
+            "after": 133385,
+            "before": 129757,
+            "delta": 3628
+          },
+          "inline_delta": 0,
+          "selected_phase_css_js": {
+            "after": 42418,
+            "before": 42418,
+            "delta": 0
+          }
+        },
+        "source_pr": 1675,
+        "source_sha": "c9d1ddd6add646616498ae501dd91be1db96837b",
+        "source_tree": "017bfc8095d7d5566a930e5c7902afa6ad298308",
+        "artifact": {
+          "archive_download_url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10090111585/zip",
+          "created_at": "2026-09-09T05:44:43Z",
+          "digest": "sha256:384affc1d3a223ffbc00da6487dbb656f9d4a7ed001dfe53e71f3b28c87e5d08",
+          "expired": false,
+          "expires_at": "2026-10-09T05:44:41Z",
+          "id": 10090111585,
+          "name": "search3-site-preview-c9d1ddd6add646616498ae501dd91be1db96837b-34315997382-1",
+          "size_in_bytes": 774392,
+          "updated_at": "2026-09-09T05:44:43Z",
+          "url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10090111585",
+          "workflow_run": {
+            "head_branch": "product/search3-results-restoration-20260909",
+            "head_repository_id": 1345518271,
+            "head_sha": "c9d1ddd6add646616498ae501dd91be1db96837b",
+            "id": 34315997382,
+            "repository_id": 1345518271
+          }
+        }
+      },
+      {
+        "source_pr": 1676,
+        "source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+        "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
+        "release_integration_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+        "security_run": 34316326525,
+        "exact_run": 34316326507,
+        "size_raw_bytes": {
+          "eight_search3_assets": {
+            "before": 19578,
+            "after": 25210,
+            "delta": 5632
+          },
+          "eager_route_css_js": {
+            "before": 90967,
+            "after": 96599,
+            "delta": 5632
+          },
+          "full_scenario_css_js": {
+            "before": 133385,
+            "after": 139017,
+            "delta": 5632
+          }
+        },
+        "javascript_changed": false,
+        "inline_tradeoff_owner_preserved": true
+      }
+    ],
+    "size_raw_bytes": {
+      "eight_search3_assets": {
+        "before": 15986,
+        "after": 25210,
+        "delta": 9224
+      },
+      "eager_route_css_js": {
+        "before": 87339,
+        "after": 96599,
+        "delta": 9260
+      },
+      "full_scenario_css_js": {
+        "before": 129757,
+        "after": 139017,
+        "delta": 9260
+      },
+      "selected_phase_css_js": {
+        "before": 42418,
+        "after": 42418,
+        "delta": 0
+      },
+      "shared_emitted_js_delta": 36,
+      "inline_delta": 0,
+      "public_paths": {
+        "after": {
+          "search3-entry-v1.css": 1683,
+          "search3-entry-v1.js": 0,
+          "search3-results-cards-v2.css": 1,
+          "search3-results-cards-v2.js": 0,
+          "search3-results-filters-v1.css": 16408,
+          "search3-results-filters-v1.js": 7068,
+          "search3-selected-flow-v2.css": 50,
+          "search3-selected-flow-v2.js": 0
+        },
+        "before": {
+          "search3-entry-v1.css": 1683,
+          "search3-entry-v1.js": 0,
+          "search3-results-cards-v2.css": 1,
+          "search3-results-cards-v2.js": 0,
+          "search3-results-filters-v1.css": 7184,
+          "search3-results-filters-v1.js": 7068,
+          "search3-selected-flow-v2.css": 50,
+          "search3-selected-flow-v2.js": 0
+        },
+        "css": {
+          "after": 18142,
+          "before": 8918
+        },
+        "js": {
+          "after": 7068,
+          "before": 7068
+        }
+      },
+      "interpretation": "Intentional eager visual growth; no deletion, transfer or lazy-loading saving claimed."
+    },
+    "validation": {
+      "source_ci": "Both packages passed Security with owner validators and exact artifact build; existing source/PHP/path/presentation/isolation gates preserved.",
+      "result_states": 16,
+      "result_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "raw_served_parity": true,
+      "selected_states": 8,
+      "selected_widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
+      "selected_content_and_price_contract": true,
+      "native_entry_and_flight_retry": true,
+      "results_artifact": 10090230082,
+      "selected_artifact": 10090229627,
+      "historical_css_budget_changes": "8000→11000 for results (10776 measured), then17000 for selected (16408 measured). Single owner and protected guards unchanged.",
+      "first_result_harness_runs_failed": [
+        34315595792,
+        34315802644
+      ],
+      "repair": "Wait for the canonical aborted catalog recovery state before unchanged full raw/served geometry comparison; mobile160px and desktop112px offsets were an asynchronous fixture sibling, not a waived visual mismatch.",
+      "source_builds": 2,
+      "asset_rebuild_for_docs_or_release": false
+    },
+    "publication": {
+      "artifact_id": 10090230450,
+      "artifact_run": 34316326507,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+      "source_tree": "e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7",
+      "published": true,
+      "published_source_sha": "3e33d4addb9317b78434e92fcbc56851416a0abb",
+      "release_pin_sha": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+      "control_pr": 1677,
+      "control_sha": "611dfc75451940c773509c10e711719bc453e30a",
+      "control_closed_without_merge": true,
+      "deploy_run": 34316577672,
+      "conclusion": "success",
+      "artifact_digest": "sha256:85a6a7a9219446c930863307dbef867ed9991bd3476c29519ef999624e112e30",
+      "archive_sha256": "4a08f8c16919da5610346c6881da64aa83e2d812825edd90ae55fdbbb1e730dc",
+      "manifest_sha256": "4cd514428b184c3b918081798d5e206d9d94e8462e027da1fd3a00b38fb5361b",
+      "payload_sha256": "16263993ad712f419cbf09e29cb4dafaeb9a05f08ab0a9e3925679661d37cbad",
+      "deployment_evidence_artifact": 10090282179,
+      "deployment_evidence_digest": "sha256:18014aeaa4f3bd389ec056aa03dee3367c8b580fc3420506683d0fd08e316c2d",
+      "production_fingerprint_files": 13,
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "live_verification": {
+      "date": "2026-09-09",
+      "viewport": {
+        "width": 1363,
+        "height": 936
+      },
+      "result_cards": 100,
+      "hotel": "ANAHTAR APART",
+      "result_photo_height": 220,
+      "result_photo_loaded": true,
+      "result_cta_height": 50,
+      "flight_options": 89,
+      "initial_total": 67314,
+      "selected_option": 2,
+      "selected_total": 84519,
+      "delta": 17205,
+      "selected_route": "SU2156 12:45 / SU2157 19:10",
+      "lead_summary_matches": true,
+      "phone_focused": true,
+      "phone_height": 50,
+      "returned_cards": 100,
+      "selected_hidden_after_return": true,
+      "horizontal_overflow": 0,
+      "screenshots_reviewed": [
+        "live desktop result panel/cards",
+        "live desktop contact form",
+        "CI current selected 375 detail",
+        "CI current selected 1440 lead",
+        "result 375/1440 captures with identical UI payload in earlier harness attempts"
+      ],
+      "real_leads_submitted": 0,
+      "full_journey_rerun": false
+    },
+    "deferred": [
+      "Large real flight sets need a coherent chooser usability pass;89 alternatives were reachable but made the page unnecessarily long.",
+      "Physical Safari/safe-area and live mobile browser (CI mobile widths passed).",
+      "Full site/SEO and real lead submission/production acceptance.",
+      "Selected controller meal.fullName fallback is not changed because the helper also supplies protected leadPayload.meal; first inspect actual payload and separate visual-only labeling.",
+      "Current selected retry CSS selector mismatch; generic44px button remains functional."
+    ],
+    "next_action": "Improve the canonical flight chooser for large supplier sets (89 real options made the selected view about12509px tall): keep every radio/price/route reachable, selected details and one lead CTA, preserve price/lead payload and the existing inline tradeoff owner. Include the current retry selector mismatch (.tour-load-retry vs .retry-tour) in that coherent packet. Then re-evaluate human-readable meal labels and one truthful local meal facet; do not duplicate ANEX work.",
+    "rollback": {
+      "results_merge": "dc0abe36a9b9844f7078f666a67150b35eb3692f",
+      "selected_merge": "417bf7d2d3024a6c59c3367dc1f1a43a82431e04",
+      "preview": "Retain deployment backup and use the existing exact rollback path; no force push."
+    },
+    "continuation_reason": "Two substantive source packets integrated sequentially and published in one accumulated exact preview. Checkpoint closes this execution budget; continue the concrete large-flight-set usability task next, without disabling recurring development."
+  }
 }
