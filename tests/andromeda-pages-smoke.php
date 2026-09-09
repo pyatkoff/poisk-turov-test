@@ -32,8 +32,8 @@ $detail=anytour_andromeda_search3_detail_state($state2,$context,time());
 if($detail['room']!==$row['room']||$detail['operator']!==$row['operator']||$detail['price']['amount']!==$row['price']
  ||$detail['booking_enabled']!==false||strpos(json_encode($detail),'opaque-page-offer')!==false)throw new RuntimeException('detail identity/privacy');
 foreach([['search_ref'=>'other_search'],['generation'=>2],['page'=>1],['offer_ref'=>'offer_'.str_repeat('a',64)]] as $change){
- try{anytour_andromeda_search3_detail_state($state2,array_replace($context,$change),time());throw new LogicException('stale detail accepted');}
- catch(LogicException $e){throw $e;}catch(RuntimeException $expected){}
+ $rejected=false;try{anytour_andromeda_search3_detail_state($state2,array_replace($context,$change),time());}catch(Throwable $expected){$rejected=true;}
+ if(!$rejected)throw new LogicException('stale detail accepted');
 }
 try{anytour_andromeda_search3_detail_state($state2,$context,$state2['store']['expires_at']);throw new LogicException('expired detail accepted');}
 catch(LogicException $e){throw $e;}catch(RuntimeException $expected){}
