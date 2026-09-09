@@ -22,6 +22,8 @@ on:
       - 'v2/data/top500-daily-plan-v1.php'
       - 'v2/data/top500-monthly-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
+      - 'v2/data/seasonal-page-gap-plan-v1.php'
+      - 'tests/seasonal-page-gap-plan-smoke.php'
       - 'tests/top500-daily-plan-smoke.php'
       - 'tests/top500-monthly-plan-smoke.php'
       - 'tests/price-intelligence-smoke.php'
@@ -52,6 +54,8 @@ on:
       - 'v2/data/top500-daily-plan-v1.php'
       - 'v2/data/top500-monthly-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
+      - 'v2/data/seasonal-page-gap-plan-v1.php'
+      - 'tests/seasonal-page-gap-plan-smoke.php'
       - 'tests/top500-daily-plan-smoke.php'
       - 'tests/top500-monthly-plan-smoke.php'
       - 'tests/price-intelligence-smoke.php'
@@ -115,6 +119,8 @@ jobs:
           php -l v2/data/top500-daily-plan-v1.php >/dev/null
           php -l v2/data/top500-monthly-plan-v1.php >/dev/null
           php -l v2/data/top500-daily-collector-v1.php >/dev/null
+          php -l v2/data/seasonal-page-gap-plan-v1.php >/dev/null
+          php tests/seasonal-page-gap-plan-smoke.php --registry
           php -l tests/top500-daily-plan-smoke.php >/dev/null
           php -l tests/top500-monthly-plan-smoke.php >/dev/null
           php -l v2/data/price-observer-v1.php >/dev/null
@@ -210,6 +216,7 @@ jobs:
             v2/data/top500-coverage-v1.php \
             v2/data/top500-daily-plan-v1.php \
             v2/data/top500-monthly-plan-v1.php \
+            v2/data/seasonal-page-gap-plan-v1.php \
             v2/data/top500-daily-collector-v1.php \
             v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
@@ -221,6 +228,7 @@ jobs:
             php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-monthly-plan-v1.php\" >/dev/null
+            php -l \"\$root/seasonal-page-gap-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-collector-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
