@@ -23,8 +23,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-state--error{border-color:#e8b9b9;background:#fff8f8}
 & .results-state--done{border-color:#b8dcc8;background:#f5fff9}
 & .results-tools{margin:16px 0}
-& .search3-hotel-filter{display:grid;flex:1 1 230px;max-width:300px;gap:3px;color:#526078;font-size:12px}
-& .search3-hotel-filter[hidden]{display:none}
+& :is(.search3-hotel-filter,.search3-category-filter){display:grid;gap:3px;color:#526078;font-size:12px}
+& .search3-hotel-filter{flex:1 1 230px;max-width:300px}
+& .search3-category-filter{flex:0 1 210px;max-width:230px}
+& :is(.search3-hotel-filter,.search3-category-filter)[hidden]{display:none}
 & .search3-hotel-filter input{width:100%;min-height:44px}
 & .search3-hotel-filter small{min-height:18px}
 & #results{display:grid;gap:16px}
@@ -32,7 +34,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 &:is(:has(#results>*),.search3-selected-open) :is(.v2-product-hero,#tourSearch){display:none!important}
 &:has(#results>*).search3-editing-search #tourSearch{display:block!important}
 &.search3-selected-open :is(.results-tools,.results-layout){display:none!important}
-@media(max-width:600px){& .v2-shell{padding:12px}& .search3-hotel-filter{flex-basis:100%;max-width:none}}
+@media(max-width:600px){& .v2-shell{padding:12px}& :is(.search3-hotel-filter,.search3-category-filter){flex-basis:100%;max-width:none}}
 }
 
 /* Canonical renderer cards and tour choices; no synthetic chrome or extra JS. */
