@@ -35,10 +35,16 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/collection-coverage-v1.php
-          grep -Fq "SHOW TABLES LIKE 'catalog_departure_countries'" v2/data/collection-coverage-v1.php
-          grep -Fq 'COUNT(DISTINCT NULLIF(o.search_id' v2/data/collection-coverage-v1.php
-          grep -Fq 'COUNT(DISTINCT DATE(o.observed_at))' v2/data/collection-coverage-v1.php
-          grep -Fq 'if ($observations === 0) return 1000000;' v2/data/collection-coverage-v1.php
+          grep -Fq "catalog_departure_countries_direct" v2/data/collection-coverage-v1.php
+          grep -Fq "catalog_departure_countries_charter" v2/data/collection-coverage-v1.php
+          grep -Fq "catalog_departure_countries_direct_charter" v2/data/collection-coverage-v1.php
+          grep -Fq "COUNT(DISTINCT NULLIF(o.search_id" v2/data/collection-coverage-v1.php
+          grep -Fq "COUNT(DISTINCT DATE(o.observed_at))" v2/data/collection-coverage-v1.php
+          grep -Fq "'history_ready'" v2/data/collection-coverage-v1.php
+          grep -Fq "'guarded_delta_ready'" v2/data/collection-coverage-v1.php
+          grep -Fq "'good_price_only'" v2/data/collection-coverage-v1.php
+          grep -Fq "ANYTOUR_COLLECTION_COVERAGE_V2_OK" v2/data/collection-coverage-v1.php
+          grep -Fq "flight=%s" v2/data/collection-coverage-v1.php
           if grep -Eq '\b(INSERT|UPDATE|DELETE|REPLACE|TRUNCATE)\b' v2/data/collection-coverage-v1.php; then
             echo 'coverage planner must remain read-only' >&2
             exit 1
