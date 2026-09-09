@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1787 fixed the confirmed hotel snapshot handoff gap and merged as release e6c3e3cafad52ddf836113d2c3d3b80a63b06c06. Source aa4790d95166367f6e6b111709ce3b9f04768238 reuses v2_seo_offer_search_state so a displayed hotel/departure/date/nights snapshot reaches Search3 with the same date and duration instead of generic hotel state. Security34379191889 and exact34379192101/artifact10115148900 passed; CSS/JS delta0B. Published by deploy34379466986 with evidence10115256484: 9 routes200, noindex, leads403, counter0, internal PHP denied, rollback and unchanged production fingerprints. The five-task technical OTA baseline is complete from the same exact fixture/evidence chain: all tasks covered, wrong offer substitutions0, local supplier requests0 and lead POST0; user completion, live timings/conversion and physical Safari remain not_measured/deferred. Provider parity is now the current task and remains blocked on a fresh bounded INT handoff."
+    "last_execution_continuation": "PR1793 and PR1796 published the single current responsive filter owner. Desktop has a left rail; mobile/tablet retain the same controls and now expose one common reset. PR1796 source cccb3cb34458585dbed071fd9900bc470561701d merged as release 100a5f080e918cc5aaf0bbc9147d8f49889ff8b3; Security34389129409, exact34389129427/artifact10118973460 and deploy34390033409/evidence10119257236 passed. Live current preview filtered100->36 and reset36->100 with overflow false, local supplier requests0 and lead POST0. Combined PR1793/1796 CSS+JS delta +5638B. Historical /_preview/search3/ is donor-only because it loads parallel local/autorefresh/mobile/DS2 filter and booking/simulator owners. Provider parity remains blocked on a fresh bounded INT handoff; next independent safe UI packet is one native accessible disclosure around the current mobile controls, not a restored drawer runtime."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "e6c3e3cafad52ddf836113d2c3d3b80a63b06c06",
-    "published_source_sha": "aa4790d95166367f6e6b111709ce3b9f04768238",
+    "last_fully_checked_release_sha": "100a5f080e918cc5aaf0bbc9147d8f49889ff8b3",
+    "published_source_sha": "cccb3cb34458585dbed071fd9900bc470561701d",
     "acceptance_status": "BLOCKED_WAITING_ON_FRESH_BOUNDED_INT_HANDOFF",
-    "next_action": "Check #996/#1731 and the active INT branch for a completed bounded handoff containing exact source and destination release SHA, provider/search/offer identity fixtures, unknown-field behavior, partial failure and request-budget evidence. If ready, claim only the current common SEARCH consumer paths and integrate without copying the old addon or adding a third renderer. If not ready, preserve this exact blocker; physical Safari/user pilot and production approval remain deferred external acceptance work, not permission to change main/production.",
+    "next_action": "Check #996/#1731 and the active INT branch for a completed bounded handoff containing exact source and destination release SHA, provider/search/offer identity fixtures, unknown-field behavior, partial failure and request-budget evidence. If ready, claim only the current common SEARCH consumer paths and integrate without copying the old addon or adding a third renderer. While that handoff remains blocked, implement one native accessible disclosure around the existing mobile/tablet filter controls in local-hotel-filter.js/results-layout.css; do not restore the historical drawer, DS2 or parallel handlers. Physical Safari/user pilot and production approval remain deferred external acceptance work.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "deferred": {
@@ -13470,5 +13470,45 @@
       "Owner exact-release visual approval and production migration"
     ],
     "next_action": "Available Tourvisor-only preview acceptance is complete: #1760 live Enter→selectedTour→Tab return→Enter original direct-tour passed. Physical iPhone/Safari dates/nights, on-screen keyboard and safe-area/phone CTA remain deferred, as does owner visual approval of this exact preview before #1334. Do not repeat completed Search3 work. Continue only a newly confirmed independent SEARCH/SITE defect or separately coordinated bounded #1731 INT handoff; no next source defect is currently established."
+  },
+  "latest_search3_filter_rail_package": {
+    "date": "2026-09-09",
+    "status": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "packages": [
+      {
+        "pr": 1793,
+        "source_sha": "5e5574d4d777dd5f36622c73dd994cb1ce930b88",
+        "checked_release_sha": "69c733dec3043ffc1c9a32ecf20d9f36f33842fc",
+        "security_run": 34387050337,
+        "exact_run": 34387050338,
+        "exact_artifact": 10118164203,
+        "deploy_run": 34387501259,
+        "deploy_evidence_artifact": 10118277652,
+        "weight": "public JS +3826 B; public CSS +1715 B; total +5541 B"
+      },
+      {
+        "pr": 1796,
+        "source_sha": "cccb3cb34458585dbed071fd9900bc470561701d",
+        "source_tree": "ca7c25ece7db7fb001e575da235b5eb8bba545bb",
+        "checked_release_sha": "100a5f080e918cc5aaf0bbc9147d8f49889ff8b3",
+        "security_run": 34389129409,
+        "exact_run": 34389129427,
+        "exact_artifact": 10118973460,
+        "deploy_run": 34390033409,
+        "deploy_evidence_artifact": 10119257236,
+        "weight": "public JS -3 B; public CSS +100 B; total +97 B"
+      }
+    ],
+    "behavior": "One current responsive filter owner: desktop left rail; mobile/tablet current controls with one common reset. Name, exact-offer budget and meal, complete-data category/rating/sea-distance facets stay local and make no supplier request.",
+    "live_verification": "Current exact preview loaded 100 hotels, budget filtered to 36 and common reset restored all 100; horizontal overflow false, supplier requests from local actions 0, real lead POST 0.",
+    "historical_preview_assessment": "The historical /_preview/search3/ offers useful visual donor ideas but loads overlapping local/autorefresh/mobile/DS2 filter and booking/simulator owners; it must not be restored wholesale.",
+    "deferred": [
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "fresh bounded INT provider handoff",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "Wrap the same current mobile/tablet filter controls in one native accessible disclosure; no second drawer runtime or historical owner."
   }
 }

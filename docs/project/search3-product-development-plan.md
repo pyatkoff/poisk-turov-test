@@ -28,6 +28,12 @@ INT читает собственный ANEX-план; SEO ведёт #1720. И�
   generic hero остаётся generic, свежесть и empty fallback не выдают snapshot за наличие.
 - `S3_OTA_PROVIDER_PARITY`: остаётся в очереди, но ждёт свежий bounded INT→SEARCH
   handoff с source/destination SHA и fixtures identity; старый addon не переносить.
+- Актуальная единая панель фильтров опубликована пакетами #1793/#1796: на desktop
+  это левая колонка, на mobile/tablet — текущие элементы над выдачей с одним общим
+  сбросом. Исторический `/_preview/search3/` используется только как визуальный
+  донор: его параллельные filter/mobile/DS2/booking/simulator owners не возвращать.
+  Следующий независимый UI-пакет — компактное доступное раскрытие этих же текущих
+  mobile-фильтров без второго drawer/runtime-владельца.
 - `S3_OTA_QUALITY_BENCHMARK`: технический baseline пяти задач зафиксирован на
   текущем exact preview по прошедшим fixture/evidence: все пять путей покрыты,
   подмен offer и локальных supplier/lead запросов не обнаружено. Пользовательский
