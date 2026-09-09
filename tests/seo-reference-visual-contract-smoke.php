@@ -84,7 +84,7 @@ if (strpos($resort, "'Подобрать тур в ' . \$resortDestination") ===
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:resort_offer_hierarchy\n");
     exit(8);
 }
-if (strpos($hotel, "'Найти туры в этот отель'") === false || strpos($hotel, "'hotel-tour'") === false || strpos($hotel, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false || strpos($hotel, 'sp-offer-meta') === false || strpos($hotel, 'sp-offer-price') === false || strpos($hotel, 'sp-offer-item sp-offer-item--hotel') === false || strpos($hotel, "echo '<h3>'.sp_e(\$hotelName).'</h3>'") !== false) {
+if (strpos($hotel, "'Найти туры в этот отель'") === false || strpos($hotel, "'hotel-tour'") === false || strpos($hotel, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false || strpos($hotel, 'v2_seo_offer_search_state($searchState, $offer)') === false || strpos($hotel, 'sp-offer-meta') === false || strpos($hotel, 'sp-offer-price') === false || strpos($hotel, 'sp-offer-item sp-offer-item--hotel') === false || strpos($hotel, "echo '<h3>'.sp_e(\$hotelName).'</h3>'") !== false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hotel_offer_focus\n");
     exit(9);
 }
