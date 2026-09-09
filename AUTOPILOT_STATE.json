@@ -76,7 +76,7 @@
       "hotels": 234,
       "tours": 843,
       "category_complete_hotels": 220,
-      "category_complete_percent": 94.0,
+      "category_complete_percent": 94,
       "rating_complete_hotels": 212,
       "rating_complete_percent": 90.6,
       "sea_distance_complete_hotels": 101,
@@ -84,7 +84,7 @@
       "displayed_meal_complete_hotels": 210,
       "displayed_meal_complete_percent": 89.7,
       "raw_meal_full_name_complete_tours": 843,
-      "raw_meal_full_name_complete_percent": 100.0,
+      "raw_meal_full_name_complete_percent": 100,
       "decision": "Only exact category is exposed conditionally; rating, sea distance and meal facets remain deferred."
     },
     "size": {
@@ -1240,15 +1240,11 @@
       "no_independent_safe_task_available"
     ],
     "active_queue_ids": [
-      "S3_PRODUCT_SELECTED_LEAD",
-      "S3_PRODUCT_SHARED_SITE",
-      "S3_PRODUCT_PAGES_HANDOFF",
-      "S3_PRODUCT_USEFUL_FEATURES",
       "S3_PRODUCT_CURRENT_ACCEPTANCE",
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Completed #1699 hot-tour handoff business dates, refreshed release, then completed #1700 monthly country/resort handoff business dates. Both source packets are checked and integrated; preview remains on the prior published meal source because the changes are nonvisual. S3_PRODUCT_PAGES_HANDOFF is complete; continue S3_PRODUCT_USEFUL_FEATURES with the existing price-calendar path."
+    "last_execution_continuation": "Fixed failed #1705 artifact, passed focused lifecycle plus exact raw/served browser checks, integrated calendar; continued #1707 seasonal date correctness with existing SQLite reader smoke, integrated checked combined source. Next accumulated publication/acceptance; production approval remains gated."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1267,16 +1263,15 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_USEFUL_FEATURES",
-    "title": "Improve useful calendar and filter behavior without duplicate owners",
+    "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
+    "title": "Publish and review the accumulated Search3/site candidate",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "b3da2002305b14a97d058de1d4b0edbe053c622a",
+    "last_fully_checked_release_sha": "fd944fca0043bc44510e26d354c2806e41db1c27",
     "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-    "next_action": "Refresh release/main/open PRs, then audit the existing public country/resort/month and Search3 price-calendar path for a confirmed usability or state mismatch. Implement only in the current calendar owner; do not repeat completed local facets or duplicate ANEX work.",
-    "baseline_release_sha": "b3da2002305b14a97d058de1d4b0edbe053c622a",
+    "next_action": "Refresh release/main/open PRs; reuse exact combined artifact 10096730023 from source 5fc42aad0f5afa895666065407ad61dbcb4bc101 for one accumulated isolated whole-site preview checkpoint. Inspect changed homepage readiness, monthly handoffs/offer dates and filtered calendar/retained-results return on mobile/desktop. Record Safari and any unavailable evidence honestly; no production migration before concrete owner visual approval. Do not restart completed form/cards/flights/facets/shared owners/pages work or duplicate ANEX.",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -6433,23 +6428,23 @@
     {
       "id": "S3_PRODUCT_PAGES_HANDOFF",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "ACTIVE",
+      "status": "COMPLETED_CHECKED_RELEASE",
       "title": "Whole-site content and parameter-preserving handoff",
-      "result": "#1693 completed homepage loading/race safety for both GET handoffs; further route/helper audit remains active.",
-      "next_action": "Audit remaining country/resort/hot/rb offer CTAs for confirmed destination/date/night/party loss before Search3."
+      "result": "#1693 homepage readiness; #1699/#1700 Moscow hot/month handoff dates; #1707 seasonal stale/invalid departures excluded before ranking. No new CSS/JS in date fixes.",
+      "next_action": "Acceptance of accumulated candidate; no repeated route-owner work without a fresh defect."
     },
     {
       "id": "S3_PRODUCT_USEFUL_FEATURES",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "FACETS_COMPLETED_PUBLISHED_PREVIEW",
+      "status": "CALENDAR_AND_FACETS_COMPLETED_CHECKED_RELEASE",
       "title": "Useful calendar/facets and separately ready ANEX integration",
-      "next_action": "Name/category/meal local facets completed; do not restart them. Calendar and separately owned ANEX remain available after shared-site/pages work.",
+      "next_action": "#1705 calendar respects name/category/meal filters and retained-results return; exact browser checks pass. ANEX stays in its separately owned integration lane.",
       "audit": "docs/project/search3-local-meal-facet-product.json"
     },
     {
       "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "QUEUED",
+      "status": "ACTIVE",
       "title": "Current whole-site/mobile/Safari acceptance"
     },
     {
@@ -6815,12 +6810,12 @@
     "first_background_run_verified": true,
     "last_observed_enabled": true,
     "mode": "development_not_monitoring_only",
-    "note": "Existing hourly automation identified and enabled. Its prompt is to be updated to this roadmap after integration; historical reduction-only prompts and PAUSED notes do not define current queue.",
+    "note": "Existing hourly product/site automation confirmed enabled on 2026-09-09; prompt already follows the product roadmap and continuation rule. No duplicate automation.",
     "rrule": "FREQ=HOURLY",
     "rule": "Develop the product/site roadmap, allow useful CSS/JS growth without duplicate layers and continue beyond one PR while safe work and time remain. Preserve hourly cadence, production approval and protected contracts; no duplicate work/deploys.",
     "status": "ENABLED",
     "timezone": "Europe/Kaliningrad",
-    "title": "Уменьшать CSS/JS Search3",
+    "title": "Дорабатывать Search3 и сайт",
     "schedule": "BEGIN:VEVENT\nDTSTART:20260906T233240Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
     "verified_at": "2026-09-06T23:34:01.651Z",
     "last_resume": {
@@ -10253,7 +10248,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T07:13:55.101186+00:00",
+  "updated_at": "2026-09-09T09:15:08.572Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -13145,17 +13140,33 @@
   },
   "latest_shared_site_handoff_package": {
     "audit": "docs/project/search3-shared-control-owner.json",
-    "source_prs": [1693, 1694],
-    "source_shas": ["276fca32150cb5f4d0dff28736293e6bae98670a", "514d7fa92def05c65a1945266367dc8623c0d142"],
+    "source_prs": [
+      1693,
+      1694
+    ],
+    "source_shas": [
+      "276fca32150cb5f4d0dff28736293e6bae98670a",
+      "514d7fa92def05c65a1945266367dc8623c0d142"
+    ],
     "checked_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
     "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
     "eight_assets_delta": 0,
     "homepage_css_delta": 166,
     "homepage_inline_controller_delta": 785,
     "shared_page_css_delta": -567,
-    "security_runs": [34325953808, 34326518960],
-    "exact_runs": [34326140281, 34326631635],
-    "standalone_runs": [34326140349, 34326140267, 34326631536],
+    "security_runs": [
+      34325953808,
+      34326518960
+    ],
+    "exact_runs": [
+      34326140281,
+      34326631635
+    ],
+    "standalone_runs": [
+      34326140349,
+      34326140267,
+      34326631536
+    ],
     "preview_published": false,
     "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
     "real_leads_submitted": 0,
@@ -13163,21 +13174,64 @@
   },
   "latest_pages_handoff_package": {
     "audit": "docs/project/search3-pages-handoff-product.json",
-    "source_prs": [1699, 1700],
-    "source_shas": ["cbeaab4fc07f5c0ded25a50abbec301cc8ea25b2", "e90286ed063b66e0c22845c6f8d22b002ce47e70"],
-    "release_integration_shas": ["87e56008989060a54f40d42a5aab5a1eac16bfdc", "b3da2002305b14a97d058de1d4b0edbe053c622a"],
+    "source_prs": [
+      1699,
+      1700
+    ],
+    "source_shas": [
+      "cbeaab4fc07f5c0ded25a50abbec301cc8ea25b2",
+      "e90286ed063b66e0c22845c6f8d22b002ce47e70"
+    ],
+    "release_integration_shas": [
+      "87e56008989060a54f40d42a5aab5a1eac16bfdc",
+      "b3da2002305b14a97d058de1d4b0edbe053c622a"
+    ],
     "checked_release_sha": "b3da2002305b14a97d058de1d4b0edbe053c622a",
     "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
     "eight_assets_delta": 0,
     "initial_external_css_js_delta": 0,
     "full_external_css_js_delta": 0,
-    "security_runs": [34328003803, 34328644467],
-    "exact_runs": [34328173433, 34328788619],
+    "security_runs": [
+      34328003803,
+      34328644467
+    ],
+    "exact_runs": [
+      34328173433,
+      34328788619
+    ],
     "boundary_run": 34328173404,
     "standalone_run": 34328173427,
     "preview_published": false,
     "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
     "real_leads_submitted": 0,
     "next_action": "Start S3_PRODUCT_USEFUL_FEATURES with a bounded audit of the existing public/Search3 price-calendar path; fix only a confirmed current-owner mismatch."
+  },
+  "latest_calendar_and_seasonal_correctness_package": {
+    "date": "2026-09-09",
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_prs": [
+      1705,
+      1707
+    ],
+    "calendar_source_sha": "e2ff354a69ea0652b35ba3037f29df4e9ca70ff3",
+    "combined_source_sha": "5fc42aad0f5afa895666065407ad61dbcb4bc101",
+    "release_sha": "fd944fca0043bc44510e26d354c2806e41db1c27",
+    "source_release_trees_equal": true,
+    "security_run": 34333468240,
+    "exact_artifact_run": 34333468227,
+    "artifact_id": 10096730023,
+    "artifact_digest": "sha256:1a54dc2ac687ee20e5e56c5e268316354e6e44e0920411f75182c4c25491883e",
+    "css_delta_bytes": 0,
+    "search3_js_delta_bytes": 295,
+    "shared_js_delta_bytes": 307,
+    "initial_full_external_delta_bytes": 602,
+    "seasonal_css_js_delta_bytes": 0,
+    "live_leads": 0,
+    "deferred": [
+      "accumulated preview publication and changed-area inspection",
+      "physical Safari",
+      "whole-site final acceptance",
+      "owner-approved production migration"
+    ]
   }
 }
