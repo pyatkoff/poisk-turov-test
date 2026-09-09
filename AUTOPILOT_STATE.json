@@ -1248,7 +1248,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Completed #1693 homepage handoff readiness/race repair, refreshed release, then completed #1694 shared CTA single-owner consolidation. Both source packets are checked and integrated; preview remains on the prior published meal source because only the first packet adds a brief loading state and the second is computed-neutral. Continue S3_PRODUCT_PAGES_HANDOFF; development remains active."
+    "last_execution_continuation": "Completed #1699 hot-tour handoff business dates, refreshed release, then completed #1700 monthly country/resort handoff business dates. Both source packets are checked and integrated; preview remains on the prior published meal source because the changes are nonvisual. S3_PRODUCT_PAGES_HANDOFF is complete; continue S3_PRODUCT_USEFUL_FEATURES with the existing price-calendar path."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1260,23 +1260,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1693 fixes homepage handoff readiness and stale country-response races; #1694 removes the second generic shared CTA owner. Both integrated through release865ee7b6 with Security, exact artifact and applicable standalone CI green.",
+    "last_material_progress": "#1699 and #1700 remove system-timezone drift from hot and monthly public Search3 handoffs. Both integrated through releaseb3da2002 with Security, exact artifact and applicable boundary/standalone CI green.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Refresh release/main/open PRs, then continue S3_PRODUCT_PAGES_HANDOFF: audit remaining public country/resort/hot/rb offer CTAs for loss of destination, date, night and party parameters on the Search3 transition. Implement only the first confirmed user-visible mismatch in the current route/helper owner. Homepage loading and stale-response defects are completed in #1693; shared CTA ownership is completed in #1694. Do not duplicate ANEX work.",
+    "next_action": "Refresh release/main/open PRs, then start S3_PRODUCT_USEFUL_FEATURES: audit the existing public/Search3 price-calendar path for one confirmed usability or state mismatch. Do not repeat completed name/category/meal facets and do not duplicate ANEX work.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_PAGES_HANDOFF",
-    "title": "Preserve useful parameters across public-page transitions into Search3",
+    "id": "S3_PRODUCT_USEFUL_FEATURES",
+    "title": "Improve useful calendar and filter behavior without duplicate owners",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
+    "last_fully_checked_release_sha": "b3da2002305b14a97d058de1d4b0edbe053c622a",
     "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-    "next_action": "Refresh release/main/open PRs, then audit remaining public country/resort/hot/rb offer CTAs for loss of destination, date, night and party parameters on the Search3 transition. Implement only a confirmed mismatch in the current route/helper owner; do not duplicate ANEX work.",
-    "baseline_release_sha": "865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a",
+    "next_action": "Refresh release/main/open PRs, then audit the existing public country/resort/month and Search3 price-calendar path for a confirmed usability or state mismatch. Implement only in the current calendar owner; do not repeat completed local facets or duplicate ANEX work.",
+    "baseline_release_sha": "b3da2002305b14a97d058de1d4b0edbe053c622a",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -13159,6 +13159,25 @@
     "preview_published": false,
     "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
     "real_leads_submitted": 0,
-    "next_action": "Continue S3_PRODUCT_PAGES_HANDOFF with a bounded remaining-route audit and fix only a confirmed parameter-loss defect."
+    "next_action": "Superseded by latest_pages_handoff_package and active S3_PRODUCT_USEFUL_FEATURES."
+  },
+  "latest_pages_handoff_package": {
+    "audit": "docs/project/search3-pages-handoff-product.json",
+    "source_prs": [1699, 1700],
+    "source_shas": ["cbeaab4fc07f5c0ded25a50abbec301cc8ea25b2", "e90286ed063b66e0c22845c6f8d22b002ce47e70"],
+    "release_integration_shas": ["87e56008989060a54f40d42a5aab5a1eac16bfdc", "b3da2002305b14a97d058de1d4b0edbe053c622a"],
+    "checked_release_sha": "b3da2002305b14a97d058de1d4b0edbe053c622a",
+    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "eight_assets_delta": 0,
+    "initial_external_css_js_delta": 0,
+    "full_external_css_js_delta": 0,
+    "security_runs": [34328003803, 34328644467],
+    "exact_runs": [34328173433, 34328788619],
+    "boundary_run": 34328173404,
+    "standalone_run": 34328173427,
+    "preview_published": false,
+    "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+    "real_leads_submitted": 0,
+    "next_action": "Start S3_PRODUCT_USEFUL_FEATURES with a bounded audit of the existing public/Search3 price-calendar path; fix only a confirmed current-owner mismatch."
   }
 }
