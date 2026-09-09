@@ -162,18 +162,20 @@
     "ownership": [
       "v2/results-renderer-v5.js unique current projection and reveal",
       "v2/tour-controller-v4.js canonical selection and memory-only editor retention",
-      "existing results-layout.css one visual owner"
+      "existing results-layout.css one visual owner",
+      "src/search3/behavior/summary-cta.js existing capture-phase return state"
     ],
     "contracts": "No new selector/Cartesian combinations; existing detail/flights only on explicit selection; price arithmetic, lead transport/field mapping unchanged and protected baseline bytes recovered by exact reversal",
     "size": {
       "css_delta_bytes": 123,
       "served_shared_js_delta_bytes": 2183,
-      "initial_full_external_delta_bytes": 2306,
-      "inline_delta_bytes": 0
+      "initial_full_external_delta_bytes": 2340,
+      "inline_delta_bytes": 0,
+      "public_js_delta_bytes": 34
     },
     "verification": {
       "local": "source/shared build, source check, syntax, return/meal/honest owners, exact controller reverse and owner validators passed",
-      "ci": "pending",
+      "ci": "34367277256 failed new focus assertion; real hidden-results return ordering corrected in existing capture handler; rerun pending",
       "browser": "375/1440 existing fixture extended, execution pending",
       "real_leads": 0
     },
