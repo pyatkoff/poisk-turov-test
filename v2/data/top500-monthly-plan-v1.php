@@ -23,8 +23,9 @@ function v2_top500_monthly_plan(array $ids, array $hotels, array $departures, st
             $windows[$w][$period] = [$from->format('Y-m-d'), $to->format('Y-m-d')];
         }
     }
-    // Fair country/batch rounds give every month data before one country's
-    // entire hotel list is exhausted. Stable keys are independent of ordering.
+    // Cycle all months within each country/batch, then advance the country.
+    // A large country catalog must not consume a whole worker pass on one month.
+    // Stable keys and existing attempts are independent of this ordering.
     $countryBatches = [];
     foreach ($base['targets'] as $batch) $countryBatches[$batch['country_id']][] = $batch;
     $rounds = [];
@@ -33,8 +34,8 @@ function v2_top500_monthly_plan(array $ids, array $hotels, array $departures, st
     $targets = [];
     foreach ($windows as $byMonth) {
         foreach ($rounds as $round) {
-            foreach ($byMonth as $period => [$from, $to]) {
-                foreach ($round as $batch) {
+            foreach ($round as $batch) {
+                foreach ($byMonth as $period => [$from, $to]) {
                     $hotelIds = $batch['hotel_ids']; sort($hotelIds, SORT_NUMERIC);
                     $digest = substr(hash('sha256', implode(',', $hotelIds)), 0, 16);
                     $target = $batch;

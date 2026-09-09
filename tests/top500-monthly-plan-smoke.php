@@ -42,4 +42,19 @@ $stable=v2_top500_monthly_plan($ids,$hotels,$departures,'2026-09-10');
 $nov=static fn($p)=>array_column(array_values(array_filter($p['targets'],static fn($t)=>$t['month']==='2026-11')),'target_key');
 monthly_check($nov($stable)===$nov($plan),'future keys stable across daily runs');
 foreach (['2026-02-30','garbage'] as $invalid) { try {v2_top500_monthly_plan($ids,$hotels,$departures,$invalid); throw new LogicException('invalid date allowed');} catch(InvalidArgumentException $e){} }
-echo "TOP500_MONTHLY_PLAN_OK full_calendar=1 leap_tail=1 resume=1 no_starvation=1 explicit_missing=1\n";
+// Production has many more than two countries. The former nesting exhausted
+// a 64-target worker on September/October despite passing the small fixture.
+$manyHotels=[]; $manyDepartures=[];
+foreach(range(1,40) as $country){
+    $manyHotels[]=['id'=>$country,'country_id'=>$country,'is_active'=>1];
+    $manyDepartures[]=['departure_id'=>1,'country_id'=>$country];
+}
+$many=v2_top500_monthly_plan(range(1,40),$manyHotels,$manyDepartures,'2026-09-09');
+$initial=array_slice($many['targets'],0,64);
+monthly_check(count(array_unique(array_column($initial,'month')))===12,'all months in first bounded many-country pass');
+monthly_check(count(array_filter($initial,static fn($t)=>$t['country_id']===4&&$t['month']==='2026-11'))>0,'Turkey November not starved by country count');
+$prior=[];
+foreach($initial as $i=>$target)if(in_array($target['month'],['2026-09','2026-10'],true))$prior[]=['id'=>$i+1,'target_key'=>$target['target_key'],'status'=>'success','started_epoch'=>$now-10,'finished_epoch'=>$now-1,'search_id'=>1000+$i];
+$continued=v2_top500_monthly_queue($many['targets'],$prior,$now);
+monthly_check(count(array_filter(array_slice($continued['targets'],0,64),static fn($t)=>$t['country_id']===4&&$t['month']==='2026-11'))>0,'prior successes retained while November advances');
+echo "TOP500_MONTHLY_PLAN_OK full_calendar=1 leap_tail=1 resume=1 no_starvation=1 many_countries=40 explicit_missing=1\n";
