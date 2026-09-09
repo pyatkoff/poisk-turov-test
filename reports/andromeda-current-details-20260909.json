@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-09",
+  "pr": 1830,
+  "issue": 1717,
+  "base": "cf0ab86d82a75e56ed677fe9dc53c3eb38dee965",
+  "source": "e8924b001b81157e098f4b3cb3f0cd9b936e7f22",
+  "implemented": [
+    "inline saved offer detail in current renderer",
+    "scoped context preserved and response verified",
+    "cached reopen without requests",
+    "explicit recoverable error retry",
+    "new search abort/reset",
+    "supplier string escaping"
+  ],
+  "checks": {
+    "focused_provider": "passed",
+    "shared_runtime": "passed",
+    "source_assets": "passed",
+    "security": 34412172529,
+    "build": 34412172508
+  },
+  "artifacts": [
+    {
+      "id": 10127676332,
+      "name": "search3-site-preview-e8924b001b81157e098f4b3cb3f0cd9b936e7f22-34412172508-1",
+      "digest": "sha256:42141033ed25f27ad192edaa6b8eed966b218582b321354b838e904632b7f2e3"
+    }
+  ],
+  "published": false,
+  "supplier_calls": 0,
+  "matching_writes": 0,
+  "production_changed": false,
+  "deferred": [
+    "shared-preview publication",
+    "live desktop/mobile detail acceptance",
+    "quote/revalidation and source-qualified lead handoff"
+  ],
+  "next_action": "Sequential SEARCH owner integrate #1830 and publish exact artifact on current shared preview. Verify hotel expansion→specific offer detail→close/reopen/filter return. No ANEX base/addon copy, no booking enablement."
+}
