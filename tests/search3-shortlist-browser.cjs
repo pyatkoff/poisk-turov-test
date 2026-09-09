@@ -110,7 +110,7 @@ async function checkJourney(browser, width) {
     await render(page, 731);
     await openFilters(page, width);
     const meal = page.locator('.search3-meal-filter select');
-    await meal.selectOption('всё включено');
+    await meal.selectOption('meal:all-inclusive');
     const card = page.locator('#results [data-hotel-id="offer-hotel"]');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['offer-standard'], 'RO90k is excluded and STANDARD AI120k remains the representative');
     await addOffer(page, 'offer-standard', true);
@@ -205,7 +205,7 @@ async function checkStorageFailure(browser, width, mode) {
   try {
     await render(page, 731);
     await openFilters(page, width);
-    await page.locator('.search3-meal-filter select').selectOption('всё включено');
+    await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
     await addOffer(page, 'offer-standard', true);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 1, `${mode}: in-memory fallback retains the explicit snapshot`);
     assert.match(compact(await page.locator('.search3-shortlist-status').innerText()), /не сохран|только.*сеанс|хранилищ/i, `${mode}: non-persistence is explicit`);
@@ -234,7 +234,7 @@ async function checkCorruptStorage(browser, width) {
     assert.match(compact(await page.locator('.search3-shortlist-status').innerText()), /повреж|сброш|не удалось/i, 'corrupt reset is explained');
     await render(page, 731);
     await openFilters(page, width);
-    await page.locator('.search3-meal-filter select').selectOption('всё включено');
+    await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
     await addOffer(page, 'offer-standard');
     assert.equal(await page.locator('#results .hotel-card').count(), 3, 'corrupt storage cannot break search rendering');
     assert.deepEqual(posts, []); assert.deepEqual(errors, []);
