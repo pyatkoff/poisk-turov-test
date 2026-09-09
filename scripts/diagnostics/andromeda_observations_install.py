@@ -19,7 +19,8 @@ def main():
         'module_sha256':hashlib.sha256((root/paths[0]).read_bytes()).hexdigest(),
         'endpoint_sha256':hashlib.sha256((root/paths[1]).read_bytes()).hexdigest()}
     save(output/'reservation.json',{'state':'inflight','source_sha':request['source_sha'],'request_sha256':hashlib.sha256(json.dumps(request,sort_keys=True).encode()).hexdigest()},exclusive=True)
-    php=(root/'scripts/diagnostics/andromeda-observations-install.php').read_text().removeprefix('<?php')
+    php=(root/'app/integrations/andromeda-hotel-observations.php').read_text().removeprefix('<?php')
+    php+='\n'+(root/'scripts/diagnostics/andromeda-observations-install.php').read_text().removeprefix('<?php')
     result=owner.ssh_php(php,request,maximum_bytes=65536)
     save(output/'result.json',result,exclusive=True);print(json.dumps(result,ensure_ascii=False))
     if result.get('status')!='installed' or result.get('readback_verified') is not True or result.get('supplier_calls')!=0:

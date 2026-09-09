@@ -45,11 +45,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          # The first push run stopped inside the local Python helper before SSH.
-          # Permit exactly this reviewed recovery and reject every later replay.
-          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-observations.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 2
+          # Two reviewed failures are known: the first stopped before SSH; the second
+          # installed the empty schema and rolled runtime files back during backfill.
+          # This version preflights all saved pages and resumes an idempotent table.
+          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-observations.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 3
           test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34401548522" --jq '.conclusion')" = failure
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34401548522/jobs" --jq '[.jobs[] | select(.name=="install") | .steps[] | select(.name=="Install, publish and backfill saved pages") | .conclusion][0]')" = failure
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34402146356" --jq '.conclusion')" = failure
       - name: Install, publish and backfill saved pages
         env:
           SOURCE_SHA: ${{ github.sha }}

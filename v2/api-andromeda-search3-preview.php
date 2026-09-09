@@ -188,7 +188,16 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
         if(in_array($page['status'],['pending','unavailable'],true))throw new RuntimeException('supplier_unavailable');
         // Persistence is deliberately fail-open for the customer search. The explicit
         // installer and its readback gate own schema readiness; this call never matches.
-        try { AnyTourAndromedaHotelObservations::record($pdo,$page,$saved); }
+        try {
+            $observationCountry=$saved;
+            $observationCountry['local_country_id']=(int)$request['params']['countryId'];
+            if(empty($observationCountry['local_country_name'])){
+                $countryName=$pdo->prepare('SELECT name FROM catalog_countries WHERE id=? AND is_active=1');
+                $countryName->execute([$observationCountry['local_country_id']]);
+                $observationCountry['local_country_name']=(string)$countryName->fetchColumn();
+            }
+            AnyTourAndromedaHotelObservations::record($pdo,$page,$observationCountry);
+        }
         catch(Throwable $ignored) {}
         return anytour_andromeda_search3_project($request,$pdo,$page,$saved);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
