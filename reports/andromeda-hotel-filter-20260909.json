@@ -1,0 +1,21 @@
+{
+  "status": "deployment_control_repair",
+  "runtime_source": "b0440edafe54cc9c413c8c999b52a69cd6965cd3",
+  "failed_before_ssh_runs": [
+    34384958596,
+    34384960418
+  ],
+  "cause": "Duplicate push workflow deliveries for the same commit made the count==1 guard reject both before SSH.",
+  "repair": "Elect only the lowest run ID for the exact control commit; refuse reruns; retain concurrency, checked-source CI and private source release fence. No failed supplier checkpoint replay.",
+  "previous_probe": {
+    "run": 34384773321,
+    "status": "deployed_then_probe_failed",
+    "hotel": 447,
+    "checkpoint": "preserved; not replayed"
+  },
+  "next_distinct_probe": {
+    "hotel": 9365,
+    "andromeda_hotel": 416247,
+    "operator": 5
+  }
+}

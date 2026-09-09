@@ -19,8 +19,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-hotel-filter.yml/runs" -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" --jq '.total_count' > "$RUNNER_TEMP/count"
-          test "$(cat "$RUNNER_TEMP/count")" = 1
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-hotel-filter.yml/runs" -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" --jq '[.workflow_runs[].id] | min' > "$RUNNER_TEMP/first-run"
+          test "$(cat "$RUNNER_TEMP/first-run")" = "$GITHUB_RUN_ID"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/34384872229" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol"
           test "$(cat "$RUNNER_TEMP/protocol")" = "$SOURCE_SHA:success"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/34384871931" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security"
