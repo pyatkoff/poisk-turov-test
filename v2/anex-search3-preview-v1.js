@@ -314,8 +314,8 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     dialog.appendChild(close); dialog.appendChild(content); document.body.appendChild(dialog);
     dialog.addEventListener('cancel', event => { event.preventDefault(); closeOffer(); });
     dialog.showModal();
-    detailAbort = new AbortController(); const signal = detailAbort.signal;
-    const timer = setTimeout(() => { if (!signal.aborted) detailAbort?.abort(); }, 15000);
+    detailAbort = new AbortController(); const abort = detailAbort, signal = abort.signal;
+    const timer = setTimeout(() => abort.abort(), 15000);
     try {
       const request = Object.assign({}, run, { action: 'offer_detail', page: context.page, offer_context: context });
       if (new URL(window.location.href).searchParams.get('andromeda_operator') === '5') request.andromeda_operator_ids = ['5'];
@@ -337,6 +337,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       if (offerDialog === dialog) content.textContent = 'Предложение недоступно или срок его хранения истёк. Повторите поиск.';
     } finally { clearTimeout(timer); }
   }
+  ['input', 'change'].forEach(event => form.addEventListener(event, closeOffer));
   function offers(hotel, embedded = false) {
     const details = node(embedded ? 'section' : 'details', 'anex-search3-offers');
     details.setAttribute('data-anex-search3-row', String(hotelKey(hotel)));
