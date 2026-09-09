@@ -90,6 +90,23 @@ class CandidatesTest(unittest.TestCase):
             subject.save(path, {'state': 'completed'}, exclusive=True)
             with self.assertRaises(FileExistsError): subject.save(path, {}, exclusive=True)
 
+    def test_review_marks_shared_target_without_accepting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'checkpoint.json'
+            subject.save(path, subject.plan(evidence()), exclusive=True)
+            def reader(request):
+                result = response(request)
+                for item in result['items']:
+                    if item['key'] in (1, 2): item['candidates'][0]['id'] = 999
+                return result
+            captured = subject.capture(path, reader)
+            result = subject.review(captured)
+            self.assertEqual(result['shared_local_candidates']['999'], ['0', '1'])
+            self.assertIn('shared_local_candidate', result['rows'][0]['review_flags'])
+            self.assertTrue(all(row['local_hotel_id'] is None for row in result['rows']))
+            captured['state'] = 'needs_inspection'
+            with self.assertRaises(ValueError): subject.review(captured)
+
 
 if __name__ == '__main__':
     unittest.main()

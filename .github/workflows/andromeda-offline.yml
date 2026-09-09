@@ -86,3 +86,21 @@ jobs:
           name: andromeda-hotel-evidence
           path: ${{ runner.temp }}/andromeda-hotel-evidence.json
           if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34371963910
+          artifact-ids: 10112277692
+          merge-multiple: true
+          path: ${{ runner.temp }}/saved-candidates
+      - name: Assemble review queue offline from completed pinned capture
+        run: |
+          python3 -B scripts/diagnostics/andromeda_hotel_candidates.py review \
+            --checkpoint "$RUNNER_TEMP/saved-candidates/andromeda-hotel-candidates.json" \
+            --output "$RUNNER_TEMP/andromeda-hotel-review.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-hotel-review
+          path: ${{ runner.temp }}/andromeda-hotel-review.json
+          if-no-files-found: error

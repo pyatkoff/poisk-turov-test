@@ -108,17 +108,65 @@ def capture(path, reader):
     return checkpoint
 
 
+def review(checkpoint):
+    if (checkpoint.get('state') != 'completed' or checkpoint.get('source_sha256') != SOURCE_SHA256
+            or len(checkpoint.get('batches', [])) != 7
+            or any(b.get('state') != 'completed' for b in checkpoint['batches'])
+            or checkpoint.get('accepted_mappings') != 0 or checkpoint.get('selection_enabled') is not False):
+        raise ValueError('only a completed unresolved capture may be reviewed')
+    sources = checkpoint['source_rows']
+    if len(sources) != 14:
+        raise ValueError('unexpected source rows')
+    items = []
+    for batch in checkpoint['batches']:
+        validate_response(batch['request'], batch['response'])
+        items.extend(batch['response']['items'])
+    if sorted(i['key'] for i in items) != list(range(1, 15)):
+        raise ValueError('incomplete candidate coverage')
+    targets = {}
+    for item in items:
+        for candidate in item['candidates']:
+            targets.setdefault(candidate['id'], []).append(sources[item['key'] - 1]['external_hotel_id'])
+    rows = []
+    for item in items:
+        flags = []
+        if len(item['candidates']) != 1:
+            flags.append('multiple_candidates' if item['candidates'] else 'no_candidates')
+        if not item['candidate_set_complete'] or not item['alias_set_complete']:
+            flags.append('incomplete_candidate_evidence')
+        if any(len(targets[c['id']]) > 1 for c in item['candidates']):
+            flags.append('shared_local_candidate')
+        rows.append({'source': sources[item['key'] - 1], 'candidates': item['candidates'],
+                     'review_flags': flags, 'decision_status': 'needs_review', 'local_hotel_id': None})
+    return {'schema_version': 1, 'state': 'needs_review', 'provider': 'andromeda',
+            'accepted_mappings': 0, 'selection_enabled': False, 'supplier_calls': 0, 'database_calls': 0,
+            'counts': {'hotels': len(rows), 'candidate_pairs': sum(len(r['candidates']) for r in rows),
+                       'unique_local_candidates': len(targets),
+                       'single_candidate_hotels': sum(len(r['candidates']) == 1 for r in rows)},
+            'shared_local_candidates': {str(k): v for k, v in targets.items() if len(v) > 1}, 'rows': rows}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['prepare', 'capture'])
+    parser.add_argument('operation', choices=['prepare', 'capture', 'review'])
     parser.add_argument('--source', type=Path)
     parser.add_argument('--checkpoint', type=Path, required=True)
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     if args.operation == 'prepare':
         raw = args.source.read_bytes()
         if hashlib.sha256(raw).hexdigest() != SOURCE_SHA256:
             raise ValueError('source digest mismatch')
         save(args.checkpoint, plan(json.loads(raw)), exclusive=True)
+    elif args.operation == 'review':
+        raw = args.checkpoint.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != '8803cdc5db5940cfdc0c1b4e8428058e65eefe6df5199a673598100fed994df9':
+            raise ValueError('candidate capture digest mismatch')
+        result = review(json.loads(raw))
+        result['capture_sha256'] = hashlib.sha256(raw).hexdigest()
+        save(args.output, result, exclusive=True)
+        print(json.dumps(result, ensure_ascii=False))
+        print('REVIEW_SHA256=' + hashlib.sha256(args.output.read_bytes()).hexdigest())
     else:
         import anex_search3_owner_decisions as owner
         source = Path(__file__).with_name('anex_alias_catalog_reader.php').read_text().removeprefix('<?php')
