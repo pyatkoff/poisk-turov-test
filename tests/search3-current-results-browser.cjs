@@ -83,6 +83,11 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
+    await page.evaluate(items => {
+      window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
+    }, items);
+    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'raw continuation event cannot overwrite the matching meal projection');
     const a = page.locator('#results [data-hotel-id=meal-a]');
     assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'representative choice keeps its original tour ID');
     assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'selected meal sets the actual displayed offer price');
@@ -96,6 +101,11 @@ async function checkMealFacet(page, width, previous) {
     await category.selectOption('4');
     assert.deepEqual(await visible(), [], 'name/category/meal combine through one hidden-state owner');
     assert.equal(await calendar.isVisible(), false, 'zero local matches hide the stale price calendar');
+    await page.evaluate(items => {
+      window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
+    }, items);
+    assert.equal(await calendar.isVisible(), false, 'empty local projection remains empty after raw continuation');
     assert.match(await page.locator('#search3HotelFilterStatus').innerText(), /Показано 0 из 3/);
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await select.inputValue(), 'всё включено');
@@ -135,6 +145,10 @@ async function checkMealFacet(page, width, previous) {
     await page.evaluate(items => window.V2Results.render(items), items);
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
     assert.equal(await calendar.isVisible(), false, 'new search cannot show a calendar before its terminal event');
+    await select.selectOption('всё включено');
+    assert.equal(await calendar.isVisible(), false, 'a facet chosen during progressive results waits for completion');
+    await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } })), items);
+    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'completion uses the facet chosen before the terminal event');
     const longLabel = '<img src=x onerror=bad()> Очень длинное описание питания от поставщика без сокращений';
     await page.evaluate(({ items, longLabel }) => { items[0].tours[0].meal = { fullName: longLabel }; window.V2Results.render(items); }, { items, longLabel });
     assert.equal(await select.locator('img').count(), 0, 'supplier labels are rendered as text, never HTML');
@@ -180,7 +194,10 @@ async function run(browser, width, previous) {
     }
     await page.evaluate(items => window.V2Results.render(items), hotels);
     await page.waitForSelector('#results .direct-tour');
-    await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } })), calendarHotels);
+    await page.evaluate(items => {
+      window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } }));
+    }, calendarHotels);
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.isVisible(), true, 'current price calendar is visible after a terminal result set');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => [node.dataset.calendarDate, node.querySelector('strong').textContent.replace(/\s/g, '')])), [
@@ -188,7 +205,10 @@ async function run(browser, width, previous) {
     ], 'calendar exposes per-day minima and ignores unpriced tours');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-10', 'lowest observed day is highlighted');
     assert.equal(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.every(node => node.getBoundingClientRect().height >= 44)), true, 'calendar dates retain accessible touch targets');
-    await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } })), calendarHotels.concat([
+    await page.evaluate(items => {
+      window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } }));
+    }, calendarHotels.concat([
       { id: 'calendar-c', tours: [{ ...tour, id: 'calendar-c1', date: '2026-09-14', price: 88000 }] }
     ]));
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 3, 'continued results refresh the calendar instead of leaving stale dates');
