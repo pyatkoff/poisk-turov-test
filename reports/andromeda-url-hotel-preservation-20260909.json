@@ -1,0 +1,52 @@
+{
+  "pr": 1822,
+  "source": "c9c86542d6e357b9de21f4e56c10e6f2af62c115",
+  "installer": "b24476624f6f0664007e2846b6b0199315d353d6",
+  "scope": "/_preview/search3-anex-candidate/",
+  "tests": {
+    "focused_node": 4,
+    "andromeda_protocol": 34408274537,
+    "security": 34408274654,
+    "build": 34408274686
+  },
+  "published": {
+    "run": 34408409089,
+    "job": 102656824659,
+    "artifact": 10126241781,
+    "readback_artifact": 10126243281,
+    "bundle_version": "68fe1b558b538043"
+  },
+  "supplier_calls_publisher": 0,
+  "database_changed": false,
+  "production_changed": false,
+  "browser": {
+    "url_autostart": "passed",
+    "retained_hotel_id": "9365",
+    "source_cards": {
+      "tourvisor": 1,
+      "anex": 1,
+      "andromeda": 1,
+      "union": 1
+    },
+    "false_dirty_notice": false,
+    "bundle_version": "68fe1b558b538043",
+    "criteria": "Moscow Egypt 2026-09-18 / 8 nights / 2 adults / AI / hotel9365 / Andromeda operator5",
+    "expanded_variants": 8,
+    "detail": {
+      "hotel": "Life Resorts Coral Hills",
+      "room": "Standard Sea View Room",
+      "price": "134968 RUB",
+      "checkin": "2026-09-18",
+      "nights": 8,
+      "adults": 2,
+      "meal": "AI",
+      "status": "passed"
+    },
+    "return_retention": "8 variants retained"
+  },
+  "deferred": [
+    "mobile and physical Safari",
+    "quote/booking",
+    "shared release integration"
+  ]
+}
