@@ -867,3 +867,57 @@ test('source selection survives source rerender and sorting, then resets for a n
   assert.equal(page.tools.querySelector('strong').textContent, 'Найдено 0 туров');
   assert.equal(page.requests.length, 2);
 });
+
+test('continued Tourvisor results preserve local ANEX-preview budget, meal and source selection', async () => {
+  const page = preview(true);
+  const tvHotel = (id, price, meal) => ({ id, category: 4, price, tours: [{ price, meal }] });
+  const initial = [
+    { ...tvHotel(245, 40000, 'HB'), tours: [{ price: 40000, meal: 'HB' }, { price: 90000, meal: 'AI' }] },
+    tvHotel(500, 60000, 'AI'), tvHotel(600, 45000, 'HB'), tvHotel(700, 120000, 'AI')
+  ];
+  const continued = initial.concat(tvHotel(800, 65000, 'AI'), tvHotel(901, 30000, 'HB'), tvHotel(902, 150000, 'AI'));
+  const original = plain(continued);
+  const visible = () => page.results.querySelectorAll('.hotel-card')
+    .filter(card => !card.classList.contains('anex-search3-source-hidden')).map(card => card.dataset.hotelId);
+  const chooseSource = async value => {
+    const select = page.document.getElementById('anexSearch3SourceFilter');
+    select.value = value; select.dispatchEvent({ type: 'change' }); await tick();
+  };
+  page.reset(1, snapshot());
+  page.window.V2Results.render(initial);
+  page.requests[0].respond(response(1, [245, 900].map((local_id, index) => hotel({ local_id,
+    tours: [{ ...hotel().tours[0], price: { amount: String(70000 + 5000 * index), currency: 'RUB' } }]
+  }))));
+  await tick();
+  page.controls.price.value = '100000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.meal.find(input => input.value === 'ai') });
+  await tick();
+  assert.deepEqual(visible(), ['500', '245', '900']);
+  await chooseSource('both');
+  page.window.V2Results.render(continued);
+  await tick();
+  assert.equal(page.controls.price.value, '100000', 'continuation does not widen the chosen budget');
+  assert.equal(page.window.DS2ResultsFilters.state.meal, 'ai');
+  assert.equal(page.document.getElementById('anexSearch3SourceFilter').value, 'both');
+  assert.deepEqual(visible(), ['245']);
+  assert.equal(page.tools.querySelector('strong').textContent, 'Найдено отелей: 1');
+  const filtered = page.sourceRenders.at(-1);
+  assert.deepEqual(filtered.map(item => item.id), [245, 500, 800]);
+  assert.equal(filtered[0].price, 90000, 'hotel minimum excludes the cheaper nonmatching meal');
+  assert.equal(filtered[0].tours.length, 1);
+  await chooseSource('all');
+  assert.deepEqual(visible(), ['500', '800', '245', '900'], 'combined sorting uses the filtered TV minimum');
+  assert.equal(page.tools.querySelector('strong').textContent, 'Найдено отелей: 4');
+  const choices = page.document.getElementById('anexSearch3SourceFilter').children.map(option => option.textContent);
+  assert.deepEqual(choices.map(label => label.split(' · ').at(-1)), ['4', '2', '3', '1']);
+  assert.equal(page.requests.length, 1, 'filtering continued results sends no new ANEX request');
+  assert.deepEqual(continued, original);
+  page.reset(2, snapshot());
+  page.window.V2Results.render(continued);
+  await tick();
+  assert.equal(page.window.DS2ResultsFilters.state.meal, '');
+  assert.equal(page.controls.price.value, page.controls.price.max);
+  assert.equal(page.document.getElementById('anexSearch3SourceFilter').value, 'all');
+  assert.equal(visible().length, continued.length, 'a new search clears the previous local restrictions');
+});

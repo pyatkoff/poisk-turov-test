@@ -1,0 +1,45 @@
+{
+  "browser": {
+    "anex_filter_visible": 155,
+    "anex_hotels": 155,
+    "anex_rows": 174,
+    "details_opened": true,
+    "horizontal_overflow": false,
+    "intersection": 35,
+    "mobile": "deferred: browser API has no resize/emulation",
+    "physical_safari": "deferred",
+    "source_sha_verified": true,
+    "tourvisor_hotels": 100,
+    "unique_hotels": 220,
+    "width": 1363
+  },
+  "deployment": {
+    "artifact_digest": "sha256:12b819e1304d3fb914d1fd963572ec8e9acac53597139dfb3972068ea464bfa5",
+    "artifact_id": 10089506459,
+    "conclusion": "success",
+    "job_id": 102347091801,
+    "production_entry_changes": false,
+    "run_id": 34314273129
+  },
+  "fixes": [
+    "Known alcohol-free All Inclusive meals survive the server food=7 projection without rewriting supplier text.",
+    "Retain all already received offers inside the existing total300 cap instead of discarding after the fifth hotel tour."
+  ],
+  "issue": 1646,
+  "next": "Preserve existing local rail filters on progressive Tourvisor rerender in own ANEX preview; do not restore dormant DS2 into current whole-site Search3.",
+  "preservation": {
+    "manual_decisions": 9,
+    "policy_mappings": 12890,
+    "staging": 8362,
+    "supplier_query_policy": "unchanged; single first-week price operation per search"
+  },
+  "regressions": {
+    "node_passed": 26,
+    "php_smoke": "passed in Actions",
+    "received_offer_limit": 300,
+    "sixth_ai_after_five_hb": "passed with budget and reset; one captured supplier request"
+  },
+  "schema_version": 1,
+  "scope": "preview",
+  "source_sha": "0cde86cc9503e12af7af6994c345adee491d3bc9"
+}

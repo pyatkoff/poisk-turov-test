@@ -34,6 +34,7 @@ on:
       - 'v2/api-anex-preview.php'
       - 'v2/api-anex-search3-preview.php'
       - 'v2/anex-search3-preview-v1.js'
+      - 'v2/ds2-results-filters.js'
       - 'scripts/diagnostics/anex_search_mapping*'
       - 'scripts/diagnostics/anex_search3_*'
       - 'tests/anex_search_mapping*'

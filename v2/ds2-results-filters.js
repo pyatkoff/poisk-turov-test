@@ -9,7 +9,9 @@ if(!rail||!results)return;
 let sourceItems=[];
 let supplementalItems=[];
 let applying=false;
+let sourceRevision=0;
 let state={priceMax:0,stars:0,rating:0,meal:'',seaMax:0};
+function isAnexPreview(){return /^\/_preview\/search3-anex-candidate\//.test(window.location&&window.location.pathname||'');}
 function renderer(){return window.V2Results||null;}
 function price(h){const p=Number(h&&h.price||0);if(p>0)return p;const tours=Array.isArray(h&&h.tours)?h.tours:[];const values=tours.map(t=>Number(t&&t.price||0)).filter(v=>v>0);return values.length?Math.min.apply(null,values):0;}
 function allPrices(list){const values=[];(Array.isArray(list)?list:[]).forEach(h=>{const tours=Array.isArray(h&&h.tours)?h.tours:[];tours.forEach(t=>{const p=Number(t&&t.price||0);if(p>0)values.push(p);});if(!tours.length){const p=price(h);if(p>0)values.push(p);}});return values;}
@@ -34,7 +36,7 @@ function syncFacetAvailability(){
 }
 function syncPriceBounds(preserve){const values=allPrices(sourceItems.concat(supplementalItems)),range=rail.querySelector('[data-ds2-price]');if(!range||!values.length)return;const selected=Number(range.value),limited=preserve&&selected<Number(range.max),max=Math.ceil(Math.max.apply(null,values)/5000)*5000,min=Math.floor(Math.min.apply(null,values)/5000)*5000;range.min=String(Math.max(0,min));range.max=String(Math.max(min+5000,max));range.value=limited?String(Math.max(Number(range.min),Math.min(selected,Number(range.max)))):range.max;syncPrice();}
 // Supplemental rows inform facets/budget only; they never enter the Tourvisor renderer.
-function setSupplementalItems(list){if(!/^\/_preview\/search3-anex-candidate\//.test(window.location&&window.location.pathname||''))return false;const before={...state};supplementalItems=Array.isArray(list)?list.slice(0,300):[];syncPriceBounds(true);syncFacetAvailability();if(['stars','rating','meal','seaMax'].some(key=>before[key]!==state[key]))apply();return true;}
+function setSupplementalItems(list){if(!isAnexPreview())return false;const before={...state};supplementalItems=Array.isArray(list)?list.slice(0,300):[];syncPriceBounds(true);syncFacetAvailability();if(['stars','rating','meal','seaMax'].some(key=>before[key]!==state[key]))apply();return true;}
 function syncSeaAvailability(){syncFacetAvailability();}
 function filteredHotel(h){if(state.stars&&Number(h&&h.category||0)<state.stars)return null;if(state.rating&&Number(h&&h.rating||0)<state.rating)return null;if(!hotelDistanceMatches(h))return null;const tours=Array.isArray(h&&h.tours)?h.tours:[];if(!tours.length){if(state.meal)return null;return state.priceMax&&price(h)&&price(h)>state.priceMax?null:h;}const kept=tours.filter(t=>tourMealMatches(t,state.meal)&&tourPriceMatches(t));if((state.meal||state.priceMax)&&!kept.length)return null;if(!(state.meal||state.priceMax))return h;const values=kept.map(t=>Number(t&&t.price||0)).filter(v=>v>0);return Object.assign({},h,{tours:kept,price:values.length?Math.min.apply(null,values):h.price});}
 function matches(h){return !!filteredHotel(h);}
@@ -52,7 +54,18 @@ rail.addEventListener('change',e=>{const t=e.target;if(!t.matches('[data-ds2-cho
 rail.addEventListener('click',e=>{if(e.target.closest('[data-ds2-reset]'))reset();});
 }
 build();
-window.addEventListener('v2:results-rendered',e=>{if(applying)return;const items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];sourceItems=items.slice();if(!sourceItems.length){if(heading)heading.textContent='Отели не найдены';if(summary)summary.textContent='Попробуйте изменить параметры';updateRailCount(0);if(supplementalItems.length)syncPriceBounds(false);syncFacetAvailability();return;}syncPriceBounds(false);syncFacetAvailability();updateSummary(sourceItems.length,sourceItems);updateRailCount(sourceItems.length);});
-window.addEventListener('v2:search-reset',()=>{sourceItems=[];supplementalItems=[];if(heading)heading.textContent='Предложения';if(summary)summary.textContent='Актуальные варианты';updateRailCount(0);reset();syncFacetAvailability();});
-window.DS2ResultsFilters={apply,reset,filteredHotel,matches,allPrices,hasSeaDistanceData,hasCategoryData,hasRatingData,hasMealData,syncSeaAvailability,syncFacetAvailability,setSupplementalItems,get state(){return Object.assign({},state);},version:13};
+window.addEventListener('v2:results-rendered',e=>{
+  if(applying)return;
+  const revision=++sourceRevision,anexPreview=isAnexPreview(),items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];
+  sourceItems=items.slice();
+  if(!sourceItems.length){if(heading)heading.textContent='Отели не найдены';if(summary)summary.textContent='Попробуйте изменить параметры';updateRailCount(0);if(supplementalItems.length)syncPriceBounds(anexPreview);syncFacetAvailability();return;}
+  syncPriceBounds(anexPreview);syncFacetAvailability();updateSummary(sourceItems.length,sourceItems);updateRailCount(sourceItems.length);
+  const range=rail.querySelector('[data-ds2-price]');
+  if(anexPreview&&(state.stars||state.rating||state.meal||state.seaMax||(range&&state.priceMax<Number(range.max)))){
+    // Let every listener capture the incoming source before emitting filtered rows.
+    Promise.resolve().then(()=>{if(revision===sourceRevision&&isAnexPreview())apply();});
+  }
+});
+window.addEventListener('v2:search-reset',()=>{sourceRevision++;sourceItems=[];supplementalItems=[];if(heading)heading.textContent='Предложения';if(summary)summary.textContent='Актуальные варианты';updateRailCount(0);reset();syncFacetAvailability();});
+window.DS2ResultsFilters={apply,reset,filteredHotel,matches,allPrices,hasSeaDistanceData,hasCategoryData,hasRatingData,hasMealData,syncSeaAvailability,syncFacetAvailability,setSupplementalItems,get state(){return Object.assign({},state);},version:14};
 })();
