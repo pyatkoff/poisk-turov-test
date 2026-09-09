@@ -263,6 +263,124 @@ const response = (generation, hotels) => ({
   data: { generation, provider: 'anex', hotels, external_search_pending: false, first_page_only: true }
 });
 
+test('mapped ANEX-only hotel uses its catalog photo and text while keeping ANEX offers and source counts', async () => {
+  const page = preview();
+  const item = hotel({ local_id: 21477, name: 'MOVENPICK WATERPARK RESORT & SPA SOMA BAY', category: 5,
+    country: 'Египет', region: 'Хургада', rating: 4.6,
+    catalog: { hotel_id: 21477, source: 'tourvisor', image_url: 'https://images.example.com/movenpick.jpg',
+      description: 'Пляжный отель\n<script>not markup</script>', address: 'Soma Bay <b>address</b>',
+      subregion: 'Сома-Бэй', sea_distance: 50 },
+    tours: [{ ...hotel().tours[0], price: { amount: '165578', currency: 'RUB' } }] });
+  const original = plain(item);
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, [item]));
+  await tick();
+  const card = () => page.results.querySelector('[data-anex-search3-card="21477"]');
+  assert.equal(card().querySelector('img').src, item.catalog.image_url);
+  assert.equal(card().querySelector('img').alt, item.name);
+  assert.equal(card().querySelector('img').loading, 'lazy');
+  assert.equal(card().querySelector('figcaption').textContent, 'Фото: Tourvisor');
+  assert.match(card().textContent, /MOVENPICK.*5★/);
+  assert.match(card().textContent, /Египет · Хургада · Сома-Бэй/);
+  assert.match(card().textContent, /Рейтинг 4,6 · До моря: 50 м/);
+  assert.match(card().querySelector('.anex-search3-source').textContent, /ANEX APIот 165\s*578 ₽/);
+  assert.equal(card().querySelector('.anex-search3-about').querySelector('p').textContent, item.catalog.description);
+  assert.equal(card().querySelector('script'), null);
+  assert.equal(card().querySelector('b'), null);
+  assert.equal(card().querySelector('.anex-search3-tv-source'), null);
+  assert.match(page.summary.textContent, /^Tourvisor: 1 · ANEX API: 1$/);
+  card().querySelector('.anex-search3-about').open = true;
+  card().querySelector('.anex-search3-offers').open = true;
+  page.sort.dispatchEvent({ type: 'change' });
+  await tick();
+  assert.equal(card().querySelector('.anex-search3-about').open, true);
+  assert.equal(card().querySelector('.anex-search3-offers').open, true);
+  assert.deepEqual(item, original);
+
+  const tv = page.results.appendChild(new FakeElement('article'));
+  tv.className = 'hotel-card'; tv.setAttribute('data-hotel-id', '21477');
+  tv.textContent = 'Tourvisor Movenpick';
+  page.window.dispatchEvent({ type: 'v2:results-rendered', detail: { items: [{ id: 21477, price: 180188 }] } });
+  await tick();
+  assert.equal(card(), null, 'one source-owned card remains when Tourvisor later returns the hotel');
+  assert.equal(tv.querySelectorAll('.anex-search3-offers').length, 1);
+  assert.match(tv.textContent, /165\s*578/);
+  assert.equal(page.results.querySelectorAll('[data-hotel-id="21477"]').length, 1);
+  assert.equal(page.requests.length, 1, 'catalog presentation adds no supplier request');
+});
+
+test('untrusted catalog identities and photo URLs cannot suppress valid ANEX offers', async () => {
+  const page = preview();
+  const catalog = { hotel_id: 900, source: 'tourvisor', image_url: 'https://images.example.com/hotel.jpg',
+    description: 'Verified description', address: 'Verified address', sea_distance: 100 };
+  const inputs = [
+    { ...catalog, hotel_id: 901 }, { ...catalog, hotel_id: '901' }, { ...catalog, source: 'anex' },
+    ...['javascript:alert(1)', 'data:image/svg+xml,<svg/>', '//images.example.com/photo',
+      'http://images.example.com/photo', 'https://user:password@images.example.com/photo',
+      'https://images.example.com:8443/photo', 'https://127.0.0.1/photo'].map(image_url => ({ ...catalog, image_url }))
+  ].map((data, index) => hotel({ local_id: 900 + index,
+    catalog: index < 3 ? data : { ...data, hotel_id: 900 + index } }));
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, inputs));
+  await tick();
+  const cards = page.results.querySelectorAll('.anex-search3-hotel');
+  assert.equal(cards.length, inputs.length);
+  cards.forEach((card, index) => {
+    assert.equal(card.querySelector('img'), null, 'unsafe image ' + index);
+    assert.match(card.textContent, /Фото пока нет/);
+    assert.equal(card.querySelectorAll('.anex-search3-offer').length, 1);
+    if (index < 3) {
+      assert.equal(card.querySelector('.anex-search3-about'), null);
+      assert.doesNotMatch(card.textContent, /Verified|До моря/);
+    }
+  });
+  assert.equal(page.requests.length, 1);
+});
+
+test('a failed catalog photo falls back locally and is not retried by sorting', async () => {
+  const page = preview();
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, [hotel({ local_id: 900,
+    catalog: { hotel_id: 900, source: 'tourvisor', image_url: 'https://images.example.com/broken.jpg' } })]));
+  await tick();
+  const card = () => page.results.querySelector('.anex-search3-hotel');
+  card().querySelector('img').dispatchEvent({ type: 'error' });
+  assert.equal(card().querySelector('img'), null);
+  assert.equal(card().querySelector('figcaption'), null);
+  assert.match(card().textContent, /Фото пока нет/);
+  page.sort.dispatchEvent({ type: 'change' });
+  await tick();
+  assert.equal(card().querySelector('img'), null);
+  assert.equal(card().querySelectorAll('.anex-search3-offer').length, 1);
+  assert.equal(page.requests.length, 1);
+});
+
+test('verified catalog sea distance participates in existing shared filtering and sorting', async () => {
+  const page = preview(true);
+  page.reset(1, snapshot());
+  page.window.V2Results.render([{ id: 245, category: 4, seaDistance: 400, price: 100000,
+    tours: [{ price: 100000, meal: 'AI' }] }]);
+  page.requests[0].respond(response(1, [50, 1000].map((sea_distance, index) => hotel({ local_id: 900 + index,
+    catalog: { hotel_id: 900 + index, source: 'tourvisor', sea_distance } }))));
+  await tick();
+  assert.equal(page.rail.querySelector('[data-ds2-sea-fieldset]').hidden, false);
+  page.sort.value = 'sea'; page.sort.dispatchEvent({ type: 'change' });
+  await tick();
+  const ids = () => page.results.querySelectorAll('.hotel-card').map(card => card.dataset.hotelId);
+  assert.deepEqual(ids(), ['900', '245', '901']);
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.sea.find(input => input.value === '500') });
+  await tick();
+  assert.deepEqual(ids(), ['900', '245']);
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset });
+  await tick();
+  assert.deepEqual(ids(), ['900', '245', '901']);
+  assert.equal(page.requests.length, 1);
+  const filter = helpers().filterItem;
+  for (const sea_distance of [null, '', '100', -1, Infinity, 100001]) {
+    assert.equal(filter(hotel({ catalog: { hotel_id: 245, source: 'tourvisor', sea_distance } })).seaDistance, null);
+  }
+});
+
 test('shared filters require meal and budget on the same ANEX tour, then reset both sources locally', async () => {
   const page = preview(true);
   page.reset(1, snapshot());

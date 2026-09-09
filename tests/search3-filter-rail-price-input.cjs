@@ -85,6 +85,6 @@ assert.deepEqual(Object.values(fields).map(field => field.hidden), [true, true, 
   'partial data hides facets instead of filtering silently');
 emit('v2:search-reset', {});
 assert.equal(rail.dataset.s3EmptyResults, '', 'search reset clears the Search3 empty marker');
-assert.equal(window.DS2ResultsFilters.version, 13);
+assert.equal(window.DS2ResultsFilters.version, 14);
 
 console.log('PASS: DS2 desktop facets filter, recover, reset and preserve the Search3 empty shell');

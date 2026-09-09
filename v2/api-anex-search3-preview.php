@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/data/hotel-details-v1.php';
+
 /** Initial Search3 supplier page only. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
 {
@@ -81,6 +83,50 @@ function anytour_anex_search3_core(array $params): array
     return anytour_anex_search3_week($core);
 }
 
+/** Plain, bounded catalog excerpts; supplier HTML never becomes card markup. */
+function anytour_anex_search3_catalog_text($value, int $limit): ?string
+{
+    if (!is_string($value)) return null;
+    $value = preg_replace('~<(script|style)\b[^>]*>.*?</\1\s*>~is', '', $value);
+    $value = preg_replace('~<br\s*/?>|</(?:p|div|li|h[1-6])\s*>~i', "\n", (string) $value);
+    $value = html_entity_decode(strip_tags((string) $value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $value = trim((string) preg_replace('/[\p{Z}\s]+/u', ' ', $value));
+    if ($value === '') return null;
+    return function_exists('mb_substr') ? mb_substr($value, 0, $limit, 'UTF-8') : substr($value, 0, $limit);
+}
+
+/** Optional local reads only. Missing content storage must not hide available tours. */
+function anytour_anex_search3_catalog_hydrate(PDO $pdo, array $metadata): array
+{
+    if (!$metadata) return $metadata;
+    $ids = array_slice(array_keys($metadata), 0, 300);
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $queries = [
+        'SELECT id AS hotel_id,primary_image_url FROM catalog_hotels WHERE id IN (' . $placeholders . ') LIMIT 300',
+        'SELECT hotel_id,primary_image_url,LEFT(description,16000) AS description,address'
+            . ' FROM catalog_hotel_details WHERE hotel_id IN (' . $placeholders . ") AND status='success' LIMIT 300",
+    ];
+    foreach ($queries as $index => $sql) {
+        try {
+            $query = $pdo->prepare($sql);
+            $query->execute($ids);
+            foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $content) {
+                $id = (int) $content['hotel_id'];
+                if (!isset($metadata[$id]) || (int) $metadata[$id]['id'] !== $id) continue;
+                $image = v2_hotel_detail_https_url($content['primary_image_url'] ?? null);
+                if ($image !== null && empty($metadata[$id]['primary_image_url'])) $metadata[$id]['primary_image_url'] = $image;
+                if ($index === 1) {
+                    $metadata[$id]['description'] = $content['description'];
+                    $metadata[$id]['address'] = $content['address'];
+                }
+            }
+        } catch (Throwable $ignored) {
+            error_log('ANEX_CATALOG_CONTENT_UNAVAILABLE_' . $index);
+        }
+    }
+    return $metadata;
+}
+
 /** Projection is deliberately separate from both suppliers' booking IDs. */
 function anytour_anex_search3_project(array $offers, array $metadata, array $params): array
 {
@@ -88,7 +134,7 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
     foreach (array_slice($offers, 0, 300) as $offer) {
         $id = $offer['hotel']['local_id'] ?? null;
         $row = is_int($id) && $id > 0 ? ($metadata[$id] ?? null) : null;
-        if (!$row || ($offer['hotel']['mapping_status'] ?? '') !== 'resolved'
+        if (!$row || (int) ($row['id'] ?? 0) !== $id || ($offer['hotel']['mapping_status'] ?? '') !== 'resolved'
             || (int) $row['country_id'] !== (int) $params['countryId']) continue;
         $fits = true;
         foreach (['hotelIds' => 'id', 'regionIds' => 'region_id', 'subregionIds' => 'subregion_id'] as $filter => $field) {
@@ -107,7 +153,14 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
         if (!isset($hotels[$id])) {
             $hotels[$id] = ['local_id' => $id, 'name' => (string) $row['name'], 'category' => (int) ($row['category'] ?? 0),
                 'rating' => (float) ($row['rating'] ?? 0),
-                'country' => (string) $row['country_name'], 'region' => (string) ($row['region_name'] ?? ''), 'tours' => []];
+                'country' => (string) $row['country_name'], 'region' => (string) ($row['region_name'] ?? ''),
+                'catalog' => ['hotel_id' => $id, 'source' => 'tourvisor',
+                    'image_url' => v2_hotel_detail_https_url($row['primary_image_url'] ?? null),
+                    'description' => anytour_anex_search3_catalog_text($row['description'] ?? null, 2000),
+                    'address' => anytour_anex_search3_catalog_text($row['address'] ?? null, 1000),
+                    'subregion' => anytour_anex_search3_catalog_text($row['subregion_name'] ?? null, 180),
+                    // The stored catalog has no normalized distance field. Do not infer one.
+                    'sea_distance' => null], 'tours' => []];
         }
         $hotels[$id]['tours'][] = ['price' => $price, 'checkin' => $offer['checkin'], 'nights' => $offer['nights'],
             'adults' => $offer['adults'], 'children' => $offer['children'], 'meal' => $offer['meal'], 'room' => $offer['room'],
@@ -190,10 +243,11 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     foreach ($result['offers'] as $offer) if (is_int($offer['hotel']['local_id']) && $offer['hotel']['local_id'] > 0) $ids[$offer['hotel']['local_id']] = true;
     $metadata = [];
     if ($ids) {
-        $hydrate = $pdo->prepare('SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,category,rating'
+        $hydrate = $pdo->prepare('SELECT id,name,country_id,country_name,region_id,region_name,subregion_id,subregion_name,category,rating'
             . ' FROM catalog_hotels WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ') AND is_active=1 LIMIT 300');
         $hydrate->execute(array_keys($ids));
         foreach ($hydrate->fetchAll(PDO::FETCH_ASSOC) as $row) $metadata[(int) $row['id']] = $row;
+        $metadata = anytour_anex_search3_catalog_hydrate($pdo, $metadata);
     }
     $projected = anytour_anex_search3_project($result['offers'], $metadata, $params);
     // Capture only successful normalized supplier responses, before local filters discard unmapped hotels.
