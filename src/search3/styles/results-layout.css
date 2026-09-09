@@ -210,6 +210,7 @@ margin:0;background:#f5f7fb;color:#17233b;
   & :is(.flight-error,.lead-message[data-state=error],.selected-loading[role=alert]) {border-color:#e8b9b9;background:#fff8f8;color:#8a3030}
   & .load-flights,& .retry-tour {margin-top:12px;color:#2743cb;font-weight:600}
   & .lead-form {background:#fff}
+  & .search3-lead-return {display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin:0 0 18px;padding:10px 14px;border-color:#c4cfeb;color:#2743cb;font-weight:600}
   & .lead-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
   & .lead-form label {display:block;font-size:14px;line-height:1.5;color:#34425a;font-weight:600}
   & .lead-form :is(input:not([type=checkbox]),textarea) {display:block;width:100%;margin-top:6px;min-height:46px;padding:12px;border-color:#cbd6ef;background:#fff;font-size:16px;line-height:1.5;font-weight:400}
@@ -265,6 +266,7 @@ margin:0;background:#f5f7fb;color:#17233b;
     & .flight-arrow {justify-self:start;transform:rotate(90deg);font-size:18px}
     & .lead-fields {grid-template-columns:1fr}
     & .lead-selection-summary {padding:14px;gap:12px}
+    & .search3-lead-return {width:100%}
     & .search3-flight-continue .primary,& .lead-form>.primary {width:100%}
   }
 }

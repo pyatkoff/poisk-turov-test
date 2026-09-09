@@ -150,6 +150,13 @@ async function checkOfferJourney(page,width){
       assert.equal((await root.locator('.selected-price').innerText()).replace(/\D/g,''),String(price),'selected price matches the same offer');
       await root.locator('.search3-flight-continue button').click();
       await page.waitForFunction(()=>document.activeElement?.name==='phone');
+      await page.waitForFunction(()=>{const box=document.querySelector('#selectedTour .search3-lead-return')?.getBoundingClientRect();return box&&box.top>=-1&&box.bottom<=innerHeight+1;});
+      const localReturn=root.locator('.lead-form .search3-lead-return');
+      const returnBox=await localReturn.boundingBox(),formBox=await root.locator('.lead-form').boundingBox(),phoneBox=await root.locator('[name=phone]').boundingBox();
+      assert.equal(await localReturn.innerText(),'Изменить тур','lead card exposes a concise local edit action');
+      assert.ok(returnBox.height>=44,'lead-local return keeps a full touch target');
+      assert.ok(returnBox.y>=formBox.y-1&&returnBox.y+returnBox.height<=phoneBox.y+phoneBox.height,'lead-local return stays beside the active contact step');
+      assert.ok(returnBox.y>=-1&&returnBox.y+returnBox.height<=1001,'lead-local return is in the current viewport after phone handoff');
       assert.match((await root.locator('.lead-selection-summary').innerText()).replace(/\s/g,''),new RegExp(price+'₽'),'contact summary retains the selected total');
     };
     await selectOffer('offer-standard',120000,'STANDARD');
@@ -180,9 +187,12 @@ async function checkOfferJourney(page,width){
       {action:'tour',tourId:'offer-standard',currency:'RUB',searchId:731},{action:'flights',tourId:'offer-standard',currency:'RUB',searchId:731},
       {action:'tour',tourId:'offer-family',currency:'RUB',searchId:731},{action:'flights',tourId:'offer-family',currency:'RUB',searchId:731}
     ],'each selected offer makes one detail and one flights call; local alternatives make none');
-    await root.locator('.back-results').click();
+    const leadReturn=root.locator('.lead-form .search3-lead-return');
+    await leadReturn.focus();await leadReturn.press('Enter');
     await page.waitForFunction(()=>document.activeElement?.dataset.tid==='offer-family');
-    assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'),'true','ordinary return retains expanded alternatives and focuses the last offer');
+    assert.equal(await root.isVisible(),false,'lead-local edit action returns to results');
+    assert.equal(await meal.inputValue(),'всё включено','lead-local return retains the active filter');
+    assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'),'true','lead-local return retains expanded alternatives and focuses the last offer');
     await page.evaluate(()=>{
       window.dispatchEvent(new CustomEvent('v2:search-reset'));
       window.__staleAlternatives=window.V2Results.offerAlternatives('offer-family');
