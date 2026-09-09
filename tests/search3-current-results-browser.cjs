@@ -14,8 +14,8 @@ const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
 const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
-  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, seaDistance: 100, picturelink: picture, tours: [{ ...tour, id: 'other-tour', price: 159000 }, tour, { ...tour, id: 'third-tour', price: 155000 }] },
-  { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, seaDistance: 800, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
+  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, seaDistance: 100, picturelink: picture, tours: [{ ...tour, id: 'other-tour', price: 159000, operator: { name: 'OTHER OPERATOR' } }, tour, { ...tour, id: 'third-tour', price: 155000, operator: { name: 'OTHER OPERATOR' } }] },
+  { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, seaDistance: 800, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000, operator: { name: 'OTHER OPERATOR' } }] }
 ];
 const calendarHotels = [
   { id: 'calendar-a', tours: [
@@ -267,6 +267,8 @@ async function run(browser, width, previous) {
     const localCategoryPresets = localCategoryFilter.locator('.search3-filter-presets');
     const localBudgetFilter = page.locator('.search3-budget-filter');
     const localBudgetInput = localBudgetFilter.locator('input');
+    const localOperatorFilter = page.locator('.search3-operator-filter');
+    const localOperatorSelect = localOperatorFilter.locator('select');
     const localRatingFilter = page.locator('.search3-rating-filter');
     const localRatingSelect = localRatingFilter.locator('select');
     const localSeaFilter = page.locator('.search3-sea-filter');
@@ -283,6 +285,8 @@ async function run(browser, width, previous) {
     } else assert.equal(await mobilePanel.isVisible(), false, 'desktop does not expose the mobile disclosure');
     assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
     assert.equal(await localBudgetFilter.isVisible(), true, 'complete loaded offer prices expose a budget facet');
+    assert.equal(await localOperatorFilter.isVisible(), true, 'complete loaded offer operators expose one local operator facet');
+    assert.deepEqual(await localOperatorSelect.locator('option').allTextContents(), ['Все туроператоры', 'OTHER OPERATOR', 'TEST OPERATOR'], 'operator choices keep the original labels and do not confuse operator with provider');
     assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
     assert.deepEqual(await localCategoryPresets.locator('button').allTextContents(), ['5★', '4★'], 'complete category values expose quick exact choices without inventing a threshold');
     assert.ok((await localCategoryPresets.locator('button').first().boundingBox()).height >= 44, 'category quick choice keeps a full touch target');
@@ -299,8 +303,15 @@ async function run(browser, width, previous) {
       assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'search3-mobile-filter-panel__body', 'tablet and mobile reuse the current controls inside one disclosure');
       assert.equal(await actions.isVisible(), true);
     }
+    await localOperatorSelect.selectOption('test operator');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
-    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['cheap'], 'budget filters only offers within the selected loaded total');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
+    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'restoring budget keeps the active operator projection');
+    await localOperatorSelect.selectOption('');
+    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['cheap'], 'clearing operator restores the exact qualifying budget offer');
     assert.equal(await page.locator('#results [data-hotel-id=cheap] .hotel-price').innerText().then(text => text.replace(/\s/g, '')), '90000₽', 'budget retains the exact qualifying offer price');
     await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
     await localRatingSelect.selectOption('4.5');
@@ -333,6 +344,11 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'one reset restores every loaded card');
     assert.equal(await localReset.isVisible(), false, 'reset action hides when no local filter remains active');
     assert.equal(await categoryFive.getAttribute('aria-pressed'), 'false', 'common reset clears the mirrored quick choice state');
+    await localOperatorSelect.selectOption('test operator');
+    await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], tours: [{ ...hotels[1].tours[0], operator: null }] }]);
+    assert.equal(await localOperatorFilter.isVisible(), false, 'operator facet hides when any loaded offer lacks its operator label');
+    assert.equal(await localOperatorSelect.inputValue(), '', 'incomplete operator data resets the local choice');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'an incomplete operator facet never silently removes a loaded hotel');
     await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], category: 0 }]);
     assert.equal(await localCategoryFilter.isVisible(), false, 'category facet hides when any loaded hotel lacks category data');
     assert.equal(await localCategoryPresets.isVisible(), false, 'incomplete category data also hides its quick choices');
@@ -419,6 +435,8 @@ async function run(browser, width, previous) {
     assert.equal(await localHotelFilter.isVisible(), false, 'search reset hides the stale local hotel filter');
     assert.equal(await localCategorySelect.inputValue(), '0', 'search reset clears the local category');
     assert.equal(await localCategoryFilter.isVisible(), false, 'search reset hides the stale local category facet');
+    assert.equal(await localOperatorSelect.inputValue(), '', 'search reset clears the local operator');
+    assert.equal(await localOperatorFilter.isVisible(), false, 'search reset hides the stale local operator facet');
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => window.V2Results.render([]));
