@@ -10,9 +10,11 @@
 .sp-card.sp-card--supporting h2{font-size:20px}
 .sp-row,.sp-step{background:var(--at-surface)}
 .at-home-search button,.sp-primary,.sp-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding-inline:19px;border-radius:var(--at-control-radius);font-weight:850;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
-.at-home-search button,.sp-primary{background:var(--at-accent);color:#fff;box-shadow:0 10px 22px rgba(216,61,0,.16)}
+.at-home-search button{background:var(--at-accent);color:#fff;box-shadow:0 10px 22px rgba(216,61,0,.16)}
+.sp-primary{min-height:44px;background:#0066ff;color:#fff;box-shadow:0 10px 22px rgba(216,61,0,.16)}
 .sp-secondary{border:1px solid var(--at-line-strong);background:var(--at-surface);color:var(--at-brand)}
 .at-home-search button:hover,.sp-primary:hover,.sp-secondary:hover{transform:translateY(-1px)}
+.sp-primary:hover{background:#0754d1}
 .sp-breadcrumbs{border-bottom:1px solid var(--at-line);background:rgba(255,255,255,.92)}
 .sp-breadcrumbs .sp-wrap{color:var(--at-subtle);font-size:13px;font-weight:700}
 .sp-breadcrumbs a{color:var(--at-text);text-decoration:none}
@@ -21,7 +23,8 @@
 .sp-office-card{display:flex;min-height:188px;padding:var(--at-space-5);flex-direction:column;align-items:flex-start}
 .sp-office-card h3{margin:0 0 var(--at-space-2);font-size:20px;line-height:1.2;letter-spacing:-.018em}
 .sp-office-address{margin:0;color:var(--at-muted);line-height:1.58}
-.sp-office-phone{display:inline-flex;align-items:center;min-height:40px;margin-top:auto;padding:0 12px;border-radius:var(--at-radius-sm);background:var(--at-soft-blue);color:var(--at-brand)!important;font-size:14px;font-weight:850;text-decoration:none}
+.sp-office-phone,.sp-contact-phone{display:inline-flex;align-items:center;min-height:44px}
+.sp-office-phone{margin-top:auto;padding:0 12px;border-radius:var(--at-radius-sm);background:var(--at-soft-blue);color:var(--at-brand)!important;font-size:14px;font-weight:850;text-decoration:none}
 .sp-office-phone:hover{background:#e5ebff}
 .sp-hot-offer-card{display:flex;flex-direction:column;align-items:stretch}
 .sp-hot-offer-card .sp-actions{margin-top:auto;padding-top:var(--at-space-4)}
