@@ -143,11 +143,14 @@ margin:0;background:#f5f7fb;color:#17233b;
   & .facts>div {display:grid;align-content:start;gap:5px;min-height:76px;padding:14px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:12px;background:var(--at-soft,#f5f8ff)}
   & .facts span {display:block;font-size:12px;line-height:1.4;color:#526078}
   & .facts b {font-size:15px;line-height:1.45;font-weight:600}
-  & .hotel-desc {margin-top:24px;padding:20px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:14px;color:#34425a;font-size:15px;line-height:1.65}
+  & > .hotel-desc,& .selected-description {margin-top:24px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:14px;color:#34425a;font-size:15px;line-height:1.65}
   & :is(.tour-flights,.lead-form) {margin-top:28px;padding:24px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:var(--at-soft,#f5f8ff);scroll-margin-top:24px}
   & .section-heading {display:grid;gap:6px;margin-bottom:20px}
   & .section-heading strong {color:var(--at-ink,#151b24);font-size:23px;line-height:1.25;letter-spacing:-.02em}
   & .section-heading span {display:block;color:#526078;font-size:14px;line-height:1.5}
+  & .hotel-desc {padding:20px}
+  & .selected-description summary {min-height:48px;padding:14px 20px;cursor:pointer;color:#2743cb;font-weight:600}
+  & .selected-description[open] summary {border-bottom:1px solid var(--at-line-soft,#e9edf6)}
   & .search3-flight-toggle {display:flex;align-items:center;justify-content:center;min-height:46px;width:100%;padding:12px 16px;border-color:#c4cfeb;color:#2743cb;font-size:15px;font-weight:600}
   & .search3-flight-choices[data-collapsed=true]>.flight-variant:not(.is-selected) {display:none}
   & .search3-flight-choices[data-collapsed=false] {max-height:min(65vh,640px);overflow-y:auto;scroll-padding-block:16px;padding-right:6px;border-bottom:1px solid var(--at-line,#e1e7f3)}
@@ -216,7 +219,9 @@ margin:0;background:#f5f7fb;color:#17233b;
     & .selected-picture {aspect-ratio:16/9;max-height:260px}
     & .facts {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:20px}
     & .facts>div {padding:12px;min-height:70px}
-    & .hotel-desc {padding:16px;margin-top:20px}
+    & > .hotel-desc,& .selected-description {margin-top:20px}
+    & .hotel-desc {padding:16px}
+    & .selected-description summary {padding-inline:16px}
     & :is(.tour-flights,.lead-form) {padding:16px;margin-top:24px}
     & .section-heading strong {font-size:21px}
     & .flight-variant {padding:12px}

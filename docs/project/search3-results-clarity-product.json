@@ -106,7 +106,7 @@
   "rollback": "Revert 4554e34b4cfed32d290a82b0ae05f3adaa828c80 for code; restore the retained preview backup recorded by deploy run34297374511 for preview.",
   "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller.",
   "ota_results_decision_20260909": {
-    "stage": "IMPLEMENTED_PENDING_CI",
+    "stage": "PUBLISHED_PREVIEW_AWAITING_PILOT",
     "baseline_release_sha": "9237deb7af50707c5f6d28dc77d8a3b97a0db0a8",
     "before": "Live desktop first REIS MARIS card 1080px wide, 511.56px high; 220px hotel header then repetitive 3-column facts. Expanding rebuilt the list in raw order and discarded disclosure focus.",
     "after_intent": "Current DS2 owner:180px desktop photo/header; date plus nights; primary meal/room and inline secondary operator/placement; compact mobile price/action row. Same representative stays first, other offers retain raw order; disclosure focus restored. Mobile photo proportions unchanged.",
@@ -127,11 +127,22 @@
       "ci": "pending",
       "visual": "pending"
     },
-    "published": false,
+    "published": true,
     "deferred": [
       "physical Safari/iPhone",
       "five-participant product benchmark"
     ],
-    "next_action": "Applicable Security/exact CI and changed-state visual review, then exact isolated preview; advance to selected-options only after checked integration."
+    "next_action": "Continue selected-tour OTA2 bounded work; independent user pilot remains deferred",
+    "source_sha": "90496b5e5f4d02ddd10d8911c70984ecd6757652",
+    "release_sha": "73eafb1e12f3b48226f60e6ecf4cf64336b86f2f",
+    "artifact_run": 34363657776,
+    "deploy_run": 34364278057,
+    "verification_final": [
+      "Security34363657679 success",
+      "Exact34363657776 and ready event34363992600 success",
+      "375/1440 fixture screenshots visually checked",
+      "Live REIS MARIS card 511.56 ->441.27px, full conditions retained",
+      "Live disclosure retains representative and button focus; no horizontal overflow"
+    ]
   }
 }

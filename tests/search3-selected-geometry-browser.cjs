@@ -167,9 +167,48 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('.search3-selected-mobile-bar,.facts-secondary-toggle,.hotel-desc-toggle,.lead-optional-toggle,.search3-flight-show-all').count(),0,'retired presentation owners are not reconstructed');
       assert.equal(await page.locator('#selectedTour .facts > div[hidden]').count(),0,'all original tour facts remain directly available');
       const description=page.locator('#selectedTour .hotel-desc');
+      const disclosure=root.locator('details.selected-description'), descriptionSummary=disclosure.locator('summary');
+      assert.equal(await disclosure.count(),1,'one native disclosure owns the long hotel description');
+      assert.equal(await disclosure.evaluate(node=>node.open),false,'long description starts collapsed');
+      assert.equal(await description.isVisible(),false,'collapsed text does not occupy the path to flight choices');
+      assert.equal(await descriptionSummary.innerText(),'Об отеле','disclosure has a clear accessible label');
+      assert.ok((await descriptionSummary.boundingBox()).height>=44,'description disclosure retains a full touch target');
+      const callsBeforeDisclosure=await page.evaluate(()=>window.__geometryCalls);
+      // Catalog failure can asynchronously insert a recovery sibling before the
+      // selected root. Measure this disclosure's layout inside that root, not
+      // its unrelated absolute document position; keep the same strict tolerance.
+      const flightPosition=()=>root.evaluate(node=>{
+        const selectedRect=node.getBoundingClientRect(),flightRect=node.querySelector('.tour-flights').getBoundingClientRect();
+        return {offset:flightRect.top-selectedRect.top,documentTop:flightRect.top+scrollY,rootTop:selectedRect.top+scrollY,catalogRecovery:!!document.querySelector('.catalog-recovery')};
+      });
+      await settle(page);
+      const closedFlight=await flightPosition();
+      if([375,1440].includes(width)) await capture(page,prefix+'-description-closed');
+      await descriptionSummary.focus();
+      await descriptionSummary.press('Enter');
+      assert.equal(await disclosure.evaluate(node=>node.open),true,'Enter opens the native description');
+      assert.equal(await descriptionSummary.evaluate(node=>node===document.activeElement),true,'opening retains focus on summary');
+      assert.equal(await description.isVisible(),true,'opening exposes the complete description');
       assert.match(await description.innerText(),/Номер 25 м² & SPA рядом <script>alert\(1\)<\/script>/,'supplier entities render as readable inert text');
       assert.doesNotMatch(await description.innerText(),/&#178;/,'numeric entity is not leaked to the visitor');
       assert.equal(await description.locator('script').count(),0,'decoded entity text cannot become executable markup');
+      assert.equal((await description.innerText()).match(/Описание проверочного отеля\./g).length,15,'disclosure preserves every paragraph of the supplier description');
+      await settle(page);
+      const openFlight=await flightPosition();
+      assert.ok(openFlight.offset>closedFlight.offset+40,'collapsing the long description meaningfully shortens the path to flights: '+JSON.stringify({width,closedFlight,openFlight}));
+      if([375,1440].includes(width)) {
+        const opened=await capture(page,prefix+'-description-open');
+        assert.equal(opened.overflow,false,'expanded description stays within the viewport');
+        assert.deepEqual(opened.contract,states.detail.contract,'opening description leaves facts, price, lead fields and journey unchanged');
+      }
+      await descriptionSummary.press('Space');
+      assert.equal(await disclosure.evaluate(node=>node.open),false,'Space closes the native description');
+      assert.equal(await descriptionSummary.evaluate(node=>node===document.activeElement),true,'closing retains focus on summary');
+      assert.equal(await description.isVisible(),false,'closed description returns to compact state');
+      await settle(page);
+      const reclosedFlight=await flightPosition();
+      assert.ok(Math.abs(reclosedFlight.offset-closedFlight.offset)<=2,'closing restores the original flight-section position within selected tour: '+JSON.stringify({width,closedFlight,openFlight,reclosedFlight}));
+      assert.deepEqual(await page.evaluate(()=>window.__geometryCalls),callsBeforeDisclosure,'description toggles make no additional API calls');
       assert.equal(await page.evaluate(()=>typeof window.V2ConversionConfidenceV1),'undefined','retired runtime is absent');
       assert.equal(await page.evaluate(()=>typeof window.V2PriceConfidenceV1),'undefined','retired price-confidence runtime is absent');
       assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
