@@ -1,0 +1,60 @@
+name: Andromeda first price evidence
+on:
+  push:
+    branches: ['feat/int-andromeda-client-20260909']
+    paths: ['.github/workflows/andromeda-price-probe.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-andromeda-first-access
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 614aaffe2fa7c028d993a572773bfe80e3b6dec6
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/saved-catalog
+      - name: Reserve single price pilot before network
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.request
+          if os.environ['GITHUB_RUN_ATTEMPT'] != '1': raise SystemExit('REPLAY_REFUSED')
+          url='https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/workflows/andromeda-price-probe.yml/runs?branch=feat%2Fint-andromeda-client-20260909&per_page=100'
+          req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=20) as r: runs=json.load(r)
+          if runs['total_count'] != 1 or runs['workflow_runs'][0]['id'] != int(os.environ['GITHUB_RUN_ID']): raise SystemExit('PREVIOUS_PRICE_REQUIRES_REVIEW')
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-price'
+          root.mkdir(mode=0o700)
+          with (root/'reservation.json').open('x') as f: json.dump({'stage':'price_moscow_egypt_20260918_v1','source':'614aaffe2fa7c028d993a572773bfe80e3b6dec6','max_calls':2,'page':1,'automatic_retry':False,'booking':False},f)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-price-reservation
+          path: ${{ runner.temp }}/andromeda-price/reservation.json
+          if-no-files-found: error
+      - name: Login and capture one price page
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/andromeda-price-probe.php --execute "$RUNNER_TEMP/andromeda-price" "$RUNNER_TEMP/saved-catalog/all.json"
+      - name: Preserve price result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-price-evidence
+          path: ${{ runner.temp }}/andromeda-price/*.json
+          if-no-files-found: error

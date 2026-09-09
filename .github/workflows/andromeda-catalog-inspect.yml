@@ -1,0 +1,48 @@
+name: Andromeda saved catalog inspection
+on:
+  push:
+    branches: ['feat/int-andromeda-client-20260909']
+    paths: ['.github/workflows/andromeda-catalog-inspect.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/saved-catalog
+      - name: Verify pinned payloads and inspect search parameters
+        run: |
+          python3 - <<'PY'
+          import json, hashlib, os, pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'saved-catalog'
+          expected={'townfrom':'2c21726e9bf684327d576778dde31f4479e6f9f5948afa5bd1792138f783dfe8','state':'e9182ac79e0d4f8d2eec8c3868d4a4f0469446de7ba36512927c802ddd5ddfe2','all':'01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641'}
+          payloads={}
+          for name,digest in expected.items():
+              raw=(root/(name+'.json')).read_bytes()
+              assert hashlib.sha256(raw).hexdigest()==digest, 'SOURCE_DIGEST_MISMATCH'
+              payloads[name]=json.loads(raw)
+          a=payloads['all']
+          assert a['params']=={'TOWNFROMINC':1,'STATEINC':3}
+          p=a['payload']
+          report={'state':'completed','source_run':34362120510,'source_artifact':10108261911,'source_digests':expected,'supplier_calls':0,'parameters':a['params'],'keys':list(p),'dictionaries':{k:p[k] for k in ['OPERATORS','MEAL','CURRENCY','STARS']},'date_fields':{k:v for k,v in p.items() if k.startswith('CHECKIN')},'hotel_samples':p['HOTELS'][:5]}
+          dest=root/'inspection.json'
+          raw=(json.dumps(report,ensure_ascii=False,indent=2)+'\n').encode()
+          with dest.open('xb') as f: f.write(raw)
+          assert dest.read_bytes()==raw
+          print(raw.decode())
+          print('INSPECTION_SHA256='+hashlib.sha256(raw).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-catalog-inspection
+          path: ${{ runner.temp }}/saved-catalog/inspection.json
+          if-no-files-found: error

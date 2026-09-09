@@ -1,0 +1,61 @@
+name: Andromeda offline protocol
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-client.php'
+      - 'tests/andromeda-client-smoke.php'
+      - 'app/integrations/andromeda-transport.php'
+      - 'scripts/diagnostics/andromeda-access-probe.php'
+      - 'tests/andromeda-transport-smoke.php'
+      - '.github/workflows/andromeda-offline.yml'
+      - 'scripts/diagnostics/andromeda-catalog-capture.php'
+      - 'tests/andromeda-catalog-capture-smoke.php'
+      - 'scripts/diagnostics/andromeda-price-probe.php'
+      - 'tests/andromeda-price-smoke.php'
+      - 'app/integrations/andromeda-normalizer.php'
+      - 'tests/andromeda-normalizer-smoke.php'
+      - 'app/integrations/andromeda-offer-store.php'
+      - 'app/integrations/andromeda-hotel-resolver.php'
+      - 'tests/andromeda-hotel-resolver-smoke.php'
+      - 'tests/andromeda-offer-store-smoke.php'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint and offline fixtures
+        run: |
+          php -l app/integrations/andromeda-client.php
+          php -l tests/andromeda-client-smoke.php
+          php tests/andromeda-client-smoke.php
+          php -l app/integrations/andromeda-transport.php
+          php -l scripts/diagnostics/andromeda-access-probe.php
+          php tests/andromeda-transport-smoke.php
+          php -l scripts/diagnostics/andromeda-catalog-capture.php
+          php tests/andromeda-catalog-capture-smoke.php
+          php -l scripts/diagnostics/andromeda-price-probe.php
+          php tests/andromeda-price-smoke.php
+          php -l app/integrations/andromeda-normalizer.php
+          php tests/andromeda-normalizer-smoke.php
+          php -l app/integrations/andromeda-offer-store.php
+          php tests/andromeda-offer-store-smoke.php
+          php -l app/integrations/andromeda-hotel-resolver.php
+          php tests/andromeda-hotel-resolver-smoke.php
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34365549508
+          artifact-ids: 10109677472
+          merge-multiple: true
+          path: ${{ runner.temp }}/real-price
+      - name: Normalize pinned real offers offline
+        run: php tests/andromeda-normalizer-smoke.php "$RUNNER_TEMP/real-price/price.json" "$RUNNER_TEMP/normalized.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-normalized-offers
+          path: ${{ runner.temp }}/normalized.json
+          if-no-files-found: error
