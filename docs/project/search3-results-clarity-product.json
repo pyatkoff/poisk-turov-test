@@ -146,8 +146,8 @@
     ]
   },
   "ota_shortlist_contract_20260909": {
-    "stage": "READ_ONLY_CONTRACT_READY_IMPLEMENTATION_PENDING",
-    "basis_source": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "basis_source": "9a80a4af478ddbfe65e8a60e73b3c80b8b5be94f",
     "audit_conclusion": "No active Search3 shortlist owner. Legacy conversion-confidence/compare-refresh-guard are excluded; search-redesign localStorage is unrelated list/grid. Do not restore these layers.",
     "scope": "Up to three explicit complete offer snapshots, including two different rooms in the same hotel; persistent local-only TV first step.",
     "identity": {
@@ -194,14 +194,13 @@
       "Max3 validated whitelist records; malformed/old schema/corrupt/quota/blocked storage gracefully uses in-memory fallback with explicit non-persistence message",
       "Clear deletes stored records; accessible inline comparison preferred over a second overlay/focus trap"
     ],
-    "proposed_owned_paths": [
+    "owned_paths": [
       "src/search3/behavior/results/shortlist.js (new single owner)",
       "src/search3/manifest.json",
       "src/search3/README.md",
-      "v2/results-renderer-v5.js",
       "src/search3/styles/results-layout.css",
       "generated public assets/shared-runtime/import hash",
-      "tests/search3-current-results-browser.cjs"
+      "tests/search3-shortlist-browser.cjs"
     ],
     "acceptance": [
       "AI STANDARD120k and FAMILY125k keep exact price/conditions while RO90k excluded",
@@ -211,6 +210,26 @@
       "blocked/corrupt/quota storage do not break search",
       "375/1440 keyboard save/remove/compare/return, no overflow or POST"
     ],
-    "next_action": "Fresh release/#996/current_task, claim exact shortlist paths; implement canonical projection resolver and local snapshot owner together, then focused CI and exact preview."
+    "implementation": {
+      "pr": 1779,
+      "source_sha": "9a80a4af478ddbfe65e8a60e73b3c80b8b5be94f",
+      "source_tree": "8af834101fdd6e52b1da16fca422aeb3e6368ece",
+      "checked_release_sha": "ba902c167366a49404d23bef6f84caad759d28a2",
+      "security_run": 34373934207,
+      "exact_run": 34373934280,
+      "exact_artifact": 10113117605,
+      "deploy_run": 34374485414,
+      "deploy_evidence_artifact": 10113281195,
+      "preview": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "weight": "public JS 9799->20554 B (+10755); public CSS 17854->20633 B (+2779); total +13534 B; inline 0 B",
+      "verification": "Eight 375/1440 normal/blocked/quota/corrupt browser scenarios passed; exact identity, storage whitelist, max3, reload/clear, sort/progressive/repricing, stale/reused/duplicate IDs, keyboard/focus, no overflow and no POST passed.",
+      "publication": "Nine preview routes returned 200 with noindex, disabled lead 403, counter0, internal PHP denied, rollback backup retained and 13 production fingerprints unchanged."
+    },
+    "deferred": [
+      "physical iPhone/Safari",
+      "user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "S3_OTA_MOBILE_JOURNEY: add one lead-local secondary action using the existing .back-results controller contract in summary-cta.js, extend current results-layout.css, and cover the complete shortlist offer -> flight -> phone -> edit/return path at 375/1440 without new handler or supplier/POST request."
   }
 }

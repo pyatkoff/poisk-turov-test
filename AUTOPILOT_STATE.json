@@ -1240,7 +1240,6 @@
       "no_independent_safe_task_available"
     ],
     "active_queue_ids": [
-      "S3_OTA_SHORTLIST_COMPARE",
       "S3_OTA_MOBILE_JOURNEY",
       "S3_OTA_SITE_CONFIDENCE",
       "S3_OTA_PROVIDER_PARITY",
@@ -1249,7 +1248,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1773 implemented, corrected real focus-return defect, integrated and published exact source64011690 / checked release8b451099 / build34367999625 artifact10110771335 deploy34368506323. CSS+123B publicJS+34B sharedJS+2120B initial/full+2277B inline0. 375/1440 and live offer/contacts verified; no real leads. Continued independent OTA3 owner/storage contract audit; implementation pending. Execution-resource checkpoint after source corrections/CI/preview; next task is concrete shortlist package, not another repeated acceptance."
+    "last_execution_continuation": "PR1779 implemented the local exact-offer shortlist and merged as release ba902c167366a49404d23bef6f84caad759d28a2. Source 9a80a4af478ddbfe65e8a60e73b3c80b8b5be94f, Security34373934207 and exact34373934280/artifact10113117605 passed. Published by deploy34374485414 with evidence10113281195: noindex, leads403, counter0, rollback and unchanged production fingerprints. Public JS +10755B, CSS +2779B, total +13534B, inline0. Eight 375/1440 storage/identity/keyboard scenarios passed, no POST. Next is the confirmed mobile lead-local edit/return gap; physical Safari/user pilot/production approval deferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1268,8 +1267,8 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_OTA_SHORTLIST_COMPARE",
-    "title": "Save and compare up to three exact loaded offer snapshots locally",
+    "id": "S3_OTA_MOBILE_JOURNEY",
+    "title": "Complete the mobile shortlist-to-lead journey without losing context",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
     "coordinator_issue": 996,
@@ -1277,10 +1276,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "8b45109998b62370f6f84aa1531481e62ee921ac",
-    "published_source_sha": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
-    "acceptance_status": "CONTRACT_READY_IMPLEMENTATION_PENDING",
-    "next_action": "Fresh #996/heads/PR claim, then implement OTA3 from ota_shortlist_contract_20260909 in existing results-clarity audit: one explicit new shortlist behavior owner registered once; renderer resolver uses private viewItems, max3 complete Tourvisor offer snapshots. Separate hotelId from source/searchId/offerId. Persist whitelist only, no contact/raw payload. Saved prices always historical; reload/new generation never grants selection authority. Unique current-projection resolution then existing detail/flights only on explicit selection. Cover blocked/corrupt/quota storage, clear/reload/duplicate IDs/filter/sort/progressive, 375/1440 keyboard/focus. OTA2 #1773 is published; do not repeat native description, offer switching or focus acceptance. Physical Safari, user pilot and production approval deferred.",
+    "last_fully_checked_release_sha": "ba902c167366a49404d23bef6f84caad759d28a2",
+    "published_source_sha": "9a80a4af478ddbfe65e8a60e73b3c80b8b5be94f",
+    "acceptance_status": "CONFIRMED_GAP_IMPLEMENTATION_PENDING",
+    "next_action": "Fresh release/#996/PR claim, then implement one nearby >=44px lead-card action in src/search3/behavior/summary-cta.js using the existing .back-results controller contract; style it in the existing results-layout.css owner and extend tests/search3-selected-geometry-browser.cjs. At 375/1440 verify shortlist exact offer -> flight -> phone -> edit/return, exact offer focus, preserved filter/sort/expanded/shortlist and contact draft, reset consent after selecting another exact offer, updated room/meal/price/flight/lead summary, no horizontal overflow, duplicate handler, supplier request or POST. Do not edit the shared controller unless the existing contract proves insufficient. Physical Safari, user pilot and production approval remain deferred.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "deferred": {
