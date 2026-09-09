@@ -143,7 +143,7 @@ async function checkOfferJourney(page,width){
         const mobileFilters=page.locator('.search3-mobile-filter-panel summary');
         if(await mobileFilters.isVisible())await mobileFilters.click();
       }
-      await meal.selectOption('всё включено');
+      await meal.selectOption('meal:all-inclusive');
     };
     await selectMeal();
     const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
@@ -178,7 +178,7 @@ async function checkOfferJourney(page,width){
     await alternatives.focus();await alternatives.press('Enter');
     await page.waitForFunction(()=>document.activeElement?.dataset.tid==='offer-standard');
     assert.equal(await root.isVisible(),false,'alternative action returns to results');
-    assert.equal(await meal.inputValue(),'всё включено','meal filter survives selected-tour return');
+    assert.equal(await meal.inputValue(),'meal:all-inclusive','meal filter survives selected-tour return');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard','offer-family'],'only matching complete offers are expanded');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'),'true','same hotel stays expanded');
     assert.doesNotMatch(await card.innerText(),/Без питания|90\s?000/,'excluded cheaper RO cannot return through alternatives');
@@ -198,7 +198,7 @@ async function checkOfferJourney(page,width){
     await leadReturn.focus();await leadReturn.press('Enter');
     await page.waitForFunction(()=>document.activeElement?.dataset.tid==='offer-family');
     assert.equal(await root.isVisible(),false,'lead-local edit action returns to results');
-    assert.equal(await meal.inputValue(),'всё включено','lead-local return retains the active filter');
+    assert.equal(await meal.inputValue(),'meal:all-inclusive','lead-local return retains the active filter');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'),'true','lead-local return retains expanded alternatives and focuses the last offer');
     await page.evaluate(()=>{
       window.dispatchEvent(new CustomEvent('v2:search-reset'));

@@ -1065,7 +1065,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("list.every(value=>value>0)", source)
         self.assertIn("fieldNode.hidden=options.length<2", source)
         self.assertIn("facets.categories[index]===facets.category", source)
-        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:6}", source)
+        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:7}", source)
         self.assertIn("mealField.hidden=!available", source)
         self.assertIn("window.matchMedia('(min-width:1025px)')", source)
         self.assertIn("Number(t&&t.price||0)<=budget", source)
