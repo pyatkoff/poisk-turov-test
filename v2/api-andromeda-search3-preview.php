@@ -25,6 +25,40 @@ function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $save
     return count($ids)<=30 && strlen($value)<=300 ? $value : null;
 }
 
+/** Translate current Search3 meal identities through the saved supplier dictionary. */
+function anytour_andromeda_search3_meal(array $saved, $value): ?string {
+    $value=(string)$value;
+    if($value==='')return null;
+    $labels=[
+        '2'=>['OB','Без питания'],
+        '3'=>['BB','Завтрак'],
+        '4'=>['HB','Завтрак и ужин'],
+        '5'=>['FB','Трех разовое'],
+        '7'=>['AI','Все включено'],
+        '9'=>['UAI','Ультра все включено'],
+    ][$value]??null;
+    if($labels===null)throw new DomainException('meal_not_supported');
+    $rows=$saved['all']['payload']['MEAL']??null;
+    if(!is_array($rows))throw new RuntimeException('meal_dictionary_missing');
+    try{return (string)anytour_anex_search3_dictionary_id($rows,$labels);}
+    catch(InvalidArgumentException $error){throw new DomainException('meal_not_loaded');}
+}
+
+/** Keep the local result tied to the requested meal even if a supplier response is inconsistent. */
+function anytour_andromeda_search3_meal_matches($value, $label): bool {
+    $value=(string)$value;
+    if($value==='')return true;
+    $groups=[
+        '2'=>['ob','ro','room only','без питания'],
+        '3'=>['bb','bed and breakfast','завтрак','завтраки'],
+        '4'=>['hb','half board','завтрак и ужин','полупансион'],
+        '5'=>['fb','full board','трех разовое','трехразовое','полный пансион'],
+        '7'=>['ai','all','all inclusive','ai without alcohol','ai-without alcohol','все включено','все включено без алкоголя'],
+        '9'=>['uai','ultra all inclusive','ультра все включено'],
+    ][$value]??null;
+    return $groups!==null && in_array(anytour_anex_search3_name((string)$label),$groups,true);
+}
+
 function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved): array {
     if(!is_int($request['generation']??null) || $request['generation']<1 || $request['generation']>2147483647 || !is_array($request['params']??null)) throw new InvalidArgumentException();
     $p=$request['params'];
@@ -32,7 +66,8 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     if((string)($p['countryId']??'')!==(string)$country) throw new DomainException('country_not_loaded');
     foreach(['arrivalId','operatorIds','hotelServices','hotelTypes'] as $key) if(!empty($p[$key]))throw new DomainException('filter_not_supported');
     foreach(['onlyDirect','onlyCharter'] as $key) if(!in_array($p[$key]??false,[false,'false',0,'0',''],true))throw new DomainException('filter_not_supported');
-    if(!in_array($p['meal']??'',['','7',7],true) || ($p['currency']??'RUB')!=='RUB')throw new DomainException('filter_not_supported');
+    if(($p['currency']??'RUB')!=='RUB')throw new DomainException('filter_not_supported');
+    $meal=anytour_andromeda_search3_meal($saved,$p['meal']??'');
     foreach(['hotelIds','regionIds','subregionIds'] as $key){
         if(isset($p[$key]) && (!is_array($p[$key]) || count($p[$key])>30))throw new InvalidArgumentException();
         foreach($p[$key]??[] as $id)if(!is_scalar($id)||!ctype_digit((string)$id))throw new InvalidArgumentException();
@@ -54,7 +89,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
         'NIGHTS_FROM'=>(int)($p['nightsFrom']??0),'NIGHTS_TILL'=>(int)($p['nightsTo']??0),
         'ADULT'=>(int)($p['adults']??0),'CHILD'=>count($ages),'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>$request['page']??1];
     if($ages)$params['AGES']=implode(',',$ages);
-    if(!empty($p['meal']))$params['MEAL']='5';
+    if($meal!==null)$params['MEAL']=$meal;
     // Empty exclusions keep every operator enabled in the owner's SAMO account.
     $excluded=$saved['excluded_operator_ids']??[];
     if($excluded){
@@ -76,7 +111,9 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
 
 function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[]): array {
     $converted=[];$ids=[];
+    $requestedMeal=$request['params']['meal']??'';
     foreach($page['offers'] as $offer){
+        if(!anytour_andromeda_search3_meal_matches($requestedMeal,$offer['meal']['label']??''))continue;
         $id=$offer['local_hotel_id'];if(!$id)continue;$ids[$id]=true;
         $converted[]=['hotel'=>['local_id'=>$id,'mapping_status'=>'resolved'],'price'=>$offer['price'],
             'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
@@ -88,7 +125,8 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         $query->execute(array_keys($ids));foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row)$metadata[(int)$row['id']]=$row;
         $metadata=anytour_anex_search3_catalog_hydrate($pdo,$metadata);
     }
-    $hotels=anytour_anex_search3_project($converted,$metadata,$request['params']);
+    $projectionParams=$request['params'];$projectionParams['meal']='';
+    $hotels=anytour_anex_search3_project($converted,$metadata,$projectionParams);
     // Projection sorts offers. Bind operator/source using full normalized display tuple, never price alone.
     $used=[];
     foreach($hotels as &$hotel)foreach($hotel['tours'] as &$tour){
@@ -109,12 +147,12 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
     $needsCatalog=false;
     foreach(['hotelIds','regionIds','subregionIds','hotelRating'] as $filter)if(!empty($p[$filter]))$needsCatalog=true;
     if(!$needsCatalog)foreach($page['offers'] as $offer){
+        if(!anytour_andromeda_search3_meal_matches($requestedMeal,$offer['meal']['label']??''))continue;
         if($offer['local_hotel_id']!==null || $offer['price']['currency']!=='RUB')continue;
         $category=$offer['hotel_content']['category']??null;
         if(!empty($p['hotelCategory']) && (!is_int($category)||$category<1||$category>5||$category<(float)$p['hotelCategory']))continue;
         $amount=(float)$offer['price']['amount'];
         if((!empty($p['priceFrom'])&&$amount<(float)$p['priceFrom'])||(!empty($p['priceTo'])&&$amount>(float)$p['priceTo']))continue;
-        if(!empty($p['meal'])&&!in_array(anytour_anex_search3_name($offer['meal']['label']),['ai','all','all inclusive','uai','ultra all inclusive','ai without alcohol','все включено','ультра все включено','все включено без алкоголя'],true))continue;
         $key='andromeda:'.$offer['supplier_namespace'].':'.$offer['external_hotel_id'];
         if(!isset($unresolved[$key]))$unresolved[$key]=['local_id'=>null,'card_key'=>$key,'provider'=>'andromeda','mapping_status'=>'unresolved',
             'name'=>$offer['hotel'],'category'=>$offer['hotel_content']['category']??null,'rating'=>null,'country'=>(string)($saved['local_country_name']??'Египет'),
