@@ -54,6 +54,7 @@ function v2_seo_price_calendar_plan(
                 'count' => 0,
                 'earliest' => null,
                 'nights' => [],
+                'earliestByNights' => [],
             ];
         }
         $groups[$departureId]['count']++;
@@ -64,6 +65,10 @@ function v2_seo_price_calendar_plan(
             $groups[$departureId]['earliest'] = $dateRaw;
         }
         $groups[$departureId]['nights'][$nights] = ($groups[$departureId]['nights'][$nights] ?? 0) + 1;
+        $earliest = $groups[$departureId]['earliestByNights'][$nights] ?? null;
+        if ($earliest === null || $dateRaw < $earliest) {
+            $groups[$departureId]['earliestByNights'][$nights] = $dateRaw;
+        }
     }
     if ($groups === []) return null;
 
@@ -85,7 +90,7 @@ function v2_seo_price_calendar_plan(
     $nights = (int)array_key_first($nightCounts);
     if ($nights <= 0) return null;
 
-    $dateFrom = v2_price_calendar_date((string)$chosen['earliest']);
+    $dateFrom = v2_price_calendar_date((string)$chosen['earliestByNights'][$nights]);
     if ($dateFrom < $effectiveFloor) $dateFrom = $effectiveFloor;
     $dateTo = $dateFrom->modify('+' . ($days - 1) . ' days');
     if ($scopeTo !== null && $dateTo > $scopeTo) $dateTo = $scopeTo;

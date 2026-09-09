@@ -13,6 +13,7 @@ on:
       - 'v2/**'
       - 'tests/site-preview-path-smoke.php'
       - 'tests/search-handoff-smoke.php'
+      - 'tests/seo-price-calendar-ui-smoke.php'
       - 'tests/home-search-loading-handoff.cjs'
       - 'tests/search3_production_presentation_test.py'
       - 'tests/search3_site_preview_isolation_test.py'
@@ -65,6 +66,7 @@ jobs:
           php tests/site-preview-path-smoke.php production
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php
+          php tests/seo-price-calendar-ui-smoke.php
           php tests/offer-freshness-smoke.php
           node tests/home-search-loading-handoff.cjs
           python3 -B scripts/build/search3_assets.py --check
