@@ -5,12 +5,12 @@ const crypto = require('node:crypto');
 const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 
 // Two canonical protected owners use syntax which the pinned printer rewrites even
-// with compression disabled. Keep those source files byte-identical and normalize
+// with compression disabled. Never apply these printer rewrites to source files; normalize
 // only the derived Search3 representation. Exact source hashes and single-match
 // replacements make every accepted rewrite explicit and fail closed on source drift.
 const rules = {
   'tour-controller-v4.js': {
-    sourceSha256: '1d976d67d3bc164f44912d709a80fd121be3284e6fcb44059b68c6ca37133212',
+    sourceSha256: '3af795f98f0a5aff99c9a51ba29c80e5d2a4fb1c7d05204fd2598f6708d83d12',
     from: 'catch(_){};}try{',
     to: 'catch(_){}}try{'
   },

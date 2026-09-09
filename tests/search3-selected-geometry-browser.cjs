@@ -67,7 +67,7 @@ async function checkLargeList(page,width){
   await page.evaluate(({tour,many})=>{
     window.__largeCalls={tour:0,flights:0,other:0};
     window.V2Runtime.api=async action=>{
-      if(action==='tour'){window.__largeCalls.tour++;return {...tour,id:'large-flight-tour'};}
+      if(action==='tour'){window.__largeCalls.tour++;return {...tour,id:'large-flight-tour',meal:{name:'RO',fullName:'Без питания'}};}
       if(action==='flights'){window.__largeCalls.flights++;return many;}
       window.__largeCalls.other++;throw Error('unexpected large-list API action');
     };
@@ -76,6 +76,7 @@ async function checkLargeList(page,width){
   const root=page.locator('#selectedTour'),list=root.locator('.flight-variants'),toggle=root.locator('.search3-flight-toggle');
   await toggle.waitFor();
   await settle(page);
+  assert.equal(await root.locator('.facts>div').filter({hasText:'Питание'}).locator('b').innerText(),'Без питания','selected uses the canonical readable supplier meal label');
   assert.equal(await list.locator('input[name=v2flight]').count(),89,'all supplier choices retained');
   assert.equal(await list.locator('input:visible').count(),1,'large list initially shows the selected flight');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
