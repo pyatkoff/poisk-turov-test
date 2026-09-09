@@ -20,6 +20,8 @@ on:
       - 'tests/andromeda-offer-store-smoke.php'
       - 'scripts/diagnostics/andromeda_hotel_evidence.py'
       - 'tests/andromeda_hotel_evidence_test.py'
+      - 'scripts/diagnostics/andromeda_hotel_candidates.py'
+      - 'tests/andromeda_hotel_candidates_test.py'
 permissions:
   contents: read
   actions: read
@@ -47,6 +49,7 @@ jobs:
           php -l app/integrations/andromeda-hotel-resolver.php
           php tests/andromeda-hotel-resolver-smoke.php
           python3 -B tests/andromeda_hotel_evidence_test.py
+          python3 -B tests/andromeda_hotel_candidates_test.py
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
