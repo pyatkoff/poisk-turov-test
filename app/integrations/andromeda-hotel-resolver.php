@@ -23,7 +23,7 @@ final class AnyTourAndromedaHotelResolver {
             $namespace=self::id($row['supplier_namespace']??null);
             $external=self::id($row['external_hotel_id']??null);
             $key=$namespace.':'.$external;
-            if (isset($index[$key]) || !in_array($row['decision_status']??null,['accepted','rejected'],true))
+            if (array_key_exists($key,$index) || !in_array($row['decision_status']??null,['accepted','rejected'],true))
                 throw new UnexpectedValueException('ANDROMEDA_MAPPING_INVALID');
             if ($row['decision_status']==='rejected') { $index[$key]=null; continue; }
             $target=self::localId($row['catalog_hotel_id']??null);
@@ -63,7 +63,7 @@ final class AnyTourAndromedaHotelResolver {
 
     private static function id($value): string {
         if (is_int($value)) $value=(string)$value;
-        if (!is_string($value) || !preg_match('/^[A-Za-z0-9_]{1,128}$/D',$value))
+        if (!is_string($value) || !preg_match('/^[A-Za-z0-9_-]{1,128}$/D',$value))
             throw new UnexpectedValueException('ANDROMEDA_MAPPING_INVALID');
         return $value;
     }
