@@ -14,48 +14,60 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — clear results and truthful states #1652 — 2026-09-09
+## Current product checkpoint — selected flight and lead handoff #1655 — 2026-09-09
 
-Exact source `867bf3e899a09fbe48c09774dcd1a7568a258e65`, tree
-`ebb227db00b2168d80196d9c964ef0aad95dc3a1`; checked release
-`4554e34b4cfed32d290a82b0ae05f3adaa828c80`. Existing renderer/lifecycle/layout
-owners now present one semantic hotel heading, distinct rating and category,
-essential tour facts, one authoritative whole-tour total and one selection action.
-Loading, progress, empty, error, retry and dirty states describe the actual search
-lifecycle. Progressive empty batches no longer masquerade as terminal empty results,
-and a new search cannot inherit the previous result count. No parallel renderer,
-override skin, price calculation, API request or lead handler was added.
+Exact source `ef8ce1d8e967ffc6945adbc75b4a726906503593`, tree
+`6e0eb20a8424c4be507c2ef484cde619bd6e2884`; checked release
+`d6b71962c2a1fa47de2ffeab9158e2f3133f2d28`. All six flight variants remain
+selectable while only the current choice expands route, baggage and fuel details.
+Search3 has one visible handoff CTA; the existing lead summary receives the selected
+flight number/time and the form is a distinct next step. The authoritative selected
+total, retry, return focus, Tourvisor/API and lead transport are unchanged. No
+parallel selected controller or override layer was added.
 
-Eight public assets are **10616→12007 raw B (+1391)**; public JS is unchanged.
-The complete external CSS/JS scenario is **104274→108598 B (+4324)**: initial
-61856→66180 B and selected phase remains 42418 B. This is intentional product
-presentation growth, not claimed as deletion or movement.
+Eight public assets are **12007→13574 raw B (+1567)**: CSS +905 B, JS +662 B.
+The eager initial external CSS/JS set is **66180→67747 B** and the full scenario is
+**108598→110165 B**; selected phase remains 42418 B. This is intentional product
+growth, not claimed as deletion, movement or lazy-loading savings.
 
-Security `34297070096` and exact artifact `34297070107` passed. Reuse artifact
-`10083549711`, digest
-`sha256:520ba978b2493d625ab9675288174074650bcf6e51c56e30a0784bb7f50bf726`,
-archive `f51a7bf90a5425e88abd66b1192d1173e9850c201735a2a9067a7850a204a749`,
-manifest `db7cf405ba42856a7a9cad3d54d80c7c127c590079d5c6af748c8c53835f5e7c`,
-payload `8675e719bf7433d9bcdd41789a060fe85f8f278d9b11c8c59854ca82b2ad714f`,
-717 files. Exact Chromium passed 12 results states at
-375/760/761/999/1000/1440 plus entry at375/1440, raw/served parity, native
-header, external calls0 and real leads0.
+Security `34299852388` and exact artifact `34299852380` passed. Reuse artifact
+`10084543925`, digest
+`sha256:1d8694ae03af183dca64b4d29208c7c2fd1f47f02e0010507cb259b29fb22873`,
+archive `ec2e700492af02b90c8bac1a288f65fe3068c788070012c4525cd829ee743bd8`,
+manifest `403658e82190d0e173ebe9558050f0d264cd1faa0b5de7582e3f3aea45c39937`,
+payload `a0006595882e3f37ac55e42d6b65fe4a79fe1918c35d1659f4898c0386d9cb5d`,
+717 files. Exact Chromium covered detail/lead at375/760/1000/1440, six visible
+variants, variant switching, one visible Search3 handoff, lead summary `AB123 09:30`,
+retry/return and no horizontal overflow; external calls0 and real leads0. Initial
+exact runs correctly rejected protected-owner edits; both files were restored to
+their allowlisted hashes and no validator was weakened.
 
-**Published preview now equals this exact source.** One-shot control #1653,
-SHA `176bf718601b694f8f5dbdc45c22f97e5f8002fc`, deploy `34297374511` reused
-the artifact and passed provenance, isolation, noindex, disabled lead, rollback
-and unchanged production-fingerprint guards. Live 1363×936 smoke observed the
-truthful progress state and 100 real hotel cards, one price in the first card,
-no horizontal overflow and noindex; no lead was submitted. Physical Safari and
-safe-area, owner visual acceptance and full lead/site/SEO journey remain deferred.
-Main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; main and production unchanged.
-Rollback: revert #1652 for code or restore the retained preview backup from deploy
-run34297374511. Audit: `docs/project/search3-results-clarity-product.json`.
+**Published preview now equals this exact source.** One-shot control #1656,
+SHA `2e3b8d980b2da029d05ace1533cdd39da08cf74b`, deploy `34300274732` reused
+the artifact and passed provenance, isolation, noindex, disabled production lead,
+preview counter0, rollback and unchanged production-fingerprint guards. Four-width
+screenshots were inspected: the selected option, one handoff CTA, summary and form
+are readable without clipping or overlap. Synthetic missing airline/fuel/route data
+and dense but unclipped375 detail fields remain fixture/device caveats. Physical
+Safari, real-provider long-flight copy, full lead/site/SEO journey and owner visual
+acceptance remain deferred. Main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; main and production unchanged.
+Rollback: revert #1655 for code or restore the retained preview backup from deploy
+run34300274732. Audit: `docs/project/search3-selected-lead-product.json`.
 
-Next: `S3_PRODUCT_SELECTED_LEAD`. Improve flight choices, authoritative selected
-total and contact handoff in the current owners. Preserve price arithmetic,
-Tourvisor/API, URL/payload, analytics and lead transport contracts; do not add a
-parallel selected-flow controller.
+Next: `S3_PRODUCT_SHARED_SITE`. Fold the approved blue `.sp-primary` and 44 px
+`.sp-office-phone` rules into `shared-content-primitives-v1.css`, remove the
+superseded `site-coherence-v1.css` overrides in the same package and verify
+representative shared routes at mobile and desktop widths. Do not touch Search3
+business contracts or duplicate the separate ANEX work.
+
+## Previous product checkpoint — clear results and truthful states #1652 — 2026-09-09
+
+Exact source `867bf3e899a09fbe48c09774dcd1a7568a258e65`, checked release
+`4554e34b4cfed32d290a82b0ae05f3adaa828c80`, publish run `34297374511`.
+The current renderer and lifecycle own one card hierarchy, one whole-tour total and
+truthful loading/progress/empty/error/retry states. Eight assets 10616→12007 B;
+details and rollback remain in `docs/project/search3-results-clarity-product.json`.
 
 ## Previous product checkpoint — grouped form and readable summary #1645 — 2026-09-09
 

@@ -1,4 +1,95 @@
 {
+  "latest_selected_lead_product_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1655,
+    "baseline_release_sha": "3eb4aaa1f6521fc2ab7bca40cee6062a151ebe8b",
+    "source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+    "source_tree": "6e0eb20a8424c4be507c2ef484cde619bd6e2884",
+    "release_integration_sha": "d6b71962c2a1fa47de2ffeab9158e2f3133f2d28",
+    "product_result": [
+      "All six flight variants remain selectable while only the selected variant expands its details.",
+      "Search3 exposes one visible handoff CTA and carries the selected flight number/time into the existing lead summary.",
+      "The lead form is a distinct readable next step; selected total, retry, return focus and protected transport remain unchanged.",
+      "No parallel selected controller or override layer was added."
+    ],
+    "public_assets": {
+      "paths": 8,
+      "before_raw_bytes": 12007,
+      "after_raw_bytes": 13574,
+      "added_raw_bytes": 1567,
+      "css_added_raw_bytes": 905,
+      "js_added_raw_bytes": 662
+    },
+    "loaded_external_css_js": {
+      "initial_before_raw_bytes": 66180,
+      "initial_after_raw_bytes": 67747,
+      "full_before_raw_bytes": 108598,
+      "full_after_raw_bytes": 110165,
+      "selected_phase_raw_bytes": 42418,
+      "accounting": "The eager Search3 package adds1567B to initial/full external CSS/JS; no transfer or lazy loading is presented as deletion."
+    },
+    "protected_owners": {
+      "flight_price_sha256": "263a5795c61da3a7cc4018f04c513f7e59b7f9e0fb9c8918fb46298564fc42e8",
+      "lead_guard_sha256": "543c79cf652fcff2b313b5a7c6e2e4e31e18e9326faa5cf613a5be3d30a4105c",
+      "validators_changed": false,
+      "note": "Initial exact runs rejected protected-owner edits; both files were restored byte-for-byte before green CI."
+    },
+    "ci": {
+      "security_run": 34299852388,
+      "exact_artifact_run": 34299852380,
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 10084543925,
+      "digest": "sha256:1d8694ae03af183dca64b4d29208c7c2fd1f47f02e0010507cb259b29fb22873",
+      "archive_sha256": "ec2e700492af02b90c8bac1a288f65fe3068c788070012c4525cd829ee743bd8",
+      "manifest_sha256": "403658e82190d0e173ebe9558050f0d264cd1faa0b5de7582e3f3aea45c39937",
+      "payload_sha256": "a0006595882e3f37ac55e42d6b65fe4a79fe1918c35d1659f4898c0386d9cb5d",
+      "file_count": 717,
+      "selected_evidence_id": 10084543204,
+      "results_evidence_id": 10084543570
+    },
+    "verification": {
+      "selected_states": 8,
+      "selected_widths": [375, 760, 1000, 1440],
+      "flight_variants": 6,
+      "single_visible_search3_handoff_cta": true,
+      "lead_summary_flight": "AB123 09:30",
+      "horizontal_overflow": false,
+      "external_calls": 0,
+      "real_leads_submitted": 0,
+      "visual_result": "CI screenshots inspected: selected flight, one handoff CTA and lead card remain readable at all four widths without clipping or overlap. Synthetic missing airline/fuel/route content and dense375 detail fields remain deferred fixture/device caveats."
+    },
+    "publication": {
+      "published": true,
+      "published_preview_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+      "control_pr": 1656,
+      "control_sha": "2e3b8d980b2da029d05ace1533cdd39da08cf74b",
+      "deploy_run": 34300274732,
+      "deployment_evidence_id": 10084667369,
+      "deployment_evidence_digest": "sha256:a016912f71c95fd80abbbee45143c106d42a9a9c82f6a7052105377b15217ead",
+      "artifact_rebuilt": false,
+      "noindex": true,
+      "production_lead_delivery": false,
+      "preview_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprints_unchanged": true,
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "control_closed_without_merge": true
+    },
+    "audit": "docs/project/search3-selected-lead-product.json",
+    "deferred": [
+      "physical Safari and safe-area verification",
+      "real-provider long-flight copy beyond deterministic fixtures",
+      "full lead submission, site/SEO journey and owner production visual acceptance"
+    ],
+    "rollback": "Revert d6b71962c2a1fa47de2ffeab9158e2f3133f2d28; restore the retained preview backup from deploy34300274732.",
+    "next_action": "Advance to S3_PRODUCT_SHARED_SITE and converge shared DS2 content controls into one current owner across representative public routes."
+  },
   "latest_results_clarity_product_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -701,23 +792,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1652 clarifies the result-card hierarchy and truthful lifecycle states in the current renderer/layout owners. Source 867bf3e8 is checked, merged as 4554e34b and published exactly in the isolated preview.",
+    "last_material_progress": "#1655 makes six flight variants scannable, leaves one Search3 handoff CTA and carries the selected flight into the existing lead summary. Source ef8ce1d8 is checked, merged as d6b71962 and published exactly in the isolated preview.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller.",
+    "next_action": "Converge shared DS2 content controls into one current owner across representative public routes, removing superseded site-coherence overrides in the same package.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_SELECTED_LEAD",
-    "title": "Clarify flight options, selected total and contact handoff",
+    "id": "S3_PRODUCT_SHARED_SITE",
+    "title": "Converge shared site components and ownership",
     "status": "QUEUED_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "4554e34b4cfed32d290a82b0ae05f3adaa828c80",
-    "published_source_sha": "867bf3e899a09fbe48c09774dcd1a7568a258e65",
-    "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller.",
-    "baseline_release_sha": "4554e34b4cfed32d290a82b0ae05f3adaa828c80",
+    "last_fully_checked_release_sha": "d6b71962c2a1fa47de2ffeab9158e2f3133f2d28",
+    "published_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+    "next_action": "Fold the approved blue .sp-primary and 44px .sp-office-phone rules into shared-content-primitives-v1.css, remove the superseded site-coherence-v1.css overrides and verify representative shared routes at mobile and desktop widths.",
+    "baseline_release_sha": "d6b71962c2a1fa47de2ffeab9158e2f3133f2d28",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9411,7 +9502,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T23:27:00.000Z",
+  "updated_at": "2026-09-09T02:02:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
