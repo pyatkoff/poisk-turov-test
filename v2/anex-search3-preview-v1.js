@@ -427,7 +427,8 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       if (!Number.isSafeInteger(searchId) || searchId < 1) throw new Error('Missing search ID');
       let complete = false;
       for (let poll = 0; poll < 8; poll++) {
-        if (poll) await new Promise(resolve => { check.wake = resolve; check.timer = setTimeout(resolve, 2500); });
+        // Spread the same eight reads across the one-minute deadline; do not exhaust them in 17.5 seconds.
+        if (poll) await new Promise(resolve => { check.wake = resolve; check.timer = setTimeout(resolve, 7500); });
         check.wake = null;
         const status = await request('search_status', { searchId });
         if (Number(status.progress) >= 100 || status.status === 'complete') { complete = true; break; }
