@@ -295,6 +295,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     badge.appendChild(node('strong', '', price(hotel.tours[0])));
     return badge;
   }
+  const hotelExpansions = new Map();
   let offerDialog = null, detailAbort = null;
   function closeOffer() {
     if (detailAbort) detailAbort.abort();
@@ -318,6 +319,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     const timer = setTimeout(() => abort.abort(), 15000);
     try {
       const request = Object.assign({}, run, { action: 'offer_detail', page: context.page, offer_context: context });
+      if (context.hotel_scope) request.hotel_scope = context.hotel_scope;
       if (new URL(window.location.href).searchParams.get('andromeda_operator') === '5') request.andromeda_operator_ids = ['5'];
       const response = await window.fetch(new URL('api-andromeda-search3-preview.php', endpoint).href, {
         method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AnyTourSearch3' },
@@ -338,12 +340,59 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     } finally { clearTimeout(timer); }
   }
   ['input', 'change'].forEach(event => form.addEventListener(event, closeOffer));
+  async function expandAndromeda(hotel, seed) {
+    const run = active, key = hotelKey(hotel);
+    if (!isCurrent(run, window.V2SearchLifecycle) || hotelExpansions.has(key)) return;
+    const state = { status: 'loading', tours: [], page: 0, total: 0, abort: new AbortController() };
+    hotelExpansions.set(key, state); queueRender();
+    const scope = { local_id: key, seed };
+    try {
+      let number = 1, total = 1;
+      do {
+        const request = Object.assign({}, run, { action: 'hotel_offers', hotel_scope: scope, page: number });
+        if (new URL(window.location.href).searchParams.get('andromeda_operator') === '5') request.andromeda_operator_ids = ['5'];
+        const timer = setTimeout(() => state.abort.abort(), 30000);
+        let payload, response;
+        try {
+          response = await window.fetch(new URL('api-andromeda-search3-preview.php', endpoint).href, {
+            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AnyTourSearch3' },
+            body: JSON.stringify(request), signal: state.abort.signal
+          });
+          payload = await response.json();
+        } finally { clearTimeout(timer); }
+        if (active !== run || !isCurrent(run, window.V2SearchLifecycle)) return;
+        const data = payload.data;
+        if (!response.ok || !payload.ok || data?.provider !== 'andromeda' || data.generation !== run.generation
+          || data.page !== number || data.grouped !== false || !Array.isArray(data.hotels)
+          || data.hotels.some(h => !validHotel(h) || hotelKey(h) !== key)) throw new Error('Invalid hotel page');
+        const seen = new Set(state.tours.map(t => t.offer_ref));
+        data.hotels.forEach(h => h.tours.forEach(t => { if (!seen.has(t.offer_ref)) { state.tours.push(t); seen.add(t.offer_ref); } }));
+        state.tours.sort((a, b) => Number(a.price.amount) - Number(b.price.amount));
+        state.page = number; total = Number.isInteger(data.pages_count) && data.pages_count > 0 ? data.pages_count : 1;
+        if (total > 1000) throw new Error('Invalid page count');
+        state.total = total; updateSupplemental(); queueRender(); number++;
+      } while (number <= total && number <= 1000 && !state.abort.signal.aborted);
+      state.status = 'complete';
+    } catch (_) { state.status = 'unavailable'; }
+    if (active === run && isCurrent(run, window.V2SearchLifecycle)) queueRender();
+  }
   function offers(hotel, embedded = false) {
     const details = node(embedded ? 'section' : 'details', 'anex-search3-offers');
     details.setAttribute('data-anex-search3-row', String(hotelKey(hotel)));
     details.appendChild(node(embedded ? 'h4' : 'summary', '', embedded ? 'Предложения поставщиков' : 'Показать предложения · ' + price(hotel.tours[0])));
     if (!embedded) {
       details.open = openHotels.has(hotelKey(hotel));
+    }
+    const expansion = hotelExpansions.get(hotelKey(hotel));
+    const seed = (hotels.find(h => hotelKey(h) === hotelKey(hotel)) || hotel).tours.map(offerContext).find(c => c && !c.hotel_scope);
+    if (seed) {
+      if (!expansion) {
+        const more = node('button', 'anex-search3-tv-check', 'Все варианты Андромеды');
+        more.type = 'button'; more.addEventListener('click', () => expandAndromeda(hotel, seed)); details.appendChild(more);
+      } else details.appendChild(node('p', 'anex-search3-note', expansion.status === 'loading'
+        ? 'Загружаем варианты Андромеды · страниц ' + expansion.page + '/' + (expansion.total || '…')
+        : expansion.status === 'complete' ? 'Варианты Андромеды загружены: ' + expansion.tours.length
+        : 'Не удалось загрузить все варианты. Полученные предложения сохранены.'));
     }
     hotel.tours.forEach(tour => {
       const row = node('div', 'anex-search3-offer');
@@ -590,15 +639,22 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     }
     return '';
   }
+  function withExpandedTours(hotel) {
+    const extra = hotelExpansions.get(hotelKey(hotel))?.tours || [];
+    const refs = new Set(extra.map(t => t.offer_ref));
+    const tours = hotel.tours.filter(t => !refs.has(t.offer_ref)).concat(extra).sort((a, b) => Number(a.price.amount) - Number(b.price.amount));
+    return Object.assign({}, hotel, { tours });
+  }
   function updateSupplemental() {
     const filter = window.DS2ResultsFilters;
     if (filter && typeof filter.setSupplementalItems === 'function') filter.setSupplementalItems(hotels.map(hotel => {
-      const item = filterItem(hotel), check = pointChecks.get(hotel.local_id);
+      const item = filterItem(withExpandedTours(hotel)), check = pointChecks.get(hotel.local_id);
       return check && check.hotel ? Object.assign({}, item, { tours: item.tours.concat(check.hotel.tours),
         price: Math.min(item.price, check.hotel.price) }) : item;
     }));
   }
   function filteredHotel(hotel) {
+    hotel = withExpandedTours(hotel);
     const filter = window.DS2ResultsFilters;
     if (!filter || typeof filter.filteredHotel !== 'function') return hotel;
     const kept = filter.filteredHotel(filterItem(hotel));
@@ -766,6 +822,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     closeOffer();
     if (controller) controller.abort();
     controller = null;
+    hotelExpansions.forEach(s => s.abort.abort()); hotelExpansions.clear();
     active = null; hotels = []; message = ''; dates = ''; sourceMode = 'all'; clear(); openHotels.clear(); openDescriptions.clear(); failedImages.clear();
     pointChecks.forEach(check => { check.abort.abort(); clearTimeout(check.timer); if (check.wake) check.wake(); });
     pointChecks.clear(); pointPending = null; openPointOffers.clear(); pointVisible.clear(); broadComplete = false; broadHotelIds = new Set();
@@ -810,7 +867,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
               + (number < total ? ' · загружаем…' : ' · готово');
           } else statuses[provider] = label + ': ' + pages[provider].length + ' отелей (первая страница)';
           hotels = combineSources(pages); message = Object.values(statuses).join(' · ');
-          dates = 'ANEX: первая страница. Андромеда: последовательная загрузка предложений.';
+          dates = 'ANEX: первая страница. Андромеда: загрузка отелей; варианты — при раскрытии.';
           updateSupplemental(); render();
           number++;
         } while (provider === 'andromeda' && number <= total && number <= 1000 && !signal.aborted);
@@ -822,7 +879,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
       hotels = combineSources(pages);
       message = Object.values(statuses).join(' · ');
-      dates = 'ANEX: первая страница. Андромеда: последовательная загрузка предложений.';
+      dates = 'ANEX: первая страница. Андромеда: загрузка отелей; варианты — при раскрытии.';
       updateSupplemental(); render();
     }));
     clearTimeout(timeout);

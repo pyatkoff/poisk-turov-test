@@ -93,3 +93,17 @@ $filter['params']['countryId']='4';unset($filter['params']['priceTo']);
 $cards=anytour_andromeda_search3_project($filter,$pdo,$page,$turkey)['hotels'];
 if($cards!==[])throw new RuntimeException('unresolved Turkey identity exposed');
 echo "Turkey country scope: translated supplier ID, isolated mappings and unresolved output guard passed\n";
+
+$groupedRequest=$request;unset($groupedRequest['page']);
+$grouped=anytour_andromeda_search3_params($groupedRequest,$pdo,$dictionary);
+if(($grouped['GROUP_BY']??null)!==32)throw new RuntimeException('discovery not grouped');
+$scopedRequest=$groupedRequest;$scopedRequest['hotel_scope']=['local_id'=>447,'seed'=>[]];
+$scoped=anytour_andromeda_search3_params($scopedRequest,$pdo,$dictionary);
+$expected=$grouped;unset($expected['GROUP_BY']);
+if($scoped!==$expected)throw new RuntimeException('expansion changed original criteria');
+foreach([['local_id'=>501,'seed'=>[]],['local_id'=>9365,'seed'=>[]],['local_id'=>447,'seed'=>['hotel_scope'=>[]]]] as $scope){
+ $bad=$groupedRequest;$bad['hotel_scope']=$scope;$rejected=false;
+ try{anytour_andromeda_search3_params($bad,$pdo,$dictionary);}catch(Throwable $e){$rejected=true;}
+ if(!$rejected)throw new RuntimeException('invalid expansion scope accepted');
+}
+echo "Grouped discovery and ungrouped accepted-hotel expansion: criteria and scope guards passed\n";
