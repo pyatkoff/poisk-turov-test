@@ -1240,14 +1240,13 @@
       "no_independent_safe_task_available"
     ],
     "active_queue_ids": [
-      "S3_OTA_SITE_CONFIDENCE",
       "S3_OTA_PROVIDER_PARITY",
       "S3_OTA_QUALITY_BENCHMARK",
       "S3_PRODUCT_CURRENT_ACCEPTANCE",
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1784 added a nearby lead-form 'Изменить тур' action through the existing .back-results controller contract and merged as release efc0c66bbb68f48da1eeff98630c8ad01e57f932. Source 7ce41316d15fd082c968c0fe7b861a55d50610e3, Security34376890160 and exact34376890165/artifact10114331484 passed selected/results geometry. Published by deploy34377654947 with evidence10114544908: 9 routes200, noindex, leads403, counter0, internal PHP denied, rollback and unchanged production fingerprints. Public JS +529B, CSS +209B, total +738B, inline0. At 375/1440 the exact offer, filters/sort/expanded/shortlist and contact draft survive edit/return; consent resets after another offer; no supplier request or POST. Next is one populated SITE confidence path; physical Safari/user pilot/production approval deferred."
+    "last_execution_continuation": "PR1787 fixed the confirmed hotel snapshot handoff gap and merged as release e6c3e3cafad52ddf836113d2c3d3b80a63b06c06. Source aa4790d95166367f6e6b111709ce3b9f04768238 reuses v2_seo_offer_search_state so a displayed hotel/departure/date/nights snapshot reaches Search3 with the same date and duration instead of generic hotel state. Security34379191889 and exact34379192101/artifact10115148900 passed; CSS/JS delta0B. Published by deploy34379466986 with evidence10115256484: 9 routes200, noindex, leads403, counter0, internal PHP denied, rollback and unchanged production fingerprints. Provider parity remains blocked on a fresh bounded INT handoff; continue independent S3_OTA_QUALITY_BENCHMARK baseline. Physical Safari/user pilot/production approval deferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1266,19 +1265,19 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_OTA_SITE_CONFIDENCE",
-    "title": "Make one populated site entry page a truthful, parameter-preserving path into Search3",
+    "id": "S3_OTA_QUALITY_BENCHMARK",
+    "title": "Measure the five core OTA choice tasks on the current exact preview",
     "status": "ACTIVE_OWNER_AUTHORIZED",
-    "issue": 1719,
+    "issue": 1646,
     "coordinator_issue": 996,
     "pr": null,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "efc0c66bbb68f48da1eeff98630c8ad01e57f932",
-    "published_source_sha": "7ce41316d15fd082c968c0fe7b861a55d50610e3",
-    "acceptance_status": "MOBILE_JOURNEY_PUBLISHED_PHYSICAL_SAFARI_DEFERRED",
-    "next_action": "Fresh release/#996/#1719/open-PR check, then audit one populated existing country/resort/month/hotel entry type against S3_OTA_SITE_CONFIDENCE: truthful freshness/help, exact parameter-preserving Search3 handoff, useful stale/empty exit and no invented guarantee. Claim one current SITE owner before any shared template edit; coordinate read-only SEO requirements through #1720. Do not reopen completed header, calendar, error-recovery or Search3 mobile work. Physical Safari, user pilot and production approval remain deferred.",
+    "last_fully_checked_release_sha": "e6c3e3cafad52ddf836113d2c3d3b80a63b06c06",
+    "published_source_sha": "aa4790d95166367f6e6b111709ce3b9f04768238",
+    "acceptance_status": "SITE_CONFIDENCE_PUBLISHED_PROVIDER_PARITY_WAITING_ON_BOUNDED_INT_HANDOFF",
+    "next_action": "Fresh release/#996/#1646/open-PR check, then record a reproducible technical baseline for the five product tasks already defined in the product plan on the current exact preview: find a suitable hotel; compare two exact trips; explain price/package; edit conditions and return; reach the phone with the intended offer. Reuse existing fixtures and browser checks, record not_measured where live/user evidence is unavailable, and do not claim conversion or competitor superiority. Provider parity remains queued but blocked until INT provides a fresh bounded handoff with source/destination SHA and identity fixtures.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "deferred": {
