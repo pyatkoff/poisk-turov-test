@@ -73,6 +73,21 @@ Artifact10094445724, SHA256 dc1ed9c521565f41477ca6fc84fd7058654e57d604589ca879db
 write_enabled остаётся false до реального подключения.
 Отчёт: reports/anex-review-pair-exclusions-20260909.json.
 
+### Исправление старта тестовой MySQL — завершено
+
+Документальный checkpoint1b873d6808f6bb47b184c796b4306aa80e3e9975
+выявил гонку старта MySQL в run34328367715: socket healthcheck принимал
+временный init-server(port0) за готовый, а PDO подключался во время перезапуска.
+PR #1701 меняет только healthcheck на TCP127.0.0.1:3306, как в тестовом DSN;
+ни одна проверка не удалена и не ослаблена. Source70208b5c87701732ec98e04eba9260aafea525d5,
+merge только ANEX129b7d10215a77cb7055ce96a0cbd0a54f24f2e5.
+Security34328699691 и panel34328699587/job102391925274 — success.
+Итоговый push34328841434/job102392371027 — success:
+96panel +29dossier MySQL checks,8Python, HTTP/Chromium1280/820/390/320,
+auth/CSRF/replay/stale passed, overflow=false. Никаких supplier/liveDB вызовов.
+Этот CI-only пакет не публикует runtime; own-preview source остаётся8c9378315277dbabb9405d8dcde1f98725f2bb21.
+Старый красный запуск сохранён как исторический, причина исправлена.
+
 ### Следующая работа
 
 P1: подготовить ограниченное дополнение по явному действию пользователя

@@ -34,6 +34,12 @@
   },
   "pr": 1698,
   "pr_source_sha": "125b85aa83748d8830f6a90daa13ccc610141ce9",
+  "related_parallel_packet": {
+    "merge_sha": "f165f7b4c1fe324a16280a394e1746e08f5d331d",
+    "pr": 1697,
+    "report": "reports/anex-review-durable-dossiers-20260909.json",
+    "status": "durable dossier source and tests completed; live schema/import still pending"
+  },
   "repository": "pyatkoff/poisk-turov-test",
   "schema_version": 1,
   "scope": "isolated ANEX preview",
@@ -105,10 +111,29 @@
     "registry_php_checks": 90,
     "security_run": 34327484643
   },
-  "related_parallel_packet": {
-    "pr": 1697,
-    "merge_sha": "f165f7b4c1fe324a16280a394e1746e08f5d331d",
-    "status": "durable dossier source and tests completed; live schema/import still pending",
-    "report": "reports/anex-review-durable-dossiers-20260909.json"
+  "followup_ci_readiness": {
+    "pr": 1701,
+    "source_sha": "70208b5c87701732ec98e04eba9260aafea525d5",
+    "merge_sha": "129b7d10215a77cb7055ce96a0cbd0a54f24f2e5",
+    "failed_historical_run": 34328367715,
+    "cause": "Unix-socket mysqladmin healthcheck accepted temporary initialization server on port0 before TCP MySQL was ready",
+    "fix": "Explicit TCP healthcheck at127.0.0.1:3306; no tests removed or weakened",
+    "security_run": 34328699691,
+    "pr_panel_run": 34328699587,
+    "push_panel_run": 34328841434,
+    "push_panel_job": 102392371027,
+    "conclusion": "success",
+    "panel_checks": 96,
+    "dossier_checks": 29,
+    "python_tests": 8,
+    "browser_widths": [
+      1280,
+      820,
+      390,
+      320
+    ],
+    "runtime_republished": false,
+    "live_db_writes": 0,
+    "supplier_requests": 0
   }
 }
