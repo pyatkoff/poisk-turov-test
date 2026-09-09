@@ -8,6 +8,8 @@ on:
       - 'tests/anex-review-panel-test.php'
       - 'tests/anex-review-panel-browser.cjs'
       - 'tests/anex-review-http-fixture.php'
+      - 'tests/anex-review-dossier-*'
+      - 'scripts/diagnostics/anex-review-dossier-*'
       - '.github/workflows/anex-review-panel.yml'
   pull_request:
     paths:
@@ -16,6 +18,8 @@ on:
       - 'tests/anex-review-panel-test.php'
       - 'tests/anex-review-panel-browser.cjs'
       - 'tests/anex-review-http-fixture.php'
+      - 'tests/anex-review-dossier-*'
+      - 'scripts/diagnostics/anex-review-dossier-*'
       - '.github/workflows/anex-review-panel.yml'
 permissions:
   contents: read
@@ -47,6 +51,9 @@ jobs:
         run: |
           for f in app/admin/anex-review/*.php v2/anex-hotel-review.php tests/anex-review-panel-test.php tests/anex-review-http-fixture.php; do php -l "$f"; done
           php tests/anex-review-panel-test.php
+          python3 tests/anex-review-dossier-pack-test.py
+          php -l scripts/diagnostics/anex-review-dossier-import.php
+          php tests/anex-review-dossier-store-test.php
           php v2/anex-hotel-review.php | grep -q 'Панель пока недоступна'
       - name: Install isolated browser test dependency
         run: |

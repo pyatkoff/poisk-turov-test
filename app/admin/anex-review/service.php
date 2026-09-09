@@ -155,6 +155,13 @@ final class AnexReviewService
         $evidence = $this->rows('SELECT * FROM anex_hotel_auto_matches WHERE anex_hotel_id=?' . $end, [$id])[0] ?? null;
         $candidates = $this->rows('SELECT * FROM anex_hotel_candidates WHERE anex_hotel_id=? ORDER BY candidate_rank LIMIT 101' . $end, [$id]);
         if (count($candidates) > 100) throw new RuntimeException('candidate_display_bound');
+        if ($this->hasTable('anex_review_dossiers') && $this->hasTable('anex_review_dossier_batches')) {
+            require_once __DIR__ . '/dossier-store.php';
+            $dossier = (new AnexReviewDossierStore($this->db))->panel($id,(int)$o['country_id'],$lock);
+            if ($dossier !== null) {
+                $source=$dossier['source']; $evidence=$dossier['evidence']; $candidates=$dossier['candidates'];
+            }
+        }
         foreach ($candidates as &$candidate) {
             $candidate['current'] = $this->rows('SELECT id,name,country_id,country_name,region_name,subregion_name,category,latitude,longitude'
                 . ' FROM catalog_hotels WHERE id=?' . $end, [$candidate['catalog_hotel_id']])[0] ?? null;
