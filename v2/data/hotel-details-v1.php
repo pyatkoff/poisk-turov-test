@@ -37,10 +37,15 @@ function v2_hotel_detail_float(mixed $value): ?float
 
 function v2_hotel_detail_https_url(mixed $value): ?string
 {
-    $url = trim((string)$value);
+    if (!is_string($value) || preg_match('/[\x00-\x1F\x7F]/', $value) || str_contains($value, '\\')) return null;
+    $url = trim($value);
+    // Tourvisor stores hotel photos as scheme-relative CDN URLs.
+    if (str_starts_with($url, '//') && !str_starts_with($url, '///')) $url = 'https:' . $url;
     if ($url === '' || strlen($url) > 2048) return null;
     $parts = parse_url($url);
-    if (!is_array($parts) || strtolower((string)($parts['scheme'] ?? '')) !== 'https' || trim((string)($parts['host'] ?? '')) === '') return null;
+    if (!is_array($parts) || strtolower((string)($parts['scheme'] ?? '')) !== 'https'
+        || trim((string)($parts['host'] ?? '')) === '' || isset($parts['user']) || isset($parts['pass'])
+        || filter_var($url, FILTER_VALIDATE_URL) === false) return null;
     return $url;
 }
 
