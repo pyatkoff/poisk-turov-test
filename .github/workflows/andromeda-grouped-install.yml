@@ -1,7 +1,7 @@
 name: Andromeda grouped own-preview publication
 on:
   push:
-    branches: ['feat/int-andromeda-grouped-search-20260909']
+    branches: ['fix/int-andromeda-url-hotel-20260909']
     paths: ['.github/workflows/andromeda-grouped-install.yml']
 permissions: {contents: read, actions: read}
 concurrency: {group: andromeda-grouped-own-preview, cancel-in-progress: false}
@@ -17,27 +17,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-grouped-install.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 2
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34406876710" --jq '.conclusion')" = success
-          for id in 34407433004 34407433025 34407433142 34407433037; do
-            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" --jq '.head_sha + ":" + .conclusion')" = 'cfd8cc409c23d6603094ed39bb94916c70d229ab:success'
+          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-grouped-install.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34407567128" --jq '.conclusion')" = success
+          for id in 34408274537 34408274654 34408274686; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" --jq '.head_sha + ":" + .conclusion')" = 'c9c86542d6e357b9de21f4e56c10e6f2af62c115:success'
           done
           cp scripts/diagnostics/andromeda_grouped_install.py "$RUNNER_TEMP/installer.py"
-          git fetch origin cfd8cc409c23d6603094ed39bb94916c70d229ab
-          git checkout cfd8cc409c23d6603094ed39bb94916c70d229ab
+          git fetch origin c9c86542d6e357b9de21f4e56c10e6f2af62c115
+          git checkout c9c86542d6e357b9de21f4e56c10e6f2af62c115
           cp "$RUNNER_TEMP/installer.py" scripts/diagnostics/andromeda_grouped_install.py
           python3 -c 'import sys; sys.path.insert(0,"scripts/diagnostics"); import andromeda_grouped_install as m; open("/tmp/grouped-install.php","w").write("<?php\n"+m.SOURCE)'
           php -l /tmp/grouped-install.php
       - uses: actions/upload-artifact@v4
         id: runtime
         with:
-          name: andromeda-grouped-detail-cfd8cc40
+          name: andromeda-url-hotel-c9c86542
           path: |
-            v2/anex-search3-preview-v1.js
+            v2/catalogs-v2.js
           if-no-files-found: error
       - name: Publish exact scoped files with predecessor and readback checks
         env:
-          SOURCE_SHA: cfd8cc409c23d6603094ed39bb94916c70d229ab
+          SOURCE_SHA: c9c86542d6e357b9de21f4e56c10e6f2af62c115
           ARTIFACT_ID: ${{ steps.runtime.outputs.artifact-id }}
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
