@@ -26,16 +26,20 @@ INT читает собственный ANEX-план; SEO ведёт #1720. И�
 - `S3_OTA_SITE_CONFIDENCE`: опубликован #1787. Карточка сохранённого предложения
   отеля передаёт в Search3 показанные дату и ночи через общий offer-state contract;
   generic hero остаётся generic, свежесть и empty fallback не выдают snapshot за наличие.
-- `S3_OTA_PROVIDER_PARITY`: остаётся в очереди, но ждёт свежий bounded INT→SEARCH
-  handoff с source/destination SHA и fixtures identity; старый addon не переносить.
+- `S3_OTA_PROVIDER_PARITY`: активный отдельный PR #1804 потребляет принятые предложения
+  Андромеды через текущий общий renderer. Не дублировать его пути и не переносить старый
+  addon; перед интеграцией проверить final exact identity/unknown/partial-failure evidence
+  и актуальность относительно свежей release.
 - Актуальная единая панель фильтров опубликована пакетами #1793/#1796/#1799:
   на desktop это левая колонка, на mobile/tablet — компактное native-раскрытие тех же
   текущих элементов, общей сводки и сброса. #1801 удалил устаревший абсолютный CSS-cap,
   сохранив owner/retired-layer/security/isolation guards. Исторический
   `/_preview/search3/` используется только как визуальный донор: его параллельные
-  filter/mobile/DS2/booking/simulator owners не возвращать. Пока provider handoff
-  заблокирован, следующий независимый UI-пакет — только полезные быстрые пресеты
-  существующих полных фасетов в этом же владельце, без второго runtime/override-слоя.
+  filter/mobile/DS2/booking/simulator owners не возвращать. #1805 добавил полезные
+  быстрые category/meal presets внутри того же canonical filter owner и уже опубликован;
+  этот пакет не повторять. Абсолютного лимита на файлы/байты нет — дальнейшие изменения
+  оцениваются по пользе и чистой границе владельца, без параллельных реализаций и цепочек
+  override-заплаток.
 - `S3_OTA_QUALITY_BENCHMARK`: технический baseline пяти задач зафиксирован на
   текущем exact preview по прошедшим fixture/evidence: все пять путей покрыты,
   подмен offer и локальных supplier/lead запросов не обнаружено. Пользовательский
