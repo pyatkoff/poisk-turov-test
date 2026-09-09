@@ -113,7 +113,33 @@
     }).sort((a, b) => Number(a.price) - Number(b.price));
     return tours.length ? Object.assign({}, h, { tours, price: Number(tours[0].price) }) : null;
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, version: 1 };
+  function immutableCopy(value) {
+    if (!value || typeof value !== 'object') return value;
+    return Object.freeze(Array.isArray(value) ? value.map(immutableCopy)
+      : Object.fromEntries(Object.entries(value).map(([key, item]) => [key, immutableCopy(item)])));
+  }
+  function pointTourId(value) {
+    if (typeof value === 'number') return Number.isSafeInteger(value) && value > 0 ? String(value) : null;
+    return typeof value === 'string' && value.length > 0 && value.length <= 200
+      && !/[\s\u0000-\u001f\u007f]/.test(value) ? value : null;
+  }
+  function pointSearchContext(run, id, searchId) {
+    if (!pointSearchParams(run, id) || !Number.isSafeInteger(searchId) || searchId < 1) return null;
+    return immutableCopy({ provider: 'tourvisor', searchId, generation: run.generation,
+      localHotelId: id, criteria: run.params });
+  }
+  function pointOfferContexts(hotel, context) {
+    const entries = new Map();
+    if (!context || !hotel || Number(hotel.id) !== context.localHotelId || !Array.isArray(hotel.tours)) return entries;
+    hotel.tours.forEach(tour => {
+      const tourId = pointTourId(tour.id);
+      if (tourId) entries.set(tourId, entries.has(tourId) ? null : Object.freeze({ ...context, tourId }));
+    });
+    // Ambiguous or absent identities remain comparison-only; do not discard their prices.
+    for (const [id, value] of entries) if (!value) entries.delete(id);
+    return entries;
+  }
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, pointSearchContext, pointOfferContexts, version: 1 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -126,6 +152,13 @@
   let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null, renderQueued = false;
   const openDescriptions = new Set(), failedImages = new Set();
   const pointChecks = new Map(), openPointOffers = new Set(), pointVisible = new Map();
+  // Read-only handoff preparation, not selection authorization. No shared controller/lead changes.
+  window.AnyTourAnexSearch3.getPointOfferContext = (generation, id, tourId) => {
+    const check = pointChecks.get(id), key = pointTourId(tourId);
+    return isCurrent(active, window.V2SearchLifecycle) && active.generation === generation && !localFilterNotice()
+      && check?.state === 'success' && check.context?.generation === generation && key
+      ? check.offerContexts?.get(key) || null : null;
+  };
   let pointPending = null, broadComplete = false, broadHotelIds = new Set();
   let calendarBox = null, calendarObserver = null;
   let sourceMode = 'all';
@@ -450,6 +483,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     try {
       const started = await request('search_start', params), searchId = Number(started.searchId);
       if (!Number.isSafeInteger(searchId) || searchId < 1) throw new Error('Missing search ID');
+      check.context = pointSearchContext(run, id, searchId);
       let complete = false;
       for (let poll = 0; poll < 8; poll++) {
         // Spread the same eight reads across the one-minute deadline; do not exhaust them in 17.5 seconds.
@@ -461,6 +495,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       if (!complete) { check.state = 'timeout'; return; }
       const list = await request('search_results', { searchId, limit: 100 });
       check.hotel = pointSearchHotel(list, id, params);
+      check.offerContexts = pointOfferContexts(check.hotel, check.context);
       check.state = check.hotel ? 'success' : 'empty';
       if (check.hotel) openPointOffers.add(id);
       updateSupplemental();
