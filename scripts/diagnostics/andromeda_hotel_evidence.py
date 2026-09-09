@@ -52,12 +52,12 @@ def build(page, catalog):
         require(isinstance(hotel, dict), 'INVALID_HOTEL')
         key = identifier(hotel.get('id'))
         require(key not in index, 'DUPLICATE_CATALOG_ID')
-        require(identifier(hotel.get('stateKey')) == country, 'COUNTRY_MISMATCH')
-        safe = {'id': key, 'name': label(hotel.get('name')), 'state_key': country}
+        actual_country = identifier(hotel.get('stateKey'))
+        safe = {'id': key, 'name': label(hotel.get('name')), 'state_key': actual_country}
         for source, target in [('lName', 'latin_name'), ('state', 'country'),
                                ('stateLName', 'country_latin'), ('town', 'town'),
                                ('townLName', 'town_latin'), ('star', 'star')]:
-            if hotel.get(source) is not None:
+            if hotel.get(source) not in (None, ''):
                 safe[target] = label(str(hotel[source])) if type(hotel[source]) is int else label(hotel[source])
         if hotel.get('townKey') is not None:
             safe['town_key'] = identifier(hotel['townKey'])
@@ -84,7 +84,9 @@ def build(page, catalog):
             # Operator IDs must NEVER be looked up in the Andromeda catalog.
             found = index.get(external) if namespace == 'andromeda_catalog' else None
             status = ('operator_key_excluded' if namespace != 'andromeda_catalog'
-                      else 'catalog_found' if found is not None else 'catalog_missing')
+                      else 'catalog_missing' if found is None
+                      else 'catalog_country_conflict' if found['state_key'] != country
+                      else 'catalog_found')
             groups[key] = {'provider': 'andromeda', 'supplier_namespace': namespace,
                            'external_hotel_id': external, 'local_hotel_id': None,
                            'status': status, 'catalog': found, 'observed_names': set(),
@@ -101,12 +103,13 @@ def build(page, catalog):
         row['offer_refs'].sort()
         row['offer_count'] = len(row['offer_refs'])
         rows.append(row)
-    statuses = ['catalog_found', 'catalog_missing', 'operator_key_excluded']
+    statuses = ['catalog_found', 'catalog_missing', 'catalog_country_conflict', 'operator_key_excluded']
     return {'schema_version': 1, 'state': 'completed', 'provider': 'andromeda',
             'search_ref': search, 'generation': page['generation'],
             'source_page': page['page'], 'source_pages_count': page['pages_count'],
             'source_status': page['status'], 'departure_id': departure, 'country_id': country,
             'counts': {'offers': len(offers), 'unique_hotels': len(rows),
+                       'catalog_country_conflicts': sum(h['state_key'] != country for h in index.values()),
                        'source_rejected': len(page['rejected']),
                        'hotels_by_status': {s: sum(r['status'] == s for r in rows) for s in statuses},
                        'offers_by_status': {s: sum(r['offer_count'] for r in rows if r['status'] == s) for s in statuses}},

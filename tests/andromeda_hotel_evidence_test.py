@@ -66,10 +66,14 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(module.EvidenceError, 'DUPLICATE_CATALOG'):
             module.build(self.page, self.catalog)
 
-    def test_country_mismatch_rejected(self):
+    def test_country_mismatch_quarantined_without_rewriting_country(self):
         self.catalog['payload']['HOTELS'][0]['stateKey'] = 4
-        with self.assertRaisesRegex(module.EvidenceError, 'COUNTRY_MISMATCH'):
-            module.build(self.page, self.catalog)
+        result = module.build(self.page, self.catalog)
+        self.assertEqual(result['rows'][0]['status'], 'catalog_country_conflict')
+        self.assertEqual(result['rows'][0]['catalog']['state_key'], '4')
+        self.assertIsNone(result['rows'][0]['local_hotel_id'])
+        self.assertEqual(result['counts']['catalog_country_conflicts'], 1)
+        self.assertEqual(result['counts']['hotels_by_status']['catalog_found'], 0)
 
     def test_digest_and_duplicate_json_guards(self):
         with tempfile.TemporaryDirectory() as directory:
