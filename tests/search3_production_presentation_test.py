@@ -1092,6 +1092,11 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
+                # Reviewed keyboard-entry fix only; reversing the exact insertion
+                # must recover all existing business and transport bytes below.
+                focus_entry = b"if(root.focus)root.focus({preventScroll:true});root.scrollIntoView({behavior:'smooth',block:'start'});"
+                self.assertEqual(source.count(focus_entry), 1, 'one selected-tour entry focus owner')
+                source = source.replace(focus_entry, b"root.scrollIntoView({behavior:'smooth',block:'start'});", 1)
                 # Owner-authorized display-only meal label and hotel-description
                 # entity decoding: reversing these exact fragments must recover
                 # the entire protected controller. Decoded text is still escaped.

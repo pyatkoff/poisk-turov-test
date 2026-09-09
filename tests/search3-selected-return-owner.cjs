@@ -46,6 +46,8 @@ const vm = require('node:vm');
     contains(node) { return node && node !== original && node !== replacement; },
     querySelector() { return null; },
     querySelectorAll() { return []; },
+    focuses: 0,
+    focus(options) { this.focuses++; this.focusOptions = options; },
     setAttribute(name, value) { selectedAttributes.set(name, value); },
     removeAttribute(name) { selectedAttributes.delete(name); },
     scrollIntoView() {}
@@ -112,6 +114,8 @@ const vm = require('node:vm');
   click({ target: original, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(selected.hidden, false, 'tour selection reveals the selected root');
+  assert.equal(selected.focuses, 1, 'opening moves keyboard focus into selected tour');
+  assert.equal(selected.focusOptions.preventScroll, true, 'focus preserves the explicit scroll transition');
   assert.equal(selectedAttributes.has('aria-hidden'), false, 'tour selection clears stale aria-hidden');
   assert.equal(original.disabled, false, 'source action is restored after tour load');
   assert.match(selected.innerHTML, /<div class="hotel-desc">Номер 25 м² &amp; SPA рядом &lt;script&gt;alert\(1\)&lt;\/script&gt;<\/div>/,
