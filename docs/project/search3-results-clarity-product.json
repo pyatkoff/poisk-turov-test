@@ -289,7 +289,10 @@
   },
   "ota_responsive_filter_rail_20260909": {
     "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
-    "source_prs": [1793, 1796],
+    "source_prs": [
+      1793,
+      1796
+    ],
     "published_source_sha": "cccb3cb34458585dbed071fd9900bc470561701d",
     "checked_release_sha": "100a5f080e918cc5aaf0bbc9147d8f49889ff8b3",
     "weight": "PR1793 +5541 B and PR1796 +97 B public CSS/JS; combined +5638 B; inline/shared PHP 0 B",
@@ -297,5 +300,26 @@
     "product_result": "Desktop regains one left filter rail; mobile/tablet keep the same current owner and now expose a common reset. Exact-offer budget/meal and complete-data category/rating/sea-distance facets remain truthful.",
     "historical_preview": "Use /_preview/search3/ only as a donor for compact presets/disclosure. Do not restore its overlapping filter, mobile, DS2, booking or simulator runtimes.",
     "next_action": "Add one native accessible disclosure for the same current mobile/tablet controls without a parallel drawer owner."
+  },
+  "ota_mobile_filter_disclosure_20260909": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_prs": [
+      1799,
+      1801
+    ],
+    "published_source_sha": "ade4d7b50320ea35456014917c70ecd5b52fa729",
+    "checked_release_sha": "34542e97f84e824c1abcbc985121e3cc4d916a32",
+    "weight": "PR1799 public JS +750 B and CSS +1265 B, total +2015 B; PR1801 public assets 0 B",
+    "product_result": "The same current filter owner is a desktop left rail and a compact native details disclosure on mobile/tablet. Its summary reports suitable and selected counts, and reset/new search closes it without a second drawer or click runtime.",
+    "verification": "Exact34393106217 passed 16 current-results states at 375/760/761/999/1000/1024/1025/1440 with native_header=1, external_calls=0 and lead_sent=0. Security34393599527 and exact34393599659 passed after the size-policy guard correction. Deploy34393903729 published the exact source. Live desktop1363 filtered100->12 at80000 RUB and reset12->100 with overflow0.",
+    "size_policy": "No absolute file or bundle byte cap. Report CSS/JS/initial/full/inline honestly; the enforced boundary is one current owner plus removal of replaced rules, handlers and connections in the same package, with retired historical owners remaining absent.",
+    "historical_preview": "The old /_preview/search3/ remains a donor for interaction ideas only; its parallel filter/mobile/DS2/booking/simulator runtimes are not a valid base.",
+    "deferred": [
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "fresh bounded INT provider handoff",
+      "production approval"
+    ],
+    "next_action": "If #1731 is still not a fresh bounded handoff, evaluate compact category/meal quick presets using the existing complete facet options and same owner; replace redundant UI rather than layering another implementation."
   }
 }
