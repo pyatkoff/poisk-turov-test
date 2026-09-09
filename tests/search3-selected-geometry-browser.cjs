@@ -151,6 +151,10 @@ async function run(browser, width, previous) {
     const states={detail:await capture(page,prefix+'-detail')};
     assert.equal(await page.locator('#selectedTour .selected-confidence').count(),0,'the retired trust decoration stays absent');
     if(!previous) {
+      const root=page.locator('#selectedTour');
+      assert.equal(await root.evaluate(n=>document.activeElement===n),true,'selection moves focus into the selected tour');
+      await page.keyboard.press('Tab');
+      assert.equal(await root.locator('.back-results').evaluate(n=>document.activeElement===n),true,'Tab starts at the selected-tour return action');
       const imageBox=await page.locator('#selectedTour .selected-picture img').boundingBox();
       const pictureBox=await page.locator('#selectedTour .selected-picture').boundingBox();
       assert.ok(imageBox.height>=150 && imageBox.height<=321,'selected photo remains legible and bounded');
