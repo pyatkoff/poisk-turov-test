@@ -21,6 +21,8 @@ BOOTSTRAP_ARTIFACT = 10082284529
 EXPECTED_IDS = (16193, 23136, 24940, 29272, 31706, 32282, 32577, 32585, 32611,
                 32661, 32712, 32724, 32752, 32808, 32955, 32967, 36112)
 FINAL_STATES = {'completed', 'interrupted_result_unknown', 'not_started'}
+CHECKED_CHECKPOINT_SHA = '6676c6c1a13cb64a92fdb11543d03b6463583abbbf64679c3b431abee7b9da86'
+ACCEPTANCE = 'anex-cached-detail-alias-review-acceptance.json'
 
 
 def job():
@@ -285,11 +287,83 @@ def finalize(directory):
                 report_readback_verified=True)
 
 
+def approved_delta(path):
+    path = Path(path)
+    if path.name != CHECKPOINT or file_sha(path) != CHECKED_CHECKPOINT_SHA:
+        raise ValueError('unchecked cached-detail alias checkpoint')
+    cp, _ = load(path.parent)
+    if any(batch['state'] != 'completed' for batch in cp['batches']):
+        raise ValueError('cached-detail alias results are not all confirmed')
+    rows = []
+    for batch in cp['batches']:
+        for result in batch['results']:
+            if (result['candidate_set_complete'] is not True
+                    or result['alias_set_complete'] is not True
+                    or result['proposal_status'] != 'strong_candidate'
+                    or result['proposal_reason'] != 'name_country_coordinates'):
+                continue
+            rows.append({
+                'anex_hotel_id': result['anex_hotel_id'],
+                'catalog_hotel_id': result['best']['id'],
+                'match_class': 'strong_candidate',
+                'reason': 'observed_cached_detail_alias_review:name_country_coordinates',
+                'source_row_digest': gaps.digest(result),
+            })
+    sources = dict(cp['sources'], cached_detail_alias_sha256=CHECKED_CHECKPOINT_SHA)
+    return {'schema_version': 1, 'scope': 'preview',
+            'approval_policy': 'owner_exact_and_strong_20260908',
+            'append_only': True, 'sources': sources,
+            'rows': sorted(rows, key=lambda row: row['anex_hotel_id']),
+            'counts': {'exact': 0, 'strong': len(rows), 'total': len(rows),
+                       'unique_catalog_hotels': len({row['catalog_hotel_id'] for row in rows})}}
+
+
+def accept(directory):
+    from anex_search_mapping_import import ssh_import
+    directory = Path(directory)
+    delta = approved_delta(directory / CHECKPOINT)
+    path = directory / ACCEPTANCE
+    previous = json.loads(path.read_bytes()) if path.exists() else None
+    if previous is not None and previous.get('delta_sha256') != gaps.digest(delta):
+        raise ValueError('cached-detail alias acceptance changed')
+    if previous is not None and previous.get('state') == 'finalized':
+        return {'status': 'already_finalized', 'inserted': 0,
+                'supplier_requests': 0, 'new_catalog_reads': 0}
+    if not delta['rows']:
+        return {'status': 'no_new_strong_candidates', 'inserted': 0,
+                'supplier_requests': 0, 'new_catalog_reads': 0}
+    before_history = protected(directory)
+    before = live.snapshot()
+    checkpoint = {'state': 'prepared', 'delta_sha256': gaps.digest(delta),
+                  'checked_checkpoint_sha256': CHECKED_CHECKPOINT_SHA,
+                  'coverage_before': before['counts']}
+    owner.save(path, checkpoint)
+    imported = ssh_import(
+        directory / 'anex-cached-detail-alias-review-mappings.json',
+        cached_detail_alias_checkpoint=directory / CHECKPOINT)
+    after = live.snapshot()
+    if (after['effective_mapped_count'] < before['effective_mapped_count']
+            or protected(directory) != before_history):
+        raise ValueError('cached-detail alias import changed protected evidence')
+    preservation = gaps.ssh_batch([], {}, 1)['preservation']
+    report = dict(
+        live.export(directory, live.restore(directory), after),
+        coverage_before=before['counts'], coverage_after=after['counts'],
+        import_result=imported, supplier_requests=0, new_completed=0,
+        historical_evidence_unchanged=True,
+        checked_checkpoint_sha256=CHECKED_CHECKPOINT_SHA,
+        database_readback=preservation)
+    checkpoint.update(state='finalized', import_result=imported, report=report)
+    owner.save(path, checkpoint)
+    owner.save(directory / 'anex-cached-detail-alias-review-acceptance-report.json', report)
+    return {key: value for key, value in report.items() if key != 'triage'}
+
+
 if __name__ == '__main__':
     directory = Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
-    action = {'--prepare': prepare, '--run': run, '--finalize': finalize}
+    action = {'--prepare': prepare, '--run': run, '--finalize': finalize, '--accept': accept}
     if len(sys.argv) != 2 or sys.argv[1] not in action:
-        raise SystemExit('expected --prepare, --run or --finalize')
+        raise SystemExit('expected --prepare, --run, --finalize or --accept')
     result = action[sys.argv[1]](directory)
     print(json.dumps(result, ensure_ascii=False))
     if result.get('status') == 'catalog_read_unconfirmed':

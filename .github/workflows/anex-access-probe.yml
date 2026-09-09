@@ -439,6 +439,14 @@ jobs:
         env:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_cached_detail_alias_review.py --finalize
+      - name: Append strict matches from cached-detail alias evidence
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_cached_detail_alias_review.py --accept
       - name: Save complete saved-review evidence and audit cached details
         if: always() && steps.operation.outputs.mode == 'observed'
         env:

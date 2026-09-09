@@ -1,6 +1,8 @@
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts' / 'diagnostics'))
 import anex_search3_cached_detail_alias_review as review
@@ -18,6 +20,25 @@ class CachedDetailAliasReviewTests(unittest.TestCase):
             review.PINNED_AUDIT_SHA,
             'f82d2391b98f817ebface0331a8ef3691ffcca2fd55213288827f0f20aff9afc')
         self.assertEqual(review.BOOTSTRAP_ARTIFACT, 10082284529)
+
+    def test_approved_delta_contains_only_reproduced_strong_results(self):
+        strong = {
+            'anex_hotel_id': 32752, 'candidate_set_complete': True,
+            'alias_set_complete': True, 'proposal_status': 'strong_candidate',
+            'proposal_reason': 'name_country_coordinates', 'best': {'id': 66081}}
+        rejected = dict(strong, anex_hotel_id=32724, proposal_status='review',
+                        proposal_reason='competing_candidates')
+        checkpoint = {'sources': {'catalog_sha256': 'a' * 64, 'geo_sha256': 'b' * 64},
+                      'batches': [{'state': 'completed', 'results': [strong, rejected]}]}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(review, 'file_sha', return_value=review.CHECKED_CHECKPOINT_SHA), \
+                patch.object(review, 'load', return_value=(checkpoint, {})):
+            path = Path(temp) / review.CHECKPOINT
+            path.write_text('{}')
+            delta = review.approved_delta(path)
+        self.assertEqual(delta['counts']['total'], 1)
+        self.assertEqual(delta['rows'][0]['anex_hotel_id'], 32752)
+        self.assertEqual(delta['rows'][0]['catalog_hotel_id'], 66081)
 
 
 if __name__ == '__main__':
