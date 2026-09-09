@@ -14,7 +14,7 @@ function active(){return!!(normalize(input.value)||Number(categorySelect.value)|
 function mount(){
   if(!field)return;
   if(desktop.matches){fields().forEach(node=>rail.appendChild(node));rail.append(resetButton);}
-  else{const anchor=actions.querySelector('#sortResults')?.closest('label')||actions.firstChild;fields().forEach(node=>actions.insertBefore(node,anchor));resetButton.remove();}
+  else{const anchor=actions.querySelector('#sortResults')?.closest('label')||actions.firstChild;fields().forEach(node=>actions.insertBefore(node,anchor));actions.insertBefore(resetButton,anchor);}
 }
 function option(value,label){const node=document.createElement('option');node.value=String(value);node.textContent=label;return node;}
 function ensure(){
@@ -76,7 +76,7 @@ function project(items){
 function apply(){
   ensure();const list=cards(),query=normalize(input.value),facets=syncHotelFacets(),visibleIds=new Set();let shown=0;
   list.forEach((card,index)=>{const title=card.querySelector('.hotel-title'),matchesName=!query||normalize(title&&title.textContent).includes(query),matchesCategory=!facets.category||facets.categories[index]===facets.category,matchesRating=!facets.rating||facets.ratings[index]>=facets.rating,matchesSea=!facets.sea||facets.seas[index]<=facets.sea;card.hidden=!(matchesName&&matchesCategory&&matchesRating&&matchesSea&&!unmatched.has(String(card.dataset.hotelId)));if(!card.hidden){shown++;visibleIds.add(String(card.dataset.hotelId||''));}});
-  field.hidden=list.length<2;count.textContent=String(shown);status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';resetButton.hidden=!desktop.matches||!active();rail.hidden=fields().every(node=>node.hidden);
+  field.hidden=list.length<2;count.textContent=String(shown);status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';resetButton.hidden=!active();rail.hidden=fields().every(node=>node.hidden);
   const items=projectedItems.filter(item=>visibleIds.has(id(item)));window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:active()}}));
 }
 function reset(){ensure();input.value='';categorySelect.value='0';mealSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();}
