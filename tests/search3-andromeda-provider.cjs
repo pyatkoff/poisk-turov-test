@@ -65,5 +65,32 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   assert.equal(final.items[0].tours.length,2,'runtime adds Andromeda to the current shared result renderer');
   assert.equal(final.options.empty,true,'terminal Tourvisor options are restored after Andromeda completes');
   assert.deepEqual(providerEvents.map(item=>item.status),['loading','progress','complete']);
-  console.log('SEARCH3_ANDROMEDA_PROVIDER_OK resolved_merge=1 unresolved_hidden=1 matching_writes=0');
+  runtimeWindow.setTimeout=setTimeout;runtimeWindow.clearTimeout=clearTimeout;
+  const calls=[];let failSecond=false;
+  runtimeWindow.fetch=async(url,options)=>{
+    const request=JSON.parse(options.body);calls.push(request);
+    assert.equal(request.action,'hotel_offers');assert.equal(request.hotel_scope.local_id,21477);
+    assert.deepEqual(request.params,lifecycle.snapshot);assert.deepEqual(request.hotel_scope.seed,context);
+    if(failSecond&&request.page===2)throw new Error('network');
+    const row=rawHotel(21477),ref='offer_'+String(request.page).repeat(64);
+    row.tours[0].offer_ref=ref;row.tours[0].offer_context={...context,offer_ref:ref,page:request.page,hotel_scope:request.hotel_scope};
+    return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:request.page,pages_count:2,grouped:false,hotels:[row]}})};
+  };
+  await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');
+  const expanded=renders.at(-1).items[0];
+  assert.equal(calls.length,2);assert.equal(expanded.tours.length,3,'two distinct equal-price expanded offers plus Tourvisor, no grouped representative');
+  assert.equal(expanded.andromedaExpansion.status,'complete');
+  assert.equal(expanded.tours[1].offerContext.hotel_scope.local_id,21477,'expanded context survives normalization');
+  await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');assert.equal(calls.length,2,'rerender/click cannot replay expansion');
+  assert.match(rendererWindow.V2Results.toursHtml(expanded),/Варианты Андромеды загружены: 2/);
+  assert.equal(api.context({...context,hotel_scope:{local_id:21477,seed:{...context,hotel_scope:{}}}}),null,'nested scopes rejected');
+  // Reset clears old expansion. The next incomplete result retains its representative.
+  runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[rawHotel(21477)]}})});
+  listeners.get('v2:search-reset')({detail:{generation:11}});await new Promise(resolve=>setImmediate(resolve));
+  runtimeWindow.V2Results.render([tv],{empty:true});
+  runtimeWindow.fetch=async(url,options)=>{const request=JSON.parse(options.body);if(request.page===2)throw new Error('network');const row=rawHotel(21477);row.tours[0].offer_ref='offer_'+'c'.repeat(64);row.tours[0].offer_context={...context,offer_ref:row.tours[0].offer_ref,hotel_scope:request.hotel_scope};return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:2,grouped:false,hotels:[row]}})};};
+  await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');
+  assert.equal(renders.at(-1).items[0].tours.length,3,'partial failure retains representative, extra offer and Tourvisor');
+  assert.equal(renders.at(-1).items[0].andromedaExpansion.status,'unavailable');
+  console.log('SEARCH3_ANDROMEDA_PROVIDER_OK resolved_merge=1 unresolved_hidden=1 expansion_complete=1 partial_retention=1 explicit_only=1 matching_writes=0');
 })().catch(error=>{console.error(error);process.exitCode=1;});
