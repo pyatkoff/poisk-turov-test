@@ -1,6 +1,4 @@
 {
-  "action": "apply",
-  "setup_hash": "c6973e9917156b50b2a83a0286314eda716781771b6c71688d84fa03e4a58f49",
-  "bootstrap_artifact_id": 10102950128,
-  "readiness_sha256": "e576855701725bda511dd5eaadc942f5103e249af784621150db14ffe74ee430"
+  "action": "repair",
+  "published_report_sha256": "7a8068bb23cf6d39d4860be8ec4a4a1278a11e2f3828379b7165725c8a68d5cd"
 }

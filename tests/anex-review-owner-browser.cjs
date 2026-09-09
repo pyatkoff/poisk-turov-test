@@ -40,6 +40,24 @@ function csrf(r){const m=r.html.match(/name="csrf" value="([0-9a-f]{64})"/);asse
   const signed=await request(login,cf,{action:'login',csrf:csrf(fresh),password:fixture.password});ok(signed.status===303,'password login');
   ok((await request(login+'?token='+fixture.token)).status===400,'query token rejected');
   const browser=await chromium.launch({headless:true});
+  // Native form navigation, without the manually supplied Origin used by API fixtures.
+  // A synthetic origin is intercepted entirely in-memory; no live site is contacted.
+  const native=await browser.newPage();
+  for(const policy of ['no-referrer',first.headers.get('referrer-policy')]){
+    let sent='';
+    await native.route('https://owner.invalid/**',async route=>{
+      if(route.request().method()==='POST'){
+        sent=route.request().headers().origin;
+        await route.fulfill({status:200,contentType:'text/html',body:'done'});
+      }else await route.fulfill({status:200,contentType:'text/html',headers:{'Referrer-Policy':policy},body:'<form method="post"><button>Submit</button></form>'});
+    });
+    await native.goto('https://owner.invalid/');
+    await Promise.all([native.waitForNavigation(),native.locator('button').click()]);
+    ok(sent===(policy==='no-referrer'?'null':'https://owner.invalid'),'native form origin: '+policy);
+    await native.unroute('https://owner.invalid/**');
+  }
+  ok(first.headers.get('referrer-policy')==='same-origin','published header keeps same-origin POST authority');
+  await native.close();
   const shots=[];
   try {
     for(const width of [1280,390]){

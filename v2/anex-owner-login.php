@@ -4,7 +4,7 @@ ini_set('display_errors', '0');
 header('Cache-Control: no-store, private');
 header('X-Robots-Tag: noindex, nofollow');
 header('X-Content-Type-Options: nosniff');
-header('Referrer-Policy: no-referrer');
+header('Referrer-Policy: same-origin');
 header('X-Frame-Options: DENY');
 header('Content-Type: text/html; charset=utf-8');
 $nonce = base64_encode(random_bytes(24));
