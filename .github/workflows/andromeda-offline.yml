@@ -20,6 +20,11 @@ on:
       - 'tests/andromeda-offer-store-smoke.php'
       - 'scripts/diagnostics/andromeda_hotel_evidence.py'
       - 'tests/andromeda_hotel_evidence_test.py'
+      - 'scripts/diagnostics/andromeda_hotel_candidates.py'
+      - 'tests/andromeda_hotel_candidates_test.py'
+      - 'scripts/diagnostics/andromeda_hotel_shortlist.py'
+      - 'tests/andromeda_hotel_shortlist_test.py'
+      - 'reports/andromeda-hotel-shortlist-20260909.json'
 permissions:
   contents: read
   actions: read
@@ -47,6 +52,8 @@ jobs:
           php -l app/integrations/andromeda-hotel-resolver.php
           php tests/andromeda-hotel-resolver-smoke.php
           python3 -B tests/andromeda_hotel_evidence_test.py
+          python3 -B tests/andromeda_hotel_candidates_test.py
+          python3 -B tests/andromeda_hotel_shortlist_test.py
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
@@ -82,4 +89,33 @@ jobs:
         with:
           name: andromeda-hotel-evidence
           path: ${{ runner.temp }}/andromeda-hotel-evidence.json
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34371963910
+          artifact-ids: 10112277692
+          merge-multiple: true
+          path: ${{ runner.temp }}/saved-candidates
+      - name: Assemble review queue offline from completed pinned capture
+        run: |
+          python3 -B scripts/diagnostics/andromeda_hotel_candidates.py review \
+            --checkpoint "$RUNNER_TEMP/saved-candidates/andromeda-hotel-candidates.json" \
+            --output "$RUNNER_TEMP/andromeda-hotel-review.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-hotel-review
+          path: ${{ runner.temp }}/andromeda-hotel-review.json
+          if-no-files-found: error
+      - name: Bind proposed targets to saved review without accepting mappings
+        run: |
+          python3 -B scripts/diagnostics/andromeda_hotel_shortlist.py \
+            --review "$RUNNER_TEMP/andromeda-hotel-review.json" \
+            --decisions reports/andromeda-hotel-shortlist-20260909.json \
+            --output "$RUNNER_TEMP/andromeda-hotel-shortlist.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-hotel-shortlist
+          path: ${{ runner.temp }}/andromeda-hotel-shortlist.json
           if-no-files-found: error

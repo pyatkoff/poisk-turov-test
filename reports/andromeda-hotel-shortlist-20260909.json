@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "status": "proposed_not_accepted",
+  "provider": "andromeda",
+  "review_sha256": "54c6b1cb4a36eb3ab1ca09aac52574f2758ed08308a620c2db0c6d1eb0c864a1",
+  "accepted_mappings": 0,
+  "selection_enabled": false,
+  "corroboration": [
+    {
+      "id": "empire_distinct",
+      "url": "https://www.corendon.nl/egypte/rode-zee/hurghada/hurghada-stad/empire-hotel",
+      "checked_date": "2026-09-09",
+      "finding": "Tour operator describes Empire Hotel and nearby sister Empire Beach Resort as separate properties. Historical description, not current facility verification."
+    },
+    {
+      "id": "palace_rename",
+      "url": "https://farvater.travel/uk/hotel/eg/golden-5-emerald-resort-xurgada/",
+      "checked_date": "2026-09-09",
+      "finding": "Agency identifies Palace Beach with former White Valley Palace and Golden5Emerald names. Corroboration only; no supplier-ID authority."
+    }
+  ],
+  "rows": [
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "131974",
+      "proposed_catalog_hotel_id": 9377,
+      "decision_status": "proposed",
+      "reason": "Viva Sharm in source and former/current candidate name; same Sharm destination and3stars.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "13348",
+      "proposed_catalog_hotel_id": 422,
+      "decision_status": "proposed",
+      "reason": "Exact name and Sharm destination.4vs3stars retained as category discrepancy, not different identity.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "1365",
+      "proposed_catalog_hotel_id": 425,
+      "decision_status": "proposed",
+      "reason": "Sharm Holiday matches source4stars and destination; competing Holiday Rentals is a differently qualified2star property.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "2000037570",
+      "proposed_catalog_hotel_id": 56104,
+      "decision_status": "proposed",
+      "reason": "Exact Mazar Resort & Spa in Sharm; competing Mazar Pyramids is in Cairo.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "2000040705",
+      "proposed_catalog_hotel_id": 501,
+      "decision_status": "proposed",
+      "reason": "Observed Empire Beach and former Royal Star Empire Beach match candidate501; no acceptance of the separate non-Beach source2000073714.",
+      "corroboration_refs": [
+        "empire_distinct"
+      ]
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "2000041404",
+      "proposed_catalog_hotel_id": 206,
+      "decision_status": "proposed",
+      "reason": "Observed Palace Beach agrees with candidate206. External page explicitly connects Golden5Emerald, WhiteValleyPalace and PalaceBeach.5vs4stars retained.",
+      "corroboration_refs": [
+        "palace_rename"
+      ]
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "2000049389",
+      "proposed_catalog_hotel_id": 511,
+      "decision_status": "proposed",
+      "reason": "Tivoli Aqua Park in source/candidate, observed Tivoli Spa Hotel & Aqua Park. Source RasUmElSid and candidate Hadaba require destination taxonomy review.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "2000072982",
+      "proposed_catalog_hotel_id": 81245,
+      "decision_status": "proposed",
+      "reason": "Exact El Khan Sharm Hotel name, Sharm destination,3stars.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "2000073714",
+      "proposed_catalog_hotel_id": null,
+      "decision_status": "quarantined",
+      "reason": "Catalog says Empire Beach but offer says Empire Hotel. External evidence distinguishes these properties; candidate501 cannot resolve the conflicting source identity.",
+      "corroboration_refs": [
+        "empire_distinct"
+      ]
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "3414",
+      "proposed_catalog_hotel_id": 453,
+      "decision_status": "proposed",
+      "reason": "Observed Swiss Heaven Sharming Inn matches current candidate name, source Sharming Inn retained; Sharm4stars.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "3694",
+      "proposed_catalog_hotel_id": 239,
+      "decision_status": "proposed",
+      "reason": "Grand Halomy appears in observed name and candidate former name; Sharm3stars. Megan/Regnum history retained.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "3915",
+      "proposed_catalog_hotel_id": 388,
+      "decision_status": "proposed",
+      "reason": "Dexon Roma / Roma Host Way present in catalog, observed and candidate aliases; Hurghada3stars.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "536462",
+      "proposed_catalog_hotel_id": 32207,
+      "decision_status": "proposed",
+      "reason": "Exact Lemon & Soul Makadi Garden; observed Labranda Garden Makadi former name.4vs3stars retained.",
+      "corroboration_refs": []
+    },
+    {
+      "supplier_namespace": "andromeda_catalog",
+      "external_hotel_id": "8810",
+      "proposed_catalog_hotel_id": 9372,
+      "decision_status": "proposed",
+      "reason": "Sun & Sea Hotel Hurghada matches candidate9372 and3stars. Sea Sun is in Dahab; Sunrise Alma Bay is a different named4star property.",
+      "corroboration_refs": []
+    }
+  ]
+}

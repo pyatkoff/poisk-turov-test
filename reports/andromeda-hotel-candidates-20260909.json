@@ -1,0 +1,387 @@
+{
+  "accepted_mappings": 0,
+  "capture": {
+    "alias_sets_complete": true,
+    "artifact": 10112277692,
+    "batches_completed": 7,
+    "candidate_pairs": 18,
+    "candidate_sets_complete": true,
+    "digest": "sha256:d789848bc7a7a64d2c37bd799d9f51af1c4dba20043fd2ed60dc67fdd3cf71d2",
+    "hotels": 14,
+    "multiple_candidate_hotels": 3,
+    "sha256": "8803cdc5db5940cfdc0c1b4e8428058e65eefe6df5199a673598100fed994df9",
+    "single_candidate_hotels": 11,
+    "unique_local_candidates": 17
+  },
+  "capture_executable_sha": "68f4bb80c0a46424b00bb23deef44c04810cf47a",
+  "capture_job": 102535160324,
+  "capture_run": 34371963910,
+  "capture_workflow_sha": "f61b418b487c50952e1bc96b7b5851dffc3e76d0",
+  "database_writes": 0,
+  "deployment": false,
+  "issue": 1717,
+  "next_action": "Review saved source names/towns/observations and candidate identities, prioritizing shared local501 and renaming of2000041404; do not repeat completed DB or supplier captures. No automatic mapping; then coordinated SEARCH handoff on fresh release.",
+  "pr": 1778,
+  "reservation": {
+    "artifact": 10112273945,
+    "digest": "sha256:018c8ac4794ddedca1d4b19ad3bb11f93130809727c45e5814abe315aa144df6",
+    "sha256": "e2c18374ec929e853b68368e31d13b9f24c445ca7b5afa03ab996fae7e8e2fbc"
+  },
+  "rows": [
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 9377,
+          "name": "VIVA SHARM (EX. TOP CHOICE VIVA SHARM)",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "Viva Sharm Hotel",
+      "decision_status": "needs_review",
+      "external_hotel_id": "131974",
+      "observed_names": [
+        "Viva Sharm Hotel"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "3",
+      "offer_count": 4
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 422,
+          "name": "SHARM CLIFF RESORT",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "Sharm Cliff Resort",
+      "decision_status": "needs_review",
+      "external_hotel_id": "13348",
+      "observed_names": [
+        "Sharm Cliff Resort"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "4",
+      "offer_count": 4
+    },
+    {
+      "candidates": [
+        {
+          "category": "4",
+          "local_candidate_id": 425,
+          "name": "SHARM HOLIDAY",
+          "region": "Шарм-эль-Шейх"
+        },
+        {
+          "category": "2",
+          "local_candidate_id": 113896,
+          "name": "SHARM HOLIDAY RENTALS",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "Sharm Holiday Resort",
+      "decision_status": "needs_review",
+      "external_hotel_id": "1365",
+      "observed_names": [
+        "Sharm Holiday Resort"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "4",
+      "offer_count": 6
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 56104,
+          "name": "MAZAR RESORT & SPA",
+          "region": "Шарм-эль-Шейх"
+        },
+        {
+          "category": "3",
+          "local_candidate_id": 129163,
+          "name": "MAZAR PYRAMIDS",
+          "region": "Каир"
+        }
+      ],
+      "catalog_name": "Mazar Resort & SPA",
+      "decision_status": "needs_review",
+      "external_hotel_id": "2000037570",
+      "observed_names": [
+        "Mazar Resort & Spa Sharm El Sheikh"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "3",
+      "offer_count": 6
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 501,
+          "name": "EMPIRE BEACH AQUA PARK (EX.ROYAL STAR EMPIRE BEACH RESORT)",
+          "region": "Хургада"
+        }
+      ],
+      "catalog_name": "Royal Star Empire Beach Resort",
+      "decision_status": "needs_review",
+      "external_hotel_id": "2000040705",
+      "observed_names": [
+        "Empire Beach Aqua Park (Ex. Triton Empire Beach Resort Hurghada)"
+      ],
+      "catalog_town": "Хургада",
+      "catalog_stars": "3",
+      "offer_count": 2
+    },
+    {
+      "candidates": [
+        {
+          "category": "4",
+          "local_candidate_id": 206,
+          "name": "PALACE BEACH HOTEL (EX. WHITE VALLEY)",
+          "region": "Хургада"
+        }
+      ],
+      "catalog_name": "Golden Five Emerald Resort",
+      "decision_status": "needs_review",
+      "external_hotel_id": "2000041404",
+      "observed_names": [
+        "Palace Beach Hotel By White Valley Hotels & Resorts"
+      ],
+      "catalog_town": "Хургада",
+      "catalog_stars": "5",
+      "offer_count": 2
+    },
+    {
+      "candidates": [
+        {
+          "category": "4",
+          "local_candidate_id": 511,
+          "name": "TIVOLI HOTEL AQUA PARK",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "Tivoli Hotel Aqua Park",
+      "decision_status": "needs_review",
+      "external_hotel_id": "2000049389",
+      "observed_names": [
+        "Tivoli Spa Hotel & Aqua Park"
+      ],
+      "catalog_town": "Рас-Умм-эль-Сид",
+      "catalog_stars": "4",
+      "offer_count": 2
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 81245,
+          "name": "EL KHAN SHARM HOTEL",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "El Khan Sharm Hotel",
+      "decision_status": "needs_review",
+      "external_hotel_id": "2000072982",
+      "observed_names": [
+        "El Khan Sharm Hotel"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "3",
+      "offer_count": 4
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 501,
+          "name": "EMPIRE BEACH AQUA PARK (EX.ROYAL STAR EMPIRE BEACH RESORT)",
+          "region": "Хургада"
+        }
+      ],
+      "catalog_name": "Empire Beach Aqua Park",
+      "decision_status": "needs_review",
+      "external_hotel_id": "2000073714",
+      "observed_names": [
+        "Empire Hotel Aqua Park (Ex. Triton Empire Hotel Hurghada)"
+      ],
+      "catalog_town": "Хургада",
+      "catalog_stars": "3",
+      "offer_count": 3
+    },
+    {
+      "candidates": [
+        {
+          "category": "4",
+          "local_candidate_id": 453,
+          "name": "SWISS HEAVEN SHARMING INN",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "Sharming Inn Hotel",
+      "decision_status": "needs_review",
+      "external_hotel_id": "3414",
+      "observed_names": [
+        "Swiss Heaven Sharming Inn Hotel"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "4",
+      "offer_count": 4
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 239,
+          "name": "MEGAN HALOMY RESORT (EX. GRAND HALOMY)",
+          "region": "Шарм-эль-Шейх"
+        }
+      ],
+      "catalog_name": "Megan Halomy Resort (ex.Grand Halomy Resort)",
+      "decision_status": "needs_review",
+      "external_hotel_id": "3694",
+      "observed_names": [
+        "Grand Halomy Resort Naama Bay (Ex. The Regnum Halomy)"
+      ],
+      "catalog_town": "Шарм Эль Шейх",
+      "catalog_stars": "3",
+      "offer_count": 4
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 388,
+          "name": "DEXON ROMA HOTEL (EX. ROMA HOST WAY)",
+          "region": "Хургада"
+        }
+      ],
+      "catalog_name": "Dexon Roma Hotel (Ex.Roma Host Way)",
+      "decision_status": "needs_review",
+      "external_hotel_id": "3915",
+      "observed_names": [
+        "ROMA Dexon Hotel & Aqua Park(ex.Roma Host Way Aqua Park)"
+      ],
+      "catalog_town": "Хургада",
+      "catalog_stars": "3",
+      "offer_count": 2
+    },
+    {
+      "candidates": [
+        {
+          "category": "3",
+          "local_candidate_id": 32207,
+          "name": "LEMON & SOUL MAKADI GARDEN",
+          "region": "Хургада"
+        }
+      ],
+      "catalog_name": "Lemon & Soul Makadi Garden",
+      "decision_status": "needs_review",
+      "external_hotel_id": "536462",
+      "observed_names": [
+        "Lemon and Soul Makadi Garden (Ex. Labranda Garden Makadi)"
+      ],
+      "catalog_town": "Хургада",
+      "catalog_stars": "4",
+      "offer_count": 1
+    },
+    {
+      "candidates": [
+        {
+          "category": "4",
+          "local_candidate_id": 237,
+          "name": "SUNRISE ALMA BAY RESORT (EX. GRAND SEAS BY SUNRISE)",
+          "region": "Хургада"
+        },
+        {
+          "category": "4",
+          "local_candidate_id": 413,
+          "name": "SEA SUN",
+          "region": "Дахаб"
+        },
+        {
+          "category": "3",
+          "local_candidate_id": 9372,
+          "name": "SUN & SEA HOTEL",
+          "region": "Хургада"
+        }
+      ],
+      "catalog_name": "Sun & Sea",
+      "decision_status": "needs_review",
+      "external_hotel_id": "8810",
+      "observed_names": [
+        "Sun & Sea Hotel Hurghada"
+      ],
+      "catalog_town": "Хургада",
+      "catalog_stars": "3",
+      "offer_count": 2
+    }
+  ],
+  "schema_version": 1,
+  "selection_enabled": false,
+  "source": {
+    "artifact": 10111736453,
+    "run": 34370610832,
+    "sha256": "9b3ec26136ed20bed9366bf3741667ba48a58013fd48e860670c8289ae97c5ce"
+  },
+  "source_sha": "d6b84f054d9f8c850c2b871485ebe0f51941b715",
+  "status": "checked_capture_and_offline_review",
+  "supplier_calls": 0,
+  "review": {
+    "run": 34372218871,
+    "job": 102536006467,
+    "artifact": 10112372398,
+    "digest": "sha256:1a2f06c977100db2354298c36d825ee4fd3780f004715211af600ced25a1b684",
+    "sha256": "54c6b1cb4a36eb3ab1ca09aac52574f2758ed08308a620c2db0c6d1eb0c864a1"
+  },
+  "checks": {
+    "python_evidence_tests": 8,
+    "python_candidate_tests": 9,
+    "prior_php_regressions": "passed",
+    "offline_run": 34372218871,
+    "security_run": 34372218718,
+    "conclusion": "success"
+  },
+  "interpretation": "Complete means the bounded name/alias query was not truncated, not exhaustive proof of identity. Single candidate is not acceptance.",
+  "manual_review_findings": [
+    {
+      "external_hotel_id": "2000073714",
+      "candidate_id": 501,
+      "status": "unresolved_catalog_offer_disagreement",
+      "catalog": "Empire Beach Aqua Park",
+      "observed": "Empire Hotel Aqua Park (Ex. Triton Empire Hotel Hurghada)",
+      "reason": "Beach-qualified catalog identity differs from observed non-Beach hotel. Do not collapse into shared candidate501."
+    },
+    {
+      "external_hotel_id": "2000040705",
+      "candidate_id": 501,
+      "status": "needs_shared_target_review",
+      "reason": "Observed Empire Beach and catalog Royal Star Empire Beach agree with candidate wording, but another external ID selects same candidate and must remain separate."
+    },
+    {
+      "external_hotel_id": "2000041404",
+      "candidate_id": 206,
+      "status": "unresolved_catalog_offer_disagreement",
+      "catalog": "Golden Five Emerald Resort",
+      "observed": "Palace Beach Hotel By White Valley Hotels & Resorts",
+      "catalog_stars": "5",
+      "candidate_stars": "4"
+    },
+    {
+      "external_hotel_id": "13348",
+      "candidate_id": 422,
+      "status": "needs_category_review",
+      "catalog_stars": "4",
+      "candidate_stars": "3"
+    },
+    {
+      "external_hotel_id": "536462",
+      "candidate_id": 32207,
+      "status": "needs_category_review",
+      "catalog_stars": "4",
+      "candidate_stars": "3"
+    }
+  ]
+}
