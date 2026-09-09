@@ -1,0 +1,40 @@
+name: Andromeda saved price inspection
+on:
+  push:
+    branches: ['feat/int-andromeda-client-20260909']
+    paths: ['.github/workflows/andromeda-price-inspect.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34365549508
+          artifact-ids: 10109677472
+          merge-multiple: true
+          path: ${{ runner.temp }}/price
+      - name: Inspect pinned fields without supplier calls
+        run: |
+          python3 - <<'PY'
+          import pathlib,os,json,hashlib,collections
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'price'
+          raw=(root/'price.json').read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9'
+          p=json.loads(raw)['payload']; rows=p['PRICES']
+          fields={k:dict(collections.Counter(type(r.get(k)).__name__ for r in rows)) for k in sorted({k for r in rows for k in r})}
+          safe=['id','checkIn','nights','hotel','hotelKey','operator','operatorKey','operatorGuid','isOperatorHotelKey','meal','mealKey','room','roomKey','htplace','htplaceKey','price','currency','currencyKey','packetType']
+          report={'source_digest':hashlib.sha256(raw).hexdigest(),'rows':len(rows),'page':p['PAGE'],'pages':p['PAGES_COUNT'],'fields':fields,'samples':[{k:r[k] for k in safe if k in r} for r in rows[:3]],'operator_hotel_flags':dict(collections.Counter(str(r.get('isOperatorHotelKey')) for r in rows)),'supplier_calls':0}
+          output=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
+          (root/'inspection.json').write_text(output)
+          assert (root/'inspection.json').read_text()==output
+          print(output)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-price-inspection
+          path: ${{ runner.temp }}/price/inspection.json
