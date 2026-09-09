@@ -940,8 +940,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
         self.assertLessEqual(
             (ROOT / 'v2/search3-results-filters-v1.css').stat().st_size,
-            17500,
-            'OTA decision rows reuse one CSS owner: 16943 B baseline +459 B authorized layout =17402 B',
+            17900,
+            'OTA decision rows reuse one CSS owner: 17402 B decision baseline +329 B native description =17731 B',
         )
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
@@ -1092,6 +1092,13 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
+                # Search3-only native disclosure changes presentation, with the
+                # original legacy markup and all protected bytes recovered below.
+                description_helper = 'function descriptionHtml(desc){if(!desc)return\'\';const content=\'<div class="hotel-desc">\'+esc(desc)+\'</div>\';return document.body.classList.contains(\'search3-candidate\')&&desc.length>280?\'<details class="selected-description"><summary>Об отеле</summary>\'+content+\'</details>\':content;}\n'.encode()
+                self.assertEqual(source.count(description_helper), 1)
+                self.assertEqual(source.count(b"+descriptionHtml(desc)+"), 1)
+                source = source.replace(description_helper, b'', 1).replace(
+                    b"+descriptionHtml(desc)+", '+(desc?\'<div class="hotel-desc">\'+esc(desc)+\'</div>\':\'\')+'.encode(), 1)
                 # Reviewed keyboard-entry fix only; reversing the exact insertion
                 # must recover all existing business and transport bytes below.
                 focus_entry = b"if(root.focus)root.focus({preventScroll:true});root.scrollIntoView({behavior:'smooth',block:'start'});"

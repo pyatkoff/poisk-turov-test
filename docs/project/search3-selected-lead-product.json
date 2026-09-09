@@ -41,7 +41,12 @@
     "exact_artifact_run": 34299852380,
     "conclusion": "success",
     "selected_states": 8,
-    "selected_widths": [375, 760, 1000, 1440],
+    "selected_widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
     "flight_variants": 6,
     "all_radios_visible": true,
     "selected_detail_only": true,
@@ -85,7 +90,12 @@
   },
   "visual_verification": {
     "source": "exact CI screenshots from selected geometry artifact 10084543204",
-    "widths": [375, 760, 1000, 1440],
+    "widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
     "passed": [
       "One Search3 handoff CTA is visible at every width; the final form submit is a separate action.",
       "Only the selected flight is expanded and all six variants remain visible.",
@@ -105,5 +115,32 @@
     "full lead submission, site/SEO journey and owner production visual acceptance"
   ],
   "rollback": "Revert release merge d6b71962c2a1fa47de2ffeab9158e2f3133f2d28 for code; restore the retained preview backup recorded by deploy run34300274732 for preview.",
-  "next_action": "Advance to S3_PRODUCT_SHARED_SITE: converge the shared DS2 content controls into one current owner across representative public routes, removing superseded site-coherence overrides in the same package."
+  "next_action": "Advance to S3_PRODUCT_SHARED_SITE: converge the shared DS2 content controls into one current owner across representative public routes, removing superseded site-coherence overrides in the same package.",
+  "ota_native_description_20260909": {
+    "stage": "IMPLEMENTED_PENDING_CI",
+    "baseline_release_sha": "73eafb1e12f3b48226f60e6ecf4cf64336b86f2f",
+    "scope": "Partial S3_OTA_SELECTED_OPTIONS: Search3 native long hotel-description disclosure only",
+    "benefit": "Flights follow a compact 48px disclosure instead of the full long supplier description; full escaped content remains available. Short and legacy descriptions remain unchanged.",
+    "ownership": "Canonical tour-controller markup; existing results-layout CSS; native details with no added handler",
+    "size": {
+      "css_delta_bytes": 329,
+      "served_shared_js_delta_bytes": 230,
+      "source_js_delta_bytes": 259,
+      "initial_and_full_external_delta_bytes": 559,
+      "inline_delta_bytes": 0
+    },
+    "verification": {
+      "local": "source build/check, shared runtime build, syntax, meal-owner and honest-controls passed",
+      "CI": "pending",
+      "visual": "pending",
+      "production_leads_sent": 0
+    },
+    "published": false,
+    "deferred": [
+      "Physical Safari/iPhone",
+      "Full OTA2 room/meal option selection and freshness handoff",
+      "User pilot"
+    ],
+    "next_action": "Check exact CI and mobile/desktop disclosure states, integrate and publish existing source artifact"
+  }
 }
