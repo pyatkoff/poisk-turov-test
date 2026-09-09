@@ -1,0 +1,35 @@
+name: Andromeda one package probe
+on: workflow_dispatch
+permissions: {contents: read, actions: read}
+concurrency: {group: anytour-andromeda-one-package, cancel-in-progress: false}
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Refuse automatic replay and prepare reservation directory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          count="$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-package-probe.yml/runs" -f branch="$GITHUB_REF_NAME" -f per_page=100 --jq '.total_count')"
+          test "$count" = 1
+          install -d -m 0700 "$RUNNER_TEMP/andromeda-package"
+          php -l app/integrations/andromeda-client.php
+          php -l app/integrations/andromeda-transport.php
+          php -l scripts/diagnostics/andromeda-package-probe.php
+      - name: Capture one current package without booking
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/andromeda-package-probe.php --execute "$RUNNER_TEMP/andromeda-package"
+      - name: Preserve private evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-one-package-evidence
+          path: ${{ runner.temp }}/andromeda-package/*.json
+          if-no-files-found: error
+          retention-days: 7
