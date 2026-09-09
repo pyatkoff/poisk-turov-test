@@ -48,8 +48,27 @@
       'AI-WITHOUT ALCOHOL': 'Всё включено без алкоголя', 'AI WITHOUT ALCOHOL': 'Всё включено без алкоголя' };
     return labels[text.toUpperCase()] || text;
   }
+  function catalogInfo(hotel) {
+    const data = hotel && hotel.catalog;
+    if (!data || data.hotel_id !== hotel.local_id || data.source !== 'tourvisor') return null;
+    const text = (value, limit) => typeof value === 'string' ? value.trim().slice(0, limit) : '';
+    let image = null;
+    if (typeof data.image_url === 'string' && data.image_url.length <= 2048
+      && /^https:\/\//i.test(data.image_url) && !/[\s\u0000-\u001f\u007f]/.test(data.image_url)) {
+      try {
+        const url = new URL(data.image_url);
+        if (url.protocol === 'https:' && !url.username && !url.password && !url.port
+          && /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(url.hostname)
+          && !/\.(?:local|localhost|internal)$/i.test(url.hostname)) image = url.href;
+      } catch (_) {}
+    }
+    return { image_url: image, description: text(data.description, 16000), address: text(data.address, 1000),
+      subregion: text(data.subregion, 300), sea_distance: typeof data.sea_distance === 'number'
+        && Number.isFinite(data.sea_distance) && data.sea_distance >= 0 && data.sea_distance <= 100000 ? data.sea_distance : null };
+  }
   function filterItem(hotel) {
-    return { id: hotel.local_id, category: hotel.category, rating: hotel.rating, seaDistance: null,
+    const catalog = catalogInfo(hotel);
+    return { id: hotel.local_id, category: hotel.category, rating: hotel.rating, seaDistance: catalog ? catalog.sea_distance : null,
       price: Number(hotel.tours[0].price.amount), tours: hotel.tours.map(tour => ({
         price: Number(tour.price.amount), meal: { name: mealLabel(tour.meal) },
         anex: tour
@@ -79,6 +98,7 @@
   const panelAnchor = (typeof results.closest === 'function' && results.closest('.results-layout')) || results;
   let active = null, controller = null, lastGeneration = 0, hotels = [], message = '', dates = '', panel = null;
   let tvItems = [], tvCards = [], openHotels = new Set(), ownPresentation = null, renderQueued = false;
+  const openDescriptions = new Set(), failedImages = new Set();
   let calendarBox = null, calendarObserver = null;
   let sourceMode = 'all';
   const sourceChoices = [
@@ -94,9 +114,44 @@
     return element;
   }
   const style = node('style');
-  style.textContent = 'body.search3-candidate #anexSearch3Results.anex-search3-panel{display:block!important;grid-column:1/-1;min-width:0}.anex-search3-panel{margin:20px 0;min-width:0}.anex-search3-panel h2{font:inherit;font-weight:700;font-size:20px;margin:0 0 12px}.anex-search3-status{color:#566176;font-size:14px;line-height:1.5}.anex-search3-hotel{border:1px solid #dbe2ed;border-radius:16px;background:#fff;padding:16px;margin:12px 0;overflow-wrap:anywhere}.anex-search3-hotel h3{font:inherit;font-size:18px;font-weight:700;margin:0 0 6px}.anex-search3-place{color:#566176;font-size:14px;margin:0 0 12px}.anex-search3-offers{margin:12px 16px;border-top:1px solid #dbe2ed;padding-top:12px;min-width:0;overflow-wrap:anywhere}.anex-search3-hotel .anex-search3-offers{margin:0}.anex-search3-offers summary{cursor:pointer;min-height:44px;display:list-item;align-content:center;color:#2743cb;font-weight:700;line-height:1.5;padding:8px 0}.anex-search3-offer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;padding:12px 0;border-top:1px solid #edf0f5;line-height:1.5;font-size:14px}.anex-search3-offer p{margin:0;flex:1 1 230px}.anex-search3-offer strong{white-space:nowrap}.anex-search3-note{color:#566176;font-size:12px;line-height:1.5;margin:8px 0}';
+  style.textContent = `
+body.search3-candidate #anexSearch3Results.anex-search3-panel{display:block!important;grid-column:1/-1;min-width:0}
+.anex-search3-panel{margin:20px 0;padding:10px 0;min-width:0}
+.anex-search3-panel h2{font:inherit;font-weight:700;font-size:16px;margin:0 0 4px}
+.anex-search3-panel p{margin:4px 0}
+.anex-search3-status{color:#566176;font-size:14px;line-height:1.5}
+body.search3-candidate #results .anex-search3-hotel{display:block!important;padding:0!important;width:100%;min-width:0;grid-column:1/-1;border:1px solid #dbe2ed;border-radius:16px;background:#fff;margin:12px 0;overflow:hidden;overflow-wrap:anywhere}
+.anex-search3-header{display:grid;grid-template-columns:minmax(220px,34%) minmax(0,1fr);align-items:start}
+.anex-search3-media{position:relative;aspect-ratio:4/3;width:100%;margin:0;background:#edf0f5;overflow:hidden}
+.anex-search3-photo-empty{position:absolute;inset:0;display:grid;place-items:center;padding:16px;color:#69758a;font-size:14px}
+.anex-search3-media img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;object-fit:cover}
+.anex-search3-media figcaption{position:absolute;right:8px;bottom:8px;border-radius:4px;padding:3px 6px;background:rgba(20,32,50,.72);color:#fff;font-size:10px;line-height:1.4}
+.anex-search3-identity{padding:18px;min-width:0}
+.anex-search3-identity h3{font:inherit;margin:0 0 8px;font-size:18px;font-weight:700;line-height:1.3}
+.anex-search3-place{color:#566176;font-size:14px;line-height:1.5;margin:0 0 8px}
+.anex-search3-facts{color:#344257;font-size:13px;line-height:1.5;margin:8px 0}
+.anex-search3-source{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px 10px;padding:7px 10px;border-radius:8px;background:#edf2ff;color:#2743cb;font-size:13px;line-height:1.4;font-weight:700;margin:8px 0;max-width:100%;overflow-wrap:anywhere}
+.anex-search3-source strong{white-space:nowrap}
+.anex-search3-about{font-size:14px;line-height:1.6;margin-top:4px}
+.anex-search3-about p{margin:8px 0;white-space:pre-line}
+.anex-search3-offers{margin:12px 16px;border-top:1px solid #dbe2ed;padding-top:12px;min-width:0;overflow-wrap:anywhere}
+.anex-search3-hotel .anex-search3-offers{margin:0 18px 12px}
+.anex-search3-offers summary,.anex-search3-about summary{cursor:pointer;min-height:44px;display:list-item;align-content:center;color:#2743cb;font-weight:700;line-height:1.5;padding:8px 0;box-sizing:border-box}
+.anex-search3-offers h4{margin:0 0 8px;font-size:15px;color:#2743cb}
+.anex-search3-offer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;padding:12px 0;border-top:1px solid #edf0f5;line-height:1.5;font-size:14px}
+.anex-search3-offer p{margin:0;flex:1 1 230px}
+.anex-search3-offer strong{white-space:nowrap}
+.anex-search3-offer .anex-search3-source{display:block;background:none;padding:0;margin:0 0 4px;font-size:12px}
+.anex-search3-note{color:#566176;font-size:12px;line-height:1.5;margin:8px 0}
+.anex-search3-tv-price-label{display:block!important;font-size:11px;font-weight:500;line-height:1.4;color:#566176}
+.anex-search3-tv-source{margin:12px 16px 0;font-size:14px;color:#566176}
+.anex-search3-source-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;font-size:14px;font-weight:600}
+.anex-search3-source-filter select{box-sizing:border-box;max-width:100%;min-width:0;min-height:44px;padding:10px 32px 10px 12px;border:1px solid #dbe2ed;border-radius:8px;background:#fff;color:#18243b;font:inherit}
+.anex-search3-source-filter select:focus-visible,.anex-search3-about summary:focus-visible,.anex-search3-offers summary:focus-visible{outline:2px solid #2743cb;outline-offset:2px}
+body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:none!important}
+@media(max-width:600px){.anex-search3-header{grid-template-columns:minmax(0,1fr)}.anex-search3-media{aspect-ratio:16/10}.anex-search3-identity{padding:14px}.anex-search3-hotel .anex-search3-offers{margin:0 14px 10px}.anex-search3-offer{gap:6px}.anex-search3-offer p{flex-basis:100%}.anex-search3-source-filter select{width:100%}}
+`;
   document.head.appendChild(style);
-  style.textContent += '\n.anex-search3-source-filter{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px;font-size:14px;font-weight:600}.anex-search3-source-filter select{box-sizing:border-box;max-width:100%;min-width:0;min-height:44px;padding:10px 32px 10px 12px;border:1px solid #dbe2ed;border-radius:8px;background:#fff;color:#18243b;font:inherit}.anex-search3-source-filter select:focus-visible{outline:2px solid #2743cb;outline-offset:2px}body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:none!important}@media(max-width:600px){.anex-search3-source-filter select{width:100%}}';
   const sourceFilter = node('label', 'anex-search3-source-filter', 'Отели в списке');
   const sourceSelect = node('select');
   sourceSelect.id = 'anexSearch3SourceFilter';
@@ -110,8 +165,6 @@
     sourceMode = sourceChoices.some(([value]) => value === sourceSelect.value) ? sourceSelect.value : 'all';
     queueRender();
   });
-  style.textContent += '\n.anex-search3-tv-price-label{display:block!important;font-size:11px;font-weight:500;line-height:1.4;color:#566176}';
-  style.textContent += '\nbody.search3-candidate #results .anex-search3-hotel{display:block!important;padding:0!important;width:100%;min-width:0;grid-column:1/-1}.anex-search3-identity{padding:18px 18px 4px}.anex-search3-identity h3{margin:0 0 6px;font-size:18px;line-height:1.3}.anex-search3-source{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px 10px;padding:7px 10px;border-radius:8px;background:#edf2ff;color:#2743cb;font-size:13px;line-height:1.4;font-weight:700;margin:8px 0;max-width:100%;overflow-wrap:anywhere}.anex-search3-source strong{white-space:nowrap}.anex-search3-offers h4{margin:0 0 8px;font-size:15px;color:#2743cb}.anex-search3-tv-source{margin:12px 16px 0;font-size:14px;color:#566176}.anex-search3-hotel .anex-search3-offers{margin:8px 18px 12px}.anex-search3-panel{padding:10px 0}.anex-search3-panel h2{font-size:16px;margin-bottom:4px}.anex-search3-panel p{margin:4px 0}.anex-search3-offer .anex-search3-source{display:block;background:none;padding:0;margin:0 0 4px;font-size:12px}.anex-search3-hotel .anex-search3-place{margin-bottom:4px}@media(max-width:600px){.anex-search3-identity{padding:14px 14px 4px}.anex-search3-hotel .anex-search3-offers{margin:6px 14px 10px}.anex-search3-offer{gap:6px}.anex-search3-offer p{flex-basis:100%}}';
   function replaceText(element, value) {
     if (!element) return;
     const previous = replacedText.get(element);
@@ -131,6 +184,10 @@
       if (details.tagName !== 'DETAILS') return;
       const id = Number(details.getAttribute('data-anex-search3-row'));
       if (details.open) openHotels.add(id); else openHotels.delete(id);
+    });
+    results.querySelectorAll('.anex-search3-about').forEach(details => {
+      const id = Number(details.getAttribute('data-anex-search3-row'));
+      if (details.open) openDescriptions.add(id); else openDescriptions.delete(id);
     });
     results.querySelectorAll('[data-anex-search3-row]').forEach(row => row.remove());
     results.querySelectorAll('[data-anex-search3-card]').forEach(card => card.remove());
@@ -198,11 +255,44 @@
     card.setAttribute('data-anex-search3-card', String(hotel.local_id));
     card.setAttribute('data-hotel-id', String(hotel.local_id));
     card.setAttribute('data-search3-results-v1', '1');
+    const catalog = catalogInfo(hotel);
+    const header = node('div', 'anex-search3-header');
+    const media = node('figure', 'anex-search3-media');
+    const emptyPhoto = () => media.appendChild(node('span', 'anex-search3-photo-empty', 'Фото пока нет'));
+    if (catalog && catalog.image_url && !failedImages.has(catalog.image_url)) {
+      const image = node('img');
+      image.alt = hotel.name;
+      image.loading = 'lazy'; image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
+      const caption = node('figcaption', '', 'Фото: Tourvisor');
+      image.addEventListener('error', () => {
+        failedImages.add(catalog.image_url); image.remove(); caption.remove(); emptyPhoto();
+      }, { once: true });
+      image.src = catalog.image_url;
+      media.appendChild(image); media.appendChild(caption);
+    } else emptyPhoto();
+    header.appendChild(media);
     const identity = node('div', 'anex-search3-identity');
     identity.appendChild(node('h3', '', hotel.name + (hotel.category ? ' ' + hotel.category + '★' : '')));
-    identity.appendChild(node('p', 'anex-search3-place', [hotel.country, hotel.region].filter(Boolean).join(' · ')));
+    identity.appendChild(node('p', 'anex-search3-place', Array.from(new Set([
+      hotel.country, hotel.region, catalog && catalog.subregion
+    ].filter(Boolean))).join(' · ')));
+    const facts = [];
+    if (typeof hotel.rating === 'number' && Number.isFinite(hotel.rating) && hotel.rating > 0) facts.push('Рейтинг ' + money.format(hotel.rating));
+    if (catalog && catalog.sea_distance !== null) facts.push('До моря: ' + money.format(catalog.sea_distance) + ' м');
+    if (facts.length) identity.appendChild(node('p', 'anex-search3-facts', facts.join(' · ')));
     identity.appendChild(sourceBadge(hotel));
-    card.appendChild(identity);
+    if (catalog && (catalog.description || catalog.address)) {
+      const about = node('details', 'anex-search3-about');
+      about.setAttribute('data-anex-search3-row', String(hotel.local_id));
+      about.open = openDescriptions.has(hotel.local_id);
+      about.appendChild(node('summary', '', 'Об отеле'));
+      if (catalog.description) about.appendChild(node('p', '', catalog.description));
+      if (catalog.address) about.appendChild(node('p', '', 'Адрес: ' + catalog.address));
+      about.appendChild(node('p', 'anex-search3-note', 'Информация об отеле: Tourvisor'));
+      identity.appendChild(about);
+    }
+    header.appendChild(identity);
+    card.appendChild(header);
     card.appendChild(offers(hotel));
     return card;
   }
@@ -308,7 +398,7 @@
       }
       const card = standalone(hotel);
       ranked.push({ id: String(hotel.local_id), card, tourvisor: false, anex: true, price: hotel.tours[0].price.amount,
-        category: hotel.category, rating: hotel.rating, seaDistance: null });
+        category: hotel.category, rating: hotel.rating, seaDistance: filterItem(hotel).seaDistance });
       added++;
     });
     if (added || merged) {
@@ -375,7 +465,7 @@
     if (lifecycle && !lifecycle.dirty && lifecycle.snapshot && lifecycle.generation === lastGeneration) return;
     if (controller) controller.abort();
     controller = null;
-    active = null; hotels = []; message = ''; dates = ''; sourceMode = 'all'; clear(); openHotels.clear();
+    active = null; hotels = []; message = ''; dates = ''; sourceMode = 'all'; clear(); openHotels.clear(); openDescriptions.clear(); failedImages.clear();
     updateSupplemental();
     tvItems = []; tvCards = [];
     const existing = window.V2Results && window.V2Results.state;

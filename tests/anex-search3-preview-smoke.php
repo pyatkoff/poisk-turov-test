@@ -46,6 +46,71 @@ $hotels = anytour_anex_search3_project($normalized['offers'], $metadata, $params
 search3_check(count($hotels) === 1 && $hotels[0]['local_id'] === 999, 'only mapped catalog IDs are rendered, no numeric namespace fallback');
 search3_check($hotels[0]['rating'] === 4.5, 'shared sorting receives the catalog rating');
 search3_check($hotels[0]['name'] === 'Local catalog hotel', 'hotel name comes from own catalog');
+search3_check($hotels[0]['catalog']['hotel_id'] === 999 && $hotels[0]['catalog']['source'] === 'tourvisor'
+    && $hotels[0]['catalog']['image_url'] === null && $hotels[0]['catalog']['sea_distance'] === null,
+    'mapped card identity is explicit even when optional content is missing');
+$richMetadata = $metadata;
+$richMetadata[999] += ['primary_image_url' => '//static.tourvisor.ru/hotel_pics/main400/999.jpg',
+    'description' => '<p>Beach &amp; pool</p><script>privateScript()</script><p>Family hotel</p>',
+    'address' => '<b>Address</b>', 'subregion_name' => 'Resort'];
+$richHotel = anytour_anex_search3_project($normalized['offers'], $richMetadata, $params)[0];
+search3_check($richHotel['catalog']['image_url'] === 'https://static.tourvisor.ru/hotel_pics/main400/999.jpg'
+    && $richHotel['catalog']['description'] === 'Beach & pool Family hotel'
+    && $richHotel['catalog']['address'] === 'Address' && $richHotel['catalog']['subregion'] === 'Resort',
+    'stored catalog media and plain description follow the resolved local identity');
+search3_check($richHotel['tours'] === $hotels[0]['tours'], 'catalog enrichment never changes supplier offers or prices');
+$richMetadata[999]['primary_image_url'] = 'javascript:alert(1)';
+$richMetadata[999]['description'] = str_repeat('x', 5000);
+$safeHotel = anytour_anex_search3_project($normalized['offers'], $richMetadata, $params)[0];
+search3_check($safeHotel['catalog']['image_url'] === null && strlen($safeHotel['catalog']['description']) === 2000,
+    'unsafe image rejected and long description bounded without dropping offer');
+$wrongMetadata = $richMetadata;
+$wrongMetadata[999]['id'] = 998;
+search3_check(anytour_anex_search3_project($normalized['offers'], $wrongMetadata, $params) === [],
+    'metadata from another catalog identity cannot decorate a resolved hotel');
+
+// Real PDO method contracts, but no DB or supplier is needed to exercise optional read failures.
+class Search3CatalogStatement extends PDOStatement
+{
+    private array $rows;
+    public array $parameters = [];
+    public function __construct(array $rows) { $this->rows = $rows; }
+    public function execute(?array $params = null): bool { $this->parameters = $params ?? []; return true; }
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array { return $this->rows; }
+}
+class Search3CatalogPdo extends PDO
+{
+    public array $responses;
+    public array $queries = [];
+    public array $statements = [];
+    public function __construct(array $responses) { $this->responses = $responses; }
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        $this->queries[] = $query;
+        $response = array_shift($this->responses);
+        if ($response === null) throw new PDOException('optional storage unavailable');
+        $statement = new Search3CatalogStatement($response);
+        $this->statements[] = $statement;
+        return $statement;
+    }
+}
+$pdo = new Search3CatalogPdo([null,
+    [['hotel_id' => 999, 'primary_image_url' => '//static.tourvisor.ru/saved.jpg', 'description' => 'Saved description', 'address' => null],
+     ['hotel_id' => 123, 'primary_image_url' => 'https://example.test/other.jpg', 'description' => 'Other hotel', 'address' => null]]]);
+$hydrated = anytour_anex_search3_catalog_hydrate($pdo, $metadata);
+search3_check($hydrated[999]['primary_image_url'] === 'https://static.tourvisor.ru/saved.jpg'
+    && $hydrated[999]['description'] === 'Saved description' && !isset($hydrated[123]),
+    'missing media column uses saved details; unrelated identity is ignored');
+search3_check(count($pdo->queries) === 2 && $pdo->statements[0]->parameters === [999], 'content hydration uses a bounded batch of local IDs');
+$pdo = new Search3CatalogPdo([[['hotel_id' => 999, 'primary_image_url' => '//static.tourvisor.ru/observed.jpg']], null]);
+$hydrated = anytour_anex_search3_catalog_hydrate($pdo, $metadata);
+search3_check($hydrated[999]['primary_image_url'] === 'https://static.tourvisor.ru/observed.jpg',
+    'saved catalog picture survives when details storage is absent');
+$pdo = new Search3CatalogPdo([null, null]);
+search3_check(anytour_anex_search3_project($normalized['offers'], anytour_anex_search3_catalog_hydrate($pdo, $metadata), $params) === $hotels,
+    'all optional stores may fail without hiding available tours');
+search3_check(anytour_anex_search3_catalog_hydrate($pdo, []) === [] && count($pdo->queries) === 2,
+    'empty mapping set does not query content storage');
 search3_check(count($hotels[0]['tours']) === 1 && $hotels[0]['tours'][0]['price']['amount'] === '12345.50', 'unmapped offer excluded even when external ID equals local ID');
 $json = json_encode($hotels);
 search3_check(strpos($json, 'supplier-private-claim') === false && strpos($json, 'supplier_offer_id') === false && strpos($json, 'offer_key') === false, 'supplier selection IDs never enter response');
