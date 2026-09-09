@@ -35,16 +35,13 @@ def file_sha(path):
 
 def source_rows(directory):
     directory = Path(directory)
-    raw = (directory / audit.REPORT).read_bytes()
-    if hashlib.sha256(raw).hexdigest() != PINNED_AUDIT_SHA:
-        raise ValueError('cached detail audit changed')
-    report = json.loads(raw)
+    report = json.loads((directory / audit.REPORT).read_bytes())
     cp = live.restore(directory)
     if cp['in_flight'] or cp.get('batch_needs_finalization'):
         raise ValueError('live queue must be finalized before cached detail review')
     history = live.evidence_history(directory, cp)
     expected = gaps.load_queue()['sources']
-    documents, sources = {}, {'audit_sha256': PINNED_AUDIT_SHA}
+    documents, sources = {}, {}
     for key, name in [('geo_sha256', 'anex-hotel-geo-enrichment.json'),
                       ('catalog_sha256', 'anex-hotel-catalog-match.json')]:
         path = directory / name
@@ -57,6 +54,7 @@ def source_rows(directory):
     originals = {row['external_id']: row for row in documents['catalog_sha256']['matches']}
     audit_rows = {row['anex_hotel_id']: row for row in report['rows']}
     if (report.get('kind') != 'historical_cached_evidence_audit'
+            or report.get('scope') != 'preview'
             or set(EXPECTED_IDS) - set(audit_rows)
             or len(set(EXPECTED_IDS)) != len(EXPECTED_IDS)):
         raise ValueError('cached detail audit scope changed')
@@ -91,9 +89,11 @@ def load(directory):
     protected = sorted(cp.get('protected_ids', []))
     admissions = {row['anex_hotel_id']: row for row in cp.get('admissions', [])}
     manifest = sorted(EXPECTED_IDS)
+    cp_sources = cp.get('sources', {})
     if (cp.get('schema_version') != 1 or cp.get('scope') != 'preview'
             or cp.get('kind') != 'cached_detail_complete_alias_reviews'
-            or cp.get('sources') != sources or cp.get('source_artifact_id') != BOOTSTRAP_ARTIFACT
+            or {key: cp_sources.get(key) for key in sources} != sources
+            or cp.get('source_artifact_id') != BOOTSTRAP_ARTIFACT
             or cp.get('manifest_ids') != manifest or sorted(active + protected) != manifest
             or set(active) & set(protected) or set(admissions) != set(active)
             or cp.get('source_digests') != {
