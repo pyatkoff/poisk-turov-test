@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "issue": 1717,
+  "status": "checked_not_published",
+  "source_sha": "8c5d5220c9c17081efdaec644f08dcdf7b06b7e4",
+  "pull_request": 1777,
+  "counts": {
+    "catalog_country_conflicts": 2,
+    "hotels_by_status": {
+      "catalog_country_conflict": 0,
+      "catalog_found": 14,
+      "catalog_missing": 0,
+      "operator_key_excluded": 2
+    },
+    "offers": 50,
+    "offers_by_status": {
+      "catalog_country_conflict": 0,
+      "catalog_found": 46,
+      "catalog_missing": 0,
+      "operator_key_excluded": 4
+    },
+    "source_rejected": 0,
+    "unique_hotels": 16
+  },
+  "checks": {
+    "offline_run": 34370610832,
+    "job": 102530568817,
+    "security_run": 34370610938,
+    "python_tests": 8,
+    "existing_andromeda_regression": "passed"
+  },
+  "evidence": {
+    "artifact": 10111736453,
+    "artifact_digest": "sha256:edbfc50735ea77df17f1a77907b016c6d6fcc69419385e8c78fb894f6e2452c2",
+    "json_sha256": "9b3ec26136ed20bed9366bf3741667ba48a58013fd48e860670c8289ae97c5ce",
+    "runner_readback": true,
+    "independent_local_download": false,
+    "local_download_error": "403; not retried"
+  },
+  "effects": {
+    "supplier_requests": 0,
+    "database_calls": 0,
+    "accepted_mappings": 0,
+    "ui_changes": 0,
+    "deployment": false
+  },
+  "next_action": "Read the saved 14 catalog-key hotel dossiers and query bounded AnyTour candidates using existing read-only access. Names/geography are evidence, not automatic mapping. Keep two operator-key hotel groups (four offers) separate. Draft1763 remains unpublished."
+}
