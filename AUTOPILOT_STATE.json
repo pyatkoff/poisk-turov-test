@@ -1244,7 +1244,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "After #1723/#1726/#1727, completed #1734 seasonal empty-state semantics and published exact source 7fdde8e1 via run 34345862373. The first exact source run 34345379222 failed because the focused test omitted the renderer require; #1734 added the explicit require and run 34345558826 passed. Published payload: 717 files, 9 noindex routes, preview lead 403, Metrika counter 0, internal PHP denied, rollback retained, production fingerprints unchanged. SITE package CSS/JS delta 0; no real lead, main/production/indexation change."
+    "last_execution_continuation": "Completed SITE-02 route/prefix audit and shared header accessibility repairs #1742/#1744. All 7 internal preview destinations and 8 Search3 assets were live/manifest-correct; source build13/13. Live keyboard audit at1363 measured nav38px, phone17px, logo41px, CTA44px; checked source now enforces at least44px for logo/nav/phone/CTA/menu across12 widths. Security, standalone navigation, boundary where applicable and exact artifact CI passed. Shared CSS5526→5615B (+89B), JS0B. Exact source f3cf1146/artifact10102602949 checked in release85832414. Preview publication was attempted through direct ref and PR-merge control #1745, but connector writes emitted no push run; preview remains source7fdde8e1. No real lead, main/production/indexation change."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1269,9 +1269,9 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "b1c3f2e4df0fcb773742e1209b2756637e2c2dc3",
+    "last_fully_checked_release_sha": "858324140319d3668bb899d7eaf7b9ec40dcba10",
     "published_source_sha": "7fdde8e1d90574960437a0618855b8755223b470",
-    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published 7fdde8e1: physical Safari and live mobile remain deferred until the required device is available. Independently run a bounded SITE-02 audit of real header/footer/menu destinations and preview-prefix preservation; change code only for one confirmed navigation defect. SITE-04 seasonal no-offer disclosure is completed in #1734. Production migration remains owner-visual gated.",
+    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published 7fdde8e1. Physical Safari/live mobile remain deferred. SITE-02 route/prefix audit is complete: no broken destination; #1742/#1744 repaired all shared header targets to at least44px and are checked in release 85832414. Preview still serves 7fdde8e1 because connector-created control refs/merge #1745 emitted no push Actions run; do not repeat that blocked mechanism. Reuse exact artifact10102602949 when a push-capable one-shot path is available or with the next meaningful visual packet. Independently run a bounded SITE keyboard/focus and homepage-to-Search3 recovery audit; change code only for a confirmed current-owner defect. Do not repeat completed seasonal, route-prefix or handoff work. Production migration remains owner-visual gated.",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -10248,7 +10248,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T11:33:00Z",
+  "updated_at": "2026-09-09T12:12:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -13280,5 +13280,85 @@
         "issue": 1719
       }
     }
+  },
+  "latest_site_header_target_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_prs": [
+      1742,
+      1744
+    ],
+    "source_shas": [
+      "1313117fec712a46e79e3c318dc790161590e6c4",
+      "f3cf11465b8e0e99a3e66a701537bde934d6bb4e"
+    ],
+    "checked_release_sha": "858324140319d3668bb899d7eaf7b9ec40dcba10",
+    "published_source_sha": "7fdde8e1d90574960437a0618855b8755223b470",
+    "product_result": [
+      "The native mobile menu target is44px at every shared header breakpoint instead of40px at521-1024px.",
+      "Logo, desktop navigation, support phone and CTA now expose at least44px focus/touch targets without changing destinations or renderer ownership.",
+      "Route/prefix audit confirmed seven live internal destinations, production canonicals and preview noindex semantics; no broken destination was found."
+    ],
+    "size": {
+      "shared_header_css_before_raw_bytes": 5526,
+      "shared_header_css_after_raw_bytes": 5615,
+      "shared_header_css_delta_raw_bytes": 89,
+      "javascript_delta_raw_bytes": 0
+    },
+    "validation": {
+      "live_published_geometry": {
+        "viewport_width": 1363,
+        "logo_height": 41,
+        "nav_height": 38,
+        "phone_height": 17,
+        "cta_height": 44,
+        "published_source_sha": "7fdde8e1d90574960437a0618855b8755223b470"
+      },
+      "widths": [
+        375,
+        520,
+        521,
+        768,
+        769,
+        999,
+        1000,
+        1024,
+        1025,
+        1100,
+        1101,
+        1440
+      ],
+      "security_runs": [
+        34347501375,
+        34348178074
+      ],
+      "standalone_navigation_runs": [
+        34347499580,
+        34348178027
+      ],
+      "preview_boundary_run": 34347499774,
+      "exact_artifact_runs": [
+        34347499730,
+        34348177992
+      ],
+      "exact_artifact_id": 10102602949,
+      "exact_artifact_digest": "sha256:45c0318e706f39176a106f558ec6e22d512e2d4868760bcf04b43246e8afc8e6",
+      "source_build": "13/13 and search3_assets.py --check passed"
+    },
+    "publication": {
+      "published": false,
+      "blocker": "Direct connector ref update and PR-merge control #1745 emitted no push Actions workflow run. Do not repeat this mechanism in the same environment.",
+      "attempted_control_pr": 1745,
+      "published_preview_source_sha": "7fdde8e1d90574960437a0618855b8755223b470",
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Physical Safari and safe-area verification.",
+      "Live mobile verification of the newly checked source after publication.",
+      "Owner visual approval and production migration."
+    ],
+    "next_action": "Reuse exact artifact10102602949 through a push-capable one-shot path or coalesce it with the next meaningful visual package; meanwhile audit homepage-to-Search3 keyboard/error recovery without repeating SITE-02."
   }
 }
