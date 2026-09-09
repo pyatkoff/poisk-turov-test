@@ -1,4 +1,20 @@
-# P2 protected hotel review — implementation, not a live panel
+# P2 protected hotel review — published read-only entry, owner activation pending
+
+
+## Published owner entry — 9 September 2026
+
+PR1741/1747 published the separate private owner runtime at source
+`167a182523cfc36ef4ad54f8a095de8a173b5ab2`, run34349640871/artifact10103158737.
+Two scoped public stubs plus their .htaccess grants and exact file hashes were read
+back; runtime/credentials/sessions remain outside DOCUMENT_ROOT. SQL0/supplier0;
+completed storage stayed finalized. The one-use activation token is delivered only
+to the owner, never here, in GitHub comments or Actions. Owner chooses the password.
+The new login URL was rejected by the browsing tool as non-retryable; this is not
+an HTTP response from the site. No alternate access route was tried. Actual HTTPS
+owner activation, live panel readback and live visual verification remain deferred.
+`write_enabled=false` and no decision capability until these gates pass. Do not
+replay the installer or rotate setup credentials merely because a later run starts.
+See `reports/anex-owner-login-20260909.json` for pinned provenance.
 
 ## Current owner instruction — standalone login (9 September 2026)
 
@@ -55,12 +71,12 @@ completed in #1728; no supplier calls or production Search3/DS2 modules are used
   remain separate; an empty ANEX gallery is never filled from a candidate. Data is included in the evidence
   version, so an updated card invalidates a stale decision. No content collection.
 
-## Deployment gates — NOT yet satisfied
+## Historical deployment checklist — current result above takes precedence
 
-1. Identify the existing real owner authentication/session authority on the server.
-   Repository search did not find an admin/login system. `ANYTOUR_ANEX_SEARCH3`
-   is an anonymous public rate-limit session, NOT owner authentication.
-2. A reviewed server-side adapter, outside `DOCUMENT_ROOT`, must reuse that authority
+1. Superseded: the owner confirmed no existing administrator authentication and
+   approved the separate single-owner account. `ANYTOUR_ANEX_SEARCH3` remains an
+   anonymous public rate-limit session and is never owner authentication.
+2. A reviewed server-side adapter, outside `DOCUMENT_ROOT`, must validate that authority
    and the existing AnyTour DB helper. It must validate authentication, expiration,
    authorization and secure session cookies/rotation before returning. Never derive
    actor/capabilities from query/form/header values; never put credentials in this repo.
@@ -153,6 +169,5 @@ artifact before SQL, executing before SSH, completed report/preservation/readbac
 Unknown or missing post-bootstrap checkpoints never replay. Completed storage does
 not repackage evidence under a newer artifact ID or re-read SQL. The historical263
 dossiers are not the whole current pending population.
-Next: establish the actual owner authority and reviewed adapter outside DOCUMENT_ROOT,
-then isolated publication and real authenticated gates. Existing Bitrix bootstrap and
-CSRF helpers alone do not identify an authorized owner; synthetic fixtures never deploy.
+Next: owner activation and actual authenticated readback through the published separate
+login; no Bitrix dependency. Synthetic fixtures never deploy. Decision writes remain gated.

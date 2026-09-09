@@ -27,7 +27,46 @@
     "ssh_attempts": 1,
     "private_exists": false
   },
-  "publication": "pinned apply prepared; not yet executed",
+  "publication": {
+    "status": "published",
+    "source_sha": "167a182523cfc36ef4ad54f8a095de8a173b5ab2",
+    "pr": 1747,
+    "checked_source": "5012eba262d0292474040a3a9146822963a23bd5",
+    "security_run": 34349469818,
+    "panel_run": 34349469825,
+    "run": 34349640871,
+    "job": 102459462709,
+    "artifact": 10103158737,
+    "digest": "2eaa140224ba7614f00e1bfa4ec2b456f74eedd5925d5e5f4a2ebd57124426c5",
+    "reserved_artifact": 10103153953,
+    "restored_artifact": 10102950128,
+    "report_sha256": "7a8068bb23cf6d39d4860be8ec4a4a1278a11e2f3828379b7165725c8a68d5cd",
+    "after": {
+      ".htaccess": "99b35637f5c3c9637720afcb5a2b9ccc92dd3e041c8108630248d9d6e66c5e51",
+      "anex-hotel-review.php": "557a4ecdf84e3a6232d407781cca839ca16af6583fb5edf49e5e0ed70336910b",
+      "anex-owner-login.php": "015eda5242b5560075aacce65ef7d6e223df68fc5d8b23e39c37fdc36fd07744"
+    },
+    "runtime_files": {
+      "app/admin/anex-review/access.php": "ee2fe0f9f16506e80fea95ed4287cf1c465f1405bc05d3a0a08e1e4cf7a1e817",
+      "app/admin/anex-review/dossier-store.php": "11a76e43415db0bb6de22aad94c010f5e66f6688f02396fb1369dcbcaba97d3f",
+      "app/admin/anex-review/owner-auth.php": "6f81a21490f641a9310dbf4594d1d95d43727d88989ee3f5dfb70d8db1c45cab",
+      "app/admin/anex-review/owner-login.php": "2bca9668943912deab20e68a16158aec2124d7dc90a960fee4dec40941076118",
+      "app/admin/anex-review/public-cards.json": "8af1e10bc997cb9f27fc4705344b96ab90b3c542361dc86e2ab632712f30bccc",
+      "app/admin/anex-review/service.php": "2c2f4166ea067dfa6d68ab8698550c006a5d29649b0281cef3af5391adfe874b",
+      "app/admin/anex-review/view.php": "197ede5bba03963c50886ebfb91bf552edd6007b9029b274ccfcf4fa6d54784f",
+      "v2/anex-hotel-review.php": "c67012f0e289a301f3aaa8721b98b034e5e08a9000682b3611161964b9151f1a",
+      "v2/anex-owner-login.php": "0ede2908b5aa92df49754fd9730022c2204c0a15630ff50254023d65c681657f"
+    },
+    "ssh_attempts": 1,
+    "database_calls": 0,
+    "supplier_requests": 0,
+    "owner_activated": false,
+    "activation_expires_at": 1788959564
+  },
   "write_enabled": false,
-  "next_action": "Apply checked bounded publication once, verify file/artifact readback, then owner uses private one-time activation link. No replay after unknown execution."
+  "next_action": "Owner uses privately delivered one-time activation and chooses password. Confirm actual owner login/read-only dossier access, then enable decisions only through checked live gates. Do not repeat publication/setup/storage. Source and hashed activation plan remain pinned; no raw activation token/password in this report.",
+  "live_http": {
+    "status": "deferred",
+    "reason": "web tool rejected the new login URL as not safe to open (non-retryable); no alternate-route retry or credential submission"
+  }
 }
