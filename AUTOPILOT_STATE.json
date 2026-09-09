@@ -1230,7 +1230,7 @@
   "continuation_policy": {
     "on_blocker": "Record exact blocker and continue independent safe product work; never bypass tool denial, required gate or protected contract.",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > confirmed_search_and_mobile_defects > shared_header_navigation_footer_and_buttons_ds2 > whole_site_preview_and_search_handoff > truthful_content_working_links_and_offer_freshness > phone_desktop_journey_acceptance > owner_approved_migration_with_legacy_and_rollback > technical_refactor_deferred > mass_seo_expansion_deferred",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > current_task_and_active_queue_ids > independent_SITE_SEO_and_ready_bounded_INT_handoff > owner_approved_migration; skip blocked external dependencies without restarting completed work",
     "runtime_signal": "Issue #2 is a machine-maintained CI signal; issue #996 and this state own the product queue. An enabled hourly scheduled task resumes actual development; a completed PR is not a stop condition.",
     "active_roadmap": "docs/project/search3-product-development-plan.md",
     "after_completed_pr": "Record exact checked/published state, then immediately execute next safe independent roadmap task in this invocation while time remains; completed PR is not a stop condition.",
@@ -1240,11 +1240,18 @@
       "no_independent_safe_task_available"
     ],
     "active_queue_ids": [
+      "S3_OTA_RESULTS_DECISION",
+      "S3_OTA_SELECTED_OPTIONS",
+      "S3_OTA_SHORTLIST_COMPARE",
+      "S3_OTA_MOBILE_JOURNEY",
+      "S3_OTA_SITE_CONFIDENCE",
+      "S3_OTA_PROVIDER_PARITY",
+      "S3_OTA_QUALITY_BENCHMARK",
       "S3_PRODUCT_CURRENT_ACCEPTANCE",
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Published #1760: canonical selected keyboard focus, shared JS+41 B; CSS/eight assets0. Security34358214621/exact34358214734 and deploy34358559449 passed. Live Enter/Tab/return verified. Independent audit found no further confirmed current SEARCH defect. Physical-device and owner approval deferred."
+    "last_execution_continuation": "Docs-only OTA plan extension; first implementation is S3_OTA_RESULTS_DECISION, then selected options and shortlist. Use current product plan for acceptance and dependencies. No runtime build/deploy or new product benchmark performed."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1256,24 +1263,27 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1699 and #1700 remove system-timezone drift from hot and monthly public Search3 handoffs. Both integrated through releaseb3da2002 with Security, exact artifact and applicable boundary/standalone CI green.",
+    "last_material_progress": "Owner expanded the existing product plan on 2026-09-09 toward OTA-quality selection. Completed TV-only acceptance stays recorded; first new source packet is decision-focused results. Planning-only change, no new runtime or preview.",
     "name": "Search3 site completion and preview acceptance before migration",
     "next_action": "Read AUTOPILOT_STATE.json.current_task and continuation_policy.active_queue_ids; docs/project/anytour-development.md routes independent SITE/SEO/INT work. Historical stage text is not another execution queue.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Publish and review the accumulated Search3/site candidate",
+    "id": "S3_OTA_RESULTS_DECISION",
+    "title": "Decision-focused results and hotel cards in current DS2",
     "status": "ACTIVE_OWNER_AUTHORIZED",
-    "issue": 996,
-    "pr": 1334,
+    "issue": 1646,
+    "coordinator_issue": 996,
+    "pr": null,
     "branch": "release/search3-production-ready-v1",
+    "roadmap": "docs/project/search3-product-development-plan.md",
+    "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
     "last_fully_checked_release_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
     "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
-    "next_action": "Available Tourvisor-only preview acceptance is complete: #1760 live Enter→selectedTour→Tab return→Enter original direct-tour passed. Physical iPhone/Safari dates/nights, on-screen keyboard and safe-area/phone CTA remain deferred, as does owner visual approval of this exact preview before #1334. Do not repeat completed Search3 work. Continue only a newly confirmed independent SEARCH/SITE defect or separately coordinated bounded #1731 INT handoff; no next source defect is currently established.",
-    "roadmap": "docs/project/search3-product-development-plan.md",
-    "acceptance_status": "AVAILABLE_PREVIEW_ACCEPTANCE_COMPLETE_EXTERNAL_EVIDENCE_DEFERRED"
+    "acceptance_status": "NOT_STARTED",
+    "next_action": "Claim current results renderer/styles in #996 from a fresh release; use saved fixtures and a short before/after brief in the existing results-clarity audit. Build one coherent decision-focused card/toolbar packet in current DS2, retaining existing photos/facts/filters/calendar and same-offer pricing; no new supplier API calls or retired layers. Baseline five user tasks and mark unavailable facts unknown. This owner-authorized product scenario does not require a new bug. Then continue selected-options packet. Physical Safari/production approval and ready INT handoff remain separate gates.",
+    "audit": "docs/project/search3-results-clarity-product.json"
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -6427,8 +6437,11 @@
     {
       "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "ACTIVE",
-      "title": "Current whole-site/mobile/Safari acceptance"
+      "status": "AVAILABLE_PREVIEW_ACCEPTANCE_COMPLETE_EXTERNAL_EVIDENCE_DEFERRED",
+      "title": "Current whole-site/mobile/Safari acceptance",
+      "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
+      "last_fully_checked_release_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
+      "remaining": "Physical iPhone/Safari and owner visual approval of a concrete release; completed TV-only checks are not a new queue."
     },
     {
       "id": "S3_PRODUCT_APPROVED_MIGRATION",
@@ -6527,6 +6540,55 @@
       "sha": "b25ae3e8c72e300bbaf877a9df8010d7f3f108fe",
       "status": "CHECKED_RELEASE_NOT_PUBLISHED",
       "next_action": "First finish sequential integration with the active booking retirement #1621. Then assess a coarse late-load boundary for lead-form-guard-v1.js (14626 B at this source). Booking/review retirement is already owned by open #1621; integrate it sequentially and adapt lazy fixture references to its native lead handoff, without duplicating its edits. Keep lead-ui-race-guard and lead-search-context eager: stale-event protection and fetch-wrapper order must precede presentation. The form guard needs a readyState-aware bootstrap and all listeners installed before first-click replay; verify decimal/pending/confirmed ordering before integrating. Do not count deferral as deletion or repeat #1619 compaction."
+    },
+    {
+      "id": "S3_OTA_RESULTS_DECISION",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "READY",
+      "title": "Decision-focused results and hotel cards in current DS2",
+      "issue": 1646
+    },
+    {
+      "id": "S3_OTA_SELECTED_OPTIONS",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "PLANNED",
+      "title": "Understand and compare selected room, meal and flight options",
+      "issue": 1646
+    },
+    {
+      "id": "S3_OTA_SHORTLIST_COMPARE",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "PLANNED",
+      "title": "Local shortlist and comparison of two or three offers",
+      "issue": 1646
+    },
+    {
+      "id": "S3_OTA_MOBILE_JOURNEY",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "PLANNED",
+      "title": "Continuous mobile search, selection and return journey",
+      "issue": 1646
+    },
+    {
+      "id": "S3_OTA_SITE_CONFIDENCE",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "PLANNED",
+      "title": "Truthful site content, freshness and exact search handoff",
+      "issue": 1719
+    },
+    {
+      "id": "S3_OTA_PROVIDER_PARITY",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "WAITING_BOUNDED_INT_HANDOFF",
+      "title": "Integrate ready provider contracts into the single current UI",
+      "issue": 1646
+    },
+    {
+      "id": "S3_OTA_QUALITY_BENCHMARK",
+      "roadmap": "docs/project/search3-product-development-plan.md",
+      "status": "PLANNED",
+      "title": "Measure search quality and user task completion against the baseline",
+      "issue": 1646
     }
   ],
   "release_status": {
@@ -10211,7 +10273,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T13:44:21.785Z",
+  "updated_at": "2026-09-09T14:07:10.525659Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",

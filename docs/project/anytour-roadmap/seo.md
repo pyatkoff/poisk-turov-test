@@ -12,6 +12,19 @@
 
 ## Владение и роли
 
+Дополнение владельца 2026-09-09 «догнать ведущие ОТА»: использовать уже существующую
+[карту типов страниц](../anytour-seo-page-inventory.json) как исходное evidence
+для SEO-02/03, не запускать повторную полную инвентаризацию. Дата/полнота реального
+production crawl и данных поисковых систем оцениваются отдельно.
+Ближайший независимый результат для `S3_OTA_SITE_CONFIDENCE` — brief одного
+существующего country/resort/month/hotel типа с подтверждёнными данными:
+intent → полезные факты → источник/свежесть → empty/stale → точный Search3 handoff.
+Рейтинг, отзывы, координаты и фотографии не создавать из названия отеля или AI.
+SEO передаёт требования SITE/INT; mixed renderer меняет один объявленный writer.
+Фактическая польза страницы и пригодность данных важнее числа новых URL.
+Production-indexation и масштабирование остаются за отдельным допуском SEO-07;
+само расширение продуктового плана не включает их.
+
 - SEO владеет intent/content/URL/metadata policy и требованиями перелинковки. SITE реализует mixed PHP renderers и shell; SEARCH — параметры поиска/состояние; INT — данные/происхождение/свежесть. На совместный файл один заранее объявленный writer в #996.
 - Адресные владельцы: `seo-page-contract-v1.php`, `seo-page-registry-v1.php`, `seo-page-types-v1.php`, `seo-page-primitives-v1.php`, `seo-internal-links-v1.php`, `seo-structured-data-v1.php`, `seo-content-catalog-v1.php`. Префикс `v2/seo-*` не даёт разрешение менять все data/runtime/publication guards.
 - `seo-config.php`, `seo-launch-slice-v1.php`, `seo-sitemap-candidates-v1.php`, `sitemap.xml`, `robots.txt` — отдельный protected publication пакет. `seo-publication-manifest-v1.php` и readiness reports не заменяют решение владельца.
