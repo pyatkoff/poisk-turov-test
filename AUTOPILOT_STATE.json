@@ -2,7 +2,7 @@
   "latest_local_hotel_filter_package": {
     "schema_version": 1,
     "date": "2026-09-09",
-    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
     "source_pr": 1668,
     "source_sha": "0fedbcb5ffb426af4069305d06f446a571dc5254",
     "source_tree": "f9f462c682b328786e4b4e5393d3c52f00f8041f",
@@ -30,18 +30,113 @@
       "conclusion": "success"
     },
     "publication": {
-      "published": false,
-      "published_preview_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+      "published": true,
+      "published_preview_source_sha": "0fedbcb5ffb426af4069305d06f446a571dc5254",
       "closed_control_prs": [1669, 1670],
-      "reason": "Connector-created control updates emitted Security PR checks but no push deploy-event; both controls closed without merge or deployment. Exact artifact remains reusable.",
-      "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+      "deploy_run": 34309036334,
+      "control_sha": "96d18e15a9fd3afbbd5acb09408756c3ee2736b2",
+      "deployment_evidence_artifact": 10087692143,
+      "deployment_evidence_digest": "sha256:159d9f76bdf1ae19b78702c9633a314ed2a53efc0e824364500e73fe4e7b3de5",
+      "correction": "A later push-control retry published the exact retained artifact after the earlier connector-only attempts had not emitted a push deploy event.",
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
       "main_changed": false,
       "production_changed": false,
       "real_leads_submitted": 0
     },
     "audit": "docs/project/search3-local-hotel-filter-product.json",
-    "rollback": "Revert release merge fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56 independently; published preview is unchanged.",
+    "rollback": "Revert release merge fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56 independently; the preview deployment retained its previous rollback copy.",
     "next_action": "Audit completeness of loaded-result rating/category/sea-distance/meal data and add at most one truthful local facet only when complete."
+  },
+  "latest_local_category_facet_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1672,
+    "deploy_control_pr": 1673,
+    "source_sha": "d69bb12907cf6bb890f9f86565b16a173825d96d",
+    "source_tree": "c6ab0497bb375ed5effb10ef79908c055a981c6a",
+    "release_integration_sha": "b6c1837a817562100355586205366d5bad6c208a",
+    "product_result": [
+      "The existing loaded-hotel filter owner now also exposes an exact category facet when the current normalized set is complete and has at least two categories.",
+      "Name and category predicates are combined before one card.hidden assignment; category survives sort and resets on a new search.",
+      "Incomplete progressive data removes and resets the category control instead of presenting a partial or misleading facet; no supplier or lead request was added."
+    ],
+    "fresh_supplier_audit": {
+      "routes": ["Turkey", "Egypt", "UAE"],
+      "hotels": 234,
+      "tours": 843,
+      "category_complete_hotels": 220,
+      "category_complete_percent": 94.0,
+      "rating_complete_hotels": 212,
+      "rating_complete_percent": 90.6,
+      "sea_distance_complete_hotels": 101,
+      "sea_distance_complete_percent": 43.2,
+      "displayed_meal_complete_hotels": 210,
+      "displayed_meal_complete_percent": 89.7,
+      "raw_meal_full_name_complete_tours": 843,
+      "raw_meal_full_name_complete_percent": 100.0,
+      "decision": "Only exact category is exposed conditionally; rating, sea distance and meal facets remain deferred."
+    },
+    "size": {
+      "eight_assets_before_raw_bytes": 14677,
+      "eight_assets_after_raw_bytes": 15986,
+      "eager_route_before_raw_bytes": 86030,
+      "eager_route_after_raw_bytes": 87339,
+      "full_route_before_raw_bytes": 128448,
+      "full_route_after_raw_bytes": 129757,
+      "selected_phase_raw_bytes": 42418,
+      "delta_raw_bytes": 1309
+    },
+    "ci": {
+      "security_run": 34312454899,
+      "exact_artifact_runs": [34312455035, 34312459604],
+      "artifact_id": 10088877773,
+      "artifact_digest": "sha256:6f905758b370e581b618b16bd80cb9c3b9c01f094c82e5e38cab9ea16fd5fe6b",
+      "archive_sha256": "52cdbfa67198667b09fac6549effa93f09e9f3d5e2550289b1b30837ddfe6251",
+      "manifest_sha256": "8aea01581c942af0863e126beadf31c81a5bad92b7a06a08b34ce8ec1d897109",
+      "payload_sha256": "b3b276a246792bcd6126366ca47f7711df8f1bdc7ff7ec4b1eda96f530d0fa0c",
+      "payload_file_count": 717,
+      "focused_browser": "16 result states at 375/760/761/999/1000/1024/1025/1440, raw/served parity, native entry375/1440, external calls0, leads0.",
+      "conclusion": "success"
+    },
+    "publication": {
+      "published": true,
+      "published_preview_source_sha": "d69bb12907cf6bb890f9f86565b16a173825d96d",
+      "release_pin_sha": "b6c1837a817562100355586205366d5bad6c208a",
+      "control_sha": "f334340dd2167d0c8dd097545a548dfa77461fd9",
+      "deploy_run": 34312777229,
+      "deployment_evidence_artifact": 10088967073,
+      "deployment_evidence_digest": "sha256:272ec5c425952db66cef1cc7d0d05ef7b35d650488b3ff79c2113c3ab3da8c15",
+      "route_count": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "control_closed_without_merge": true,
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "visual_verification": {
+      "live_width": 1363,
+      "entry": "Moscow/Turkey catalogs loaded, exact Search3 assets served, noindex present and no horizontal overflow.",
+      "progressive_results": "At 25 complete hotels the category facet appeared with exact 2/3/4-star options. After 100 hotels introduced incomplete category data, the facet reset and disappeared as designed.",
+      "mobile_and_breakpoints": "Exact CI covered 375/760/761/999/1000/1024/1025/1440 with no overflow; no physical-device claim.",
+      "lead_submitted": false
+    },
+    "audit": "docs/project/search3-local-category-facet-product.json",
+    "rollback": "Revert release merge b6c1837a817562100355586205366d5bad6c208a independently; preview deployment retained its previous rollback copy.",
+    "deferred": [
+      "rating and sea-distance facets until current loaded data is complete",
+      "meal facet until the canonical renderer truthfully reads meal.fullName",
+      "physical Safari/safe-area",
+      "owner visual/design acceptance for production",
+      "full lead/site/SEO/responsive journey"
+    ],
+    "next_action": "Repair the canonical renderer text normalization so meal.fullName is displayed when present, with focused source/fixture coverage and no price/API/lead/lifecycle changes; then re-audit whether a complete truthful meal facet is useful."
   },
   "latest_current_price_calendar_package": {
     "schema_version": 1,
@@ -1090,9 +1185,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1668 adds one responsive local hotel-name filter for loaded results. Source 0fedbcb5 is checked and merged as fd0d0cf6; exact artifact retained, preview still publishes calendar source 049ceba4 because control push did not trigger.",
+    "last_material_progress": "#1672 extends the one loaded-results filter owner with a completeness-gated exact category facet. Source d69bb129 is checked, merged as b6c1837a and published only to the isolated preview.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit completeness of loaded-result rating/category/sea-distance/meal data; expose at most one truthful local facet only when complete.",
+    "next_action": "Repair canonical meal text normalization for meal.fullName with focused coverage, then re-audit a truthful local meal facet.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -1103,10 +1198,10 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56",
-    "published_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
-    "next_action": "Audit completeness of loaded-result rating/category/sea-distance/meal data; expose at most one truthful local facet only when complete.",
-    "baseline_release_sha": "fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56",
+    "last_fully_checked_release_sha": "b6c1837a817562100355586205366d5bad6c208a",
+    "published_source_sha": "d69bb12907cf6bb890f9f86565b16a173825d96d",
+    "next_action": "Repair canonical meal text normalization for meal.fullName with focused coverage, then re-audit a truthful local meal facet.",
+    "baseline_release_sha": "b6c1837a817562100355586205366d5bad6c208a",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9800,7 +9895,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T04:00:00.000Z",
+  "updated_at": "2026-09-09T06:55:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",

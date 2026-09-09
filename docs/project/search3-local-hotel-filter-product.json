@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-09-09",
-  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
   "source_pr": 1668,
   "baseline_release_sha": "91591aee36918abcd5389f9ee948e21e9747f982",
   "source_sha": "0fedbcb5ffb426af4069305d06f446a571dc5254",
@@ -52,19 +52,22 @@
     "real_leads_submitted": 0
   },
   "publication": {
-    "published": false,
-    "published_preview_source_sha": "049ceba47ee170699cc7792b050c7af47224c7ee",
+    "published": true,
+    "published_preview_source_sha": "0fedbcb5ffb426af4069305d06f446a571dc5254",
     "attempted_control_prs": [1669, 1670],
-    "attempt_result": "Both controls were closed without merge or deploy because connector-created ref/content updates emitted Security PR checks but no push event for the one-shot deployment workflow.",
+    "attempt_result": "The first connector-only controls did not emit a push event; a later exact push-control retry succeeded.",
+    "control_sha": "96d18e15a9fd3afbbd5acb09408756c3ee2736b2",
+    "deploy_run": 34309036334,
+    "deployment_evidence_artifact": 10087692143,
+    "deployment_evidence_digest": "sha256:159d9f76bdf1ae19b78702c9633a314ed2a53efc0e824364500e73fe4e7b3de5",
     "artifact_reusable": true,
-    "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
     "main_changed": false,
     "production_changed": false
   },
   "deferred": [
-    "Publish the existing exact artifact when an authenticated push can trigger the one-shot control workflow; do not rebuild merely for documentation.",
     "Physical Safari and owner production acceptance remain deferred."
   ],
-  "rollback": "Revert release merge fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56 independently. Published preview rollback is unchanged because this package was not deployed.",
+  "rollback": "Revert release merge fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56 independently. The isolated preview retained its prior rollback copy.",
   "next_action": "Audit completeness of loaded-result rating, category, sea-distance and meal fields; expose at most one useful local facet only when every loaded card has complete data, without restoring retired filter layers or duplicating ANEX work."
 }
