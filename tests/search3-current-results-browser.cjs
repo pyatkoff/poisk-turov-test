@@ -12,7 +12,7 @@ fs.mkdirSync(output, { recursive: true });
 const names = JSON.parse(execFileSync('php', ['-r', 'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'], { cwd: root, encoding: 'utf8' }));
 const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n;\n');
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
-const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
+const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
   { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, picturelink: picture, tours: [tour, { ...tour, id: 'other-tour', price: 159000 }] },
   { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
@@ -140,17 +140,25 @@ async function run(browser, width, previous) {
     assert.match(await card.locator('.hotel-decision-rating').innerText(), /Рейтинг 5/, 'hotel score is not confused with star category');
     assert.match(await page.locator('#resultSummary').innerText(), /цены указаны за весь тур/, 'result summary explains price scope');
     assert.equal(await card.locator('.tour-row').count(), 1, 'representative tour shown immediately');
-    assert.ok((await card.locator('.direct-tour').boundingBox()).height >= 35.5, 'real selection action remains usable');
+    assert.ok((await card.locator('.direct-tour').boundingBox()).height >= 44, 'real selection action retains a full touch target');
+    assert.match(await card.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName-only meal is visible in the offer facts');
+    const photo = await card.locator('.hotel-photo').boundingBox();
+    const body = await card.locator('.hotel-body').boundingBox();
+    assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
+    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap');
+    else assert.ok(body.x >= photo.x + photo.width - 1, 'desktop hotel content sits beside the photo without overlap');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), tour.id, 'selection identity retained');
     assert.equal(await card.locator('.direct-tour').innerText(), 'Выбрать тур', 'selection action identifies its target');
     const collapsed = await snapshot(page);
     if (collapsed.overflow) console.error(JSON.stringify({width,previous,offenders:collapsed.offenders}));
     assert.equal(collapsed.overflow, false, width + ': results fit viewport');
+    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
     await card.locator('.tour-more-toggle').click();
     assert.equal(await card.locator('.tour-row').count(), 2, 'actual toggle reveals all tours');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
     const expanded = await snapshot(page);
     assert.equal(expanded.overflow, false, width + ': expanded results fit viewport');
+    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').click();
