@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "issue": 1647,
+  "pr": 1493,
+  "scope": "isolated ANEX preview review panel; no live deployment",
+  "source_sha": "f175ea5dd462a5ebfa2642329ad9a63ab6ccefa2",
+  "run_id": 34319154125,
+  "job_id": 102361747830,
+  "status": "IMPLEMENTED_AND_SYNTHETICALLY_VERIFIED_NOT_CONNECTED",
+  "artifacts": [
+    {
+      "id": 10091202113,
+      "name": "anex-review-panel-test-fixture",
+      "digest": "sha256:39570f48a26bc3fcdc147eb048b8e3b2f2667afab0183298872d2ce16aba463b",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34319154125/artifacts/10091202113"
+    },
+    {
+      "id": 10091201602,
+      "name": "anex-review-panel-browser",
+      "digest": "sha256:b2f736cbca627d32b7c3791e6616beaa906305839a53023b421ff806448b7508",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34319154125/artifacts/10091201602"
+    }
+  ],
+  "implemented": [
+    "persistent observations queue with frequency/recency order, 25-row pagination, literal search, country/status filters",
+    "saved staging candidates/current canonical comparison with missing and truncated evidence disclosures",
+    "read-only ANEX content ID/digest validation and existing Tourvisor details integration",
+    "escaped descriptions and click-only safe photo links; no background CDN/supplier calls",
+    "transactional accepted manual mapping, separate pair exclusion, nonblocking defer, request replay, stale evidence protection, audit/readback/rollback",
+    "fail-closed verified-session adapter boundary, CSRF, no-store/noindex/CSP, preview-only path"
+  ],
+  "verified": {
+    "php_syntax": "passed",
+    "mysql_checks": 64,
+    "mysql_target": "disposable loopback anex_review_test only",
+    "chromium_http": "passed synthetic authenticated/anonymous contexts",
+    "viewport_widths": [
+      1280,
+      820,
+      390,
+      320
+    ],
+    "horizontal_overflow": false,
+    "auth_csrf_idempotence_stale_alternative_decision": true,
+    "existing_preview_resolver_readback": "test DB passed",
+    "supplier_calls": 0
+  },
+  "not_performed": [
+    "live DB reads or writes by panel lane",
+    "application migration",
+    "real owner authentication/session integration",
+    "preview publication",
+    "main/release merge",
+    "manual visual screenshot inspection",
+    "Safari verification",
+    "independent artifact ZIP download"
+  ],
+  "preservation": {
+    "live_catalog_hotels": "not touched",
+    "live_existing_mappings": "not touched",
+    "live_manual_decisions": "not touched",
+    "source_checkpoints": "not touched",
+    "other_lane_content_files": "preserved; consumed read-only",
+    "general_Search3_DS2": "no changes",
+    "prior_policy_manual_catalog_candidates": "equality/readback tested in MySQL fixture"
+  },
+  "deployment_gates": [
+    {
+      "code": "OWNER_AUTHORITY_NOT_IDENTIFIED",
+      "detail": "Repository contains no real admin/login module; public ANYTOUR_ANEX_SEARCH3 session is only anonymous rate limiting. Need a reviewed real owner-session authority/adapter, not request-provided actor/role."
+    },
+    {
+      "code": "PAIR_EXCLUSIONS_IMPORT_GUARD_PENDING",
+      "detail": "Pair exclusion store and web service tested; all automatic acceptance paths must honor current exclusions transactionally before enabling web writes. Trusted deployment gate currently false."
+    },
+    {
+      "code": "ADDITIVE_MIGRATION_AND_LIVE_READBACK_PENDING",
+      "detail": "schema.sql prepared but not applied. Must preserve live registry/manual/staging and validate reads/writes through a real owner session."
+    },
+    {
+      "code": "LIVE_DOSSIER_PERSISTENCE_PENDING",
+      "detail": "Existing observations and staging survive artifact expiry, but live-only dossiers need a durable bridge. Missing live candidates remain explicit, not replaced with fabricated evidence."
+    }
+  ],
+  "next_action": "Keep P2 priority: identify authorized owner session integration; independently add importer pair-exclusion guards and durable live-dossier bridge with tests. Then bounded migration and isolated panel deployment/readback. Do not repeat content collection, P1 fixes or matching backlog.",
+  "history": [
+    {
+      "sha": "1aff640f381aaf51dac266e942698dd33162bf85",
+      "run": 34318386356,
+      "result": "54 MySQL checks passed"
+    },
+    {
+      "sha": "e1b884ace6c8d4ea21e70922a6b4f6cf0a1f7693",
+      "run": 34318687751,
+      "result": "CI configuration invalid before execution; runner context moved into shell step"
+    },
+    {
+      "sha": "bbeb870cff120b3973414509787bb60fbd9f761c",
+      "run": 34318775116,
+      "result": "54 checks and HTTP/responsive passed"
+    }
+  ]
+}
