@@ -214,6 +214,10 @@ async function checkAndromedaExpansion(page, width, previous, control) {
   try {
     await start(73);
     const card = page.locator('#results [data-hotel-id="21477"]');
+    if (width >= 1025) {
+      assert.equal(await page.locator('.results-filter-rail').isVisible(), false, 'one loaded hotel does not expose unusable local facets');
+      assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results reclaim the hidden filter-rail track');
+    }
     assert.equal(await card.locator('.tour-row').count(), 1, 'accepted grouped Andromeda offer keeps one compact representative');
     assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
     assert.equal(await card.locator('[data-andromeda-expand]').innerText(), 'Все варианты Андромеды', 'current card exposes one explicit provider expansion action');
