@@ -23,7 +23,7 @@ $fixtures = [
     'anex_hotel_auto_matches' => 'anex_hotel_id INT PRIMARY KEY,candidate_count INT,automated_status VARCHAR(32),automated_reason VARCHAR(64)',
     'anex_hotel_candidates' => 'anex_hotel_id INT,candidate_rank INT,catalog_hotel_id INT,name_similarity DECIMAL(8,6),score DECIMAL(8,6),distance_m DECIMAL(12,2),candidate_json TEXT,PRIMARY KEY(anex_hotel_id,candidate_rank)',
     'anex_hotel_decisions' => "anex_hotel_id INT PRIMARY KEY,decision_status VARCHAR(32),catalog_hotel_id INT,decided_by VARCHAR(255),decision_note TEXT,decided_at DATETIME",
-    'anex_hotel_search_mappings' => 'anex_hotel_id INT PRIMARY KEY,catalog_hotel_id INT,enabled INT,scope VARCHAR(32),approval_policy VARCHAR(64),match_class VARCHAR(32)',
+    'anex_hotel_search_mappings' => "anex_hotel_id INT PRIMARY KEY,catalog_hotel_id INT,enabled INT,scope VARCHAR(32),approval_policy VARCHAR(64),match_class VARCHAR(32),source_row_digest CHAR(64) DEFAULT '',mapping_digest CHAR(64) DEFAULT ''",
     'anex_hotel_content' => 'anex_hotel_id INT PRIMARY KEY,status VARCHAR(24),source_sha CHAR(40),content_sha256 CHAR(64),payload_json MEDIUMTEXT,reason VARCHAR(64),fetched_at_utc DATETIME',
     'catalog_hotel_details' => 'hotel_id INT PRIMARY KEY,status VARCHAR(24),source_hash CHAR(64),address VARCHAR(1000),site VARCHAR(1000),latitude DECIMAL(10,7),longitude DECIMAL(10,7),fetched_at DATETIME,primary_image_url VARCHAR(2048),description MEDIUMTEXT,images_json MEDIUMTEXT'
 ];
@@ -43,7 +43,7 @@ foreach ([1,2,3,4,5,6,7,8,9,10,11,12] as $id) {
 $insert->execute([1,3,103,'{}']);
 $db->exec("INSERT INTO anex_hotel_decisions VALUES (20,'accepted',101,'owner:historic','preserve me','2026-09-08 12:00:00')");
 $db->exec("INSERT INTO anex_hotel_decisions VALUES (21,'rejected',NULL,'owner:historic','hotel-wide block','2026-09-08 12:00:00')");
-$db->exec("INSERT INTO anex_hotel_search_mappings VALUES (22,102,1,'preview','owner_exact_and_strong_20260908','strong_candidate')");
+$db->exec("INSERT INTO anex_hotel_search_mappings (anex_hotel_id,catalog_hotel_id,enabled,scope,approval_policy,match_class) VALUES (22,102,1,'preview','owner_exact_and_strong_20260908','strong_candidate')");
 $content = ['id'=>1,'name'=>'Hotel One','address'=>'ANEX address','description'=>'<script>unsafe description</script>',
     'latitude'=>36.0,'longitude'=>30.0,'photos'=>[['url'=>'https://images.example.com/anex.jpg','note'=>'Территория ANEX']],
     'location'=>'Рядом с пляжем', 'attributes'=>[['name'=>'Год открытия','value'=>'2005']],
@@ -154,6 +154,8 @@ check($canonical === $db->query('SELECT * FROM catalog_hotels ORDER BY id')->fet
 check($policy === $db->query('SELECT * FROM anex_hotel_search_mappings ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC), 'policy rows unchanged');
 check($historic === $db->query('SELECT * FROM anex_hotel_decisions WHERE anex_hotel_id IN (20,21) ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC), 'previous manual accept/block unchanged');
 check($candidateHash === hash('sha256',AnexReviewService::json($db->query('SELECT * FROM anex_hotel_candidates ORDER BY anex_hotel_id,candidate_rank')->fetchAll(PDO::FETCH_ASSOC))), 'candidate evidence unchanged');
+
+require __DIR__ . '/anex-review-pair-import-test.php';
 
 $html = anex_review_render($service->queue(['status'=>'all']),$service->detail(1),[], $csrf,false,'test-nonce');
 check(strpos($html,'<script>alert(1)</script>') === false && strpos($html,'&lt;script&gt;') !== false,'escaped hotel name');

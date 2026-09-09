@@ -6,6 +6,9 @@ on:
       - 'app/admin/anex-review/**'
       - 'v2/anex-hotel-review.php'
       - 'tests/anex-review-panel-test.php'
+      - 'tests/anex-review-pair-import-test.php'
+      - 'app/integrations/anex-search-mapping-registry.php'
+      - 'scripts/diagnostics/anex_search_mapping_writer.php'
       - 'tests/anex-review-panel-browser.cjs'
       - 'tests/anex-review-http-fixture.php'
       - '.github/workflows/anex-review-panel.yml'
@@ -14,6 +17,9 @@ on:
       - 'app/admin/anex-review/**'
       - 'v2/anex-hotel-review.php'
       - 'tests/anex-review-panel-test.php'
+      - 'tests/anex-review-pair-import-test.php'
+      - 'app/integrations/anex-search-mapping-registry.php'
+      - 'scripts/diagnostics/anex_search_mapping_writer.php'
       - 'tests/anex-review-panel-browser.cjs'
       - 'tests/anex-review-http-fixture.php'
       - '.github/workflows/anex-review-panel.yml'
@@ -80,3 +86,4 @@ jobs:
           name: anex-review-panel-test-fixture
           path: '${{ runner.temp }}/anex-review-panel-fixture.html'
           if-no-files-found: error
+
