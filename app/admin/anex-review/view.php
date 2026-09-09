@@ -11,6 +11,31 @@ function anex_review_value($value): string
     return $value === null || $value === '' ? '<span class="muted">Нет сохранённых данных</span>' : anex_review_escape($value);
 }
 
+/** Display saved ANEX title/text arrays without changing the source payload or digest. */
+function anex_review_description($value, bool $anex): string
+{
+    $missing = '<p class="muted">Нет сохранённого описания.</p>';
+    if (!is_string($value) || trim($value) === '') return $missing;
+    $value = trim($value);
+    if (!$anex || ($value[0] !== '[' && $value[0] !== '{')) {
+        return '<p>' . nl2br(anex_review_escape($value)) . '</p>';
+    }
+    $unreadable = '<p class="muted">Не удалось прочитать разделы сохранённого описания.</p>';
+    if (strlen($value) > 16000) return $unreadable;
+    $sections = json_decode($value, true, 8);
+    if (!is_array($sections) || $value[0] !== '[' || count($sections) > 32) return $unreadable;
+    $html = '';
+    foreach ($sections as $section) {
+        if (!is_array($section) || !is_string($section['title'] ?? null) || !is_string($section['text'] ?? null)) return $unreadable;
+        $title = trim($section['title']);
+        $text = trim(str_replace(["\r\n", "\r"], "\n", $section['text']));
+        if ($text === '') continue;
+        $html .= '<section class="description-section"><h4>' . anex_review_escape($title !== '' ? $title : 'Описание')
+            . '</h4><p>' . nl2br(anex_review_escape($text)) . '</p></section>';
+    }
+    return $html !== '' ? $html : $missing;
+}
+
 /** Saved, source-specific HTTPS photos; never derives another hotel's photo URL. */
 function anex_review_gallery(array $values, string $source): string
 {
@@ -53,7 +78,11 @@ function anex_review_saved_content(?array $row, bool $anex): string
     $html .= '<dl><dt>Адрес из карточки</dt><dd>' . anex_review_value($content['address'] ?? null) . '</dd>'
         . '<dt>Координаты карточки (отдельно от каталожных)</dt><dd>' . anex_review_value($content['latitude'] ?? null)
         . ', ' . anex_review_value($content['longitude'] ?? null) . '</dd></dl>';
-    $html .= '<details open class="description"><summary>Описание отеля</summary><p>' . nl2br(anex_review_value($content['description'] ?? null)) . '</p></details>';
+    // Only this inspected ANEX ID is confirmed as an allocation offer; no name heuristic.
+    $fortuna = $anex && (int)($content['id'] ?? 0) === 17097;
+    if ($fortuna) $html .= '<p class="notice">FORTUNA — предложение без заранее определённого отеля. Текст описывает условия размещения и не подтверждает совпадение с конкретным отелем.</p>';
+    $html .= '<details open class="description"><summary>' . ($fortuna ? 'Условия предложения FORTUNA' : 'Описание отеля') . '</summary>'
+        . anex_review_description($content['description'] ?? null, $anex) . '</details>';
     if (!empty($row['description_truncated'])) $html .= '<p class="muted">Длинное описание показано частично (до 16 000 символов).</p>';
     if ($anex) {
         foreach (['location'=>'Расположение', 'transfer'=>'Трансфер', 'note'=>'Дополнительная информация'] as $key=>$label) {
@@ -95,7 +124,7 @@ function anex_review_render(array $queue, ?array $detail, array $filters, string
     ob_start(); ?>
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Проверка отелей ANEX — AnyTour</title>
 <style nonce="<?= anex_review_escape($nonce) ?>">
-*{box-sizing:border-box}body{margin:0;background:#f4f6fa;color:#202c43;font:16px/1.5 system-ui,sans-serif}main{max-width:1440px;padding:24px;margin:auto}h1{font-size:28px;margin:0 0 8px}h2{font-size:21px}h3{font-size:18px}a{color:#2743cb}article,.notice,.filters{background:white;border:1px solid #d7deeb;border-radius:12px;padding:18px;margin:16px 0}.notice{border-left:4px solid #2743cb}.muted,small{color:#59677d}.filters,.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:end}label{display:block}input,select,button{font:inherit;padding:10px;border:1px solid #9ba9bf;border-radius:6px;max-width:100%}button{background:#2743cb;color:white;cursor:pointer}button:disabled{background:#e0e5ed;color:#67758b;cursor:not-allowed}.filters input{width:260px}.list{list-style:none;margin:0;padding:0}.list li{padding:14px 0;border-bottom:1px solid #d7deeb;display:flex;gap:16px;justify-content:space-between}.list a{font-weight:600}.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px}.compare>section,.compare>div,.compare>article{min-width:0}.hotel-comparison{align-items:start}.hotel-comparison>article,.candidate-list>article:first-child{margin-top:0}.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.gallery a{display:block;min-width:0}.gallery a:first-child{grid-column:1/-1}.gallery img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#edf1fb}.gallery a:first-child img{aspect-ratio:16/10}.photo-empty{display:grid;place-items:center;min-height:180px;text-align:center;padding:24px;background:#edf1fb;border-radius:8px;color:#59677d}.photo-caption{font-size:13px}.description{margin:18px 0}details p{overflow-wrap:anywhere}details+details{margin-top:12px}dd{margin:0 0 12px;overflow-wrap:anywhere}dt{font-size:14px;color:#59677d}.confirm{max-width:360px;font-size:14px;margin:10px 0}.confirm input{vertical-align:middle}.badge{background:#edf1fb;padding:3px 8px;border-radius:5px;white-space:nowrap}.actions form{flex:1;min-width:210px}.version{font-size:12px;overflow-wrap:anywhere}nav{display:flex;gap:20px;flex-wrap:wrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}summary{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #ff510c;outline-offset:3px}@media(max-width:860px){main{padding:14px}h1{font-size:24px}.compare{grid-template-columns:1fr}.list li{display:block}.filters label,.filters input{width:100%}.actions{align-items:stretch}article{padding:14px}}
+*{box-sizing:border-box}body{margin:0;background:#f4f6fa;color:#202c43;font:16px/1.5 system-ui,sans-serif}main{max-width:1440px;padding:24px;margin:auto}h1{font-size:28px;margin:0 0 8px}h2{font-size:21px}h3{font-size:18px}a{color:#2743cb}article,.notice,.filters{background:white;border:1px solid #d7deeb;border-radius:12px;padding:18px;margin:16px 0}.notice{border-left:4px solid #2743cb}.muted,small{color:#59677d}.filters,.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:end}label{display:block}input,select,button{font:inherit;padding:10px;border:1px solid #9ba9bf;border-radius:6px;max-width:100%}button{background:#2743cb;color:white;cursor:pointer}button:disabled{background:#e0e5ed;color:#67758b;cursor:not-allowed}.filters input{width:260px}.list{list-style:none;margin:0;padding:0}.list li{padding:14px 0;border-bottom:1px solid #d7deeb;display:flex;gap:16px;justify-content:space-between}.list a{font-weight:600}.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px}.compare>section,.compare>div,.compare>article{min-width:0}.hotel-comparison{align-items:start}.hotel-comparison>article,.candidate-list>article:first-child{margin-top:0}.gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.gallery a{display:block;min-width:0}.gallery a:first-child{grid-column:1/-1}.gallery img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#edf1fb}.gallery a:first-child img{aspect-ratio:16/10}.photo-empty{display:grid;place-items:center;min-height:180px;text-align:center;padding:24px;background:#edf1fb;border-radius:8px;color:#59677d}.photo-caption{font-size:13px}.description{margin:18px 0}.description-section h4{margin:18px 0 6px;font-size:15px;overflow-wrap:anywhere}.description-section p{margin:0}details p{overflow-wrap:anywhere}details+details{margin-top:12px}dd{margin:0 0 12px;overflow-wrap:anywhere}dt{font-size:14px;color:#59677d}.confirm{max-width:360px;font-size:14px;margin:10px 0}.confirm input{vertical-align:middle}.badge{background:#edf1fb;padding:3px 8px;border-radius:5px;white-space:nowrap}.actions form{flex:1;min-width:210px}.version{font-size:12px;overflow-wrap:anywhere}nav{display:flex;gap:20px;flex-wrap:wrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}summary{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #ff510c;outline-offset:3px}@media(max-width:860px){main{padding:14px}h1{font-size:24px}.compare{grid-template-columns:1fr}.list li{display:block}.filters label,.filters input{width:100%}.actions{align-items:stretch}article{padding:14px}}
 </style></head><body><main>
 <h1>Проверка отелей ANEX</h1><p class="muted">Сохранённые отели из реальных поисков. Описания и фото каждого источника показаны отдельно.</p>
 <?php if (!$write): ?><p class="notice">Режим просмотра. Сохранение решений пока недоступно.</p><?php endif; ?>

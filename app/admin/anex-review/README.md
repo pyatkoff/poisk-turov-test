@@ -92,3 +92,14 @@ Verified official public-page links are pinned by ANEX ID in `public-cards.json`
 For 16193, the official HTML proves the same ID and twelve explicit room-photo
 URLs. Media returned403 during research, so those URLs are evidence only and are
 not presented as a working gallery. No cross-source image substitution occurs.
+
+Saved ANEX descriptions now render JSON arrays of `title`/`text` as readable
+sections with escaped headings, text and line breaks. Plain descriptions remain
+supported; malformed structured values show an explicit reading failure. Parsing
+is bounded to 16 KB / 32 sections / depth 8 and does not rewrite content or hashes.
+The read-only inspection of all 30 stored records found 29 hotel descriptions
+(184 sections including one offer section) and no photos. ANEX 17097 is explicitly
+labelled as FORTUNA allocation conditions, not evidence for a specific hotel;
+other hotels are not classified by the word Fortuna in their names. This is display
+context, not a change to the manual decision policy or an automatic mapping.
+Evidence: `reports/anex-saved-descriptions-review-20260909.json`.
