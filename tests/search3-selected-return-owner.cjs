@@ -77,7 +77,12 @@ const vm = require('node:vm');
     V2Runtime: {
       state: {},
       api(actionName) {
-        if (actionName === 'tour') return Promise.resolve({ id: 17, hotel: { name: 'Test' }, price: 100 });
+        if (actionName === 'tour') return Promise.resolve({
+          id: 17,
+          hotel: { name: 'Test' },
+          price: 100,
+          hotelDescription: 'Номер 25 м&#178; &amp; SPA <b>рядом</b> &#x3C;script&#x3E;alert(1)&#x3C;/script&#x3E;'
+        });
         if (actionName === 'flights') return Promise.resolve([]);
         throw new Error('unexpected API action');
       }
@@ -109,6 +114,9 @@ const vm = require('node:vm');
   assert.equal(selected.hidden, false, 'tour selection reveals the selected root');
   assert.equal(selectedAttributes.has('aria-hidden'), false, 'tour selection clears stale aria-hidden');
   assert.equal(original.disabled, false, 'source action is restored after tour load');
+  assert.match(selected.innerHTML, /<div class="hotel-desc">Номер 25 м² &amp; SPA рядом &lt;script&gt;alert\(1\)&lt;\/script&gt;<\/div>/,
+    'supplier entities become readable text while decoded markup remains escaped');
+  assert.doesNotMatch(selected.innerHTML, /<script>/, 'decoded supplier text cannot inject markup');
 
   const back = action('back-results');
   click({ target: back, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
