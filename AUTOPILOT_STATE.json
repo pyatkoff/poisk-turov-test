@@ -1244,7 +1244,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Fixed failed #1705 artifact, passed focused lifecycle plus exact raw/served browser checks, integrated calendar; continued #1707 seasonal date correctness with existing SQLite reader smoke, integrated checked combined source. Next accumulated publication/acceptance; production approval remains gated."
+    "last_execution_continuation": "Integrated #1710 matching-duration window and #1713 terminal projection; published accumulated exact840cd279; live homepage/AI calendar/zero/continued/month/selected/radio/phone/return checked without leads. Two identical deploys occurred because the commit helper omitted push events; use complete branch-filtered Actions REST before any future retry. Remaining bounded acceptance saved; no production approval inferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1269,9 +1269,9 @@
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "fd944fca0043bc44510e26d354c2806e41db1c27",
-    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
-    "next_action": "Refresh release/main/open PRs; reuse exact combined artifact 10096730023 from source 5fc42aad0f5afa895666065407ad61dbcb4bc101 for one accumulated isolated whole-site preview checkpoint. Inspect changed homepage readiness, monthly handoffs/offer dates and filtered calendar/retained-results return on mobile/desktop. Record Safari and any unavailable evidence honestly; no production migration before concrete owner visual approval. Do not restart completed form/cards/flights/facets/shared owners/pages work or duplicate ANEX.",
+    "last_fully_checked_release_sha": "ea3c146c1c5f6ab92a520eb71732db6fb1a7364e",
+    "published_source_sha": "840cd2793932e67e0377f5bfc13b325ad4801569",
+    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published840cd279: remaining live mobile/physical Safari and bounded site/SEO checks. First inspect the observed literal &#178; in the selected hotel's description; if reproduced in canonical display owner, correct text decoding without HTML injection or payload changes. Keep completed homepage/calendar/selected desktop checks; no repeat deploy for documents. Production migration remains owner-visual gated.",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -10248,7 +10248,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T09:15:08.572Z",
+  "updated_at": "2026-09-09T09:39:56Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -13232,6 +13232,26 @@
       "physical Safari",
       "whole-site final acceptance",
       "owner-approved production migration"
+    ]
+  },
+  "latest_calendar_acceptance_corrections": {
+    "audit": "docs/project/search3-calendar-acceptance-corrections.json",
+    "source_prs": [
+      1710,
+      1713
+    ],
+    "source_sha": "840cd2793932e67e0377f5bfc13b325ad4801569",
+    "checked_release_sha": "ea3c146c1c5f6ab92a520eb71732db6fb1a7364e",
+    "published_source_sha": "840cd2793932e67e0377f5bfc13b325ad4801569",
+    "deploy_run": 34335163839,
+    "artifact_id": 10097233750,
+    "status": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "css_delta_bytes": 0,
+    "js_delta_bytes": 83,
+    "deferred": [
+      "Live mobile and physical Safari",
+      "Full site/SEO acceptance beyond sampled homepage/country/month and selected/return route",
+      "Production visual approval for the concrete release"
     ]
   }
 }
