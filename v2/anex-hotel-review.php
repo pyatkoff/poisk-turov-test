@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// Deliberately not included in the existing public-preview deployment manifest.
+// Separate scoped publication; no whole-site deployment or anonymous authority.
 ini_set('display_errors', '0');
 header('Cache-Control: no-store, private');
 header('X-Robots-Tag: noindex, nofollow');
@@ -18,19 +18,31 @@ try {
     }
     if (!in_array($_SERVER['REQUEST_METHOD'] ?? '', ['GET', 'POST'], true)) throw new RuntimeException('method_not_allowed', 405);
     if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 8192) throw new RuntimeException('request_too_large', 413);
-    // The absolute adapter path is a server setting, never a URL/query/header.
-    // Missing adapter means NO session creation, NO DB connection, and NO writes.
-    $path = getenv('ANYTOUR_ANEX_REVIEW_AUTH_FILE');
-    $adapterPath = is_string($path) && substr($path, 0, 1) === '/' ? realpath($path) : false;
-    $webRoot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
-    if (!$adapterPath || !$webRoot || strpos($adapterPath, rtrim($webRoot, '/') . '/') === 0 || !is_file($adapterPath)) {
-        throw new RuntimeException('review_auth_not_connected', 503);
-    }
-    $adapter = require $adapterPath;
-    if (!is_callable($adapter)) throw new RuntimeException('review_auth_not_connected', 503);
-    $context = $adapter(); // Must validate a real owner session, not merely start one.
-    if (!is_array($context) || session_status() !== PHP_SESSION_ACTIVE) throw new RuntimeException('review_forbidden', 403);
     $app = is_file(__DIR__ . '/app/admin/anex-review/service.php') ? __DIR__ . '/app/admin/anex-review' : dirname(__DIR__) . '/app/admin/anex-review';
+    // Preserve an explicitly installed trusted adapter. Otherwise use the separately
+    // approved private single-owner account. Neither path comes from HTTP input.
+    $path = getenv('ANYTOUR_ANEX_REVIEW_AUTH_FILE');
+    $webRoot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+    $standaloneOwner = false;
+    if (is_string($path) && $path !== '') {
+        $adapterPath = substr($path, 0, 1) === '/' ? realpath($path) : false;
+        if (!$adapterPath || !$webRoot || strpos($adapterPath, rtrim($webRoot, '/') . '/') === 0 || !is_file($adapterPath)) {
+            throw new RuntimeException('review_auth_not_connected', 503);
+        }
+        $adapter = require $adapterPath;
+        if (!is_callable($adapter)) throw new RuntimeException('review_auth_not_connected', 503);
+        $context = $adapter();
+    } else {
+        require_once $app . '/owner-login.php';
+        $login = new AnexReviewOwnerLogin(anex_owner_private_config(__DIR__), (string)$webRoot);
+        try { $context = $login->context(); }
+        catch (Throwable $e) {
+            if ($_SERVER['REQUEST_METHOD'] === 'GET') { header('Location: '.AnexReviewOwnerLogin::ROUTE, true, 303); exit; }
+            throw new RuntimeException('review_forbidden', 403);
+        }
+        $standaloneOwner = true;
+    }
+    if (!is_array($context) || session_status() !== PHP_SESSION_ACTIVE) throw new RuntimeException('review_forbidden', 403);
     require_once $app . '/access.php';
     $actor = AnexReviewAccess::principal($context);
     if (!isset($_SESSION['anex_review_csrf']) || ($_SESSION['anex_review_actor'] ?? null) !== $actor) {
@@ -69,7 +81,9 @@ try {
     $detail = isset($_GET['id']) ? $service->detail($_GET['id']) : null;
     $flash = (string)($_SESSION['anex_review_flash'] ?? '');
     unset($_SESSION['anex_review_flash']);
-    echo anex_review_render($service->queue($filters), $detail, $filters, $csrf, $write, $nonce, $flash);
+    $html = anex_review_render($service->queue($filters), $detail, $filters, $csrf, $write, $nonce, $flash);
+    if ($standaloneOwner) $html = str_replace('</body>', '<p><a href="'.AnexReviewOwnerLogin::ROUTE.'">Управление входом / выход</a></p></body>', $html);
+    echo $html;
 } catch (Throwable $e) {
     $code = in_array($e->getCode(), [400,403,404,405,409,413,503], true) ? $e->getCode() : 503;
     http_response_code($code);
