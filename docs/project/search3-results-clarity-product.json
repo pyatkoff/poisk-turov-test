@@ -230,6 +230,29 @@
       "user pilot",
       "owner approval for a concrete production release"
     ],
-    "next_action": "S3_OTA_MOBILE_JOURNEY: add one lead-local secondary action using the existing .back-results controller contract in summary-cta.js, extend current results-layout.css, and cover the complete shortlist offer -> flight -> phone -> edit/return path at 375/1440 without new handler or supplier/POST request."
+    "next_action": "S3_OTA_SITE_CONFIDENCE: audit one populated existing site entry type for truthful freshness/help, exact parameter-preserving Search3 handoff and useful stale/empty exit; coordinate shared templates through SITE #1719 and read-only SEO requirements through #1720."
+  },
+  "ota_mobile_journey_20260909": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "pr": 1784,
+    "source_sha": "7ce41316d15fd082c968c0fe7b861a55d50610e3",
+    "source_tree": "540ae252e78ed07e8f620d7e371fcc50cf338f50",
+    "checked_release_sha": "efc0c66bbb68f48da1eeff98630c8ad01e57f932",
+    "security_run": 34376890160,
+    "exact_run": 34376890165,
+    "exact_artifact": 10114331484,
+    "deploy_run": 34377654947,
+    "deploy_evidence_artifact": 10114544908,
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "behavior": "The lead form now owns one nearby >=44px 'Изменить тур' button and delegates to the existing .back-results controller; there is no new click handler or parallel selected-flow owner.",
+    "weight": "public JS 20554->21083 B (+529); public CSS 20633->20842 B (+209); total +738 B; inline 0 B",
+    "verification": "At 375/1440 shortlist exact offer -> flight -> phone -> edit/return preserved exact offer focus, filters, sort, expanded card, shortlist and contact draft; another exact offer refreshed room/meal/price/flight/summary and reset consent. Selected/results geometry, source build, PHP guards, Security and exact artifact passed; no supplier request or POST.",
+    "publication": "Nine preview routes returned 200 with noindex, disabled lead 403, counter0, internal PHP denied, rollback retained and production fingerprints unchanged.",
+    "deferred": [
+      "physical iPhone/Safari",
+      "five-participant user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "S3_OTA_SITE_CONFIDENCE: one truthful populated site entry and exact Search3 handoff through SITE #1719."
   }
 }
