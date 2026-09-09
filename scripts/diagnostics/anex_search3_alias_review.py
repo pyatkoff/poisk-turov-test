@@ -104,7 +104,10 @@ def analyze(row, item):
     candidates = item.get('candidates')
     if (item.get('key') != row['external_id'] or not isinstance(candidates, list)
             or len(candidates) > 4097 or item.get('fetch_limit') != 4097
-            or item.get('query_scope') != 'active_country_canonical_alias_or_geobox'
+            or item.get('query_scope') not in {
+                'active_country_canonical_alias_or_geobox',
+                'pinned_complete_candidates_plus_aliases',
+            }
             or item.get('candidate_set_complete') is not (len(candidates) < 4097)
             or item.get('alias_set_complete') is not True or item.get('alias_fetch_limit') != 8193
             or type(item.get('alias_rows')) is not int or item['alias_rows'] < 0
