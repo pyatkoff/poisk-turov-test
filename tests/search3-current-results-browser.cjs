@@ -53,7 +53,7 @@ async function snapshot(page) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12')] },
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
     { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11')] },
     { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Без питания' }, '2026-09-13')] }
   ];
@@ -83,7 +83,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'calendar starts from the lowest offer in the terminal result set');
     const eventCount = await page.evaluate(() => window.__mealEvents.length);
     await mealPreset.click();
-    assert.equal(await select.inputValue(), 'всё включено', 'quick choice drives the canonical meal select value');
+    assert.equal(await select.inputValue(), 'meal:all-inclusive', 'quick choice drives the canonical cross-provider meal value');
     assert.equal(await mealPreset.getAttribute('aria-pressed'), 'true', 'quick choice exposes its selected state');
     assert.equal(await mealPreset.evaluate(node => node === document.activeElement), true, 'quick choice keeps keyboard focus across the canonical rerender');
     assert.equal(await page.evaluate(() => window.__mealEvents.length), eventCount + 1, 'one local projection, no render loop');
@@ -106,11 +106,12 @@ async function checkMealFacet(page, width, previous) {
     const a = page.locator('#results [data-hotel-id=meal-a]');
     assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'representative choice keeps its original tour ID');
     assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'selected meal sets the actual displayed offer price');
-    assert.match(await a.locator('.hotel-choice-hint').innerText(), /2 варианта/, 'counts only matching offers');
+    assert.match(await a.locator('.hotel-choice-hint').innerText(), /4 варианта/, 'counts all matching AI and UAI offers across providers');
     await a.locator('.tour-more-toggle').focus();
     await a.locator('.tour-more-toggle').press('Enter');
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
-    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion cannot reintroduce an excluded meal');
+    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra', 'a-uai'], 'expansion keeps selectable AI and UAI offers without reintroducing an excluded meal');
+    assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent Andromeda AI remains visible but cannot enter the Tourvisor selection controller');
     assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
     assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
     await a.locator('.tour-more-toggle').press('Space');

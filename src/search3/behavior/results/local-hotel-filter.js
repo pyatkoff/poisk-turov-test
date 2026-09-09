@@ -5,6 +5,13 @@ const desktop=window.matchMedia('(min-width:1025px)');
 let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
+function mealKey(value){
+  const label=normalize(value),code=(label.match(/^(uai|ai|bb)(?=$|[+\s-])/)||[])[1]||'';
+  if(code==='ai'||code==='uai'||/вс[её] включено/.test(label))return'meal:all-inclusive';
+  if(code==='bb'||/(?:только )?завтрак/.test(label))return'meal:breakfast';
+  return label;
+}
+function mealOptionLabel(key,label){return key==='meal:all-inclusive'?'Всё включено':key==='meal:breakfast'?'Завтрак':label;}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
 function cards(){return Array.from(results.querySelectorAll('.hotel-card'));}
 function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Number(item&&item[key]||0)]));return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||0);}
@@ -82,19 +89,19 @@ function syncBudget(items){
 function syncBudgetLabel(){budgetLabel.textContent=budgetField.hidden?'':'до '+money(budgetInput.value)+' ₽';}
 function syncMeal(items){
   const labels=new Map(),ids=new Set(),api=window.V2Results;
-  const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const label=api.mealLabel(t).replace(/\s+/g,' ').trim(),key=normalize(label);if(!key)return false;labels.set(key,label);return true;});});
+  const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const label=api.mealLabel(t).replace(/\s+/g,' ').trim(),key=mealKey(label);if(!key)return false;if(!labels.has(key))labels.set(key,mealOptionLabel(key,label));return true;});});
   const previous=mealSelect.value,available=complete&&labels.size>1;mealSelect.replaceChildren(option('','Любое питание'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>mealSelect.appendChild(option(value,label)));
   mealSelect.value=available&&labels.has(previous)?previous:'';mealField.hidden=!available;
-  const options=Array.from(mealSelect.options).slice(1),pick=test=>options.find(item=>test(normalize(item.textContent))),quick=[];
-  const breakfast=pick(label=>label.includes('только завтрак')||/^bb(?:\b|\s|-)/.test(label)),inclusive=pick(label=>/вс[её] включено/.test(label)||/^u?ai(?:\b|\s|-)/.test(label));
+  const options=Array.from(mealSelect.options).slice(1),pick=value=>options.find(item=>item.value===value),quick=[];
+  const breakfast=pick('meal:breakfast'),inclusive=pick('meal:all-inclusive');
   [breakfast,inclusive].forEach(item=>{if(item&&!quick.some(choice=>choice.value===item.value))quick.push({value:item.value,label:item===breakfast?'Завтрак':'Всё включено'});});
   syncPresets(mealPresets,mealSelect,quick,'');return mealSelect.value;
 }
 function project(items){
   ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),budget=syncBudget(items);
   if(!meal&&!budget){projectedItems=items;mount();return projectedItems;}
-  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||normalize(api.mealLabel(t))===meal)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
+  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||mealKey(api.mealLabel(t))===meal)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
   mount();return projectedItems;
 }
 function apply(){
@@ -110,5 +117,5 @@ function clear(event){
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:6};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:7};
 })();
