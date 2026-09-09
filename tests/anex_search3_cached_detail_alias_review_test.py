@@ -39,6 +39,10 @@ class CachedDetailAliasReviewTests(unittest.TestCase):
         self.assertEqual(delta['counts']['total'], 1)
         self.assertEqual(delta['rows'][0]['anex_hotel_id'], 32752)
         self.assertEqual(delta['rows'][0]['catalog_hotel_id'], 66081)
+        self.assertEqual(
+            set(delta['sources']),
+            {'catalog_sha256', 'geo_sha256', 'gap_sha256'})
+        self.assertEqual(delta['sources']['gap_sha256'], review.CHECKED_CHECKPOINT_SHA)
 
 
 if __name__ == '__main__':
