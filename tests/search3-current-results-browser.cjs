@@ -73,6 +73,7 @@ async function checkMealFacet(page, width, previous) {
     const field = page.locator('.search3-meal-filter'), select = field.locator('select');
     const name = page.locator('.search3-hotel-filter input'), category = page.locator('.search3-category-filter select');
     const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
+    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     const calendar = page.locator('#currentPriceCalendar');
