@@ -14,6 +14,9 @@ date_default_timezone_set('Pacific/Honolulu');
 freshness_check(v2_offer_business_date(new DateTimeImmutable('2026-09-04T20:59:59Z')) === '2026-09-04', 'before midnight');
 freshness_check(v2_offer_business_date(new DateTimeImmutable('2026-09-04T21:00:00Z')) === '2026-09-05', 'Moscow midnight');
 freshness_check(v2_offer_business_date(new DateTimeImmutable('2026-12-31T21:00:00Z')) === '2027-01-01', 'year boundary');
+freshness_check(v2_offer_hot_search_window(new DateTimeImmutable('2026-09-04T20:59:59Z')) === ['2026-09-05','2026-09-19'], 'hot window before Moscow midnight');
+freshness_check(v2_offer_hot_search_window(new DateTimeImmutable('2026-09-04T21:00:00Z')) === ['2026-09-06','2026-09-20'], 'hot window after Moscow midnight');
+freshness_check(v2_offer_hot_search_window(new DateTimeImmutable('2026-12-31T21:00:00Z')) === ['2027-01-02','2027-01-16'], 'hot window year boundary');
 foreach (['', '2026-09-04', '2026-02-30', '2027-02-29', '2026-13-01', '2026-9-06', '06.09.2026', '2026-09-06T12:00:00Z'] as $date) {
     freshness_check(!v2_offer_departure_is_current($date, '2026-09-05'), 'reject ' . $date);
 }
