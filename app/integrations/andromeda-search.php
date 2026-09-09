@@ -63,14 +63,14 @@ final class AnyTourAndromedaSearch {
                 throw new RuntimeException('ANDROMEDA_PREVIOUS_RESULT_UNKNOWN');
         }
         $storeState=[];
-        (new AnyTourAndromedaOfferStore($storeState))->begin($searchRef,$generation,$now);
+        (new AnyTourAndromedaOfferStore($storeState,$this->dynamic))->begin($searchRef,$generation,$now);
         $next=['version'=>1,'search_ref'=>$searchRef,'generation'=>$generation,
             'status'=>'pending','criteria'=>$criteria,'store'=>$storeState,'error'=>null];
         $this->commit($next); // Durable reservation before login; no credentials/sid saved.
         try {
-            $client->login($username,$password);
+            $client->ensureLogin($username,$password);
             $payload=$this->dynamic ? $client->price($criteria) : $client->priceProbe();
-            $store=new AnyTourAndromedaOfferStore($storeState);
+            $store=new AnyTourAndromedaOfferStore($storeState,$this->dynamic);
             $projection=$store->capture($payload,$criteria,$searchRef,$generation,$now,$resolver);
             $next['store']=$storeState;
             $next['status']=$projection['status'];
@@ -102,7 +102,7 @@ final class AnyTourAndromedaSearch {
             'error'=>$s['status']==='unavailable'?'supplier_result_unavailable':null];
         if (in_array($s['status'],['pending','unavailable'],true)) return $out;
         $storeState=$s['store'];
-        $page=(new AnyTourAndromedaOfferStore($storeState))->projection($searchRef,$generation,$now);
+        $page=(new AnyTourAndromedaOfferStore($storeState,$this->dynamic))->projection($searchRef,$generation,$now);
         $out['page']=$page['page']; $out['pages_count']=$page['pages_count'];
         $out['offers']=$page['offers'];
         $groups=[];

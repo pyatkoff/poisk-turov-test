@@ -1453,3 +1453,27 @@ test('Andromeda renders independently, preserves its operator and ignores stale 
   page.reset(2,snapshot());
   assert.equal(page.results.querySelector('[data-anex-search3-card="900"]'),null);
 });
+
+test('Andromeda keeps unresolved namespaces, supplier content and loaded pages after a later failure', async () => {
+  const page = preview(false, true);page.reset(1,snapshot());
+  const tour=Object.assign({},hotel().tours[0],{provider:'andromeda',operator:'Intourist',offer_ref:'offer_a'});
+  const unresolved=hotel({local_id:null,card_key:'andromeda:operator_5:900',provider:'andromeda',mapping_status:'unresolved',
+    name:'Operator hotel',catalog:null,tours:[tour],andromeda_content:{source:'andromeda',image_url:'https://images.example.com/hotel.jpg',hotel_url:'https://operator.example.com/hotel'}});
+  const request=page.requests.find(r=>r.url.includes('api-andromeda-'));
+  request.respond({ok:true,data:{provider:'andromeda',generation:1,page:1,pages_count:3,hotels:[unresolved,hotel({local_id:900,tours:[tour]})]}});
+  await tick();
+  assert.ok(page.results.querySelector('[data-hotel-id="andromeda:operator_5:900"]'));
+  assert.ok(page.results.querySelector('[data-hotel-id="900"]'));
+  const second=page.requests.find(r=>r.body?.page===2);
+  assert.ok(second);
+  second.respond({ok:true,data:{provider:'andromeda',generation:1,page:2,pages_count:3,hotels:[Object.assign({},unresolved,{tours:[tour,Object.assign({},tour,{offer_ref:'offer_b',price:{amount:'200000',currency:'RUB'}})]})]}});
+  await tick();
+  const card=page.results.querySelector('[data-hotel-id="andromeda:operator_5:900"]');
+  assert.equal(card.querySelectorAll('.anex-search3-offer').length,2);
+  assert.match(card.textContent,/Фото: Андромеда/);
+  assert.ok(card.querySelector('a'));
+  const third=page.requests.find(r=>r.body?.page===3);assert.ok(third);
+  third.respond({ok:false,error:'supplier_unavailable'});await tick();
+  assert.ok(page.results.querySelector('[data-hotel-id="andromeda:operator_5:900"]'));
+  assert.equal(page.requests.filter(r=>r.body?.page===3).length,1);
+});

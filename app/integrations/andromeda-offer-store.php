@@ -10,10 +10,21 @@ require_once __DIR__.'/andromeda-hotel-resolver.php';
  */
 final class AnyTourAndromedaOfferStore {
     private $state;
+    private $allowPages;
     private const TTL = 900; // Local retention policy, NOT supplier price validity.
     private const MAX_BYTES = 2097152;
 
-    public function __construct(array &$privateState) { $this->state =& $privateState; }
+    public function __construct(array &$privateState, bool $allowPages=false) { $this->state =& $privateState; $this->allowPages=$allowPages; }
+
+    private static function publicUrl($value): ?string {
+        if(!is_string($value)||strlen($value)>2048||preg_match('/[\x00-\x20\x7f]/',$value))return null;
+        $u=parse_url($value);$host=strtolower($u['host']??'');
+        if(!$u||($u['scheme']??'')!=='https'||isset($u['user'],$u['pass'])||isset($u['user'])||isset($u['port'])
+            || !preg_match('/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}$/D',$host)
+            || preg_match('/\.(?:local|localhost|internal|lan)$/D',$host)
+            || preg_match('/(?:^|&)(?:sid|token|password|auth|apikey|secret|session)=/i',$u['query']??''))return null;
+        return $value;
+    }
 
     public function begin(string $searchRef, int $generation, int $now): void {
         if (!preg_match('/^[A-Za-z0-9_-]{1,128}$/D',$searchRef) || $generation < 1 || $now < 1)
@@ -37,14 +48,24 @@ final class AnyTourAndromedaOfferStore {
         ?AnyTourAndromedaHotelResolver $resolver=null): array {
         $this->guard($searchRef,$generation,$now);
         if ($this->state['snapshot']!==null) throw new RuntimeException('SNAPSHOT_ALREADY_CAPTURED');
-        if (($payload['PAGE']??null)!==1) throw new InvalidArgumentException('FIRST_PAGE_REQUIRED');
+        if (!$this->allowPages && ($payload['PAGE']??null)!==1) throw new InvalidArgumentException('FIRST_PAGE_REQUIRED');
+        if (($payload['PAGE']??null)!==($criteria['PAGE']??1)) throw new InvalidArgumentException('PAGE_MISMATCH');
         $projection=AnyTourAndromedaNormalizer::page($payload,$criteria,$searchRef,$generation);
         if ($resolver!==null) $projection=$resolver->apply($projection);
         $rejected=array_fill_keys(array_column($projection['rejected'],'index'),true);
         $raw=[]; $offerIndex=0;
         foreach ($payload['PRICES'] as $index=>$row) {
             if (isset($rejected[$index])) continue;
-            $offer=$projection['offers'][$offerIndex++];
+            $offer=$projection['offers'][$offerIndex];
+            if($this->allowPages){
+                $star=$row['star']??'';$category=null;
+                if(is_scalar($star)&&preg_match('/^([1-5])(?:\*|\s|$)/',(string)$star,$match))$category=(int)$match[1];
+                elseif(is_string($star)&&preg_match('/^\*{1,5}$/D',$star))$category=strlen($star);
+                $projection['offers'][$offerIndex]['hotel_content']=['source'=>'andromeda',
+                    'image_url'=>self::publicUrl($row['hotelImage']??null),'hotel_url'=>self::publicUrl($row['hotelUrl']??null),
+                    'region'=>is_string($row['town']??null)?mb_substr($row['town'],0,180):'','category'=>$category];
+            }
+            ++$offerIndex;
             $raw[$offer['offer_ref']]=$row['id'];
         }
         // Keep only normalized data + required private supplier IDs, not sid or raw response.
