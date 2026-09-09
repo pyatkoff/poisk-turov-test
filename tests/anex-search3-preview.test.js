@@ -135,10 +135,12 @@ class FakeElement {
   }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
   closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector) || null; }
+  contains(element) { return element === this || this.children.some(child => child.contains(element)); }
 }
 
 function preview(withFilters = false) {
   const listeners = new Map();
+  const documentListeners = new Map();
   const requests = [];
   const observers = [];
   const body = new FakeElement('body');
@@ -177,9 +179,14 @@ function preview(withFilters = false) {
     getElementById: id => body.querySelector('#' + id),
     querySelector: selector => selector === '#resultsTools strong' ? tools.querySelector('strong') : body.querySelector(selector),
     querySelectorAll: selector => body.querySelectorAll(selector),
-    addEventListener() {}
+    addEventListener(name, listener) {
+      if (!documentListeners.has(name)) documentListeners.set(name, []);
+      documentListeners.get(name).push(listener);
+    },
+    dispatchEvent(event) { (documentListeners.get(event.type) || []).forEach(listener => listener(event)); },
+    contains(element) { return body.contains(element); }
   };
-  const lifecycle = { generation: 0, dirty: false, snapshot: null };
+  const lifecycle = { generation: 0, dirty: false, snapshot: null, searchId: 0, pending: false };
   const window = {
     location: {
       pathname: '/_preview/search3-anex-candidate/poisk-turov/',
@@ -187,6 +194,20 @@ function preview(withFilters = false) {
       origin: 'https://example.test'
     },
     V2SearchLifecycle: lifecycle,
+    V2Runtime: {
+      state: { searchId: 777 },
+      api() { throw new Error('Point search must not call observed runtime.api'); },
+      setSearchId() { throw new Error('Point search must not replace the broad search ID'); },
+      build(action, params) {
+        const query = new URLSearchParams({ action });
+        Object.entries(params || {}).forEach(([key, value]) => {
+          if (value === '' || value === null || value === undefined) return;
+          if (Array.isArray(value)) value.forEach(item => query.append(key + '[]', String(item)));
+          else query.append(key, String(value));
+        });
+        return 'https://example.test/api-v2.php?' + query;
+      }
+    },
     matchMedia() { return { matches: true }; },
     addEventListener(name, listener) {
       if (!listeners.has(name)) listeners.set(name, []);
@@ -229,25 +250,48 @@ function preview(withFilters = false) {
     rail.appendChild(new FakeElement('b')).setAttribute('data-ds2-filter-count', '');
     rail.appendChild(new FakeElement('span')).setAttribute('data-ds2-filter-word', '');
   }
-  const fetch = (url, options) => new Promise(resolve => {
-    requests.push({ url: String(url), options, body: JSON.parse(options.body), respond: payload => resolve({ ok: true, json: async () => payload }) });
+  const fetch = (url, options = {}) => new Promise((resolve, reject) => {
+    const query = new URL(String(url), window.location.href).searchParams;
+    requests.push({ url: String(url), options, query, action: query.get('action'),
+      body: typeof options.body === 'string' ? JSON.parse(options.body) : null,
+      respond: (payload, meta = {}) => resolve({ ok: true, status: 200, ...meta, json: async () => payload }), reject });
   });
   window.fetch = fetch;
   let timerId = 0;
+  const timers = new Map();
+  const setTimer = (callback, delay = 0) => { const id = ++timerId; timers.set(id, { callback, delay }); return id; };
+  const clearTimer = id => timers.delete(id);
+  window.setTimeout = setTimer; window.clearTimeout = clearTimer;
   vm.runInNewContext(source, {
-    window, document, fetch, URL, console, AbortController,
+    window, document, fetch, URL, URLSearchParams, console, AbortController,
     MutationObserver: class {
       constructor(callback) { this.callback = callback; observers.push(this); }
       observe(element) { this.element = element; }
       disconnect() { this.element = null; }
     },
-    setTimeout: () => ++timerId, clearTimeout() {},
+    setTimeout: setTimer, clearTimeout: clearTimer,
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } }
   }, { filename });
   return {
-    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort, rail, controls, sourceRenders, observers,
+    window, document, body, layout, results, tvCard, lifecycle, requests, tools, summary, sort, rail, controls, sourceRenders, observers, timers,
+    runTimer(delay) {
+      const entry = Array.from(timers).find(([, timer]) => timer.delay === delay);
+      if (!entry) return false;
+      timers.delete(entry[0]); entry[1].callback(); return true;
+    },
+    click(element) {
+      assert.ok(element, 'requested button exists');
+      const event = { type: 'click', target: element, preventDefault() {},
+        stopPropagation() { this.stopped = true; }, stopImmediatePropagation() { this.stopped = true; } };
+      element.dispatchEvent(event);
+      if (!event.stopped) document.dispatchEvent(event);
+    },
+    complete(items, searchId = 1000 + lifecycle.generation) {
+      Object.assign(lifecycle, { searchId, pending: false });
+      window.dispatchEvent({ type: 'v2:search-complete', detail: { searchId, progress: 100, items } });
+    },
     reset(generation, snapshot) {
-      Object.assign(lifecycle, { generation, snapshot, dirty: false });
+      Object.assign(lifecycle, { generation, snapshot, dirty: false, searchId: 0, pending: !!snapshot });
       window.dispatchEvent({ type: 'v2:search-reset', detail: { generation } });
     }
   };
@@ -261,6 +305,246 @@ const snapshot = () => ({
 const response = (generation, hotels) => ({
   ok: true,
   data: { generation, provider: 'anex', hotels, external_search_pending: false, first_page_only: true }
+});
+
+const pointHotel = (id = 900, tours = [{ id: 'tv-900-a', date: '2027-02-01', nights: 7, price: 50000, meal: 'AI' }]) => ({
+  id, name: 'Verified Tourvisor hotel ' + id, country: { id: 4, name: 'Турция' }, category: 4, rating: 4.5,
+  price: Math.min(...tours.map(tour => tour.price)), tours
+});
+const pointButton = (page, id = 900) => page.results.querySelector('[data-anex-search3-card="' + id + '"]')?.querySelector('.anex-search3-tv-check');
+const actionRequests = (page, action) => page.requests.filter(request => request.action === action);
+async function pointReady(page = preview(), items = [hotel({ local_id: 900 })], criteria = snapshot(), broad = [{ id: 245 }]) {
+  page.lifecycle.params = () => plain(page.lifecycle.snapshot || {});
+  page.reset(1, criteria);
+  page.requests[0].respond(response(1, items));
+  page.complete(broad);
+  await tick();
+  return page;
+}
+async function pointFinish(page, returned = [pointHotel()], searchId = 9900) {
+  const start = actionRequests(page, 'search_start').at(-1);
+  assert.ok(start, 'one point search has started');
+  start.respond({ searchId });
+  await tick();
+  const status = actionRequests(page, 'search_status').at(-1);
+  assert.ok(status, 'point status request exists');
+  assert.equal(status.query.get('searchId'), String(searchId));
+  status.respond({ progress: 100, status: 'complete' });
+  await tick();
+  const result = actionRequests(page, 'search_results').at(-1);
+  assert.ok(result, 'completed point search reads its results');
+  assert.equal(result.query.get('limit'), '100');
+  result.respond(returned);
+  await tick();
+}
+
+test('point request retains the full captured contract and changes only hotelIds', () => {
+  const api = helpers(), params = { ...snapshot(), meal: '7', hotelCategory: '5', hotelRating: '4',
+    hotelTypes: ['family'], hotelServices: ['pool', 'beach'], arrivalId: '8', regionIds: ['6'], subregionIds: ['12'],
+    operatorIds: ['9'], priceFrom: '20000', priceTo: '180000', onlyDirect: 'true', onlyCharter: 'false', hotelIds: [] };
+  const before = plain(params), run = api.capture(params, 2, {});
+  const query = api.pointSearchParams(run, 900);
+  assert.deepEqual(plain(query), { ...before, hotelIds: [900] });
+  params.childs[0] = 16; query.regionIds.push('77'); query.hotelServices.push('spa');
+  assert.deepEqual(plain(run.params), before, 'form edits and request construction do not alter the captured request');
+  for (const id of [null, '900', 0, -1, 1.5]) assert.equal(api.pointSearchParams(run, id), null);
+  assert.equal(api.pointSearchParams({ ...run, params: { ...run.params, currency: 'USD' } }, 900), null);
+  assert.equal(api.pointSearchParams({ ...run, params: { ...run.params, hotelIds: ['245'] } }, 900), null);
+});
+
+test('point response validates hotel identity and tour dates, nights and RUB without inventing offers', () => {
+  const api = helpers(), params = snapshot();
+  const tours = [
+    { id: 'expensive', date: '2027-02-04', nights: 10, price: 60000, currency: 'RUB', meal: 'AI' },
+    { id: 'cheap', date: '2027-02-01', nights: 7, price: 50000, meal: 'HB' }
+  ];
+  const input = [pointHotel(900, tours)], original = plain(input);
+  const kept = api.pointSearchHotel(input, 900, params);
+  assert.equal(kept.id, 900); assert.equal(kept.price, 50000);
+  assert.deepEqual(plain(kept.tours.map(tour => tour.id)), ['cheap', 'expensive']);
+  assert.deepEqual(input, original);
+  assert.equal(api.pointSearchHotel([], 900, params), null);
+  assert.equal(api.pointSearchHotel([pointHotel(900, [])], 900, params), null);
+  for (const list of [null, {}, [pointHotel(901)], [pointHotel(), pointHotel()],
+    [{ ...pointHotel(), country: { id: 1 } }],
+    ...[{ price: 0 }, { price: -1 }, { price: true }, { price: 'NaN' }, { currency: 'USD' }, { date: '2027-01-31' },
+      { date: '2027-02-30' }, { nights: 6 }, { nights: 11 }].map(overrides => [pointHotel(900, [{ ...tours[0], ...overrides }])])]) {
+    assert.throws(() => api.pointSearchHotel(list, 900, params), 'malformed or incompatible response is rejected');
+  }
+  assert.throws(() => api.pointSearchHotel([{ ...pointHotel(), id: true }], 1, params));
+});
+
+test('point button needs completed raw broad absence and unchanged criteria, never absence from local filtering', async () => {
+  const page = preview();
+  page.reset(1, snapshot());
+  page.requests[0].respond(response(1, [hotel({ local_id: 900 })]));
+  await tick();
+  assert.equal(pointButton(page), null, 'a pending broad search cannot trigger point searches');
+  page.complete([{ id: 245 }, { id: 900 }]);
+  await tick();
+  assert.equal(pointButton(page), null, 'raw broad ID remains known even if its native card is absent');
+  page.reset(2, snapshot());
+  page.requests[1].respond(response(2, [hotel({ local_id: 900 })]));
+  page.complete([{ id: 245 }]);
+  await tick();
+  const button = pointButton(page);
+  assert.match(button.textContent, /Проверить предложения Tourvisor/);
+  page.lifecycle.params = () => ({ ...snapshot(), adults: '3' });
+  page.click(button);
+  await tick();
+  assert.equal(actionRequests(page, 'search_start').length, 0, 'changed form is checked again at click time');
+});
+
+test('one explicit point click preserves broad state and renders readonly Tourvisor offers in the same card', async () => {
+  const page = preview();
+  const broad = [{ id: 245, price: 80000, tours: [{ id: 'original', price: 80000 }] }];
+  const original = plain(broad);
+  page.window.V2Results = { state: { items: broad }, render() { throw new Error('point must not call global renderer'); } };
+  const criteria = { ...snapshot(), meal: '7', hotelServices: ['pool'], regionIds: ['6'], operatorIds: ['9'], hotelIds: [], onlyDirect: 'true' };
+  await pointReady(page, [hotel({ local_id: 900 })], criteria, broad);
+  const button = pointButton(page);
+  page.click(button); page.click(button);
+  await tick();
+  assert.equal(actionRequests(page, 'search_start').length, 1);
+  const request = actionRequests(page, 'search_start')[0];
+  assert.deepEqual(request.query.getAll('hotelIds[]'), ['900']);
+  assert.deepEqual(request.query.getAll('childs[]'), ['4', '11']);
+  assert.deepEqual(request.query.getAll('operatorIds[]'), ['9']);
+  assert.deepEqual(request.query.getAll('hotelServices[]'), ['pool']);
+  assert.equal(request.query.get('onlyDirect'), 'true');
+  assert.equal(request.query.get('dateFrom'), criteria.dateFrom);
+  assert.equal(request.options.credentials, 'same-origin');
+  page.sort.dispatchEvent({ type: 'change' });
+  await tick();
+  if (pointButton(page)) page.click(pointButton(page));
+  assert.equal(actionRequests(page, 'search_start').length, 1, 'rerender does not restart a pending request');
+  await pointFinish(page);
+  const offers = page.results.querySelector('.anex-search3-tv-offers');
+  assert.ok(offers); assert.match(offers.textContent, /Tourvisor.*50\s*000/);
+  assert.equal(page.results.querySelectorAll('[data-hotel-id="900"]').length, 1);
+  assert.equal(page.results.querySelector('.direct-tour'), null);
+  assert.equal(page.results.querySelector('[data-tid]'), null);
+  assert.equal(page.tvCard.parentNode, page.results);
+  assert.equal(page.window.V2Runtime.state.searchId, 777);
+  assert.equal(page.lifecycle.searchId, 1001);
+  assert.deepEqual(page.window.V2Results.state.items, original);
+  assert.equal(page.requests.filter(item => item.body).length, 1, 'point check never repeats ANEX');
+  assert.equal(actionRequests(page, 'search_continue').length, 0);
+  const counts = page.document.getElementById('anexSearch3SourceFilter').children.map(option => option.textContent.split(' · ').at(-1));
+  assert.deepEqual(counts, ['2', '1', '2', '1']);
+  offers.open = true;
+  page.sort.dispatchEvent({ type: 'change' });
+  await tick();
+  assert.equal(page.results.querySelector('.anex-search3-tv-offers').open, true);
+});
+
+test('point starts are one-shot after unknown or empty outcomes and limited to three unique hotels', async () => {
+  const page = await pointReady(preview(), [900, 901, 902, 903].map(local_id => hotel({ local_id })));
+  const first = pointButton(page, 900);
+  page.click(first); await tick();
+  const second = pointButton(page, 901);
+  if (second) page.click(second);
+  assert.equal(actionRequests(page, 'search_start').length, 1, 'only one point request may be active');
+  actionRequests(page, 'search_start')[0].reject(new Error('network outcome unknown'));
+  await tick();
+  page.click(first); await tick();
+  assert.equal(actionRequests(page, 'search_start').length, 1, 'unknown start is not replayed');
+  page.click(pointButton(page, 901)); await tick();
+  await pointFinish(page, [], 9901);
+  const empty = page.results.querySelector('[data-hotel-id="901"]').querySelector('.anex-search3-tv-status');
+  assert.match(empty.textContent, /не найден|не наш|нет|не вернул/i);
+  const completed = pointButton(page, 901);
+  if (completed) page.click(completed);
+  assert.equal(actionRequests(page, 'search_start').length, 2, 'empty completion is not repeated');
+  page.click(pointButton(page, 902)); await tick();
+  await pointFinish(page, [], 9902);
+  const fourth = pointButton(page, 903);
+  if (fourth) page.click(fourth);
+  await tick();
+  assert.equal(actionRequests(page, 'search_start').length, 3);
+});
+
+test('new generation aborts a point request and ignores a late response without a status call', async () => {
+  const page = await pointReady();
+  page.click(pointButton(page)); await tick();
+  const request = actionRequests(page, 'search_start')[0];
+  page.reset(2, snapshot());
+  assert.equal(request.options.signal.aborted, true);
+  request.respond({ searchId: 9999 });
+  await tick();
+  assert.equal(actionRequests(page, 'search_status').length, 0);
+  assert.equal(page.results.querySelector('.anex-search3-tv-offers'), null);
+  assert.equal(page.requests.filter(item => item.body).length, 2, 'only the new user search starts ANEX again');
+});
+
+test('point polling is bounded and never loads incomplete results or creates a replacement search', async () => {
+  const page = await pointReady();
+  page.click(pointButton(page)); await tick();
+  actionRequests(page, 'search_start')[0].respond({ searchId: 9900 });
+  await tick();
+  for (let index = 0; index < 8; index++) {
+    const request = actionRequests(page, 'search_status')[index];
+    assert.ok(request, 'status poll ' + index);
+    request.respond({ progress: 20 });
+    await tick();
+    if (index < 7) { assert.equal(page.runTimer(2500), true); await tick(); }
+  }
+  assert.equal(actionRequests(page, 'search_status').length, 8);
+  assert.equal(actionRequests(page, 'search_results').length, 0);
+  assert.equal(actionRequests(page, 'search_start').length, 1);
+  assert.equal(page.runTimer(2500), false);
+});
+
+test('point offers obey local filters even when ANEX drops out, and a later native TV card wins without duplicates', async () => {
+  const page = preview(true), broad = [{ id: 245, category: 4, price: 80000, tours: [{ price: 80000, meal: 'AI' }] }];
+  page.lifecycle.params = () => plain(page.lifecycle.snapshot || {});
+  page.reset(1, snapshot()); page.window.V2Results.render(broad);
+  page.requests[0].respond(response(1, [hotel({ local_id: 900,
+    tours: [{ ...hotel().tours[0], meal: 'HB', price: { amount: '70000', currency: 'RUB' } }] })]));
+  page.complete(broad); await tick();
+  page.click(pointButton(page)); await tick();
+  await pointFinish(page);
+  page.controls.price.value = '60000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.meal.find(input => input.value === 'ai') });
+  await tick();
+  const card = page.results.querySelector('[data-hotel-id="900"]');
+  assert.ok(card, 'matching Tourvisor point offer keeps its hotel visible');
+  assert.match(card.textContent, /50\s*000/);
+  assert.doesNotMatch(card.textContent, /70\s*000|Полупансион/);
+  assert.equal(card.querySelectorAll('.anex-search3-source').some(badge => /ANEX API/.test(badge.textContent)), false,
+    'filtered-out ANEX is not counted as an available offer');
+  const counts = page.document.getElementById('anexSearch3SourceFilter').children.map(option => option.textContent.split(' · ').at(-1));
+  assert.deepEqual(counts, ['1', '0', '1', '0']);
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset });
+  await tick();
+  page.window.V2Results.render(broad.concat(pointHotel()));
+  page.window.dispatchEvent({ type: 'v2:search-continued', detail: { searchId: 1001, items: broad.concat(pointHotel()) } });
+  await tick();
+  assert.equal(page.results.querySelectorAll('[data-hotel-id="900"]').length, 1);
+  assert.equal(page.results.querySelector('[data-anex-search3-card="900"]'), null);
+  assert.equal(page.results.querySelector('[data-hotel-id="900"]').querySelectorAll('.anex-search3-offers').length, 1);
+  assert.equal(actionRequests(page, 'search_start').length, 1);
+});
+
+test('point checks reject unsafe gateway URLs and malformed returned identities without broad side effects', async () => {
+  for (const url of ['http://[', 'https://attacker.example/api-v2.php', 'https://example.test/v2/api-v2.php',
+    'https://example.test/_preview/search3-site-candidate/v2/api-v2.php']) {
+    const page = await pointReady();
+    page.window.V2Runtime.build = () => url;
+    const button = pointButton(page);
+    if (button) page.click(button);
+    await tick();
+    assert.equal(actionRequests(page, 'search_start').length, 0);
+    assert.equal(page.requests.length, 1, 'invalid gateway does not send an extra fetch');
+  }
+  const page = await pointReady();
+  page.click(pointButton(page)); await tick();
+  await pointFinish(page, [pointHotel(901)]);
+  assert.equal(page.results.querySelector('.anex-search3-tv-offers'), null);
+  assert.equal(page.results.querySelector('[data-hotel-id="901"]'), null);
+  assert.equal(page.tvCard.parentNode, page.results);
+  assert.equal(page.window.V2Runtime.state.searchId, 777);
 });
 
 test('mapped ANEX-only hotel uses its catalog photo and text while keeping ANEX offers and source counts', async () => {
