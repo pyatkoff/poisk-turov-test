@@ -13,6 +13,7 @@ import anex_search3_gap_queue as gaps
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAN = Path(__file__).with_name('anex_review_storage_plan.json')
+MAX_INSPECT_SOURCE_BYTES = 64_000_000
 SAVED_SOURCES = {
     'anex-paired-search-v2-checkpoint.json': ('013a231497da38399159167c25ebaa0aeb01079d776d7370d163a61bdc90603a', ('tv_day', 'tv_week')),
     'anex-segment-search-checkpoint.json': ('479bc48067e6147ade99f92e85462ebc73794044d5962f24cd4ff3a11f894cf8', ('tv_alanya', 'tv_5star', 'tv_alanya_5star'))}
@@ -32,6 +33,25 @@ def packer():
 def schema_files():
     files = {name: (ROOT / 'app/admin/anex-review' / name).read_text() for name in ('schema.sql', 'dossier-schema.sql')}
     return files, digest((files['schema.sql'] + '\n' + files['dossier-schema.sql']).encode())
+
+
+def read_triage(path, import_limit):
+    """Fingerprint bounded saved bytes; never parse an oversized import source."""
+    size, chunks, fingerprint = 0, [], hashlib.sha256()
+    with path.open('rb') as stream:
+        while True:
+            chunk = stream.read(min(1_000_000, MAX_INSPECT_SOURCE_BYTES + 1 - size))
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > MAX_INSPECT_SOURCE_BYTES:
+                raise ValueError('inspection_source_bound')
+            fingerprint.update(chunk)
+            if size <= import_limit:
+                chunks.append(chunk)
+            else:
+                chunks.clear()
+    return (b''.join(chunks) if size <= import_limit else None), fingerprint.hexdigest(), size
 
 
 def saved_search_audit(directory, envelope):
@@ -92,16 +112,20 @@ def prepare(directory, source_sha, plan=None):
             or any(type(i) is not int or i <= 0 for i in identifiers)
             or len(set(identifiers)) != len(identifiers)):
         raise ValueError('completed live checkpoint required')
-    raw = (directory / 'anex-observed-hotel-triage.json').read_bytes()
-    sha = digest(raw)
-    envelope = packer().pack(raw, sha, restored['artifact_id'])
-    if envelope['checkpoint_digest'] != gaps.digest(cp):
+    module = packer()
+    raw, sha, source_bytes = read_triage(directory / 'anex-observed-hotel-triage.json', module.MAX_BYTES)
+    if raw is None and plan['action'] != 'inspect':
+        raise ValueError('source_digest_or_bound')
+    envelope = module.pack(raw, sha, restored['artifact_id']) if raw is not None else None
+    if envelope is not None and envelope['checkpoint_digest'] != gaps.digest(cp):
         raise ValueError('triage checkpoint mismatch')
     if plan['action'] == 'apply' and (plan.get('triage_sha256') != sha or plan.get('readiness_schema_sha256') != schema_sha):
         raise ValueError('apply requires pinned inspected evidence')
     reservation = {'schema_version': 1, 'source_sha': source_sha, 'action': plan['action'],
                    'schema_sha256': schema_sha, 'triage_sha256': sha,
-                   'source_artifact_id': restored['artifact_id'], 'rows': len(envelope['rows']),
+                   'source_artifact_id': restored['artifact_id'], 'rows': len(envelope['rows']) if envelope else None,
+                   'triage_bytes': source_bytes,
+                   'dossier_status': 'validated' if envelope is not None else 'deferred_source_bound',
                    'supplier_requests': 0}
     path = directory / 'anex-review-storage-reservation.json'
     path.write_text(json.dumps(reservation, sort_keys=True, indent=2) + '\n')
@@ -158,6 +182,8 @@ def main():
     if args.prepare:
         reservation, envelope = prepare(directory, source)
         try:
+            if envelope is None:
+                raise ValueError('dossiers deferred; schema inspection only')
             saved_search_audit(directory, envelope)
         except (ValueError, KeyError, OSError):
             # Independent research cannot authorize writes or destroy storage progress.
@@ -186,7 +212,7 @@ if __name__ == '__main__':
     except Exception as error:
         allowed = {'completed live checkpoint required', 'triage checkpoint mismatch', 'review plan/schema mismatch',
                    'apply requires pinned inspected evidence', 'reserved source changed', 'source_digest_or_bound',
-                   'source_contract', 'row_contract', 'evidence_digest', 'source_count'}
+                   'source_contract', 'row_contract', 'evidence_digest', 'source_count', 'inspection_source_bound'}
         reason = str(error) if isinstance(error, ValueError) and str(error) in allowed else 'see_failure_kind'
         print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reason': reason, 'reset_performed': False}))
         raise SystemExit(1)

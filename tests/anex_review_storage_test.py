@@ -34,6 +34,35 @@ class StorageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'pinned'):storage.prepare(d,'b'*40,plan)
             plan.update(triage_sha256=storage.digest((d/'anex-observed-hotel-triage.json').read_bytes()),readiness_schema_sha256=plan['schema_sha256'])
             self.assertEqual(storage.prepare(d,'b'*40,plan)[0]['action'],'apply')
+    def test_oversized_dossier_allows_only_schema_inspection(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d)
+            path=d/'anex-observed-hotel-triage.json'
+            raw=path.read_bytes()+b' ' * storage.packer().MAX_BYTES
+            path.write_bytes(raw)
+            reservation,envelope=storage.prepare(d,'b'*40)
+            self.assertIsNone(envelope)
+            self.assertIsNone(reservation['rows'])
+            self.assertEqual(reservation['dossier_status'],'deferred_source_bound')
+            self.assertEqual(reservation['triage_bytes'],len(raw))
+            self.assertEqual(reservation['triage_sha256'],storage.digest(raw))
+            plan={'action':'apply','schema_sha256':storage.schema_files()[1],
+                  'readiness_schema_sha256':storage.schema_files()[1], 'triage_sha256':storage.digest(raw)}
+            with self.assertRaisesRegex(ValueError,'source_digest_or_bound'):
+                storage.prepare(d,'b'*40,plan)
+    def test_inspect_fingerprint_is_bounded_and_detects_changed_bytes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);self.fixture(d)
+            path=d/'anex-observed-hotel-triage.json'
+            original=storage.read_triage(path,1)
+            path.write_bytes(path.read_bytes()+b' ')
+            changed=storage.read_triage(path,1)
+            self.assertIsNone(changed[0])
+            self.assertNotEqual(original[1],changed[1])
+            self.assertEqual(changed[2],original[2]+1)
+            with patch.object(storage,'MAX_INSPECT_SOURCE_BYTES',10):
+                with self.assertRaisesRegex(ValueError,'inspection_source_bound'):
+                    storage.read_triage(path,1)
     def test_inflight_and_checkpoint_mismatch(self):
         with tempfile.TemporaryDirectory() as temp:
             d=Path(temp);cp,_=self.fixture(d);cp['in_flight']=[1]
