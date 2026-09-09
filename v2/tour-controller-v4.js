@@ -5,7 +5,9 @@ const leadApi=String(cfg.leadApi||'/poisk-turov-test/v2/lead-adapter.php');
 const privacyUrl=String(cfg.privacyUrl||'').trim();
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n?new Intl.NumberFormat('ru-RU').format(n):'';}
-function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
+const descriptionEntities={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' ',sup2:'²'};
+function decodeEntities(v){return String(v||'').replace(/&(#(?:x[0-9a-f]+|[0-9]+)|amp|lt|gt|quot|apos|nbsp|sup2);/gi,(match,entity)=>{if(entity[0]!=='#')return descriptionEntities[entity.toLowerCase()];const hex=entity[1].toLowerCase()==='x',point=Number.parseInt(entity.slice(hex?2:1),hex?16:10);return Number.isInteger(point)&&point>0&&point<=1114111&&!(point>=55296&&point<=57343)?String.fromCodePoint(point):match;});}
+function clean(v){return decodeEntities(String(v||'').replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim();}
 function displayText(v){if(v===null||v===undefined)return'';if(Array.isArray(v))return v.map(displayText).filter(Boolean).join(', ');if(typeof v==='object'){for(const key of['russianName','fullRussianName','name','title','value','text','label','description']){const text=displayText(v[key]);if(text)return text;}return'';}return String(v).trim();}
 const api=(action,params)=>rt.api(action,params);
 function selected(){return document.getElementById('selectedTour');}

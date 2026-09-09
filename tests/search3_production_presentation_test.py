@@ -1092,9 +1092,17 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
-                # Owner-authorized display-only meal label: reversing this exact
-                # one expression must recover the entire protected controller.
+                # Owner-authorized display-only meal label and hotel-description
+                # entity decoding: reversing these exact fragments must recover
+                # the entire protected controller. Decoded text is still escaped.
                 # Lead mapping, arithmetic, selection and transport stay hash-locked.
+                entity_decoder = ("const descriptionEntities={amp:'&',lt:'<',gt:'>',quot:'\"',apos:\"'\",nbsp:' ',sup2:'²'};\n"
+                                  "function decodeEntities(v){return String(v||'').replace(/&(#(?:x[0-9a-f]+|[0-9]+)|amp|lt|gt|quot|apos|nbsp|sup2);/gi,(match,entity)=>{if(entity[0]!=='#')return descriptionEntities[entity.toLowerCase()];const hex=entity[1].toLowerCase()==='x',point=Number.parseInt(entity.slice(hex?2:1),hex?16:10);return Number.isInteger(point)&&point>0&&point<=1114111&&!(point>=55296&&point<=57343)?String.fromCodePoint(point):match;});}\n").encode()
+                current_clean = b"function clean(v){return decodeEntities(String(v||'').replace(/<[^>]*>/g,' ')).replace(/\\s+/g,' ').trim();}"
+                original_clean = b"function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim();}"
+                self.assertEqual(source.count(entity_decoder), 1, 'one reviewed description entity decoder')
+                self.assertEqual(source.count(current_clean), 1, 'one reviewed description clean path')
+                source = source.replace(entity_decoder, b'', 1).replace(current_clean, original_clean, 1)
                 display = b"esc((window.V2Results&&typeof window.V2Results.mealLabel==='function'?window.V2Results.mealLabel(t):mealName(t))||'\xe2\x80\x94')"
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
