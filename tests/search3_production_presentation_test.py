@@ -492,6 +492,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         current_styles = (ROOT / 'v2/site-header-v2.css').read_text()
         legacy_styles = (ROOT / 'v2/header-current-site.css').read_text()
         self.assertIn("'header-current-site.css'", scoped)
+        self.assertNotIn("'site-header-v2.css'", scoped)
+        self.assertNotIn("'design-system-v2.css'", scoped)
         self.assertIn('<header class="at-global-header">', current_markup)
         self.assertNotIn('<header class="at-site-header">', current_markup)
         self.assertIn('.at-global-header{', current_styles)
@@ -1024,6 +1026,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn('search3-direct-control', native)
         for marker in ('.results-layout', '.direct-tour', '[hidden]', '.v2-product-hero'):
             self.assertIn(marker, results)
+        self.assertIn('& .v2-shell a{', results)
+        self.assertIn('& .v2-shell :focus-visible{', results)
+        self.assertNotIn('.at-global-header', results)
 
     def test_native_form_groups_and_shared_footer_keep_single_owners(self):
         index = (ROOT / 'v2/index.php').read_text()
@@ -1043,6 +1048,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
 
     def test_optional_shared_layers_are_search3_only_exclusions(self):
         self.assertEqual(self.bundle.count("'site-footer-v1.css'"), 1)
+        self.assertEqual(self.bundle.count("'design-system-v2.css'"), 1)
+        self.assertEqual(self.bundle.count("'site-header-v2.css'"), 1)
         for name in (
             'ds2-search-intro-v1.css', 'ds2-search.css',
             'hotel-actions-v3.js', 'room-details-v3.js', 'hotel-autocomplete-v1.js',

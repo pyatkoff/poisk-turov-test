@@ -55,7 +55,7 @@ async function run(browser, width, previous) {
     const logoSource = await logo.getAttribute('src');
     const menu = page.locator('.at-global-header__mobile');
     const nav = page.locator('.at-global-header__nav');
-    if (width < 1000) {
+    if (width <= 1024) {
       assert.equal(await nav.isVisible(), false, 'mobile uses the native disclosure');
       await menu.locator('summary').click();
       assert.equal(await menu.evaluate(node => node.open), true, 'native header opens');
@@ -136,11 +136,11 @@ async function run(browser, width, previous) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [375, 760, 761, 999, 1000, 1440]) {
+    for (const width of [375, 760, 761, 999, 1000, 1024, 1025, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=12 widths=375,760,761,999,1000,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=16 widths=375,760,761,999,1000,1024,1025,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });

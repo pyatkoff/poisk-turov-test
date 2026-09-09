@@ -1,19 +1,15 @@
 /* Shared native Search3 presentation; the eight public assets remain the owners. */
 body.search3-candidate{
-margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
+margin:0;background:#f5f7fb;color:#17233b;
 & *{box-sizing:border-box;min-width:0}
-& a{color:#2743cb;text-decoration:none}
-& :is(button,select,input:not([type=checkbox]):not([type=radio]),textarea,summary){font:inherit;min-height:44px;border:1px solid #dbe2ed;border-radius:10px;padding:10px;max-width:100%}
-& :is(button,summary){cursor:pointer}
-& :is(button,select,input,textarea){background:#fff;color:inherit}
-& :is(.primary,.direct-tour){background:#2743cb;color:white;border:0}
-& :focus-visible{outline:3px solid #6f99ff;outline-offset:2px}
-& :is(.v2-shell,.at-global-header__inner){max-width:1120px;margin:auto;padding:20px}
-& .v2-shell{padding-bottom:clamp(28px,5vw,64px)}
-& .at-global-header{background:white;border-bottom:1px solid #dbe2ed}
-& :is(.at-global-header__inner,.at-global-header__nav,.at-global-header__actions,.results-tools__actions,.results-tools:not([hidden])){display:flex;align-items:center;flex-wrap:wrap;gap:16px;justify-content:space-between}
-& .at-global-header__logo img{width:150px;max-width:100%}
-& .at-global-header__mobile{display:none}
+& .v2-shell a{color:#2743cb;text-decoration:none}
+& .v2-shell :is(button,select,input:not([type=checkbox]):not([type=radio]),textarea,summary){font:inherit;min-height:44px;border:1px solid #dbe2ed;border-radius:10px;padding:10px;max-width:100%}
+& .v2-shell :is(button,summary){cursor:pointer}
+& .v2-shell :is(button,select,input,textarea){background:#fff;color:inherit}
+& .v2-shell :is(.primary,.direct-tour){background:#2743cb;color:white;border:0}
+& .v2-shell :focus-visible{outline:3px solid #6f99ff;outline-offset:2px}
+& .v2-shell{max-width:1120px;margin:auto;padding:20px;padding-bottom:clamp(28px,5vw,64px);font:16px/1.5 Arial,sans-serif}
+& :is(.results-tools__actions,.results-tools:not([hidden])){display:flex;align-items:center;flex-wrap:wrap;gap:16px;justify-content:space-between}
 & .v2-product-hero{padding:24px 0}
 & .v2-product-hero__trust span{margin-right:12px}
 & h1{font-size:clamp(24px,3vw,36px);line-height:1.2;max-width:720px;margin:12px 0}
@@ -32,13 +28,6 @@ margin:0;background:#f5f7fb;color:#17233b;font:16px/1.5 Arial,sans-serif;
 &:is(:has(#results>*),.search3-selected-open) :is(.v2-product-hero,#tourSearch){display:none!important}
 &:has(#results>*).search3-editing-search #tourSearch{display:block!important}
 &.search3-selected-open :is(.results-tools,.results-layout){display:none!important}
-@media(max-width:999px){
-& .at-global-header :is(.at-global-header__nav,.at-global-header__actions){display:none}
-& .at-global-header__mobile{display:block}
-& .at-global-header__mobile summary span{display:block;width:20px;height:2px;background:#2743cb;margin:4px}
-& .at-global-header__mobile-panel{position:absolute;right:20px;z-index:5;background:white;padding:20px;box-shadow:0 8px 24px #17233b26;border-radius:12px}
-& .at-global-header__mobile-panel a{display:block;padding:10px}
-}
 @media(max-width:600px){& .v2-shell{padding:12px}}
 }
 
