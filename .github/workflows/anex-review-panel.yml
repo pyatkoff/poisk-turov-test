@@ -1,0 +1,50 @@
+name: ANEX review panel tests
+on:
+  push:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'app/admin/anex-review/**'
+      - 'v2/anex-hotel-review.php'
+      - 'tests/anex-review-panel-test.php'
+      - '.github/workflows/anex-review-panel.yml'
+  pull_request:
+    paths:
+      - 'app/admin/anex-review/**'
+      - 'v2/anex-hotel-review.php'
+      - 'tests/anex-review-panel-test.php'
+      - '.github/workflows/anex-review-panel.yml'
+permissions:
+  contents: read
+concurrency:
+  group: anex-review-panel-test-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  panel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: anex_review_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and MySQL transactional tests (no application credentials)
+        env:
+          ANEX_REVIEW_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_review_test;charset=utf8mb4'
+          ANEX_REVIEW_TEST_HTML: '${{ runner.temp }}/anex-review-panel-fixture.html'
+        run: |
+          for f in app/admin/anex-review/*.php v2/anex-hotel-review.php tests/anex-review-panel-test.php; do php -l "$f"; done
+          php tests/anex-review-panel-test.php
+          php v2/anex-hotel-review.php | grep -q 'Панель пока недоступна'
+      - name: Retain synthetic renderer fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-review-panel-test-fixture
+          path: '${{ runner.temp }}/anex-review-panel-fixture.html'
+          if-no-files-found: error
