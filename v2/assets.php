@@ -28,6 +28,17 @@ function v2_public_path(string $file): string
     return v2_public_base_path() . '/' . $name;
 }
 
+/** Optional same-origin provider route. Empty means that the provider is disabled. */
+function v2_optional_provider_path(string $constant): string
+{
+    if (!defined($constant)) return '';
+    $path = constant($constant);
+    if (!is_string($path) || !preg_match('#^/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]+\.php$#D', $path)) {
+        return '';
+    }
+    return $path;
+}
+
 function v2_asset(string $file): string
 {
     $name = basename($file);
