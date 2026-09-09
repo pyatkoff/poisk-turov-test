@@ -27,10 +27,22 @@ function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Numb
 function money(value){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value||0));}
 function fields(){return[field,budgetField,mealField,operatorField,categoryField,ratingField,seaField];}
 function active(){return!!(normalize(input.value)||Number(categorySelect.value)||mealSelect.value||operatorSelect.value||budgetActive||Number(ratingSelect.value)||Number(seaSelect.value));}
-function activeCount(){return[normalize(input.value),Number(categorySelect.value),mealSelect.value,operatorSelect.value,budgetActive,Number(ratingSelect.value),Number(seaSelect.value)].filter(Boolean).length;}
+function selectedLabel(select){const selected=select.selectedOptions&&select.selectedOptions[0];return selected?selected.textContent.trim():'';}
+function activeLabels(){
+  const labels=[];
+  if(budgetActive)labels.push('до '+money(budgetInput.value)+' ₽');
+  if(mealSelect.value)labels.push(selectedLabel(mealSelect));
+  if(operatorSelect.value)labels.push(selectedLabel(operatorSelect));
+  if(Number(categorySelect.value))labels.push(selectedLabel(categorySelect));
+  if(Number(ratingSelect.value))labels.push('Рейтинг '+selectedLabel(ratingSelect));
+  if(Number(seaSelect.value))labels.push(selectedLabel(seaSelect));
+  if(normalize(input.value))labels.push('Отель: '+input.value.trim());
+  return labels;
+}
 function syncContainers(shown){
-  const available=fields().some(node=>!node.hidden),selected=activeCount();
-  count.textContent=String(shown);mobileSummary.textContent='Подходит: '+shown+(selected?' · выбрано: '+selected:'');
+  const available=fields().some(node=>!node.hidden),labels=activeLabels(),selected=labels.length,visible=labels.slice(0,2);
+  count.textContent=String(shown);mobileSummary.textContent='Подходит: '+shown+(selected?' · '+visible.join(' · ')+(selected>visible.length?' · ещё '+(selected-visible.length):''):'');
+  mobileSummary.setAttribute('aria-label','Подходит: '+shown+'; '+(selected?'активные фильтры: '+labels.join('; '):'активных фильтров нет'));
   resetButton.hidden=!selected;rail.hidden=!desktop.matches||!available;mobilePanel.hidden=desktop.matches||!available;
 }
 function mount(){

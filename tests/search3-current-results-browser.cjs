@@ -275,10 +275,11 @@ async function run(browser, width, previous) {
     const localSeaSelect = localSeaFilter.locator('select');
     const localReset = page.locator('.search3-filter-reset');
     const mobilePanel = page.locator('.search3-mobile-filter-panel');
+    const mobileSummary = mobilePanel.locator('summary');
+    const mobileSummaryText = mobilePanel.locator('[data-search3-mobile-filter-summary]');
     if (width < 1025) {
       assert.equal(await mobilePanel.isVisible(), true, 'tablet and mobile expose one compact current filter disclosure');
       assert.equal(await mobilePanel.getAttribute('open'), null, 'mobile disclosure starts compact');
-      const mobileSummary = mobilePanel.locator('summary');
       await mobileSummary.focus();
       await page.keyboard.press('Enter');
       assert.notEqual(await mobilePanel.getAttribute('open'), null, 'native summary opens current filters from the keyboard');
@@ -307,6 +308,14 @@ async function run(browser, width, previous) {
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
+    if (width < 1025) {
+      assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · до 100[\s\u00a0]*000 ₽ · TEST OPERATOR/, 'compact summary names active exact-offer filters instead of exposing only their count');
+      assert.match(await mobileSummaryText.getAttribute('aria-label'), /активные фильтры: до 100[\s\u00a0]*000 ₽; TEST OPERATOR/, 'compact summary exposes the full active-filter meaning accessibly');
+      await mobileSummary.click();
+      assert.equal(await mobilePanel.getAttribute('open'), null, 'active values remain visible while the native filter disclosure is collapsed');
+      assert.equal((await snapshot(page)).overflow, false, 'active filter values safely fit the compact toolbar');
+      await mobileSummary.click();
+    }
     await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'restoring budget keeps the active operator projection');
     await localOperatorSelect.selectOption('');
@@ -327,7 +336,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'category facet filters only the already loaded hotels');
     assert.equal(await localReset.isVisible(), true, 'an active local facet exposes one reset action at every responsive width');
     assert.equal(await localReset.evaluate(node => node.parentElement.className), width >= 1025 ? 'results-filter-rail' : 'search3-mobile-filter-panel__body', 'reset action follows the current responsive filter owner');
-    if (width < 1025) assert.match(await mobilePanel.locator('summary').innerText(), /Подходит: 1 · выбрано: 1/, 'compact summary exposes the current result and active-filter counts');
+    if (width < 1025) assert.match(await mobileSummaryText.innerText(), /Подходит: 1 · 5★/, 'compact summary exposes the current result and active filter value');
     assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'category facet reports a truthful loaded-card count');
     await localHotelInput.fill('  ВТОРОЙ  ');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and category filters combine locally');
@@ -336,6 +345,7 @@ async function run(browser, width, previous) {
     assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');
     assert.equal(await localCategorySelect.inputValue(), '5', 'sorting preserves the local category');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'sorting reapplies both local filters to rerendered cards');
+    if (width < 1025) assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · 5★ · Отель: ВТОРОЙ/, 'sorting preserves the visible active-filter summary');
     await localHotelInput.fill('');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'clearing the name keeps the active category');
     await localReset.click();
@@ -344,11 +354,16 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'one reset restores every loaded card');
     assert.equal(await localReset.isVisible(), false, 'reset action hides when no local filter remains active');
     assert.equal(await categoryFive.getAttribute('aria-pressed'), 'false', 'common reset clears the mirrored quick choice state');
+    if (width < 1025) {
+      assert.equal(await mobileSummaryText.innerText(), 'Подходит: 2', 'reset removes stale active values from the compact summary');
+      assert.equal(await mobileSummaryText.getAttribute('aria-label'), 'Подходит: 2; активных фильтров нет', 'reset exposes an accurate accessible empty-filter state');
+    }
     await localOperatorSelect.selectOption('test operator');
     await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], tours: [{ ...hotels[1].tours[0], operator: null }] }]);
     assert.equal(await localOperatorFilter.isVisible(), false, 'operator facet hides when any loaded offer lacks its operator label');
     assert.equal(await localOperatorSelect.inputValue(), '', 'incomplete operator data resets the local choice');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'an incomplete operator facet never silently removes a loaded hotel');
+    if (width < 1025) assert.doesNotMatch(await mobileSummaryText.innerText(), /TEST OPERATOR/, 'incomplete operator data also removes its stale compact summary value');
     await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], category: 0 }]);
     assert.equal(await localCategoryFilter.isVisible(), false, 'category facet hides when any loaded hotel lacks category data');
     assert.equal(await localCategoryPresets.isVisible(), false, 'incomplete category data also hides its quick choices');
