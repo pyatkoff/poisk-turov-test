@@ -8,6 +8,8 @@ on:
       - 'scripts/diagnostics/andromeda-access-probe.php'
       - 'tests/andromeda-transport-smoke.php'
       - '.github/workflows/andromeda-offline.yml'
+      - 'scripts/diagnostics/andromeda-catalog-capture.php'
+      - 'tests/andromeda-catalog-capture-smoke.php'
 permissions:
   contents: read
 jobs:
@@ -23,3 +25,5 @@ jobs:
           php -l app/integrations/andromeda-transport.php
           php -l scripts/diagnostics/andromeda-access-probe.php
           php tests/andromeda-transport-smoke.php
+          php -l scripts/diagnostics/andromeda-catalog-capture.php
+          php tests/andromeda-catalog-capture-smoke.php
