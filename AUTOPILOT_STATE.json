@@ -1240,7 +1240,6 @@
       "no_independent_safe_task_available"
     ],
     "active_queue_ids": [
-      "S3_OTA_SELECTED_OPTIONS",
       "S3_OTA_SHORTLIST_COMPARE",
       "S3_OTA_MOBILE_JOURNEY",
       "S3_OTA_SITE_CONFIDENCE",
@@ -1250,7 +1249,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Two source packages implemented, integrated and published: #1768 decision rows and #1770 native long-description disclosure. CSS+788 B, served shared JS+426 B, initial/full external+1214 B, inline0. Remaining OTA2 full-offer switching contract documented; user pilot not measured. Continue from current_task; stop this pass at execution-resource checkpoint, no production changes."
+    "last_execution_continuation": "PR1773 implemented, corrected real focus-return defect, integrated and published exact source64011690 / checked release8b451099 / build34367999625 artifact10110771335 deploy34368506323. CSS+123B publicJS+34B sharedJS+2120B initial/full+2277B inline0. 375/1440 and live offer/contacts verified; no real leads. Continued independent OTA3 owner/storage contract audit; implementation pending. Execution-resource checkpoint after source corrections/CI/preview; next task is concrete shortlist package, not another repeated acceptance."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1269,8 +1268,8 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_OTA_SELECTED_OPTIONS",
-    "title": "Compare complete loaded offers with exact room, meal and selection identity",
+    "id": "S3_OTA_SHORTLIST_COMPARE",
+    "title": "Save and compare up to three exact loaded offer snapshots locally",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
     "coordinator_issue": 996,
@@ -1278,11 +1277,11 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "77cf8a6e713c7749980fd7d7732f65a3695defa5",
-    "published_source_sha": "dd91cd3626ce9aa02adeeed9367eb63de7f8f062",
-    "acceptance_status": "PARTIAL_PREVIEW_VERIFIED_USER_PILOT_DEFERRED",
-    "next_action": "Continue remaining OTA2 from fresh release: first validate selected tour -> return -> expanded hotel -> another complete offer under active AI filter (RO90k excluded, AI120k STANDARD and AI125k FAMILY). Preserve projection, expanded state, exact tour/search identity, return focus and latest-response generation. Existing direct-tour click remembers return source; raw V2Results.state.items is not the filtered projection. If adding an inline option chooser, expose a read-only current-projection getter and use complete offers, never independent room x meal combinations. Preserve typed contact fields or make the transition explicit. No new supplier discovery calls. OTA1 card/disclosure and OTA2 native long description are already published; do not repeat them. Physical Safari, user benchmark and production approval remain deferred.",
-    "audit": "docs/project/search3-selected-lead-product.json"
+    "last_fully_checked_release_sha": "8b45109998b62370f6f84aa1531481e62ee921ac",
+    "published_source_sha": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+    "acceptance_status": "CONTRACT_READY_IMPLEMENTATION_PENDING",
+    "next_action": "Fresh #996/heads/PR claim, then implement OTA3 from ota_shortlist_contract_20260909 in existing results-clarity audit: one explicit new shortlist behavior owner registered once; renderer resolver uses private viewItems, max3 complete Tourvisor offer snapshots. Separate hotelId from source/searchId/offerId. Persist whitelist only, no contact/raw payload. Saved prices always historical; reload/new generation never grants selection authority. Unique current-projection resolution then existing detail/flights only on explicit selection. Cover blocked/corrupt/quota storage, clear/reload/duplicate IDs/filter/sort/progressive, 375/1440 keyboard/focus. OTA2 #1773 is published; do not repeat native description, offer switching or focus acceptance. Physical Safari, user pilot and production approval deferred.",
+    "audit": "docs/project/search3-results-clarity-product.json"
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",

@@ -153,7 +153,7 @@
     }
   },
   "ota_offer_switch_20260909": {
-    "stage": "IMPLEMENTED_PENDING_CI",
+    "stage": "PUBLISHED_PREVIEW_AWAITING_EXTERNAL_ACCEPTANCE",
     "baseline_release_sha": "56c9bf12ec55ca862d15f54757444541a0b86d81",
     "benefit": [
       "Selected tour exposes other complete offers of the same hotel through the existing filtered result rows",
@@ -175,16 +175,71 @@
     },
     "verification": {
       "local": "source/shared build, source check, syntax, return/meal/honest owners, exact controller reverse and owner validators passed",
-      "ci": "34367277256 failed new focus assertion; existing capture handler corrected, stale-projection fallback now closes selected before returning to results; rerun pending",
-      "browser": "375/1440 existing fixture extended, execution pending",
-      "real_leads": 0
+      "ci": "Security34367999488 and exact34367999625 passed on final source",
+      "browser": "375/1440 AI STANDARD120k -> FAMILY125k with exact room/meal/tour/search/total; contacts retained, consent reset; new search clears; expired alternatives return safely; source immutable; API detail/flight only; screenshots visually checked",
+      "real_leads": 0,
+      "initial_failures": [
+        "34367277256 found real hidden-results focus-return ordering defect; existing capture handler fixed",
+        "34367652218 found ambiguous fixture locator: article and toggle shared data-hotel-id; scoped to .hotel-card with assertions intact",
+        "34367919867 superseded during fixture correction; not used as acceptance"
+      ]
     },
-    "published": false,
+    "published": true,
     "deferred": [
       "Physical Safari/iPhone",
       "User pilot",
       "Production approval"
     ],
-    "next_action": "Run applicable exact CI, inspect same-hotel/contacts states, merge and reuse exact artifact in preview"
+    "next_action": "OTA3 shortlist: implement the reviewed local snapshot contract in existing results-clarity audit; current TV offer switching is preview-verified. Physical Safari, pilot, provider input gaps and production approval stay separate/deferred.",
+    "source_pr": 1773,
+    "source_sha": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+    "source_tree": "bc598c4bf2f1924604c509580e93d4da24207f5a",
+    "release_sha": "8b45109998b62370f6f84aa1531481e62ee921ac",
+    "artifact_id": 10110771335,
+    "artifact_run": 34367999625,
+    "deploy_run": 34368506323,
+    "deploy_evidence_artifact": 10110900562,
+    "preview_invariants": {
+      "artifact_id": 10110771335,
+      "artifact_run": 34367999625,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+      "source_tree": "bc598c4bf2f1924604c509580e93d4da24207f5a"
+    },
+    "live_preview": {
+      "date": "2026-09-09",
+      "viewport": 1363,
+      "hotel": "GRAND BAHAMA BEACH HOTEL (Ex. HAPPY BEACH)",
+      "filter": "AI - Все Включено (59/100 hotels)",
+      "offer_ids": [
+        "25276995451144",
+        "25276563804907"
+      ],
+      "dates": [
+        "10.09.2026",
+        "11.09.2026"
+      ],
+      "nights": 7,
+      "prices": [
+        63782,
+        67373
+      ],
+      "alternatives": 4,
+      "return": "Keyboard Enter reveals same five complete offers and returns focus to exact source; second offer retains comment, unchecked consent, correct selected price and phone summary",
+      "document_overflow_px": 0,
+      "real_leads": 0
+    }
   }
 }
