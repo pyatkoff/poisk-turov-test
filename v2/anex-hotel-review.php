@@ -74,7 +74,7 @@ try {
         exit;
     }
     $filters = [];
-    foreach (['q','country','status','page'] as $key) {
+    foreach (['q','country','status','page','tv_date','tv_nights','tv_adults','tv_meal','tv_departure'] as $key) {
         if (isset($_GET[$key]) && !is_string($_GET[$key])) throw new RuntimeException('invalid_filter', 400);
         if (isset($_GET[$key])) $filters[$key] = $_GET[$key];
     }

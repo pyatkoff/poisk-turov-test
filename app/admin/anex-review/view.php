@@ -109,6 +109,55 @@ function anex_review_saved_content(?array $row, bool $anex): string
     return $html;
 }
 
+/** Owner-only external search links. These helpers never call a provider or accept a mapping. */
+function anex_review_tourvisor_integer($value, int $min, int $max): ?int
+{
+    if ((!is_string($value) && !is_int($value)) || !preg_match('/\A(?:0|[1-9][0-9]{0,8})\z/D', (string)$value)) return null;
+    $number = (int)$value;
+    return $number >= $min && $number <= $max ? $number : null;
+}
+
+function anex_review_tourvisor_criteria(array $input): array
+{
+    // The owner supplied this example; it is not attributed to a saved search.
+    $values = ['tv_date'=>'2026-09-18', 'tv_nights'=>8, 'tv_adults'=>2, 'tv_meal'=>7, 'tv_departure'=>1];
+    $errors = [];
+    if (array_key_exists('tv_date', $input)) {
+        $date = $input['tv_date'];
+        if (!is_string($date) || !preg_match('/\A(20[0-9]{2})-([0-9]{2})-([0-9]{2})\z/D', $date, $parts)
+            || !checkdate((int)$parts[2], (int)$parts[3], (int)$parts[1])) $errors[] = 'Дата вылета';
+        else $values['tv_date'] = $date;
+    }
+    foreach (['tv_nights'=>[1,60,'Ночи'], 'tv_adults'=>[1,6,'Взрослые'], 'tv_meal'=>[0,99,'ID питания'], 'tv_departure'=>[1,999999999,'ID города вылета']] as $key=>$rule) {
+        if (!array_key_exists($key, $input)) continue;
+        $number = anex_review_tourvisor_integer($input[$key], $rule[0], $rule[1]);
+        if ($number === null) $errors[] = $rule[2];
+        else $values[$key] = $number;
+    }
+    return ['values'=>$values, 'errors'=>$errors];
+}
+
+function anex_review_tourvisor_link(array $candidate, array $criteria): ?string
+{
+    $settings = anex_review_tourvisor_criteria($criteria);
+    if ($settings['errors']) return null;
+    $local = $candidate['current'] ?? null;
+    if (!is_array($local)) return null;
+    $target = anex_review_tourvisor_integer($candidate['catalog_hotel_id'] ?? null, 1, 999999999);
+    $current = anex_review_tourvisor_integer($local['id'] ?? null, 1, 999999999);
+    $country = anex_review_tourvisor_integer($local['country_id'] ?? null, 1, 999999999);
+    if ($target === null || $current !== $target || $country === null) return null;
+    $v = $settings['values'];
+    $date = substr($v['tv_date'], 8, 2) . '.' . substr($v['tv_date'], 5, 2) . '.' . substr($v['tv_date'], 0, 4);
+    // Country is from the current local/Tourvisor row, never the ANEX country ID.
+    return 'https://tourvisor.ru/search.php?' . http_build_query([
+        'ts_dosearch'=>1, 's_form_mode'=>0, 's_nights_from'=>$v['tv_nights'], 's_nights_to'=>$v['tv_nights'],
+        's_directflight'=>0, 's_regular'=>1, 'x_hotel_codes'=>$target,
+        's_j_date_from'=>$date, 's_j_date_to'=>$date, 's_adults'=>$v['tv_adults'],
+        's_meal'=>$v['tv_meal'], 's_flyfrom'=>$v['tv_departure'], 's_country'=>$country,
+    ], '', '&', PHP_QUERY_RFC3986);
+}
+
 function anex_review_form(array $detail, string $action, ?int $target, string $label, string $csrf, bool $enabled): string
 {
     $fields = ['id' => $detail['anex_hotel_id'], 'action' => $action, 'target' => $target ?? '',
@@ -121,6 +170,7 @@ function anex_review_form(array $detail, string $action, ?int $target, string $l
 
 function anex_review_render(array $queue, ?array $detail, array $filters, string $csrf, bool $write, string $nonce, string $message = ''): string
 {
+    $tourvisor = anex_review_tourvisor_criteria($filters);
     ob_start(); ?>
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Проверка отелей ANEX — AnyTour</title>
 <style nonce="<?= anex_review_escape($nonce) ?>">
@@ -129,9 +179,19 @@ function anex_review_render(array $queue, ?array $detail, array $filters, string
 <h1>Проверка отелей ANEX</h1><p class="muted">Сохранённые отели из реальных поисков. Описания и фото каждого источника показаны отдельно.</p>
 <?php if (!$write): ?><p class="notice">Режим просмотра. Сохранение решений пока недоступно.</p><?php endif; ?>
 <?php if ($message !== ''): ?><p class="notice" role="status"><?= anex_review_escape($message) ?></p><?php endif; ?>
-<form class="filters" method="get"><label>Название или ANEX ID<input name="q" maxlength="200" value="<?= anex_review_escape($filters['q'] ?? '') ?>"></label>
+<form class="filters" method="get"><?php foreach ($tourvisor['values'] as $key=>$value): ?><input type="hidden" name="<?= $key ?>" value="<?= anex_review_escape($value) ?>"><?php endforeach; ?><label>Название или ANEX ID<input name="q" maxlength="200" value="<?= anex_review_escape($filters['q'] ?? '') ?>"></label>
 <label>Страна<select name="country"><option value="0">Все страны</option><?php foreach ($queue['countries'] as $country): $id = (int)$country['country_id']; ?><option value="<?= $id ?>" <?= (int)($filters['country'] ?? 0) === $id ? 'selected' : '' ?>>ID страны <?= $id ?></option><?php endforeach; ?></select></label>
 <label>Статус<select name="status"><?php foreach (['pending'=>'Нерешённые','all'=>'Все','mapped'=>'Сопоставлены','later'=>'Отложены','pair_rejected'=>'Есть отклонённые пары','no_candidates'=>'Нет сохранённых кандидатов'] as $value=>$label): ?><option value="<?= $value ?>" <?= ($filters['status'] ?? 'pending') === $value ? 'selected' : '' ?>><?= $label ?></option><?php endforeach; ?></select></label><button>Найти</button></form>
+<article><h2>Проверить кандидата на Tourvisor</h2>
+<p class="muted">Начальные условия — из вашего примера, а не из сохранённого поиска: 18.09.2026, 8 ночей, 2 взрослых, питание 7 (AI), вылет 1 (Москва). Их можно изменить ниже. Страна и ID отеля берутся из текущей карточки кандидата Tourvisor.</p>
+<?php if ($tourvisor['errors']): ?><p class="notice" role="alert">Исправьте условия ссылок: <?= anex_review_escape(implode(', ', $tourvisor['errors'])) ?>. Ссылки пока недоступны; выберите корректные значения и нажмите «Применить к ссылкам».</p><?php endif; ?>
+<form class="filters" method="get" aria-label="Условия внешнего поиска Tourvisor">
+<?php foreach (['q','country','status','page'] as $key): if (!isset($filters[$key]) || !is_scalar($filters[$key])) continue; ?><input type="hidden" name="<?= $key ?>" value="<?= anex_review_escape($filters[$key]) ?>"><?php endforeach; ?>
+<?php if ($detail !== null): ?><input type="hidden" name="id" value="<?= (int)$detail['anex_hotel_id'] ?>"><?php endif; ?>
+<label>Дата вылета<input type="date" name="tv_date" min="2000-01-01" max="2099-12-31" required value="<?= anex_review_escape($tourvisor['values']['tv_date']) ?>"></label>
+<?php foreach (['tv_nights'=>['Ночи',1,60], 'tv_adults'=>['Взрослые',1,6], 'tv_meal'=>['ID питания Tourvisor',0,99], 'tv_departure'=>['ID города вылета Tourvisor',1,999999999]] as $key=>$field): ?><label><?= $field[0] ?><input type="number" name="<?= $key ?>" min="<?= $field[1] ?>" max="<?= $field[2] ?>" step="1" required value="<?= $tourvisor['values'][$key] ?>"></label><?php endforeach; ?>
+<button type="submit">Применить к ссылкам</button></form>
+<p class="muted">Ссылка откроет поиск в новой вкладке с вашей сессией Tourvisor. В выдаче выберите предложение ANEX и проверьте данные оператора. Наличие ID ANEX пока не подтверждено; совпадение автоматически не сохраняется.</p></article>
 <?php if ($detail !== null): ?>
 <article><h2><?= anex_review_escape($detail['hotel_name']) ?> · ANEX <?= (int)$detail['anex_hotel_id'] ?></h2>
 <p><?= $detail['mapped_id'] === null ? 'Соответствие не принято' : 'Принятое соответствие: AnyTour ' . (int)$detail['mapped_id'] ?>. Частота поисков: <?= (int)$detail['observation']['search_count'] ?>; последнее наблюдение: <?= anex_review_escape($detail['observation']['last_seen_utc']) ?> UTC.</p>
@@ -144,6 +204,7 @@ function anex_review_render(array $queue, ?array $detail, array $filters, string
 <?php if (!$detail['candidates']): ?><p class="notice">Нет сохранённых кандидатов. Одобрение недоступно; отель не считается несовпавшим.</p><?php endif; ?>
 <?php foreach ($detail['candidates'] as $candidate): $local = $candidate['current']; $target=(int)$candidate['catalog_hotel_id']; $excluded=false; foreach ($detail['exclusions'] as $pair) if ((int)$pair['catalog_hotel_id'] === $target) $excluded=true; ?>
 <article><h3>AnyTour / Tourvisor <?= $target ?> · <?= anex_review_value($local['name'] ?? null) ?></h3>
+<?php $tourvisorUrl = anex_review_tourvisor_link($candidate, $filters); if ($tourvisorUrl !== null): ?><p><a href="<?= anex_review_escape($tourvisorUrl) ?>" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Открыть этот отель на Tourvisor ↗</a></p><?php else: ?><p class="muted">Ссылка Tourvisor недоступна: проверьте условия поиска и наличие актуальных ID отеля и страны в каталоге.</p><?php endif; ?>
 <section><?= anex_review_saved_content($candidate['details'] ?? null, false) ?><details><summary>Данные справочника Tourvisor</summary><dl><?php foreach (['country_name'=>'Страна','region_name'=>'Регион','subregion_name'=>'Курорт','category'=>'Категория','latitude'=>'Широта','longitude'=>'Долгота'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($local[$key] ?? null) ?></dd><?php endforeach; ?></dl></details></section><details><summary>Почему предложен этот кандидат</summary><dl><?php foreach (['name_similarity'=>'Сходство названия (сохранённое)','distance_m'=>'Расстояние, м (сохранённое)','score'=>'Оценка (сохранённая)'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($candidate[$key] ?? null) ?></dd><?php endforeach; ?></dl><details><summary>Сохранённые доказательства кандидата (не новое чтение)</summary><pre><?= anex_review_escape($candidate['candidate_json'] ?? '') ?></pre></details></details>
 <?php if ($excluded): ?><p class="notice">Эта пара отклонена. Другие кандидаты остаются доступны.</p><?php endif; ?>
 <div class="actions"><?= anex_review_form($detail,'accept',$target,'Одобрить соответствие',$csrf,$write && !$excluded && $local !== null && $detail['manual'] === null && $detail['mapped_id'] === null) ?><?= anex_review_form($detail,'reject_pair',$target,'Отклонить эту пару',$csrf,$write && !$excluded && $detail['mapped_id'] !== $target) ?></div></article>

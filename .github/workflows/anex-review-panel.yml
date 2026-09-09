@@ -7,6 +7,7 @@ on:
       - 'v2/anex-hotel-review.php'
       - 'v2/anex-owner-login.php'
       - 'tests/anex-review-owner-*'
+      - 'tests/anex-review-tourvisor-link-test.php'
       - 'tests/anex-review-panel-test.php'
       - 'tests/anex-review-pair-import-test.php'
       - 'app/integrations/anex-search-mapping-registry.php'
@@ -26,6 +27,7 @@ on:
       - 'v2/anex-hotel-review.php'
       - 'v2/anex-owner-login.php'
       - 'tests/anex-review-owner-*'
+      - 'tests/anex-review-tourvisor-link-test.php'
       - 'tests/anex-review-panel-test.php'
       - 'tests/anex-review-pair-import-test.php'
       - 'app/integrations/anex-search-mapping-registry.php'
@@ -69,6 +71,7 @@ jobs:
         run: |
           for f in app/admin/anex-review/*.php v2/anex-hotel-review.php v2/anex-owner-login.php tests/anex-review-owner-*.php tests/anex-review-panel-test.php tests/anex-review-http-fixture.php; do php -l "$f"; done
           php tests/anex-review-owner-auth-test.php
+          php tests/anex-review-tourvisor-link-test.php
           php -l scripts/diagnostics/anex_review_owner_publish_runner.php
           php -l scripts/diagnostics/anex_review_owner_preserve.php
           python3 tests/anex-review-owner-publish-test.py
