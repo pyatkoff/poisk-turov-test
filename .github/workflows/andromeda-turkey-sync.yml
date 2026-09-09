@@ -21,6 +21,14 @@ jobs:
           test "$(cat "$RUNNER_TEMP/first-run")" = "$GITHUB_RUN_ID"
           php -l scripts/diagnostics/andromeda_turkey_sync.php
           python3 -B tests/andromeda_turkey_sync_test.py
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/turkey
       - name: Capture Turkey and compare complete local catalog
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}

@@ -41,9 +41,10 @@ def main():
     php=Path(__file__).with_suffix('.php').read_text().removeprefix('<?php')
     if args.phase=='prepare':
         save(root/'capture-reservation.json',{'state':'inflight'},exclusive=True)
-        data=owner.ssh_php(php,{'operation':'capture'},maximum_bytes=4000000)
+        data=owner.ssh_php(php,{'operation':'capture','saved_state':json.loads((root/'state.json').read_bytes())},maximum_bytes=4000000)
         save(root/'capture.json',data,exclusive=True)
-        if data.get('status')!='captured':raise ValueError('capture stopped; inspect without replay')
+        if data.get('status')!='captured':
+            print(json.dumps(data));raise ValueError('capture stopped; inspect without replay')
         request=match(data);save(root/'import-request.json',request,exclusive=True)
         print(json.dumps({'status':'prepared','country_id':data['country_id'],'supplier_country_id':data['supplier_country_id'],
             'source_hotels':len(request['rows']),'local_hotels':len(data['local']['hotels']),

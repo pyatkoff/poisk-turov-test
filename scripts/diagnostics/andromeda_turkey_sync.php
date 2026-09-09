@@ -14,15 +14,21 @@ try{
  if(count($local)!==1)throw new RuntimeException();$country=(int)$local[0]['id'];
  $lock=fopen($private.'/turkey-catalog.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
  if($request['operation']==='capture'){
-  $phase='capture_reservation';if(file_exists($stage)||!mkdir($stage,0700))throw new RuntimeException();
-  anytour_andromeda_search3_save($stage.'/reservation.json',['state'=>'inflight','country_id'=>$country]);
+  $phase='capture_reservation';
+  // The previous attempt stopped at country lookup, before client creation; preserve its reservation.
+  if(is_dir($stage)){
+   if(!is_file($stage.'/reservation.json')||is_file($stage.'/supplier-attempt.json')||is_file($stage.'/catalog.json'))throw new RuntimeException();
+  }elseif(!mkdir($stage,0700))throw new RuntimeException();
+  if(!is_file($stage.'/reservation.json'))anytour_andromeda_search3_save($stage.'/reservation.json',['state'=>'inflight','country_id'=>$country]);
   $saved=json_decode(file_get_contents($config['catalog_path']),true,32,JSON_THROW_ON_ERROR);
-  $stateId=anytour_anex_search3_dictionary_id($saved['state']['payload']['STATE'],['Турция']);
+  $state=$request['saved_state']??[];
+  if(($state['action']??null)!=='state'||($state['params']['TOWNFROMINC']??null)!==$saved['all']['params']['TOWNFROMINC'])throw new RuntimeException();
+  $stateId=anytour_anex_search3_dictionary_id($state['payload']['STATE'],['Турция']);
   $departure=(int)$saved['all']['params']['TOWNFROMINC'];
   $client=new AnyTourAndromedaClient(static function($url,$options)use($private){
    anytour_andromeda_search3_budget($private);return (new AnyTourAndromedaTransport(true))($url,$options);
   },true);
-  $phase='supplier_catalog';$client->login($config['username'],$config['password']);
+  $phase='supplier_catalog';anytour_andromeda_search3_save($stage.'/supplier-attempt.json',['state'=>'inflight']);$client->login($config['username'],$config['password']);
   $params=['TOWNFROMINC'=>$departure,'STATEINC'=>$stateId];$payload=$client->catalog('all',$params);
   $bytes=json_encode($payload,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
   foreach([$config['username'],$config['password'],rawurlencode($config['username']),rawurlencode($config['password'])] as $secret)if($secret!==''&&strpos($bytes,$secret)!==false)throw new RuntimeException();
