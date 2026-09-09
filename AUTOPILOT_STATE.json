@@ -1,4 +1,74 @@
 {
+  "latest_canonical_header_owner_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1660,
+    "deploy_control_pr": 1661,
+    "baseline_release_sha": "0a3b2310678f18a629e666842e1c6456b3c7dc58",
+    "source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
+    "source_tree": "b56839cd16c3dda7de4dc3bb6c1e0b6939d556d6",
+    "release_integration_sha": "984c63891fd786044264071d5dbe5cb71eed4029",
+    "product_result": [
+      "Search3 uses the canonical DS2, site header and footer CSS owners exactly once.",
+      "Private Search3 header rules were removed and generic resets are scoped to the Search3 shell.",
+      "Mobile navigation now follows the shared 1024px breakpoint across the site."
+    ],
+    "size": {
+      "eight_assets_before_raw_bytes": 13574,
+      "eight_assets_after_raw_bytes": 12865,
+      "eight_assets_delta_raw_bytes": -709,
+      "shared_ds2_header_added_raw_bytes": 10494,
+      "eager_route_before_raw_bytes": 67747,
+      "eager_route_after_raw_bytes": 77532,
+      "full_route_before_raw_bytes": 110165,
+      "full_route_after_raw_bytes": 119950,
+      "route_delta_raw_bytes": 9785,
+      "js_delta_raw_bytes": 0,
+      "accounting": "The eight Search3 assets shrink709B, but loading the canonical shared design/header owners adds10494B, so eager and full route CSS/JS each grow9785B. This is intentional product growth, not reported as removal."
+    },
+    "ci": {
+      "security_run": 34303744326,
+      "exact_artifact_run": 34303744328,
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 10085907944,
+      "digest": "sha256:ace19d57bd7d16c616dc901333958b6ef7982ffb08f2b54f6dd750616e384c59",
+      "archive_sha256": "aa90eb5d3d70275e5621bd2ba2ccd3650110ca4cb00ee293e26cc35735e35963",
+      "manifest_sha256": "11f65bbc02bdd9bf06c34da71822012f014ce6f0e7850feb78315cc3c02bdf29",
+      "payload_sha256": "54b37040769d7e6783227e90fb9739d81a5b0b47c76005e261e3d13fb1aa49d4",
+      "file_count": 717
+    },
+    "publication": {
+      "published": true,
+      "deploy_run": 34304080062,
+      "deployment_evidence_artifact": 10086002518,
+      "published_preview_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
+      "routes_checked": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "preview_metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprint_unchanged": true,
+      "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "visual_verification": {
+      "ci_widths": [375, 520, 521, 760, 761, 768, 769, 999, 1000, 1024, 1025, 1100, 1101, 1440],
+      "live_desktop_width": 1363,
+      "one_visible_header": true,
+      "logo_nav_actions_visible": true,
+      "mobile_duplicate_visible": false,
+      "horizontal_overflow": false
+    },
+    "audit": "docs/project/search3-canonical-header-owner.json",
+    "deferred": ["physical Safari and safe-area verification", "owner production visual acceptance"],
+    "rollback": "Revert release merge 984c63891fd786044264071d5dbe5cb71eed4029; isolated preview retains the previous atomic backup.",
+    "next_action": "Advance to S3_PRODUCT_PAGES_HANDOFF: audit parameter-preserving transitions between shared content pages and Search3, and implement the first confirmed mismatch without duplicating the separate ANEX work."
+  },
   "latest_shared_control_owner_package": {
     "schema_version": 1,
     "date": "2026-09-09",
@@ -842,23 +912,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1658 moves approved shared content CTA and telephone geometry into one canonical owner and removes the later duplicate layer. Source d68c0989 is checked and merged as 6304d128; published preview remains exact source ef8ce1d8 because computed visuals are unchanged.",
+    "last_material_progress": "#1660 makes the canonical DS2/header/footer CSS the single shared shell owner in Search3 and removes its private header layer. Source 0c87e1ff is checked, merged as 984c6389 and published exactly in the isolated preview.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit shared header, navigation, footer, container, secondary button and link states; consolidate only confirmed duplicate ownership or mismatch, otherwise advance to pages and handoff.",
+    "next_action": "Audit parameter-preserving transitions between shared content pages and Search3, then implement the first confirmed pages/handoff mismatch without duplicating ANEX work.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_SHARED_SITE",
-    "title": "Converge shared site components and ownership",
+    "id": "S3_PRODUCT_PAGES_HANDOFF",
+    "title": "Converge whole-site pages and parameter-preserving Search3 handoff",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "6304d128429e999e97ba1dbdc9fc4c3933f7574c",
-    "published_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
-    "next_action": "Audit shared header, navigation, footer, container, secondary button and link states; consolidate only confirmed duplicate ownership or mismatch, otherwise advance to S3_PRODUCT_PAGES_HANDOFF.",
-    "baseline_release_sha": "6304d128429e999e97ba1dbdc9fc4c3933f7574c",
+    "last_fully_checked_release_sha": "984c63891fd786044264071d5dbe5cb71eed4029",
+    "published_source_sha": "0c87e1ff07b17723b819ae83a15fc3449a693b54",
+    "next_action": "Audit parameter-preserving transitions between shared content pages and Search3, then implement the first confirmed pages/handoff mismatch without duplicating ANEX work.",
+    "baseline_release_sha": "984c63891fd786044264071d5dbe5cb71eed4029",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -9552,7 +9622,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T02:12:00.000Z",
+  "updated_at": "2026-09-09T02:44:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
