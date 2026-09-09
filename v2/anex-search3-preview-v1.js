@@ -135,6 +135,13 @@
       page.filter(validHotel).forEach(hotel => {
         const key = hotelKey(hotel);
         const row = merged.get(key) || Object.assign({}, hotel, { tours: [] });
+        if (provider === 'andromeda') {
+          const incoming = supplierInfo(hotel), current = supplierInfo(row);
+          if (incoming) row.andromeda_content = Object.assign({}, row.andromeda_content || hotel.andromeda_content, {
+            source: 'andromeda', image_url: current?.image_url || incoming.image_url,
+            hotel_url: current?.hotel_url || incoming.hotel_url
+          });
+        }
         const seen = new Set(row.tours.filter(t => t.offer_ref).map(t => t.provider + ':' + t.offer_ref));
         row.tours.push(...hotel.tours.filter(t => !t.offer_ref || !seen.has(provider + ':' + t.offer_ref)).map(t => Object.assign({}, t, { provider })));
         row.tours.sort((a,b) => Number(a.price.amount)-Number(b.price.amount));
@@ -325,22 +332,25 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     card.setAttribute('data-hotel-id', String(hotelKey(hotel)));
     card.setAttribute('data-search3-results-v1', '1');
     const catalog = catalogInfo(hotel), supplier = supplierInfo(hotel);
-    const photo = catalog && catalog.image_url ? {url: catalog.image_url, source: 'Tourvisor'}
-      : supplier && supplier.image_url ? {url: supplier.image_url, source: 'Андромеда'} : null;
+    const photos = [catalog && catalog.image_url && {url: catalog.image_url, source: 'Tourvisor'},
+      supplier && supplier.image_url && {url: supplier.image_url, source: 'Андромеда'}].filter(Boolean);
     const header = node('div', 'anex-search3-header');
     const media = node('figure', 'anex-search3-media');
     const emptyPhoto = () => media.appendChild(node('span', 'anex-search3-photo-empty', 'Фото пока нет'));
-    if (photo && !failedImages.has(photo.url)) {
+    const showPhoto = () => {
+      const photo = photos.find(candidate => !failedImages.has(candidate.url));
+      if (!photo) { emptyPhoto(); return; }
       const image = node('img');
       image.alt = hotel.name;
       image.loading = 'lazy'; image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
       const caption = node('figcaption', '', 'Фото: ' + photo.source);
       image.addEventListener('error', () => {
-        failedImages.add(photo.url); image.remove(); caption.remove(); emptyPhoto();
+        failedImages.add(photo.url); image.remove(); caption.remove(); showPhoto();
       }, { once: true });
       image.src = photo.url;
       media.appendChild(image); media.appendChild(caption);
-    } else emptyPhoto();
+    };
+    showPhoto();
     header.appendChild(media);
     const identity = node('div', 'anex-search3-identity');
     identity.appendChild(node('h3', '', hotel.name + (hotel.category ? ' ' + hotel.category + '★' : '')));
@@ -714,16 +724,18 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     active = run; lastGeneration = run.generation;
     controller = new AbortController();
     const signal = controller.signal;
+    const anexOnly = new URL(window.location.href || endpoint.href).searchParams.get('andromeda_operator') === '5';
     const pages = {}, statuses = { anex: 'ANEX: поиск…', andromeda: 'Андромеда: поиск…' };
     message = Object.values(statuses).join(' · '); render();
     const timeout = setTimeout(() => { if (isCurrent(run, window.V2SearchLifecycle) && controller) controller.abort(); }, 600000);
     await Promise.allSettled(['anex', 'andromeda'].map(async provider => {
-      const label = provider === 'andromeda' ? 'Андромеда' : 'ANEX';
+      const label = provider === 'andromeda' ? 'Андромеда' + (anexOnly ? ' (ANEX)' : '') : 'ANEX';
       try {
         const url = new URL('api-' + provider + '-search3-preview.php', endpoint);
         let number = 1, total = 1;
         do {
           const request = provider === 'andromeda' ? Object.assign({}, run, { page: number }) : run;
+          if (provider === 'andromeda' && anexOnly) request.andromeda_operator_ids = ['5'];
           const response = await window.fetch(url.href, { method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AnyTourSearch3' }, body: JSON.stringify(request), signal });
           const payload = await response.json();

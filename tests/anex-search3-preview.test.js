@@ -1477,3 +1477,53 @@ test('Andromeda keeps unresolved namespaces, supplier content and loaded pages a
   assert.ok(page.results.querySelector('[data-hotel-id="andromeda:operator_5:900"]'));
   assert.equal(page.requests.filter(r=>r.body?.page===3).length,1);
 });
+
+
+test('late Andromeda content survives ANEX-first merging and failed photos advance once', async () => {
+  const page=preview(false,true);page.reset(1,snapshot());
+  const catalog={hotel_id:900,source:'tourvisor',image_url:'https://images.example.com/catalog.jpg'};
+  page.requests.find(r=>r.url.includes('api-anex-')).respond(response(1,[hotel({local_id:900,catalog})]));
+  await tick();
+  const content={source:'andromeda',image_url:'https://images.example.com/supplier.jpg',hotel_url:'https://operator.example.com/hotel'};
+  page.requests.find(r=>r.url.includes('api-andromeda-')).respond({ok:true,data:{provider:'andromeda',generation:1,page:1,pages_count:1,
+    hotels:[hotel({local_id:900,andromeda_content:content})]}});
+  await tick();
+  const card=()=>page.results.querySelector('[data-hotel-id="900"]');
+  assert.match(card().textContent,/Описание отеля у поставщика/);
+  assert.equal(card().querySelector('img').src,catalog.image_url);
+  card().querySelector('img').dispatchEvent({type:'error'});
+  assert.equal(card().querySelector('img').src,content.image_url);
+  assert.equal(card().querySelector('figcaption').textContent,'Фото: Андромеда');
+  page.sort.dispatchEvent({type:'change'});await tick();
+  assert.equal(card().querySelector('img').src,content.image_url,'failed catalog image is not retried');
+  card().querySelector('img').dispatchEvent({type:'error'});
+  assert.equal(card().querySelector('img'),null);
+  assert.equal(card().querySelectorAll('.anex-search3-photo-empty').length,1);
+  assert.equal(page.requests.length,2,'image fallback does not request more offers');
+});
+
+test('a later Andromeda page fills missing content without changing accepted hotel identity', () => {
+  const api=helpers(), first=hotel({local_id:900,andromeda_content:{source:'andromeda',image_url:null,hotel_url:null}});
+  const next=hotel({local_id:900,andromeda_content:{source:'andromeda',image_url:'https://images.example.com/later.jpg',hotel_url:'https://operator.example.com/hotel'}});
+  const original=JSON.stringify(first);
+  const rows=api.combineSources({andromeda:[first,next]});
+  assert.equal(rows.length,1);assert.equal(rows[0].local_id,900);
+  assert.equal(rows[0].andromeda_content.image_url,next.andromeda_content.image_url);
+  assert.equal(JSON.stringify(first),original,'earlier saved page remains unchanged');
+});
+
+
+test('ANEX-only Andromeda correlation link scopes supplier requests without altering ANEX criteria', async () => {
+  const page=preview(false,true);
+  page.window.location.href='https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/?andromeda_operator=5';
+  page.reset(1,snapshot());
+  const anex=page.requests.find(r=>r.url.includes('api-anex-'));
+  const andromeda=page.requests.find(r=>r.url.includes('api-andromeda-'));
+  assert.deepEqual(plain(andromeda.body.andromeda_operator_ids),['5']);
+  assert.equal(anex.body.andromeda_operator_ids,undefined);
+  andromeda.respond({ok:true,data:{provider:'andromeda',generation:1,page:1,pages_count:2,hotels:[hotel()]}});
+  await tick();
+  const next=page.requests.find(r=>r.body.page===2);
+  assert.deepEqual(plain(next.body.andromeda_operator_ids),['5']);
+  assert.match(page.document.getElementById('anexSearch3Results').textContent,/Андромеда \(ANEX\)/);
+});

@@ -42,6 +42,10 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
         if(!$operators)throw new DomainException('no_operators');
         $params['OPERATORS']=implode(',',$operators);
     }
+    if (isset($request['andromeda_operator_ids'])) {
+        if ($request['andromeda_operator_ids'] !== ['5'] || in_array('5',array_map('strval',$excluded),true)) throw new DomainException('operator_not_supported');
+        $params['OPERATORS']='5';
+    }
     AnyTourAndromedaClient::validatePriceParams($params);
     return $params;
 }
