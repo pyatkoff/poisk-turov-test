@@ -1,0 +1,19 @@
+{
+  "source": "a65d2b01cf8e14b41a8b4a6ae965f258f42e9bfd",
+  "checked_head": "ef03449d108d84c7dcff56b28eda3d2bb34f039c",
+  "run": 34366379110,
+  "job": 102516050241,
+  "artifact": 10110010345,
+  "artifact_digest": "sha256:d79aa7ce3aea8dd04113de91686e9639e821eb4754d8e4d5d390b0e3d227603a",
+  "normalized_sha256": "eef484d6d879181ee478c1b050f3e972b2b1b54daf554d65f6da5e7557f975d6",
+  "source_response_sha256": "c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9",
+  "normalized": 50,
+  "rejected": 0,
+  "fixture_checks": 18,
+  "status": "partial",
+  "supplier_calls": 0,
+  "db_writes": 0,
+  "published": false,
+  "selection_enabled": false,
+  "next_action": "Accepted hotel resolver and private server offer-reference store; bounded SEARCH handoff, no automatic matching by name or ID coincidence."
+}
