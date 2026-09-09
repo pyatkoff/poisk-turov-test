@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "issue": 1717,
+  "stage": "A3",
+  "date": "2026-09-10",
+  "repository": "pyatkoff/poisk-turov-test",
+  "status": "source_checked_default_off",
+  "pull_request": 1833,
+  "source_sha": "f420bb08f09e0c4a24af4b07cfcd080b935f4c7f",
+  "base_sha": "a31842b76cc981bf5b46e02d800bd57d4ed8a051",
+  "installed_baseline_sha": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+  "implemented": [
+    "Opt-in broninit client method using an existing private session and an unchanged opaque claiminc.",
+    "Retained OfferStore lookup binds provider, search_ref, generation, page, hotel_scope, offer_ref, operator_ref and accepted local_id.",
+    "Current mapping callback is required before and after capture; snapshot alone does not authorize the operation.",
+    "Caller must hold the private lock and persist/compare/read back reservation before transport; no default storage or network caller.",
+    "One capture checkpoint refuses replay across server requests after reserved, captured, unknown or stale outcomes.",
+    "Failed checkpoint writes cannot expose an unpersisted result as captured; late results are private stale evidence.",
+    "Private local reread checks context, mapping and digest; identity/quote/selection stay false."
+  ],
+  "official_contract": {
+    "reviewed_on": "2026-09-09",
+    "package": "https://dokuwiki.samo.ru/doku.php?id=andromeda:bron",
+    "claim": "https://dokuwiki.samo.ru/doku.php?id=andromeda:claim_struct",
+    "actions_implemented": [
+      "broninit"
+    ],
+    "actions_not_called": [
+      "bron",
+      "bron_ticket",
+      "calc",
+      "get_flights",
+      "changeservice"
+    ],
+    "identity_relation": "PRICES.id / claiminc / catalogKey remains unverified until an actual package is captured.",
+    "money": "No public price projection yet. buyerMoneys.buyerClaimMoney.net is distinct from agency moneys.money.net."
+  },
+  "verification": {
+    "source_sha": "f420bb08f09e0c4a24af4b07cfcd080b935f4c7f",
+    "protocol": {
+      "run": 34416375023,
+      "job": 102682054948,
+      "status": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34416375023"
+    },
+    "security": {
+      "run": 34416375011,
+      "job": 102682055544,
+      "status": "success",
+      "url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34416375011"
+    },
+    "checks": {
+      "client": 168,
+      "existing_offer_store": 24,
+      "package_capture": 111,
+      "total": 303,
+      "anex_normalizer": "passed",
+      "php_lint": "passed"
+    },
+    "local_php": "unavailable; PHP execution verified in Actions",
+    "baseline_preservation": "OfferStore, normalizer, resolver and existing store tests byte-identical to installed95fa11f5; client identical outside the explicit opt-in additions.",
+    "build": "not required for this disabled server package",
+    "artifact": null
+  },
+  "publication": {
+    "published": false,
+    "live_package_captured": false,
+    "public_quote_enabled": false,
+    "public_selection_enabled": false,
+    "ui_changed": false,
+    "shared_publication_owner": "SEARCH; #1831 merged43d874d97283a8d4fb302167bb7303e6712f4bb6; shared publication has its own active claim."
+  },
+  "effects": {
+    "supplier_http_calls": 0,
+    "db_reads": 0,
+    "db_writes": 0,
+    "new_hotel_pairs": 0,
+    "booking_calls": 0,
+    "lead_sends": 0,
+    "runtime_deploys": 0
+  },
+  "deferred": [
+    "Wire the existing private lock/save/readback/current-mapping reader into the coordinator for one specifically reserved retained offer; never choose a fresh checkpoint to replay an unknown operation.",
+    "Capture a real broninit package and verify the ID relationship and returned composition. The documented method is not an executed live success.",
+    "Only then implement the public allowlist and verified/changed/unavailable price states. Never return the full claim to a browser.",
+    "Shared #1830/#1831 details acceptance/publication stays with SEARCH. Mobile/physical Safari for future changed UI is deferred.",
+    "Do not merge this runtime PR into the ANEX base's automatic supplier/deploy workflow or publish the old base over release."
+  ],
+  "next_action": "One bounded saved-offer package capture through the existing private runtime helpers, then actual-response public projection; no matching, repeated catalogs or shared UI ownership takeover."
+}
