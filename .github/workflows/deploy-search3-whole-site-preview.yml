@@ -15,6 +15,7 @@ concurrency:
 
 env:
   CONTROL_BRANCH: deploy/search3-site-local-hotel-filter-20260909-retry1
+  CONTROL_SEED_SHA: 'bfddd947f92ce8030165f47037b232c15d3ba334'
   WORKFLOW_PATH: .github/workflows/deploy-search3-whole-site-preview.yml
   RELEASE_PIN_SHA: 'fd0d0cf69b2b3928575c7c68d6afe5f62f1eab56'
   SOURCE_SHA: '0fedbcb5ffb426af4069305d06f446a571dc5254'
@@ -49,7 +50,8 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
-          test "$(git rev-parse HEAD^)" = "$RELEASE_PIN_SHA"
+          test "$(git rev-parse HEAD^)" = "$CONTROL_SEED_SHA"
+          test "$(git rev-parse "$CONTROL_SEED_SHA^")" = "$RELEASE_PIN_SHA"
           test "$(git rev-parse "$SOURCE_SHA^{tree}")" = "$SOURCE_TREE"
           git diff --quiet "$SOURCE_SHA" "$RELEASE_PIN_SHA" -- . ':(exclude)AUTOPILOT_STATE.json' ':(exclude)docs/**'
           mapfile -t changed < <(git diff --name-only "$RELEASE_PIN_SHA" HEAD)
