@@ -75,6 +75,11 @@ foreach (['/poisk-turov/', '/country/', '/hot/', '/rb/', '/how-to-buy/', '/conta
 }
 if (substr_count($header, 'aria-current="page"') !== 2) $fail('header active state changed');
 
+$headerCss = (string)file_get_contents(__DIR__ . '/../v2/site-header-v2.css');
+if (!preg_match('/--at-header-menu-size:\\s*44px(?:;|})/', $headerCss)) {
+    $fail('shared mobile menu target fell below 44px');
+}
+
 ob_start();
 v2_render_site_footer('8 (800) 100-61-50', '+78001006150');
 $footer = (string)ob_get_clean();
