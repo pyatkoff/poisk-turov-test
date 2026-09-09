@@ -1,0 +1,28 @@
+{
+  "issue": 1717,
+  "pr": 1821,
+  "code_sha": "fa2cf998a3e4f92e08648d0dc13ba76fa68940f6",
+  "behavior": [
+    "GROUP_BY=32 discovery",
+    "explicit accepted local hotel expansion without GROUP_BY",
+    "saved seed validation",
+    "original criteria retained",
+    "local filters apply to expansion",
+    "partial results retained; no redraw replay; generation reset"
+  ],
+  "checked": {
+    "node": 51,
+    "php_protocol_run": 34406384105,
+    "security_run": 34406384127,
+    "observations_run": 34406384103
+  },
+  "published": false,
+  "supplier_calls_this_package": 0,
+  "mapping_writes": 0,
+  "deferred": [
+    "scoped publisher with exact predecessor hashes and artifact provenance",
+    "desktop/mobile visual acceptance",
+    "bounded grouped discovery and explicit expansion live verification"
+  ],
+  "next_action": "Complete source checks; prepare scoped own-preview publisher; verify explicit expansion and return. No new matching."
+}
