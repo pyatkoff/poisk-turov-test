@@ -134,5 +134,11 @@ cal_assert(str_contains($seasonal, "v2_seo_seasonal_snapshot_offers(\$pageKey,6)
 cal_assert(str_contains($seasonal, "v2_seo_seasonal_snapshot_offers(\$pageKey,12)"), 'seasonal_calendar_candidates');
 cal_assert(str_contains($seasonal, "modify('last day of this month')"), 'seasonal_month_clamp');
 cal_assert(str_contains($seasonal, 'v2_seo_render_price_calendar'), 'seasonal_calendar');
+$seasonalEmpty = v2_seo_render_seasonal_offer_empty();
+cal_assert(str_contains($seasonalEmpty, 'data-seasonal-offers-empty'), 'seasonal_empty_marker');
+cal_assert(str_contains($seasonalEmpty, 'нет актуальных вариантов на выбранный месяц'), 'seasonal_empty_observation_copy');
+cal_assert(str_contains($seasonalEmpty, 'Это не означает, что туров нет'), 'seasonal_empty_unknown_not_zero');
+cal_assert(!str_contains($seasonalEmpty, '0 ₽'), 'seasonal_empty_no_zero_price');
+cal_assert(!str_contains($seasonalEmpty, '<a '), 'seasonal_empty_reuses_single_final_handoff');
 
-echo "SEO_PRICE_CALENDAR_UI_OK unknown_not_zero=1 seasonal_month_clamp=1 server_rendered=1 search_handoff=1 countryFreshness=1\n";
+echo "SEO_PRICE_CALENDAR_UI_OK unknown_not_zero=1 seasonal_month_clamp=1 server_rendered=1 search_handoff=1 countryFreshness=1 seasonalEmpty=1\n";
