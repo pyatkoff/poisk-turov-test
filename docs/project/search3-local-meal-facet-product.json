@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-09T07:13:55.101186+00:00",
+  "status": "CHECKED_RELEASE_AND_PUBLISHED_PREVIEW",
+  "baseline_release_sha": "c5c2ce805dd92ee09fa8cdd07adbafef0d779227",
+  "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+  "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+  "checked_release_sha": "598269e241391aae34112d835596f56d089fd6d7",
+  "source_prs": [
+    1686,
+    1687
+  ],
+  "benefits": [
+    "Owner main#1679 photo URL normalization safely ported byte-for-byte: scheme-relative CDN URLs become HTTPS; unsafe URLs remain rejected and dedup/limits preserved.",
+    "Local meal facet uses canonical meal labels and matching original tour references before representative price, sorting and expansion. Original result state/events/continuation count and supplier objects remain unchanged. Existing name/category/meal share one hidden-card owner; incomplete data hides and clears meal."
+  ],
+  "ci": {
+    "photo": {
+      "pr": 1686,
+      "source": "d75d21d31520142b864d965997f310840de80280",
+      "tree": "d8e80393563943cf114e208ad9db8cb628487a50",
+      "release": "f814829e2c7e397a83191e24836cb599d9db3ef8",
+      "security": 34321149428,
+      "exact": 34321149460,
+      "conclusion": "success",
+      "donor_smoke_run": 34318224463,
+      "donor_smoke_job": 102358893845,
+      "donor_smoke": "Exact byte port from owner main#1679; donor PHP smoke passed hotel65108 images2 description1. Release exact CI linted PHP. Local PHP unavailable; no fresh local smoke claimed."
+    },
+    "meal": {
+      "pr": 1687,
+      "source": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+      "tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+      "release": "598269e241391aae34112d835596f56d089fd6d7",
+      "security": 34321878627,
+      "exact": 34321878643,
+      "conclusion": "success",
+      "artifact_id": 10092207048,
+      "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+      "owner_validation": "Both current owner validators passed locally. Ready-source Security passed secret/private-key and owner-direction checks; draft-only owner-validator step skipped by existing workflow condition. Documentation checkpoint runs that existing draft gate without changing source."
+    },
+    "deploy": 34322213328,
+    "source_rebuild_for_test_only_fix": false,
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false
+  },
+  "checks": {
+    "meal_fixture_widths": [
+      375,
+      1440
+    ],
+    "meal_raw_served_parity": true,
+    "existing_result_states": 16,
+    "existing_widths": [
+      375,
+      760,
+      761,
+      999,
+      1000,
+      1024,
+      1025,
+      1440
+    ],
+    "fixture_price_case": "A RO90000/AI120000/AI125000, B AI100000, C RO80000: AI sorts B before A, A price120000, no excluded tour IDs on expansion; clear restores all.",
+    "original_state_event_tour_reference_equality": true,
+    "frozen_supplier_data_unchanged": true,
+    "single_rerender_per_meal_change": true,
+    "dirty_reset_progressive_unknown_and_hostile_labels": true,
+    "combined_name_category_meal_and_zero_matches": true,
+    "minimum_touch_target": 44,
+    "extra_supplier_calls_during_local_filter_test": 0,
+    "real_leads": 0,
+    "native_entry_widths": [
+      375,
+      1440
+    ],
+    "independent_agent_review": "No confirmed regressions; read-only original state/count, matching price/expand, dirty/reset and accessibility review."
+  },
+  "ci_failure_and_fix": {
+    "source": "8edc75ad1156e812ac298e11ebabc410861ec00d",
+    "exact_run": 34321465874,
+    "reason": "Historical source assertion still expected local filter version2 after reviewed projection API version3.",
+    "fix": "Require exact single exported apply/clear/project/version3 owner and meal availability guard, retaining all previous owner/include/no-fetch assertions. Test-only commit8382d1bd; no additional asset build."
+  },
+  "public_assets": {
+    "eight_search3_assets": {
+      "before": 26579,
+      "after": 28103,
+      "delta": 1524
+    },
+    "eager_route_css_js": {
+      "before": 162859,
+      "after": 164463,
+      "delta": 1604
+    },
+    "full_scenario_css_js": {
+      "before": 162859,
+      "after": 164463,
+      "delta": 1604
+    },
+    "selected_phase_css_js": {
+      "before": 0,
+      "after": 0,
+      "delta": 0
+    },
+    "shared_emitted_js_delta": 80,
+    "inline_delta": 0,
+    "public_paths": {
+      "before": {
+        "search3-results-filters-v1.js": 7975,
+        "search3-results-filters-v1.css": 16870,
+        "search3-entry-v1.css": 1683,
+        "search3-entry-v1.js": 0,
+        "search3-results-cards-v2.css": 1,
+        "search3-results-cards-v2.js": 0,
+        "search3-selected-flow-v2.css": 50,
+        "search3-selected-flow-v2.js": 0
+      },
+      "after": {
+        "search3-results-filters-v1.js": 9426,
+        "search3-results-filters-v1.css": 16943,
+        "search3-entry-v1.css": 1683,
+        "search3-entry-v1.js": 0,
+        "search3-results-cards-v2.css": 1,
+        "search3-results-cards-v2.js": 0,
+        "search3-selected-flow-v2.css": 50,
+        "search3-selected-flow-v2.js": 0
+      },
+      "css": {
+        "before": 18604,
+        "after": 18677
+      },
+      "js": {
+        "before": 7975,
+        "after": 9426
+      }
+    },
+    "route_bundle_css_after": 23742,
+    "route_bundle_js_after": 112618,
+    "photo_packet_css_js_delta": 0,
+    "measurement": "Exact raw owned external response bodies: eight public assets plus current Search3 shared CSS/JS all bundles and response separators. Initial and full scenario equal. Source and exact artifact agree. HTML, fonts, images, inline totals and third-party requests excluded; inline delta0. No code removal or lazy-loading saving claimed.",
+    "checkpoints": [
+      {
+        "ref": "c5c2ce805dd92ee09fa8cdd07adbafef0d779227",
+        "shared_bundle_css": 23742,
+        "shared_bundle_js": 112538,
+        "eight_assets": 26579,
+        "css": 18604,
+        "js": 7975,
+        "initial_external_css_js": 162859,
+        "full_scenario_external_css_js": 162859,
+        "extra_selected_request_bytes": 0
+      },
+      {
+        "ref": "WORKTREE",
+        "shared_bundle_css": 23742,
+        "shared_bundle_js": 112618,
+        "eight_assets": 28103,
+        "css": 18677,
+        "js": 9426,
+        "initial_external_css_js": 164463,
+        "full_scenario_external_css_js": 164463,
+        "extra_selected_request_bytes": 0
+      },
+      {
+        "ref": "ARTIFACT",
+        "shared_bundle_css": 23742,
+        "shared_bundle_js": 112618,
+        "eight_assets": 28103,
+        "css": 18677,
+        "js": 9426,
+        "initial_external_css_js": 164463,
+        "full_scenario_external_css_js": 164463,
+        "extra_selected_request_bytes": 0
+      }
+    ]
+  },
+  "publication": {
+    "artifact_id": 10092207048,
+    "artifact_run": 34321878643,
+    "http_status": 200,
+    "internal_php_denied": true,
+    "lead_probe_status": 403,
+    "metrika_counter": 0,
+    "payload_file_count": 717,
+    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+    "production_fingerprint_unchanged": true,
+    "production_lead_delivery": false,
+    "robots": "noindex,follow",
+    "rollback_backup_retained": true,
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "route_count": 9,
+    "schema_version": 1,
+    "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+    "published": true,
+    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "release_pin_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "control_pr": 1689,
+    "control_sha": "218648814cbc83087ff399f5c6aba66ab4046a8d",
+    "control_closed_without_merge": true,
+    "deploy_run": 34322213328,
+    "conclusion": "success",
+    "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+    "archive_sha256": "24b9e8526a3958f4e2188aa40d5b2f2390c251e85f5323e5b2d5c113a6392cc8",
+    "manifest_sha256": "d0a7ea672974b2761259cb60d7723dddc03fc3fd5a8c20b694c26f7d2bd27049",
+    "payload_sha256": "0e3a9784d7b75b69ee970fd9a383aed84686bb97fb8e79cf0fe8aea5e21d348f",
+    "deployment_evidence_artifact": 10092314613,
+    "deployment_evidence_digest": "sha256:7491e023b2ee5951075e76a56967e6e492c156c78b1b4f2707fb8c47bd83a848",
+    "production_fingerprint_files": 13,
+    "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+    "main_changed_by_this_work": false,
+    "production_changed_by_this_work": false,
+    "real_leads_submitted": 0
+  },
+  "visual_verification": {
+    "date": "2026-09-09",
+    "viewport": {
+      "width": 1363,
+      "height": 936
+    },
+    "original_hotels": 79,
+    "meal": "AI - Все Включено",
+    "filtered_hotels": 25,
+    "combined_name": "SUN VERA",
+    "combined_hotels": 1,
+    "matching_tour_count": 5,
+    "matching_prices": [
+      94956,
+      95320,
+      96886,
+      97250,
+      99711
+    ],
+    "unfiltered_hotel_price": 87235,
+    "unfiltered_hotel_meal": "BB - Только завтрак",
+    "unfiltered_tour_count": 21,
+    "sort_preserves_meal": true,
+    "expanded_rows_all_match_meal": true,
+    "clear_meal_restores_original_price_and_21_tours": true,
+    "clear_name_via_keyboard_restores_79_hotels": true,
+    "horizontal_overflow": 0,
+    "robots": "noindex,follow,max-image-preview:large",
+    "screenshots_reviewed": [
+      "served deterministic meal375",
+      "served deterministic meal1440",
+      "live1363 toolbar and SUN VERA card"
+    ],
+    "real_leads_submitted": 0,
+    "full_journey_rerun": false,
+    "browser_adapter_note": "Cloud fill(empty string) selected existing text but did not delete it. Observed DOM still contained SUN VERA; normal Backspace cleared it and restored79 cards. No product regression claimed from this adapter behavior."
+  },
+  "deferred": [
+    "Live mobile, physical Safari/safe-area, full site/SEO and production visual acceptance; no real lead submission.",
+    "Live selected-tour/flight/lead handoff not repeated for this local result-filter packet; protected controller/payload/source guards pass.",
+    "Unknown/progressive meal coverage and hostile labels checked in deterministic375/1440 raw/served browser cases, not artificially injected into live supplier results.",
+    "Photo normalization port does not repopulate existing database photos. No API/collector/DB run; donor pure-helper smoke and release exact PHP lint are distinguished.",
+    "Historical tests/search3-flight-presentation.cjs remains outside current required gates and targets retired booking/format helper; previously red, not rerun or represented as passed."
+  ],
+  "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
+  "rollback": {
+    "previous_published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+    "previous_artifact": 10091093868,
+    "server_backup_retained": true,
+    "reversible_prs": [
+      1686,
+      1687
+    ]
+  },
+  "execution": "Completed independent photo port, refreshed release, implemented and checked meal facet, published both from one exact artifact and verified focused live states. Save continuation after these two source packets, source CI repair and accumulated publication; current run resource reserved for durable checkpoint. Development remains active."
+}

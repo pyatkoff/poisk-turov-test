@@ -1248,7 +1248,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Completed flights, refreshed release, completed meal labels, published both from one exact source artifact; save continuation after two checked source packets and focused preview verification. Recurring development stays active."
+    "last_execution_continuation": "Completed independent photo port, refreshed release, implemented and checked meal facet, published both from one exact artifact and verified focused live states. Save continuation after these two source packets, source CI repair and accumulated publication; current run resource reserved for durable checkpoint. Development remains active."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1260,23 +1260,23 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1680 flight chooser and #1681 canonical meal display integrated sequentially and published together via exact artifact10091093868 / deploy34319053098.",
+    "last_material_progress": "#1686 photo URL port and #1687 truthful meal facet integrated sequentially and published together via exact artifact10092207048 / deploy34322213328.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate.",
+    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_PRODUCT_USEFUL_FEATURES",
-    "title": "Implement a truthful local meal facet using original tours and matching prices",
+    "id": "S3_PRODUCT_SHARED_SITE",
+    "title": "Continue shared-site DS2 convergence from completed #1658 primitives",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 996,
     "pr": 1334,
     "branch": "release/search3-production-ready-v1",
-    "last_fully_checked_release_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-    "published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-    "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate.",
-    "baseline_release_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
+    "last_fully_checked_release_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
+    "baseline_release_sha": "598269e241391aae34112d835596f56d089fd6d7",
     "roadmap": "docs/project/search3-product-development-plan.md"
   },
   "deferred": {
@@ -2911,10 +2911,40 @@
       "deploy": 34319053098,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
+    },
+    "local_meal_facet_product": {
+      "photo": {
+        "pr": 1686,
+        "source": "d75d21d31520142b864d965997f310840de80280",
+        "tree": "d8e80393563943cf114e208ad9db8cb628487a50",
+        "release": "f814829e2c7e397a83191e24836cb599d9db3ef8",
+        "security": 34321149428,
+        "exact": 34321149460,
+        "conclusion": "success",
+        "donor_smoke_run": 34318224463,
+        "donor_smoke_job": 102358893845,
+        "donor_smoke": "Exact byte port from owner main#1679; donor PHP smoke passed hotel65108 images2 description1. Release exact CI linted PHP. Local PHP unavailable; no fresh local smoke claimed."
+      },
+      "meal": {
+        "pr": 1687,
+        "source": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+        "tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+        "release": "598269e241391aae34112d835596f56d089fd6d7",
+        "security": 34321878627,
+        "exact": 34321878643,
+        "conclusion": "success",
+        "artifact_id": 10092207048,
+        "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+        "owner_validation": "Both current owner validators passed locally. Ready-source Security passed secret/private-key and owner-direction checks; draft-only owner-validator step skipped by existing workflow condition. Documentation checkpoint runs that existing draft gate without changing source."
+      },
+      "deploy": 34322213328,
+      "source_rebuild_for_test_only_fix": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     }
   },
-  "last_verified_commit": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-  "last_verified_commit_scope": "Checked code release #1680/#1681; exact source0754f3db published to isolated preview. This documentation checkpoint is separate and requires no source rebuild.",
+  "last_verified_commit": "598269e241391aae34112d835596f56d089fd6d7",
+  "last_verified_commit_scope": "Checked code release #1686/#1687; exact source8382d1bd published to isolated preview. Final docs checkpoint is separate and does not rebuild source.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -3321,49 +3351,52 @@
   },
   "presentation_refactor_checkpoint": {
     "source_prs": [
-      1680,
-      1681
+      1686,
+      1687
     ],
-    "stage": "PRODUCT_FLIGHT_CHOOSER_AND_MEAL_LABELS",
-    "implementation_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-    "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
-    "release_integration_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-    "audit": "docs/project/search3-flight-meal-product.json",
+    "stage": "PRODUCT_TRUTHFUL_MEAL_FACET_AND_PHOTO_PORT",
+    "implementation_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+    "release_integration_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "audit": "docs/project/search3-local-meal-facet-product.json",
     "ci": {
-      "flights": {
-        "pr": 1680,
-        "source": "cdf760bb610b43fdb2805584bd7d96abe20623bb",
-        "tree": "32f0604d7c526c8b57f7399b485ad54ac62f9f26",
-        "release": "5f2e12a8358062477f42d8c2dcbccbd882704474",
-        "security": 34318264527,
-        "exact": 34318264521,
+      "photo": {
+        "pr": 1686,
+        "source": "d75d21d31520142b864d965997f310840de80280",
+        "tree": "d8e80393563943cf114e208ad9db8cb628487a50",
+        "release": "f814829e2c7e397a83191e24836cb599d9db3ef8",
+        "security": 34321149428,
+        "exact": 34321149460,
         "conclusion": "success",
-        "artifact_id": 10090906173,
-        "artifact_digest": "sha256:c57f09aebeccc78b5bdaf313277a7f9860083ee3384c4fcceeaf22a881e4b9e8"
+        "donor_smoke_run": 34318224463,
+        "donor_smoke_job": 102358893845,
+        "donor_smoke": "Exact byte port from owner main#1679; donor PHP smoke passed hotel65108 images2 description1. Release exact CI linted PHP. Local PHP unavailable; no fresh local smoke claimed."
       },
       "meal": {
-        "pr": 1681,
-        "source": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-        "tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
-        "release": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-        "security": 34318776520,
-        "exact": 34318776481,
+        "pr": 1687,
+        "source": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+        "tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
+        "release": "598269e241391aae34112d835596f56d089fd6d7",
+        "security": 34321878627,
+        "exact": 34321878643,
         "conclusion": "success",
-        "artifact_id": 10091093868,
-        "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4"
+        "artifact_id": 10092207048,
+        "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+        "owner_validation": "Both current owner validators passed locally. Ready-source Security passed secret/private-key and owner-direction checks; draft-only owner-validator step skipped by existing workflow condition. Documentation checkpoint runs that existing draft gate without changing source."
       },
-      "deploy": 34319053098,
+      "deploy": 34322213328,
+      "source_rebuild_for_test_only_fix": false,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
     },
     "eight_assets": {
-      "before": 25210,
-      "after": 26579,
-      "delta": 1369
+      "before": 26579,
+      "after": 28103,
+      "delta": 1524
     },
     "publication": {
-      "artifact_id": 10091093868,
-      "artifact_run": 34318776481,
+      "artifact_id": 10092207048,
+      "artifact_run": 34321878643,
       "http_status": 200,
       "internal_php_denied": true,
       "lead_probe_status": 403,
@@ -3377,26 +3410,25 @@
       "route": "https://anytoour.ru/_preview/search3-site-candidate/",
       "route_count": 9,
       "schema_version": 1,
-      "source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-      "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+      "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+      "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
       "published": true,
-      "published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-      "release_pin_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-      "control_pr": 1682,
-      "control_sha": "8aa24004e92222bce9e77ab16afd99fef450e758",
+      "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+      "release_pin_sha": "598269e241391aae34112d835596f56d089fd6d7",
+      "control_pr": 1689,
+      "control_sha": "218648814cbc83087ff399f5c6aba66ab4046a8d",
       "control_closed_without_merge": true,
-      "deploy_run": 34319053098,
+      "deploy_run": 34322213328,
       "conclusion": "success",
-      "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4",
-      "archive_sha256": "13494aadb519e3dc0f298c6f6b616428bf091f0cc119364ed9b92997b0f389e9",
-      "manifest_sha256": "cca080015e3dc28fd18e80fe87a54ce1a9c3bcc40824a10e2a63ccca260aa382",
-      "payload_sha256": "3266961db20783fcd4d6b14324bfe2ca99c378dd60a6706c55b2c4b3e5bb4159",
-      "deployment_evidence_artifact": 10091160692,
-      "deployment_evidence_digest": "sha256:ad869949cd1022260834cb5743b64699e8e24c884c42e2a763947b09be667821",
+      "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+      "archive_sha256": "24b9e8526a3958f4e2188aa40d5b2f2390c251e85f5323e5b2d5c113a6392cc8",
+      "manifest_sha256": "d0a7ea672974b2761259cb60d7723dddc03fc3fd5a8c20b694c26f7d2bd27049",
+      "payload_sha256": "0e3a9784d7b75b69ee970fd9a383aed84686bb97fb8e79cf0fe8aea5e21d348f",
+      "deployment_evidence_artifact": 10092314613,
+      "deployment_evidence_digest": "sha256:7491e023b2ee5951075e76a56967e6e492c156c78b1b4f2707fb8c47bd83a848",
       "production_fingerprint_files": 13,
       "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
       "main_changed_by_this_work": false,
-      "main_external_change": "Owner independently merged #1679 (hotel photos) onto main after initial observation86fc1652; no main write by this continuation.",
       "production_changed_by_this_work": false,
       "real_leads_submitted": 0
     },
@@ -3406,46 +3438,45 @@
         "width": 1363,
         "height": 936
       },
-      "result_cards": 100,
-      "cases": [
-        {
-          "hotel": "ARES CITY (EX. KAMI HOTEL)",
-          "flight_options": 4,
-          "total": 68851,
-          "meal": "BB - Только завтрак",
-          "result_selected_meal_match": true,
-          "short_list_all_visible": true
-        },
-        {
-          "hotel": "SUN VERA HOTEL (EX. FUN POINT SUITE HOTEL)",
-          "flight_options": 1,
-          "total": 80032,
-          "meal": "BB - Только завтрак",
-          "result_selected_meal_match": true,
-          "lead_summary_route": "TK3025 13:45 / TK3024 07:55",
-          "lead_summary_matches": true,
-          "phone_focused": true
-        }
+      "original_hotels": 79,
+      "meal": "AI - Все Включено",
+      "filtered_hotels": 25,
+      "combined_name": "SUN VERA",
+      "combined_hotels": 1,
+      "matching_tour_count": 5,
+      "matching_prices": [
+        94956,
+        95320,
+        96886,
+        97250,
+        99711
       ],
+      "unfiltered_hotel_price": 87235,
+      "unfiltered_hotel_meal": "BB - Только завтрак",
+      "unfiltered_tour_count": 21,
+      "sort_preserves_meal": true,
+      "expanded_rows_all_match_meal": true,
+      "clear_meal_restores_original_price_and_21_tours": true,
+      "clear_name_via_keyboard_restores_79_hotels": true,
       "horizontal_overflow": 0,
-      "noindex": "noindex,follow,max-image-preview:large",
+      "robots": "noindex,follow,max-image-preview:large",
       "screenshots_reviewed": [
-        "live desktop contact form with selected price/route and phone focus",
-        "CI large89-flight375 collapsed",
-        "CI large89-flight1440 selected"
+        "served deterministic meal375",
+        "served deterministic meal1440",
+        "live1363 toolbar and SUN VERA card"
       ],
       "real_leads_submitted": 0,
       "full_journey_rerun": false,
-      "large_live_case": "Deferred: ANAHTAR absent from current100-hotel set; two actual inspected suppliers returned4 and1 options. No fake claim of live89-option verification."
+      "browser_adapter_note": "Cloud fill(empty string) selected existing text but did not delete it. Observed DOM still contained SUN VERA; normal Backspace cleared it and restored79 cards. No product regression claimed from this adapter behavior."
     },
     "deferred": [
-      "Live large-flight collapse/expand case: actual inspected suppliers returned4 and1 options;89-option coverage passed deterministic current-source CI at375/1440.",
-      "Live mobile, physical Safari/safe-area, full site/SEO and production acceptance; no real lead submission.",
-      "Historical tests/search3-flight-presentation.cjs remains red (helper.flightLabel is not a function) because it targets the already retired booking/format owner; it is outside the current required source gate. Not weakened or represented as passed.",
-      "Truthful local meal facet still to implement; current package improves labels only.",
-      "Independently owner-merged main#1679 photo fix is not included in this published release; audit before next source integration."
+      "Live mobile, physical Safari/safe-area, full site/SEO and production visual acceptance; no real lead submission.",
+      "Live selected-tour/flight/lead handoff not repeated for this local result-filter packet; protected controller/payload/source guards pass.",
+      "Unknown/progressive meal coverage and hostile labels checked in deterministic375/1440 raw/served browser cases, not artificially injected into live supplier results.",
+      "Photo normalization port does not repopulate existing database photos. No API/collector/DB run; donor pure-helper smoke and release exact PHP lint are distinguished.",
+      "Historical tests/search3-flight-presentation.cjs remains outside current required gates and targets retired booking/format helper; previously red, not rerun or represented as passed."
     ],
-    "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate."
+    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work."
   },
   "presentation_refactor_history": [
     {
@@ -6124,6 +6155,134 @@
         "Current selected retry CSS selector mismatch; generic44px button remains functional."
       ],
       "next_action": "Improve the canonical flight chooser for large supplier sets (89 real options made the selected view about12509px tall): keep every radio/price/route reachable, selected details and one lead CTA, preserve price/lead payload and the existing inline tradeoff owner. Include the current retry selector mismatch (.tour-load-retry vs .retry-tour) in that coherent packet. Then re-evaluate human-readable meal labels and one truthful local meal facet; do not duplicate ANEX work."
+    },
+    {
+      "source_prs": [
+        1680,
+        1681
+      ],
+      "stage": "PRODUCT_FLIGHT_CHOOSER_AND_MEAL_LABELS",
+      "implementation_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+      "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+      "release_integration_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
+      "audit": "docs/project/search3-flight-meal-product.json",
+      "ci": {
+        "flights": {
+          "pr": 1680,
+          "source": "cdf760bb610b43fdb2805584bd7d96abe20623bb",
+          "tree": "32f0604d7c526c8b57f7399b485ad54ac62f9f26",
+          "release": "5f2e12a8358062477f42d8c2dcbccbd882704474",
+          "security": 34318264527,
+          "exact": 34318264521,
+          "conclusion": "success",
+          "artifact_id": 10090906173,
+          "artifact_digest": "sha256:c57f09aebeccc78b5bdaf313277a7f9860083ee3384c4fcceeaf22a881e4b9e8"
+        },
+        "meal": {
+          "pr": 1681,
+          "source": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+          "tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+          "release": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
+          "security": 34318776520,
+          "exact": 34318776481,
+          "conclusion": "success",
+          "artifact_id": 10091093868,
+          "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4"
+        },
+        "deploy": 34319053098,
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false
+      },
+      "eight_assets": {
+        "before": 25210,
+        "after": 26579,
+        "delta": 1369
+      },
+      "publication": {
+        "artifact_id": 10091093868,
+        "artifact_run": 34318776481,
+        "http_status": 200,
+        "internal_php_denied": true,
+        "lead_probe_status": 403,
+        "metrika_counter": 0,
+        "payload_file_count": 717,
+        "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+        "production_fingerprint_unchanged": true,
+        "production_lead_delivery": false,
+        "robots": "noindex,follow",
+        "rollback_backup_retained": true,
+        "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "route_count": 9,
+        "schema_version": 1,
+        "source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+        "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+        "published": true,
+        "published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+        "release_pin_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
+        "control_pr": 1682,
+        "control_sha": "8aa24004e92222bce9e77ab16afd99fef450e758",
+        "control_closed_without_merge": true,
+        "deploy_run": 34319053098,
+        "conclusion": "success",
+        "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4",
+        "archive_sha256": "13494aadb519e3dc0f298c6f6b616428bf091f0cc119364ed9b92997b0f389e9",
+        "manifest_sha256": "cca080015e3dc28fd18e80fe87a54ce1a9c3bcc40824a10e2a63ccca260aa382",
+        "payload_sha256": "3266961db20783fcd4d6b14324bfe2ca99c378dd60a6706c55b2c4b3e5bb4159",
+        "deployment_evidence_artifact": 10091160692,
+        "deployment_evidence_digest": "sha256:ad869949cd1022260834cb5743b64699e8e24c884c42e2a763947b09be667821",
+        "production_fingerprint_files": 13,
+        "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+        "main_changed_by_this_work": false,
+        "main_external_change": "Owner independently merged #1679 (hotel photos) onto main after initial observation86fc1652; no main write by this continuation.",
+        "production_changed_by_this_work": false,
+        "real_leads_submitted": 0
+      },
+      "visual_verification": {
+        "date": "2026-09-09",
+        "viewport": {
+          "width": 1363,
+          "height": 936
+        },
+        "result_cards": 100,
+        "cases": [
+          {
+            "hotel": "ARES CITY (EX. KAMI HOTEL)",
+            "flight_options": 4,
+            "total": 68851,
+            "meal": "BB - Только завтрак",
+            "result_selected_meal_match": true,
+            "short_list_all_visible": true
+          },
+          {
+            "hotel": "SUN VERA HOTEL (EX. FUN POINT SUITE HOTEL)",
+            "flight_options": 1,
+            "total": 80032,
+            "meal": "BB - Только завтрак",
+            "result_selected_meal_match": true,
+            "lead_summary_route": "TK3025 13:45 / TK3024 07:55",
+            "lead_summary_matches": true,
+            "phone_focused": true
+          }
+        ],
+        "horizontal_overflow": 0,
+        "noindex": "noindex,follow,max-image-preview:large",
+        "screenshots_reviewed": [
+          "live desktop contact form with selected price/route and phone focus",
+          "CI large89-flight375 collapsed",
+          "CI large89-flight1440 selected"
+        ],
+        "real_leads_submitted": 0,
+        "full_journey_rerun": false,
+        "large_live_case": "Deferred: ANAHTAR absent from current100-hotel set; two actual inspected suppliers returned4 and1 options. No fake claim of live89-option verification."
+      },
+      "deferred": [
+        "Live large-flight collapse/expand case: actual inspected suppliers returned4 and1 options;89-option coverage passed deterministic current-source CI at375/1440.",
+        "Live mobile, physical Safari/safe-area, full site/SEO and production acceptance; no real lead submission.",
+        "Historical tests/search3-flight-presentation.cjs remains red (helper.flightLabel is not a function) because it targets the already retired booking/format owner; it is outside the current required source gate. Not weakened or represented as passed.",
+        "Truthful local meal facet still to implement; current package improves labels only.",
+        "Independently owner-merged main#1679 photo fix is not included in this published release; audit before next source integration."
+      ],
+      "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate."
     }
   ],
   "preview_isolation_followup": {
@@ -6138,8 +6297,8 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "artifact_id": 10091093868,
-    "artifact_run": 34318776481,
+    "artifact_id": 10092207048,
+    "artifact_run": 34321878643,
     "http_status": 200,
     "internal_php_denied": true,
     "lead_probe_status": 403,
@@ -6153,26 +6312,25 @@
     "route": "https://anytoour.ru/_preview/search3-site-candidate/",
     "route_count": 9,
     "schema_version": 1,
-    "source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-    "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+    "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
     "published": true,
-    "published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-    "release_pin_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-    "control_pr": 1682,
-    "control_sha": "8aa24004e92222bce9e77ab16afd99fef450e758",
+    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "release_pin_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "control_pr": 1689,
+    "control_sha": "218648814cbc83087ff399f5c6aba66ab4046a8d",
     "control_closed_without_merge": true,
-    "deploy_run": 34319053098,
+    "deploy_run": 34322213328,
     "conclusion": "success",
-    "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4",
-    "archive_sha256": "13494aadb519e3dc0f298c6f6b616428bf091f0cc119364ed9b92997b0f389e9",
-    "manifest_sha256": "cca080015e3dc28fd18e80fe87a54ce1a9c3bcc40824a10e2a63ccca260aa382",
-    "payload_sha256": "3266961db20783fcd4d6b14324bfe2ca99c378dd60a6706c55b2c4b3e5bb4159",
-    "deployment_evidence_artifact": 10091160692,
-    "deployment_evidence_digest": "sha256:ad869949cd1022260834cb5743b64699e8e24c884c42e2a763947b09be667821",
+    "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+    "archive_sha256": "24b9e8526a3958f4e2188aa40d5b2f2390c251e85f5323e5b2d5c113a6392cc8",
+    "manifest_sha256": "d0a7ea672974b2761259cb60d7723dddc03fc3fd5a8c20b694c26f7d2bd27049",
+    "payload_sha256": "0e3a9784d7b75b69ee970fd9a383aed84686bb97fb8e79cf0fe8aea5e21d348f",
+    "deployment_evidence_artifact": 10092314613,
+    "deployment_evidence_digest": "sha256:7491e023b2ee5951075e76a56967e6e492c156c78b1b4f2707fb8c47bd83a848",
     "production_fingerprint_files": 13,
     "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
     "main_changed_by_this_work": false,
-    "main_external_change": "Owner independently merged #1679 (hotel photos) onto main after initial observation86fc1652; no main write by this continuation.",
     "production_changed_by_this_work": false,
     "real_leads_submitted": 0
   },
@@ -6268,8 +6426,9 @@
     {
       "id": "S3_PRODUCT_SHARED_SITE",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "QUEUED",
-      "title": "Shared DS2 site components"
+      "status": "ACTIVE",
+      "title": "Shared DS2 site components",
+      "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work."
     },
     {
       "id": "S3_PRODUCT_PAGES_HANDOFF",
@@ -6280,9 +6439,10 @@
     {
       "id": "S3_PRODUCT_USEFUL_FEATURES",
       "roadmap": "docs/project/search3-product-development-plan.md",
-      "status": "ACTIVE",
+      "status": "FACETS_COMPLETED_PUBLISHED_PREVIEW",
       "title": "Useful calendar/facets and separately ready ANEX integration",
-      "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate."
+      "next_action": "Name/category/meal local facets completed; do not restart them. Calendar and separately owned ANEX remain available after shared-site/pages work.",
+      "audit": "docs/project/search3-local-meal-facet-product.json"
     },
     {
       "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
@@ -6424,20 +6584,20 @@
       "pr": 1334,
       "branch": "release/search3-production-ready-v1",
       "status": "PUBLISHED_ISOLATED_PREVIEW_OWNER_ACCEPTANCE_DEFERRED",
-      "implementation_verified_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-      "release_integration_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-      "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+      "implementation_verified_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+      "release_integration_sha": "598269e241391aae34112d835596f56d089fd6d7",
+      "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
       "source_prs": [
-        1680,
-        1681
+        1686,
+        1687
       ],
-      "exact_artifact": 10091093868,
-      "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4",
-      "preview_deploy_pr": 1682,
-      "preview_deploy_run": 34319053098,
+      "exact_artifact": 10092207048,
+      "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+      "preview_deploy_pr": 1689,
+      "preview_deploy_run": 34322213328,
       "latest_publication_verification": {
-        "artifact_id": 10091093868,
-        "artifact_run": 34318776481,
+        "artifact_id": 10092207048,
+        "artifact_run": 34321878643,
         "http_status": 200,
         "internal_php_denied": true,
         "lead_probe_status": 403,
@@ -6451,26 +6611,25 @@
         "route": "https://anytoour.ru/_preview/search3-site-candidate/",
         "route_count": 9,
         "schema_version": 1,
-        "source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-        "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+        "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+        "source_tree": "89830004db93c05bf1edfa19a86a970f61fc2a2b",
         "published": true,
-        "published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
-        "release_pin_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
-        "control_pr": 1682,
-        "control_sha": "8aa24004e92222bce9e77ab16afd99fef450e758",
+        "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+        "release_pin_sha": "598269e241391aae34112d835596f56d089fd6d7",
+        "control_pr": 1689,
+        "control_sha": "218648814cbc83087ff399f5c6aba66ab4046a8d",
         "control_closed_without_merge": true,
-        "deploy_run": 34319053098,
+        "deploy_run": 34322213328,
         "conclusion": "success",
-        "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4",
-        "archive_sha256": "13494aadb519e3dc0f298c6f6b616428bf091f0cc119364ed9b92997b0f389e9",
-        "manifest_sha256": "cca080015e3dc28fd18e80fe87a54ce1a9c3bcc40824a10e2a63ccca260aa382",
-        "payload_sha256": "3266961db20783fcd4d6b14324bfe2ca99c378dd60a6706c55b2c4b3e5bb4159",
-        "deployment_evidence_artifact": 10091160692,
-        "deployment_evidence_digest": "sha256:ad869949cd1022260834cb5743b64699e8e24c884c42e2a763947b09be667821",
+        "artifact_digest": "sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8",
+        "archive_sha256": "24b9e8526a3958f4e2188aa40d5b2f2390c251e85f5323e5b2d5c113a6392cc8",
+        "manifest_sha256": "d0a7ea672974b2761259cb60d7723dddc03fc3fd5a8c20b694c26f7d2bd27049",
+        "payload_sha256": "0e3a9784d7b75b69ee970fd9a383aed84686bb97fb8e79cf0fe8aea5e21d348f",
+        "deployment_evidence_artifact": 10092314613,
+        "deployment_evidence_digest": "sha256:7491e023b2ee5951075e76a56967e6e492c156c78b1b4f2707fb8c47bd83a848",
         "production_fingerprint_files": 13,
         "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
         "main_changed_by_this_work": false,
-        "main_external_change": "Owner independently merged #1679 (hotel photos) onto main after initial observation86fc1652; no main write by this continuation.",
         "production_changed_by_this_work": false,
         "real_leads_submitted": 0
       },
@@ -6480,73 +6639,62 @@
           "width": 1363,
           "height": 936
         },
-        "result_cards": 100,
-        "cases": [
-          {
-            "hotel": "ARES CITY (EX. KAMI HOTEL)",
-            "flight_options": 4,
-            "total": 68851,
-            "meal": "BB - Только завтрак",
-            "result_selected_meal_match": true,
-            "short_list_all_visible": true
-          },
-          {
-            "hotel": "SUN VERA HOTEL (EX. FUN POINT SUITE HOTEL)",
-            "flight_options": 1,
-            "total": 80032,
-            "meal": "BB - Только завтрак",
-            "result_selected_meal_match": true,
-            "lead_summary_route": "TK3025 13:45 / TK3024 07:55",
-            "lead_summary_matches": true,
-            "phone_focused": true
-          }
+        "original_hotels": 79,
+        "meal": "AI - Все Включено",
+        "filtered_hotels": 25,
+        "combined_name": "SUN VERA",
+        "combined_hotels": 1,
+        "matching_tour_count": 5,
+        "matching_prices": [
+          94956,
+          95320,
+          96886,
+          97250,
+          99711
         ],
+        "unfiltered_hotel_price": 87235,
+        "unfiltered_hotel_meal": "BB - Только завтрак",
+        "unfiltered_tour_count": 21,
+        "sort_preserves_meal": true,
+        "expanded_rows_all_match_meal": true,
+        "clear_meal_restores_original_price_and_21_tours": true,
+        "clear_name_via_keyboard_restores_79_hotels": true,
         "horizontal_overflow": 0,
-        "noindex": "noindex,follow,max-image-preview:large",
+        "robots": "noindex,follow,max-image-preview:large",
         "screenshots_reviewed": [
-          "live desktop contact form with selected price/route and phone focus",
-          "CI large89-flight375 collapsed",
-          "CI large89-flight1440 selected"
+          "served deterministic meal375",
+          "served deterministic meal1440",
+          "live1363 toolbar and SUN VERA card"
         ],
         "real_leads_submitted": 0,
         "full_journey_rerun": false,
-        "large_live_case": "Deferred: ANAHTAR absent from current100-hotel set; two actual inspected suppliers returned4 and1 options. No fake claim of live89-option verification."
+        "browser_adapter_note": "Cloud fill(empty string) selected existing text but did not delete it. Observed DOM still contained SUN VERA; normal Backspace cleared it and restored79 cards. No product regression claimed from this adapter behavior."
       },
       "public_assets": {
         "eight_search3_assets": {
-          "before": 25210,
-          "after": 26579,
-          "delta": 1369
+          "before": 26579,
+          "after": 28103,
+          "delta": 1524
         },
         "eager_route_css_js": {
-          "before": 161307,
-          "after": 162859,
-          "delta": 1552
+          "before": 162859,
+          "after": 164463,
+          "delta": 1604
         },
         "full_scenario_css_js": {
-          "before": 161307,
-          "after": 162859,
-          "delta": 1552
+          "before": 162859,
+          "after": 164463,
+          "delta": 1604
         },
         "selected_phase_css_js": {
           "before": 0,
           "after": 0,
           "delta": 0
         },
-        "shared_emitted_js_delta": 183,
+        "shared_emitted_js_delta": 80,
         "inline_delta": 0,
         "public_paths": {
           "before": {
-            "search3-results-filters-v1.js": 7068,
-            "search3-results-filters-v1.css": 16408,
-            "search3-entry-v1.css": 1683,
-            "search3-entry-v1.js": 0,
-            "search3-results-cards-v2.css": 1,
-            "search3-results-cards-v2.js": 0,
-            "search3-selected-flow-v2.css": 50,
-            "search3-selected-flow-v2.js": 0
-          },
-          "after": {
             "search3-results-filters-v1.js": 7975,
             "search3-results-filters-v1.css": 16870,
             "search3-entry-v1.css": 1683,
@@ -6556,74 +6704,73 @@
             "search3-selected-flow-v2.css": 50,
             "search3-selected-flow-v2.js": 0
           },
+          "after": {
+            "search3-results-filters-v1.js": 9426,
+            "search3-results-filters-v1.css": 16943,
+            "search3-entry-v1.css": 1683,
+            "search3-entry-v1.js": 0,
+            "search3-results-cards-v2.css": 1,
+            "search3-results-cards-v2.js": 0,
+            "search3-selected-flow-v2.css": 50,
+            "search3-selected-flow-v2.js": 0
+          },
           "css": {
-            "before": 18142,
-            "after": 18604
+            "before": 18604,
+            "after": 18677
           },
           "js": {
-            "before": 7068,
-            "after": 7975
+            "before": 7975,
+            "after": 9426
           }
         },
         "route_bundle_css_after": 23742,
-        "route_bundle_js_after": 112538,
-        "measurement": "Exact uncompressed owned response bodies: eight assets plus current Search3 shared CSS and JS all bundles, including server separators and source-verified compacted entries. Source and deployed artifact agree. HTML, inline totals, fonts, images and third-party requests excluded; inline delta0.",
-        "correction": "Earlier absolute eager/full ledgers with selected phase42418 were obsolete: v2/index.php already loads the all JS bundle eagerly. Current initial and full external CSS/JS are both162859 B. This is a ledger correction, not code removal or lazy-loading saving.",
+        "route_bundle_js_after": 112618,
+        "photo_packet_css_js_delta": 0,
+        "measurement": "Exact raw owned external response bodies: eight public assets plus current Search3 shared CSS/JS all bundles and response separators. Initial and full scenario equal. Source and exact artifact agree. HTML, fonts, images, inline totals and third-party requests excluded; inline delta0. No code removal or lazy-loading saving claimed.",
         "checkpoints": [
           {
-            "ref": "e66605d819941f3ffea48fe7442564e5b96563e3",
+            "ref": "c5c2ce805dd92ee09fa8cdd07adbafef0d779227",
             "shared_bundle_css": 23742,
-            "shared_bundle_js": 112355,
-            "eight_assets": 25210,
-            "css": 18142,
-            "js": 7068,
-            "initial_external_css_js": 161307,
-            "full_scenario_external_css_js": 161307,
-            "extra_selected_request_bytes": 0
-          },
-          {
-            "ref": "5f2e12a8358062477f42d8c2dcbccbd882704474",
-            "shared_bundle_css": 23742,
-            "shared_bundle_js": 112355,
+            "shared_bundle_js": 112538,
             "eight_assets": 26579,
             "css": 18604,
             "js": 7975,
-            "initial_external_css_js": 162676,
-            "full_scenario_external_css_js": 162676,
+            "initial_external_css_js": 162859,
+            "full_scenario_external_css_js": 162859,
             "extra_selected_request_bytes": 0
           },
           {
             "ref": "WORKTREE",
             "shared_bundle_css": 23742,
-            "shared_bundle_js": 112538,
-            "eight_assets": 26579,
-            "css": 18604,
-            "js": 7975,
-            "initial_external_css_js": 162859,
-            "full_scenario_external_css_js": 162859,
+            "shared_bundle_js": 112618,
+            "eight_assets": 28103,
+            "css": 18677,
+            "js": 9426,
+            "initial_external_css_js": 164463,
+            "full_scenario_external_css_js": 164463,
             "extra_selected_request_bytes": 0
           },
           {
             "ref": "ARTIFACT",
             "shared_bundle_css": 23742,
-            "shared_bundle_js": 112538,
-            "eight_assets": 26579,
-            "css": 18604,
-            "js": 7975,
-            "initial_external_css_js": 162859,
-            "full_scenario_external_css_js": 162859,
+            "shared_bundle_js": 112618,
+            "eight_assets": 28103,
+            "css": 18677,
+            "js": 9426,
+            "initial_external_css_js": 164463,
+            "full_scenario_external_css_js": 164463,
             "extra_selected_request_bytes": 0
           }
         ]
       },
-      "audit": "docs/project/search3-flight-meal-product.json",
-      "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate.",
+      "audit": "docs/project/search3-local-meal-facet-product.json",
+      "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work.",
       "deferred": [
-        "Live large-flight collapse/expand case: actual inspected suppliers returned4 and1 options;89-option coverage passed deterministic current-source CI at375/1440.",
-        "Live mobile, physical Safari/safe-area, full site/SEO and production acceptance; no real lead submission.",
-        "Historical tests/search3-flight-presentation.cjs remains red (helper.flightLabel is not a function) because it targets the already retired booking/format owner; it is outside the current required source gate. Not weakened or represented as passed.",
-        "Truthful local meal facet still to implement; current package improves labels only.",
-        "Independently owner-merged main#1679 photo fix is not included in this published release; audit before next source integration."
+        "Live mobile, physical Safari/safe-area, full site/SEO and production visual acceptance; no real lead submission.",
+        "Live selected-tour/flight/lead handoff not repeated for this local result-filter packet; protected controller/payload/source guards pass.",
+        "Unknown/progressive meal coverage and hostile labels checked in deterministic375/1440 raw/served browser cases, not artificially injected into live supplier results.",
+        "Photo normalization port does not repopulate existing database photos. No API/collector/DB run; donor pure-helper smoke and release exact PHP lint are distinguished.",
+        "Historical tests/search3-flight-presentation.cjs remains outside current required gates and targets retired booking/format helper; previously red, not rerun or represented as passed."
       ]
     }
   },
@@ -10104,7 +10251,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-09T06:35:09.540848+00:00",
+  "updated_at": "2026-09-09T07:13:55.101186+00:00",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -12283,6 +12430,45 @@
       "main_changed": false,
       "production_changed": false,
       "real_leads_submitted": 0
+    },
+    {
+      "artifact_id": 10091093868,
+      "artifact_run": 34318776481,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+      "source_tree": "46664ef73ef1ac805693c20d9a0572975af86f6c",
+      "published": true,
+      "published_source_sha": "0754f3dbb52d715c82a1f7212c85ada65fb659d6",
+      "release_pin_sha": "1569e01a721d16374c6eb87b70c00a3c1123ebc7",
+      "control_pr": 1682,
+      "control_sha": "8aa24004e92222bce9e77ab16afd99fef450e758",
+      "control_closed_without_merge": true,
+      "deploy_run": 34319053098,
+      "conclusion": "success",
+      "artifact_digest": "sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4",
+      "archive_sha256": "13494aadb519e3dc0f298c6f6b616428bf091f0cc119364ed9b92997b0f389e9",
+      "manifest_sha256": "cca080015e3dc28fd18e80fe87a54ce1a9c3bcc40824a10e2a63ccca260aa382",
+      "payload_sha256": "3266961db20783fcd4d6b14324bfe2ca99c378dd60a6706c55b2c4b3e5bb4159",
+      "deployment_evidence_artifact": 10091160692,
+      "deployment_evidence_digest": "sha256:ad869949cd1022260834cb5743b64699e8e24c884c42e2a763947b09be667821",
+      "production_fingerprint_files": 13,
+      "main_observed_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+      "main_changed_by_this_work": false,
+      "main_external_change": "Owner independently merged #1679 (hotel photos) onto main after initial observation86fc1652; no main write by this continuation.",
+      "production_changed_by_this_work": false,
+      "real_leads_submitted": 0
     }
   ],
   "latest_selected_flow_adapter_retirement": {
@@ -12941,5 +13127,18 @@
     "eight_assets_delta": 1369,
     "route_delta": 1552,
     "next_action": "Before the next source packet refresh release/main and audit owner-merged main #1679 hotel-photo fix for an independent release port; do not change main. Then implement a truthful local meal facet in the existing local-hotel-filter owner: preserve original result state/count/event items, project matching tours into renderer-only view items before representative price/sort/expand, clear/hide on incomplete data, preserve dirty-search semantics. Keep original tour references and all price/lead/API contracts. ANEX remains separate."
+  },
+  "latest_local_meal_facet_package": {
+    "audit": "docs/project/search3-local-meal-facet-product.json",
+    "source_prs": [
+      1686,
+      1687
+    ],
+    "source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "checked_release_sha": "598269e241391aae34112d835596f56d089fd6d7",
+    "published_source_sha": "8382d1bd8543fd3f0efb623673d1b70fa2be823d",
+    "eight_assets_delta": 1524,
+    "route_delta": 1604,
+    "next_action": "Refresh release/main/open PRs before the next source packet. Continue S3_PRODUCT_SHARED_SITE from the already completed #1658 primitive consolidation: inspect header/nav/footer/container/secondary-button/link states across search, home and country on mobile/desktop. Repair a confirmed cross-route mismatch in its single current DS2 owner and remove the replaced rule in the same packet. If no mismatch exists, continue S3_PRODUCT_PAGES_HANDOFF with parameter-preserving country/hot-to-search links. Do not restart completed form/results/flight/meal work or duplicate separate ANEX work."
   }
 }

@@ -14,7 +14,25 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — flight choices and meal labels #1680/#1681 — 2026-09-09
+## Текущий checkpoint — правдивый фильтр питания и фото #1686/#1687 — 2026-09-09
+
+Два source-пакета завершены последовательно и опубликованы вместе. #1686 переносит ровно два файла owner main#1679: CDN URL вида `//…` нормализуются в HTTPS, опасные URL отклоняются. Source `d75d21d31520142b864d965997f310840de80280`, release `f814829e2c7e397a83191e24836cb599d9db3ef8`. CSS/JS delta0; это подготовка нормализации, не обещание восстановления старых записей БД. Collector/DB не запускались.
+
+#1687 добавляет питание в существующий local-hotel-filter. Карточка, сортировка и раскрытие используют только подходящие исходные туры. Исходные state/event items, continuation count, tour references и payload сохранены; name/category/meal имеют одного владельца `card.hidden`. Неполные данные скрывают и сбрасывают фасет, dirty/reset проверены. Source `8382d1bd8543fd3f0efb623673d1b70fa2be823d`, tree `89830004db93c05bf1edfa19a86a970f61fc2a2b`, checked code release `598269e241391aae34112d835596f56d089fd6d7`. Основа оформления по-прежнему DS2 donor17b674fc; старые слои не возвращены.
+
+Восемь assets **26579→28103 B (+1524)**: CSS18604→18677 (+73), JS7975→9426 (+1451). Shared emitted JS +80, inline delta0. Точный начальный и полный внешний CSS/JS **162859→164463 B (+1604)**; source/exact artifact совпадают. Учтены общие подключения и разделители ответа; HTML/fonts/images/third-party и inline totals не входят. Дополнительный selected-request0, перенос или lazy-loading экономией не называются.
+
+Security34321149428/34321878627 и exact34321149460/34321878643 зелёные. Оба owner validators локально passed; ready-source Security проверил owner direction, его draft-only validator step штатно skipped. Docs checkpoint запускает существующий draft gate. Цена A RO90000/AI120000 против B AI100000, сортировка/раскрытие/сброс/неполные данные/escaping проверены raw+served375/1440; существующие16 result states на8 ширинах, native entry375/1440, source/PHP/path/presentation/isolation guards passed. Первый exact34321465874 был красным на устаревшем `version:2`; теперь assertion требует ровно current apply/clear/project/version3 owner и прежние guards сохранены. Test-only исправление без rebuild. Photo PHP smoke прошёл на точном donor34318224463, release exact выполнил PHP lint; локального PHP нет, повторный local smoke не заявлен.
+
+**Published preview:** source `8382d1bd8543fd3f0efb623673d1b70fa2be823d`, artifact10092207048, digest `sha256:53355759364989ffa18505d07176cb831e45955dcc09f82243cdd4d35bfec9a8`, deploy34322213328. Control#1689 закрыт без merge. Evidence10092314613 подтверждает9 routes, noindex, disabled production leads/counter0, rollback и13 неизменных production fingerprints. Main `41ec8876c5c92a4a9d1b71d7387dcae6b5efee66` не менялся этой работой.
+
+Live1363:79 отелей; AI оставляет25, вместе с SUN VERA —1. У SUN VERA исходные21 тура/BB87235 ₽ заменяются5 подходящими AI от94956 ₽; все5 раскрытых строк с AI, сортировка сохраняет питание. Сброс питания возвращает21 тур/87235 ₽, очистка названия клавишей —79 карточек. Overflow0, заявок0. Осмотрены live toolbar/card и CI375/1440. Live mobile/Safari/полный site+SEO/selected lead path deferred. Известный исторический flight-presentation test с удалённым helper не повторялся и не называется зелёным.
+
+**Следующий S3_PRODUCT_SHARED_SITE:** продолжить после уже завершённого #1658 — ограниченно проверить header/nav/footer/container/secondary-button/link состояния поиска, главной и страны на mobile/desktop. Исправить подтверждённое расхождение в одном текущем DS2-владельце с удалением заменённого правила. Если расхождений нет — S3_PRODUCT_PAGES_HANDOFF, сохранение параметров country/hot→search. Завершённые форма/выдача/рейсы/питание не перезапускать; ANEX отдельно.
+
+Audit: `docs/project/search3-local-meal-facet-product.json`. После двух source PR, исправления CI и общей публикации ресурс текущего прохода отведён на checkpoint; дальнейшая разработка остаётся активной.
+
+## Previous product checkpoint — flight choices and meal labels #1680/#1681 — 2026-09-09
 
 Two source packets completed sequentially and published together. #1680 keeps all original flight radios/indices/prices, showing only the selected choice until expanded in a bounded panel; small sets are unchanged. #1681 shares the canonical meal display label while retaining the exact original lead payload. DS2 donor17b674fc remains the design base; no retired owner/include returned.
 
