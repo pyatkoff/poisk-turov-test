@@ -104,7 +104,7 @@
     "selected-tour flight-list and contact-handoff product work belongs to S3_PRODUCT_SELECTED_LEAD"
   ],
   "rollback": "Revert 4554e34b4cfed32d290a82b0ae05f3adaa828c80 for code; restore the retained preview backup recorded by deploy run34297374511 for preview.",
-  "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller.",
+  "next_action": "Review active PR #1804 as the sole Andromeda provider-parity consumer against fresh release and exact identity/unknown/partial-failure/disabled-selection evidence; do not duplicate its renderer/provider paths. If blocked, continue only an independent unclaimed current owner.",
   "ota_results_decision_20260909": {
     "stage": "PUBLISHED_PREVIEW_AWAITING_PILOT",
     "baseline_release_sha": "9237deb7af50707c5f6d28dc77d8a3b97a0db0a8",
@@ -320,6 +320,32 @@
       "fresh bounded INT provider handoff",
       "production approval"
     ],
-    "next_action": "If #1731 is still not a fresh bounded handoff, evaluate compact category/meal quick presets using the existing complete facet options and same owner; replace redundant UI rather than layering another implementation."
+    "next_action": "Complete: quick category/meal choices now belong to the same current filter owner; do not reopen this package."
+  },
+  "ota_filter_quick_presets_20260909": {
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "pr": 1805,
+    "source_sha": "3c2ca21f39c2e5d16261452f826b2962aa30708c",
+    "source_tree": "bed5f7db91999362fb647571a55ce0370fedf74f",
+    "checked_release_sha": "89826deecccdb4b38f8363a3655d6e640d0f9dfb",
+    "security_run": 34396484353,
+    "exact_run": 34396484359,
+    "exact_artifact": 10121761361,
+    "geometry_artifact": 10121760652,
+    "deploy_run": 34397292203,
+    "deploy_evidence_artifact": 10122021246,
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "product_result": "Complete local category and meal facets expose compact truthful choices in the existing local-hotel-filter owner. Each choice mirrors the canonical select value, toggles off on a second activation and never starts a supplier request or a parallel filter runtime.",
+    "ownership": "One current local-hotel-filter owner and existing results-layout stylesheet; no restored DS2/ANEX filter, drawer, renderer, click owner or override-only layer.",
+    "weight": "public JS 25684->27330 B (+1646); public CSS 23922->24626 B (+704); total +2350 B; inline/shared PHP 0 B. No absolute size cap applies; the structural owner boundary is the guard.",
+    "verification": "The first exact run exposed lost keyboard focus after canonical rerender and was not accepted. The current owner restores focus; final Security34396484353 and exact34396484359 passed aria-pressed, 44px targets, canonical category/meal projection, exact-offer budget/meal truth, keyboard toggling, mobile/desktop geometry, external_calls0 and lead_sent0.",
+    "publication": "Exact artifact10121761361 was reused by deploy34397292203. Evidence10122021246 confirms nine noindex routes, disabled lead403, counter0, internal PHP denial, rollback backup and unchanged production fingerprints. Control PR1806 was closed without merge.",
+    "live_preview": "Desktop1363: 100 loaded hotels; all-inclusive preset reduced100->58 and second activation restored58->100. The pressed state and focus were exposed accessibly; no real lead was submitted.",
+    "deferred": [
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "Do not duplicate active provider-parity PR1804. Review its final exact evidence and freshness; if blocked, choose an independent unclaimed current owner rather than another filter patch."
   }
 }
