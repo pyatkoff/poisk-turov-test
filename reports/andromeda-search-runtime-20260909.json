@@ -1,0 +1,16 @@
+{
+  "issue": 1717,
+  "status": "implemented_awaiting_ci",
+  "base_commit": "d829a13130ef70e767157408f1c5a78957b801b6",
+  "input_capture_run": 34365549508,
+  "input_capture_artifact": 10109677472,
+  "input_capture_sha256": "c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9",
+  "implementation": "Bounded provider start/resume joining client, normalizer and private offer store; durable reservation before API, source state, namespaced standalone hotel groups, no unknown replay.",
+  "supplier_calls": 0,
+  "database_writes": 0,
+  "accepted_mappings": 0,
+  "published": false,
+  "selection_enabled": false,
+  "next_action": "Consume provider response in coordinated existing SEARCH renderer and isolated HTTP route with private storage/auth and reviewed account budget. All matching remains independent; unmapped hotel groups can display with source namespace.",
+  "deferred": ["HTTP route/auth/storage integration", "account-wide search budget", "general form criteria translation", "SEARCH renderer consumption and visual checks", "preview publication", "quote and selection"]
+}
