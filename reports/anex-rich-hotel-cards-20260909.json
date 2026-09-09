@@ -1,0 +1,654 @@
+{
+  "content_batch": {
+    "artifact": 10091702351,
+    "artifact_digest": "ced8da07e6582eb52fea0af23e87650cfb777d2e898f5826867b1ff3b5a82d59",
+    "automatic_advance": false,
+    "batch_key": "owner_content_review_20260909_01",
+    "details_requests": 25,
+    "job": 102365838346,
+    "limit": 25,
+    "new_descriptions": 25,
+    "new_photos": 0,
+    "new_ready": 25,
+    "old_pilot_repeated": false,
+    "photos_limit": 1,
+    "photos_requests": 1,
+    "photos_result": {
+      "requested": 25,
+      "returned": 25,
+      "rows": [
+        {
+          "id": 8227,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 8803,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 9153,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 16275,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 19916,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 20792,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 22881,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 23775,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 23894,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 24299,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 26688,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28574,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28882,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28892,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28941,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28950,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28967,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 28990,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29013,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29144,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29272,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29273,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29368,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29860,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 29979,
+          "photos": 0,
+          "status": "empty"
+        }
+      ]
+    },
+    "report_sha256": "cd3c3ca085beed0d96bde629029b4237a3b090186731b7b614c3d0f40e96caa3",
+    "rows": [
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 8227,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 8803,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 9153,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 16275,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 19916,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "empty",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 20792,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 22881,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "empty",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 23775,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 23894,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 24299,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 26688,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "empty",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28574,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "empty",
+          "location": "empty",
+          "longitude": "empty",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28882,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28892,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28941,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28950,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28967,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 28990,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29013,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "empty",
+          "location": "empty",
+          "longitude": "empty",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29144,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "empty",
+          "location": "empty",
+          "longitude": "empty",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29272,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29273,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29368,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29860,
+        "photos": 0,
+        "status": "ready"
+      },
+      {
+        "availability": {
+          "address": "present",
+          "attributes": "present",
+          "description": "present",
+          "latitude": "present",
+          "location": "empty",
+          "longitude": "present",
+          "name": "present",
+          "note": "empty",
+          "photos": "empty",
+          "rooms": "empty",
+          "transfer": "empty"
+        },
+        "id": 29979,
+        "photos": 0,
+        "status": "ready"
+      }
+    ],
+    "run": 34320503266,
+    "status": "completed",
+    "total_ready_including_original_pilot": 30
+  },
+  "next": "Continue actual owner-session/access integration and persistent review dossiers, then publish the authenticated comparison page through the isolated preview workflow. Use prepared content stores; missing media is explicit; no automatic disputed matches.",
+  "official_source": {
+    "anex_hotel_id": 16193,
+    "explicit_room_photo_links": 12,
+    "gallery_status": 403,
+    "identity_field": "fetchHotelInfo.info.inc",
+    "image_status": 403,
+    "name": "Dragut Point North",
+    "page": "https://anextour.ru/hotels/turkey/dragut-point-north",
+    "report": "reports/anex-official-hotel-photos-20260909.json",
+    "working_media_confirmed": false
+  },
+  "pr": 1684,
+  "protected": {
+    "main_modified": false,
+    "mappings_preserved": {
+      "manual": 9,
+      "manual_sha256": "ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1",
+      "policy": 12890,
+      "policy_sha256": "4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc",
+      "staging": 8362
+    },
+    "panel_auth_gate_preserved": true,
+    "public_media_denial_not_retried": true,
+    "tourvisor_backfill_repeated": false,
+    "visual_release_promoted": false
+  },
+  "schema_version": 1,
+  "scope": "ANEX development branch; panel not published",
+  "source_sha": "694a0a4d6370b769a937aa826f532693572a10d9",
+  "ui": {
+    "description": "Source-labelled ANEX/Tourvisor cards side by side, saved HTTPS thumbnails with lazy loading, open descriptions, expandable attributes and rooms; official page references pinned to exact ANEX IDs",
+    "source_sha": "959d15d1c95ef742aa2b54e5395b13f7a206a14e",
+    "tests": {
+      "checks": 69,
+      "human_screenshot_inspection": "deferred: artifact materialized but download returned403",
+      "live_owner_session": false,
+      "overflow": false,
+      "panel_run": 34320399491,
+      "security_run": 34320399449,
+      "visual_artifact": 10091648586,
+      "visual_artifact_digest": "0294e66f0d5709f4919436567430f13eb44348eb94586844ddcae639338e65ec",
+      "widths": [
+        1280,
+        820,
+        390,
+        320
+      ]
+    }
+  }
+}
