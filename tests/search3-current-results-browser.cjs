@@ -107,6 +107,18 @@ async function run(browser, width, previous) {
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), parameters, 'editing preserves all current search parameters');
     await page.evaluate(items => window.V2Results.render(items), hotels);
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'cheap', 'price sorting retained');
+    const localHotelFilter = page.locator('.search3-hotel-filter');
+    const localHotelInput = localHotelFilter.locator('input');
+    assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
+    await localHotelInput.fill('  ВТОРОЙ  ');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'local hotel filter matches normalized loaded-card names');
+    assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'local filter reports its own truthful loaded-card count');
+    await page.locator('#sortResults').selectOption('rating');
+    assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'sorting reapplies the local filter to rerendered cards');
+    await localHotelInput.fill('');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'clearing the local query restores every loaded card');
+    await page.locator('#sortResults').selectOption('price');
     const card = page.locator('#results [data-hotel-id=expensive].hotel-card');
     assert.equal(await card.locator('.hotel-title').evaluate(node => node.tagName), 'H3', 'hotel name keeps a semantic card heading');
     assert.equal(await card.locator('.hotel-best-offer').count(), 0, 'card does not repeat the representative tour price');
@@ -154,6 +166,8 @@ async function run(browser, width, previous) {
     assert.match(await page.locator('#status').innerText(), /Уже найденные отели сохранены/, 'continue failure truthfully preserves prior results');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
     assert.match(await page.locator('#status').innerText(), /Параметры поиска изменены/, 'dirty reset retains its actionable explanation');
+    assert.equal(await localHotelInput.inputValue(), '', 'search reset clears the local hotel query');
+    assert.equal(await localHotelFilter.isVisible(), false, 'search reset hides the stale local hotel filter');
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => window.V2Results.render([]));

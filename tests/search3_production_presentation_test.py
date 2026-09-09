@@ -1057,6 +1057,20 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             self.assertGreaterEqual(self.bundle.count("'" + name + "'"), 2, name)
 
+    def test_one_local_hotel_filter_owns_loaded_card_filtering(self):
+        parts = self.source['assets']['search3-results-filters-v1.js']
+        owner = 'behavior/results/local-hotel-filter.js'
+        self.assertEqual(parts.count(owner), 1)
+        source = (ROOT / 'src/search3' / owner).read_text()
+        self.assertIn("querySelectorAll('.hotel-card')", source)
+        self.assertIn("querySelector('.hotel-title')", source)
+        self.assertIn("window.addEventListener('v2:results-rendered',apply)", source)
+        self.assertIn("window.addEventListener('v2:search-reset',clear)", source)
+        self.assertNotIn('V2SearchLifecycle', source)
+        self.assertNotIn('fetch(', source)
+        self.assertGreaterEqual(self.bundle.count("'mobile-results-filters-v1.js'"), 2)
+        self.assertGreaterEqual(self.bundle.count("'ds2-results-filters.js'"), 2)
+
     def test_protected_core_files_and_hashes_remain_exact(self):
         protected = MANIFEST['protectedSha256']
         # Count executable closures, not filename mentions in the phase allowlist.
