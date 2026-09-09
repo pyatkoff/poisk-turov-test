@@ -14,7 +14,50 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — grouped form and readable summary #1645 — 2026-09-09
+## Current product checkpoint — clear results and truthful states #1652 — 2026-09-09
+
+Exact source `867bf3e899a09fbe48c09774dcd1a7568a258e65`, tree
+`ebb227db00b2168d80196d9c964ef0aad95dc3a1`; checked release
+`4554e34b4cfed32d290a82b0ae05f3adaa828c80`. Existing renderer/lifecycle/layout
+owners now present one semantic hotel heading, distinct rating and category,
+essential tour facts, one authoritative whole-tour total and one selection action.
+Loading, progress, empty, error, retry and dirty states describe the actual search
+lifecycle. Progressive empty batches no longer masquerade as terminal empty results,
+and a new search cannot inherit the previous result count. No parallel renderer,
+override skin, price calculation, API request or lead handler was added.
+
+Eight public assets are **10616→12007 raw B (+1391)**; public JS is unchanged.
+The complete external CSS/JS scenario is **104274→108598 B (+4324)**: initial
+61856→66180 B and selected phase remains 42418 B. This is intentional product
+presentation growth, not claimed as deletion or movement.
+
+Security `34297070096` and exact artifact `34297070107` passed. Reuse artifact
+`10083549711`, digest
+`sha256:520ba978b2493d625ab9675288174074650bcf6e51c56e30a0784bb7f50bf726`,
+archive `f51a7bf90a5425e88abd66b1192d1173e9850c201735a2a9067a7850a204a749`,
+manifest `db7cf405ba42856a7a9cad3d54d80c7c127c590079d5c6af748c8c53835f5e7c`,
+payload `8675e719bf7433d9bcdd41789a060fe85f8f278d9b11c8c59854ca82b2ad714f`,
+717 files. Exact Chromium passed 12 results states at
+375/760/761/999/1000/1440 plus entry at375/1440, raw/served parity, native
+header, external calls0 and real leads0.
+
+**Published preview now equals this exact source.** One-shot control #1653,
+SHA `176bf718601b694f8f5dbdc45c22f97e5f8002fc`, deploy `34297374511` reused
+the artifact and passed provenance, isolation, noindex, disabled lead, rollback
+and unchanged production-fingerprint guards. Live 1363×936 smoke observed the
+truthful progress state and 100 real hotel cards, one price in the first card,
+no horizontal overflow and noindex; no lead was submitted. Physical Safari and
+safe-area, owner visual acceptance and full lead/site/SEO journey remain deferred.
+Main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; main and production unchanged.
+Rollback: revert #1652 for code or restore the retained preview backup from deploy
+run34297374511. Audit: `docs/project/search3-results-clarity-product.json`.
+
+Next: `S3_PRODUCT_SELECTED_LEAD`. Improve flight choices, authoritative selected
+total and contact handoff in the current owners. Preserve price arithmetic,
+Tourvisor/API, URL/payload, analytics and lead transport contracts; do not add a
+parallel selected-flow controller.
+
+## Previous product checkpoint — grouped form and readable summary #1645 — 2026-09-09
 
 Exact source `d81f1dc53fe2a4fe1a05b9c32434858114924164`, tree
 `fcb6beb329c39afbbc013efe5e5eada90a674a1d`; checked release

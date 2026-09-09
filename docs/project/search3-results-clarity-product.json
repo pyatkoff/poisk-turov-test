@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "source_pr": 1652,
+  "baseline_release_sha": "668ddbcc1e7111de0b5b13ceaa4c3d2b8043a3d4",
+  "source_sha": "867bf3e899a09fbe48c09774dcd1a7568a258e65",
+  "source_tree": "ebb227db00b2168d80196d9c964ef0aad95dc3a1",
+  "release_integration_sha": "4554e34b4cfed32d290a82b0ae05f3adaa828c80",
+  "scope": "Clarify the existing Search3 result-card hierarchy and search lifecycle states without adding another renderer, presentation layer, API request, price calculation or lead handler.",
+  "product_result": [
+    "Each hotel card has one semantic heading, distinct rating and category, essential tour facts, one authoritative whole-tour total and one clear selection action.",
+    "Repeated hotel-level price and ambiguous labels were removed from the current renderer instead of hidden by another layer.",
+    "Loading, progress, empty, error, retry and form-dirty states now describe the real lifecycle and remain accessible.",
+    "Progressive empty batches no longer masquerade as terminal empty results; new searches no longer inherit the previous result count."
+  ],
+  "ownership": {
+    "results_markup_and_state": "v2/results-renderer-v5.js",
+    "search_lifecycle": "v2/search-lifecycle-v6.js",
+    "results_presentation": "src/search3/styles/results-layout.css",
+    "duplicate_layers_added": 0,
+    "legacy_progress_owner_restored": false
+  },
+  "size": {
+    "public_paths": 8,
+    "public_assets_before_raw_bytes": 10616,
+    "public_assets_after_raw_bytes": 12007,
+    "public_assets_added_raw_bytes": 1391,
+    "public_js_delta_raw_bytes": 0,
+    "shared_http_before_raw_bytes": 104274,
+    "shared_http_after_raw_bytes": 108598,
+    "shared_http_added_raw_bytes": 4324,
+    "initial_http_before_raw_bytes": 61856,
+    "initial_http_after_raw_bytes": 66180,
+    "initial_http_added_raw_bytes": 4324,
+    "selected_http_before_raw_bytes": 42418,
+    "selected_http_after_raw_bytes": 42418,
+    "selected_http_added_raw_bytes": 0,
+    "accounting": "The useful product improvement adds1391B to the eight public Search3 assets and4324B to initial/full shared HTTP CSS/JS. Selected-phase bytes are unchanged. No transfer or lazy-loading is presented as deletion."
+  },
+  "verification": {
+    "security_run": 34297070096,
+    "exact_artifact_run": 34297070107,
+    "conclusion": "success",
+    "results_states": 12,
+    "results_widths": [375, 760, 761, 999, 1000, 1440],
+    "entry_widths": [375, 1440],
+    "raw_served_parity": true,
+    "native_header": true,
+    "external_calls": 0,
+    "real_leads_submitted": 0
+  },
+  "artifact": {
+    "id": 10083549711,
+    "name": "search3-site-preview-867bf3e899a09fbe48c09774dcd1a7568a258e65-34297070107-1",
+    "digest": "sha256:520ba978b2493d625ab9675288174074650bcf6e51c56e30a0784bb7f50bf726",
+    "archive_sha256": "f51a7bf90a5425e88abd66b1192d1173e9850c201735a2a9067a7850a204a749",
+    "manifest_sha256": "db7cf405ba42856a7a9cad3d54d80c7c127c590079d5c6af748c8c53835f5e7c",
+    "payload_sha256": "8675e719bf7433d9bcdd41789a060fe85f8f278d9b11c8c59854ca82b2ad714f",
+    "file_count": 717,
+    "geometry_evidence_id": 10083549265,
+    "geometry_evidence_digest": "sha256:e9380cb33a752bb839a432f1ab536edbb26e8237a2d3c5c0d55b283690413b20"
+  },
+  "publication": {
+    "published": true,
+    "published_preview_source_sha": "867bf3e899a09fbe48c09774dcd1a7568a258e65",
+    "control_pr": 1653,
+    "control_sha": "176bf718601b694f8f5dbdc45c22f97e5f8002fc",
+    "deploy_run": 34297374511,
+    "deployment_evidence_id": 10083643621,
+    "deployment_evidence_digest": "sha256:fd46e8f8200b8569f3900b8d06ea15ae5a3bf02f192d1522ffd504ab8e317760",
+    "artifact_rebuilt": false,
+    "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "main_changed": false,
+    "production_changed": false
+  },
+  "live_preview": {
+    "route": "/_preview/search3-site-candidate/poisk-turov/",
+    "viewport": [1363, 936],
+    "hotels_rendered": 100,
+    "first_card_authoritative_price_count": 1,
+    "horizontal_overflow": false,
+    "loading_progress_visible": true,
+    "terminal_summary_truthful": true,
+    "robots": "noindex,follow,max-image-preview:large",
+    "real_leads_submitted": 0
+  },
+  "deferred": [
+    "physical Safari and safe-area verification",
+    "owner visual acceptance and full lead/site/SEO journey",
+    "selected-tour flight-list and contact-handoff product work belongs to S3_PRODUCT_SELECTED_LEAD"
+  ],
+  "rollback": "Revert 4554e34b4cfed32d290a82b0ae05f3adaa828c80 for code; restore the retained preview backup recorded by deploy run34297374511 for preview.",
+  "next_action": "Improve selected-tour flight choices, authoritative selected total and contact handoff in the current owners; preserve price arithmetic, Tourvisor/API and lead transport contracts, and do not add a parallel selected-flow controller."
+}
