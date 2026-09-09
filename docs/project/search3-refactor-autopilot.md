@@ -14,7 +14,39 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — shared content control ownership #1658 — 2026-09-09
+## Current product checkpoint — canonical Search3 site header #1660 — 2026-09-09
+
+Source `0c87e1ff07b17723b819ae83a15fc3449a693b54`, tree
+`b56839cd16c3dda7de4dc3bb6c1e0b6939d556d6`; checked release
+`984c63891fd786044264071d5dbe5cb71eed4029`. Search3 now loads the canonical
+`design-system-v2.css`, `site-header-v2.css` and `site-footer-v1.css` owners once.
+Its private header selectors were removed and generic resets were scoped to `.v2-shell`.
+Navigation now follows the shared 1024 px breakpoint.
+
+Eight public assets are **13574→12865 raw B (-709)**. The canonical DS2/header add
+10494 B to the route closure, so eager CSS/JS is **67747→77532 B** and the full
+scenario **110165→119950 B**: an honest **+9785 B** product/ownership improvement;
+JS is unchanged.
+
+Security `34303744326` and exact artifact `34303744328` passed. Artifact
+`10085907944`, digest
+`sha256:ace19d57bd7d16c616dc901333958b6ef7982ffb08f2b54f6dd750616e384c59`.
+Browser checks covered mobile/tablet/desktop and both sides of 1024/1025; no overflow
+or protected-contract regression. The fixed historical entry baseline remains a
+lifecycle/value reference while current-candidate overflow remains strictly rejected.
+
+Deploy `34304080062` published only the isolated preview. Nine routes returned 200
+with noindex; production leads are disabled, preview counter0, rollback retained and
+production fingerprints unchanged. Live desktop 1363 px showed one visible canonical
+header, logo/navigation/actions, no mobile duplicate and no overflow. Main observed
+`86fc165277a13ae9bef1369659e9b150399f0e35`; main/production unchanged, real leads0.
+Audit: `docs/project/search3-canonical-header-owner.json`.
+
+Next: `S3_PRODUCT_PAGES_HANDOFF`, beginning with a bounded audit of parameter-preserving
+transitions from shared content pages into Search3; do not duplicate the separate ANEX
+work. Physical Safari/safe-area and owner production acceptance remain deferred.
+
+## Previous product checkpoint — shared content control ownership #1658 — 2026-09-09
 
 Source `d68c0989e949afde8fcb1051c3fc9ab9716a2907`, tree
 `872c096e7eb8d0baee9b6dd478747b2914910e65`; checked release
