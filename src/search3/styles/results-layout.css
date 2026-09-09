@@ -47,7 +47,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-mobile-filter-panel>summary::-webkit-details-marker{display:none}
 & .search3-mobile-filter-panel>summary:after{content:'▾';font-size:18px;line-height:1;transition:transform .15s ease}
 & .search3-mobile-filter-panel[open]>summary:after{transform:rotate(180deg)}
-& .search3-mobile-filter-panel>summary span{margin-left:auto;color:#526078;font-size:12px;font-weight:600}
+& .search3-mobile-filter-panel>summary span{min-width:0;margin-left:auto;overflow:hidden;color:#526078;font-size:12px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 & .search3-mobile-filter-panel__body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border-top:1px solid #dbe2ed;background:#fff}
 & .search3-mobile-filter-panel__body>.search3-hotel-filter{grid-column:1/-1}
 & .search3-mobile-filter-panel__body>.search3-filter-reset{grid-column:1/-1;width:100%;color:#2743cb;font-weight:600}
