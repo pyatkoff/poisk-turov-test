@@ -140,15 +140,11 @@ function anytour_andromeda_search3_http(): void {
     if(strtolower(trim(explode(';',$_SERVER['CONTENT_TYPE']??'')[0]))!=='application/json')anytour_anex_search3_out(['ok'=>false,'error'=>'invalid_request'],400);
     $raw=file_get_contents('php://input',false,null,0,16385);
     if(strlen($raw)>16384)anytour_anex_search3_out(['ok'=>false,'error'=>'invalid_request'],400);
-    try {
-        $ownerApp=is_file(__DIR__.'/app/admin/anex-review/owner-login.php')?__DIR__.'/app/admin/anex-review':__DIR__.'/../app/admin/anex-review';
-        require_once $ownerApp.'/owner-login.php';
-        $owner=new AnexReviewOwnerLogin(anex_owner_private_config(__DIR__),$_SERVER['DOCUMENT_ROOT']??'');
-        $owner->context();
-    }catch(Throwable $ignored){
-        if(session_status()===PHP_SESSION_ACTIVE)session_write_close();
-        anytour_anex_search3_out(['ok'=>false,'error'=>'owner_login_required'],403);
-    }
+    // Read-only search is public; supplier credentials stay in private server config.
+    session_name('ANYTOUR_ANDROMEDA_SEARCH3');
+    ini_set('session.use_strict_mode','1');ini_set('session.use_only_cookies','1');
+    session_set_cookie_params(['secure'=>true,'httponly'=>true,'samesite'=>'Lax','path'=>'/_preview/search3-anex-candidate/']);
+    if(!session_start())anytour_anex_search3_out(['ok'=>false,'error'=>'supplier_unavailable'],503);
     $recent=array_filter($_SESSION['andromeda_requests']??[],static function($time){return $time>time()-60;});
     if(count($recent)>=6){session_write_close();anytour_anex_search3_out(['ok'=>false,'error'=>'rate_limited'],429);}
     $recent[]=time();$_SESSION['andromeda_requests']=array_values($recent);$session=session_id();session_write_close();
