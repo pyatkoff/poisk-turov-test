@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "scope": "isolated_anex_preview",
+  "source_sha": "3828eb711ca6467f477784f62ed60b634099a51e",
+  "previous_packet_source_sha": "0cde86cc9503e12af7af6994c345adee491d3bc9",
+  "run_id": 34314748095,
+  "job_id": 102348511677,
+  "conclusion": "success",
+  "artifact_id": 10089677093,
+  "artifact_digest": "sha256:329beb2091d37a9dcf7a5b3b348b465549a3115a2e391ea376d49279b4085f20",
+  "preview_url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+  "fix": "Retain local ANEX-preview budget, meal and source selection on continued Tourvisor results; reset on new search.",
+  "validation": {
+    "node": {
+      "passed": 27,
+      "failed": 0
+    },
+    "php_smoke": "passed",
+    "workflow_guards": "passed",
+    "live_adapter_probe": "passed",
+    "browser": {
+      "source_sha_verified": true,
+      "cards": 224,
+      "tourvisor": 100,
+      "anex": 155,
+      "overlap": 31,
+      "horizontal_overflow": false
+    },
+    "mobile_safari": "deferred: browser has no resize/emulation capability"
+  },
+  "preservation": {
+    "policy_count": 12890,
+    "manual_count": 9,
+    "staging_count": 8362,
+    "policy_sha256": "4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc",
+    "manual_sha256": "ac656a750d05050b824891ad9b09f5174db761a8a5862f22de0188d4863fd1c1",
+    "matching_acceptance_executed": false
+  },
+  "observations_snapshot": {
+    "counts": {
+      "manual_review": 0,
+      "mapped": 303,
+      "observed": 611,
+      "pending": 308
+    },
+    "first_page_only": true,
+    "generated_at_utc": "2026-09-09T05:25:55+00:00",
+    "queue_limit": 1000,
+    "scope": "preview",
+    "source": "successful_initial_search",
+    "source_sha": "3828eb711ca6467f477784f62ed60b634099a51e",
+    "truncated": false
+  },
+  "next_task": {
+    "issue": 1647,
+    "status": "implementation_next",
+    "panel_ready": false,
+    "first_step": "Protected observed-hotel queue using persistent existing staging evidence; then authenticated pair decisions with history and stale-state protection."
+  }
+}
