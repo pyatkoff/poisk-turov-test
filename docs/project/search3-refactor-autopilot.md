@@ -14,6 +14,52 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
+## Current product checkpoint — grouped form and readable summary #1645 — 2026-09-09
+
+Exact source `d81f1dc53fe2a4fe1a05b9c32434858114924164`, tree
+`fcb6beb329c39afbbc013efe5e5eada90a674a1d`; checked release
+`b7f1500f261c2757c0bb5ea7c01e5f3080174bc2`. Eight canonical fields are now
+four labelled native groups (direction, dates, duration and tourists). Search3
+loads the canonical shared footer as its sole footer owner; four local footer
+overrides were removed. Current results layout owns selected/lead spacing.
+Lead summary reads direct price/flight values only, and the existing summary
+controller clears selected state before canonical return focus.
+
+Eight public assets are **9073→10616 raw B (+1543)**: CSS 5448→6822 B and JS
+3625→3794 B. The complete external CSS/JS file set is **113239→125065 B
+(+11826)**: +1543 B in the eight Search3 paths, the existing 10176 B shared
+footer now used on this route, and +107 B shared runtime. `v2/index.php` adds
+565 B separately. This is an intentional product improvement, not claimed as
+deletion or lazy-loading savings; no duplicate presentation/controller owner
+was added.
+
+Security `34294044806` and exact artifact `34294044809` passed. Reuse artifact
+`10082470390`, digest
+`sha256:c7bc451e305b99257d0a6230e40867dcd739540438dccb14b09c087c198be3fc`,
+archive `247263406acbcbcc7c5baa02b7b2043e8e7a00bac49ccaac128f4488fb04d276`,
+manifest `56640d152fd6bf15394bb02401c3ce966991c179ab58261816fe66b6b18a4de5`,
+payload `98e6f87ad122d0b8848a34a739808074f4312ab4a9acdaa2cb748cb68cad7c48`,
+717 files. Exact evidence covered entry and selected states at 375/1440 and 12
+results/selected/return states; real leads0.
+
+**Published preview now equals this exact source.** One-shot control #1650,
+SHA `58b98c2b3da0dee79512669055a03b3630727050`, deploy `34294751418` succeeded
+without rebuilding. Evidence `10082695312`, digest
+`sha256:b741e7d143cf9eb06135539f8b808f4f23bd27cc0a8d80ce62cfcf8a1965ddd9`.
+Live 1348 px smoke confirmed four grouped fieldsets, canonical footer, no
+horizontal overflow, noindex and disabled production lead action; no page
+console error and no lead submission. Physical Safari/safe-area, owner visual
+acceptance and full lead/site/SEO journey remain deferred. Main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; main and production unchanged.
+Rollback: revert #1645 for code or restore the retained preview backup from the
+deploy run. Audit: `docs/project/search3-form-readability-product.json`.
+
+Next: `S3_PRODUCT_RESULTS_CLARITY`. Use the current renderer/layout owners to
+make the hierarchy photo → name/location → essential facts → authoritative
+total price → action, remove repeated facts, and clarify progress/empty/error/
+retry states. Preserve API, URL, price, lead and analytics contracts; do not add
+a parallel results renderer or override layer.
+
 ## Last checked code checkpoint — results-top bridge retirement #1643 — 2026-09-08
 
 Exact source `937c343d00b379414074ee5632298543054a5935`, tree
