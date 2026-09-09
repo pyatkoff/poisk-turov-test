@@ -12,7 +12,7 @@ fs.mkdirSync(output, { recursive: true });
 const names = JSON.parse(execFileSync('php', ['-r', 'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'], { cwd: root, encoding: 'utf8' }));
 const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n;\n');
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
-const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
+const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
   { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, picturelink: picture, tours: [tour, { ...tour, id: 'other-tour', price: 159000 }] },
   { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
@@ -151,7 +151,7 @@ async function run(browser, width, previous) {
     assert.match(await page.locator('#resultSummary').innerText(), /цены указаны за весь тур/, 'result summary explains price scope');
     assert.equal(await card.locator('.tour-row').count(), 1, 'representative tour shown immediately');
     assert.ok((await card.locator('.direct-tour').boundingBox()).height >= 44, 'real selection action retains a full touch target');
-    assert.match(await card.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName-only meal is visible in the offer facts');
+    assert.match(await card.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName expands the abbreviation in offer facts');
     const photo = await card.locator('.hotel-photo').boundingBox();
     const body = await card.locator('.hotel-body').boundingBox();
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');

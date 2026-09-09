@@ -78,5 +78,91 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   assert.doesNotMatch(unsafeRow, /<img/);
   assert.equal(results.textValue({ fullName: 'Not a meal' }), '', 'generic object display semantics are unchanged');
   assert.equal(tour.meal.fullName, 'All Inclusive', 'rendering leaves supplier data unchanged');
-  console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1 renderer_full_name=1');
+
+  const controllerSource = fs.readFileSync(path.join(__dirname, '../v2/tour-controller-v4.js'), 'utf8');
+  async function selectedMeal(sample, withRenderer = true) {
+    const events = new Map(), button = {}, message = {};
+    let payload = null;
+    const selected = {
+      innerHTML: '', hidden: true, removeAttribute() {}, scrollIntoView() {},
+      querySelector() { return null; }
+    };
+    const leadForm = {
+      dataset: {},
+      closest(selector) { return selector === '#selectedTour .lead-form' ? this : null; },
+      querySelector(selector) { return selector === 'button[type="submit"]' ? button : message; }
+    };
+    const selectedWindow = {
+      V2_CONFIG: { leadApi: '/mock-lead' },
+      V2Results: withRenderer ? results : undefined,
+      V2Runtime: {
+        state: { searchId: 'meal-search' },
+        async api(action) {
+          assert.ok(action === 'tour' || action === 'flights', 'only fixture tour/flight reads are requested');
+          return action === 'tour' ? sample : [];
+        }
+      },
+      addEventListener() {}, dispatchEvent() {},
+      async fetch(url, options) {
+        assert.equal(url, '/mock-lead');
+        assert.equal(options.method, 'POST');
+        payload = JSON.parse(options.body);
+        return { ok: true, async json() { return { ok: true, writes: 1 }; } };
+      }
+    };
+    vm.runInNewContext(controllerSource, {
+      window: selectedWindow,
+      document: {
+        cookie: '',
+        getElementById(id) { return id === 'selectedTour' ? selected : null; },
+        querySelector() { return null; },
+        addEventListener(name, listener) { events.set(name, listener); }
+      },
+      CustomEvent: function () {},
+      URLSearchParams,
+      location: { search: '', href: 'https://example.test/poisk-turov/' },
+      FormData: function () { this.get = name => ({ name: 'Fixture', phone: '+70000000000', consent: '1' }[name] || ''); }
+    });
+    await selectedWindow.V2TourController.selectTour(sample.id);
+    const html = selected.innerHTML;
+    events.get('submit')({ target: leadForm, preventDefault() {}, stopPropagation() {} });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(payload, 'canonical controller produces the captured fixture payload without network');
+    return { html, payload };
+  }
+
+  const cases = [
+    { meal: { name: 'RO', fullName: 'Без питания' }, label: 'Без питания', payload: 'RO' },
+    { meal: { name: 'HB+', fullName: 'Полупансион плюс' }, label: 'Полупансион плюс', payload: 'HB+' },
+    { meal: { fullName: 'Всё включено' }, label: 'Всё включено', payload: '' },
+    { meal: { russianName: 'Завтраки', name: 'BB', fullName: 'Bed & Breakfast' }, label: 'Завтраки', payload: 'Завтраки' },
+    { meal: { fullRussianName: 'Завтраки', name: 'BB', fullName: 'Bed & Breakfast' }, label: 'Завтраки', payload: 'Завтраки' },
+    { meal: { name: 'Всё включено', fullName: 'All Inclusive' }, label: 'Всё включено', payload: 'Всё включено' },
+    { meal: { name: 'Lunch', fullName: 'Другой текст поставщика' }, label: 'Lunch', payload: 'Lunch' },
+    { meal: { name: 'RO', fullName: '   ' }, label: 'RO', payload: 'RO' },
+    { meal: { id: 7 }, label: '', payload: '' },
+    { meal: null, label: '', payload: '' },
+    { meal: 'Всё включено', label: 'Всё включено', payload: '' }
+  ];
+  assert.equal(typeof results.mealLabel, 'function', 'one canonical display helper is exposed');
+  for (const item of cases) {
+    const sample = Object.freeze({ ...tour, meal: item.meal && typeof item.meal === 'object' ? Object.freeze(item.meal) : item.meal });
+    const before = JSON.stringify(sample);
+    assert.equal(results.mealLabel(sample), item.label, 'display normalization uses supplier labels without inventing meal IDs');
+    assert.equal(results.priceContext({ price: sample.price, tours: [sample] }), item.label);
+    const current = await selectedMeal(sample), standalone = await selectedMeal(sample, false);
+    assert.ok(current.html.includes('<span>Питание</span><b>' + (item.label || '—') + '</b>'), 'selected fact uses the same visible label');
+    assert.equal(current.payload.meal, item.payload, 'existing lead meal value remains unchanged');
+    assert.deepEqual(current.payload, standalone.payload, 'display helper does not change any lead field');
+    assert.equal(current.payload.price, tour.price, 'display normalization preserves price');
+    assert.equal(current.payload.tourId, tour.id, 'display normalization preserves selected identity');
+    assert.equal(JSON.stringify(sample), before, 'both display owners leave supplier data unchanged');
+  }
+  const unsafe = Object.freeze({ ...tour, meal: Object.freeze({ name: 'RO', fullName: '<img src=x onerror="bad()">' }) });
+  const escaped = await selectedMeal(unsafe);
+  assert.ok(escaped.html.includes('&lt;img src=x onerror=&quot;bad()&quot;&gt;'), 'expanded supplier label is escaped in selected facts');
+  assert.doesNotMatch(escaped.html, /<img/);
+  assert.ok(results.tourRow(unsafe).includes('&lt;img src=x onerror=&quot;bad()&quot;&gt;'), 'expanded supplier label is escaped in result facts');
+  assert.equal(escaped.payload.meal, 'RO', 'unsafe display label never enters the lead mapping');
+  console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1 renderer_full_name=1 shared_display=1 selected_display=1 payload_unchanged=1');
 })().catch(error => { console.error(error); process.exitCode = 1; });
