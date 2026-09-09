@@ -69,6 +69,19 @@ jobs:
           grep -Fq '.sp-office-phone,.sp-contact-phone{display:inline-flex;align-items:center;min-height:44px}' v2/shared-content-primitives-v1.css
           grep -Fq '.sp-primary{min-height:44px;background:#0066ff;color:#fff' v2/shared-content-primitives-v1.css
           grep -Fq '.sp-primary:hover{background:#0754d1}' v2/shared-content-primitives-v1.css
+          ! grep -Fq '.sp-primary,.sp-secondary{display:inline-flex' v2/site-page-v1.css
+          ! grep -Fq '.sp-primary{background:var(--at-accent)' v2/site-page-v1.css
+          ! grep -Fq '.sp-secondary{border:1px solid var(--at-line-strong)' v2/site-page-v1.css
+          ! grep -Fq '.sp-primary:hover,.sp-secondary:hover' v2/site-page-v1.css
+          ! grep -Fq '.sp-primary,.sp-secondary{width:100%}' v2/site-page-v1.css
+          php -r '
+            foreach (["v2/site-page-shell-v1.php", "v2/seo-seasonal-review-page-v1.php"] as $file) {
+              $source=file_get_contents($file);
+              $page=strpos($source, "sp_inline_css(\x27site-page-v1.css\x27)");
+              $shared=strpos($source, "sp_inline_css(\x27shared-content-primitives-v1.css\x27)");
+              if ($page===false || $shared===false || $shared<=$page) exit(41);
+            }
+          '
           ! grep -Fq '.sp-office-phone,.sp-contact-phone' v2/site-coherence-v1.css
           ! grep -Fq '.sp-main .sp-primary,.sp-hero .sp-primary' v2/site-coherence-v1.css
           ! grep -Fq '.sp-header' v2/site-page-v1.css
