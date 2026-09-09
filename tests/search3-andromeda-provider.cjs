@@ -23,6 +23,8 @@ assert.equal(normalized.tours[0].id,'andromeda:'+offer);
 assert.equal(normalized.tours[0].selectionEnabled,false);
 assert.equal(JSON.stringify(normalized.tours[0].providerHotelCode),JSON.stringify({operator:'anex',code:'5844',evidence:'hotel_image_path'}),'photo-derived operator code remains offer metadata');
 const tv={id:21477,name:'Movenpick Resort',price:165000,picturelink:'https://tourvisor.example/photo.jpg',tours:[{id:'tv-1',price:165000,date:'18.09.2026'}]};
+const passthrough=api.merge([tv],[]);
+assert.equal(passthrough[0],tv,'provider merge preserves the original Tourvisor hotel when there is no accepted Andromeda offer');
 const merged=api.merge([tv],[rawHotel(21477)]);
 assert.equal(merged.length,1,'accepted local ID merges provider offers into one hotel card');
 assert.equal(merged[0].tours.length,2);
