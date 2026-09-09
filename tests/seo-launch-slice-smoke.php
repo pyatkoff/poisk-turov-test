@@ -4,6 +4,7 @@ require_once __DIR__ . '/../v2/seo-launch-slice-v1.php';
 require_once __DIR__ . '/../v2/seo-content-pilot-turkey-catalog-v1.php';
 require_once __DIR__ . '/../v2/seo-controlled-launch-catalog-v1.php';
 require_once __DIR__ . '/../v2/data/seo-controlled-route-identities-v1.php';
+require_once __DIR__ . '/seo-static-launch-preservation-smoke.php';
 
 function seo_launch_fail(string $message): void
 {
