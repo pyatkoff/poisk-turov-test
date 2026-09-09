@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "issue": 1759,
+  "batch": "2026-09-09-batch2",
+  "status": "checked_not_applied",
+  "checked_at_utc": "2026-09-09T19:20:00Z",
+  "source_observed_queue_artifact": 10096927331,
+  "source_observed_queue_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a",
+  "criteria": {
+    "departure": "Москва",
+    "country": "Турция",
+    "date_from": "2026-09-18",
+    "date_to": "2026-09-18",
+    "nights_from": 8,
+    "nights_to": 8,
+    "adults": 2,
+    "meal": "AI и лучше",
+    "operator": "Anex",
+    "direct_flight": false,
+    "regular_flights": true
+  },
+  "counts": {
+    "reserved": 5,
+    "checked": 5,
+    "visible_operator_link": 2,
+    "unknown": 3,
+    "accepted_mappings": 0,
+    "database_writes": 0,
+    "supplier_api_calls": 0,
+    "crm_actions": 0,
+    "bookings": 0
+  },
+  "rows": [
+    {
+      "local_hotel_id": 55648,
+      "anex_hotel_id": 26688,
+      "local_name": "ARSI BLUE BEACH HOTEL (EX. KEMALHAN BEACH)",
+      "anex_name": "Arsi Blue Beach Hotel",
+      "dossier_digest": "5aba2b7eae2d55e98938982b5ac4a599c8e8b719bbd34613eeeec6910590ca27",
+      "result": "confirmed",
+      "operator_link": {
+        "origin": "https://agent.anextour.ru",
+        "path": "/search/tour",
+        "field": "HOTELLIST",
+        "value": "26688",
+        "safe_url": "https://agent.anextour.ru/search/tour?HOTELLIST=26688",
+        "origin_valid": true,
+        "path_valid": true,
+        "expected_id_matches": true
+      },
+      "evidence_note": "Tourvisor PRO search showed Arsi Blue Beach Hotel (Ex. Kemalhan Beach) and an Anex tour; visible operator link carried HOTELLIST=26688."
+    },
+    {
+      "local_hotel_id": 17568,
+      "anex_hotel_id": 23775,
+      "local_name": "PHOENIX SUN (EX. PALM GARDEN HOTEL)",
+      "anex_name": "Phoenix Sun Hotel",
+      "dossier_digest": "3b3fa31711a6432484f79e22100092d6a7d74c531398b4fca2fb67d5db0609d7",
+      "result": "confirmed",
+      "operator_link": {
+        "origin": "https://agent.anextour.ru",
+        "path": "/search/tour",
+        "field": "HOTELLIST",
+        "value": "23775",
+        "safe_url": "https://agent.anextour.ru/search/tour?HOTELLIST=23775",
+        "origin_valid": true,
+        "path_valid": true,
+        "expected_id_matches": true
+      },
+      "evidence_note": "Tourvisor PRO search showed Phoenix Sun (Ex. Palm Garden Hotel) and an Anex tour; visible operator link carried HOTELLIST=23775."
+    },
+    {
+      "local_hotel_id": 30633,
+      "anex_hotel_id": 28574,
+      "local_name": "COSTA BODRUM CITY HOTEL (EX. RED LION)",
+      "anex_name": "Costa Centro Bodrum",
+      "dossier_digest": "4139229cac7ae3c79d1b8cc18e15602526fab67daaeeb1305d4df9dcc179c1cb",
+      "result": "unknown",
+      "evidence_note": "Focused Tourvisor PRO search completed with no visible offer; no operator link, therefore unknown (not no_match)."
+    },
+    {
+      "local_hotel_id": 43528,
+      "anex_hotel_id": 28882,
+      "local_name": "MALKOC HOTEL LALELI",
+      "anex_name": "Malkoc Hotel",
+      "dossier_digest": "ad1cc1158e692e8669c1e45d03e66e5df60ba482841be9620e6ca4471eb3b3ea",
+      "result": "unknown",
+      "evidence_note": "Focused Tourvisor PRO search completed with no visible offer; no operator link, therefore unknown (not no_match)."
+    },
+    {
+      "local_hotel_id": 65057,
+      "anex_hotel_id": 29013,
+      "local_name": "SIM HOTEL",
+      "anex_name": "Sim Hotel Istanbul",
+      "dossier_digest": "358d0316023872531d742996126749840111500acb096f9d38380e796081f29b",
+      "result": "unknown",
+      "evidence_note": "Focused Tourvisor PRO search completed with no visible offer; no operator link, therefore unknown (not no_match)."
+    }
+  ],
+  "controls": {
+    "authenticated_browser": "Tourvisor PRO existing session",
+    "operator_link_validation": [
+      "origin=https://agent.anextour.ru",
+      "path=/search/tour",
+      "query field HOTELLIST"
+    ],
+    "source_queue_not_replayed": true,
+    "known_control_21477_5200_not_repeated": true
+  },
+  "apply": {
+    "status": "not_requested",
+    "reason": "Direct-link evidence is recorded; acceptance requires existing strict append-only importer and DB readback."
+  },
+  "next_action": "Continue with a fresh queue slice only after reserving the next checkpoint; do not replay these five rows or infer mappings from unknown results."
+}
