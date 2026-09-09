@@ -1,0 +1,107 @@
+{
+  "behavior": {
+    "content_sources": [
+      "catalog_hotels.primary_image_url and subregion_name",
+      "catalog_hotel_details status=success, stored primary_image_url/description/address"
+    ],
+    "description": "Plain text excerpt limited to 2000 characters",
+    "identity": "Only accepted mapping to the same active local catalog ID",
+    "missing_content": "Does not remove offers; missing/broken image has a placeholder",
+    "new_supplier_content_requests": 0,
+    "optional_content_queries": 2,
+    "prices": "Original ANEX search offers and source labeling preserved",
+    "sea_distance": null
+  },
+  "checks": {
+    "anex_preview": {
+      "artifact_id": 10093538360,
+      "job_id": 102381118304,
+      "php_lint": "passed",
+      "php_smoke": "passed",
+      "run_id": 34325317357,
+      "status": "success"
+    },
+    "node_tests": {
+      "passed": 31,
+      "total": 31
+    },
+    "review": "Independent source review found no runtime blockers",
+    "security": {
+      "run_id": 34325173215,
+      "status": "success"
+    },
+    "site_artifact": {
+      "run_id": 34325173219,
+      "status": "success"
+    }
+  },
+  "completed_search": {
+    "anex_hotels": 45,
+    "anex_standalone_cards": 32,
+    "overlap": 13,
+    "standalone_with_placeholder": 8,
+    "standalone_with_stored_photo_and_about": 24,
+    "tourvisor_hotels": 63,
+    "unique_hotels": 95
+  },
+  "interpretation": "The previous broad TV search returned 53 hotels without 21477; this new verification returned 63 and included 21477 late. Availability in broad results varies between runs. Internal Tourvisor mechanism remains unknown; do not infer catalog absence or a 100-hotel-limit cause.",
+  "live_query": {
+    "adults": 2,
+    "country": "Egypt",
+    "date_from": "2026-09-18",
+    "date_to": "2026-09-18",
+    "departure": "Moscow",
+    "hotel_filter": false,
+    "meal": 7,
+    "nights": 8,
+    "only_direct": false
+  },
+  "movenpick": {
+    "address": "KM 49 Hurghada/Safaga Road, Soma Bay, Soma Bay, 84711 Hurghada, Egypt",
+    "anex_hotel_id": 5200,
+    "anex_min_rub": 165578,
+    "description": "Отель состоит из двух 4-этажных зданий (есть 6 лифтов), всего 418 номеров",
+    "final_card": "Later Tourvisor response merged into the same 21477 card without a duplicate",
+    "final_tourvisor_min_rub": 236970,
+    "first_tourvisor_operator": "Библио Глобус",
+    "image_url": "https://static.tourvisor.ru/hotel_pics/main400/21477.jpg",
+    "image_verified": {
+      "complete": true,
+      "natural_height": 267,
+      "natural_width": 400
+    },
+    "initial_card": "Standalone ANEX card with saved photo, rating, description and address",
+    "local_hotel_id": 21477,
+    "rating": 4.4,
+    "same_package_comparison_claimed": false
+  },
+  "next": "P1 investigate completeness of Tourvisor results only with bounded evidence; no mass top-up or guessed limits. P2 review panel remains separate, not publicly deployed.",
+  "pr": 1692,
+  "preview_url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+  "protected": {
+    "main_merge": false,
+    "new_mapping_writes": false,
+    "production_deployment": false,
+    "production_entry_changes": false,
+    "tourvisor_search_contract_changes": false
+  },
+  "schema_version": 1,
+  "scope": "search3-anex-candidate",
+  "source_sha": "2545982789ada8db8c4be18be0c1159f624633bc",
+  "standalone_verified": {
+    "anex_min_rub": 163920,
+    "card_client_width": 884,
+    "card_scroll_width": 884,
+    "description_and_address_visible": true,
+    "image_loaded": true,
+    "local_hotel_id": 445,
+    "name": "IVY CYRENE ISLAND AQUA PARK RESORT"
+  },
+  "verified_at_utc": "2026-09-09T07:47:50.865Z",
+  "visual_check": {
+    "horizontal_overflow": false,
+    "mobile_browser_check": false,
+    "page_scroll_width": 1348,
+    "viewport_width": 1348
+  }
+}
