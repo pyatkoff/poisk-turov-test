@@ -2,42 +2,29 @@ name: Andromeda saved hotel content audit
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
-    paths: ['.github/workflows/andromeda-content-audit.yml']
+    paths: ['.github/workflows/andromeda-content-audit.yml', 'scripts/diagnostics/andromeda_anex_saved_audit.*']
 permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-anex-saved-evidence, cancel-in-progress: false}
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          repository: pyatkoff/poisk-turov-test
-          run-id: 34365549508
-          artifact-ids: 10109677472
-          merge-multiple: true
-          path: ${{ runner.temp }}/price
-      - name: Inspect saved price content fields without supplier calls
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate the read-only saved-evidence collector
         run: |
-          python3 - <<'PY'
-          import os,json,pathlib,collections,urllib.parse
-          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"price"/"price.json"
-          d=json.loads(p.read_bytes()); rows=d.get("payload",d).get("PRICES",[])
-          out={"rows":len(rows),"fields":sorted(set().union(*(set(r) for r in rows))),"operators":{},"samples":[]}
-          for r in rows:
-              op=r.get("operator",""); x=out["operators"].setdefault(op,{"offers":0,"hotelImage":0,"hotelUrl":0})
-              x["offers"]+=1
-              for field in ["hotelImage","hotelUrl"]:
-                  value=r.get(field)
-                  if isinstance(value,str) and value:
-                      x[field]+=1
-                      u=urllib.parse.urlsplit(value)
-                      if len(out["samples"])<12 and u.scheme in ["http","https"] and u.hostname and not u.username:
-                          safe=not any(k.lower() in ["sid","token","password","key","auth"] for k in urllib.parse.parse_qs(u.query))
-                          out["samples"].append({"hotel":r.get("hotel"),"operator":op,"field":field,"url":value if safe else u.scheme+"://"+u.netloc+u.path})
-          print(json.dumps(out,ensure_ascii=False,indent=2))
-          (pathlib.Path(os.environ["RUNNER_TEMP"])/"content-audit.json").write_text(json.dumps(out,ensure_ascii=False,indent=2))
-          PY
+          php -l scripts/diagnostics/andromeda_anex_saved_audit.php
+          python3 -m py_compile scripts/diagnostics/andromeda_anex_saved_audit.py
+      - name: Correlate saved offers from ANEX only
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_anex_saved_audit.py
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: andromeda-saved-content-audit
-          path: ${{ runner.temp }}/content-audit.json
+          name: andromeda-anex-saved-evidence
+          path: ${{ runner.temp }}/andromeda-anex-saved
+          if-no-files-found: error
