@@ -25,3 +25,16 @@ if($two['offers'][0]['hotel_content']['image_url']!==$row['hotelImage']||$two['o
 $read=$handler2->resume('same_search',1,time());if($read!==$two||count($calls)!==3)throw new RuntimeException('resume spent API');
 if(strpos(json_encode($two),'private_pagination_fixture')!==false||strpos(json_encode($two),'opaque-page-offer')!==false)throw new RuntimeException('private field exposed');
 echo "Andromeda pages: shared session, page match, stable offer refs, content, durable resume passed\n";
+
+require_once __DIR__.'/../v2/api-andromeda-search3-preview.php';
+$context=['provider'=>'andromeda','search_ref'=>'same_search','generation'=>1,'page'=>2,'offer_ref'=>$two['offers'][0]['offer_ref']];
+$detail=anytour_andromeda_search3_detail_state($state2,$context,time());
+if($detail['room']!==$row['room']||$detail['operator']!==$row['operator']||$detail['price']['amount']!==$row['price']
+ ||$detail['booking_enabled']!==false||strpos(json_encode($detail),'opaque-page-offer')!==false)throw new RuntimeException('detail identity/privacy');
+foreach([['search_ref'=>'other_search'],['generation'=>2],['page'=>1],['offer_ref'=>'offer_'.str_repeat('a',64)]] as $change){
+ try{anytour_andromeda_search3_detail_state($state2,array_replace($context,$change),time());throw new LogicException('stale detail accepted');}
+ catch(LogicException $e){throw $e;}catch(RuntimeException $expected){}
+}
+try{anytour_andromeda_search3_detail_state($state2,$context,$state2['store']['expires_at']);throw new LogicException('expired detail accepted');}
+catch(LogicException $e){throw $e;}catch(RuntimeException $expected){}
+echo "Andromeda detail: page/search/generation/offer identity, expiry and private ID isolation passed\n";

@@ -150,8 +150,15 @@
     });
     return Array.from(merged.values());
   }
+  function offerContext(tour) {
+    const c = tour && tour.offer_context;
+    return tour?.provider === 'andromeda' && c?.provider === 'andromeda'
+      && /^[a-f0-9]{64}$/.test(c.search_ref) && /^offer_[a-f0-9]{64}$/.test(c.offer_ref)
+      && c.offer_ref === tour.offer_ref && Number.isInteger(c.generation) && c.generation > 0
+      && Number.isInteger(c.page) && c.page > 0 && c.page <= 1000 ? Object.assign({}, c) : null;
+  }
   function sourceLabel(tour) { return tour.provider === 'andromeda' ? 'Андромеда' : 'ANEX API'; }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, version: 2 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, version: 2 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -182,6 +189,7 @@
   const style = node('style');
   style.textContent = `
 body.search3-candidate #anexSearch3Results.anex-search3-panel{display:block!important;grid-column:1/-1;min-width:0}
+.anex-search3-detail{box-sizing:border-box;width:min(560px,calc(100% - 24px));max-height:85vh;overflow:auto;border:1px solid #dbe2ed;border-radius:16px;padding:24px;color:#344257}.anex-search3-detail::backdrop{background:rgba(20,32,50,.45)}
 .anex-search3-panel{margin:20px 0;padding:10px 0;min-width:0}
 .anex-search3-panel h2{font:inherit;font-weight:700;font-size:16px;margin:0 0 4px}
 .anex-search3-panel p{margin:4px 0}
@@ -287,6 +295,48 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     badge.appendChild(node('strong', '', price(hotel.tours[0])));
     return badge;
   }
+  let offerDialog = null, detailAbort = null;
+  function closeOffer() {
+    if (detailAbort) detailAbort.abort();
+    detailAbort = null;
+    if (offerDialog) { offerDialog.close(); offerDialog.remove(); }
+    offerDialog = null;
+  }
+  async function openOffer(tour) {
+    const context = offerContext(tour), run = active;
+    if (!context || !isCurrent(run, window.V2SearchLifecycle)) return;
+    closeOffer();
+    const dialog = node('dialog', 'anex-search3-detail');
+    offerDialog = dialog;
+    const close = node('button', 'anex-search3-tv-check', 'Вернуться к предложениям');
+    close.type = 'button'; close.addEventListener('click', closeOffer);
+    const content = node('div', '', 'Загружаем условия тура…');
+    dialog.appendChild(close); dialog.appendChild(content); document.body.appendChild(dialog);
+    dialog.addEventListener('cancel', event => { event.preventDefault(); closeOffer(); });
+    dialog.showModal();
+    detailAbort = new AbortController(); const signal = detailAbort.signal;
+    const timer = setTimeout(() => { if (!signal.aborted) detailAbort?.abort(); }, 15000);
+    try {
+      const request = Object.assign({}, run, { action: 'offer_detail', page: context.page, offer_context: context });
+      if (new URL(window.location.href).searchParams.get('andromeda_operator') === '5') request.andromeda_operator_ids = ['5'];
+      const response = await window.fetch(new URL('api-andromeda-search3-preview.php', endpoint).href, {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AnyTourSearch3' },
+        body: JSON.stringify(request), signal
+      });
+      const payload = await response.json(), data = payload.data;
+      if (offerDialog !== dialog || active !== run || !isCurrent(run, window.V2SearchLifecycle)) { if (offerDialog === dialog) closeOffer(); return; }
+      if (!response.ok || !payload.ok || data?.provider !== 'andromeda'
+        || Object.keys(context).some(key => data.offer_context?.[key] !== context[key])) throw new Error('Offer unavailable');
+      content.replaceChildren(node('h2', '', data.hotel));
+      [data.operator, data.checkin.split('-').reverse().join('.') + ' · ' + data.nights + ' ноч.',
+        data.adults + ' взр.' + (data.children ? ' · ' + data.children + ' дет.' : ''),
+        mealLabel(data.meal), data.room, data.placement].filter(Boolean).forEach(value => content.appendChild(node('p', '', value)));
+      content.appendChild(node('strong', '', price(data)));
+      content.appendChild(node('p', 'anex-search3-note', 'Цена из поиска. Актуальность, рейсы и итоговую стоимость ещё нужно подтвердить. Бронирование пока недоступно.'));
+    } catch (_) {
+      if (offerDialog === dialog) content.textContent = 'Предложение недоступно или срок его хранения истёк. Повторите поиск.';
+    } finally { clearTimeout(timer); }
+  }
   function offers(hotel, embedded = false) {
     const details = node(embedded ? 'section' : 'details', 'anex-search3-offers');
     details.setAttribute('data-anex-search3-row', String(hotelKey(hotel)));
@@ -300,6 +350,10 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       row.appendChild(node('p', '', [sourceLabel(tour) + (tour.operator ? ' · ' + tour.operator : ''), date, tour.nights + ' ноч.', mealLabel(tour.meal), tour.room,
         tour.adults + ' взр.' + (tour.children ? ', ' + tour.children + ' дет.' : '')].filter(Boolean).join(' · ')));
       row.appendChild(node('strong', '', price(tour)));
+      if (offerContext(tour)) {
+        const button = node('button', 'anex-search3-tv-check', 'Подробнее о туре');
+        button.type = 'button'; button.addEventListener('click', () => openOffer(tour)); row.appendChild(button);
+      }
       details.appendChild(row);
     });
     details.appendChild(node('p', 'anex-search3-note', 'Цена из поиска поставщика. Включение топливного сбора уточняется; итоговую стоимость подтвердит менеджер.'));
@@ -708,6 +762,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
   async function start() {
     const lifecycle = window.V2SearchLifecycle;
     if (lifecycle && !lifecycle.dirty && lifecycle.snapshot && lifecycle.generation === lastGeneration) return;
+    closeOffer();
     if (controller) controller.abort();
     controller = null;
     active = null; hotels = []; message = ''; dates = ''; sourceMode = 'all'; clear(); openHotels.clear(); openDescriptions.clear(); failedImages.clear();
