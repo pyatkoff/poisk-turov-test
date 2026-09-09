@@ -1,5 +1,32 @@
 # P2 protected hotel review — implementation, not a live panel
 
+## Current owner instruction — standalone login (9 September 2026)
+
+The owner confirmed AnyTour has no existing admin/login or Bitrix and explicitly
+approved a separate protected owner account. This supersedes the historical
+reuse-existing-authority gate below. Do not infer a Bitrix dependency from old code.
+
+`owner-auth.php` stores one password hash and a stable owner actor in a private0700
+directory outside DOCUMENT_ROOT; account and lock files0600. Enrollment accepts
+only a pre-provisioned random256-bit token hash, expires within one hour, and is
+consumed once. No public registration/reset or password in Git/Actions/chat.
+Password12–128 bytes is SHA384/base64 prehashed before PASSWORD_DEFAULT to preserve
+all bytes with bcrypt. Persistent global5-failure/15-minute throttling, serialized
+state, versioned sessions, absolute8-hour/idle30-minute expiry fail closed.
+
+`owner-login.php` and the dedicated `v2/anex-owner-login.php` entry use HTTPS,
+Secure/HttpOnly/SameSite=Strict scoped cookies, private session storage, session
+rotation, CSRF, POST logout, no-store/noindex/CSP. One-time activation receives the
+token in a URL fragment; JavaScript removes it from the address bar and puts it only
+in the explicit enrollment POST. The password is chosen by the owner in the browser.
+Never publish the raw activation token in GitHub comments, manifests or artifacts.
+
+The private installer-owned `~/.anytoour-anex/review-owner/config.php` supplies a
+lazy existing AnyTour PDO helper. It is not selected through request input.
+The standalone principal is **read-only**: no `anex:decide`, write_enabled=false.
+Private provisioning, scoped publication, actual HTTPS owner activation/readback
+and live visual inspection remain gates; source/tests are not proof of publication.
+
 Issue #1647; own ANEX preview only. Source UI and persistent storage are implemented;
 the panel is not deployed or authorized for real decisions. Pinned CLI storage migration
 completed in #1728; no supplier calls or production Search3/DS2 modules are used.
