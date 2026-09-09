@@ -343,16 +343,15 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(contract, legacy)
             self.assertIn(contract, current)
 
-    def test_current_price_calendar_css_is_a_legacy_only_presentation_layer(self):
+    def test_current_price_calendar_is_the_shared_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
         legacy = (ROOT / 'v2/current-price-calendar-v1.css').read_text()
-        current = (ROOT / 'src/search3/styles/entry-calendar.css').read_text()
         self.assertIn("'current-price-calendar-v1.css'", manifest.split('$excluded =', 1)[0])
-        self.assertIn("'current-price-calendar-v1.css'", scoped)
+        self.assertNotIn("'current-price-calendar-v1.css'", scoped)
+        self.assertNotIn("'current-price-calendar-v1.js'", scoped)
         for contract in ['.current-price-calendar__days', '.current-price-calendar__day', '.current-price-calendar__note']:
             self.assertIn(contract, legacy)
-            self.assertIn(contract, current)
 
     def test_results_experience_is_a_legacy_only_presentation_layer(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
@@ -1046,14 +1045,14 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn('@media(max-width:430px){& .search-group{grid-template-columns:1fr}', native)
         self.assertNotIn('.ds2-site-footer', results)
 
-    def test_optional_shared_layers_are_search3_only_exclusions(self):
+    def test_optional_duplicate_layers_are_search3_only_exclusions(self):
         self.assertEqual(self.bundle.count("'site-footer-v1.css'"), 1)
         self.assertEqual(self.bundle.count("'design-system-v2.css'"), 1)
         self.assertEqual(self.bundle.count("'site-header-v2.css'"), 1)
         for name in (
             'ds2-search-intro-v1.css', 'ds2-search.css',
             'hotel-actions-v3.js', 'room-details-v3.js', 'hotel-autocomplete-v1.js',
-            'search-filters-ux-v1.js', 'current-price-calendar-v1.js',
+            'search-filters-ux-v1.js',
             'mobile-results-filters-v1.js', 'ds2-results-filters.js',
         ):
             self.assertGreaterEqual(self.bundle.count("'" + name + "'"), 2, name)
