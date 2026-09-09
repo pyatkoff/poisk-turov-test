@@ -44,7 +44,11 @@ const { chromium } = require('playwright');
     assert(response.headers()['content-security-policy'].includes('img-src https:'));
     assert.equal(await page.locator('.anex-card .gallery img').count(), 1);
     assert.equal(await page.locator('.candidate-list .gallery img').count(), 2);
-    assert(await page.getByText('Сохранённое описание ANEX для проверки сравнения карточек.').isVisible());
+    assert(await page.getByText('Сохранённое описание ANEX для проверки сравнения карточек.', { exact: false }).isVisible());
+    assert.equal(await page.locator('.anex-card .description-section').count(), 3);
+    assert(await page.locator('.anex-card').getByRole('heading', { name: 'РАСПОЛОЖЕНИЕ', exact: true }).isVisible());
+    assert.equal(await page.locator('.anex-card .description-section').first().locator('br').count(), 1);
+    assert(!(await page.locator('.anex-card .description').innerText()).includes('"title"'));
     await page.locator('.anex-card .gallery img').evaluate(img => img.decode());
     for (const width of [1280, 820, 390, 320]) {
       await page.setViewportSize({ width, height: 1000 });

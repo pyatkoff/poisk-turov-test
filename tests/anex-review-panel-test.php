@@ -169,13 +169,40 @@ check(strpos($html,'rel="noopener noreferrer"') !== false,'external photo link p
 check(strpos(anex_review_gallery(['http://example.com/a','https://user:pass@example.com/a','https://localhost/a','data:image/png,x'], 'ANEX'),'<a ') === false,'unsafe photo URLs rejected');
 check(strpos(anex_review_gallery([], 'ANEX'), 'карточке ANEX фотографий нет') !== false,'missing ANEX gallery is not filled with Tourvisor photos');
 check($db->query('SELECT payload_json FROM anex_hotel_content WHERE anex_hotel_id=1')->fetchColumn() === $payload, 'content payload never rewritten');
+$sectionsJson = json_encode([
+    ['title'=>' РАСПОЛОЖЕНИЕ ', 'text'=>"Первая строка\r\nВторая строка"],
+    ['title'=>'<img src=x onerror=alert(1)>', 'text'=>'<script>unsafe section</script>'],
+    ['title'=>'', 'text'=>'Текст без заголовка'],
+    ['title'=>'Пустой раздел', 'text'=>' ']
+], JSON_UNESCAPED_UNICODE);
+$sectionsHtml = anex_review_description($sectionsJson, true);
+check(strpos($sectionsHtml, '<h4>РАСПОЛОЖЕНИЕ</h4>') !== false && strpos($sectionsHtml, "Первая строка<br />\nВторая строка") !== false, 'decoded sections and line breaks');
+check(strpos($sectionsHtml, '<script') === false && strpos($sectionsHtml, '<img') === false && strpos($sectionsHtml, '&lt;script&gt;unsafe section') !== false && strpos($sectionsHtml, '&lt;img src=x') !== false, 'section title and text escaped');
+check(strpos($sectionsHtml, '<h4>Описание</h4>') !== false && strpos($sectionsHtml, 'Пустой раздел') === false, 'empty title fallback and empty section omitted');
+check(strpos($sectionsHtml, '&quot;title&quot;') === false && substr_count($sectionsHtml, 'description-section') === 3, 'JSON wrapper not displayed');
+foreach (['[{"title":"broken"', '[{"title":[],"text":"bad"}]', '[{"title":"bad","text":{}}]', '{"title":"object","text":"bad"}', json_encode(array_fill(0,33,['title'=>'A','text'=>'B'])), '[' . str_repeat(' ',16000) . ']'] as $malformed) {
+    check(strpos(anex_review_description($malformed,true), 'Не удалось прочитать') !== false, 'malformed or oversized structured description explicit');
+}
+check(strpos(anex_review_description('[]',true),'Нет сохранённого описания') !== false && strpos(anex_review_description(null,true),'Нет сохранённого описания') !== false, 'missing description explicit');
+check(anex_review_description('Plain <b>text</b>',true) === '<p>Plain &lt;b&gt;text&lt;/b&gt;</p>', 'plain ANEX text remains supported');
+check(strpos(anex_review_description('[TV] Plain text',false),'[TV] Plain text') !== false, 'Tourvisor prose not parsed as ANEX sections');
+$fortunaRow = ['status'=>'ready','content'=>['id'=>17097,'description'=>$sectionsJson]];
+$fortunaHtml = anex_review_saved_content($fortunaRow,true);
+check(strpos($fortunaHtml,'<summary>Условия предложения FORTUNA</summary>') !== false && strpos($fortunaHtml,'не подтверждает совпадение с конкретным отелем') !== false, 'verified Fortuna offer distinguished from hotel description');
+$fortunaRow['content']['id'] = 999;
+$fortunaRow['content']['name'] = 'Hotel Fortuna';
+check(strpos(anex_review_saved_content($fortunaRow,true),'Условия предложения FORTUNA') === false, 'Fortuna name alone does not classify a hotel');
 // CI-only synthetic fixture, not user hotel data. Retained for later visual review.
 if (getenv('ANEX_REVIEW_TEST_HTML')) file_put_contents(getenv('ANEX_REVIEW_TEST_HTML'), $html);
 // Separate synthetic dossier for HTTP/gallery checks; never added to application data.
 $browserContent = $content;
 $browserContent['id'] = 5;
 $browserContent['name'] = 'Hotel 5';
-$browserContent['description'] = 'Сохранённое описание ANEX для проверки сравнения карточек.';
+$browserContent['description'] = json_encode([
+    ['title'=>'РАСПОЛОЖЕНИЕ', 'text'=>"Сохранённое описание ANEX для проверки сравнения карточек.\r\nВторая строка расположения."],
+    ['title'=>'НОМЕРА', 'text'=>str_repeat('Просторный номер с балконом и видом на территорию. ', 16)],
+    ['title'=>'ПИТАНИЕ', 'text'=>'Завтрак и ужин в основном ресторане.']
+], JSON_UNESCAPED_UNICODE);
 $browserHash = hash('sha256', json_encode($browserContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
 $browserPayload = AnexReviewService::json(['status'=>'ok','hotel_id'=>5,'content'=>$browserContent,'source_sha256'=>$browserHash]);
 $db->prepare("INSERT INTO anex_hotel_content VALUES (5,'ready',?,?,?,NULL,'2026-09-09 06:00:00')")->execute([str_repeat('a',40),$browserHash,$browserPayload]);
