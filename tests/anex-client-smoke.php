@@ -256,6 +256,59 @@ clientTest('token-shared slots cooldown and private state without affecting mock
     }
 });
 
+clientTest('hotel photos batch uses documented method and at most thirty IDs', static function (): void {
+    $ids = implode(',', range(1, 30));
+    $client = new AnyTourAnexClient('test-secret', static function (string $url) use ($ids): array {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        clientCheck($query['action'] === 'Hotels_PHOTOS' && $query['HOTELS'] === $ids, 'single bounded photo request');
+        clientCheck(count($query) === 6, 'only fixed transport fields and HOTELS');
+        return ['status' => 200, 'body' => json_encode(['Hotels_PHOTOS' => [
+            ['hotelKey' => 1, 'photos' => []],
+            ['hotelKey' => 2, 'photos' => [
+                ['url' => 'https://images.example.com/2.jpg', 'note' => 'Pool'],
+                ['url' => 'https://images.example.com/?oauth_token=test-secret', 'note' => '%74est-secret'],
+            ]],
+        ]])];
+    });
+    $payload = $client->request('Hotels_PHOTOS', ['HOTELS' => $ids]);
+    clientCheck($client->requestsMade() === 1 && count($payload) === 2, 'batch is one request and not one per hotel');
+    clientCheck($payload[0] === ['hotelKey' => 1, 'photos' => []], 'documented empty photo list preserved');
+    clientCheck($payload[1]['hotelKey'] === 2
+        && $payload[1]['photos'][0] === ['url' => 'https://images.example.com/2.jpg', 'note' => 'Pool'], 'documented hotelKey and photos retained');
+    clientCheck($payload[1]['photos'][1] === ['url' => null, 'note' => null], 'photo token echoes use existing recursive redaction');
+});
+clientTest('hotel photos invalid batch and route overrides fail before transport', static function (): void {
+    $client = new AnyTourAnexClient('test-secret', static function (): array {
+        throw new RuntimeException('Network should not run');
+    });
+    $invalid = [[], ['HOTELINC' => 1], ['HOTELS' => ''], ['HOTELS' => '1,0'],
+        ['HOTELS' => '1,-1'], ['HOTELS' => '100000000'], ['HOTELS' => '1,2.5'],
+        ['HOTELS' => '1, 2'], ['HOTELS' => '1,'], ['HOTELS' => [1,2]], ['HOTELS' => true],
+        ['HOTELS' => implode(',', range(1, 31))], ['HOTELS' => '1&action=Booking_BOOK'],
+        ['HOTELS' => '1', 'oauth_token' => 'override'], ['HOTELS' => '1', 'URL' => 'https://elsewhere.example.com']];
+    foreach ($invalid as $params) {
+        clientFailure(static function () use ($client, $params): void {
+            $client->request('Hotels_PHOTOS', $params);
+        }, 'ANEX_INVALID_PARAMS');
+    }
+    clientCheck($client->requestsMade() === 0, 'invalid photo params do not consume request slots');
+});
+clientTest('hotel photos errors are not converted into successful empty content', static function (): void {
+    foreach (['{"error":2110}', '{"Hotels_PHOTOS":{"error":2110}}'] as $body) {
+        clientFailure(static function () use ($body): void {
+            clientWithResponse(200, $body)->request('Hotels_PHOTOS', ['HOTELS' => '1']);
+        }, 'ANEX_SUPPLIER_ERROR');
+    }
+    foreach (['null', 'false', '""'] as $scalar) {
+        clientFailure(static function () use ($scalar): void {
+            clientWithResponse(200, '{"Hotels_PHOTOS":' . $scalar . '}')
+                ->request('Hotels_PHOTOS', ['HOTELS' => '1']);
+        }, 'ANEX_INVALID_RESPONSE');
+    }
+    clientCheck(clientWithResponse(200, '{"Hotels_PHOTOS":[]}')
+        ->request('Hotels_PHOTOS', ['HOTELS' => '1']) === [], 'empty list preserved without inventing per-hotel results');
+});
+
 echo 'ANEX client: ' . $passed . " tests passed\n";
 
 clientTest('diagnostics expose only fixed action and numeric metadata', static function (): void {

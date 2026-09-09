@@ -91,6 +91,7 @@ jobs:
           python3 -B tests/anex_search3_catalog_content_test.py
           php -l scripts/diagnostics/anex_search3_catalog_content_reader.php
           php -l scripts/diagnostics/anex_search3_catalog_content_collect.php
+          php -l scripts/diagnostics/anex_search3_catalog_content_photos.php
           php -l scripts/diagnostics/anex_search3_hotel_content.php
           php tests/anex-hotel-content-smoke.php
           python3 -B tests/anex_access_probe_test.py

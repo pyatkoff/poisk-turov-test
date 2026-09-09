@@ -163,6 +163,7 @@ final class AnyTourAnexClient
                 'PARTITION_PRICE', 'SORT', 'DYN_SEPARATE', 'CATCLAIM', 'HOTELS',
             ]),
             'Hotels_DETAILS' => ['HOTELINC'],
+            'Hotels_PHOTOS' => ['HOTELS'],
             'FreightMonitor_FREIGHTSBYPACKET' => ['CATCLAIM'],
         ];
         if (!array_key_exists($action, $allowed)) {
@@ -218,6 +219,7 @@ final class AnyTourAnexClient
             }
         }
         if (($action === 'Hotels_DETAILS' && !isset($params['HOTELINC']))
+            || ($action === 'Hotels_PHOTOS' && !isset($params['HOTELS']))
             || ($action === 'FreightMonitor_FREIGHTSBYPACKET' && !isset($params['CATCLAIM']))
             || (isset($params['CHECKIN_BEG'], $params['CHECKIN_END']) && $params['CHECKIN_BEG'] > $params['CHECKIN_END'])
             || (isset($params['NIGHTS_FROM'], $params['NIGHTS_TILL']) && $params['NIGHTS_FROM'] > $params['NIGHTS_TILL'])

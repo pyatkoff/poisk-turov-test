@@ -45,11 +45,14 @@ def remote_run(payload):
         raise ValueError('preservation unavailable')
     audit = php(AUDIT_PHP, {'raw_limit': 2000})
     content = php(CONTENT_PHP, payload, timeout=220)
+    photos = php(PHOTOS_PHP, {'source_sha': payload['source_sha']})
+    if photos.get('status') == 'completed':
+        content = php(CONTENT_PHP, payload, timeout=45)
     after = php(SNAPSHOT_PHP, {'mode': 'snapshot'})
     if before != after:
         raise ValueError('mapping preservation mismatch')
     return {'schema_version': 1, 'source_sha': payload['source_sha'],
-            'tourvisor': audit, 'anex': content, 'preservation': after}
+            'tourvisor': audit, 'anex': content, 'photos': photos, 'preservation': after}
 
 
 def execute(payload):
@@ -65,6 +68,7 @@ def execute(payload):
     for var, body in {
         'SNAPSHOT_PHP': php_body('anex_search3_gap_details.php'),
         'AUDIT_PHP': php_body('anex_search3_catalog_content_reader.php'),
+        'PHOTOS_PHP': Path(__file__).resolve().parents[2].joinpath('app/integrations/anex-client.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_photos.php'),
         'CONTENT_PHP': php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_collect.php'),
     }.items():
         source += var + ' = ' + repr('declare(strict_types=1);\n' + body) + '\n'
@@ -106,6 +110,9 @@ def main():
     summary = {'source_sha': source_sha, 'report_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
         'tourvisor_status': report['tourvisor'].get('status'),
         'catalog': report['tourvisor'].get('catalog'), 'coverage': report['tourvisor'].get('coverage'),
+        'coverage_countries': [row for row in report['tourvisor'].get('countries', []) if row['sync_status'] != 'success' or row['successful_rows_seen_mismatch']],
+        'raw_media_profile': report['tourvisor'].get('raw_media_profile'),
+        'photos': report['photos'],
         'details': report['tourvisor'].get('details'), 'anex_status': anex.get('status'),
         'supplier_requests': anex.get('supplier_requests'), 'cached': anex.get('cached'),
         'anex_rows': [{'id': row['anex_hotel_id'], 'status': row['status'],
