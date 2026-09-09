@@ -102,6 +102,13 @@ async function run(browser, width, previous) {
     const states={detail:await capture(page,prefix+'-detail')};
     assert.equal(await page.locator('#selectedTour .selected-confidence').count(),0,'the retired trust decoration stays absent');
     if(!previous) {
+      const imageBox=await page.locator('#selectedTour .selected-picture img').boundingBox();
+      const pictureBox=await page.locator('#selectedTour .selected-picture').boundingBox();
+      assert.ok(imageBox.height>=150 && imageBox.height<=321,'selected photo remains legible and bounded');
+      assert.ok(Math.abs(imageBox.width-pictureBox.width)<=2,'selected photo fills its responsive container');
+      const priceBox=await page.locator('#selectedTour .selected-price').boundingBox();
+      const headBox=await page.locator('#selectedTour .selected-head').boundingBox();
+      assert.ok(priceBox.x>=headBox.x-1 && priceBox.x+priceBox.width<=headBox.x+headBox.width+1,'selected price fits its header at the current width');
       assert.equal(await page.locator('#tourSearch').isVisible(),false,'selected tour does not repeat the search form');
       assert.equal(await page.locator('.v2-product-hero').isVisible(),false,'selected tour does not repeat the entry hero');
       assert.equal(await page.locator('.search3-selected-mobile-bar,.facts-secondary-toggle,.hotel-desc-toggle,.lead-optional-toggle,.search3-flight-show-all').count(),0,'retired presentation owners are not reconstructed');
@@ -135,6 +142,8 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#selectedTour .search3-booking-summary,.search3-summary-submit').count(),0,'duplicate review card and intermediary CTA stay retired');
       assert.match((await page.locator('#selectedTour .selected-price').textContent()).replace(/\s/g,' '),/148 500 ₽/,'canonical selected price remains visible');
       assert.equal(await page.locator('#selectedTour .lead-form input[name=phone]').isVisible(),true,'phone remains directly reachable');
+      assert.ok((await page.locator('#selectedTour .lead-form input[name=phone]').boundingBox()).height>=44,'phone retains a full touch target');
+      assert.ok((await page.locator('#selectedTour .lead-form button[type=submit]').boundingBox()).height>=44,'contact submit retains a full touch target without submitting');
       assert.match((await page.locator('#selectedTour .lead-selection-summary').innerText()).replace(/\s/g,' '),/AB123 09:30/,'contact summary keeps the selected flight identity');
       const leadSummary=await page.locator('#selectedTour .lead-selection-summary').evaluate(node=>({display:getComputedStyle(node).display,b:getComputedStyle(node.querySelector('b')).display}));
       assert.deepEqual(leadSummary,{display:'grid',b:'block'},'lead selection summary keeps labels and values visually separated');
