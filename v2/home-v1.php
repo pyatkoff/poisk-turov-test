@@ -68,6 +68,8 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <div class="at-home-child-ages" data-home-child-ages></div>
       <button type="submit" disabled>Найти туры</button>
     </div>
+    <p data-home-catalog-error role="alert" hidden></p>
+    <button type="button" data-home-catalog-retry hidden>Повторить загрузку</button>
     <a class="at-home-search__more" href="<?=home_e(v2_site_href('/poisk-turov/'))?>" aria-disabled="true" tabindex="-1">Расширенный поиск и все фильтры →</a>
   </form>
 
@@ -107,8 +109,10 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   childCount.addEventListener('change',renderAges);renderAges();
   const more=form.querySelector('.at-home-search__more');
   const submit=form.querySelector('button[type="submit"]');
-  let countriesBusy=true,countryRevision=0;
-  function setCountriesBusy(busy){countriesBusy=busy;form.dataset.countriesBusy=busy?'true':'false';form.setAttribute('aria-busy',busy?'true':'false');country.disabled=busy;submit.disabled=busy;more.setAttribute('aria-disabled',busy?'true':'false');if(busy)more.setAttribute('tabindex','-1');else more.removeAttribute('tabindex');}
+  const catalogError=form.querySelector('[data-home-catalog-error]'),retry=form.querySelector('[data-home-catalog-retry]');
+  let countriesBusy=true,countryRevision=0,failedCatalog='',retryCountry='';
+  function setCountriesBusy(busy){countriesBusy=busy;form.dataset.countriesBusy=busy?'true':'false';form.setAttribute('aria-busy',busy?'true':'false');country.disabled=busy;submit.disabled=busy;retry.disabled=busy;more.setAttribute('aria-disabled',busy?'true':'false');if(busy)more.setAttribute('tabindex','-1');else more.removeAttribute('tabindex');}
+  function showCatalogError(kind){failedCatalog=kind;catalogError.hidden=!kind;catalogError.textContent=kind?'Не удалось загрузить '+(kind==='departures'?'города вылета':'страны')+'. Повторите загрузку — параметры поездки сохранятся.':'';retry.hidden=!kind;}
   const syncMore=()=>{more.href=form.action+'?'+new URLSearchParams(new FormData(form)).toString();};
   form.addEventListener('input',syncMore);form.addEventListener('change',syncMore);form.addEventListener('submit',event=>{if(countriesBusy)event.preventDefault();});more.addEventListener('click',event=>{if(countriesBusy||!form.reportValidity()){event.preventDefault();return;}syncMore();});
   const validateRange=()=>{form.elements.daysTill.setCustomValidity(Number(form.elements.daysTill.value)<Number(form.elements.daysFrom.value)?'Максимум ночей должен быть не меньше минимума':'');};
@@ -117,8 +121,10 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   const initialDeparture=String(dep.value||'1'),initialCountry=String(country.value||'4');
   async function get(action,params){const u=new URL('/api-v2.php',location.origin);u.searchParams.set('action',action);Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));const r=await fetch(u,{credentials:'same-origin'});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
   function options(select,items,wanted,placeholder){select.innerHTML='';(Array.isArray(items)?items:[]).forEach(item=>{const o=document.createElement('option');o.value=String(item.id);o.textContent=String(item.name||item.title||('ID '+item.id));select.appendChild(o);});if(wanted&&Array.from(select.options).some(o=>o.value===String(wanted)))select.value=String(wanted);if(!select.options.length){const o=document.createElement('option');o.value='';o.textContent=placeholder;select.appendChild(o);}}
-  async function loadCountries(wanted){const revision=++countryRevision;setCountriesBusy(true);try{const list=await get('countries',{departureId:dep.value||1});if(revision===countryRevision)options(country,list,wanted,'Страны не найдены');}catch(e){if(revision===countryRevision)options(country,[],null,'Не удалось загрузить страны');}finally{if(revision===countryRevision){setCountriesBusy(false);syncMore();}}}
-  get('departures').then(list=>{options(dep,list,initialDeparture,'Города не найдены');return loadCountries(initialCountry);}).catch(()=>{options(dep,[],null,'Не удалось загрузить города');options(country,[],null,'Не удалось загрузить страны');setCountriesBusy(false);syncMore();});
+  async function loadCountries(wanted){const revision=++countryRevision;setCountriesBusy(true);try{const list=await get('countries',{departureId:dep.value||1});if(revision===countryRevision){options(country,list,wanted,'Страны не найдены');showCatalogError('');}}catch(e){if(revision===countryRevision){retryCountry=wanted;options(country,[],null,'Не удалось загрузить страны');showCatalogError('countries');}}finally{if(revision===countryRevision){setCountriesBusy(false);syncMore();}}}
+  async function loadDepartures(){setCountriesBusy(true);dep.disabled=true;try{const list=await get('departures');options(dep,list,initialDeparture,'Города не найдены');dep.disabled=false;await loadCountries(initialCountry);}catch(e){options(dep,[],null,'Не удалось загрузить города');options(country,[],null,'Не удалось загрузить страны');dep.disabled=false;showCatalogError('departures');setCountriesBusy(false);syncMore();}}
+  retry.addEventListener('click',()=>{if(countriesBusy)return;if(failedCatalog==='departures')loadDepartures();else if(failedCatalog==='countries')loadCountries(retryCountry);});
+  loadDepartures();
   dep.addEventListener('change',()=>loadCountries(''));
 })();
 </script>
