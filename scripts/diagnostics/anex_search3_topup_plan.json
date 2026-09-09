@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "experiment_id": "catalog_hotel_topup_20260909",
+  "preview_source_sha": "2545982789ada8db8c4be18be0c1159f624633bc",
+  "hotel_ids": [
+    445,
+    9365,
+    56094
+  ],
+  "criteria": {
+    "departureId": 1,
+    "countryId": 1,
+    "dateFrom": "2026-09-18",
+    "dateTo": "2026-09-18",
+    "nightsFrom": 8,
+    "nightsTo": 8,
+    "adults": 2,
+    "childs": [],
+    "currency": "RUB",
+    "meal": "7",
+    "onlyDirect": false,
+    "onlyCharter": false
+  },
+  "baseline": {
+    "source": "completed browser Search3 DOM from published catalog-card verification",
+    "report": "reports/anex-catalog-cards-20260909.json",
+    "tourvisor_hotels": 63,
+    "anex_hotels": 45,
+    "overlap": 13,
+    "unique_hotels": 95,
+    "selected": [
+      {
+        "hotel_id": 445,
+        "name": "IVY CYRENE ISLAND AQUA PARK RESORT",
+        "anex_min_rub": 163920,
+        "tourvisor_present": false
+      },
+      {
+        "hotel_id": 9365,
+        "name": "LIFE RESORTS CORAL HILLS",
+        "anex_min_rub": 126163,
+        "tourvisor_present": false
+      },
+      {
+        "hotel_id": 56094,
+        "name": "OLD VIC SHARM",
+        "anex_min_rub": 129755,
+        "tourvisor_present": false
+      }
+    ]
+  },
+  "limits": {
+    "new_tourvisor_searches": 1,
+    "hotel_batch": 3,
+    "status_polls": 8,
+    "result_limit": 100,
+    "anex_requests": 0,
+    "content_requests": 0,
+    "mapping_writes": 0,
+    "continuation": false,
+    "replay_after_unknown": false
+  },
+  "purpose": "Measure whether one hotelIds query retrieves Tourvisor offers missing from the saved broad result. Do not claim simultaneous availability or identical packages; do not enable automatic top-up."
+}
+
