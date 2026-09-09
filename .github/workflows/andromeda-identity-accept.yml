@@ -6,7 +6,7 @@ on:
 permissions: {contents: read, actions: read}
 concurrency: {group: andromeda-identity-writes, cancel-in-progress: false}
 env:
-  SOURCE_SHA: f4c67586b3164b6858b0840bafc7ef704073fe93
+  SOURCE_SHA: 576b69628956115507daae6faf86b261b0888b8b
 jobs:
   accept:
     runs-on: ubuntu-latest
@@ -19,10 +19,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34382797484" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34388300266" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security"
           test "$(cat "$RUNNER_TEMP/security")" = "$SOURCE_SHA:success"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34382797482" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34388300278" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol"
           test "$(cat "$RUNNER_TEMP/protocol")" = "$SOURCE_SHA:success"
+          git fetch --no-tags origin "$SOURCE_SHA"
           git diff --exit-code "$SOURCE_SHA" HEAD -- app/ v2/ scripts/diagnostics/ tests/
           php -l scripts/diagnostics/andromeda_identity_accept.php
           python3 -B tests/andromeda_catalog_sync_test.py
@@ -30,18 +31,18 @@ jobs:
         with:
           github-token: ${{ github.token }}
           repository: pyatkoff/poisk-turov-test
-          run-id: 34382304260
-          artifact-ids: 10116334310
+          run-id: 34387966241
+          artifact-ids: 10118445603
           merge-multiple: true
           path: ${{ runner.temp }}/saved
-      - name: Prepare two owner-authorized identities from saved evidence
+      - name: Prepare one owner-authorized identities from saved evidence
         run: python3 -B scripts/diagnostics/andromeda_identity_accept.py prepare
       - uses: actions/upload-artifact@v4
         with:
           name: andromeda-identity-accept-reservation
           path: ${{ runner.temp }}/andromeda-identity-accept
           if-no-files-found: error
-      - name: Accept the two pending identities and verify unchanged neighbors
+      - name: Accept the one pending identities and verify unchanged neighbors
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
