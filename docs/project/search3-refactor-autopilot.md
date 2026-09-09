@@ -14,7 +14,21 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — exact local category facet #1672 — 2026-09-09
+## Current product checkpoint — DS2 restoration #1675/#1676 — 2026-09-09
+
+Owner requested faster reuse of previous polished components. Donor `17b674fc54fa6b49aaa73379bcbdc35bfccfda28` was adapted into the single current `results-layout.css` owner, replacing its result/toolbar and selected/flight/contact blocks. No retired includes, JS decorators, price, lead or analytics logic returned. Renderer-only `meal.fullName` fallback was repaired.
+
+Results source `c9d1ddd6add646616498ae501dd91be1db96837b`, merge `dc0abe36a9b9844f7078f666a67150b35eb3692f`; next selected source `3e33d4addb9317b78434e92fcbc56851416a0abb`, tree `e5aba6a88f8edd1fe30b8e59dfe450c7742cf3e7`, checked code release `417bf7d2d3024a6c59c3367dc1f1a43a82431e04`. Both packages were completed sequentially in this execution.
+
+Eight assets **15986→19578→25210 raw B (+9224)**. Eager route87339→96599 and full scenario129757→139017 (+9260 including36 B shared JS); selected phase42418, inline unchanged. Intentional functional/visual growth, no transfer-saving claim. The historical owner CSS cap follows this concrete approved replacement (16408 measured,17000 cap); security/path/isolation guards are intact.
+
+Security34315997361/34316326525 and exact34315997382/34316326507 passed. Result16 states/eight widths keep raw/served parity; selected8 states/four widths keep facts, all flight radios, price and phone handoff. Earlier #1675 runs34315595792/34315802644 failed on asynchronous offline catalog-recovery insertion; the fixture now awaits that canonical partial state before unchanged full geometry comparison.
+
+One accumulated publication: exact source3e33d4ad, artifact10090230450 (digest `sha256:85a6a7a9219446c930863307dbef867ed9991bd3476c29519ef999624e112e30`), deploy34316577672, closed-without-merge control#1677. Evidence10090282179;9 routes/noindex/disabled production leads/counter0/rollback/13 unchanged production fingerprints passed. Live1363:100 hotels, real photo220px, CTA50px;89 flight choices; option2 changes67314→84519 ₽, contact summary and phone focus match, return restores100 cards, overflow0, real leads0. Live result/contact screenshots and CI375/1440 captures inspected. Main remains86fc165277a13ae9bef1369659e9b150399f0e35.
+
+Next `S3_PRODUCT_SELECTED_LEAD`: make the observed89-flight set practical without removing alternatives or modifying price/lead contracts; selected view is about12509px tall. Include the current retry CSS selector correction in that coherent packet. Meal-label/facet audit follows; physical Safari/live mobile/full site+SEO+production acceptance remain deferred. Do not restart completed layers or stop recurring development. Audit: `docs/project/search3-ds2-restoration-product.json`.
+
+## Previous product checkpoint — exact local category facet #1672 — 2026-09-09
 
 Source `d69bb12907cf6bb890f9f86565b16a173825d96d`, tree
 `c6ab0497bb375ed5effb10ef79908c055a981c6a`; checked release
