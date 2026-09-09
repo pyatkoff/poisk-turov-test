@@ -141,12 +141,14 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
         $firstPath=$directory.'/'.$ref.'-1.json';
         $first=is_file($firstPath)?json_decode(file_get_contents($firstPath),true,32,JSON_THROW_ON_ERROR):[];
         if($number>1){
-            if(!$first || !in_array($first['status']??null,['complete','partial'],true) || time()>=($first['store']['expires_at']??0)
-                || $number>($first['store']['snapshot']['pages_count']??0))throw new DomainException('page_context_missing');
+            if(!$first || !in_array($first['status']??null,['complete','partial'],true) || time()>=($first['store']['expires_at']??0))throw new RuntimeException('page_context_missing');
             $prefix=$directory.'/'.$ref.'-'.$first['store']['created_at'].'-';
             $previousPath=$number===2?$firstPath:$prefix.($number-1).'.json';
             $previous=is_file($previousPath)?json_decode(file_get_contents($previousPath),true,32,JSON_THROW_ON_ERROR):[];
-            if(!in_array($previous['status']??null,['complete','partial'],true))throw new DomainException('previous_page_missing');
+            if(!in_array($previous['status']??null,['complete','partial'],true))throw new RuntimeException('previous_page_missing');
+            // SAMO may change PAGES_COUNT while collecting operator responses.
+            // Authorize the next page from the latest completed response.
+            if($number>($previous['store']['snapshot']['pages_count']??0))throw new RuntimeException('page_outside_latest_response');
             $path=$prefix.$number.'.json';$generation=$first['generation'];
         }else{$path=$firstPath;$generation=$request['generation'];}
         $state=is_file($path)?json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR):[];
@@ -163,7 +165,7 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
             $authPath=$directory.'/'.$ref.'-auth.json';
             if($number>1){
                 $auth=is_file($authPath)?json_decode(file_get_contents($authPath),true,8,JSON_THROW_ON_ERROR):[];
-                if(($auth['created_at']??null)!==$first['store']['created_at'])throw new DomainException('page_session_expired');
+                if(($auth['created_at']??null)!==$first['store']['created_at'])throw new RuntimeException('page_session_expired');
                 $client->restorePrivateSession($auth['session']??[]);
             }
             $page=$handler->start($criteria,$ref,$generation,time(),$client,$config['username'],$config['password'],$resolver);
@@ -207,3 +209,4 @@ function anytour_andromeda_search3_http(): void {
     }catch(Throwable $e){anytour_anex_search3_out(['ok'=>false,'error'=>'supplier_unavailable'],502);}
 }
 if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();
+
