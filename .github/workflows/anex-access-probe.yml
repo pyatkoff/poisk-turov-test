@@ -211,6 +211,15 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_review_storage.py
+      - name: Inventory installed review authentication components without bootstrapping sessions
+        # Review inventory never includes the application, adapter, DB helper or a supplier.
+        if: steps.operation.outputs.mode == 'review'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_review_storage.py --auth-inventory
       - name: Reserve one owner-approved Tourvisor hotel batch
         if: steps.operation.outputs.mode == 'topup'
         env:

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -181,5 +182,24 @@ class StorageTests(unittest.TestCase):
             run=step.get('run','')
             if any(line.startswith('python3 -B scripts/diagnostics/') and any(x in line for x in ['--accept','_mapping_probe.py','_preview_deploy.py','_observed_queue.py']) for line in run.splitlines()):
                 self.assertIn('if',step);self.assertNotIn("== 'review'",step['if'])
+
+    def test_auth_inventory_never_executes_component_or_adapter(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/'anytoour.ru';root.mkdir()
+            bootstrap=root/'bitrix/modules/main/include/prolog_before.php';bootstrap.parent.mkdir(parents=True)
+            bootstrap.write_text('<?php throw new Exception("BOOTSTRAP MUST NOT EXECUTE");')
+            adapter=Path(temp)/'private.php';adapter.write_text('<?php throw new Exception("ADAPTER MUST NOT EXECUTE");')
+            result=subprocess.run(['php',str(ROOT/'scripts/diagnostics/anex_review_auth_inventory.php')],cwd=root,
+              env={**storage.os.environ,'ANYTOUR_ANEX_REVIEW_AUTH_FILE':str(adapter)},capture_output=True,text=True,check=True)
+            data=json.loads(result.stdout)
+            self.assertTrue(data['components']['bitrix_bootstrap']['readable_file'])
+            self.assertTrue(data['trusted_adapter']['outside_document_root'])
+            self.assertEqual(data['owner_authority'],'not_established')
+            self.assertEqual(data['database_calls'],0);self.assertFalse(data['session_started'])
+            self.assertNotIn(str(temp),result.stdout)
+            bootstrap.unlink();bootstrap.symlink_to(adapter)
+            result=subprocess.run(['php',str(ROOT/'scripts/diagnostics/anex_review_auth_inventory.php')],cwd=root,
+              capture_output=True,text=True,check=True)
+            self.assertFalse(json.loads(result.stdout)['components']['bitrix_bootstrap']['inside_anytour_root'])
 
 if __name__=='__main__':unittest.main()
