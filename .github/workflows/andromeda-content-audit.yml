@@ -1,0 +1,43 @@
+name: Andromeda saved hotel content audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-content-audit.yml']
+permissions: {contents: read, actions: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34365549508
+          artifact-ids: 10109677472
+          merge-multiple: true
+          path: ${{ runner.temp }}/price
+      - name: Inspect saved price content fields without supplier calls
+        run: |
+          python3 - <<'PY'
+          import os,json,pathlib,collections,urllib.parse
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"price"/"price.json"
+          d=json.loads(p.read_bytes()); rows=d.get("payload",d).get("PRICES",[])
+          out={"rows":len(rows),"fields":sorted(set().union(*(set(r) for r in rows))),"operators":{},"samples":[]}
+          for r in rows:
+              op=r.get("operator",""); x=out["operators"].setdefault(op,{"offers":0,"hotelImage":0,"hotelUrl":0})
+              x["offers"]+=1
+              for field in ["hotelImage","hotelUrl"]:
+                  value=r.get(field)
+                  if isinstance(value,str) and value:
+                      x[field]+=1
+                      u=urllib.parse.urlsplit(value)
+                      if len(out["samples"])<12 and u.scheme in ["http","https"] and u.hostname and not u.username:
+                          safe=not any(k.lower() in ["sid","token","password","key","auth"] for k in urllib.parse.parse_qs(u.query))
+                          out["samples"].append({"hotel":r.get("hotel"),"operator":op,"field":field,"url":value if safe else u.scheme+"://"+u.netloc+u.path})
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          (pathlib.Path(os.environ["RUNNER_TEMP"])/"content-audit.json").write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-saved-content-audit
+          path: ${{ runner.temp }}/content-audit.json
