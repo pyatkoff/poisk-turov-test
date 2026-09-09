@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "cards": [
+    {
+      "anex_hotel_id": 16193,
+      "name": "Dragut Point North",
+      "url": "https://anextour.ru/hotels/turkey/dragut-point-north",
+      "verified_id_field": "fetchHotelInfo.info.inc",
+      "source_sha256": "98e97f81b3eb2fa345d1dd8901264acd604e3464cbdd136d94e6c6109a4faf85",
+      "photo_links": 12,
+      "media_status": "http_403_in_research_environment",
+      "observed_at_utc": "2026-09-09T06:41:46.344221+00:00"
+    }
+  ]
+}

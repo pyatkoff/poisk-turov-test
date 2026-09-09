@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit saved Tourvisor coverage and collect one durable ANEX content pilot."""
+"""Audit saved Tourvisor coverage and collect one explicit durable ANEX content cohort."""
 import ast
 import hashlib
 import json
@@ -11,6 +11,19 @@ import subprocess
 import tempfile
 
 import anex_search3_gap_queue as gaps
+
+
+def batch_plan(path=None):
+    path = Path(path) if path is not None else Path(__file__).with_name('anex_search3_catalog_content_plan.json')
+    plan = json.loads(path.read_bytes())
+    if (plan.get('schema_version') != 1
+            or not isinstance(plan.get('batch_key'), str)
+            or not re.fullmatch(r'owner_content_review_[0-9]{8}_[0-9]{2}', plan['batch_key'])
+            or plan.get('photos_batch_key') != plan['batch_key'].replace('owner_content_review_', 'owner_content_review_photos_', 1)
+            or type(plan.get('limit')) is not int or not 1 <= plan['limit'] <= 25
+            or plan.get('priority') != 'unresolved_verified_frequency'):
+        raise ValueError('invalid explicit content batch plan')
+    return plan
 
 
 def verified_ids(directory):
@@ -43,16 +56,18 @@ def remote_run(payload):
     before = php(SNAPSHOT_PHP, {'mode': 'snapshot'})
     if before.get('status') != 'ok':
         raise ValueError('preservation unavailable')
-    repair = php(REPAIR_PHP, {})
+    # The completed Tourvisor backfill is a separate operation, never repeated here.
+    repair = {'status': 'not_run', 'reason': 'saved_media_repair_completed'}
     audit = php(AUDIT_PHP, {'raw_limit': 2000})
     content = php(CONTENT_PHP, payload, timeout=220)
-    photos = php(PHOTOS_PHP, {'source_sha': payload['source_sha']})
+    photos = php(PHOTOS_PHP, {'source_sha': payload['source_sha'], 'plan': payload['plan']})
     if photos.get('status') == 'completed':
-        content = php(CONTENT_PHP, payload, timeout=45)
+        refreshed = php(CONTENT_PHP, payload, timeout=45)
+        content = dict(refreshed, supplier_requests=content.get('supplier_requests', 0), cached=content.get('cached'))
     after = php(SNAPSHOT_PHP, {'mode': 'snapshot'})
     if before != after:
         raise ValueError('mapping preservation mismatch')
-    return {'schema_version': 1, 'source_sha': payload['source_sha'],
+    return {'schema_version': 2, 'source_sha': payload['source_sha'], 'plan': payload['plan'],
             'tourvisor': audit, 'anex': content, 'photos': photos, 'media_repair': repair, 'preservation': after}
 
 
@@ -69,9 +84,8 @@ def execute(payload):
     for var, body in {
         'SNAPSHOT_PHP': php_body('anex_search3_gap_details.php'),
         'AUDIT_PHP': php_body('anex_search3_catalog_content_reader.php'),
-        'REPAIR_PHP': Path(__file__).resolve().parents[2].joinpath('v2/data/hotel-details-v1.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_catalog_content_repair.php'),
-        'PHOTOS_PHP': Path(__file__).resolve().parents[2].joinpath('app/integrations/anex-client.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_photos.php'),
-        'CONTENT_PHP': php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_collect.php'),
+        'PHOTOS_PHP': Path(__file__).resolve().parents[2].joinpath('app/integrations/anex-client.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_plan.php') + '\n' + php_body('anex_search3_catalog_content_photos.php'),
+        'CONTENT_PHP': php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_plan.php') + '\n' + php_body('anex_search3_catalog_content_collect.php'),
     }.items():
         source += var + ' = ' + repr('declare(strict_types=1);\n' + body) + '\n'
     source += ast.get_source_segment(own, node) + '\n'
@@ -105,7 +119,7 @@ def main():
     source_sha = os.environ.get('GITHUB_SHA', '')
     if not re.fullmatch('[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA required')
-    report = execute({'source_sha': source_sha, 'verified_ids': verified_ids(directory)})
+    report = execute({'source_sha': source_sha, 'verified_ids': verified_ids(directory), 'plan': batch_plan()})
     path = directory / 'anex-catalog-content-report.json'
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
     anex = report['anex']
@@ -117,12 +131,13 @@ def main():
         'photos': report['photos'], 'media_repair': report['media_repair'],
         'details': report['tourvisor'].get('details'), 'anex_status': anex.get('status'),
         'supplier_requests': anex.get('supplier_requests'), 'cached': anex.get('cached'),
+        'plan': report.get('plan'), 'batch_status': anex.get('batch_status'),
         'anex_rows': [{'id': row['anex_hotel_id'], 'status': row['status'],
             'availability': (row.get('payload') or {}).get('availability'),
             'photos': len(((row.get('payload') or {}).get('content') or {}).get('photos', []))}
             for row in anex.get('rows', [])]}
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
-    if anex.get('status') != 'ok' or report['tourvisor'].get('status') != 'ok' or report['media_repair'].get('status') != 'ok':
+    if anex.get('status') != 'ok' or report['tourvisor'].get('status') != 'ok' or report['photos'].get('status') != 'completed':
         raise ValueError('one content operation incomplete; inspect preserved report')
 
 

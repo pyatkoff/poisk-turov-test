@@ -36,6 +36,23 @@ final class AnexReviewService
         return $this->optionalTables[$table];
     }
 
+    /** Published official page identities, verified separately; no URL guessing. */
+    public static function publicCard(int $id): ?array
+    {
+        $path = __DIR__ . '/public-cards.json';
+        if (!is_file($path) || filesize($path) > 100000) return null;
+        $data = json_decode((string)file_get_contents($path), true);
+        if (($data['schema_version'] ?? null) !== 1 || !is_array($data['cards'] ?? null)) return null;
+        foreach ($data['cards'] as $card) {
+            if (!is_array($card) || ($card['anex_hotel_id'] ?? null) !== $id) continue;
+            if (!is_string($card['url'] ?? null) || !preg_match('~\Ahttps://anextour\.ru/hotels/[a-z0-9-]+/[a-z0-9-]+/?\z~D', $card['url'])
+                || !preg_match('/\A[0-9a-f]{64}\z/D', $card['source_sha256'] ?? '')
+                || ($card['verified_id_field'] ?? null) !== 'fetchHotelInfo.info.inc') return null;
+            return $card;
+        }
+        return null;
+    }
+
     private function content(int $id, bool $lock): ?array
     {
         if (!$this->hasTable('anex_hotel_content')) return null;
@@ -155,7 +172,7 @@ final class AnexReviewService
         $data = ['anex_hotel_id' => $id, 'country_id' => $o['country_id'], 'hotel_name' => $o['hotel_name'],
             'source' => $source, 'evidence' => $evidence, 'candidates' => $candidates, 'manual' => $manual,
             'policy' => $policy, 'revision' => (int)$state['revision'], 'exclusions' => $exclusions,
-            'content' => $this->content($id, $lock)];
+            'content' => $this->content($id, $lock), 'public_card' => self::publicCard($id)];
         // Volatile search counts/timestamps are displayed, but are not mapping evidence.
         $data['version'] = hash('sha256', self::json($data));
         $data['observation'] = $o;

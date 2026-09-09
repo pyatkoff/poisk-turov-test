@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "card": {
+    "anex_hotel_id": 16193,
+    "name": "Dragut Point North",
+    "url": "https://anextour.ru/hotels/turkey/dragut-point-north",
+    "verified_id_field": "fetchHotelInfo.info.inc",
+    "source_sha256": "98e97f81b3eb2fa345d1dd8901264acd604e3464cbdd136d94e6c6109a4faf85",
+    "photo_links": 12,
+    "media_status": "http_403_in_research_environment",
+    "observed_at_utc": "2026-09-09T06:41:46.344221+00:00"
+  },
+  "photos": [
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/suite/655312",
+      "room": "Suite"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/suite/655313",
+      "room": "Suite"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/suite/655314",
+      "room": "Suite"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/suite/655315",
+      "room": "Suite"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/suite/655316",
+      "room": "Suite"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-land-view/655317",
+      "room": "STANDARD ROOM LAND VIEW"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-land-view/655318",
+      "room": "STANDARD ROOM LAND VIEW"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-land-view/655319",
+      "room": "STANDARD ROOM LAND VIEW"
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-sea-view/655320",
+      "room": "STANDARD ROOM SEA VIEW."
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-sea-view/655321",
+      "room": "STANDARD ROOM SEA VIEW."
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-sea-view/655322",
+      "room": "STANDARD ROOM SEA VIEW."
+    },
+    {
+      "url": "https://files.anextour.ru/hotel/turkey/hotel/dragut-point-north/room/standard-room-sea-view/655323",
+      "room": "STANDARD ROOM SEA VIEW."
+    }
+  ],
+  "gallery_endpoint": "https://files.anextour.ru/hotel/hotelimagelist?code=16193&lang=ru&onlyOnSale=true&take=500",
+  "endpoint_evidence": "https://anextour.ru/_next/static/chunks/083ous86fn4ho.js",
+  "endpoint_function": "module940344/useFetchHotelImages",
+  "gallery_http_status": 403,
+  "image_head_http_status": 403,
+  "media_verified": false,
+  "api_pilot_repeated": false,
+  "application_db_modified": false,
+  "recommendation": "Use exact official card URL; do not substitute candidate photos or claim media is accessible. Retain explicit public image links as evidence for future supported access."
+}

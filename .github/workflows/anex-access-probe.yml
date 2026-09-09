@@ -92,6 +92,8 @@ jobs:
           php -l scripts/diagnostics/anex_search3_catalog_content_reader.php
           php -l scripts/diagnostics/anex_search3_catalog_content_collect.php
           php -l scripts/diagnostics/anex_search3_catalog_content_photos.php
+          php -l scripts/diagnostics/anex_search3_catalog_content_plan.php
+          php tests/anex-catalog-content-smoke.php
           php -l scripts/diagnostics/anex_search3_catalog_content_repair.php
           php -l v2/data/hotel-details-v1.php
           php tests/hotel-details-smoke.php
@@ -176,7 +178,7 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
-      - name: Audit saved Tourvisor catalog and collect the owner ANEX content pilot
+      - name: Audit saved Tourvisor catalog and collect the explicit ANEX review-content batch
         if: steps.operation.outputs.mode == 'content'
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
