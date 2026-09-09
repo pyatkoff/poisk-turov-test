@@ -52,5 +52,31 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   assert.match(lifecycle, /meal:f\.get\('food'\)\|\|''/, 'FormData keeps meal in the Tourvisor payload');
   assert.match(markup, /<select name="food">/, 'server markup keeps the canonical meal control');
   assert.doesNotMatch(presentation, /meal-quick|meal-native-select|V2PrimaryMealUXV1/);
-  console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1');
+
+  const rendererWindow = {};
+  const rendererSource = fs.readFileSync(path.join(__dirname, '../v2/results-renderer-v5.js'), 'utf8');
+  vm.runInNewContext(rendererSource, {
+    window: rendererWindow,
+    document: { readyState: 'loading', addEventListener() {} }
+  });
+  const results = rendererWindow.V2Results;
+  const tour = { id: 'meal-shape-check', price: 125000, meal: { id: 7, fullName: 'All Inclusive' } };
+  assert.match(results.tourRow(tour), /<small>Питание<\/small><b>All Inclusive<\/b>/,
+    'supplier fullName-only meal appears in the tour facts');
+  assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'All Inclusive',
+    'representative tour context uses the same meal normalization');
+  for (const meal of ['Всё включено', { russianName: 'Всё включено', fullName: 'All Inclusive' },
+    { fullRussianName: 'Всё включено', fullName: 'All Inclusive' },
+    { name: 'Всё включено', fullName: 'All Inclusive' }]) {
+    assert.match(results.tourRow({ ...tour, meal }), /<small>Питание<\/small><b>Всё включено<\/b>/,
+      'existing meal names and Russian-label priority remain intact');
+  }
+  assert.doesNotMatch(results.tourRow({ ...tour, meal: { id: 7 } }), /<small>Питание<\/small>/,
+    'unknown meal IDs are not invented as customer-facing labels');
+  const unsafeRow = results.tourRow({ ...tour, meal: { fullName: '<img src=x onerror="bad()">' } });
+  assert.ok(unsafeRow.includes('&lt;img src=x onerror=&quot;bad()&quot;&gt;'), 'supplier label is escaped');
+  assert.doesNotMatch(unsafeRow, /<img/);
+  assert.equal(results.textValue({ fullName: 'Not a meal' }), '', 'generic object display semantics are unchanged');
+  assert.equal(tour.meal.fullName, 'All Inclusive', 'rendering leaves supplier data unchanged');
+  console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1 renderer_full_name=1');
 })().catch(error => { console.error(error); process.exitCode = 1; });

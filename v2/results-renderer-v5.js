@@ -5,7 +5,7 @@ function initialTourLimit(){return INITIAL_TOURS;}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n>0?moneyFormatter.format(n):'';}
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object')return textValue(v.russianName||v.fullRussianName||v.name||v.title||v.value||v.description||'');return'';}
-function mealName(t){return textValue(t&&t.meal);}
+function mealName(t){const meal=t&&t.meal;return textValue(meal)||textValue(meal&&meal.fullName);}
 function operatorName(t){return textValue(t&&t.operator);}
 function hotelPhotoAlt(h){return h&&h.name?'Фото отеля '+String(h.name):'Фото отеля';}
 function tourCountLabel(value){const n=Math.max(0,Number(value)||0),mod10=n%10,mod100=n%100,word=mod10===1&&mod100!==11?'вариант':mod10>=2&&mod10<=4&&(mod100<12||mod100>14)?'варианта':'вариантов';return n+' '+word;}
