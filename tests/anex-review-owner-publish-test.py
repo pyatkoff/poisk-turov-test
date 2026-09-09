@@ -28,6 +28,7 @@ class PublicationTest(unittest.TestCase):
         self.payload.update(action='apply',setup_hash=hashlib.sha256(b'1'*64).hexdigest(),expected_before=dict(sorted(before['before'].items())))
         done=self.run_payload();self.assertEqual(done['status'],'published');self.assertFalse(done['write_enabled']);self.assertEqual(done['database_calls'],0)
         private=self.home/'.anytoour-anex/review-owner';self.assertEqual((private/'config.php').stat().st_mode&0o777,0o600)
+        self.assertEqual(json.loads((private/'publication-state.json').read_text())['state'],'completed')
         for name,digest in done['after'].items():self.assertEqual(hashlib.sha256((self.target/name).read_bytes()).hexdigest(),digest)
         self.assertNotIn(self.payload['setup_hash'],(self.target/'anex-owner-panel-manifest.json').read_text())
         stage=self.root/'_preview'/('.search3-anex-'+'b'*40+'-'+'c'*12);stage.mkdir()
