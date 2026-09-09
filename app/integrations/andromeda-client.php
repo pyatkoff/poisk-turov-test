@@ -11,6 +11,7 @@ final class AnyTourAndromedaClient
     private $sid = null;
     private $expires = 0;
     private $requests = 0;
+    private $priceAttempted = false;
 
     /** Transport accepts a secret-bearing URL and must never log it. */
     public function __construct(callable $transport, bool $enabled = false)
@@ -84,6 +85,35 @@ final class AnyTourAndromedaClient
             if ($key !== 'CHECKIN_BEG') $this->validateDictionaryRows($rows);
         }
         return $result;
+    }
+
+
+    /** Explicit single-page pilot; never called by the live search renderer. */
+    public static function priceProbeParams(): array
+    {
+        return ['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>'20260918',
+            'CHECKIN_END'=>'20260918','NIGHTS_FROM'=>8,'NIGHTS_TILL'=>8,
+            'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,'MEAL'=>'5',
+            'OPERATORS'=>'5','PACKETTYPE'=>0,'PAGE'=>1];
+    }
+
+    public function priceProbe(): array
+    {
+        if ($this->priceAttempted) throw new RuntimeException('ANDROMEDA_PRICE_REPLAY_REFUSED');
+        if ($this->sid === null || time() >= $this->expires) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
+        $this->priceAttempted = true; // Reserve before sending, including unknown failures.
+        $sid = $this->sid;
+        $reply = $this->send('price', ['sid'=>$sid] + self::priceProbeParams());
+        $this->rejectSessionEcho($reply, $sid);
+        if (!isset($reply['PAGE'], $reply['PAGES_COUNT'], $reply['PRICES'])
+            || !is_array($reply['PRICES'])
+            || !is_int($reply['PAGE']) || $reply['PAGE'] !== 1
+            || !is_int($reply['PAGES_COUNT']) || $reply['PAGES_COUNT'] < 0) {
+            throw new RuntimeException('ANDROMEDA_INVALID_PRICE_RESPONSE');
+        }
+        if (count($reply['PRICES']) > 2000) throw new RuntimeException('ANDROMEDA_PRICE_ROW_BUDGET');
+        if ($reply['PAGES_COUNT'] === 0 && count($reply['PRICES']) > 0) throw new RuntimeException('ANDROMEDA_INVALID_PRICE_RESPONSE');
+        return $reply; // Raw evidence only; no price arithmetic, mapping or selection.
     }
 
     private function validateDictionaryRows(array $rows): void

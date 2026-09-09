@@ -5,6 +5,8 @@ declare(strict_types=1);
 final class AnyTourAndromedaTransport
 {
     private $attempts = 0;
+    private $allowPrice;
+    public function __construct(bool $allowPrice = false) { $this->allowPrice = $allowPrice; }
     private $lastStarted = 0.0;
 
     public function __invoke(string $url, array $ignoredOptions = []): array
@@ -16,7 +18,7 @@ final class AnyTourAndromedaTransport
         }
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
         if (($query['version'] ?? null) !== '1.01'
-            || !in_array($query['action'] ?? null, ['login', 'townfrom', 'state', 'all'], true)) {
+            || !in_array($query['action'] ?? null, array_merge(['login', 'townfrom', 'state', 'all'], $this->allowPrice ? ['price'] : []), true)) {
             throw new RuntimeException('ANDROMEDA_ACTION_NOT_ALLOWED');
         }
         if ($this->attempts >= 4) throw new RuntimeException('ANDROMEDA_REQUEST_BUDGET');
