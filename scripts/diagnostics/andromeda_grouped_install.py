@@ -16,12 +16,12 @@ try {
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/grouped-search-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
     $release=$private.'/grouped-search-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['anex-search3-preview-v1.js'=>'472aa521b2c6be5a886e28f86376069b805c85d3286e74059ba7e39210cabbe3'];
+    $expected=['anex-search3-preview-v1.js'=>'0f2e698d9670d5480e2179ea9881932aba4c04fa1fe95ae3047401272d9ebe2e'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
     $page=file_get_contents($target.'/search-page-v2.php');
-    $files['search-page-v2.php']=str_replace('anex-search3-preview-v1.js?v=cfd8cc409c23d6603094ed39bb94916c70d229ab','anex-search3-preview-v1.js?v='.$request['source_sha'],$page,$count);
+    $files['search-page-v2.php']=str_replace('anex-search3-preview-v1.js?v=51111acb60dac001e2322b0eb5b96930c01af66c','anex-search3-preview-v1.js?v='.$request['source_sha'],$page,$count);
     if($count!==1)throw new RuntimeException();
     foreach($files as $path=>$data){
         $backups[$path]=file_get_contents($target.'/'.$path);

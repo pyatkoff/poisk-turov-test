@@ -1,0 +1,68 @@
+{
+  "date": "2026-09-09",
+  "pr": 1827,
+  "source": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+  "publication": {
+    "run": 34410511952,
+    "job": 102663579270,
+    "readback": {
+      "status": "deployed",
+      "source_sha": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+      "owner_login_required": false,
+      "sha256": {
+        "anex-search3-preview-v1.js": "4cda2541442f38947b681281c34933cfb16ef106dfccb49b7122e5605bcaf9b2",
+        "search-page-v2.php": "c9f34e5fbf67dfad641eb37bcc5c9e46681a7a76e78143382346485e91eebbb1"
+      },
+      "private_credentials_unchanged": true,
+      "database_changed": false,
+      "production_changed": false,
+      "bundle_js_version": "68fe1b558b538043",
+      "artifact_id": "10127037163",
+      "verification": {
+        "status": "checked",
+        "supplier_calls": 0,
+        "browser_acceptance": false
+      }
+    },
+    "artifacts": [
+      {
+        "digest": "sha256:4eacd305cf556f3df3223fe4eb85f26d59131d64545434854c171405794d204c",
+        "id": 10127039157,
+        "name": "andromeda-grouped-publication-readback"
+      },
+      {
+        "digest": "sha256:567c69484c32ec880c82b94ef358a36a913e944818cde00da99be53fe54930b0",
+        "id": 10127037163,
+        "name": "andromeda-detail-retry-95fa11f5"
+      }
+    ]
+  },
+  "checks": {
+    "node": 56,
+    "protocol": 34410385418,
+    "security": 34410385347,
+    "build": 34410385370
+  },
+  "browser": {
+    "local_id": 9365,
+    "variants": 8,
+    "room": "Standard Sea View Room",
+    "amount": 134968,
+    "currency": "RUB",
+    "checkin": "2026-09-18",
+    "nights": 8,
+    "adults": 2,
+    "meal": "AI",
+    "detail": "success",
+    "return_retained": 8,
+    "desktop": "visually checked",
+    "live_failure_retry": "not exercised; original failure did not recur",
+    "simulated_retry": "transport failure → identical explicit saved-only retry → mismatched context rejected",
+    "mobile": "deferred",
+    "physical_safari": "deferred"
+  },
+  "original_failure_cause": "unconfirmed; fixed misleading universal expiration message, not a proven backend root cause",
+  "matching_writes": 0,
+  "production_changed": false,
+  "next_action": "Handoff own-preview detail recovery and grouped expansion to SEARCH owner; investigate original detail failure only upon concrete recurrence, preserve evidence; quote/booking remains disabled."
+}

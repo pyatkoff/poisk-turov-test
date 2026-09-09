@@ -166,10 +166,16 @@
       && !refs.has(t.provider + ':' + t.offer_ref)).concat(extra)
       .sort((a, b) => Number(a.price.amount) - Number(b.price.amount));
   }
+  function detailFailure(kind) {
+    if (kind === 'timeout') return { message: 'Подробности не успели загрузиться. Попробуйте ещё раз.', retry: true };
+    if (kind === 'context') return { message: 'Не удалось подтвердить выбранное предложение. Вернитесь к списку и повторите поиск.', retry: false };
+    if (kind === 'request') return { message: 'Сохранённое предложение не удалось открыть. Вернитесь к списку и повторите поиск.', retry: false };
+    return { message: 'Не удалось загрузить подробности. Попробуйте ещё раз — список предложений сохранён.', retry: true };
+  }
   function sameOfferContext(expected, actual) {
     return !!actual && Object.keys(expected).every(key => JSON.stringify(actual[key]) === JSON.stringify(expected[key]));
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, sameOfferContext, expandedTours, version: 2 };
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, hotelKey, offerContext, sameOfferContext, expandedTours, detailFailure, version: 2 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -327,7 +333,8 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     dialog.addEventListener('cancel', event => { event.preventDefault(); closeOffer(); });
     dialog.showModal();
     detailAbort = new AbortController(); const abort = detailAbort, signal = abort.signal;
-    const timer = setTimeout(() => abort.abort(), 15000);
+    let failureKind = 'transport';
+    const timer = setTimeout(() => { failureKind = 'timeout'; abort.abort(); }, 15000);
     try {
       const request = Object.assign({}, run, { action: 'offer_detail', page: context.page, offer_context: context });
       if (context.hotel_scope) request.hotel_scope = context.hotel_scope;
@@ -338,8 +345,13 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       });
       const payload = await response.json(), data = payload.data;
       if (offerDialog !== dialog || active !== run || !isCurrent(run, window.V2SearchLifecycle)) { if (offerDialog === dialog) closeOffer(); return; }
-      if (!response.ok || !payload.ok || data?.provider !== 'andromeda'
-        || !sameOfferContext(context, data.offer_context)) throw new Error('Offer unavailable');
+      if (!response.ok || !payload.ok) {
+        failureKind = response.status >= 500 ? 'transport' : 'request';
+        throw new Error('Offer request failed');
+      }
+      if (data?.provider !== 'andromeda' || !sameOfferContext(context, data.offer_context)) {
+        failureKind = 'context'; throw new Error('Offer context mismatch');
+      }
       content.replaceChildren(node('h2', '', data.hotel));
       [data.operator, data.checkin.split('-').reverse().join('.') + ' · ' + data.nights + ' ноч.',
         data.adults + ' взр.' + (data.children ? ' · ' + data.children + ' дет.' : ''),
@@ -347,7 +359,15 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       content.appendChild(node('strong', '', price(data)));
       content.appendChild(node('p', 'anex-search3-note', 'Цена из поиска. Актуальность, рейсы и итоговую стоимость ещё нужно подтвердить. Бронирование пока недоступно.'));
     } catch (_) {
-      if (offerDialog === dialog) content.textContent = 'Предложение недоступно или срок его хранения истёк. Повторите поиск.';
+      if (offerDialog === dialog && active === run && isCurrent(run, window.V2SearchLifecycle)) {
+        const failure = detailFailure(failureKind);
+        content.replaceChildren(node('p', '', failure.message));
+        if (failure.retry) {
+          const retry = node('button', 'anex-search3-tv-check', 'Повторить загрузку подробностей');
+          retry.type = 'button'; retry.addEventListener('click', () => openOffer(tour));
+          content.appendChild(retry);
+        }
+      }
     } finally { clearTimeout(timer); }
   }
   ['input', 'change'].forEach(event => form.addEventListener(event, closeOffer));

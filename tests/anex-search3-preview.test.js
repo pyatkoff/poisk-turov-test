@@ -71,6 +71,8 @@ class FakeElement {
     this.children.push(child);
     return child;
   }
+  showModal() { this.open = true; }
+  close() { this.open = false; }
   append(...children) { children.forEach(child => this.appendChild(child)); }
   insertBefore(child, next) {
     child.remove();
@@ -1579,4 +1581,36 @@ test('partial failed and empty expansions retain the original available offer', 
   }
   assert.deepEqual(plain(merge(original, { status: 'complete', tours: [] })), [seed]);
   assert.deepEqual(plain(merge(original, undefined)), [seed]);
+});
+
+
+test('detail failures distinguish recoverable loading from invalid saved context', () => {
+  const failure = helpers().detailFailure;
+  for (const kind of ['timeout', 'transport']) {
+    assert.equal(failure(kind).retry, true);
+    assert.doesNotMatch(failure(kind).message, /истёк|Повторите поиск/);
+  }
+  for (const kind of ['context', 'request']) assert.equal(failure(kind).retry, false);
+  assert.match(failure('timeout').message, /не успели/);
+});
+
+
+test('explicit detail retry repeats only the retained offer lookup and preserves the list', async () => {
+  const page=preview(false,true);page.reset(1,snapshot());
+  const context={provider:'andromeda',search_ref:'a'.repeat(64),offer_ref:'offer_'+'b'.repeat(64),generation:1,page:1};
+  const tour={...hotel().tours[0],provider:'andromeda',offer_ref:context.offer_ref,offer_context:context};
+  page.requests.find(r=>r.url.includes('api-andromeda-')).respond({ok:true,data:{provider:'andromeda',generation:1,page:1,pages_count:1,hotels:[hotel({tours:[tour]})]}});
+  await tick();
+  page.click(page.results.querySelectorAll('button').find(b=>b.textContent==='Подробнее о туре'));await tick();
+  const first=page.requests.at(-1);assert.equal(first.body.action,'offer_detail');
+  first.reject(new TypeError('Network failed'));await tick();
+  const count=page.requests.length;
+  const retry=page.document.body.querySelectorAll('button').find(b=>b.textContent==='Повторить загрузку подробностей');
+  assert.ok(retry);assert.equal(page.requests.length,count,'no automatic retry');
+  page.click(retry);await tick();
+  assert.equal(page.requests.length,count+1);
+  assert.deepEqual(plain(page.requests.at(-1).body),plain(first.body));
+  page.requests.at(-1).respond({ok:true,data:{provider:'andromeda',offer_context:{...context,offer_ref:'offer_'+'c'.repeat(64)}}});await tick();
+  assert.equal(page.document.body.querySelectorAll('button').some(b=>b.textContent==='Повторить загрузку подробностей'),false,'context failure is not retried');
+  assert.match(page.results.textContent,/Existing Tourvisor hotel/);
 });
