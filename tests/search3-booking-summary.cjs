@@ -18,6 +18,8 @@ assert.match(price, /Стоимость с выбранным рейсом/, 'se
 const controller = read('v2/tour-controller-v4.js');
 assert.match(controller, /leadPayload\(new FormData\(form\)\)/, 'canonical controller retains lead payload');
 const lead = read('v2/lead-form-guard-v1.js');
-assert.match(lead, /function directText\(node\)/, 'lead summary reads only the visible price and flight label owner');
-assert.match(lead, /priceText=directText\(price\),flightText=directText\(flight\)/, 'lead summary excludes nested captions and tradeoffs');
+assert.match(lead, /function directText\(node\)/, 'lead summary reads only direct visible text');
+assert.match(lead, /function selectedFlightText\(root\)/, 'lead summary has one selected-flight formatter');
+assert.match(lead, /route=directText\(choice\.querySelector\('\.flight-choice-summary'\)\)/, 'lead summary includes route and time but excludes nested tradeoffs');
+assert.match(lead, /document\.body\.classList\.contains\('search3-candidate'\)/, 'shared top CTA yields to the Search3 handoff owner');
 console.log('PASS: duplicate booking card retired; canonical selected price and lead payload remain');

@@ -139,7 +139,7 @@ async function verifyFallbackHandoff(browser) {
     state.flightCalls !== 1
     || state.retries !== 1
     || !state.message.includes('менеджер уточнит перелёт по заявке')
-    || state.continueText !== 'Оставить заявку'
+    || state.continueText !== 'Продолжить к заявке'
     || state.mobileActions !== 0
     || state.canonicalOwner !== 1
   ) throw new Error('initial fallback state failed: ' + JSON.stringify(state));

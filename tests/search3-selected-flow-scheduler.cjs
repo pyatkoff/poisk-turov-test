@@ -16,7 +16,13 @@ const price = fs.readFileSync(path.join(root, 'v2/flight-price-sync-v1.js'), 'ut
 const summary = fs.readFileSync(path.join(root, 'src/search3/behavior/summary-cta.js'), 'utf8');
 for (const marker of ['Проверить рейсы ещё раз', 'MutationObserver(queue)', "window.addEventListener('v2:tour-selected'"]) assert.ok(recovery.includes(marker), marker);
 for (const marker of ['displayedVariantPrice', 'priceTradeoff', 'clarifyVariantChoices', "window.addEventListener('v2:flight-selected'"]) assert.ok(price.includes(marker), marker);
-for (const marker of ['selectedState', 'correctTradeoffs', 'MutationObserver', 'load-flights', 'Оставить заявку', 'search3:lead-entry']) assert.ok(summary.includes(marker), marker);
+for (const marker of ['selectedState', 'MutationObserver', 'load-flights', 'Продолжить к заявке', 'search3:lead-entry']) assert.ok(summary.includes(marker), marker);
+assert.ok(!summary.includes('correctTradeoffs'), 'Search3 handoff no longer owns flight-price comparisons');
+assert.match(price, /replace\(\/\[\\s\\u00a0\\u202f\]\/g/, 'canonical price owner parses localized decimal display values');
+const priceWindow = { addEventListener() {} };
+vm.runInNewContext(price, { window: priceWindow, document: {}, Intl, Number, String, CustomEvent: function() {} });
+const decimalVariant = { querySelector() { return { textContent: 'Стоимость тура: 90 049,6 ₽' }; } };
+assert.equal(priceWindow.V2FlightPriceSync.displayedVariantPrice(decimalVariant), 90049.6, 'decimal price stays decimal in the sole tradeoff owner');
 
 const events = new Map();
 const bodyClasses = new Set(['search3-candidate']);
@@ -63,15 +69,13 @@ vm.runInNewContext(summary, {
 
 events.get('v2:tour-selected')({ detail: { tour: { id: 'tour-1' } } });
 assert.ok(bodyClasses.has('search3-selected-open'));
-assert.equal(button.textContent, 'Оставить заявку');
+assert.equal(button.textContent, 'Продолжить к заявке');
 events.get('v2:flight-selected')({ detail: {} });
-assert.equal(labels[0].textContent, 'Самая низкая цена');
-assert.equal(labels[1].textContent.replace(/\s/g, ' '), '+17 217,6 ₽ к минимальной');
 events.get('v2:tour-returned')({ detail: {} });
 assert.equal(bodyClasses.has('search3-selected-open'), false);
 window.Search3SummaryCta.enterLead('flight');
 assert.ok(selectedClasses.has('search3-lead-entry'));
 assert.equal(focused, 1);
-assert.equal(window.Search3SummaryCta.version, 12);
+assert.equal(window.Search3SummaryCta.version, 13);
 
 console.log('PASS: selected public adapter is retired; canonical recovery/price and native handoff remain');
