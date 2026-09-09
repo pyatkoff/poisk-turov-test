@@ -17,6 +17,14 @@ const hotels = [
   { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, picturelink: picture, tours: [tour, { ...tour, id: 'other-tour', price: 159000 }] },
   { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
 ];
+const calendarHotels = [
+  { id: 'calendar-a', tours: [
+    { ...tour, id: 'calendar-a1', date: '2026-09-10', price: 105000 },
+    { ...tour, id: 'calendar-a2', date: '2026-09-10', price: 99000 },
+    { ...tour, id: 'calendar-zero', date: '2026-09-13', price: 0 }
+  ] },
+  { id: 'calendar-b', tours: [{ ...tour, id: 'calendar-b1', date: '2026-09-12', price: 148500 }] }
+];
 async function snapshot(page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -70,6 +78,28 @@ async function run(browser, width, previous) {
     }
     await page.evaluate(items => window.V2Results.render(items), hotels);
     await page.waitForSelector('#results .direct-tour');
+    await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } })), calendarHotels);
+    const calendar = page.locator('#currentPriceCalendar');
+    assert.equal(await calendar.isVisible(), true, 'current price calendar is visible after a terminal result set');
+    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => [node.dataset.calendarDate, node.querySelector('strong').textContent.replace(/\s/g, '')])), [
+      ['2026-09-10', '99000₽'], ['2026-09-12', '148500₽']
+    ], 'calendar exposes per-day minima and ignores unpriced tours');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-10', 'lowest observed day is highlighted');
+    assert.equal(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.every(node => node.getBoundingClientRect().height >= 44)), true, 'calendar dates retain accessible touch targets');
+    await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-continued', { detail: { items } })), calendarHotels.concat([
+      { id: 'calendar-c', tours: [{ ...tour, id: 'calendar-c1', date: '2026-09-14', price: 88000 }] }
+    ]));
+    assert.equal(await calendar.locator('[data-calendar-date]').count(), 3, 'continued results refresh the calendar instead of leaving stale dates');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-14', 'continued results refresh the highlighted minimum');
+    const preservedBeforeCalendar = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()].filter(([name]) => !['dateFrom', 'dateTo'].includes(name)));
+    await page.evaluate(() => {
+      window.__calendarSubmits = 0;
+      window.V2SearchLifecycle.submit = () => { window.__calendarSubmits += 1; };
+    });
+    await calendar.locator('[data-calendar-date="2026-09-14"]').click();
+    assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar date submits through the canonical lifecycle exactly once');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [form.elements.dateFrom.value, form.elements.dateTo.value]), ['2026-09-14', '2026-09-14'], 'calendar applies the exact selected day');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()].filter(([name]) => !['dateFrom', 'dateTo'].includes(name))), preservedBeforeCalendar, 'calendar preserves every non-date search parameter');
     const parameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
     assert.equal(await page.locator('#resultsTools #resultsSearchEdit').count(), 1, 'native results tools retain one search edit action');
     await page.locator('#resultsSearchEdit').click();
@@ -124,6 +154,8 @@ async function run(browser, width, previous) {
     assert.match(await page.locator('#status').innerText(), /Уже найденные отели сохранены/, 'continue failure truthfully preserves prior results');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
     assert.match(await page.locator('#status').innerText(), /Параметры поиска изменены/, 'dirty reset retains its actionable explanation');
+    assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
+    assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => window.V2Results.render([]));
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     await page.locator('.empty-edit-search').click();

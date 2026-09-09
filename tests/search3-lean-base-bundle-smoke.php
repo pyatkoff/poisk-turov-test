@@ -12,13 +12,13 @@ $search3Js = v2_bundle_files('js', 'search3');
 $fullCss = v2_bundle_files('css', 'full');
 $search3Css = v2_bundle_files('css', 'search3');
 
-$excludedJs = ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'current-price-calendar-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
+$excludedJs = ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
 foreach ($excludedJs as $excluded) {
     if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
 if (count($fullJs) !== count($search3Js) + count($excludedJs)) lean_bundle_fail('unexpected JavaScript scope delta');
-if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css']) lean_bundle_fail('Search3 must load the canonical shared design tokens, header and footer CSS');
+if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css', 'current-price-calendar-v1.css']) lean_bundle_fail('Search3 must load the canonical shared shell and current price calendar CSS');
 if (count(array_keys($search3Css, 'site-header-v2.css', true)) !== 1) lean_bundle_fail('canonical shared header owner is not exact');
 if (!in_array('site-footer-v1.css', $fullCss, true)) lean_bundle_fail('canonical shared footer owner missing');
 if (!in_array('app.css', $fullCss, true)) lean_bundle_fail('legacy application layer missing');
@@ -29,6 +29,8 @@ if (!in_array('tour-design-v1.css', $fullCss, true)) lean_bundle_fail('legacy to
 if (!in_array('search-states-design.css', $fullCss, true)) lean_bundle_fail('legacy search states layer missing');
 if (!in_array('mobile-results-filters-v1.css', $fullCss, true)) lean_bundle_fail('legacy mobile results filter CSS missing');
 if (!in_array('current-price-calendar-v1.css', $fullCss, true)) lean_bundle_fail('legacy current price calendar CSS missing');
+if (count(array_keys($search3Css, 'current-price-calendar-v1.css', true)) !== 1) lean_bundle_fail('current price calendar CSS is not shared exactly once');
+if (count(array_keys($search3Js, 'current-price-calendar-v1.js', true)) !== 1) lean_bundle_fail('current price calendar runtime is not shared exactly once');
 if (!in_array('room-details.css', $fullCss, true)) lean_bundle_fail('legacy room details CSS missing');
 if (!in_array('anytour-brand.css', $fullCss, true)) lean_bundle_fail('legacy AnyTour brand layer missing');
 if (!in_array('results-experience-v1.css', $fullCss, true)) lean_bundle_fail('legacy results experience layer missing');
