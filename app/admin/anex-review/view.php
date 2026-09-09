@@ -11,6 +11,48 @@ function anex_review_value($value): string
     return $value === null || $value === '' ? '<span class="muted">Нет сохранённых данных</span>' : anex_review_escape($value);
 }
 
+/** Explicit clicks only; no supplier/CDN/analytics requests when opening the panel. */
+function anex_review_links(array $values): string
+{
+    $urls = [];
+    foreach (array_slice($values, 0, 80) as $value) {
+        $url = is_array($value) ? ($value['url'] ?? null) : $value;
+        if (!is_string($url) || strlen($url) > 2048 || preg_match('/[\x00-\x20\\\\]/', $url)) continue;
+        $parts = parse_url($url);
+        if (!is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['port'])
+            || !preg_match('/\A[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}\z/D', $parts['host'])) continue;
+        $urls[$url] = true;
+        if (count($urls) === 12) break;
+    }
+    if (!$urls) return '<p class="muted">Нет сохранённых пригодных ссылок на фотографии.</p>';
+    $html = '<p class="muted">Сохранённые фото откроются только по нажатию, на внешнем сайте. Показано до 12 ссылок.</p><ul>';
+    foreach (array_keys($urls) as $i=>$url) $html .= '<li><a target="_blank" rel="noopener noreferrer" href="' . anex_review_escape($url) . '">Фото ' . ($i+1) . '</a></li>';
+    return $html . '</ul>';
+}
+
+function anex_review_saved_content(?array $row, bool $anex): string
+{
+    if ($row === null) return '<p class="muted">Содержательная карточка пока не сохранена.</p>';
+    $status = $row['status'] ?? '';
+    $html = '<p>Состояние карточки: ' . anex_review_escape($status) . ' · '
+        . anex_review_value($row[$anex ? 'fetched_at_utc' : 'fetched_at'] ?? null) . ' UTC</p>';
+    if ($status !== ($anex ? 'ready' : 'success')) return $html . '<p class="muted">Содержание не подтверждено; не используйте его как новое доказательство.</p>';
+    $content = $anex ? $row['content'] : $row;
+    if (!is_array($content)) return $html;
+    $html .= '<dl><dt>Адрес из карточки</dt><dd>' . anex_review_value($content['address'] ?? null) . '</dd>'
+        . '<dt>Координаты карточки (отдельно от каталожных)</dt><dd>' . anex_review_value($content['latitude'] ?? null)
+        . ', ' . anex_review_value($content['longitude'] ?? null) . '</dd></dl>';
+    $html .= '<details><summary>Описание из сохранённой карточки</summary><p>' . nl2br(anex_review_value($content['description'] ?? null)) . '</p></details>';
+    if (!empty($row['description_truncated'])) $html .= '<p class="muted">Длинное описание показано частично (до 16 000 символов).</p>';
+    $photos = $anex ? ($content['photos'] ?? []) : json_decode((string)($content['images_json'] ?? ''), true);
+    $photos = is_array($photos) ? $photos : [];
+    if (!$anex && !empty($content['primary_image_url'])) array_unshift($photos, $content['primary_image_url']);
+    $html .= anex_review_links($photos);
+    if (!empty($row['images_truncated'])) $html .= '<p class="muted">Сохранённая галерея превышает лимит чтения; полнота не подтверждается.</p>';
+    return $html;
+}
+
 function anex_review_form(array $detail, string $action, ?int $target, string $label, string $csrf, bool $enabled): string
 {
     $fields = ['id' => $detail['anex_hotel_id'], 'action' => $action, 'target' => $target ?? '',
@@ -38,7 +80,7 @@ function anex_review_render(array $queue, ?array $detail, array $filters, string
 <article><h2><?= anex_review_escape($detail['hotel_name']) ?> · ANEX <?= (int)$detail['anex_hotel_id'] ?></h2>
 <p><?= $detail['mapped_id'] === null ? 'Соответствие не принято' : 'Принятое соответствие: AnyTour ' . (int)$detail['mapped_id'] ?>. Частота поисков: <?= (int)$detail['observation']['search_count'] ?>; последнее наблюдение: <?= anex_review_escape($detail['observation']['last_seen_utc']) ?> UTC.</p>
 <p class="notice">Показаны сохранённые кандидаты, не новый полный поиск. Сохранено <?= count($detail['candidates']) ?>; найдено на момент обработки: <?= anex_review_value($detail['evidence']['candidate_count'] ?? null) ?>. Ограниченный набор не доказывает отсутствие конкурентов.</p>
-<div class="compare"><section><h3>ANEX · сохранённая карточка</h3><dl><?php foreach (['xml_name'=>'Название XML','xml_alternate_name'=>'Другое название XML','api_name'=>'Название API','api_country'=>'Страна','api_region'=>'Регион','api_town'=>'Курорт','api_address'=>'Адрес','latitude'=>'Широта','longitude'=>'Долгота','checked_at'=>'Данные получены, UTC'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($detail['source'][$key] ?? null) ?></dd><?php endforeach; ?><dt>Корпус / секция, фото и ссылки</dt><dd class="muted">Не представлены отдельными проверенными полями в этом источнике. Нельзя считать отсутствием корпуса или фотографии у поставщика.</dd></dl></section>
+<div class="compare"><section><h3>ANEX · сохранённая карточка</h3><dl><?php foreach (['xml_name'=>'Название XML','xml_alternate_name'=>'Другое название XML','api_name'=>'Название API','api_country'=>'Страна','api_region'=>'Регион','api_town'=>'Курорт','api_address'=>'Адрес','latitude'=>'Широта','longitude'=>'Долгота','checked_at'=>'Данные получены, UTC'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($detail['source'][$key] ?? null) ?></dd><?php endforeach; ?><dt>Корпус / секция</dt><dd class="muted">Не представлен отдельным проверенным полем. Это не подтверждает отсутствие отдельного корпуса.</dd></dl><?= anex_review_saved_content($detail['content'] ?? null, true) ?></section>
 <section><h3>Почему нужна проверка</h3><p><?= anex_review_value($detail['evidence']['automated_status'] ?? null) ?> · <?= anex_review_value($detail['evidence']['automated_reason'] ?? null) ?></p>
 <p class="muted">Это историческая оценка staging, а не утверждение о свежести всей observed-очереди. Если карточки или кандидатов нет, требуется сохранение дополнительных доказательств — отель остаётся в очереди.</p>
 <?= anex_review_form($detail, 'later', null, 'Позже', $csrf, $write) ?>
@@ -46,7 +88,7 @@ function anex_review_render(array $queue, ?array $detail, array $filters, string
 <?php if (!$detail['candidates']): ?><p class="notice">Нет сохранённых кандидатов. Одобрение недоступно; отель не считается несовпавшим.</p><?php endif; ?>
 <?php foreach ($detail['candidates'] as $candidate): $local = $candidate['current']; $target=(int)$candidate['catalog_hotel_id']; $excluded=false; foreach ($detail['exclusions'] as $pair) if ((int)$pair['catalog_hotel_id'] === $target) $excluded=true; ?>
 <article><h3>AnyTour / Tourvisor <?= $target ?> · <?= anex_review_value($local['name'] ?? null) ?></h3>
-<div class="compare"><section><dl><?php foreach (['country_name'=>'Страна','region_name'=>'Регион','subregion_name'=>'Курорт','category'=>'Категория','latitude'=>'Широта','longitude'=>'Долгота'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($local[$key] ?? null) ?></dd><?php endforeach; ?></dl></section><section><dl><?php foreach (['name_similarity'=>'Сходство названия (сохранённое)','distance_m'=>'Расстояние, м (сохранённое)','score'=>'Оценка (сохранённая)'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($candidate[$key] ?? null) ?></dd><?php endforeach; ?></dl><details><summary>Сохранённые доказательства кандидата (не новое чтение)</summary><pre><?= anex_review_escape($candidate['candidate_json'] ?? '') ?></pre></details></section></div>
+<div class="compare"><section><dl><?php foreach (['country_name'=>'Страна','region_name'=>'Регион','subregion_name'=>'Курорт','category'=>'Категория','latitude'=>'Широта','longitude'=>'Долгота'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($local[$key] ?? null) ?></dd><?php endforeach; ?></dl><?= anex_review_saved_content($candidate['details'] ?? null, false) ?></section><section><dl><?php foreach (['name_similarity'=>'Сходство названия (сохранённое)','distance_m'=>'Расстояние, м (сохранённое)','score'=>'Оценка (сохранённая)'] as $key=>$label): ?><dt><?= $label ?></dt><dd><?= anex_review_value($candidate[$key] ?? null) ?></dd><?php endforeach; ?></dl><details><summary>Сохранённые доказательства кандидата (не новое чтение)</summary><pre><?= anex_review_escape($candidate['candidate_json'] ?? '') ?></pre></details></section></div>
 <?php if ($excluded): ?><p class="notice">Эта пара отклонена. Другие кандидаты остаются доступны.</p><?php endif; ?>
 <div class="actions"><?= anex_review_form($detail,'accept',$target,'Одобрить соответствие',$csrf,$write && !$excluded && $local !== null && $detail['manual'] === null && $detail['mapped_id'] === null) ?><?= anex_review_form($detail,'reject_pair',$target,'Отклонить эту пару',$csrf,$write && !$excluded && $detail['mapped_id'] !== $target) ?></div></article>
 <?php endforeach; ?>

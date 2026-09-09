@@ -20,6 +20,11 @@ call a supplier, or change a real decision. No production Search3/DS2 modules ar
   decision; this version fails closed, rather than silently broadening permission.
 - Auth/CSRF boundaries, no-store/noindex/CSP, escaped output, POST/redirect/GET.
 - Additive schema plus isolated MySQL tests; no application secrets in test CI.
+- Read-only integration with the separately prepared `anex_hotel_content` and
+  `catalog_hotel_details` stores. Missing tables/rows remain explicit; ANEX ID and
+  content digest are verified. Descriptions are escaped; photo links are HTTPS and
+  click-only (no third-party requests on page open). Data is included in the evidence
+  version, so an updated card invalidates a stale decision. No content collection.
 
 ## Deployment gates — NOT yet satisfied
 
@@ -56,8 +61,10 @@ call a supplier, or change a real decision. No production Search3/DS2 modules ar
    `/_preview/search3-anex-candidate/anex-hotel-review.php` (not currently published).
    Check authenticated/unauthenticated GET/POST, secure cookies, stale tabs/replay,
    one authorized decision, preview resolver readback and before/after preservation.
-7. Desktop/mobile visual and real authorized session checks remain deferred until
-   that integration. CI HTML is synthetic, not live data or a published owner link.
+7. Real authorized owner-session checks and visual inspection remain deferred until
+   that integration. Automated Chromium HTTP/responsive tests at 1280/820/390/320
+   passed on bbeb870c/run34318775116 (synthetic session/local MySQL, no overflow).
+   CI HTML/screenshots are synthetic, not live data or a published owner link.
 
 No completed mapping/alias checkpoint is mutated by this work. All prior finalized
 delta imports remain finalized. The general release keeps its own DS2-off state.

@@ -23,7 +23,9 @@ $fixtures = [
     'anex_hotel_auto_matches' => 'anex_hotel_id INT PRIMARY KEY,candidate_count INT,automated_status VARCHAR(32),automated_reason VARCHAR(64)',
     'anex_hotel_candidates' => 'anex_hotel_id INT,candidate_rank INT,catalog_hotel_id INT,name_similarity DECIMAL(8,6),score DECIMAL(8,6),distance_m DECIMAL(12,2),candidate_json TEXT,PRIMARY KEY(anex_hotel_id,candidate_rank)',
     'anex_hotel_decisions' => "anex_hotel_id INT PRIMARY KEY,decision_status VARCHAR(32),catalog_hotel_id INT,decided_by VARCHAR(255),decision_note TEXT,decided_at DATETIME",
-    'anex_hotel_search_mappings' => 'anex_hotel_id INT PRIMARY KEY,catalog_hotel_id INT,enabled INT,scope VARCHAR(32),approval_policy VARCHAR(64),match_class VARCHAR(32)'
+    'anex_hotel_search_mappings' => 'anex_hotel_id INT PRIMARY KEY,catalog_hotel_id INT,enabled INT,scope VARCHAR(32),approval_policy VARCHAR(64),match_class VARCHAR(32)',
+    'anex_hotel_content' => 'anex_hotel_id INT PRIMARY KEY,status VARCHAR(24),source_sha CHAR(40),content_sha256 CHAR(64),payload_json MEDIUMTEXT,reason VARCHAR(64),fetched_at_utc DATETIME',
+    'catalog_hotel_details' => 'hotel_id INT PRIMARY KEY,status VARCHAR(24),source_hash CHAR(64),address VARCHAR(1000),site VARCHAR(1000),latitude DECIMAL(10,7),longitude DECIMAL(10,7),fetched_at DATETIME,primary_image_url VARCHAR(2048),description MEDIUMTEXT,images_json MEDIUMTEXT'
 ];
 foreach ($fixtures as $table => $columns) $db->exec('CREATE TABLE ' . $table . ' (' . $columns . ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 $schema = file_get_contents(__DIR__ . '/../app/admin/anex-review/schema.sql');
@@ -42,6 +44,13 @@ $insert->execute([1,3,103,'{}']);
 $db->exec("INSERT INTO anex_hotel_decisions VALUES (20,'accepted',101,'owner:historic','preserve me','2026-09-08 12:00:00')");
 $db->exec("INSERT INTO anex_hotel_decisions VALUES (21,'rejected',NULL,'owner:historic','hotel-wide block','2026-09-08 12:00:00')");
 $db->exec("INSERT INTO anex_hotel_search_mappings VALUES (22,102,1,'preview','owner_exact_and_strong_20260908','strong_candidate')");
+$content = ['id'=>1,'name'=>'Hotel One','address'=>'ANEX address','description'=>'<script>unsafe description</script>',
+    'latitude'=>36.0,'longitude'=>30.0,'photos'=>[['url'=>'https://images.example.com/anex.jpg']]];
+$contentHash = hash('sha256', json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+$payload = AnexReviewService::json(['status'=>'ok','hotel_id'=>1,'content'=>$content,'source_sha256'=>$contentHash]);
+$db->prepare("INSERT INTO anex_hotel_content VALUES (1,'ready',?,?,?,NULL,'2026-09-09 06:00:00')")->execute([str_repeat('a',40),$contentHash,$payload]);
+$db->prepare("INSERT INTO catalog_hotel_details VALUES (101,'success',?,'TV address','https://example.com',36,30,'2026-09-09 06:00:00',?,'Saved TV description',?)")
+    ->execute([str_repeat('b',64),'https://images.example.com/main.jpg','["https://images.example.com/second.jpg","javascript:alert(1)"]']);
 $service = new AnexReviewService($db);
 $canonical = $db->query('SELECT * FROM catalog_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
 $policy = $db->query('SELECT * FROM anex_hotel_search_mappings ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC);
@@ -61,6 +70,14 @@ fails(fn()=>$service->queue(['status'=>'invented']), 'invalid_status');
 fails(fn()=>$service->detail('1 OR 1'), 'invalid_hotel_id');
 $first = $service->detail(1);
 check($first['evidence']['candidate_count'] === 608 && count($first['candidates']) === 3, 'incomplete staging not disguised');
+check($first['content']['status'] === 'ready' && $first['content']['content']['address'] === 'ANEX address', 'content ID/digest verified with restored coordinate types');
+check($first['candidates'][0]['details']['description'] === 'Saved TV description', 'persistent TV content reused');
+$contentVersion=$first['version'];
+$db->exec("UPDATE anex_hotel_content SET content_sha256=REPEAT('c',64) WHERE anex_hotel_id=1");
+check($service->detail(1)['content']['status'] === 'integrity_unavailable', 'corrupt content hidden');
+check($service->detail(1)['version'] !== $contentVersion, 'content integrity change stales evidence');
+$db->prepare('UPDATE anex_hotel_content SET content_sha256=? WHERE anex_hotel_id=1')->execute([$contentHash]);
+check($service->detail(1)['version'] === $contentVersion, 'unchanged recovered content preserves version');
 check($service->detail(30)['source'] === null && $service->detail(30)['candidates'] === [], 'missing evidence remains visible');
 check((int)$db->query('SELECT COUNT(*) FROM anex_review_state')->fetchColumn() === 0, 'GET does not create state');
 check((int)$db->query('SELECT COUNT(*) FROM anex_review_audit')->fetchColumn() === 0, 'GET does not audit a decision');
@@ -139,7 +156,12 @@ check(strpos($html,'<script>alert(1)</script>') === false && strpos($html,'&lt;s
 check(strpos($html,'<img src=x') === false && strpos($html,'&lt;img') !== false,'escaped candidate JSON');
 check(strpos($html,'type="submit" disabled') !== false,'read-only actions disabled');
 check(strpos($html,'608') !== false && strpos($html,'не доказывает отсутствие конкурентов') !== false,'incomplete evidence warning');
-check(strpos($html,'<script') === false && strpos($html,'https://') === false,'no scripts or remote resources');
+check(strpos($html,'<script') === false && strpos($html,'<img') === false,'no scripts or automatic image requests');
+check(strpos($html,'unsafe description&lt;/script&gt;') !== false,'content description escaped');
+check(strpos($html,'javascript:alert') === false && strpos($html,'https://images.example.com') !== false,'safe click-only photo links');
+check(strpos($html,'rel="noopener noreferrer"') !== false,'external photo link privacy');
+check(strpos(anex_review_links(['http://example.com/a','https://user:pass@example.com/a','https://localhost/a','data:image/png,x']),'<a ') === false,'unsafe photo URLs rejected');
+check($db->query('SELECT payload_json FROM anex_hotel_content WHERE anex_hotel_id=1')->fetchColumn() === $payload, 'content payload never rewritten');
 // CI-only synthetic fixture, not user hotel data. Retained for later visual review.
 if (getenv('ANEX_REVIEW_TEST_HTML')) file_put_contents(getenv('ANEX_REVIEW_TEST_HTML'), $html);
 echo 'ANEX_REVIEW_PANEL_OK checks=' . $checks . ' supplier_calls=0 test_db=anex_review_test live_db=untouched' . PHP_EOL;

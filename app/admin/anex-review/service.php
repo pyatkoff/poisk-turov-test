@@ -5,6 +5,7 @@ declare(strict_types=1);
 final class AnexReviewService
 {
     private PDO $db;
+    private array $optionalTables = [];
     private const POLICY = 'owner_exact_and_strong_20260908';
 
     public function __construct(PDO $db)
@@ -25,6 +26,46 @@ final class AnexReviewService
     public static function json($value): string
     {
         return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    }
+
+    private function hasTable(string $table): bool
+    {
+        if (!array_key_exists($table, $this->optionalTables)) {
+            $this->optionalTables[$table] = (bool)$this->rows('SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?', [$table]);
+        }
+        return $this->optionalTables[$table];
+    }
+
+    private function content(int $id, bool $lock): ?array
+    {
+        if (!$this->hasTable('anex_hotel_content')) return null;
+        $row = $this->rows('SELECT anex_hotel_id,status,source_sha,content_sha256,fetched_at_utc,reason,'
+            . ' CASE WHEN OCTET_LENGTH(payload_json)<=1500000 THEN payload_json ELSE NULL END AS payload_json'
+            . ' FROM anex_hotel_content WHERE anex_hotel_id=?' . ($lock ? ' FOR UPDATE' : ''), [$id])[0] ?? null;
+        if ($row === null) return null;
+        $encoded = $row['payload_json']; unset($row['payload_json']);
+        $row['content'] = null;
+        if ($row['status'] !== 'ready') return $row;
+        try {
+            $payload = is_string($encoded) ? json_decode($encoded, true, 512, JSON_THROW_ON_ERROR) : null;
+            $content = $payload['content'] ?? null;
+            if (!is_array($content) || ($content['id'] ?? null) !== $id || ($payload['hotel_id'] ?? null) !== $id
+                || ($payload['status'] ?? '') !== 'ok') throw new RuntimeException('content_id_invalid');
+            // The content projector explicitly casts its two coordinates to float.
+            // Its persistence envelope omits PRESERVE_ZERO_FRACTION, so restore that
+            // known type before reproducing the projector's pinned content digest.
+            foreach (['latitude','longitude'] as $key) if (isset($content[$key])) {
+                if (!is_int($content[$key]) && !is_float($content[$key])) throw new RuntimeException('content_coordinates_invalid');
+                $content[$key] = (float)$content[$key];
+            }
+            $digest = hash('sha256', json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR));
+            if (!is_string($row['content_sha256']) || !hash_equals($row['content_sha256'], $digest)
+                || ($payload['source_sha256'] ?? null) !== $digest) throw new RuntimeException('content_digest_invalid');
+            $row['content'] = $content;
+        } catch (Throwable $e) {
+            $row['status'] = 'integrity_unavailable';
+        }
+        return $row;
     }
 
     private static function id($value): int
@@ -100,6 +141,11 @@ final class AnexReviewService
         foreach ($candidates as &$candidate) {
             $candidate['current'] = $this->rows('SELECT id,name,country_id,country_name,region_name,subregion_name,category,latitude,longitude'
                 . ' FROM catalog_hotels WHERE id=?' . $end, [$candidate['catalog_hotel_id']])[0] ?? null;
+            $candidate['details'] = $this->hasTable('catalog_hotel_details') ? ($this->rows(
+                'SELECT hotel_id,status,source_hash,address,site,latitude,longitude,fetched_at,primary_image_url,'
+                . ' LEFT(description,16000) AS description,CHAR_LENGTH(description)>16000 AS description_truncated,'
+                . ' LEFT(images_json,100000) AS images_json,CHAR_LENGTH(images_json)>100000 AS images_truncated'
+                . ' FROM catalog_hotel_details WHERE hotel_id=?' . $end, [$candidate['catalog_hotel_id']])[0] ?? null) : null;
         }
         unset($candidate);
         $manual = $this->rows('SELECT d.*,h.id AS existing_target FROM anex_hotel_decisions d LEFT JOIN catalog_hotels h ON h.id=d.catalog_hotel_id WHERE d.anex_hotel_id=?' . $end, [$id])[0] ?? null;
@@ -108,7 +154,8 @@ final class AnexReviewService
         $exclusions = $this->rows('SELECT * FROM anex_review_pair_exclusions WHERE anex_hotel_id=? ORDER BY catalog_hotel_id' . $end, [$id]);
         $data = ['anex_hotel_id' => $id, 'country_id' => $o['country_id'], 'hotel_name' => $o['hotel_name'],
             'source' => $source, 'evidence' => $evidence, 'candidates' => $candidates, 'manual' => $manual,
-            'policy' => $policy, 'revision' => (int)$state['revision'], 'exclusions' => $exclusions];
+            'policy' => $policy, 'revision' => (int)$state['revision'], 'exclusions' => $exclusions,
+            'content' => $this->content($id, $lock)];
         // Volatile search counts/timestamps are displayed, but are not mapping evidence.
         $data['version'] = hash('sha256', self::json($data));
         $data['observation'] = $o;
