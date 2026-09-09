@@ -601,7 +601,7 @@
     "records_with_nonempty_description": 25,
     "total_saved_api_records_including_original_pilot": 30
   },
-  "next": "Continue search improvements and protected review-panel access/queue/decision integration. Do not create further standard-API hotel-content batches. Obtain ANEX-confirmed content delivery and verify preserved description values before treating them as full hotel descriptions.",
+  "next": "Decode title/text sections in the panel, preserve stored payload/digest, distinguish FORTUNA from named hotels; no new supplier calls needed.",
   "official_source": {
     "anex_hotel_id": 16193,
     "explicit_room_photo_links": 12,
@@ -661,5 +661,16 @@
     "full_hotel_descriptions_confirmed": false,
     "existing_raw_records": "preserved",
     "next_content_dependency": "ANEX-confirmed separate content API/feed or other permitted delivery with hotel IDs; availability not established"
+  },
+  "saved_text_review": {
+    "report": "reports/anex-saved-descriptions-review-20260909.json",
+    "hotel_descriptions": 29,
+    "fortuna_offer_descriptions": 1,
+    "empty_or_placeholder": 0,
+    "decoded_json_sections": 184,
+    "photo_count": 0,
+    "read_only": true,
+    "supplier_requests": 0,
+    "conclusion": "Actual stored text is substantive; the previous assumption that descriptions might be unavailable is resolved for these records. Future provider contract and completeness remain unconfirmed."
   }
 }
