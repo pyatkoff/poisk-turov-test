@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "kind": "anytour_existing_seo_page_inventory",
+  "observed_at": "2026-09-09",
+  "base_sha": "a3147f1f31969755b210c9325546a44509a96193",
+  "scope": {
+    "mode": "read_only_source_inventory",
+    "repository": "pyatkoff/poisk-turov-test",
+    "release_branch": "release/search3-production-ready-v1",
+    "root": "v2",
+    "purpose": "Map existing page types, indexation controls, data freshness and bounded template handoffs without creating routes or changing production SEO.",
+    "excluded_changes": [
+      "canonical",
+      "robots",
+      "sitemap",
+      "indexation",
+      "redirects",
+      "runtime PHP",
+      "new supplier or API collection"
+    ]
+  },
+  "inventory_method": {
+    "route_wrappers": "Classified checked-in v2/country/**/index.php wrappers by path shape.",
+    "sitemap": "Classified every loc in checked-in v2/sitemap.xml.",
+    "runtime_controls": [
+      "v2/seo-config.php",
+      "v2/seo-launch-slice-v1.php",
+      "v2/site-page-shell-v1.php",
+      "v2/seo-hotel-tour-page-v1.php"
+    ],
+    "data_readers": [
+      "v2/country-page-v1.php",
+      "v2/seo-resort-page-v1.php",
+      "v2/seo-seasonal-page-v1.php",
+      "v2/seo-offer-snapshot-v1.php",
+      "v2/seo-seasonal-offer-snapshot-v1.php",
+      "v2/seo-hotel-tour-page-v1.php",
+      "v2/data/hot-tours-read-v1.php"
+    ]
+  },
+  "checked_route_wrappers": {
+    "root": "v2/country",
+    "total": 227,
+    "distribution": {
+      "country_hub": 1,
+      "country": 14,
+      "resort": 14,
+      "country_month": 36,
+      "resort_month": 60,
+      "hotel": 102
+    },
+    "note": "These are checked-in wrappers, not a claim about every public URL served by the site."
+  },
+  "current_checked_sitemap": {
+    "path": "v2/sitemap.xml",
+    "total_urls": 104,
+    "distribution": {
+      "country": 3,
+      "resort": 5,
+      "country_month": 36,
+      "resort_month": 60,
+      "hotel": 0,
+      "other": 0
+    },
+    "countries": [
+      "/country/turkey/",
+      "/country/egypt/",
+      "/country/maldives/"
+    ],
+    "resorts": [
+      "/country/turkey/alanya/",
+      "/country/turkey/antalya/",
+      "/country/turkey/belek/",
+      "/country/turkey/kemer/",
+      "/country/turkey/side/"
+    ],
+    "interpretation": "The checked sitemap matches the static controlled launch: three countries, five Turkey resorts, all 36 country-month pages and all 60 Turkey resort-month pages. Dynamic Egypt/Maldives resort launch support exists in source but is not counted unless present in this checked sitemap."
+  },
+  "indexation_controls": {
+    "production_gate": "A page is indexable only on anytoour.ru, with SEO_INDEXABLE enabled and an exact normalized path in SEO_INDEXABLE_PATHS.",
+    "preview_gate": "Every isolated preview route is forced to noindex regardless of the production allowlist.",
+    "legacy_search_gate": "V2_LEGACY_SEARCH routes are forced to noindex.",
+    "default_robots": "noindex,follow,max-image-preview:large",
+    "indexable_robots": "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1",
+    "canonical_policy": "Clean self-canonical on anytoour.ru; compatibility hosts consolidate to https://anytoour.ru/poisk-turov/.",
+    "global_robots_file": "v2/robots.txt allows crawling and points to https://anytoour.ru/sitemap.xml; per-page meta robots is the controlled indexation gate.",
+    "hotel_policy": "hotel_tours pages accept review records only, force noindex and are absent from the controlled launch and sitemap."
+  },
+  "page_type_matrix": [
+    {
+      "type": "home",
+      "count": 1,
+      "examples": [
+        "/"
+      ],
+      "intent": "Brand entry and start of tour selection.",
+      "template_or_entry": "v2/index.php",
+      "data_and_freshness": "Editorial shell; live availability begins after the user enters Search3.",
+      "current_indexation": "Not present in the checked sitemap or static exact-path launch allowlist.",
+      "handoff": "Search handoff.",
+      "template_owner": "SITE",
+      "seo_requirement": "Keep one descriptive H1, stable navigation and a crawlable link to the tour search; any indexation change requires separate approval."
+    },
+    {
+      "type": "country_hub",
+      "count": 1,
+      "examples": [
+        "/country/"
+      ],
+      "intent": "Browse available destination countries before searching.",
+      "template_or_entry": "v2/country/index.php",
+      "data_and_freshness": "Checked-in navigation over 14 country pages; availability and prices are not asserted until search.",
+      "current_indexation": "Not present in the checked sitemap or static exact-path launch allowlist.",
+      "handoff": "Country navigation and generic search.",
+      "template_owner": "SITE",
+      "seo_requirement": "Preserve crawlable country links and distinguish navigation copy from live-price claims."
+    },
+    {
+      "type": "country",
+      "count": 14,
+      "examples": [
+        "/country/turkey/",
+        "/country/egypt/",
+        "/country/maldives/",
+        "/country/sri-lanka/"
+      ],
+      "intent": "Choose a country and continue to a matching tour search.",
+      "template_or_entry": "Country wrappers render through the shared SEO country page and site shell.",
+      "data_and_freshness": "Editorial record plus first-party seo_offer_snapshots with expires_at >= NOW(); snapshot readers fail closed without fresh rows.",
+      "current_indexation": "3 of 14 wrappers are in the checked sitemap and static exact-path launch allowlist; the other 11 are existing routes but not part of that checked launch.",
+      "handoff": "Country-scoped Search3 URL with preserved destination identity.",
+      "template_owner": "SITE",
+      "seo_requirement": "Render editorial facts independently from offers; label price freshness, keep the destination-specific search CTA and avoid invented availability when snapshots are absent."
+    },
+    {
+      "type": "resort",
+      "count": 14,
+      "examples": [
+        "/country/turkey/antalya/",
+        "/country/turkey/kemer/",
+        "/country/sri-lanka/bentota/"
+      ],
+      "intent": "Evaluate one resort and search within its country/resort identity.",
+      "template_or_entry": "Resort wrappers render through v2/seo-resort-page-v1.php and the shared site shell.",
+      "data_and_freshness": "Approved editorial record plus fresh first-party offer snapshots; editorial approval and global indexation remain separate gates.",
+      "current_indexation": "5 of 14 wrappers are in the checked sitemap and static launch; 9 are not in the checked sitemap. Generated Egypt/Maldives resort routes must be assessed only from a validated materialized manifest.",
+      "handoff": "Resort-aware search where available, without manufacturing a second search renderer.",
+      "template_owner": "SITE",
+      "seo_requirement": "Keep resort identity visible in title/H1/breadcrumbs and make fallback to country search explicit when the search contract lacks a resort mapping."
+    },
+    {
+      "type": "country_month",
+      "count": 36,
+      "examples": [
+        "/country/turkey/september/",
+        "/country/egypt/january/",
+        "/country/maldives/december/"
+      ],
+      "intent": "Find tours to a country within a named departure month.",
+      "template_or_entry": "Month wrappers use v2/seo-seasonal-page-v1.php and the shared shell.",
+      "data_and_freshness": "Approved seasonal editorial record; exact page_key snapshot, non-expired offers and current-or-future departures. Price-calendar observations are accepted only within the bounded freshness and coverage rules.",
+      "current_indexation": "All 36 checked wrappers are in the checked sitemap and static controlled launch.",
+      "handoff": "Month-bounded Search3 URL; the runtime clamps dates to the selected month and current business date.",
+      "template_owner": "SITE",
+      "seo_requirement": "Show the selected month in visible copy and CTA; preserve exact month boundaries, distinguish current prices from general seasonal guidance and fail closed when data is stale."
+    },
+    {
+      "type": "resort_month",
+      "count": 60,
+      "examples": [
+        "/country/turkey/antalya/september/",
+        "/country/turkey/side/june/"
+      ],
+      "intent": "Find tours to one resort within a named departure month.",
+      "template_or_entry": "Resort-month wrappers use the shared seasonal renderer and site shell.",
+      "data_and_freshness": "Same exact-key, expiry, future-departure and price-calendar coverage constraints as country-month pages.",
+      "current_indexation": "All 60 checked wrappers are in the checked sitemap and static controlled launch.",
+      "handoff": "Resort/month search handoff with exact calendar boundaries.",
+      "template_owner": "SITE",
+      "seo_requirement": "Preserve both resort and month identity through breadcrumbs, H1 and search URL; never replace absent fresh offers with unqualified price text."
+    },
+    {
+      "type": "hotel",
+      "count": 102,
+      "examples": [
+        "/country/turkey/hotel/aegean-park-1601/",
+        "/country/egypt/hotel/coral-hills-resort-162/",
+        "/country/maldives/hotel/angsana-velavaru-74701/"
+      ],
+      "intent": "Review one verified hotel identity and continue to a relevant search.",
+      "template_or_entry": "Hotel wrappers render through v2/seo-hotel-tour-page-v1.php.",
+      "data_and_freshness": "Review-only editorial records with verified hotel/country identity and first-party observations; no supplier request is made by the page reader.",
+      "current_indexation": "0 of 102 are in the checked sitemap. The renderer forces noindex and the controlled launch explicitly excludes hotel_tours.",
+      "handoff": "Hotel-aware search only through the existing protected identity contract.",
+      "template_owner": "SITE with an INT identity dependency",
+      "seo_requirement": "Remain review/noindex until a separate approval; require stable hotel/country IDs, non-duplicative content, fresh offer sufficiency and an unambiguous search handoff before any launch proposal."
+    },
+    {
+      "type": "hot",
+      "count": 1,
+      "examples": [
+        "/hot/"
+      ],
+      "intent": "Browse currently fresh discounted or low-priced departures.",
+      "template_or_entry": "v2/hot/index.php backed by v2/data/hot-tours-read-v1.php.",
+      "data_and_freshness": "Reads first-party hot_tours_current rows only where expires_at > NOW(), price > 0 and departure_date is not before the business date; results are deduplicated by departure, hotel, date and nights.",
+      "current_indexation": "Not present in the checked sitemap or static exact-path launch allowlist.",
+      "handoff": "Offer-specific Search3 transition using the existing URL contract.",
+      "template_owner": "SITE with an INT data dependency",
+      "seo_requirement": "Keep stale/empty states explicit and avoid durable landing-page claims based on inherently short-lived rows."
+    },
+    {
+      "type": "editorial_guide",
+      "count": 1,
+      "examples": [
+        "/rb/"
+      ],
+      "intent": "Explain the tour-selection journey and guide a user into search.",
+      "template_or_entry": "v2/rb/index.php",
+      "data_and_freshness": "Static editorial content; no live offer claim is required.",
+      "current_indexation": "Not present in the checked sitemap or static exact-path launch allowlist.",
+      "handoff": "Generic Search3 transition.",
+      "template_owner": "SITE",
+      "seo_requirement": "Keep advice useful without duplicating country/month pages; retain a clear search handoff and editorial ownership."
+    },
+    {
+      "type": "search",
+      "count": 1,
+      "examples": [
+        "/poisk-turov/"
+      ],
+      "intent": "Run the primary tour search, compare results, select a tour and continue to booking.",
+      "template_or_entry": "Search3 source and its single current renderer/controller/lifecycle owners.",
+      "data_and_freshness": "Live Tourvisor/API behavior under protected URL, payload, identity and price contracts.",
+      "current_indexation": "Not present in the checked sitemap or controlled SEO launch; preview is always noindex.",
+      "handoff": "This is the destination for country, resort, month, hot and hotel transitions.",
+      "template_owner": "SEARCH",
+      "seo_requirement": "Landing templates must pass only validated existing parameters; do not add a second renderer, supplier call or SEO-only API experiment."
+    }
+  ],
+  "bounded_template_handoffs": [
+    {
+      "owner": "SITE",
+      "requirement": "For an existing indexable country page, keep editorial content useful when offers are empty, label fresh price observations and preserve a destination-specific Search3 CTA."
+    },
+    {
+      "owner": "SITE",
+      "requirement": "For country-month and resort-month pages, make country/resort/month identity consistent across title, H1, breadcrumbs and CTA while keeping exact month-bound search dates."
+    },
+    {
+      "owner": "SEARCH",
+      "requirement": "Continue accepting only the existing validated country/resort/month/hotel URL contract; SEO work must not fork renderer/controller ownership."
+    },
+    {
+      "owner": "INT",
+      "requirement": "Expose freshness and identity only through bounded first-party contracts; SEO pages must not start new supplier collection or infer unknown resort/hotel mappings."
+    }
+  ],
+  "next_safe_candidate": {
+    "page_type": "country",
+    "example": "/country/turkey/",
+    "status": "requirements_ready_for_site_owner_review",
+    "reason": "It is already in the exact production allowlist and checked sitemap, has stable destination intent, a shared template, fresh-snapshot fail-closed behavior and an existing Search3 handoff.",
+    "bounded_review": [
+      "Verify useful above-the-fold country intent without relying on a live offer.",
+      "Verify any displayed price has a visible freshness qualifier and disappears cleanly when the snapshot is absent.",
+      "Verify the CTA preserves the country identity and protected Search3 URL contract.",
+      "Verify title, H1, description, breadcrumbs and canonical express one consistent country page identity."
+    ],
+    "not_authorized": [
+      "new route generation",
+      "sitemap expansion",
+      "robots or canonical changes",
+      "hotel indexation",
+      "production publication"
+    ]
+  },
+  "unknowns": [
+    "Whether a materialized Egypt/Maldives core-resort manifest is active in a production environment cannot be established from the checked sitemap alone.",
+    "Search-demand and indexation-performance data are not represented in this source-only inventory.",
+    "Physical Safari rendering remains outside this source audit."
+  ],
+  "deferred": [
+    "Any production SEO indexation, robots, canonical, redirect or sitemap change.",
+    "Mass landing-page expansion.",
+    "Hotel-page launch or sitemap inclusion.",
+    "New API, supplier or resort-identity experiments for SEO."
+  ]
+}
