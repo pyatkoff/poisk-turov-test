@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts/diagnostics'))
@@ -11,7 +12,9 @@ import anex_review_storage as storage
 
 class StorageTests(unittest.TestCase):
     def fixture(self, directory):
-        cp={'rows':[{} for _ in range(292)],'in_flight':[],'batch_needs_finalization':False}
+        cp={'inherited':[{'external_id':i} for i in range(1,91)],
+            'rows':[{'external_id':i} for i in range(91,293)],'completed_total':292,
+            'in_flight':[],'batch_needs_finalization':False}
         triage={'schema_version':1,'scope':'preview','kind':'observed_review_dossiers','source_sha':'a'*40,
                 'checkpoint_sha256':storage.gaps.digest(cp),'summary':{'count':0},'rows':[]}
         for name,value in [('anex-observed-hotel-checkpoint.json',cp),('anex-observed-hotel-triage.json',triage),
@@ -44,6 +47,13 @@ class StorageTests(unittest.TestCase):
             d=Path(temp);self.fixture(d)
             with self.assertRaises(ValueError):storage.prepare(d,'not-sha')
             with self.assertRaises(ValueError):storage.prepare(d,'b'*40,{'action':'inspect','schema_sha256':'0'*64})
+    def test_inherited_history_count_and_duplicates(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);cp,triage=self.fixture(d)
+            self.assertEqual(storage.prepare(d,'b'*40)[0]['action'],'inspect')
+            cp['rows'][0]['external_id']=1
+            (d/'anex-observed-hotel-checkpoint.json').write_text(json.dumps(cp))
+            with self.assertRaisesRegex(ValueError,'completed'):storage.prepare(d,'b'*40)
     def test_php_composition_and_no_supplier(self):
         source=storage.php_source()
         self.assertEqual(source.count('declare(strict_types=1);'),1)
@@ -51,6 +61,23 @@ class StorageTests(unittest.TestCase):
         self.assertIn('class AnexReviewSchemaManager',source)
         self.assertIn('class AnexReviewDossierStore',source)
         self.assertNotIn('AnyTourAnexClient',source)
+    def test_saved_search_candidate_overlap_is_not_acceptance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp)
+            result={'status':'ok','offers':[{'hotel_id':123},{'hotel_id':'123'}]}
+            cp={'cases':{'tv_day':{'state':'completed','result':result,'result_sha256':storage.gaps.digest(result)}}}
+            raw=json.dumps(cp).encode();(d/'saved.json').write_bytes(raw)
+            def row(i,candidates,hints):
+                return {'id':i,'row_json':json.dumps({'status':'review','observation':{'hotel_name':'Example'},'evidence':{'candidates':candidates},'prior_fixed_queue_hints':hints})}
+            envelope={'artifact_id':5,'source_digest':'a'*64,'rows':[row(1,[{'id':123}],[]),row(2,[],[{'id':123}])]}
+            with patch.object(storage,'SAVED_SOURCES',{'saved.json':(storage.digest(raw),('tv_day',))}):
+                audit=storage.saved_search_audit(d,envelope)
+                self.assertEqual(audit['saved_tv_unique_hotels'],1)
+                self.assertEqual(audit['with_candidate_seen_in_saved_tv'],1)
+                self.assertEqual(audit['with_historical_hint_only_seen_in_saved_tv'],1)
+                self.assertEqual(audit['new_bindings'],0)
+                (d/'saved.json').write_bytes(raw+b' ')
+                with self.assertRaisesRegex(ValueError,'changed'):storage.saved_search_audit(d,envelope)
     def test_review_mode_isolated(self):
         import yaml
         workflow=yaml.safe_load((ROOT/'.github/workflows/anex-access-probe.yml').read_text())

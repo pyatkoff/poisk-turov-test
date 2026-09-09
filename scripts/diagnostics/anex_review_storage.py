@@ -13,6 +13,9 @@ import anex_search3_gap_queue as gaps
 
 ROOT = Path(__file__).resolve().parents[2]
 PLAN = Path(__file__).with_name('anex_review_storage_plan.json')
+SAVED_SOURCES = {
+    'anex-paired-search-v2-checkpoint.json': ('013a231497da38399159167c25ebaa0aeb01079d776d7370d163a61bdc90603a', ('tv_day', 'tv_week')),
+    'anex-segment-search-checkpoint.json': ('479bc48067e6147ade99f92e85462ebc73794044d5962f24cd4ff3a11f894cf8', ('tv_alanya', 'tv_5star', 'tv_alanya_5star'))}
 
 
 def digest(raw):
@@ -31,6 +34,48 @@ def schema_files():
     return files, digest((files['schema.sql'] + '\n' + files['dossier-schema.sql']).encode())
 
 
+def saved_search_audit(directory, envelope):
+    """Intersect saved candidate IDs with completed TV searches; never accept a pair."""
+    tv_ids = set()
+    for name, (expected, cases) in SAVED_SOURCES.items():
+        with (directory/name).open('rb') as stream: raw = stream.read(8000001)
+        if len(raw)>8000000 or digest(raw)!=expected: raise ValueError('saved TV checkpoint changed')
+        cp=json.loads(raw)
+        for case in cases:
+            row=cp['cases'][case]; result=row['result']
+            if row['state']!='completed' or result['status']!='ok' or row['result_sha256']!=gaps.digest(result):
+                raise ValueError('saved TV result incomplete')
+            for offer in result['offers']:
+                identifier=offer.get('hotel_id')
+                if str(identifier).isdigit() and int(identifier)>0: tv_ids.add(int(identifier))
+    hits=[]; hint_only=[]; with_candidates=0
+    for item in envelope['rows']:
+        row=json.loads(item['row_json']); candidates=row['evidence'].get('candidates', [])
+        ids={int(c.get('id',c.get('catalog_hotel_id'))) for c in candidates
+             if str(c.get('id',c.get('catalog_hotel_id'))).isdigit()}
+        if ids: with_candidates+=1
+        shared=sorted(ids & tv_ids)
+        prior={int(c.get('id',c.get('catalog_hotel_id'))) for c in row.get('prior_fixed_queue_hints', [])
+               if str(c.get('id',c.get('catalog_hotel_id'))).isdigit()}
+        record={'anex_hotel_id':item['id'],'hotel_name':row['observation'].get('hotel_name'),
+                'status':row['status'],'reason':row.get('reason'),'candidate_local_ids_seen_in_saved_tv':shared,
+                'automatic_acceptance':False}
+        if shared: hits.append(record)
+        elif prior & tv_ids: hint_only.append(dict(record, historical_hint_ids=sorted(prior & tv_ids)))
+    result={'scope':'saved_triage_only','new_supplier_requests':0,'new_bindings':0,
+            'triage_sha256':envelope['source_digest'],'source_artifact_id':envelope['artifact_id'],
+            'saved_tv_unique_hotels':len(tv_ids),'dossiers':len(envelope['rows']),
+            'with_saved_candidates':with_candidates,'with_candidate_seen_in_saved_tv':len(hits),
+            'with_historical_hint_only_seen_in_saved_tv':len(hint_only),
+            'candidate_hits':hits,'historical_hints':hint_only,
+            'meaning':'Existing Tourvisor availability can prioritize candidate review; no match or mismatch is established by this intersection.'}
+    path=directory/'anex-review-saved-search-audit.json'
+    path.write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+    if json.loads(path.read_bytes())!=result: raise ValueError('saved TV audit readback')
+    print(json.dumps({k:v for k,v in result.items() if k not in ('candidate_hits','historical_hints')},ensure_ascii=False))
+    return result
+
+
 def prepare(directory, source_sha, plan=None):
     if not re.fullmatch('[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA required')
@@ -40,7 +85,12 @@ def prepare(directory, source_sha, plan=None):
         raise ValueError('review plan/schema mismatch')
     restored = json.loads((directory / 'anex-checkpoint-source.json').read_bytes())
     cp = json.loads((directory / 'anex-observed-hotel-checkpoint.json').read_bytes())
-    if cp.get('in_flight') or cp.get('batch_needs_finalization') or len(cp.get('rows', [])) < 292:
+    history = cp.get('inherited', []) + cp.get('rows', [])
+    identifiers = [row.get('external_id') for row in history]
+    if (cp.get('in_flight') or cp.get('batch_needs_finalization')
+            or cp.get('completed_total') != len(history) or len(history) < 292
+            or any(type(i) is not int or i <= 0 for i in identifiers)
+            or len(set(identifiers)) != len(identifiers)):
         raise ValueError('completed live checkpoint required')
     raw = (directory / 'anex-observed-hotel-triage.json').read_bytes()
     sha = digest(raw)
@@ -106,7 +156,14 @@ def main():
     directory = Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
     source = os.environ.get('GITHUB_SHA', '')
     if args.prepare:
-        reservation, _ = prepare(directory, source)
+        reservation, envelope = prepare(directory, source)
+        try:
+            saved_search_audit(directory, envelope)
+        except (ValueError, KeyError, OSError):
+            # Independent research cannot authorize writes or destroy storage progress.
+            failure={'status':'unavailable','reason':'saved_search_evidence_not_verified','new_supplier_requests':0,'new_bindings':0}
+            (directory/'anex-review-saved-search-audit.json').write_text(json.dumps(failure)+'\n')
+            print(json.dumps(failure))
         print(json.dumps(reservation)); return
     original = json.loads((directory / 'anex-review-storage-reservation.json').read_bytes())
     reservation, envelope = prepare(directory, source)
@@ -127,5 +184,9 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reset_performed': False}))
+        allowed = {'completed live checkpoint required', 'triage checkpoint mismatch', 'review plan/schema mismatch',
+                   'apply requires pinned inspected evidence', 'reserved source changed', 'source_digest_or_bound',
+                   'source_contract', 'row_contract', 'evidence_digest', 'source_count'}
+        reason = str(error) if isinstance(error, ValueError) and str(error) in allowed else 'see_failure_kind'
+        print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reason': reason, 'reset_performed': False}))
         raise SystemExit(1)
