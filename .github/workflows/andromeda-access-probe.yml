@@ -5,6 +5,7 @@ on:
     paths: ['.github/workflows/andromeda-access-probe.yml']
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: anytour-andromeda-first-access
   cancel-in-progress: false
@@ -17,6 +18,30 @@ jobs:
         with:
           ref: 860cd5e5cb891f5af15bba44f4c0cbb5190441d6
           persist-credentials: false
+      - name: Verify prior preflight made no supplier request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          base = 'https://api.github.com/repos/pyatkoff/poisk-turov-test'
+          def get(path):
+              req = urllib.request.Request(base + path, headers={'Authorization':'Bearer ' + os.environ['GH_TOKEN'], 'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req, timeout=20) as response: return json.load(response)
+          if os.environ['GITHUB_RUN_ATTEMPT'] != '1': raise SystemExit('AUTOMATIC_REPLAY_REFUSED')
+          prior = get('/actions/runs/34361003203')
+          if prior['head_sha'] != '22716e53850982f4889e91fb8f1952e5b44aaab1' or prior['run_attempt'] != 1 or prior['conclusion'] != 'success':
+              raise SystemExit('PRIOR_PREFLIGHT_NOT_VERIFIED')
+          jobs = get('/actions/runs/34361003203/jobs')['jobs']
+          steps = [s for j in jobs for s in j['steps'] if s['name'] == 'Login and read departures once']
+          if len(steps) != 1 or steps[0]['conclusion'] != 'skipped':
+              raise SystemExit('PRIOR_SUPPLIER_RESULT_UNKNOWN')
+          runs = get('/actions/workflows/andromeda-access-probe.yml/runs?branch=feat%2Fint-andromeda-client-20260909&per_page=100')
+          allowed = {34361003203, int(os.environ['GITHUB_RUN_ID'])}
+          if runs['total_count'] > 100 or any(r['id'] not in allowed for r in runs['workflow_runs']):
+              raise SystemExit('OTHER_ACCESS_RUN_REQUIRES_REVIEW')
+          print('Prior configuration-only run verified; supplier step skipped. First real access allowed.')
+          PY
       - name: Private configuration preflight
         id: config
         env:
