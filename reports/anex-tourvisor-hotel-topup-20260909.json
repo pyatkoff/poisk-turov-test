@@ -1,0 +1,532 @@
+{
+  "automatic_topup_enabled": false,
+  "experiment_id": "catalog_hotel_topup_20260909",
+  "historical_files_unchanged": true,
+  "interpretation": "Point query compared with saved broad result; not simultaneous availability or identical package evidence",
+  "new_mappings_accepted": 0,
+  "plan": {
+    "baseline": {
+      "anex_hotels": 45,
+      "overlap": 13,
+      "report": "reports/anex-catalog-cards-20260909.json",
+      "selected": [
+        {
+          "anex_min_rub": 163920,
+          "hotel_id": 445,
+          "name": "IVY CYRENE ISLAND AQUA PARK RESORT",
+          "tourvisor_present": false
+        },
+        {
+          "anex_min_rub": 126163,
+          "hotel_id": 9365,
+          "name": "LIFE RESORTS CORAL HILLS",
+          "tourvisor_present": false
+        },
+        {
+          "anex_min_rub": 129755,
+          "hotel_id": 56094,
+          "name": "OLD VIC SHARM",
+          "tourvisor_present": false
+        }
+      ],
+      "source": "completed browser Search3 DOM from published catalog-card verification",
+      "tourvisor_hotels": 63,
+      "unique_hotels": 95
+    },
+    "criteria": {
+      "adults": 2,
+      "childs": [],
+      "countryId": 1,
+      "currency": "RUB",
+      "dateFrom": "2026-09-18",
+      "dateTo": "2026-09-18",
+      "departureId": 1,
+      "meal": "7",
+      "nightsFrom": 8,
+      "nightsTo": 8,
+      "onlyCharter": false,
+      "onlyDirect": false
+    },
+    "experiment_id": "catalog_hotel_topup_20260909",
+    "hotel_ids": [
+      445,
+      9365,
+      56094
+    ],
+    "limits": {
+      "anex_requests": 0,
+      "content_requests": 0,
+      "continuation": false,
+      "hotel_batch": 3,
+      "mapping_writes": 0,
+      "new_tourvisor_searches": 1,
+      "replay_after_unknown": false,
+      "result_limit": 100,
+      "status_polls": 8
+    },
+    "preview_source_sha": "2545982789ada8db8c4be18be0c1159f624633bc",
+    "purpose": "Measure whether one hotelIds query retrieves Tourvisor offers missing from the saved broad result. Do not claim simultaneous availability or identical packages; do not enable automatic top-up.",
+    "schema_version": 1
+  },
+  "result": {
+    "catalog": [
+      {
+        "accepted_mapping_verified": true,
+        "active": true,
+        "country_id": 1,
+        "hotel_id": 445,
+        "identity_source": "effective_preview_registry",
+        "name": "IVY CYRENE ISLAND AQUA PARK RESORT"
+      },
+      {
+        "accepted_mapping_verified": true,
+        "active": true,
+        "country_id": 1,
+        "hotel_id": 9365,
+        "identity_source": "effective_preview_registry",
+        "name": "LIFE RESORTS CORAL HILLS"
+      },
+      {
+        "accepted_mapping_verified": true,
+        "active": true,
+        "country_id": 1,
+        "hotel_id": 56094,
+        "identity_source": "effective_preview_registry",
+        "name": "OLD VIC SHARM"
+      }
+    ],
+    "coverage_limits": {
+      "continuation_requested": false,
+      "final_price_verified": false,
+      "full_supplier_inventory": false,
+      "hotel_limit": 100,
+      "hotel_limit_reached": false,
+      "operator_filter_requested": false,
+      "same_package_as_anex_verified": false,
+      "search_complete": true,
+      "selected_subset_only": true,
+      "status_poll_count": 2,
+      "status_poll_limit": 8,
+      "supplier_total_known": false
+    },
+    "criteria": {
+      "adults": 2,
+      "childs": [],
+      "countryId": 1,
+      "currency": "RUB",
+      "dateFrom": "2026-09-18",
+      "dateTo": "2026-09-18",
+      "departureId": 1,
+      "hotelIds": [
+        445,
+        9365,
+        56094
+      ],
+      "meal": "7",
+      "nightsFrom": 8,
+      "nightsTo": 8,
+      "onlyCharter": false,
+      "onlyDirect": false
+    },
+    "elapsed_ms": 13743,
+    "experiment_id": "catalog_hotel_topup_20260909",
+    "filter_verification": {
+      "country_mismatch_hotel_ids": [],
+      "local_hotel_post_filter_applied": false,
+      "meal": {
+        "check_scope": "tours_with_valid_date_nights_party_and_rub_price",
+        "counts": {
+          "matched": 106,
+          "mismatched": 0,
+          "unverified": 0
+        },
+        "requested": "7",
+        "response_respects_meal": true
+      },
+      "missing_identity_rows": 0,
+      "missing_requested_hotel_ids": [],
+      "requested_hotel_ids": [
+        445,
+        9365,
+        56094
+      ],
+      "requested_in_initial_search": true,
+      "response_respects_hotel_ids": true,
+      "returned_hotel_ids": [
+        9365,
+        56094,
+        445
+      ],
+      "unexpected_hotel_ids": []
+    },
+    "generated_at_utc": "2026-09-09T08:07:44+00:00",
+    "input": {
+      "experiment_id": "catalog_hotel_topup_20260909",
+      "hotel_ids": [
+        445,
+        9365,
+        56094
+      ],
+      "preview_source_sha": "2545982789ada8db8c4be18be0c1159f624633bc"
+    },
+    "no_request": false,
+    "ok": true,
+    "preservation_after": {
+      "anex_hotel_decisions": {
+        "count": 9,
+        "sha256": "417aaeae92edbe39040cb893b9d69306c49dd044ed38ac9e5da4bef55cacbdd2"
+      },
+      "anex_hotel_search_mappings": {
+        "count": 12890,
+        "sha256": "4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc"
+      },
+      "anex_hotels": {
+        "count": 8362
+      },
+      "catalog_hotels": {
+        "count": 133703
+      },
+      "effective_registry_count": 12899
+    },
+    "preservation_before": {
+      "anex_hotel_decisions": {
+        "count": 9,
+        "sha256": "417aaeae92edbe39040cb893b9d69306c49dd044ed38ac9e5da4bef55cacbdd2"
+      },
+      "anex_hotel_search_mappings": {
+        "count": 12890,
+        "sha256": "4d9d83071a44bea7a5cc2b1faf1d979eb28798f0de77cb32c8dd1de1039f92fc"
+      },
+      "anex_hotels": {
+        "count": 8362
+      },
+      "catalog_hotels": {
+        "count": 133703
+      },
+      "effective_registry_count": 12899
+    },
+    "preservation_verified": true,
+    "preview_source_sha": "2545982789ada8db8c4be18be0c1159f624633bc",
+    "raw_response": {
+      "hotel_count": 3,
+      "hotel_ids": [
+        9365,
+        56094,
+        445
+      ],
+      "hotels": [
+        {
+          "accepted_tour_count": 28,
+          "country_id": 1,
+          "hotel_id": 9365,
+          "meal_filter_counts": {
+            "matched": 28,
+            "mismatched": 0,
+            "unverified": 0
+          },
+          "meal_mismatched_samples": [],
+          "meal_unverified_samples": [],
+          "minimum_price_rub": "140819",
+          "name": "LIFE RESORTS CORAL HILLS",
+          "raw_tour_count": 28,
+          "rejected_tour_count": 0,
+          "rejections": [],
+          "samples": [
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Интурист",
+              "placement": "DBL",
+              "price": "140819",
+              "room": "standard garden view room",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            },
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Анекс Тур",
+              "placement": "DBL",
+              "price": "140897",
+              "room": "standard garden view room",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            },
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Интурист",
+              "placement": "DBL",
+              "price": "142600",
+              "room": "standard garden view room",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            }
+          ]
+        },
+        {
+          "accepted_tour_count": 43,
+          "country_id": 1,
+          "hotel_id": 56094,
+          "meal_filter_counts": {
+            "matched": 43,
+            "mismatched": 0,
+            "unverified": 0
+          },
+          "meal_mismatched_samples": [],
+          "meal_unverified_samples": [],
+          "minimum_price_rub": "144372",
+          "name": "OLD VIC SHARM",
+          "raw_tour_count": 43,
+          "rejected_tour_count": 0,
+          "rejections": [],
+          "samples": [
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Fun&Sun (RU)",
+              "placement": "DBL",
+              "price": "144372",
+              "room": "standard room",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            },
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Fun&Sun (RU)",
+              "placement": "DBL",
+              "price": "146914",
+              "room": "superior pool",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            },
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Fun&Sun (RU)",
+              "placement": "DBL",
+              "price": "148186",
+              "room": "deluxe pool room",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            }
+          ]
+        },
+        {
+          "accepted_tour_count": 35,
+          "country_id": 1,
+          "hotel_id": 445,
+          "meal_filter_counts": {
+            "matched": 35,
+            "mismatched": 0,
+            "unverified": 0
+          },
+          "meal_mismatched_samples": [],
+          "meal_unverified_samples": [],
+          "minimum_price_rub": "180056",
+          "name": "IVY CYRENE ISLAND AQUA PARK RESORT",
+          "raw_tour_count": 35,
+          "rejected_tour_count": 0,
+          "rejections": [],
+          "samples": [
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Fun&Sun (RU)",
+              "placement": "DBL",
+              "price": "180056",
+              "room": "standard room",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            },
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Pegas Touristik",
+              "placement": "DBL",
+              "price": "181073",
+              "room": "Стандарт Вид на сад",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            },
+            {
+              "adults": 2,
+              "children": 0,
+              "currency": "RUB",
+              "currency_source": "response",
+              "date": "2026-09-18",
+              "final_price_verified": false,
+              "meal": "AI",
+              "meal_filter_match": true,
+              "nights": 8,
+              "operator": "Pegas Touristik",
+              "placement": "DBL",
+              "price": "182469",
+              "room": "Стандарт Вид на сад",
+              "same_package_as_anex_verified": false,
+              "traveller_context_source": "request"
+            }
+          ]
+        }
+      ],
+      "tour_count": 106
+    },
+    "requests": {
+      "anex": 0,
+      "total": 4,
+      "tourvisor": 4,
+      "tourvisor_log": [
+        {
+          "action": "search_start",
+          "attempt": 1,
+          "curl_errno": 0,
+          "elapsed_ms": 367,
+          "http_status": 200,
+          "response_bytes": 25,
+          "retry_after_seconds": null
+        },
+        {
+          "action": "search_status",
+          "attempt": 1,
+          "curl_errno": 0,
+          "elapsed_ms": 172,
+          "http_status": 200,
+          "response_bytes": 113,
+          "retry_after_seconds": null
+        },
+        {
+          "action": "search_status",
+          "attempt": 1,
+          "curl_errno": 0,
+          "elapsed_ms": 254,
+          "http_status": 200,
+          "response_bytes": 114,
+          "retry_after_seconds": null
+        },
+        {
+          "action": "search_results",
+          "attempt": 1,
+          "curl_errno": 0,
+          "elapsed_ms": 266,
+          "http_status": 200,
+          "response_bytes": 57137,
+          "retry_after_seconds": null
+        }
+      ]
+    },
+    "schema_version": 1,
+    "scope": "preview",
+    "search_started": true,
+    "search_status_samples": [
+      {
+        "minPrice": 140897,
+        "progress": 36,
+        "status": "searching"
+      },
+      {
+        "minPrice": 140819,
+        "progress": 100,
+        "status": "complete"
+      }
+    ],
+    "side_effects": {
+      "catalog_writes": 0,
+      "content_requests": 0,
+      "mapping_writes": 0,
+      "observation_writes": 0
+    },
+    "status": "ok",
+    "summary": {
+      "meal_filter_counts": {
+        "matched": 106,
+        "mismatched": 0,
+        "unverified": 0
+      },
+      "meal_rejection_sample_limit_per_type": 2,
+      "rejected_tours": 0,
+      "requested_hotels_returned": 3,
+      "returned_hotels": 3,
+      "returned_unique_hotels": 3,
+      "sample_limit_per_hotel": 3,
+      "valid_tours": 106
+    }
+  },
+  "result_sha256": "c750d35fbe9c97672c1a8eceabc64ce7641c15a42a87a08382be1a2e43666c81",
+  "schema_version": 1,
+  "source_sha": "4153da66ea6c80712047e0b2500c3e79716ff23f",
+  "state": "completed",
+  "repository": "pyatkoff/poisk-turov-test",
+  "branch": "feature/anex-search-adapter-20260907",
+  "execution": {
+    "pr": 1696,
+    "pr_source_sha": "45d30f8cfa62ef64688258bc61b3ec7a3061a923",
+    "workflow_run_id": 34327330431,
+    "workflow_job_id": 102387495807,
+    "reservation_artifact_id": 10094307422,
+    "final_artifact_id": 10094318067,
+    "workflow_conclusion": "success",
+    "security_run_id": 34327248876
+  },
+  "next_action": {
+    "repeat_experiment": false,
+    "automatic_runtime_topup_enabled": false,
+    "proposal": "Prepare a bounded user-initiated Tourvisor check for already accepted local hotel IDs omitted by the completed broad result, retaining original criteria and the existing hotelIds contract. Do not launch searches on rendering or enable mass top-up."
+  }
+}

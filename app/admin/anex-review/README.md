@@ -48,15 +48,21 @@ call a supplier, or change a real decision. No production Search3/DS2 modules ar
    has been created in this packet.
 3. Apply `schema.sql` through an approved, bounded CLI migration with registry/manual/
    staging preservation hashes and readback. Web requests never execute DDL.
-4. Wire pair exclusions into all automatic acceptance paths, including a fresh
-   rejection check inside the importer transaction, then test it. Until then web
-   writes are **disabled** even for an authenticated viewer. Existing paired/cached
-   pinned importers were intentionally not changed or rerun in this packet.
-5. Persist live dossiers not yet represented by staging into a durable source store.
-   Observations are already persistent; staging top-five candidates survive artifact
-   expiry but may predate live review. Missing live candidates are shown as missing,
-   not substituted with fabricated evidence. The separate owner-authorized content
-   pilot owns its own storage; this panel does not duplicate it.
+4. Shared importer and effective-resolver pair exclusions are implemented in
+   PR #1698. The writer uses the same observation-row mutex as panel decisions,
+   then a fresh locking rejection read inside its transaction. Reimports and a
+   concurrent committed rejection are covered by real MySQL writer tests.
+   Only verified legacy table absence is optional; inaccessible/broken review
+   tables fail closed. Before enabling web writes, confirm the deployed acceptance
+   paths use these guards and complete live migration/readback. Historical finalized
+   paired/cached batches must not be rerun. Web writes remain **disabled** while
+   the remaining real deployment gates are incomplete.
+5. Durable dossier source code is implemented in PR #1697 (see dossier-bridge.md):
+   offline packer, immutable archive and optional panel read path. Live archive
+   migration and import are still pending; complete them from a verified finalized
+   triage artifact with provenance, preservation and byte/hash readback. Observations
+   are already persistent. Missing live evidence and historical hints must never be
+   replaced by fabricated candidates. The separate content store remains separate.
 6. Add only this page/admin package to the isolated preview deployment manifest with
    exact source/artifact provenance. Intended path:
    `/_preview/search3-anex-candidate/anex-hotel-review.php` (not currently published).
@@ -103,3 +109,16 @@ labelled as FORTUNA allocation conditions, not evidence for a specific hotel;
 other hotels are not classified by the word Fortuna in their names. This is display
 context, not a change to the manual decision policy or an automatic mapping.
 Evidence: `reports/anex-saved-descriptions-review-20260909.json`.
+
+## Pair exclusion verification (9 September 2026)
+
+PR #1698 is merged only into the ANEX feature branch. Source and own-preview
+resolver: `8c9378315277dbabb9405d8dcde1f98725f2bb21`.
+Push panel run34327629394 passed96 MySQL checks and HTTP/Chromium tests at
+1280/820/390/320 with synthetic identity; the full ANEX workflow34327629358
+also passed, including90 registry checks and isolated preview publication.
+The panel itself is still unpublished; no live schema migration or owner decision
+was made. See `reports/anex-review-pair-exclusions-20260909.json` for evidence.
+The next independent code packet is a bounded CLI schema readiness/migration
+runner (read-only by default), followed by verified live dossier import and the actual
+authentication/deployment integration above.

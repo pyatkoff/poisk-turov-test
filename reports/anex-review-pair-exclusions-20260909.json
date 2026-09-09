@@ -1,0 +1,114 @@
+{
+  "branch": "feature/anex-search-adapter-20260907",
+  "date": "2026-09-09",
+  "deployment": {
+    "artifact_id": 10094445724,
+    "artifact_sha256": "dc1ed9c521565f41477ca6fc84fd7058654e57d604589ca879db1136150c28d7",
+    "file_count": 732,
+    "general_preview_changed": false,
+    "panel_entrypoint_published": false,
+    "production_entry_changes": false,
+    "source_sha": "8c9378315277dbabb9405d8dcde1f98725f2bb21",
+    "url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/"
+  },
+  "implementation": {
+    "compatibility": "Optional legacy absence allowed only for a verified missing table; broken view, inaccessible table, invalid rows or oversized exclusions fail closed",
+    "live_manual_decisions_changed": false,
+    "live_schema_migrated": false,
+    "panel_published": false,
+    "reimports": "Explicitly rejected incoming pair is skipped; no alternate pair is inferred",
+    "rejected_pair_check": "Fresh locking read inside importer transaction, after the same observation-row mutex used by panel decisions",
+    "resolver": "Pair exclusions applied after policy and manual decisions",
+    "write_enabled": false
+  },
+  "merge_and_published_source_sha": "8c9378315277dbabb9405d8dcde1f98725f2bb21",
+  "next": {
+    "bounded_code_task": "CLI readiness/migration for existing panel schema.sql and dossier-schema.sql with default read-only and explicit bounded apply; preserve live registry/manual/staging; wire verified finalized triage import; no HTTP DDL",
+    "remaining_live_requirements": [
+      "Confirmed existing owner authentication authority and trusted adapter outside document root",
+      "Apply the completed durable dossier source packet to a verified finalized triage with provenance and byte/hash readback",
+      "Bounded schema migration and readback",
+      "Scoped preview admin deployment manifest and real authorized session verification"
+    ],
+    "repeat_finished_mapping_or_content_batches": false
+  },
+  "pr": 1698,
+  "pr_source_sha": "125b85aa83748d8830f6a90daa13ccc610141ce9",
+  "repository": "pyatkoff/poisk-turov-test",
+  "schema_version": 1,
+  "scope": "isolated ANEX preview",
+  "status": "shared importer and effective resolver guards implemented and verified; panel not published",
+  "stock_post_deploy_probe": {
+    "default_form_probe": {
+      "observation": {
+        "persisted_hotels": 297,
+        "previously_observed": 297,
+        "status": "stored",
+        "unique_hotels": 297,
+        "verified": true
+      },
+      "ok": true,
+      "projected_hotels": 155,
+      "supplier_offers": 297
+    },
+    "local_mappings": {
+      "effective_after_manual_decisions": 12899,
+      "exact": 10608,
+      "strong": 2282,
+      "total": 12890,
+      "unique_catalog_hotels": 11067
+    },
+    "main_probe": {
+      "observation": {
+        "persisted_hotels": 161,
+        "previously_observed": 161,
+        "status": "stored",
+        "unique_hotels": 161,
+        "verified": true
+      },
+      "projected_hotels": 58,
+      "supplier_offers": 161
+    },
+    "note": "Existing deployment verification made normal ANEX requests and refreshed already observed hotels. This is separate from the completed Tourvisor experiment, which made zero ANEX requests and zero DB writes.",
+    "ok": true,
+    "source_sha": "8c9378315277dbabb9405d8dcde1f98725f2bb21",
+    "status": "ok",
+    "supplier_content_requests": 0,
+    "supplier_requests_total": 8
+  },
+  "verification": {
+    "browser_artifact_id": 10094424802,
+    "browser_artifact_sha256": "4ffe8949920985107bca518cffc2b33a6d0a19e6d205471d45ceb69d3f5ab835",
+    "browser_boundaries": "auth/CSRF/replay/stale passed with synthetic identity",
+    "browser_horizontal_overflow": false,
+    "browser_widths": [
+      1280,
+      820,
+      390,
+      320
+    ],
+    "conclusion": "success",
+    "full_anex_workflow_job": 102388455789,
+    "full_anex_workflow_run": 34327629358,
+    "mysql_cases": [
+      "Rejected pair followed by two real writer reimports",
+      "Explicitly supplied allowed alternative",
+      "Concurrent rejection commits while writer waits on the shared mutex",
+      "Prior manual decisions preserved"
+    ],
+    "mysql_checks": 96,
+    "mysql_scope": "Disposable anex_review_test database; synthetic owner session; no live DB credentials",
+    "pr_panel_job": 102387992732,
+    "pr_panel_run": 34327484626,
+    "push_panel_job": 102388456962,
+    "push_panel_run": 34327629394,
+    "registry_php_checks": 90,
+    "security_run": 34327484643
+  },
+  "related_parallel_packet": {
+    "pr": 1697,
+    "merge_sha": "f165f7b4c1fe324a16280a394e1746e08f5d331d",
+    "status": "durable dossier source and tests completed; live schema/import still pending",
+    "report": "reports/anex-review-durable-dossiers-20260909.json"
+  }
+}
