@@ -43,6 +43,7 @@ def remote_run(payload):
     before = php(SNAPSHOT_PHP, {'mode': 'snapshot'})
     if before.get('status') != 'ok':
         raise ValueError('preservation unavailable')
+    repair = php(REPAIR_PHP, {})
     audit = php(AUDIT_PHP, {'raw_limit': 2000})
     content = php(CONTENT_PHP, payload, timeout=220)
     photos = php(PHOTOS_PHP, {'source_sha': payload['source_sha']})
@@ -52,7 +53,7 @@ def remote_run(payload):
     if before != after:
         raise ValueError('mapping preservation mismatch')
     return {'schema_version': 1, 'source_sha': payload['source_sha'],
-            'tourvisor': audit, 'anex': content, 'photos': photos, 'preservation': after}
+            'tourvisor': audit, 'anex': content, 'photos': photos, 'media_repair': repair, 'preservation': after}
 
 
 def execute(payload):
@@ -68,6 +69,7 @@ def execute(payload):
     for var, body in {
         'SNAPSHOT_PHP': php_body('anex_search3_gap_details.php'),
         'AUDIT_PHP': php_body('anex_search3_catalog_content_reader.php'),
+        'REPAIR_PHP': Path(__file__).resolve().parents[2].joinpath('v2/data/hotel-details-v1.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_catalog_content_repair.php'),
         'PHOTOS_PHP': Path(__file__).resolve().parents[2].joinpath('app/integrations/anex-client.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_photos.php'),
         'CONTENT_PHP': php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_collect.php'),
     }.items():
@@ -112,7 +114,7 @@ def main():
         'catalog': report['tourvisor'].get('catalog'), 'coverage': report['tourvisor'].get('coverage'),
         'coverage_countries': [row for row in report['tourvisor'].get('countries', []) if row['sync_status'] != 'success' or row['successful_rows_seen_mismatch']],
         'raw_media_profile': report['tourvisor'].get('raw_media_profile'),
-        'photos': report['photos'],
+        'photos': report['photos'], 'media_repair': report['media_repair'],
         'details': report['tourvisor'].get('details'), 'anex_status': anex.get('status'),
         'supplier_requests': anex.get('supplier_requests'), 'cached': anex.get('cached'),
         'anex_rows': [{'id': row['anex_hotel_id'], 'status': row['status'],
@@ -120,7 +122,7 @@ def main():
             'photos': len(((row.get('payload') or {}).get('content') or {}).get('photos', []))}
             for row in anex.get('rows', [])]}
     print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
-    if anex.get('status') != 'ok' or report['tourvisor'].get('status') != 'ok':
+    if anex.get('status') != 'ok' or report['tourvisor'].get('status') != 'ok' or report['media_repair'].get('status') != 'ok':
         raise ValueError('one content operation incomplete; inspect preserved report')
 
 
