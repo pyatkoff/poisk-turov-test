@@ -1,0 +1,59 @@
+name: Andromeda reserved access probe
+on:
+  push:
+    branches: ['feat/int-andromeda-client-20260909']
+    paths: ['.github/workflows/andromeda-access-probe.yml']
+permissions:
+  contents: read
+concurrency:
+  group: anytour-andromeda-first-access
+  cancel-in-progress: false
+jobs:
+  access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 860cd5e5cb891f5af15bba44f4c0cbb5190441d6
+          persist-credentials: false
+      - name: Private configuration preflight
+        id: config
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'andromeda-access'
+          root.mkdir(mode=0o700, exist_ok=True)
+          present = {key: bool(os.environ.get(key)) for key in ('ANDROMEDA_USERNAME', 'ANDROMEDA_PASSWORD')}
+          ready = all(present.values()) and os.environ['GITHUB_RUN_ATTEMPT'] == '1'
+          report = {'source_sha':'860cd5e5cb891f5af15bba44f4c0cbb5190441d6', 'credentials_present':present,
+                    'status':'reserved' if ready else 'configuration_required_or_replay_refused',
+                    'actions':['login','townfrom'] if ready else [], 'max_supplier_calls':2 if ready else 0,
+                    'run_id':os.environ['GITHUB_RUN_ID'], 'attempt':os.environ['GITHUB_RUN_ATTEMPT']}
+          path = root / 'reservation.json'
+          with path.open('x') as f: json.dump(report, f, indent=2)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write('ready=' + str(ready).lower() + '\n')
+          print(json.dumps(report))
+          PY
+      - name: Preserve reservation before supplier access
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-access-reservation
+          path: ${{ runner.temp }}/andromeda-access/reservation.json
+          if-no-files-found: error
+      - name: Login and read departures once
+        if: steps.config.outputs.ready == 'true'
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/andromeda-access-probe.php --execute "$RUNNER_TEMP/andromeda-access/result.json"
+      - name: Preserve bounded result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-access-result
+          path: ${{ runner.temp }}/andromeda-access/*.json
+          if-no-files-found: error
