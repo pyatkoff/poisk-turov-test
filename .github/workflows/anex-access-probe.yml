@@ -45,7 +45,7 @@ on:
     inputs:
       operation:
         type: choice
-        options: [observed, gaps, preview, paired, segments, content]
+        options: [observed, gaps, preview, paired, segments, content, topup]
         default: observed
         description: Focused hotel queue, isolated preview, or reserved search experiment
 
@@ -79,15 +79,19 @@ jobs:
           else:
               paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
               content = any(p.startswith('scripts/diagnostics/anex_search3_catalog_content') or p == 'scripts/diagnostics/anex_search3_hotel_content.php' for p in paths)
+              topup = any(p.startswith('scripts/diagnostics/anex_search3_topup_') or p in ('tests/anex_search3_topup_experiment_test.py', 'tests/anex-search3-topup-runner-smoke.php') for p in paths)
               paired = any(p.startswith('scripts/diagnostics/anex_search3_paired_') for p in paths)
               segments = any(p.startswith('scripts/diagnostics/anex_search3_segment_') for p in paths)
-              mode = 'content' if content else 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
-          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content'): raise SystemExit('Invalid ANEX operation')
+              mode = 'topup' if topup else 'content' if content else 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
+          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content', 'topup'): raise SystemExit('Invalid ANEX operation')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
           print('ANEX operation:', mode)
           PYTHON
       - name: Verify request and credential boundaries locally
         run: |
+          python3 -B tests/anex_search3_topup_experiment_test.py
+          php -l scripts/diagnostics/anex_search3_topup_runner.php
+          php tests/anex-search3-topup-runner-smoke.php
           python3 -B tests/anex_search3_catalog_content_test.py
           php -l scripts/diagnostics/anex_search3_catalog_content_reader.php
           php -l scripts/diagnostics/anex_search3_catalog_content_inspect.php
@@ -179,6 +183,32 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
+      - name: Reserve one owner-approved Tourvisor hotel batch
+        if: steps.operation.outputs.mode == 'topup'
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_topup_experiment.py --prepare
+      - name: Preserve hotel-batch reservation before its single search
+        if: steps.operation.outputs.mode == 'topup'
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}-topup-reserved
+          path: ${{ runner.temp }}/anex-catalog/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Query three mapped hotels in one Tourvisor search
+        if: steps.operation.outputs.mode == 'topup'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_topup_experiment.py --run
+      - name: Save the bounded hotel-batch result without enabling automatic searches
+        if: always() && steps.operation.outputs.mode == 'topup'
+        env:
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_topup_experiment.py --finalize
       - name: Inspect preserved ANEX description values (read-only; supplier content collection stopped)
         if: steps.operation.outputs.mode == 'content'
         env:
@@ -501,4 +531,3 @@ jobs:
           path: ${{ runner.temp }}/anex-catalog/
           if-no-files-found: error
           retention-days: 30
-
