@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../v2/country-page-v1.php';
+require_once __DIR__ . '/../v2/seo-seasonal-page-v1.php';
 
 function cal_fail(string $message): never
 {
