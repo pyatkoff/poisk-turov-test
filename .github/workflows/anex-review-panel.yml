@@ -28,7 +28,6 @@ jobs:
     timeout-minutes: 10
     env:
       ANEX_REVIEW_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_review_test;charset=utf8mb4'
-      ANEX_REVIEW_TEST_ROOT: '${{ runner.temp }}/anex-review-http'
     services:
       mysql:
         image: mysql:8.0
@@ -55,6 +54,7 @@ jobs:
           "$RUNNER_TEMP/anex-review-browser/node_modules/.bin/playwright" install --with-deps chromium
       - name: Verify real entrypoint against synthetic owner session and local MySQL
         run: |
+          export ANEX_REVIEW_TEST_ROOT="$RUNNER_TEMP/anex-review-http"
           mkdir -p "$ANEX_REVIEW_TEST_ROOT"
           php tests/anex-review-http-fixture.php
           php -S 127.0.0.1:8765 tests/anex-review-http-fixture.php > "$ANEX_REVIEW_TEST_ROOT/server.log" 2>&1 &
