@@ -55,3 +55,14 @@ foreach(['0','1,0','1&OPERATORS=7',implode(',',range(1,31))] as $badHotels){
  try{AnyTourAndromedaClient::validatePriceParams($bad);throw new LogicException('invalid HOTELS accepted');}catch(InvalidArgumentException $expected){}
 }
 echo "Andromeda hotel filter: accepted catalog IDs, full coverage, country/activity, pagination and upstream request passed\n";
+
+$pointState=[];$pointSaved=[];$pointCalls=0;
+$fullClient=new AnyTourAndromedaClient(static function($url)use(&$pointCalls){
+ ++$pointCalls;parse_str(parse_url($url,PHP_URL_QUERY),$q);
+ return ['status'=>200,'body'=>json_encode($q['action']==='login'?['sid'=>'full_point_session']:['PAGE'=>1,'PAGES_COUNT'=>0,'PRICES'=>[]])];
+},true);
+$fullHandler=new AnyTourAndromedaSearch($pointState,static function($s)use(&$pointSaved){$pointSaved=$s;return true;},true,true);
+$full=$fullHandler->start($point,'full_point',1,time(),$fullClient,'test','test');
+if($full['status']!=='complete'||($pointSaved['store']['criteria']['HOTELS']??null)!=='2000042763')throw new RuntimeException('hotel criteria rejected by private store');
+if($fullHandler->resume('full_point',1,time())!==$full||$pointCalls!==2)throw new RuntimeException('point store resume changed or spent API');
+echo "Upstream hotel criteria retained through client, store and cached resume passed\n";
