@@ -1,0 +1,52 @@
+{
+  "date": "2026-09-09",
+  "issue": 1717,
+  "pr": 1763,
+  "source": "860cd5e5cb891f5af15bba44f4c0cbb5190441d6",
+  "status": "live_auth_and_departures_verified_not_ui_published",
+  "implemented": [
+    "authorization_and_catalog_protocol",
+    "explicit_https_transport",
+    "reserved_login_townfrom_probe",
+    "dictionary_row_identity_validation"
+  ],
+  "new_in_this_pass": "Reject malformed dictionary rows and duplicate IDs before counting a successful probe; preserve opaque numeric string IDs and source fields.",
+  "checks": {
+    "offline_run": 34360654617,
+    "job": 102496464272,
+    "security_run": 34360654636,
+    "protocol": 92,
+    "transport_cli": 10
+  },
+  "supplier_calls": 2,
+  "db_writes": 0,
+  "published": false,
+  "credentials": "both private secrets confirmed present",
+  "next_action": "Separate bounded catalog capture: retain sanitized dictionaries and derive one destination/departure ID from responses before state/all. Completed access probe is not replayed.",
+  "deferred": [
+    "raw_dictionary_capture",
+    "operator_country_hotel_catalogs",
+    "account_wide_limits",
+    "price_normalizer",
+    "shared_search_handoff"
+  ],
+  "docs": "Official wiki successfully read via its normal index; PDF blocker retired.",
+  "live": {
+    "run": 34361393106,
+    "job": 102498987683,
+    "workflow_sha": "5f0137667bd06359261ce3b327510f03dfdc5f36",
+    "executable_sha": "860cd5e5cb891f5af15bba44f4c0cbb5190441d6",
+    "completed_at": "2026-09-09T14:06:27Z",
+    "actions": [
+      "login",
+      "townfrom"
+    ],
+    "departure_count": 270,
+    "result_artifact": 10107960917,
+    "reservation_artifact": 10107954670,
+    "result_digest": "sha256:7914d8861bb31dfab534462a9843a968d55580545e5ba6a0ca19211576a314d0",
+    "checkpoint_readback": "runner",
+    "raw_departures_saved": false,
+    "independent_zip_download": false
+  }
+}

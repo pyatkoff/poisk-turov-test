@@ -1,0 +1,41 @@
+{
+  "actions": [
+    "login",
+    "townfrom",
+    "state",
+    "all"
+  ],
+  "countries": 91,
+  "country_id": 3,
+  "counts": {
+    "CURRENCY": 12,
+    "HOTELS": 905,
+    "MEAL": 9,
+    "OPERATORS": 24,
+    "STARS": 8,
+    "TOWNTO": 51
+  },
+  "departure_id": 1,
+  "departures": 270,
+  "digests": {
+    "all": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+    "state": "e9182ac79e0d4f8d2eec8c3868d4a4f0469446de7ba36512927c802ddd5ddfe2",
+    "townfrom": "2c21726e9bf684327d576778dde31f4479e6f9f5948afa5bd1792138f783dfe8"
+  },
+  "finished_at": "2026-09-09T14:13:06+00:00",
+  "stage": "catalog_moscow_egypt_v1",
+  "state": "completed",
+  "run": 34362120510,
+  "job": 102501480839,
+  "executable_sha": "6cba9861544a607c233efcf17147392dd1834de5",
+  "workflow_sha": "fd34bf914b92850d7a8408d8c5e05ec28baffc7b",
+  "supplier_calls": 4,
+  "price_calls": 0,
+  "db_writes": 0,
+  "published": false,
+  "artifact": 10108261911,
+  "artifact_digest": "sha256:6ea542304ca111e3b8d7550ffaf9b1568e08490e20886e70feddc2cab0148da3",
+  "reservation_artifact": 10108253865,
+  "independent_zip_download": false,
+  "next_action": "Inspect saved dictionaries on runner without supplier calls, then bounded price adapter/probe."
+}
