@@ -28,7 +28,12 @@ const baselineBundles = Object.fromEntries(['css', 'js'].map(type => {
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750"><path fill="#9ac7df" d="M0 0h1200v750H0z"/><path fill="#f5efe0" d="M250 150h700v600H250z"/></svg>');
 const tour = { id: 'geometry-tour', price: 148500, hotel: { name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' } }, departure: { name: 'Москва' }, date: '2026-09-12', nights: 9, adults: 2, childs: 1, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL + CHD', operator: { name: 'TEST OPERATOR' }, isCharter: true, picture, hotelDescription: 'Описание проверочного отеля. '.repeat(16) };
 const segment = { company: { name: 'Test airline' }, number: 'AB123', departure: { name: 'Москва', airport: { name: 'Шереметьево', code: 'SVO' }, time: '09:30' }, arrival: { name: 'Анталья', airport: { name: 'Анталья', code: 'AYT' }, time: '14:00' }, baggage: 20, carryOn: '5 кг' };
-const flights = [{ isDefault: true, price: { value: 148500 }, forward: [segment], backward: [{ ...segment, number: 'AB124' }] }];
+const flights = Array.from({length:6},(_,index)=>({
+  isDefault:index===0,
+  price:{value:148500+index*1250},
+  forward:[{...segment,number:'AB'+(123+index)}],
+  backward:[{...segment,number:'AB'+(223+index)}]
+}));
 const settle = page => page.evaluate(async () => {
   await document.fonts.ready;
   // Drain the presentation frame/zero-timer handoff before canonicalizing scroll.
@@ -105,6 +110,18 @@ async function run(browser, width, previous) {
       assert.equal(await page.evaluate(()=>typeof window.V2PriceConfidenceV1),'undefined','retired price-confidence runtime is absent');
       assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
       assert.equal(await page.locator('#selectedTour .selected-price-confidence').count(),0,'legacy price-confidence note is not constructed');
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]').count(),6,'every flight radio remains available');
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),6,'every flight radio remains visible');
+      assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'selected flight exposes both directions');
+      assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'unselected flight details stay compact');
+      assert.equal(await page.locator('#selectedTour .selected-lead-cta:visible').count(),0,'duplicate top lead CTA is hidden in Search3');
+      assert.equal(await page.locator('#selectedTour .search3-flight-continue button:visible').count(),1,'one visible Search3 handoff CTA remains');
+      await page.locator('#selectedTour .flight-variant').nth(1).locator('input[name="v2flight"]').click();
+      await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="1"]')?.classList.contains('is-selected'));
+      assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'radio switch expands the new selection');
+      assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'radio switch collapses the previous selection');
+      await page.locator('#selectedTour .flight-variant').first().locator('input[name="v2flight"]').click();
+      await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="0"]')?.classList.contains('is-selected'));
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
     if(previous){
@@ -118,6 +135,7 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#selectedTour .search3-booking-summary,.search3-summary-submit').count(),0,'duplicate review card and intermediary CTA stay retired');
       assert.match((await page.locator('#selectedTour .selected-price').textContent()).replace(/\s/g,' '),/148 500 ₽/,'canonical selected price remains visible');
       assert.equal(await page.locator('#selectedTour .lead-form input[name=phone]').isVisible(),true,'phone remains directly reachable');
+      assert.match((await page.locator('#selectedTour .lead-selection-summary').innerText()).replace(/\s/g,' '),/AB123 09:30/,'contact summary keeps the selected flight identity');
       const leadSummary=await page.locator('#selectedTour .lead-selection-summary').evaluate(node=>({display:getComputedStyle(node).display,b:getComputedStyle(node.querySelector('b')).display}));
       assert.deepEqual(leadSummary,{display:'grid',b:'block'},'lead selection summary keeps labels and values visually separated');
     }

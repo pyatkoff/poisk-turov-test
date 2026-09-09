@@ -71,7 +71,7 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1');
       assert.deepEqual(await page.evaluate(() => window.__eagerCalls), expectedCalls, 'only an explicit reset or retry repeats the tour request');
       const price = await page.locator('#selectedTour .selected-price').innerText();
       assert.match(price, /150[\s\u00a0]*001,2/, 'decimal selected price retained');
-      assert.equal(await page.locator('#selectedTour .search3-flight-continue button').innerText(), 'Оставить заявку', 'native lead handoff remains available');
+      assert.equal(await page.locator('#selectedTour .search3-flight-continue button').innerText(), 'Продолжить к заявке', 'native lead handoff remains available');
       await page.locator('#selectedTour .search3-flight-continue button').click();
       await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
       const phone = page.locator('#selectedTour .lead-form input[name="phone"]');
