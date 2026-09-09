@@ -51,11 +51,11 @@ async function snapshot(page) {
   });
 }
 async function checkMealFacet(page, width, previous) {
-  const sample = (id, price, meal) => ({ ...tour, id, price, meal });
+  const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }), sample('a-ai-extra', 125000, { fullName: 'Всё включено' })] },
-    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' })] },
-    { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Без питания' })] }
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14')] },
+    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11')] },
+    { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Без питания' }, '2026-09-13')] }
   ];
   const supplierRequests = [];
   const record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) supplierRequests.push(request.url()); };
@@ -67,6 +67,7 @@ async function checkMealFacet(page, width, previous) {
       window.__mealEvents = [];
       window.addEventListener('v2:results-rendered', event => window.__mealEvents.push(event.detail.items));
       window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 100, items } }));
     }, items);
     await page.locator('#sortResults').selectOption('price');
     const field = page.locator('.search3-meal-filter'), select = field.locator('select');
@@ -74,10 +75,14 @@ async function checkMealFacet(page, width, previous) {
     const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
     assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
+    const calendar = page.locator('#currentPriceCalendar');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'calendar starts from the lowest offer in the terminal result set');
     const eventCount = await page.evaluate(() => window.__mealEvents.length);
     await select.selectOption('всё включено');
     assert.equal(await page.evaluate(() => window.__mealEvents.length), eventCount + 1, 'one local projection, no render loop');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
+    assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
     const a = page.locator('#results [data-hotel-id=meal-a]');
     assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'representative choice keeps its original tour ID');
     assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'selected meal sets the actual displayed offer price');
@@ -90,6 +95,7 @@ async function checkMealFacet(page, width, previous) {
     await name.fill('Отель А');
     await category.selectOption('4');
     assert.deepEqual(await visible(), [], 'name/category/meal combine through one hidden-state owner');
+    assert.equal(await calendar.isVisible(), false, 'zero local matches hide the stale price calendar');
     assert.match(await page.locator('#search3HotelFilterStatus').innerText(), /Показано 0 из 3/);
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await select.inputValue(), 'всё включено');
@@ -98,6 +104,7 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), [], 'sort preserves all local choices, including zero matches');
     await name.fill(''); await category.selectOption('0');
     assert.deepEqual(await visible(), ['meal-a', 'meal-b']);
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'clearing name and category restores the meal-filtered calendar');
     await page.locator('#sortResults').selectOption('price');
     assert.equal((await snapshot(page)).overflow, false, 'meal controls and projected cards fit the viewport');
     assert.ok((await select.boundingBox()).height >= 44, 'meal selector keeps a usable touch target');
@@ -111,6 +118,7 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'returning to the retained results preserves meal selection');
     await select.selectOption('');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'clear restores every loaded hotel and original ordering');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'clearing all local filters restores the full calendar minimum');
     assert.equal(await a.locator('[data-tid=a-ro]').count(), 1, 'clear restores original tours, including earlier excluded meals');
     await select.selectOption('всё включено');
     await page.evaluate(items => window.V2Results.render(items.concat([{ id: 'meal-incomplete', name: 'Неполные данные', price: 70000, tours: [{ id: 'unknown', price: 70000, meal: { id: 7 } }] }])), items);
