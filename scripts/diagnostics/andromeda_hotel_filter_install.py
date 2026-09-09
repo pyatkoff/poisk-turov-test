@@ -16,7 +16,7 @@ try {
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/hotel-filter-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
     $release=$private.'/hotel-filter-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['api-andromeda-search3-preview.php'=>'4c3ea5c4c7ad2c16d9506f2110015c53fa33fb4f9be245401efe578b51288cd7'];
+    $expected=['api-andromeda-search3-preview.php'=>'ef32b70dc3d11d7a331da8ed7166119b681cb794c06c8ec47bafdf47ac99e150'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
@@ -36,28 +36,36 @@ try {
         require_once $target.'/api-andromeda-search3-preview.php';
         require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
         $pdo=v2_data_db();$config=require $target.'/.andromeda-private.php';
-        $files=glob(dirname($config['catalog_path']).'/searches/*.json')?:[];
-        $seen=[];$retained=[];$pages=0;
-        foreach($files as $path){
-            if(substr($path,-10)==='-auth.json')continue;
-            $state=json_decode(file_get_contents($path),true);
-            $page=$state['store']['snapshot']??null;if(!is_array($page)||!isset($page['offers'],$page['page'],$page['pages_count']))continue;
-            ++$pages;
-            // Apply the new projection to saved unresolved offers only; never re-run supplier search.
-            $offers=array_values(array_filter($page['offers'],static function($o){return $o['local_hotel_id']===null;}));
-            if(!$offers)continue;$page['offers']=$offers;
-            $page['status']=$page['status']??'complete';$page['search_ref']=$page['search_ref']??'saved_category_audit';
-            $p=['generation'=>1,'params'=>['countryId'=>'1','dateFrom'=>'2026-09-18','dateTo'=>'2026-09-18','hotelCategory'=>'4']];
-            $out=anytour_andromeda_search3_project($p,$pdo,$page);
-            foreach($offers as $offer)$seen[$offer['supplier_namespace'].':'.$offer['external_hotel_id']]=true;
-            foreach($out['hotels'] as $hotel){
-                if(!is_int($hotel['category'])||$hotel['category']<4||$hotel['category']>5||$hotel['local_id']!==null)throw new RuntimeException();
-                $retained[$hotel['card_key']]=['name'=>$hotel['name'],'category'=>$hotel['category']];
-            }
+        $importPath=dirname($config['catalog_path']).'/turkey-catalog-v1/import-result.json';
+        $import=json_decode(file_get_contents($importPath),true,32,JSON_THROW_ON_ERROR);
+        if(($import['status']??null)!=='imported'||($import['readback_verified']??false)!==true)throw new RuntimeException();
+        $country=$import['country_id'];
+        $search=['generation'=>1,'andromeda_operator_ids'=>['5'],'params'=>[
+            'countryId'=>(string)$country,'departureId'=>'1','dateFrom'=>'2026-09-18','dateTo'=>'2026-09-18',
+            'nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'meal'=>'7']];
+        $saved=anytour_andromeda_search3_catalog($config,$search);
+        if(hash_file('sha256',dirname($config['catalog_path']).'/countries/'.$country.'.json')!==$import['catalog_sha256'])throw new RuntimeException();
+        $counts=$pdo->prepare("SELECT decision_status,COUNT(*) AS total FROM andromeda_hotel_identities WHERE catalog_sha256=? GROUP BY decision_status");
+        $counts->execute([$import['catalog_sha256']]);$actual=$counts->fetchAll(PDO::FETCH_KEY_PAIR);
+        foreach($import['counts'] as $status=>$count)if((int)($actual[$status]??0)!==$count)throw new RuntimeException();
+        $result['turkey_import']=$import;$result['database_readback_verified']=true;
+        $criteria=anytour_andromeda_search3_params($search,$pdo,$saved);
+        if($criteria['STATEINC']!==$import['supplier_country_id']||$criteria['OPERATORS']!=='5')throw new RuntimeException();
+        $session='turkey-live-'.$request['source_sha'];
+        $data=anytour_andromeda_search3_run($search,$pdo,$saved,$config,$session);
+        $budgetPath=dirname($config['catalog_path']).'/monthly-requests.json';$budget=hash_file('sha256',$budgetPath);
+        $again=anytour_andromeda_search3_run($search,$pdo,$saved,$config,$session);
+        $labels=[];$mapped=0;$unresolved=0;$tours=0;
+        foreach($data['hotels'] as $hotel){
+            if($hotel['country']!=='Турция')throw new RuntimeException();
+            $hotel['local_id']===null?++$unresolved:++$mapped;
+            foreach($hotel['tours'] as $tour){++$tours;$labels[(string)$tour['operator']]=true;}
         }
-        if($pages===0)throw new RuntimeException();
-        $result['verification']=['status'=>'checked','saved_pages'=>$pages,'unresolved_identities'=>count($seen),
-            'retained_at_4_stars'=>count($retained),'retained'=>array_values($retained),'supplier_calls'=>0,'database_writes'=>0];
+        if($again!==$data||hash_file('sha256',$budgetPath)!==$budget||array_diff(array_keys($labels),['Anex Tour']))throw new RuntimeException();
+        $result['verification']=['status'=>'checked','criteria'=>['STATEINC'=>$criteria['STATEINC'],'OPERATORS'=>$criteria['OPERATORS']],
+            'page'=>$data['page'],'pages_count'=>$data['pages_count'],'received_offers'=>$data['received_offers'],
+            'displayed_offers'=>$tours,'mapped_hotels'=>$mapped,'unresolved_hotels'=>$unresolved,
+            'country'=>'Турция','operator_labels'=>array_keys($labels),'resume_equal'=>true,'resume_budget_unchanged'=>true];
     }catch(Throwable $probeError){$result['verification']['status']='failed';}
     file_put_contents($release.'/manifest.json',json_encode($result));
 }catch(Throwable $ignored){

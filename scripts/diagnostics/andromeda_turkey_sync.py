@@ -53,6 +53,6 @@ def main():
         request=json.loads((root/'import-request.json').read_bytes())
         save(root/'import-reservation.json',{'state':'inflight','request_sha256':hashlib.sha256((root/'import-request.json').read_bytes()).hexdigest()},exclusive=True)
         result=owner.ssh_php(php,request,maximum_bytes=4000000)
-        save(root/'result.json',result,exclusive=True);print(json.dumps(result))
+        save(root/'turkey-result.json',result,exclusive=True);print(json.dumps(result))
         if result.get('status')!='imported' or result.get('readback_verified') is not True:raise ValueError('import not confirmed; no replay')
 if __name__=='__main__':main()
