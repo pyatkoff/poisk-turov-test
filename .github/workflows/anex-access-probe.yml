@@ -90,6 +90,7 @@ jobs:
         run: |
           python3 -B tests/anex_search3_catalog_content_test.py
           php -l scripts/diagnostics/anex_search3_catalog_content_reader.php
+          php -l scripts/diagnostics/anex_search3_catalog_content_inspect.php
           php -l scripts/diagnostics/anex_search3_catalog_content_collect.php
           php -l scripts/diagnostics/anex_search3_catalog_content_photos.php
           php -l scripts/diagnostics/anex_search3_catalog_content_plan.php
@@ -178,7 +179,7 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
-      - name: Audit saved Tourvisor catalog and collect the explicit ANEX review-content batch
+      - name: Inspect preserved ANEX description values (read-only; supplier content collection stopped)
         if: steps.operation.outputs.mode == 'content'
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}

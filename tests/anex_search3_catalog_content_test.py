@@ -43,34 +43,19 @@ class ContentSources(unittest.TestCase):
             with self.assertRaises(ValueError):
                 content.verified_ids(directory)
 
-    def test_photo_readback_retains_real_request_count_and_avoids_tourvisor_writes(self):
+    def test_remote_only_reads_preserved_content(self):
         calls = []
-        plan = content.batch_plan()
-        payload = {'source_sha': 'a' * 40, 'verified_ids': [103], 'plan': plan}
         def run(command, **kwargs):
-            source = command[-1]
-            calls.append((source, json.loads(kwargs['input'])))
-            if source == 'snapshot':
-                result = {'status': 'ok', 'manual_hash': 'unchanged'}
-            elif source == 'audit':
-                result = {'status': 'ok'}
-            elif source == 'photos':
-                self.assertEqual(json.loads(kwargs['input'])['plan'], plan)
-                result = {'status': 'completed', 'supplier_requests': 1}
-            else:
-                prior = sum(c[0] == 'content' for c in calls) > 1
-                result = {'status': 'ok', 'supplier_requests': 0 if prior else 25,
-                          'cached': prior, 'rows': [{'photos_added': prior}]}
-            return SimpleNamespace(returncode=0, stdout=json.dumps(result))
-        with patch.multiple(content, SNAPSHOT_PHP='snapshot', AUDIT_PHP='audit',
-                            CONTENT_PHP='content', PHOTOS_PHP='photos', create=True), \
+            calls.append(command[-1])
+            return SimpleNamespace(returncode=0, stdout=json.dumps({'status': 'ok',
+                'read_only': True, 'supplier_requests': 0, 'rows': []}))
+        with patch.object(content, 'INSPECT_PHP', 'saved-only-reader', create=True), \
                 patch.object(content.subprocess, 'run', side_effect=run):
-            report = content.remote_run(payload)
-        self.assertEqual([c[0] for c in calls], ['snapshot', 'audit', 'content', 'photos', 'content', 'snapshot'])
-        self.assertEqual(report['anex']['supplier_requests'], 25)
-        self.assertFalse(report['anex']['cached'])
-        self.assertTrue(report['anex']['rows'][0]['photos_added'])
-        self.assertEqual(report['media_repair']['status'], 'not_run')
+            report = content.remote_run({'source_sha': 'a' * 40})
+        self.assertEqual(calls, ['saved-only-reader'])
+        self.assertEqual(report['supplier_requests'], 0)
+        self.assertTrue(report['read_only'])
+
 
 
 if __name__ == '__main__':
