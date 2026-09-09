@@ -199,3 +199,16 @@ try {
 }
 
 echo "SEO_OFFER_SNAPSHOTS_OK rows=" . count($rows) . " snapshots={$written} fresh_hours={$freshHours} expires_hours={$expiresHours}\n";
+
+// Read back the committed monthly blocks, not only the builder's in-memory counts.
+// These bounded diagnostics contain inventory IDs/counts, never credentials or leads.
+try {
+    $readback=$pdo->query("SELECT page_key,offer_count,offers_json,dimensions_json FROM seo_offer_snapshots WHERE page_type IN ('month','resort_month') AND expires_at>=NOW() AND currency='RUB' ORDER BY country_id,departure_year,departure_month,page_key LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC)?:[];
+    foreach($readback as $snapshot){
+        $stored=json_decode((string)$snapshot['offers_json'],true);$dims=json_decode((string)$snapshot['dimensions_json'],true);
+        echo 'SEO_SEASONAL_READBACK '.json_encode(['page_key'=>$snapshot['page_key'],'offer_count'=>(int)$snapshot['offer_count'],'stored_offers'=>is_array($stored)?count($stored):null,'hotel_ids'=>is_array($stored)?array_column($stored,'hotelId'):[],'country'=>$dims['countryName']??null,'region'=>$dims['regionName']??null],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+    }
+    $sources=$pdo->query("SELECT departure_id,country_id,region_id,departure_year,departure_month,source,adults,children_count,COUNT(*) observation_count,COUNT(DISTINCT hotel_id) hotels,MAX(observed_at) latest_observation FROM tour_price_observations WHERE observed_at>=DATE_SUB(NOW(),INTERVAL 72 HOUR) AND departure_date>=CURDATE() GROUP BY departure_id,country_id,region_id,departure_year,departure_month,source,adults,children_count ORDER BY country_id,departure_year,departure_month,region_id LIMIT 1000")->fetchAll(PDO::FETCH_ASSOC)?:[];
+    foreach($sources as $source)echo 'SEO_SEASONAL_SOURCE_COVERAGE '.json_encode($source,JSON_UNESCAPED_SLASHES)."\n";
+    echo 'SEO_SEASONAL_READBACK_DONE '.json_encode(['snapshot_rows'=>count($readback),'source_groups'=>count($sources),'possibly_truncated'=>count($readback)>=1000||count($sources)>=1000,'builder_input_capped'=>count($rows)>=$rowLimit])."\n";
+}catch(Throwable $e){fwrite(STDERR,'SEO_SEASONAL_READBACK_FAILED code='.$e->getCode()."\n");exit(2);}
