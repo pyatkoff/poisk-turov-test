@@ -1,0 +1,157 @@
+{
+  "browser": {
+    "authenticated_offer_render_not_verified": true,
+    "other_sources_remain_visible": true,
+    "owner_login_required_visible": true,
+    "provider_heading_visible": true,
+    "route_opened": true,
+    "source_filter_visible": true
+  },
+  "catalog_sync": {
+    "accepted": 584,
+    "catalog_rows": 905,
+    "conflict": 3,
+    "country": "Egypt",
+    "pending": 318,
+    "readback_verified": true,
+    "run_id": 34375083773,
+    "source_sha": "fb098e7f5d6ac12ea33e759474204bbfae4b3b35",
+    "table": "andromeda_hotel_identities"
+  },
+  "checks": {
+    "addon_tests": 46,
+    "handler_checks": 33,
+    "protocol_run_id": 34377107324,
+    "security_run_id": 34377107365
+  },
+  "date": "2026-09-09",
+  "deployment": {
+    "artifacts": [
+      {
+        "archive_download_url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10114434863/zip",
+        "created_at": "2026-09-09T16:33:08Z",
+        "digest": "sha256:6db8484784d680f300337e10c5e269a1f264cd008fcbe8339c1f27aa94a95ab8",
+        "expired": false,
+        "expires_at": "2026-12-08T16:32:38Z",
+        "id": 10114434863,
+        "name": "andromeda-preview-install-result",
+        "size_in_bytes": 6541,
+        "updated_at": "2026-09-09T16:33:08Z",
+        "url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10114434863",
+        "workflow_run": {
+          "head_branch": "feat/int-andromeda-live-20260909",
+          "head_repository_id": 1345518271,
+          "head_sha": "dcfc29ebfffe6661b4960416116dbc7f009911bf",
+          "id": 34377383810,
+          "repository_id": 1345518271
+        }
+      },
+      {
+        "archive_download_url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10114420124/zip",
+        "created_at": "2026-09-09T16:32:47Z",
+        "digest": "sha256:6878028b3d9222b3d77438dbdf7e295de1fa61ba805d7c72a3f1577073a9584c",
+        "expired": false,
+        "expires_at": "2026-12-08T16:32:38Z",
+        "id": 10114420124,
+        "name": "andromeda-preview-install-reservation",
+        "size_in_bytes": 254,
+        "updated_at": "2026-09-09T16:32:47Z",
+        "url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10114420124",
+        "workflow_run": {
+          "head_branch": "feat/int-andromeda-live-20260909",
+          "head_repository_id": 1345518271,
+          "head_sha": "dcfc29ebfffe6661b4960416116dbc7f009911bf",
+          "id": 34377383810,
+          "repository_id": 1345518271
+        }
+      }
+    ],
+    "job_id": 102553500654,
+    "manifest": {
+      "database_changed": false,
+      "files": [
+        "api-andromeda-search3-preview.php",
+        "app/integrations/andromeda-client.php",
+        "app/integrations/andromeda-transport.php",
+        "app/integrations/andromeda-search.php",
+        "app/integrations/andromeda-offer-store.php",
+        "app/integrations/andromeda-normalizer.php",
+        "app/integrations/andromeda-hotel-resolver.php",
+        ".htaccess",
+        ".andromeda-private.php",
+        "anex-search3-preview-v1.js",
+        "search-page-v2.php"
+      ],
+      "production_changed": false,
+      "rollback_directory": "release-825b865a20af40c9434f3c8ca14a9ca438fd717e",
+      "route": "/_preview/search3-anex-candidate/poisk-turov/",
+      "sha256": {
+        ".andromeda-private.php": "52e05b625b63a611f34cb87b58bd0e554c024df1e277bede469416330812d5aa",
+        ".htaccess": "acc53761068a9654cb00f2507bf31df251a8480e1f79023a0e7534d319ae7f33",
+        "anex-search3-preview-v1.js": "6d5d0e745a20f0e9bbf6198dbe3fcfc71a02eac3d886909ed2029d4118616cb9",
+        "api-andromeda-search3-preview.php": "486c3062924f1d189c8fa111dea7eb6166a69e02669add985900c18af826f2ca",
+        "app/integrations/andromeda-client.php": "879b844eb1d5d65873a9df770c284b564946b7376187ccbf084d13b43e388298",
+        "app/integrations/andromeda-hotel-resolver.php": "805ad9509de681c95a18ee7f96ae8e1b77d1eb2b29221e35e2d38ce9b6f52754",
+        "app/integrations/andromeda-normalizer.php": "cf36fbc78c78e3f6ac7bdabeda6f6d7093558882ee0dce8717e668d3c23da929",
+        "app/integrations/andromeda-offer-store.php": "b2d431bd687f12e409fd9e53140a3938ba04af724d1301f3d8242ea173677f1c",
+        "app/integrations/andromeda-search.php": "0ea2434acb976d17109f515f30ac892cce4cfefc65efd3c58507ddb28e1513b1",
+        "app/integrations/andromeda-transport.php": "b3d44dfb547abac0453c58071e555e6e9ec64c54a8879a40581d242195cc3e95",
+        "search-page-v2.php": "fda88f4e99dab5ea741f9d3cf91ba9be2641a92a6c883b33eb850d2809c17744"
+      },
+      "source_sha": "825b865a20af40c9434f3c8ca14a9ca438fd717e",
+      "status": "deployed"
+    },
+    "run_id": 34377383810
+  },
+  "deployment_control_sha": "dcfc29ebfffe6661b4960416116dbc7f009911bf",
+  "issue": 1717,
+  "limitations": [
+    "Only saved Egypt catalog is enabled.",
+    "First supplier page only; 26 pages in the observed response.",
+    "Only accepted catalog matches currently enter existing hotel cards; 11 of the 50 observed offers remain outside cards.",
+    "Offers are read-only; quote, selection and booking not enabled.",
+    "Owner login required by existing scoped route contract.",
+    "Fresh whole-site preview and production are unchanged."
+  ],
+  "live": {
+    "displayed_hotels": 9,
+    "displayed_offers": 39,
+    "mapped_offers": 39,
+    "operators": [
+      "Anex Tour",
+      "Intourist"
+    ],
+    "owner_auth_required": true,
+    "pages_count": 26,
+    "public_checks": [
+      {
+        "method": "GET",
+        "path": "api-andromeda-search3-preview.php",
+        "status": 405
+      },
+      {
+        "method": "POST",
+        "path": "api-andromeda-search3-preview.php",
+        "status": 403
+      },
+      {
+        "method": "GET",
+        "path": ".andromeda-private.php",
+        "status": 403
+      }
+    ],
+    "received_offers": 50,
+    "response_sha256": "dc73dd35765ec1706a28a45d4497be8a262a012411d1544715b19295da473030",
+    "resume_verified": true,
+    "source_sha": "825b865a20af40c9434f3c8ca14a9ca438fd717e"
+  },
+  "operator_policy": {
+    "andromeda_excluded_operator_ids": [],
+    "owner_plan": "Later exclude Anex from Andromeda and Anex/Fun&Sun/BiblioGlobус/Intourist from Tourvisor after direct integration.",
+    "tourvisor_exclusions_unchanged": true
+  },
+  "pr": 1781,
+  "route": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/",
+  "runtime_source_sha": "825b865a20af40c9434f3c8ca14a9ca438fd717e",
+  "state": "preview_published_owner_login_required"
+}
