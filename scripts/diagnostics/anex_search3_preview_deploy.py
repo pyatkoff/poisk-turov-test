@@ -230,13 +230,17 @@ def ssh_deploy(payload: Path, manifest: dict) -> dict:
         with archive.open("rb") as handle:
             result = subprocess.run(command, stdin=handle, capture_output=True, timeout=600,
                                     env={k: v for k, v in os.environ.items() if k not in credential_names})
-        if result.returncode or result.stdout.strip() != b"ANEX_PREVIEW_DEPLOYED":
+        lines = result.stdout.splitlines()
+        if result.returncode or len(lines) != 2 or lines[-1] != b"ANEX_PREVIEW_DEPLOYED":
             raise RuntimeError("confined ANEX preview deployment was not confirmed")
+        owner_overlay = json.loads(lines[0])
+        if owner_overlay.get('owner_panel') not in ('not_installed', 'preserved'):
+            raise RuntimeError('owner panel preservation was not confirmed')
     return {"status": "deployed", "source_sha": source_sha, "route": PREVIEW_ROUTE,
             "url": "https://anytoour.ru" + PREVIEW_ROUTE + "poisk-turov/",
             "file_count": manifest["file_count"], "release": release,
             "rollback_backup": ".anytoour-anex/backup-" + release,
-            "production_entry_changes": False}
+            "production_entry_changes": False, "owner_panel_overlay": owner_overlay}
 
 
 def main() -> int:
@@ -254,6 +258,23 @@ def main() -> int:
                 json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
             phase = "confined_deploy"
             report = ssh_deploy(payload, manifest)
+            overlay = report['owner_panel_overlay']
+            if overlay['owner_panel'] == 'preserved':
+                rows = {row['path']: row for row in manifest['files']}
+                expected_paths = {'anex-owner-login.php', 'anex-hotel-review.php', '.htaccess', 'anex-owner-panel-manifest.json'}
+                if (set(overlay.get('applied_sha256', {})) != expected_paths
+                        or set(overlay.get('baseline_sha256', {})) != expected_paths - {'anex-owner-panel-manifest.json'}
+                        or any(rows.get(name, {}).get('sha256') != sha for name, sha in overlay['baseline_sha256'].items())):
+                    raise ValueError('owner overlay baseline mismatch')
+                for name, sha in overlay['applied_sha256'].items():
+                    size = overlay.get('applied_bytes', {}).get(name)
+                    if not re.fullmatch('[0-9a-f]{64}', sha) or type(size) is not int or not 0 < size <= 20000:
+                        raise ValueError('owner overlay digest or bound')
+                    rows[name] = {'path': name, 'sha256': sha, 'bytes': size}
+                manifest.update(files=list(rows.values()), file_count=len(rows), owner_panel_overlay=overlay)
+                report['file_count'] = len(rows)
+                (artifact / 'anex-search3-preview-manifest.json').write_text(
+                    json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + '\n', encoding='utf-8')
         phase = "save_report"
         (artifact / "anex-search3-preview-deploy.json").write_text(
             json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
@@ -267,4 +288,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

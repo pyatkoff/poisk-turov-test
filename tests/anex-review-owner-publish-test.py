@@ -33,7 +33,7 @@ class PublicationTest(unittest.TestCase):
         stage=self.root/'_preview'/('.search3-anex-'+'b'*40+'-'+'c'*12);stage.mkdir()
         (stage/'.htaccess').write_text('Header always set X-Robots-Tag "noindex, nofollow"\nRequire all denied\n')
         kept=subprocess.run(['php',str(ROOT/'scripts/diagnostics/anex_review_owner_preserve.php'),str(self.root),str(stage)],env={**os.environ,'HOME':str(self.home)},text=True,capture_output=True,check=True)
-        self.assertEqual(kept.stdout.strip(),'OWNER_PANEL_PRESERVED')
+        self.assertEqual(json.loads(kept.stdout)['owner_panel'],'preserved')
         for name in ['anex-owner-login.php','anex-hotel-review.php']:self.assertEqual((stage/name).read_bytes(),(self.target/name).read_bytes())
         (self.target/'anex-owner-login.php').write_text('<?php echo "drift";')
         rejected=subprocess.run(['php',str(ROOT/'scripts/diagnostics/anex_review_owner_preserve.php'),str(self.root),str(stage)],env={**os.environ,'HOME':str(self.home)},capture_output=True)
