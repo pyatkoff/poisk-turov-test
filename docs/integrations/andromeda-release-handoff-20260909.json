@@ -1,0 +1,219 @@
+{
+  "checks": {
+    "local_php": "unavailable",
+    "release_consumer_tests": "not_implemented",
+    "source_protocol": {
+      "job_id": 102565365463,
+      "logs_inspected": true,
+      "result": "success",
+      "run_id": 34380948828
+    },
+    "source_security": {
+      "result": "success",
+      "run_id": 34380948812
+    },
+    "whole_site_build": {
+      "job_id": 102565365603,
+      "reason": "git diff --check: v2/api-andromeda-search3-preview.php:212 new blank line at EOF; do not relabel green",
+      "result": "failure",
+      "run_id": 34380948653
+    }
+  },
+  "consumer_owned_paths": [
+    {
+      "action": "SEARCH owns existing renderer; add provider comparison here, not a third renderer",
+      "git_blob_sha": "c5aab316626fe979ab38df8ac831c932c5af311d",
+      "path": "v2/results-renderer-v5.js"
+    },
+    {
+      "action": "unchanged for first read-only slice; never pass Andromeda offer_ref as Tourvisor tid",
+      "git_blob_sha": "5202415ee8323cba67216e7d170a90efa639d815",
+      "path": "v2/tour-controller-v4.js"
+    },
+    {
+      "action": "SEARCH owns offer-local filter contract; no network",
+      "git_blob_sha": "f3cbdc4cc962ff193860d1b68615a97c0aafe760",
+      "path": "src/search3/behavior/results/local-hotel-filter.js"
+    }
+  ],
+  "coordinator_issue": 996,
+  "created_at": "2026-09-09",
+  "destination": {
+    "branch": "release/search3-production-ready-v1",
+    "commit": "f3a4cf3b471bc44cff13021096d1013586e5c4c5",
+    "refresh_before_edit": true
+  },
+  "do_not_transfer": [
+    ".github/workflows/andromeda-*.yml",
+    "scripts/diagnostics/andromeda*",
+    "v2/api-anex-search3-preview.php",
+    "v2/anex-search3-preview-v1.js",
+    ".andromeda-private.php",
+    ".htaccess",
+    "catalog_hotels",
+    "andromeda_hotel_identities"
+  ],
+  "fixture_package": {
+    "command": "Run each PHP test as a separate process; transport is injected; do not dispatch supplier capture workflows.",
+    "real_sample": {
+      "artifact_id": 10109677472,
+      "expected": {
+        "hotel_groups": 16,
+        "offers": 50,
+        "selection_enabled": false,
+        "status": "partial",
+        "supplier_calls": 0
+      },
+      "file_sha256": "c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9",
+      "path": "price.json",
+      "purpose": "historic fixed criteria golden fixture only; not live coverage or current mapped totals",
+      "run_id": 34365549508,
+      "runner_command": "php tests/andromeda-search-smoke.php \"$RUNNER_TEMP/real-price/price.json\" \"$RUNNER_TEMP/public-response.json\""
+    },
+    "runtime_dependencies": [
+      "PHP 8",
+      "mbstring"
+    ],
+    "synthetic_tests": [
+      "tests/andromeda-client-smoke.php",
+      "tests/andromeda-normalizer-smoke.php",
+      "tests/andromeda-hotel-resolver-smoke.php",
+      "tests/andromeda-offer-store-smoke.php",
+      "tests/andromeda-search-smoke.php",
+      "tests/andromeda-live-search-smoke.php",
+      "tests/andromeda-pages-smoke.php"
+    ]
+  },
+  "gates": [
+    "one source-qualified key per offer, preserve operator separately",
+    "accepted catalog merge only; unresolved namespace key otherwise",
+    "late generations ignored; source errors retain prior pages and other sources",
+    "same-offer meal and budget; sorting/filter/reveal/return no supplier requests",
+    "page count may change; complete only after contiguous latest range and rejected-row accounting",
+    "private sid/raw offer ID never public",
+    "fees unknown and final=false, no inferred fuel/flight/baggage",
+    "selection_enabled=false; no Tourvisor flight or lead invocation for Andromeda",
+    "offline desktop/mobile UI plus mandatory source/security checks before release preview",
+    "public API credentials/provisioning and deployment remain separate gated package"
+  ],
+  "issue": 1717,
+  "next_step": "SEARCH claims a short branch from refreshed destination, imports only the pinned core/fixtures as needed, implements offline provider projection in current renderer; sends exact diff back through #996. INT active #1781 owner retains live pagination/publication.",
+  "observed_existing_search": {
+    "dom_andromeda_hotels": 107,
+    "dom_error": "Андромеда пока не поддерживает эти условия поиска. Полученные страницы сохранены.",
+    "dom_total_hotels": 167,
+    "installer_readback": {
+      "first_pages_count": 46,
+      "last_pages_count": 39,
+      "saved_pages": 13
+    },
+    "interpretation": "different read times; no assertion of final completeness or post-fix browser acceptance",
+    "new_searches": 0,
+    "reloads": 0
+  },
+  "publication": {
+    "artifact_digest": "sha256:076e926f57282b6ba63ec0cd0af91c0afc9afd991ed422a70829ec74915f6857",
+    "artifact_id": 10115848594,
+    "independent_zip_download": false,
+    "job_id": 102565690045,
+    "live_completion_verified": false,
+    "logs_and_metadata_verified": true,
+    "own_preview_only": true,
+    "production": false,
+    "run_id": 34381046363,
+    "runtime_sha": "365e30fa11dc86d0e7750d16ca52c9d72661120c",
+    "whole_site": false
+  },
+  "receiving_task": "S3_OTA_PROVIDER_PARITY",
+  "reference_only": [
+    "v2/api-andromeda-search3-preview.php",
+    "v2/anex-search3-preview-v1.js"
+  ],
+  "schema_version": 1,
+  "source": {
+    "branch": "feat/int-andromeda-live-20260909",
+    "commit": "365e30fa11dc86d0e7750d16ca52c9d72661120c",
+    "pr": 1781
+  },
+  "source_files": [
+    {
+      "destination_exists": false,
+      "git_blob_sha": "a34acae11bfc592402c39ff0ec2703babf874ff8",
+      "path": "app/integrations/andromeda-client.php",
+      "role": "provider_core"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "0b306268a55b0e573cf688ec1109de452885aceb",
+      "path": "app/integrations/andromeda-transport.php",
+      "role": "provider_core"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "b4b4bcd7bbb18c98c918b617f3e0fa9713c4c462",
+      "path": "app/integrations/andromeda-normalizer.php",
+      "role": "provider_core"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "d49d0eaf8d6abccefd84c0c3921edde94ef50a68",
+      "path": "app/integrations/andromeda-hotel-resolver.php",
+      "role": "provider_core"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "541b3bec3d0c5c4f14404385506e70e867a378f8",
+      "path": "app/integrations/andromeda-offer-store.php",
+      "role": "provider_core"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "5c5389c9e2ec6ca0e52d9d9b70e3132c735540f0",
+      "path": "app/integrations/andromeda-search.php",
+      "role": "provider_core"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "2c54c6f05f519468ec0ac7217d47a78f3c04ba05",
+      "path": "tests/andromeda-client-smoke.php",
+      "role": "offline_fixture"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "92e10773c41ebd49dd90d0822d5d54b3aada174a",
+      "path": "tests/andromeda-normalizer-smoke.php",
+      "role": "offline_fixture"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "db82787c160f0646e5efaab0c400df90048f75bd",
+      "path": "tests/andromeda-hotel-resolver-smoke.php",
+      "role": "offline_fixture"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "3d0c51e332a5bbe950f1e726f0f955afd64b83ef",
+      "path": "tests/andromeda-offer-store-smoke.php",
+      "role": "offline_fixture"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "c6864a384708036e05882a36efa4787b0ed14aa2",
+      "path": "tests/andromeda-search-smoke.php",
+      "role": "offline_fixture"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "bd1ee3d816d92ecb64c656b47a5f270129daa075",
+      "path": "tests/andromeda-live-search-smoke.php",
+      "role": "offline_fixture"
+    },
+    {
+      "destination_exists": false,
+      "git_blob_sha": "c4b1e96a2ff8e9632fe84641107a0addf143518f",
+      "path": "tests/andromeda-pages-smoke.php",
+      "role": "offline_fixture"
+    }
+  ],
+  "status": "ready_for_offline_consumer_implementation_not_release_acceptance"
+}
