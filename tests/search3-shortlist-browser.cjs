@@ -88,6 +88,9 @@ async function render(page, searchId, value = items) {
 }
 
 const compact = text => String(text || '').replace(/\s+/g, ' ').trim();
+async function openFilters(page, width) {
+  if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
+}
 
 async function addOffer(page, offerId, keyboard = false) {
   const button = page.locator(`.search3-shortlist-toggle[data-offer-id="${offerId}"]`);
@@ -105,6 +108,7 @@ async function checkJourney(browser, width) {
   const { context, page, errors, posts } = await openPage(browser, width);
   try {
     await render(page, 731);
+    await openFilters(page, width);
     const meal = page.locator('.search3-meal-filter select');
     await meal.selectOption('всё включено');
     const card = page.locator('#results [data-hotel-id="offer-hotel"]');
@@ -200,6 +204,7 @@ async function checkStorageFailure(browser, width, mode) {
   const { context, page, errors, posts } = await openPage(browser, width, mode);
   try {
     await render(page, 731);
+    await openFilters(page, width);
     await page.locator('.search3-meal-filter select').selectOption('всё включено');
     await addOffer(page, 'offer-standard', true);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 1, `${mode}: in-memory fallback retains the explicit snapshot`);
@@ -228,6 +233,7 @@ async function checkCorruptStorage(browser, width) {
     assert.equal(await page.locator('.search3-shortlist-item').count(), 0, 'corrupt storage is discarded, never partially trusted');
     assert.match(compact(await page.locator('.search3-shortlist-status').innerText()), /повреж|сброш|не удалось/i, 'corrupt reset is explained');
     await render(page, 731);
+    await openFilters(page, width);
     await page.locator('.search3-meal-filter select').selectOption('всё включено');
     await addOffer(page, 'offer-standard');
     assert.equal(await page.locator('#results .hotel-card').count(), 3, 'corrupt storage cannot break search rendering');
