@@ -30,7 +30,7 @@ function syncPresets(group,select,choices,empty){
   group.hidden=!choices.length;Array.from(group.children).forEach(button=>button.setAttribute('aria-pressed',String(select.value===button.dataset.value)));group.dataset.empty=empty;
 }
 function bindPresets(group,select){
-  group.addEventListener('click',event=>{const button=event.target.closest('button[data-value]');if(!button||!group.contains(button))return;select.value=select.value===button.dataset.value?group.dataset.empty:button.dataset.value;select.dispatchEvent(new Event('change',{bubbles:true}));});
+  group.addEventListener('click',event=>{const button=event.target.closest('button[data-value]');if(!button||!group.contains(button))return;const value=button.dataset.value;select.value=select.value===value?group.dataset.empty:value;select.dispatchEvent(new Event('change',{bubbles:true}));const current=Array.from(group.children).find(item=>item.dataset.value===value);if(current&&!current.hidden)current.focus();});
 }
 function ensure(){
   if(field)return;
