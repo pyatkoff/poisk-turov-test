@@ -113,6 +113,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     vm.runInNewContext(controllerSource, {
       window: selectedWindow,
       document: {
+        body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
         cookie: '',
         getElementById(id) { return id === 'selectedTour' ? selected : null; },
         querySelector() { return null; },
