@@ -1,0 +1,53 @@
+name: Andromeda grouped own-preview publication
+on:
+  push:
+    branches: ['feat/int-andromeda-grouped-search-20260909']
+    paths: ['.github/workflows/andromeda-grouped-install.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-grouped-own-preview, cancel-in-progress: false}
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify pinned successful runtime and single execution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-grouped-install.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 1
+          for id in 34406547832 34406547890 34406547864 34406547866; do
+            test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" --jq '.head_sha + ":" + .conclusion')" = '99fa70e1d1d9222993f9caf07d9c48347a9ddf2d:success'
+          done
+          cp scripts/diagnostics/andromeda_grouped_install.py "$RUNNER_TEMP/installer.py"
+          git fetch origin 99fa70e1d1d9222993f9caf07d9c48347a9ddf2d
+          git checkout 99fa70e1d1d9222993f9caf07d9c48347a9ddf2d
+          cp "$RUNNER_TEMP/installer.py" scripts/diagnostics/andromeda_grouped_install.py
+          python3 -c 'import sys; sys.path.insert(0,"scripts/diagnostics"); import andromeda_grouped_install as m; open("/tmp/grouped-install.php","w").write("<?php\n"+m.SOURCE)'
+          php -l /tmp/grouped-install.php
+      - uses: actions/upload-artifact@v4
+        id: runtime
+        with:
+          name: andromeda-grouped-runtime-99fa70e1
+          path: |
+            v2/api-andromeda-search3-preview.php
+            v2/anex-search3-preview-v1.js
+            app/integrations/andromeda-client.php
+            app/integrations/andromeda-offer-store.php
+          if-no-files-found: error
+      - name: Publish exact scoped files with predecessor and readback checks
+        env:
+          SOURCE_SHA: 99fa70e1d1d9222993f9caf07d9c48347a9ddf2d
+          ARTIFACT_ID: ${{ steps.runtime.outputs.artifact-id }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_grouped_install.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-grouped-publication-readback
+          path: ${{ runner.temp }}/andromeda-grouped-search
+          if-no-files-found: warn
