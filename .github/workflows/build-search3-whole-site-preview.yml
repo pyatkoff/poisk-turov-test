@@ -197,6 +197,7 @@ jobs:
             "manifest_sha256=$manifest_sha" \
             "payload_checksums_sha256=$payload_manifest_sha" \
             "archive_sha256=$archive_sha" > "$RUNNER_TEMP/search3-site-release.txt"
+          cat "$RUNNER_TEMP/search3-site-release.txt"
           echo "manifest_sha=$manifest_sha" >> "$GITHUB_OUTPUT"
           echo "archive_sha=$archive_sha" >> "$GITHUB_OUTPUT"
           echo "file_count=$file_count" >> "$GITHUB_OUTPUT"
