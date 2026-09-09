@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1793 and PR1796 published the single current responsive filter owner. Desktop has a left rail; mobile/tablet retain the same controls and now expose one common reset. PR1796 source cccb3cb34458585dbed071fd9900bc470561701d merged as release 100a5f080e918cc5aaf0bbc9147d8f49889ff8b3; Security34389129409, exact34389129427/artifact10118973460 and deploy34390033409/evidence10119257236 passed. Live current preview filtered100->36 and reset36->100 with overflow false, local supplier requests0 and lead POST0. Combined PR1793/1796 CSS+JS delta +5638B. Historical /_preview/search3/ is donor-only because it loads parallel local/autorefresh/mobile/DS2 filter and booking/simulator owners. Provider parity remains blocked on a fresh bounded INT handoff; next independent safe UI packet is one native accessible disclosure around the current mobile controls, not a restored drawer runtime."
+    "last_execution_continuation": "PR1799 published one native mobile/tablet disclosure around the same current filter controls; desktop keeps the left rail. Source 89a11df464ef4bdf569c9489897d343e83d165ec merged as release 26413433570a625c246f18d38fdeb25892bbaa81; exact34393106217/artifact10120481788 passed the 16-state 375/760/761/999/1000/1024/1025/1440 matrix with native header, external_calls0 and lead_sent0. Public JS +750B and CSS +1265B, total +2015B. Owner clarification removed the obsolete absolute CSS byte cap in PR1801 while retaining the structural owner/retired-layer/security/isolation guards; source ade4d7b50320ea35456014917c70ecd5b52fa729, release 34542e97f84e824c1abcbc985121e3cc4d916a32, Security34393599527 and exact34393599659/artifact10120626937 passed. Exact deploy34393903729/evidence10120737949 published source ade4d7 to the isolated preview. Live desktop at1363 retained the left rail, filtered100->12 at80000 RUB and reset12->100 with overflow0. Physical mobile Safari/user pilot remain deferred. Provider parity still waits for a fresh bounded #1731 handoff; next independent safe packet is truthful quick presets in this same owner, not a restored historical runtime."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "100a5f080e918cc5aaf0bbc9147d8f49889ff8b3",
-    "published_source_sha": "cccb3cb34458585dbed071fd9900bc470561701d",
-    "acceptance_status": "BLOCKED_WAITING_ON_FRESH_BOUNDED_INT_HANDOFF",
-    "next_action": "Check #996/#1731 and the active INT branch for a completed bounded handoff containing exact source and destination release SHA, provider/search/offer identity fixtures, unknown-field behavior, partial failure and request-budget evidence. If ready, claim only the current common SEARCH consumer paths and integrate without copying the old addon or adding a third renderer. While that handoff remains blocked, implement one native accessible disclosure around the existing mobile/tablet filter controls in local-hotel-filter.js/results-layout.css; do not restore the historical drawer, DS2 or parallel handlers. Physical Safari/user pilot and production approval remain deferred external acceptance work.",
+    "last_fully_checked_release_sha": "34542e97f84e824c1abcbc985121e3cc4d916a32",
+    "published_source_sha": "ade4d7b50320ea35456014917c70ecd5b52fa729",
+    "acceptance_status": "BLOCKED_WAITING_ON_FRESH_BOUNDED_INT_HANDOFF_WITH_INDEPENDENT_UI_CONTINUATION",
+    "next_action": "Check #996/#1731 and the active INT branch for a completed bounded handoff containing exact source and destination release SHA, provider/search/offer identity fixtures, unknown-field behavior, partial failure and request-budget evidence. If ready, claim only the current common SEARCH consumer paths and integrate without copying the old addon or adding a third renderer. If still blocked, continue the current single filter owner with a bounded quick-preset usability packet derived from already complete category/meal options; replace redundant interaction in the same component instead of adding another drawer/runtime or override layer. There is no absolute file-size cap: report weight honestly and preserve structural ownership. Physical Safari/user pilot and production approval remain deferred.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "deferred": {
@@ -13510,5 +13510,45 @@
       "owner approval for a concrete production release"
     ],
     "next_action": "Wrap the same current mobile/tablet filter controls in one native accessible disclosure; no second drawer runtime or historical owner."
+  },
+  "latest_search3_mobile_filter_disclosure_package": {
+    "schema_version": 1,
+    "date": "2026-09-09",
+    "status": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "packages": [
+      {
+        "pr": 1799,
+        "source_sha": "89a11df464ef4bdf569c9489897d343e83d165ec",
+        "checked_release_sha": "26413433570a625c246f18d38fdeb25892bbaa81",
+        "exact_run": 34393106217,
+        "exact_artifact": 10120481788,
+        "geometry_artifact": 10120481322,
+        "weight": "public JS +750 B; public CSS +1265 B; total +2015 B"
+      },
+      {
+        "pr": 1801,
+        "source_sha": "ade4d7b50320ea35456014917c70ecd5b52fa729",
+        "source_tree": "9fc163f13a13358adfd3e38e8267faa006561384",
+        "checked_release_sha": "34542e97f84e824c1abcbc985121e3cc4d916a32",
+        "security_run": 34393599527,
+        "exact_run": 34393599659,
+        "exact_artifact": 10120626937,
+        "weight": "source tests only; public CSS/JS 0 B"
+      }
+    ],
+    "published_source_sha": "ade4d7b50320ea35456014917c70ecd5b52fa729",
+    "deploy_run": 34393903729,
+    "deployment_evidence_artifact": 10120737949,
+    "product_result": "Mobile/tablet expose the existing filters through one native accessible disclosure with a live suitable/selected summary; desktop keeps the left rail. Dirty/new-search reset closes the disclosure. No parallel drawer, DS2 runtime or click owner was added.",
+    "verification": "Exact current-results matrix passed 16 states at 375/760/761/999/1000/1024/1025/1440 with native_header=1, external_calls=0 and lead_sent=0. Published desktop at 1363 filtered 100 hotels to 12 at 80000 RUB and reset to 100; horizontal overflow 0.",
+    "size_policy": "There is no absolute file or bundle byte limit. Size is reported honestly, but acceptance is structural and product-led: one current owner, and replaced rules, handlers and connections leave in the same package rather than accumulating patches.",
+    "deferred": [
+      "physical iPhone/Safari",
+      "unassisted user pilot",
+      "fresh bounded INT provider handoff",
+      "owner approval for a concrete production release"
+    ],
+    "next_action": "If the bounded INT handoff is still absent, add only truthful high-value category/meal quick presets inside the current owner, replacing redundant interaction where useful; do not restore historical preview runtimes."
   }
 }

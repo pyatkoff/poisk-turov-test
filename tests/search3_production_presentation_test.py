@@ -928,7 +928,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         total = sum((ROOT / 'v2' / name).stat().st_size for name in expected)
         self.assertLessEqual(total, 89174, 'eight assets must remain at least two times smaller')
 
-    def test_reset_css_allowlist_and_native_selected_bound(self):
+    def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']
         self.assertEqual(assets['search3-results-filters-v1.css'], ['styles/results-layout.css'])
         self.assertEqual(assets['search3-entry-v1.css'], ['styles/entry-native-controls.css'])
@@ -938,11 +938,6 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/styles/base.css').exists())
         self.assertFalse((ROOT / 'src/search3/behavior/selected-flow-v2.js').exists())
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
-        self.assertLessEqual(
-            (ROOT / 'v2/search3-results-filters-v1.css').stat().st_size,
-            22700,
-            'one results owner includes the authorized responsive rail and its mobile reset; superseded hidden-rail rules were replaced in place',
-        )
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
             (ROOT / 'v2/search3-selected-flow-v2.css').read_text(),

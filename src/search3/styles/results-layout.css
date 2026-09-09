@@ -13,8 +13,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools>div:first-child{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px}
 & .results-tools>div:first-child>strong{font-size:24px;line-height:1.2;letter-spacing:-.025em}
 & .results-tools__actions{display:flex;align-items:start;flex-wrap:wrap;gap:14px;padding-top:16px;border-top:1px solid var(--at-line-soft,#e9edf6)}
-& .results-tools__actions>label{display:grid;gap:5px;color:#526078;font-size:13px;line-height:1.5;font-weight:600}
-& .results-tools__actions :is(input,select){width:100%;min-height:46px;padding:10px 12px;font-size:16px;font-weight:400;background:var(--at-soft,#f5f8ff)}
+& :is(.results-tools__actions>label,.search3-mobile-filter-panel__body>label){display:grid;gap:5px;color:#526078;font-size:13px;line-height:1.5;font-weight:600}
+& :is(.results-tools__actions,.search3-mobile-filter-panel__body) :is(input,select){width:100%;min-height:46px;padding:10px 12px;font-size:16px;font-weight:400;background:var(--at-soft,#f5f8ff)}
 & .results-tools__actions>label:has(#sortResults){flex:1 1 210px}
 & #resultsSearchEdit{margin-top:24px;min-height:46px;padding-inline:16px;border-color:#c4cfeb;color:#2743cb;font-weight:700}
 & .v2-product-hero{padding:24px 0}
@@ -36,7 +36,16 @@ margin:0;background:#f5f7fb;color:#17233b;
 & :is(.search3-hotel-filter,.search3-budget-filter) small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
 & :is(.search3-hotel-filter,.search3-budget-filter) small:empty{display:none}
 & .search3-budget-filter input[type=range]{padding:0;accent-color:#2743cb}
-& .results-tools__actions>.search3-filter-reset{flex:1 1 180px;width:auto;color:#2743cb;font-weight:600}
+& .search3-mobile-filter-panel{flex:1 1 100%;width:100%;border:1px solid #cbd6ef;border-radius:12px;background:var(--at-soft,#f5f8ff);overflow:hidden}
+& .search3-mobile-filter-panel[hidden]{display:none}
+& .search3-mobile-filter-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:0;border-radius:0;background:transparent;color:#2743cb;font-weight:700;list-style:none}
+& .search3-mobile-filter-panel>summary::-webkit-details-marker{display:none}
+& .search3-mobile-filter-panel>summary:after{content:'▾';font-size:18px;line-height:1;transition:transform .15s ease}
+& .search3-mobile-filter-panel[open]>summary:after{transform:rotate(180deg)}
+& .search3-mobile-filter-panel>summary span{margin-left:auto;color:#526078;font-size:12px;font-weight:600}
+& .search3-mobile-filter-panel__body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border-top:1px solid #dbe2ed;background:#fff}
+& .search3-mobile-filter-panel__body>.search3-hotel-filter{grid-column:1/-1}
+& .search3-mobile-filter-panel__body>.search3-filter-reset{grid-column:1/-1;width:100%;color:#2743cb;font-weight:600}
 & .search3-filter-reset[hidden]{display:none}
 & .search3-shortlist{display:grid;gap:18px;margin:20px 0;padding:20px;border:1px solid #cbd6ef;border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-shortlist[hidden]{display:none!important}
@@ -75,6 +84,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools{padding:16px;margin-block:16px}
 & .results-tools>div:first-child>strong{font-size:22px}
 & .results-tools__actions{gap:12px}
+& .search3-mobile-filter-panel__body{grid-template-columns:1fr}
+& .search3-mobile-filter-panel__body>.search3-hotel-filter{grid-column:auto}
 & .search3-hotel-filter{flex-basis:100%}
 & :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter){flex-basis:160px}
 & #resultsSearchEdit{flex:1 1 120px}
