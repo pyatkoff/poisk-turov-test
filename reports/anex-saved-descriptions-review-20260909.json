@@ -1,0 +1,587 @@
+{
+  "schema_version": 1,
+  "source_sha": "1c94180d85e464f2cfceeb480290ab1c95025a32",
+  "pr": 1688,
+  "run": 34321556862,
+  "job": 102369121368,
+  "artifact": 10092065012,
+  "artifact_digest": "3db8ccc7a4b0e330fac5c0b38ce35d5bb2c0fc2f10d5e86fa1923d678afd3821",
+  "raw_inspection_report_sha256": "170ffc5d7220e83a380635bce0f35517e5398b6d5f8ec4aaf90fc2975031f6d1",
+  "source": "Previously saved Hotels_DETAILS records; inspected in a READ ONLY transaction",
+  "supplier_requests": 0,
+  "application_data_writes": 0,
+  "checked_records": 30,
+  "verified_id_and_digest": 30,
+  "hotel_descriptions": 29,
+  "non_specific_allocation_offer_descriptions": 1,
+  "placeholders_or_error_codes": 0,
+  "empty_descriptions": 0,
+  "photo_count": 0,
+  "format": "description is a JSON-encoded array of title/text sections inside the outer payload",
+  "sections_total": 184,
+  "rows": [
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1924,
+      "description_bytes": 3809,
+      "description_sha256": "a0a99decb74b00806e1697f28456a60471daee300f611ef9da1ad9da7fb56e8e",
+      "id": 8121,
+      "integrity_verified": true,
+      "name": "Aperion Beach Hotel",
+      "section_count": 8,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ",
+        "ДЛЯ МОЛОДОЖЕНОВ",
+        "ДЛЯ ИМЕНИННИКОВ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 553,
+      "description_bytes": 1201,
+      "description_sha256": "c7001ab3c97265454ce66e989dd003c444a4b4a79cedb07ec83ce5b19bcdb7d3",
+      "id": 8227,
+      "integrity_verified": true,
+      "name": "Ares City Hotel",
+      "section_count": 6,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 586,
+      "description_bytes": 1179,
+      "description_sha256": "f1735cb58e28c532e62514fa3b70d756df636d23321892a428f85c530a501bcb",
+      "id": 8803,
+      "integrity_verified": true,
+      "name": "Hali Hotel",
+      "section_count": 5,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1438,
+      "description_bytes": 2820,
+      "description_sha256": "1891488c2097d4280c404f4a7f60067b7fcbb33ba381fe3815b7129662072da0",
+      "id": 9153,
+      "integrity_verified": true,
+      "name": "Selen Hotel Marmaris",
+      "section_count": 6,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1390,
+      "description_bytes": 2715,
+      "description_sha256": "f7eb0f61fede508ea908e93c55b0a74be9d6e13ee198f91dd7f8291456d8d324",
+      "id": 16193,
+      "integrity_verified": true,
+      "name": "Dragut Point North",
+      "section_count": 6,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1737,
+      "description_bytes": 3331,
+      "description_sha256": "0558ada13efec0e860711c21fed4d6a3d3550f87163f4be789ba02adf569c19b",
+      "id": 16229,
+      "integrity_verified": true,
+      "name": "Seray Hotel Marmaris",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1304,
+      "description_bytes": 2657,
+      "description_sha256": "38b119755117d0166ce2e90f3e91abfb33e61763d3ad0db99e7ac16143ed31b7",
+      "id": 16275,
+      "integrity_verified": true,
+      "name": "Ares Blue Hotel",
+      "section_count": 7,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ",
+        "ДЛЯ МОЛОДОЖЕНОВ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1373,
+      "description_bytes": 2716,
+      "description_sha256": "7fce2a7ead057997ec2cb6f6fd00d6780ef0bb897aea6553f0b6d59277d1dc26",
+      "id": 16330,
+      "integrity_verified": true,
+      "name": "Mira Beach Resort Bodrum",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "allocation_product_description",
+      "decoded_text_characters": 587,
+      "description_bytes": 1114,
+      "description_sha256": "062e7355b2aaaed79fe98c060931e0b5df72d7903db3b02e6279b8169f67228b",
+      "id": 17097,
+      "integrity_verified": true,
+      "name": "Fortuna 3 Ai Marmaris",
+      "section_count": 1,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 2183,
+      "description_bytes": 4244,
+      "description_sha256": "0073ded6d2a0c83e492967eb5f5ed8b1a210ca9ec18dfc9333e2a174c937cda0",
+      "id": 19916,
+      "integrity_verified": true,
+      "name": "Club Selen Hotel",
+      "section_count": 8,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ",
+        "ДЛЯ МОЛОДОЖЕНОВ",
+        "НОВОСТИ ОТЕЛЯ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1434,
+      "description_bytes": 2761,
+      "description_sha256": "7ddf7108f32c954de24b24503744a8e27693062f5fca8f25c5cd9cc7a9e767d2",
+      "id": 20792,
+      "integrity_verified": true,
+      "name": "Meril Beach Hotel Turunc",
+      "section_count": 6,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 2266,
+      "description_bytes": 4300,
+      "description_sha256": "b6d93391158bab543376bf12c977621bbe797f3b165e86924239bf08de63ab16",
+      "id": 22881,
+      "integrity_verified": true,
+      "name": "Beso Hotel-Berke Ranch",
+      "section_count": 6,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1551,
+      "description_bytes": 3004,
+      "description_sha256": "1f7d27afa0081de3eb0ebb967b2349dc0105fd141d216f302338c6ea4350210c",
+      "id": 23775,
+      "integrity_verified": true,
+      "name": "Phoenix Sun Hotel",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1499,
+      "description_bytes": 2860,
+      "description_sha256": "153c2a66f9a11fb2ee446524e757b30ea2c3ec6b54e97240f5a29659413e5a7b",
+      "id": 23894,
+      "integrity_verified": true,
+      "name": "Greenport Hotel",
+      "section_count": 6,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 2188,
+      "description_bytes": 4178,
+      "description_sha256": "878af8d4984b4b1c8ccd348576e120feeab91c7b5b7b9d505b25d8a4f8b338a5",
+      "id": 24299,
+      "integrity_verified": true,
+      "name": "Crystal Hotel Bodrum",
+      "section_count": 6,
+      "section_titles": [
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1782,
+      "description_bytes": 3432,
+      "description_sha256": "2012b70e9d101450f0e472c4506d09b39f9d0e4c7416d3d8c4064340439dc000",
+      "id": 26688,
+      "integrity_verified": true,
+      "name": "Arsi Blue Beach Hotel",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1120,
+      "description_bytes": 2250,
+      "description_sha256": "fca8bcb4a4f38d0dc7fcc3d07b15fdb4d530ddb2a7f2771131c3ef47cf2c8398",
+      "id": 28574,
+      "integrity_verified": true,
+      "name": "Costa Centro Bodrum",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 914,
+      "description_bytes": 1854,
+      "description_sha256": "9516cbed9be78f68ae7dc8c49c07d3e7c6be70dcf905296c6460d47ea65b894e",
+      "id": 28882,
+      "integrity_verified": true,
+      "name": "Malkoc Hotel",
+      "section_count": 6,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 878,
+      "description_bytes": 1788,
+      "description_sha256": "a1cff5cbff68491e75406eb8c5933c59a56c5cda125a013c40f2546674a03732",
+      "id": 28892,
+      "integrity_verified": true,
+      "name": "Grand Liza Hotel",
+      "section_count": 6,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 444,
+      "description_bytes": 1028,
+      "description_sha256": "af2975b457ab27af4aab75feb19200282845f40ba671f6e68629fddba978b602",
+      "id": 28941,
+      "integrity_verified": true,
+      "name": "Gedikpasa Konagi",
+      "section_count": 6,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 758,
+      "description_bytes": 1566,
+      "description_sha256": "fcaccb87df12eba74df3ee5ca7ca49a6c93a39750826afbeee62faeb4001d483",
+      "id": 28950,
+      "integrity_verified": true,
+      "name": "Hotel Grand Mark",
+      "section_count": 6,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 790,
+      "description_bytes": 1625,
+      "description_sha256": "8160fe26b2685c483a156c629c273c91799cc900df3897a10a9ea2f6824b1419",
+      "id": 28967,
+      "integrity_verified": true,
+      "name": "Grand Pamir Hotel",
+      "section_count": 6,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 841,
+      "description_bytes": 1720,
+      "description_sha256": "a5be808458f322eecdb90700d90b992b25d1197075111611a3f6bee9b52cb154",
+      "id": 28990,
+      "integrity_verified": true,
+      "name": "Tilia Hotel",
+      "section_count": 5,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 595,
+      "description_bytes": 1331,
+      "description_sha256": "4ff8546f7f40836c16fac142704e15a71e123ea79fd8d6beef6d738b61842378",
+      "id": 29013,
+      "integrity_verified": true,
+      "name": "Sim Hotel Istanbul",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1217,
+      "description_bytes": 2420,
+      "description_sha256": "48e5024978718e3a99f9e4b63b9505ac33eceabc1f1639a80640248b1425da2a",
+      "id": 29144,
+      "integrity_verified": true,
+      "name": "Amber Hotel Istanbul",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 1014,
+      "description_bytes": 2060,
+      "description_sha256": "977211a3e08776d353aee0346b4cf5940c4e23642bda6364c5f93c8069bf16f1",
+      "id": 29272,
+      "integrity_verified": true,
+      "name": "Dundar Hotel",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 316,
+      "description_bytes": 788,
+      "description_sha256": "5afce76c74ccb8f872decacd2b805d0f6ecfaa94366f8f6b9f6a5f602a8943f6",
+      "id": 29273,
+      "integrity_verified": true,
+      "name": "Dara Otel",
+      "section_count": 5,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 662,
+      "description_bytes": 1341,
+      "description_sha256": "05e42c965b66429aed88d5dade17b838dda498c8de29ebe808ef4cdac3d0a9fb",
+      "id": 29368,
+      "integrity_verified": true,
+      "name": "Sogut Hotel & Spa Old City Istanbul",
+      "section_count": 5,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "УСЛУГИ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 733,
+      "description_bytes": 1585,
+      "description_sha256": "0d0438c55425f862be66d24601b448680013ec61f0e29876d223b2e85713d301",
+      "id": 29860,
+      "integrity_verified": true,
+      "name": "Birbey Hotel",
+      "section_count": 7,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ",
+        "ДЛЯ ДЕТЕЙ",
+        "КОНТАКТЫ"
+      ]
+    },
+    {
+      "classification": "hotel_description",
+      "decoded_text_characters": 585,
+      "description_bytes": 1293,
+      "description_sha256": "ff1749776144f635355b44e2e828376b4b811b031d2b23b66fef27c73e629d39",
+      "id": 29979,
+      "integrity_verified": true,
+      "name": "My Assos Hotel",
+      "section_count": 5,
+      "section_titles": [
+        "РАСПОЛОЖЕНИЕ",
+        "ИНФОРМАЦИЯ ОБ ОТЕЛЕ",
+        "НОМЕРА",
+        "КОНЦЕПЦИЯ ПИТАНИЯ",
+        "УСЛУГИ"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "id": 16193,
+      "name": "Dragut Point North",
+      "summary": "Тургутреис, 20 км от Бодрума, трёхэтажное здание; Dragut Point South назван соседним отелем."
+    },
+    {
+      "id": 16330,
+      "name": "Mira Beach Resort Bodrum",
+      "summary": "Битез, 8 км от Бодрума; три трёхэтажных здания и территория5000м²."
+    },
+    {
+      "id": 17097,
+      "name": "Fortuna 3 Ai Marmaris",
+      "summary": "Описаны условия размещения FORTUNA, без идентичности конкретного отеля."
+    }
+  ],
+  "interpretation": "Descriptions are semantically useful for comparison. Future availability, completeness and freshness through the provider's standard API are not established. Supplier clarification remains a separate contract question; new content calls stay disabled.",
+  "next": "Decode title/text sections in the panel, preserve stored payload/digest, distinguish FORTUNA from named hotels; no new supplier calls needed."
+}
