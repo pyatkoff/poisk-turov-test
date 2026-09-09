@@ -20,7 +20,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <meta name="description" content="<?=home_e($homeDescription)?>">
   <meta name="robots" content="<?=home_e($homeRobots)?>">
   <link rel="canonical" href="<?=$homeCanonical?>">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <?php v2_render_site_favicon(); ?>
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="AnyTour">
   <meta property="og:title" content="AnyTour — поиск и подбор туров онлайн">
