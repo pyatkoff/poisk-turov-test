@@ -229,6 +229,10 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
     assert.equal(await card.locator('.tour-secondary-facts').filter({ hasText: 'Андромеда' }).count(), 2, 'expanded provider variants remain visibly attributed');
     assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'перед выбором нужна проверка' }).count(), 2, 'every Andromeda variant keeps the quote-required boundary');
+    if (width <= 760) {
+      const providerPrice = await card.locator('.tour-row').first().locator('.hotel-price').boundingBox();
+      assert.ok(providerPrice.width >= 90 && providerPrice.height <= 45, 'mobile unquoted provider price stays readable instead of wrapping digit by digit');
+    }
     assert.equal((await snapshot(page)).overflow, false, width + ': complete provider expansion fits the viewport');
     if (!previous) await page.screenshot({ path: path.join(output, `andromeda-expanded-${width}.png`), fullPage: true });
     await page.evaluate(() => window.AnyTourAndromedaProvider.expandHotel('21477'));
