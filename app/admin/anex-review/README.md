@@ -22,8 +22,9 @@ call a supplier, or change a real decision. No production Search3/DS2 modules ar
 - Additive schema plus isolated MySQL tests; no application secrets in test CI.
 - Read-only integration with the separately prepared `anex_hotel_content` and
   `catalog_hotel_details` stores. Missing tables/rows remain explicit; ANEX ID and
-  content digest are verified. Descriptions are escaped; photo links are HTTPS and
-  click-only (no third-party requests on page open). Data is included in the evidence
+  content digest are verified. Descriptions are escaped; photos are rendered as source-labelled HTTPS thumbnails with lazy loading and
+  no-referrer requests, opening the original image on click. ANEX and Tourvisor
+  remain separate; an empty ANEX gallery is never filled from a candidate. Data is included in the evidence
   version, so an updated card invalidates a stale decision. No content collection.
 
 ## Deployment gates — NOT yet satisfied
@@ -77,3 +78,12 @@ queue/manual projection, missing/truncated evidence, CSRF/authorization, escaped
 content, stale evidence, idempotence, alternatives after a rejected pair, actual
 preview resolver acceptance, transaction rollback on audit failure, and preserved
 catalog/policy/candidate/prior-manual rows. No supplier or application DB is used.
+
+## Rich comparison cards (owner request, 9 September 2026)
+
+The ANEX card and saved Tourvisor candidates now appear side by side on desktop
+and stack on narrow screens. Descriptions are initially open; saved ANEX location,
+transfer, characteristics and room types are expandable. Up to 12 saved thumbnails
+per source are shown. CSP permits HTTPS images only; it still denies scripts and
+connections. Loading a photo requests its stored CDN URL, never a supplier search
+or a hotel-content API call. Existing authentication/deployment gates above remain.

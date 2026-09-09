@@ -45,7 +45,9 @@ $db->exec("INSERT INTO anex_hotel_decisions VALUES (20,'accepted',101,'owner:his
 $db->exec("INSERT INTO anex_hotel_decisions VALUES (21,'rejected',NULL,'owner:historic','hotel-wide block','2026-09-08 12:00:00')");
 $db->exec("INSERT INTO anex_hotel_search_mappings VALUES (22,102,1,'preview','owner_exact_and_strong_20260908','strong_candidate')");
 $content = ['id'=>1,'name'=>'Hotel One','address'=>'ANEX address','description'=>'<script>unsafe description</script>',
-    'latitude'=>36.0,'longitude'=>30.0,'photos'=>[['url'=>'https://images.example.com/anex.jpg']]];
+    'latitude'=>36.0,'longitude'=>30.0,'photos'=>[['url'=>'https://images.example.com/anex.jpg','note'=>'Территория ANEX']],
+    'location'=>'Рядом с пляжем', 'attributes'=>[['name'=>'Год открытия','value'=>'2005']],
+    'rooms'=>[['name'=>'Standard','description'=>'Номер с балконом']]];
 $contentHash = hash('sha256', json_encode($content, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
 $payload = AnexReviewService::json(['status'=>'ok','hotel_id'=>1,'content'=>$content,'source_sha256'=>$contentHash]);
 $db->prepare("INSERT INTO anex_hotel_content VALUES (1,'ready',?,?,?,NULL,'2026-09-09 06:00:00')")->execute([str_repeat('a',40),$contentHash,$payload]);
@@ -156,12 +158,23 @@ check(strpos($html,'<script>alert(1)</script>') === false && strpos($html,'&lt;s
 check(strpos($html,'<img src=x') === false && strpos($html,'&lt;img') !== false,'escaped candidate JSON');
 check(strpos($html,'type="submit" disabled') !== false,'read-only actions disabled');
 check(strpos($html,'608') !== false && strpos($html,'не доказывает отсутствие конкурентов') !== false,'incomplete evidence warning');
-check(strpos($html,'<script') === false && strpos($html,'<img') === false,'no scripts or automatic image requests');
+check(strpos($html,'<script') === false && strpos($html,'loading="lazy"') !== false,'gallery uses lazy images without scripts');
 check(strpos($html,'unsafe description&lt;/script&gt;') !== false,'content description escaped');
-check(strpos($html,'javascript:alert') === false && strpos($html,'https://images.example.com') !== false,'safe click-only photo links');
+check(strpos($html,'javascript:alert') === false && strpos($html,'src="https://images.example.com/anex.jpg"') !== false,'safe own ANEX photo displayed');
+check(strpos($html,'referrerpolicy="no-referrer"') !== false && strpos($html,'alt="ANEX · Территория ANEX"') !== false,'gallery privacy and source attribution');
+check(strpos($html,'Номер с балконом') !== false && strpos($html,'2005') !== false,'saved ANEX rooms and characteristics displayed');
 check(strpos($html,'rel="noopener noreferrer"') !== false,'external photo link privacy');
-check(strpos(anex_review_links(['http://example.com/a','https://user:pass@example.com/a','https://localhost/a','data:image/png,x']),'<a ') === false,'unsafe photo URLs rejected');
+check(strpos(anex_review_gallery(['http://example.com/a','https://user:pass@example.com/a','https://localhost/a','data:image/png,x'], 'ANEX'),'<a ') === false,'unsafe photo URLs rejected');
+check(strpos(anex_review_gallery([], 'ANEX'), 'карточке ANEX фотографий нет') !== false,'missing ANEX gallery is not filled with Tourvisor photos');
 check($db->query('SELECT payload_json FROM anex_hotel_content WHERE anex_hotel_id=1')->fetchColumn() === $payload, 'content payload never rewritten');
 // CI-only synthetic fixture, not user hotel data. Retained for later visual review.
 if (getenv('ANEX_REVIEW_TEST_HTML')) file_put_contents(getenv('ANEX_REVIEW_TEST_HTML'), $html);
+// Separate synthetic dossier for HTTP/gallery checks; never added to application data.
+$browserContent = $content;
+$browserContent['id'] = 5;
+$browserContent['name'] = 'Hotel 5';
+$browserContent['description'] = 'Сохранённое описание ANEX для проверки сравнения карточек.';
+$browserHash = hash('sha256', json_encode($browserContent, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
+$browserPayload = AnexReviewService::json(['status'=>'ok','hotel_id'=>5,'content'=>$browserContent,'source_sha256'=>$browserHash]);
+$db->prepare("INSERT INTO anex_hotel_content VALUES (5,'ready',?,?,?,NULL,'2026-09-09 06:00:00')")->execute([str_repeat('a',40),$browserHash,$browserPayload]);
 echo 'ANEX_REVIEW_PANEL_OK checks=' . $checks . ' supplier_calls=0 test_db=anex_review_test live_db=untouched' . PHP_EOL;
