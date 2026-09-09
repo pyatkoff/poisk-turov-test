@@ -10,9 +10,10 @@ from andromeda_hotel_candidates import save
 def main():
     root=Path(__file__).resolve().parents[2];directory=Path(os.environ['RUNNER_TEMP'])/'andromeda-install'
     directory.mkdir(exist_ok=True)
-    request={'source_sha':os.environ['GITHUB_SHA'],'files':{}}
+    request={'source_sha':os.environ['SOURCE_SHA'],'files':{}}
     files=['v2/api-andromeda-search3-preview.php','v2/anex-search3-preview-v1.js',
            'app/integrations/andromeda-client.php','app/integrations/andromeda-transport.php',
+           'app/integrations/andromeda-search.php','app/integrations/andromeda-offer-store.php',
            'app/integrations/andromeda-normalizer.php','app/integrations/andromeda-hotel-resolver.php']
     for path in files:request['files'][path.removeprefix('v2/')]=base64.b64encode((root/path).read_bytes()).decode()
     request['previous_addon_sha256']=os.environ['PREVIOUS_ADDON_SHA256']

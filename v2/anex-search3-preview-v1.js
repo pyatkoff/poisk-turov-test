@@ -586,6 +586,11 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     const status = node('p', 'anex-search3-status', filterNotice || message);
     status.setAttribute('role', 'status');
     panel.appendChild(status);
+    if (message.includes('Андромеда: нужен вход владельца')) {
+      const login = node('a', '', 'Войти для поиска Андромеды');
+      login.href = new URL('anex-owner-login.php', endpoint).href;
+      login.target = '_blank'; login.rel = 'noopener'; panel.appendChild(login);
+    }
     let added = 0, merged = 0, ambiguous = 0, supplementalCount = 0;
     (filterNotice ? [] : hotels).filter(validHotel).forEach(original => {
       const hotel = filteredHotel(original), point = pointHotelFor(original);
@@ -702,11 +707,11 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       try {
         const url = new URL('api-' + provider + '-search3-preview.php', endpoint);
         const response = await window.fetch(url.href, { method: 'POST', credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(run), signal });
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'AnyTourSearch3' }, body: JSON.stringify(run), signal });
         const payload = await response.json();
         if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
         if (!response.ok || !payload.ok) {
-          statuses[provider] = errorMessage(payload.error).replace(/ANEX/g, label);
+          statuses[provider] = payload.error === 'owner_login_required' ? 'Андромеда: нужен вход владельца' : errorMessage(payload.error).replace(/ANEX/g, label);
         } else if (payload.data && payload.data.generation === run.generation && payload.data.provider === provider && Array.isArray(payload.data.hotels)) {
           pages[provider] = payload.data.hotels;
           statuses[provider] = label + ': ' + payload.data.hotels.length + ' отелей (первая страница)';

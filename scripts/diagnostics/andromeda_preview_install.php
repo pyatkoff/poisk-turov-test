@@ -13,6 +13,7 @@ try{
     $release=$private.'/release-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
     $allowed=['api-andromeda-search3-preview.php','anex-search3-preview-v1.js',
         'app/integrations/andromeda-client.php','app/integrations/andromeda-transport.php',
+        'app/integrations/andromeda-search.php','app/integrations/andromeda-offer-store.php',
         'app/integrations/andromeda-normalizer.php','app/integrations/andromeda-hotel-resolver.php'];
     if(count($request['files'])!==count($allowed)||array_diff(array_keys($request['files']),$allowed))throw new RuntimeException();
     if(hash_file('sha256',$target.'/anex-search3-preview-v1.js')!==$request['previous_addon_sha256'])throw new RuntimeException();

@@ -50,7 +50,7 @@ final class AnyTourAndromedaOfferStore {
         // Keep only normalized data + required private supplier IDs, not sid or raw response.
         $next=$this->state;
         $next['snapshot']=$projection;
-        $allowed=['TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','ADULT','CHILD',
+        $allowed=['AGES','TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','ADULT','CHILD',
             'NIGHTS_FROM','NIGHTS_TILL','CURRENCYINC','MEAL','OPERATORS','PACKETTYPE','PAGE'];
         if (array_diff(array_keys($criteria),$allowed)) throw new InvalidArgumentException('UNSUPPORTED_CRITERIA');
         foreach ($criteria as $value) if (!is_int($value) && !is_string($value))

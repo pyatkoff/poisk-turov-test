@@ -103,7 +103,7 @@ final class AnyTourAndromedaClient
     }
 
     /** One validated price page per server request; no automatic pagination/retry. */
-    public function price(array $params): array
+    public static function validatePriceParams(array $params): void
     {
         $required=['TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TILL','ADULT','CHILD','CURRENCYINC','PACKETTYPE','PAGE'];
         if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
@@ -117,6 +117,11 @@ final class AnyTourAndromedaClient
         }
         if($params['CHECKIN_BEG']>$params['CHECKIN_END'] || (new DateTimeImmutable($params['CHECKIN_BEG']))->diff(new DateTimeImmutable($params['CHECKIN_END']))->days>21) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         foreach(['MEAL','OPERATORS','AGES'] as $key) if(isset($params[$key]) && (!is_string($params[$key]) || strlen($params[$key])>300 || !preg_match('/^[0-9]+(?:,[0-9]+)*$/D',$params[$key]))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+    }
+
+    public function price(array $params): array
+    {
+        self::validatePriceParams($params);
         if ($this->priceAttempted) throw new RuntimeException('ANDROMEDA_PRICE_REPLAY_REFUSED');
         if ($this->sid === null || time() >= $this->expires) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
         $this->priceAttempted = true; // Reserve before sending, including unknown failures.
