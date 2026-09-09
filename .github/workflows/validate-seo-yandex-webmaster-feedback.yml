@@ -1,0 +1,49 @@
+name: Validate SEO Yandex Webmaster feedback
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-yandex-webmaster-feedback-v1.php'
+      - 'v2/data/report-seo-yandex-webmaster-feedback-v1.php'
+      - 'scripts/collect-yandex-webmaster-query-analytics.sh'
+      - 'tests/seo-yandex-webmaster-feedback-smoke.php'
+      - '.github/workflows/collect-seo-yandex-webmaster-feedback.yml'
+      - '.github/workflows/validate-seo-yandex-webmaster-feedback.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-yandex-webmaster-feedback-v1.php'
+      - 'v2/data/report-seo-yandex-webmaster-feedback-v1.php'
+      - 'scripts/collect-yandex-webmaster-query-analytics.sh'
+      - 'tests/seo-yandex-webmaster-feedback-smoke.php'
+      - '.github/workflows/collect-seo-yandex-webmaster-feedback.yml'
+      - '.github/workflows/validate-seo-yandex-webmaster-feedback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-seo-yandex-webmaster-feedback-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  collector-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate parser and no-secret boundary
+        shell: bash
+        env:
+          YANDEX_WEBMASTER_OAUTH_TOKEN: ''
+        run: |
+          set -euo pipefail
+          bash -n scripts/collect-yandex-webmaster-query-analytics.sh
+          php -l v2/seo-yandex-webmaster-feedback-v1.php >/dev/null
+          php -l v2/data/report-seo-yandex-webmaster-feedback-v1.php >/dev/null
+          php -l tests/seo-yandex-webmaster-feedback-smoke.php >/dev/null
+          php tests/seo-yandex-webmaster-feedback-smoke.php
+          bash scripts/collect-yandex-webmaster-query-analytics.sh /tmp/not-configured.json
+          php -r '$x=json_decode(file_get_contents("/tmp/not-configured.json"),true); if(($x["state"]??"")!=="not_configured") exit(1); if(($x["reason"]??"")!=="YANDEX_WEBMASTER_OAUTH_TOKEN_missing") exit(2); if(($x["responses"]??null)!==[]) exit(3); echo "SEO_YANDEX_WEBMASTER_NO_SECRET_OK network=0\n";'

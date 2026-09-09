@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "source_pr": 1787,
+  "baseline_release_sha": "2fff5a92cab4e744907e6d934d849e57365de635",
+  "source_sha": "aa4790d95166367f6e6b111709ce3b9f04768238",
+  "source_tree": "3a30156436d85abc35985ce8ec5ce0ca3b1d61d9",
+  "release_integration_sha": "e6c3e3cafad52ddf836113d2c3d3b80a63b06c06",
+  "scope": "Preserve the concrete date and duration shown by a hotel snapshot card when its CTA hands the visitor to Search3.",
+  "result": {
+    "confirmed_gap_fixed": true,
+    "displayed_snapshot_state_preserved": ["hotel", "departure", "dateFrom", "dateTo", "daysFrom", "daysTill"],
+    "existing_offer_state_helper_reused": true,
+    "generic_hero_and_callout_preserved": true,
+    "production_and_preview_route_contracts_unchanged": true,
+    "destination_or_hotel_ids_added": 0,
+    "anex_or_andromeda_changed": false
+  },
+  "size": {
+    "css_js_delta_raw_bytes": 0
+  },
+  "verification": {
+    "security_run": 34379191889,
+    "exact_artifact_run": 34379192101,
+    "conclusion": "success",
+    "narrow_checks": ["search handoff helper", "hotel renderer contract", "production and preview site paths", "live snapshot source boundary"],
+    "real_leads_submitted": 0
+  },
+  "artifact": {
+    "id": 10115148900,
+    "digest": "sha256:215c2239a12d4aa14dc9cec70ae30919b32baf1a7833ea01317a9c71eaeddecb"
+  },
+  "publication": {
+    "published": true,
+    "published_preview_source_sha": "aa4790d95166367f6e6b111709ce3b9f04768238",
+    "deploy_run": 34379466986,
+    "deployment_evidence_artifact": 10115256484,
+    "main_observed_sha": "ab4b75ff6db5cadd59127399ba2d740d71b534d3",
+    "main_changed": false,
+    "production_changed": false,
+    "evidence": "9 routes 200; noindex; disabled lead 403; counter0; internal PHP denied; rollback retained; production fingerprints unchanged"
+  },
+  "rollback": "Revert release merge e6c3e3cafad52ddf836113d2c3d3b80a63b06c06 independently; preview retained the previous rollback copy.",
+  "next_action": "Provider parity waits for a fresh bounded INT handoff; continue the independent S3_OTA_QUALITY_BENCHMARK baseline on the current exact preview."
+}

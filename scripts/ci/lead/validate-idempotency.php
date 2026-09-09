@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../../../v2/lead-idempotency-v1.php';
+
+$base = [
+    'phone' => '+79990000000',
+    'tourId' => 'T1',
+    'searchId' => 'S1',
+    'flight' => 'F1',
+    'flightPrice' => 100000,
+    'flightFuel' => 0,
+    'comment' => 'ok',
+];
+$same = $base;
+$flight = $base;
+$flight['flight'] = 'F2';
+$price = $base;
+$price['flightPrice'] = 110000;
+$comment = $base;
+$comment['comment'] = 'window seat';
+
+if (v2_lead_idempotency_key($base) !== v2_lead_idempotency_key($same)) {
+    exit(1);
+}
+if (v2_lead_idempotency_key($base) === v2_lead_idempotency_key($flight)) {
+    exit(2);
+}
+if (v2_lead_idempotency_key($base) === v2_lead_idempotency_key($price)) {
+    exit(3);
+}
+if (v2_lead_idempotency_key($base) === v2_lead_idempotency_key($comment)) {
+    exit(4);
+}
+
+echo "LEAD_IDEMPOTENCY_CONTRACT_OK\n";

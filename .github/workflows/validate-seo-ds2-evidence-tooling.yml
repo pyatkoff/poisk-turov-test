@@ -1,0 +1,29 @@
+name: Validate SEO DS2 evidence tooling
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/seo-ds2-live-evidence.cjs'
+      - 'tests/seo-ds2-live-evidence-source-contract-smoke.php'
+      - '.github/workflows/collect-seo-ds2-render-evidence.yml'
+      - '.github/workflows/validate-seo-ds2-evidence-tooling.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ds2-evidence-tooling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast DS2 evidence checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/seo-ds2-live-evidence.cjs
+          php -l tests/seo-ds2-live-evidence-source-contract-smoke.php >/dev/null
+          php tests/seo-ds2-live-evidence-source-contract-smoke.php
+          php -l v2/data/report-seo-ds2-render-evidence-v1.php >/dev/null

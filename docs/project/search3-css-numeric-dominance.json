@@ -1,0 +1,2133 @@
+{
+  "baseline_source": "bff20777",
+  "method": "Remove declarations covered by a same-selector witness in an equal/broader numeric-width media interval. Witness wins by later order, important priority, or an additional leading html ancestor of body (HTML document equivalence, higher type specificity). Different values allowed only for basic numeric longhands accepted by CSS grammar; identical-value witnesses retain fallback syntax. No supports or nonnumeric media participation. No selector/at-rule/declaration reordering.",
+  "removed": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/hotel-packages.css",
+      "line": 27,
+      "property": "min-height",
+      "value": "0",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #results .hotel-main"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/hotel-card-convergence.css",
+          "line": 4,
+          "value": "188px",
+          "context": [],
+          "important": true,
+          "index": 403,
+          "selector": "body.search3-candidate #results .hotel-main"
+        }
+      ],
+      "source_index": 378
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/hotel-packages.css",
+      "line": 27,
+      "property": "column-gap",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #results .hotel-body"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/hotel-card-convergence.css",
+          "line": 6,
+          "value": "18px",
+          "context": [],
+          "important": true,
+          "index": 408,
+          "selector": "body.search3-candidate #results .hotel-body"
+        }
+      ],
+      "source_index": 379
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-width-compatibility.css",
+      "line": 23,
+      "property": "min-height",
+      "value": "156px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1025px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/result-cards.css",
+          "line": 158,
+          "value": "188px",
+          "context": [
+            [
+              "media",
+              "(min-width:761px)"
+            ]
+          ],
+          "important": true,
+          "index": 3409,
+          "selector": "html body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo"
+        }
+      ],
+      "source_index": 507
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/filters.css",
+      "line": 18,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .results-filter-rail .filter-range>span"
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "file": "styles/results-layout.css",
+          "line": 93,
+          "value": "12px",
+          "context": [],
+          "important": true,
+          "index": 3898,
+          "selector": "body.search3-candidate .results-filter-rail .filter-range>span"
+        }
+      ],
+      "source_index": 598
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/filters.css",
+      "line": 18,
+      "property": "font-weight",
+      "value": "850",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .results-filter-rail .filter-range>span"
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "file": "styles/results-layout.css",
+          "line": 94,
+          "value": "900",
+          "context": [],
+          "important": true,
+          "index": 3899,
+          "selector": "body.search3-candidate .results-filter-rail .filter-range>span"
+        }
+      ],
+      "source_index": 599
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-context.css",
+      "line": 68,
+      "property": "display",
+      "value": "flex",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results .v2-shell"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/result-cards.css",
+          "line": 177,
+          "value": "flex",
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "important": true,
+          "index": 3420,
+          "selector": "html body.search3-candidate.search3-has-results .v2-shell"
+        }
+      ],
+      "source_index": 836
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-context.css",
+      "line": 68,
+      "property": "flex-direction",
+      "value": "column",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results .v2-shell"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/result-cards.css",
+          "line": 177,
+          "value": "column",
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "important": true,
+          "index": 3421,
+          "selector": "html body.search3-candidate.search3-has-results .v2-shell"
+        }
+      ],
+      "source_index": 837
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-context.css",
+      "line": 72,
+      "property": "order",
+      "value": "2",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #resultsSearchSummary"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-batch-iteration2.css",
+          "line": 70,
+          "value": "3",
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "important": true,
+          "index": 1298,
+          "selector": "body.search3-candidate.search3-has-results #resultsSearchSummary"
+        }
+      ],
+      "source_index": 839
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-context.css",
+      "line": 73,
+      "property": "order",
+      "value": "3",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #resultsTools"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-batch-iteration2.css",
+          "line": 69,
+          "value": "2",
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "important": true,
+          "index": 1297,
+          "selector": "body.search3-candidate.search3-has-results #resultsTools"
+        }
+      ],
+      "source_index": 840
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-context.css",
+      "line": 73,
+      "property": "margin-bottom",
+      "value": "3px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #resultsTools"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/result-cards.css",
+          "line": 179,
+          "value": "4px",
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "important": true,
+          "index": 3425,
+          "selector": "html body.search3-candidate.search3-has-results #resultsTools"
+        }
+      ],
+      "source_index": 841
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-context.css",
+      "line": 76,
+      "property": "order",
+      "value": "6",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #selectedTour"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/result-cards.css",
+          "line": 183,
+          "value": "5",
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "important": true,
+          "index": 3430,
+          "selector": "html body.search3-candidate.search3-has-results #selectedTour"
+        }
+      ],
+      "source_index": 842
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "letter-spacing",
+      "value": ".06em",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #selectedTour .selected-head .eyebrow"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-batch-iteration1.css",
+          "line": 26,
+          "value": ".035em",
+          "context": [],
+          "important": true,
+          "index": 1058,
+          "selector": "body.search3-candidate #selectedTour .selected-head .eyebrow"
+        }
+      ],
+      "source_index": 987
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "margin-bottom",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #selectedTour .section-heading"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-batch-iteration1.css",
+          "line": 29,
+          "value": "10px",
+          "context": [],
+          "important": true,
+          "index": 1065,
+          "selector": "body.search3-candidate #selectedTour .section-heading"
+        }
+      ],
+      "source_index": 1010
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 56,
+      "property": "font-size",
+      "value": "8px",
+      "important": false,
+      "selectors": [
+        ".search3-selected-mobile-bar__price small"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-convergence.css",
+          "line": 100,
+          "value": "7px",
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "important": true,
+          "index": 1643,
+          "selector": ".search3-selected-mobile-bar__price small"
+        }
+      ],
+      "source_index": 1032
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 56,
+      "property": "font-size",
+      "value": "17px",
+      "important": false,
+      "selectors": [
+        ".search3-selected-mobile-bar__price strong"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-convergence.css",
+          "line": 101,
+          "value": "15px",
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "important": true,
+          "index": 1644,
+          "selector": ".search3-selected-mobile-bar__price strong"
+        }
+      ],
+      "source_index": 1035
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 56,
+      "property": "min-height",
+      "value": "44px",
+      "important": false,
+      "selectors": [
+        ".search3-selected-mobile-bar button"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-convergence.css",
+          "line": 102,
+          "value": "40px",
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "important": true,
+          "index": 1645,
+          "selector": ".search3-selected-mobile-bar button"
+        }
+      ],
+      "source_index": 1038
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1.css",
+      "line": 58,
+      "property": "font-size",
+      "value": "10px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .search3-show-tours"
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/results-layout.css",
+          "line": 284,
+          "value": "14px",
+          "context": [],
+          "important": true,
+          "index": 4045,
+          "selector": "body.search3-candidate .search3-show-tours"
+        }
+      ],
+      "source_index": 1087
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2.css",
+      "line": 23,
+      "property": "margin-top",
+      "value": "8px",
+      "important": false,
+      "selectors": [
+        "body.search3-candidate .search3-hotel-facts"
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "file": "styles/hotel-card-convergence.css",
+          "line": 10,
+          "value": "9px",
+          "context": [],
+          "important": true,
+          "index": 421,
+          "selector": "body.search3-candidate .search3-hotel-facts"
+        }
+      ],
+      "source_index": 1247
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2.css",
+      "line": 44,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #results .search3-tour-list-head span"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 47,
+          "value": "7px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1388,
+          "selector": "body.search3-candidate #results .search3-tour-list-head span"
+        }
+      ],
+      "source_index": 1277
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2.css",
+      "line": 45,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #results .search3-tour-list-head>b"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 47,
+          "value": "7px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1388,
+          "selector": "body.search3-candidate #results .search3-tour-list-head>b"
+        }
+      ],
+      "source_index": 1279
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 22,
+      "property": "font-size",
+      "value": "7.5px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .results-filter-rail .filter-option"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/results-layout.css",
+          "line": 113,
+          "value": "12px",
+          "context": [],
+          "important": true,
+          "index": 3912,
+          "selector": "body.search3-candidate .results-filter-rail .filter-option"
+        }
+      ],
+      "source_index": 1353
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 11,
+      "property": "margin-bottom",
+      "value": "6px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results .results-tools--ds2"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/shell.css",
+          "line": 13,
+          "value": "6px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2970,
+          "selector": "html body.search3-candidate.search3-has-results .results-tools--ds2"
+        }
+      ],
+      "source_index": 1456
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 15,
+      "property": "min-height",
+      "value": "158px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-main"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 17,
+          "value": "174px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2995,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-main"
+        }
+      ],
+      "source_index": 1462
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 16,
+      "property": "height",
+      "value": "158px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-photo"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 18,
+          "value": "174px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2996,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-photo"
+        }
+      ],
+      "source_index": 1463
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 16,
+      "property": "min-height",
+      "value": "158px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-photo"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 18,
+          "value": "174px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2997,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-photo"
+        }
+      ],
+      "source_index": 1464
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 17,
+      "property": "column-gap",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-body"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 19,
+          "value": "15px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3000,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-body"
+        }
+      ],
+      "source_index": 1468
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 18,
+      "property": "font-size",
+      "value": "14.5px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-title"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 20,
+          "value": "17px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3001,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-title"
+        }
+      ],
+      "source_index": 1470
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 18,
+      "property": "line-height",
+      "value": "1.08",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-title"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 20,
+          "value": "1.08",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3002,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-title"
+        }
+      ],
+      "source_index": 1471
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 18,
+      "property": "letter-spacing",
+      "value": "-.2px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-title"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 20,
+          "value": "-.25px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3003,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-title"
+        }
+      ],
+      "source_index": 1472
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 19,
+      "property": "margin-top",
+      "value": "3px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-place"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 21,
+          "value": "4px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3005,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-place"
+        }
+      ],
+      "source_index": 1473
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 19,
+      "property": "font-size",
+      "value": "7.5px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-place"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 21,
+          "value": "9px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3004,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-place"
+        }
+      ],
+      "source_index": 1474
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 21,
+      "property": "min-height",
+      "value": "17px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-decision-line>span"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 22,
+          "value": "20px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3006,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-decision-line>span"
+        }
+      ],
+      "source_index": 1478
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 21,
+      "property": "font-size",
+      "value": "6.8px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-decision-line>span"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 22,
+          "value": "8px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3008,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-decision-line>span"
+        }
+      ],
+      "source_index": 1481
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 23,
+      "property": "min-width",
+      "value": "72px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-facts>span"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 23,
+          "value": "82px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3009,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-facts>span"
+        }
+      ],
+      "source_index": 1492
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 25,
+      "property": "font-size",
+      "value": "5.7px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-facts small"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 24,
+          "value": "6.5px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3011,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-facts small"
+        }
+      ],
+      "source_index": 1496
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 26,
+      "property": "font-size",
+      "value": "7.3px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-facts b"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 25,
+          "value": "8.5px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3012,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-facts b"
+        }
+      ],
+      "source_index": 1499
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 28,
+      "property": "font-size",
+      "value": "6.5px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-best-offer>small"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 26,
+          "value": "7.5px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3013,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-best-offer>small"
+        }
+      ],
+      "source_index": 1510
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 29,
+      "property": "font-size",
+      "value": "19px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-price"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 27,
+          "value": "22px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3014,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-price"
+        }
+      ],
+      "source_index": 1512
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 30,
+      "property": "font-size",
+      "value": "6.2px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .hotel-price-context"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 28,
+          "value": "7px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3015,
+          "selector": "html body.search3-candidate.search3-has-results #results .hotel-price-context"
+        }
+      ],
+      "source_index": 1516
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 31,
+      "property": "margin-top",
+      "value": "6px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-action"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 29,
+          "value": "8px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3017,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-action"
+        }
+      ],
+      "source_index": 1521
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 31,
+      "property": "padding-top",
+      "value": "6px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-action"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 29,
+          "value": "8px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3018,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-action"
+        }
+      ],
+      "source_index": 1522
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 33,
+      "property": "font-size",
+      "value": "7.5px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-action__copy strong"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 30,
+          "value": "8.5px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3019,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-action__copy strong"
+        }
+      ],
+      "source_index": 1528
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 34,
+      "property": "font-size",
+      "value": "7px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-hotel-action__copy span"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 31,
+          "value": "8px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3020,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-hotel-action__copy span"
+        }
+      ],
+      "source_index": 1530
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 35,
+      "property": "min-height",
+      "value": "32px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-show-tours"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 32,
+          "value": "36px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3021,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-show-tours"
+        }
+      ],
+      "source_index": 1534
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-convergence.css",
+      "line": 35,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-has-results #results .search3-show-tours"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/visual-compatibility.css",
+          "line": 32,
+          "value": "9px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 3022,
+          "selector": "html body.search3-candidate.search3-has-results #results .search3-show-tours"
+        }
+      ],
+      "source_index": 1536
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-full-cycle-contract.css",
+      "line": 7,
+      "property": "margin-top",
+      "value": "18px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate.search3-selected-open #selectedTour"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/shell.css",
+          "line": 14,
+          "value": "14px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2971,
+          "selector": "html body.search3-candidate.search3-selected-open #selectedTour"
+        }
+      ],
+      "source_index": 1692
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 29,
+      "property": "margin-top",
+      "value": "16px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .search3-page-intro"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/shell.css",
+          "line": 10,
+          "value": "11px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2965,
+          "selector": "html body.search3-candidate .search3-page-intro"
+        }
+      ],
+      "source_index": 3524
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 29,
+      "property": "margin-bottom",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .search3-page-intro"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/shell.css",
+          "line": 10,
+          "value": "7px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2966,
+          "selector": "html body.search3-candidate .search3-page-intro"
+        }
+      ],
+      "source_index": 3525
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 32,
+      "property": "margin-top",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/shell.css",
+          "line": 11,
+          "value": "8px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2967,
+          "selector": "html body.search3-candidate #tourSearch"
+        }
+      ],
+      "source_index": 3533
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 32,
+      "property": "margin-bottom",
+      "value": "14px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/shell.css",
+          "line": 11,
+          "value": "12px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 2968,
+          "selector": "html body.search3-candidate #tourSearch"
+        }
+      ],
+      "source_index": 3534
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 33,
+      "property": "gap",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch .search3-primary-grid"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-form-contract.css",
+          "line": 11,
+          "value": "12px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1651,
+          "selector": "html body.search3-candidate #tourSearch .search3-primary-grid"
+        }
+      ],
+      "source_index": 3538
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 33,
+      "property": "min-width",
+      "value": "0",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch .search3-primary-grid"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-form-contract.css",
+          "line": 13,
+          "value": "0",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1653,
+          "selector": "html body.search3-candidate #tourSearch .search3-primary-grid"
+        }
+      ],
+      "source_index": 3539
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 34,
+      "property": "min-width",
+      "value": "0",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch .search3-primary-grid>*"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-form-contract.css",
+          "line": 15,
+          "value": "0",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1654,
+          "selector": "html body.search3-candidate #tourSearch .search3-primary-grid>*"
+        }
+      ],
+      "source_index": 3540
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 39,
+      "property": "min-width",
+      "value": "150px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch .search3-primary-grid>.search-submit"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-form-contract.css",
+          "line": 16,
+          "value": "150px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1655,
+          "selector": "html body.search3-candidate #tourSearch .search3-primary-grid>.search-submit"
+        }
+      ],
+      "source_index": 3548
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 39,
+      "property": "width",
+      "value": "150px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate #tourSearch .search3-primary-grid>.search-submit"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/cascade/search3-form-contract.css",
+          "line": 16,
+          "value": "150px",
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "important": true,
+          "index": 1656,
+          "selector": "html body.search3-candidate #tourSearch .search3-primary-grid>.search-submit"
+        }
+      ],
+      "source_index": 3549
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 81,
+      "property": "min-height",
+      "value": "38px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .search3-show-tours"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/results-layout.css",
+          "line": 279,
+          "value": "44px",
+          "context": [],
+          "important": true,
+          "index": 4040,
+          "selector": "body.search3-candidate .search3-show-tours"
+        }
+      ],
+      "source_index": 3650
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 81,
+      "property": "font-size",
+      "value": "10px",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .search3-show-tours"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/results-layout.css",
+          "line": 284,
+          "value": "14px",
+          "context": [],
+          "important": true,
+          "index": 4045,
+          "selector": "body.search3-candidate .search3-show-tours"
+        }
+      ],
+      "source_index": 3651
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-tablet-layout.css",
+      "line": 6,
+      "property": "display",
+      "value": "block",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .mrf-sheet"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/acceptance-guards.css",
+          "line": 16,
+          "value": "block",
+          "context": [
+            [
+              "media",
+              "(max-width:999px)"
+            ]
+          ],
+          "important": true,
+          "index": 4372,
+          "selector": "html body.search3-candidate .mrf-sheet"
+        }
+      ],
+      "source_index": 4153
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-tablet-layout.css",
+      "line": 14,
+      "property": "visibility",
+      "value": "visible",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .mrf-sheet.is-open"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/acceptance-guards.css",
+          "line": 17,
+          "value": "visible",
+          "context": [
+            [
+              "media",
+              "(max-width:999px)"
+            ]
+          ],
+          "important": true,
+          "index": 4373,
+          "selector": "html body.search3-candidate .mrf-sheet.is-open"
+        }
+      ],
+      "source_index": 4159
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-tablet-layout.css",
+      "line": 15,
+      "property": "pointer-events",
+      "value": "auto",
+      "important": true,
+      "selectors": [
+        "body.search3-candidate .mrf-sheet.is-open"
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "file": "styles/acceptance-guards.css",
+          "line": 17,
+          "value": "auto",
+          "context": [
+            [
+              "media",
+              "(max-width:999px)"
+            ]
+          ],
+          "important": true,
+          "index": 4374,
+          "selector": "html body.search3-candidate .mrf-sheet.is-open"
+        }
+      ],
+      "source_index": 4160
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "file": "styles/results-cards-v2.css",
+      "line": 52,
+      "property": "font-size",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        "html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results .hotel-card .hotel-price-context"
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "file": "styles/results-cards-v2.css",
+          "line": 120,
+          "value": "13px",
+          "context": [],
+          "important": true,
+          "index": 4786,
+          "selector": "html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results .hotel-card .hotel-price-context"
+        }
+      ],
+      "source_index": 4762
+    }
+  ],
+  "emptyRules": [
+    {
+      "file": "styles/hotel-packages.css",
+      "source": "& #results .hotel-main{}"
+    },
+    {
+      "file": "styles/results-context.css",
+      "source": "& #selectedTour {}"
+    },
+    {
+      "file": "styles/results-context.css",
+      "source": "& #resultsTools {}"
+    },
+    {
+      "file": "styles/results-context.css",
+      "source": "& #resultsSearchSummary {}"
+    },
+    {
+      "file": "styles/results-context.css",
+      "source": "& .v2-shell {}"
+    },
+    {
+      "file": "styles/selected-tour.css",
+      "source": "& .selected-head .eyebrow {}"
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration1.css",
+      "source": "& .search3-show-tours{}"
+    },
+    {
+      "file": "styles/cascade/search3-convergence.css",
+      "source": "& .hotel-best-offer>small {}"
+    },
+    {
+      "file": "styles/cascade/search3-convergence.css",
+      "source": "& .hotel-title {}"
+    },
+    {
+      "file": "styles/form-compatibility.css",
+      "source": "& .search3-show-tours{}"
+    },
+    {
+      "file": "styles/form-compatibility.css",
+      "source": "& #tourSearch .search3-primary-grid>*{}"
+    },
+    {
+      "file": "styles/form-compatibility.css",
+      "source": "& .search3-page-intro{}"
+    },
+    {
+      "file": "styles/results-tablet-layout.css",
+      "source": "& .mrf-sheet.is-open{\n    \n    \n  }"
+    },
+    {
+      "file": "styles/results-cards-v2.css",
+      "source": "& .hotel-price-context {\n  \n}"
+    }
+  ],
+  "sourceBytesRemoved": 1843,
+  "metrics": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before": 179464,
+      "after": 177697
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before": 9923,
+      "after": 9923
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before": 4157,
+      "after": 4109
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before": 7470,
+      "after": 7470
+    }
+  ],
+  "verification": {
+    "retained_ordered_declaration_stream": "exact",
+    "numeric_media_partition_points": [
+      0,
+      0.01,
+      389.99,
+      390,
+      390.01,
+      519.99,
+      520,
+      520.01,
+      559.99,
+      560,
+      560.01,
+      639.99,
+      640,
+      640.01,
+      640.99,
+      641,
+      641.01,
+      759.99,
+      760,
+      760.01,
+      760.99,
+      761,
+      761.01,
+      998.99,
+      999,
+      999.01,
+      999.99,
+      1000,
+      1000.01,
+      1024.99,
+      1025,
+      1025.01,
+      1198.99,
+      1199,
+      1199.01,
+      1259.99,
+      1260,
+      1260.01,
+      1260.99,
+      1261,
+      1261.01,
+      4000
+    ],
+    "final_equivalent_selector_property_priority_maps": "equal",
+    "max_nesting": 3,
+    "acceptance_guards": "unchanged",
+    "protected_contracts": "unchanged"
+  },
+  "deferred": "No full build, browser, deployment or live checks in CSS lane; parent performs one batched build and existing CI."
+}

@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-09",
+  "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "source_pr": 1655,
+  "baseline_release_sha": "3eb4aaa1f6521fc2ab7bca40cee6062a151ebe8b",
+  "source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+  "source_tree": "6e0eb20a8424c4be507c2ef484cde619bd6e2884",
+  "release_integration_sha": "d6b71962c2a1fa47de2ffeab9158e2f3133f2d28",
+  "scope": "Make long flight choices scannable, keep every option reachable, expose one Search3 handoff CTA and carry the selected flight number/time into the existing lead summary without changing protected price or lead owners.",
+  "product_result": [
+    "All six flight variants remain selectable while only the selected variant expands route, baggage and fuel details.",
+    "Search3 has one visible Continue to application action; the final form submit remains a distinct action.",
+    "The existing lead summary receives the selected flight number and time and the form is presented as a clear next step.",
+    "Switching variants, retry recovery, return focus and the authoritative selected total remain intact."
+  ],
+  "ownership": {
+    "selected_and_lead_presentation": "src/search3/styles/results-layout.css",
+    "search3_handoff_and_summary_enrichment": "src/search3/behavior/summary-cta.js",
+    "protected_flight_price_owner": "v2/flight-price-sync-v1.js unchanged at SHA-256 263a5795c61da3a7cc4018f04c513f7e59b7f9e0fb9c8918fb46298564fc42e8",
+    "protected_lead_owner": "v2/lead-form-guard-v1.js unchanged at SHA-256 543c79cf652fcff2b313b5a7c6e2e4e31e18e9326faa5cf613a5be3d30a4105c",
+    "duplicate_layers_added": 0,
+    "validators_changed": false
+  },
+  "size": {
+    "public_paths": 8,
+    "public_assets_before_raw_bytes": 12007,
+    "public_assets_after_raw_bytes": 13574,
+    "public_assets_added_raw_bytes": 1567,
+    "public_css_added_raw_bytes": 905,
+    "public_js_added_raw_bytes": 662,
+    "initial_external_css_js_before_raw_bytes": 66180,
+    "initial_external_css_js_after_raw_bytes": 67747,
+    "full_external_css_js_before_raw_bytes": 108598,
+    "full_external_css_js_after_raw_bytes": 110165,
+    "selected_phase_raw_bytes": 42418,
+    "accounting": "The useful package adds1567B to both the eight public Search3 assets and the eager initial/full scenario:905B CSS and662B JS. No transfer or lazy-loading is presented as deletion."
+  },
+  "verification": {
+    "security_run": 34299852388,
+    "exact_artifact_run": 34299852380,
+    "conclusion": "success",
+    "selected_states": 8,
+    "selected_widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "flight_variants": 6,
+    "all_radios_visible": true,
+    "selected_detail_only": true,
+    "variant_switch_verified": true,
+    "single_visible_search3_handoff_cta": true,
+    "lead_summary_flight": "AB123 09:30",
+    "horizontal_overflow": false,
+    "external_calls": 0,
+    "real_leads_submitted": 0,
+    "guard_note": "Initial exact runs correctly rejected edits to both protected runtime owners. Their exact allowlisted contents were restored; no validator or guard was weakened."
+  },
+  "artifact": {
+    "id": 10084543925,
+    "digest": "sha256:1d8694ae03af183dca64b4d29208c7c2fd1f47f02e0010507cb259b29fb22873",
+    "archive_sha256": "ec2e700492af02b90c8bac1a288f65fe3068c788070012c4525cd829ee743bd8",
+    "manifest_sha256": "403658e82190d0e173ebe9558050f0d264cd1faa0b5de7582e3f3aea45c39937",
+    "payload_sha256": "a0006595882e3f37ac55e42d6b65fe4a79fe1918c35d1659f4898c0386d9cb5d",
+    "file_count": 717,
+    "selected_geometry_evidence_id": 10084543204,
+    "results_geometry_evidence_id": 10084543570
+  },
+  "publication": {
+    "published": true,
+    "route": "/_preview/search3-site-candidate/",
+    "published_preview_source_sha": "ef8ce1d8e967ffc6945adbc75b4a726906503593",
+    "control_pr": 1656,
+    "control_sha": "2e3b8d980b2da029d05ace1533cdd39da08cf74b",
+    "deploy_run": 34300274732,
+    "deployment_evidence_id": 10084667369,
+    "deployment_evidence_digest": "sha256:a016912f71c95fd80abbbee45143c106d42a9a9c82f6a7052105377b15217ead",
+    "artifact_rebuilt": false,
+    "noindex": true,
+    "production_lead_delivery": false,
+    "preview_counter": 0,
+    "rollback_backup_retained": true,
+    "production_fingerprints_unchanged": true,
+    "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_changed": false,
+    "production_changed": false,
+    "control_closed_without_merge": true
+  },
+  "visual_verification": {
+    "source": "exact CI screenshots from selected geometry artifact 10084543204",
+    "widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "passed": [
+      "One Search3 handoff CTA is visible at every width; the final form submit is a separate action.",
+      "Only the selected flight is expanded and all six variants remain visible.",
+      "Selected price/flight context and the lead form remain readable without clipping, overlap or horizontal overflow.",
+      "The lead form stacks on the narrow lead view and remains a bounded card on all checked widths."
+    ],
+    "fixture_caveats": [
+      "Synthetic airline direction labels have no inserted space.",
+      "Synthetic fuel amount and route points are absent, so the fixture displays a currency sign and dashes.",
+      "Fixture photo and description content are placeholders.",
+      "The 375px detail-state name and phone fields are dense but not clipped."
+    ]
+  },
+  "deferred": [
+    "physical Safari and safe-area verification",
+    "real-provider long-flight copy beyond deterministic fixture coverage",
+    "full lead submission, site/SEO journey and owner production visual acceptance"
+  ],
+  "rollback": "Revert release merge d6b71962c2a1fa47de2ffeab9158e2f3133f2d28 for code; restore the retained preview backup recorded by deploy run34300274732 for preview.",
+  "next_action": "Advance to S3_PRODUCT_SHARED_SITE: converge the shared DS2 content controls into one current owner across representative public routes, removing superseded site-coherence overrides in the same package.",
+  "ota_native_description_20260909": {
+    "stage": "PUBLISHED_PREVIEW_PARTIAL_OTA2",
+    "baseline_release_sha": "73eafb1e12f3b48226f60e6ecf4cf64336b86f2f",
+    "scope": "Partial S3_OTA_SELECTED_OPTIONS: Search3 native long hotel-description disclosure only",
+    "benefit": "Flights follow a compact 48px disclosure instead of the full long supplier description; full escaped content remains available. Short and legacy descriptions remain unchanged.",
+    "ownership": "Canonical tour-controller markup; existing results-layout CSS; native details with no added handler",
+    "size": {
+      "css_delta_bytes": 329,
+      "served_shared_js_delta_bytes": 230,
+      "source_js_delta_bytes": 259,
+      "initial_and_full_external_delta_bytes": 559,
+      "inline_delta_bytes": 0
+    },
+    "verification": {
+      "local": "source build/check, shared runtime build, syntax, meal-owner and honest-controls passed",
+      "CI": "Security and exact artifact passed on final source",
+      "visual": "375/1440 closed/open fixture screenshots reviewed; native Enter/Space, focus, full inert text, API count and flight/price/lead contracts passed; live preview readback confirmed",
+      "production_leads_sent": 0
+    },
+    "published": true,
+    "deferred": [
+      "Physical Safari/iPhone",
+      "Full OTA2 room/meal option selection and freshness handoff",
+      "User pilot"
+    ],
+    "next_action": "Validate the existing return -> expanded hotel -> alternative complete offer journey, then one current-owner inline chooser only if needed; active projection, search/offer identity, return source and typed contact state must be preserved.",
+    "source_sha": "dd91cd3626ce9aa02adeeed9367eb63de7f8f062",
+    "release_sha": "77cf8a6e713c7749980fd7d7732f65a3695defa5",
+    "artifact_run": 34365308626,
+    "deploy_run": 34365701650,
+    "remaining_ota2_contract": {
+      "known_api": "V2Results.state.items is raw; viewItems/expandedHotels private; direct-tour click remembers source, public selectTour does not",
+      "fixture": "RO90k, AI120k STANDARD, AI125k FAMILY; AI active, select STANDARD, return, choose FAMILY; stale responses and return focus remain correct",
+      "excluded": "No Cartesian room/meal combinations, no mutating filter project call as getter, no new provider experiments"
+    }
+  },
+  "ota_offer_switch_20260909": {
+    "stage": "PUBLISHED_PREVIEW_AWAITING_EXTERNAL_ACCEPTANCE",
+    "baseline_release_sha": "56c9bf12ec55ca862d15f54757444541a0b86d81",
+    "benefit": [
+      "Selected tour exposes other complete offers of the same hotel through the existing filtered result rows",
+      "Switching offer retains name, phone and comment in memory; consent is unchecked, a new search clears contact draft"
+    ],
+    "ownership": [
+      "v2/results-renderer-v5.js unique current projection and reveal",
+      "v2/tour-controller-v4.js canonical selection and memory-only editor retention",
+      "existing results-layout.css one visual owner",
+      "src/search3/behavior/summary-cta.js existing capture-phase return state"
+    ],
+    "contracts": "No new selector/Cartesian combinations; existing detail/flights only on explicit selection; price arithmetic, lead transport/field mapping unchanged and protected baseline bytes recovered by exact reversal",
+    "size": {
+      "css_delta_bytes": 123,
+      "served_shared_js_delta_bytes": 2120,
+      "initial_full_external_delta_bytes": 2277,
+      "inline_delta_bytes": 0,
+      "public_js_delta_bytes": 34
+    },
+    "verification": {
+      "local": "source/shared build, source check, syntax, return/meal/honest owners, exact controller reverse and owner validators passed",
+      "ci": "Security34367999488 and exact34367999625 passed on final source",
+      "browser": "375/1440 AI STANDARD120k -> FAMILY125k with exact room/meal/tour/search/total; contacts retained, consent reset; new search clears; expired alternatives return safely; source immutable; API detail/flight only; screenshots visually checked",
+      "real_leads": 0,
+      "initial_failures": [
+        "34367277256 found real hidden-results focus-return ordering defect; existing capture handler fixed",
+        "34367652218 found ambiguous fixture locator: article and toggle shared data-hotel-id; scoped to .hotel-card with assertions intact",
+        "34367919867 superseded during fixture correction; not used as acceptance"
+      ]
+    },
+    "published": true,
+    "deferred": [
+      "Physical Safari/iPhone",
+      "User pilot",
+      "Production approval"
+    ],
+    "next_action": "OTA3 shortlist: implement the reviewed local snapshot contract in existing results-clarity audit; current TV offer switching is preview-verified. Physical Safari, pilot, provider input gaps and production approval stay separate/deferred.",
+    "source_pr": 1773,
+    "source_sha": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+    "source_tree": "bc598c4bf2f1924604c509580e93d4da24207f5a",
+    "release_sha": "8b45109998b62370f6f84aa1531481e62ee921ac",
+    "artifact_id": 10110771335,
+    "artifact_run": 34367999625,
+    "deploy_run": 34368506323,
+    "deploy_evidence_artifact": 10110900562,
+    "preview_invariants": {
+      "artifact_id": 10110771335,
+      "artifact_run": 34367999625,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 717,
+      "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "64011690c7ce4413a7eb88774eac06ae8f007cdd",
+      "source_tree": "bc598c4bf2f1924604c509580e93d4da24207f5a"
+    },
+    "live_preview": {
+      "date": "2026-09-09",
+      "viewport": 1363,
+      "hotel": "GRAND BAHAMA BEACH HOTEL (Ex. HAPPY BEACH)",
+      "filter": "AI - Все Включено (59/100 hotels)",
+      "offer_ids": [
+        "25276995451144",
+        "25276563804907"
+      ],
+      "dates": [
+        "10.09.2026",
+        "11.09.2026"
+      ],
+      "nights": 7,
+      "prices": [
+        63782,
+        67373
+      ],
+      "alternatives": 4,
+      "return": "Keyboard Enter reveals same five complete offers and returns focus to exact source; second offer retains comment, unchecked consent, correct selected price and phone summary",
+      "document_overflow_px": 0,
+      "real_leads": 0
+    }
+  }
+}

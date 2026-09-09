@@ -1,0 +1,148 @@
+<?php
+require_once __DIR__ . '/site-page-shell-v1.php';
+require_once __DIR__ . '/seo-page-contract-v1.php';
+require_once __DIR__ . '/seo-offer-snapshot-v1.php';
+require_once __DIR__ . '/seo-price-calendar-v1.php';
+require_once __DIR__ . '/seo-core-month-navigation-v1.php';
+require_once __DIR__ . '/seo-core-resort-launch-state-v1.php';
+
+/**
+ * Render a curated resort page on its final clean path.
+ *
+ * review   => always noindex
+ * approved => follows the existing global SEO_INDEXABLE site gate
+ *
+ * This keeps editorial approval separate from the site-wide indexing launch.
+ */
+function v2_seo_resort_destination_name(array $page): string
+{
+    $resortName = trim((string)($page['name'] ?? '')) ?: 'этот курорт';
+    $destination = trim((string)($page['name_accusative'] ?? ''));
+    if ($destination === '' && preg_match('/^Туры\s+в\s+(.+)$/u', trim((string)($page['h1'] ?? '')), $match)) {
+        $destination = trim($match[1]);
+    }
+    return $destination !== '' ? $destination : $resortName;
+}
+
+function v2_seo_render_resort(array $record): void
+{
+    if (($record['type'] ?? '') !== 'resort') {
+        throw new InvalidArgumentException('SEO resort runtime accepts resort records only');
+    }
+
+    $status = (string)($record['status'] ?? '');
+    if (!in_array($status, ['review', 'approved'], true)) {
+        throw new InvalidArgumentException('SEO resort runtime requires review or approved status');
+    }
+
+    $path = v2_seo_stable_internal_href($record['path'] ?? '');
+    if ($path === null || !str_ends_with($path, '/')) {
+        throw new InvalidArgumentException('SEO resort runtime requires a clean trailing-slash path');
+    }
+
+    $rawPage = is_array($record['data'] ?? null) ? $record['data'] : [];
+    $resortName = trim((string)($rawPage['name'] ?? '')) ?: 'этот курорт';
+    $resortDestination = v2_seo_resort_destination_name($rawPage);
+    $page = v2_seo_page_contract($rawPage);
+    $context = sp_context($path, $page['title'], $page['description']);
+    if ($status !== 'approved') {
+        $context['robots'] = v2_seo_robots_content(false);
+    }
+
+    sp_head($context);
+    sp_header($context);
+    sp_breadcrumbs($page['breadcrumbs']);
+    sp_hero(
+        $page['eyebrow'] ?: 'AnyTour · курорт',
+        $page['h1'],
+        $page['intro'],
+        v2_seo_search_handoff_url('/poisk-turov/', $page['search_state']),
+        'Подобрать тур в ' . $resortDestination
+    );
+
+    echo '<main class="sp-main sp-seo-editorial-page sp-resort-page">';
+    echo '<div class="sp-editorial-grid">';
+    foreach ($page['sections'] as $section) {
+        $id = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string)($section['id'] ?? ''));
+        echo '<section class="sp-card sp-editorial-section"'.($id !== '' ? ' id="'.sp_e($id).'"' : '').'><h2>'.sp_e($section['title']).'</h2>';
+        foreach ($section['paragraphs'] as $paragraph) echo '<p>'.sp_e($paragraph).'</p>';
+        echo '</section>';
+    }
+    echo '</div>';
+
+    echo v2_seo_render_core_month_navigation($path, 'Туры по месяцам');
+
+    $countryId = (int)($page['search_state']['country'] ?? 0);
+    $regionId = (int)($page['search_state']['region'] ?? 0);
+    $offerCandidates = ($countryId > 0 && $regionId > 0)
+        ? v2_seo_resort_snapshot_offers($countryId, $regionId, 12)
+        : [];
+    $offers = array_slice($offerCandidates, 0, 6);
+    $priceCalendar = ($countryId > 0 && $regionId > 0)
+        ? v2_seo_price_calendar($offerCandidates, $countryId, $regionId, 14)
+        : [];
+
+    if ($offers) {
+        echo '<section class="sp-card sp-offer-snapshot"><h2>Актуальные туры в '.sp_e($resortDestination).'</h2>';
+        echo '<p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p>';
+        echo '<div class="sp-offer-list">';
+        foreach ($offers as $offer) {
+            $hotel = trim((string)($offer['hotelName'] ?? '')) ?: 'Отель';
+            $departure = trim((string)($offer['departureName'] ?? ''));
+            $date = v2_seo_offer_date_label((string)($offer['departureDate'] ?? ''));
+            $nights = (int)($offer['nights'] ?? 0);
+            $priceMarkup = v2_seo_offer_price_markup($offer);
+            $searchState = $page['search_state'];
+            $departureId = (int)($offer['departureId'] ?? 0);
+            if ($departureId > 0) $searchState['from'] = $departureId;
+            $href = v2_seo_search_handoff_url('/poisk-turov/', v2_seo_offer_search_state($searchState,$offer));
+
+            echo '<article class="sp-offer-item">';
+            echo '<h3>'.sp_e($hotel).'</h3>';
+            echo '<div class="sp-offer-meta">';
+            if ($departure !== '') echo '<span class="sp-offer-fact">Вылет из '.sp_e($departure).'</span>';
+            echo '<span class="sp-offer-fact">'.sp_e($date).'</span>';
+            echo '<span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span>';
+            echo '</div>';
+            echo '<div class="sp-offer-bottom">'.$priceMarkup;
+            echo '<a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть туры</a></div>';
+            echo '</article>';
+        }
+        echo '</div></section>';
+    }
+
+    echo v2_seo_render_price_calendar($priceCalendar, $page['search_state'], 'Цены на туры в ' . $resortDestination . ' по датам вылета');
+
+    $links = [];
+    foreach ($page['related'] as $link) {
+        if (!is_array($link)) continue;
+        $href = v2_seo_stable_internal_href($link['href'] ?? '');
+        $label = trim((string)($link['label'] ?? ''));
+        if ($href !== null && $label !== '') $links[$href] = $label;
+    }
+    if ($links) {
+        echo '<section class="sp-card sp-related-card"><h2>'.sp_e($page['related_title'] ?: 'Другие направления').'</h2><div class="sp-actions">';
+        foreach ($links as $href => $label) echo '<a class="sp-secondary" href="'.sp_e($href).'">'.sp_e($label).'</a>';
+        echo '</div></section>';
+    }
+
+    $siblingResorts=v2_seo_core_resort_sibling_links($path,8);
+    if($siblingResorts){
+        echo '<section class="sp-card sp-related-card" data-sibling-resort-links><h2>Другие курорты страны</h2><div class="sp-actions">';
+        foreach($siblingResorts as $href=>$label)echo '<a class="sp-secondary" href="'.sp_e($href).'">'.sp_e($label).'</a>';
+        echo '</div></section>';
+    }
+
+    echo '<section class="sp-card sp-search-callout"><h2>Подобрать тур</h2><p>Проверьте актуальные даты, стоимость и доступность предложений в поиске AnyTour.</p><div class="sp-actions"><a class="sp-primary" href="'.sp_e(v2_seo_search_handoff_url('/poisk-turov/', $page['search_state'])).'">Перейти к поиску туров</a></div></section>';
+    echo '</main>';
+    sp_end($context);
+}
+
+/** Backward-compatible explicit review entrypoint. */
+function v2_seo_render_resort_review(array $record): void
+{
+    if (($record['status'] ?? '') !== 'review') {
+        throw new InvalidArgumentException('SEO resort review runtime accepts review records only');
+    }
+    v2_seo_render_resort($record);
+}

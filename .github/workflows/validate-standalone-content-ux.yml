@@ -1,0 +1,232 @@
+name: Validate standalone content UX
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths:
+      - 'v2/design-system-v2.css'
+      - 'v2/home-v1.css'
+      - 'v2/site-page-v1.css'
+      - 'v2/shared-content-primitives-v1.css'
+      - 'v2/site-coherence-v1.css'
+      - 'v2/product-shell-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
+      - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'tests/seo-resort-grammar-smoke.php'
+      - 'v2/country/**'
+      - 'v2/seo-content-pilot-maldives-v1.php'
+      - 'v2/seo-content-pilot-maldives-*-v1.php'
+      - 'v2/seo-hotel-tours-content-factory-v1.php'
+      - 'v2/hot/**'
+      - 'v2/contacts/**'
+      - 'v2/how-to-buy/**'
+      - 'v2/rb/**'
+      - '.github/workflows/validate-standalone-content-ux.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/design-system-v2.css'
+      - 'v2/home-v1.css'
+      - 'v2/site-page-v1.css'
+      - 'v2/shared-content-primitives-v1.css'
+      - 'v2/site-coherence-v1.css'
+      - 'v2/product-shell-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
+      - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'tests/seo-resort-grammar-smoke.php'
+      - 'v2/country/**'
+      - 'v2/seo-content-pilot-maldives-v1.php'
+      - 'v2/seo-content-pilot-maldives-*-v1.php'
+      - 'v2/seo-hotel-tours-content-factory-v1.php'
+      - 'v2/hot/**'
+      - 'v2/contacts/**'
+      - 'v2/how-to-buy/**'
+      - 'v2/rb/**'
+      - '.github/workflows/validate-standalone-content-ux.yml'
+
+jobs:
+  content-ux:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate content routes and CTA contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in v2/site-page-shell-v1.php v2/country-page-v1.php v2/seo-resort-page-v1.php v2/country/index.php v2/country/turkey/index.php v2/country/egypt/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php tests/seo-resort-grammar-smoke.php; do php -l "$f" >/dev/null; done
+          php tests/seo-resort-grammar-smoke.php
+          grep -Fq -- '--at-accent:#D83D00' v2/design-system-v2.css
+          grep -Fq -- '--at-shell:1180px' v2/design-system-v2.css
+          grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
+          grep -Fq '.sp-main a:focus-visible' v2/site-page-v1.css
+          grep -Fq '.sp-office-phone,.sp-contact-phone{display:inline-flex;align-items:center;min-height:44px}' v2/shared-content-primitives-v1.css
+          grep -Fq '.sp-primary{min-height:44px;background:#0066ff;color:#fff' v2/shared-content-primitives-v1.css
+          grep -Fq '.sp-primary:hover{background:#0754d1}' v2/shared-content-primitives-v1.css
+          ! grep -Fq '.sp-primary,.sp-secondary{display:inline-flex' v2/site-page-v1.css
+          ! grep -Fq '.sp-primary{background:var(--at-accent)' v2/site-page-v1.css
+          ! grep -Fq '.sp-secondary{border:1px solid var(--at-line-strong)' v2/site-page-v1.css
+          ! grep -Fq '.sp-primary:hover,.sp-secondary:hover' v2/site-page-v1.css
+          ! grep -Fq '.sp-primary,.sp-secondary{width:100%}' v2/site-page-v1.css
+          php -r '
+            foreach (["v2/site-page-shell-v1.php", "v2/seo-seasonal-review-page-v1.php"] as $file) {
+              $source=file_get_contents($file);
+              $page=strpos($source, "sp_inline_css(\x27site-page-v1.css\x27)");
+              $shared=strpos($source, "sp_inline_css(\x27shared-content-primitives-v1.css\x27)");
+              if ($page===false || $shared===false || $shared<=$page) exit(41);
+            }
+          '
+          ! grep -Fq '.sp-office-phone,.sp-contact-phone' v2/site-coherence-v1.css
+          ! grep -Fq '.sp-main .sp-primary,.sp-hero .sp-primary' v2/site-coherence-v1.css
+          ! grep -Fq '.sp-header' v2/site-page-v1.css
+          grep -Fq 'background:var(--at-accent)' v2/home-v1.css
+          grep -Fq 'color:var(--at-brand)' v2/home-v1.css
+          grep -Fq '.at-home-search button:focus-visible,.at-home-search__more:focus-visible' v2/home-v1.css
+          ! grep -Fq '.at-home-header' v2/home-v1.css
+          ! grep -Fq -- '--at-orange:' v2/home-v1.css
+          ! grep -Fq -- '--at-blue:' v2/home-v1.css
+          grep -Fq 'background:#D83D00!important;color:#fff!important' v2/product-shell-v1.css
+          grep -Fq '.at-site-header a:focus-visible,.at-mobile-menu-button:focus-visible' v2/product-shell-v1.css
+          mkdir -p /tmp/empty-document-root
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $pages=[
+              ["v2/contacts/index.php","/contacts/index.php","/poisk-turov/","Свяжитесь с AnyTour"],
+              ["v2/how-to-buy/index.php","/how-to-buy/index.php","/poisk-turov/","Как купить тур онлайн"],
+              ["v2/rb/index.php","/rb/index.php","/poisk-turov/","Раннее бронирование без спешки"],
+              ["v2/hot/index.php","/hot/index.php","/poisk-turov/","Горящие туры"],
+            ];
+            foreach($pages as [$file,$script,$searchHref,$heading]){
+              $_SERVER["SCRIPT_NAME"]=$script;
+              ob_start(); include $file; $html=ob_get_clean();
+              if(substr_count($html,"<footer class=\"ds2-site-footer\"")!==1) exit(10);
+              if(substr_count($html,"<footer class=\"ds2-site-footer\" data-site-footer=\"shared\" data-search3-footer=\"1\">")!==1) exit(23);
+              if(substr_count($html,"class=\"ds2-site-footer__socials\"")!==1) exit(11);
+              if(strpos($html,"href=\"$searchHref")===false) exit(12);
+              if(strpos($html,$heading)===false) exit(13);
+              if(substr_count($html,"<style id=\"sp-design-system-css\">")!==1) exit(20);
+              if(substr_count($html,"<style id=\"sp-page-css\">")!==1) exit(15);
+              if(substr_count($html,"<style id=\"sp-footer-css\">")!==1) exit(16);
+              if(strpos($html,"--at-accent:#D83D00")===false) exit(21);
+              if(strpos($html,".sp-card a.sp-primary{color:#fff}")===false) exit(17);
+              if(strpos($html,".ds2-site-footer{")===false) exit(18);
+              foreach(["/payment/","/personal-data/","/politika-konfidentsialnosti/"] as $unpublished){ if(strpos($html,"href=\"$unpublished\"")!==false) exit(24); }
+              if($file==="v2/contacts/index.php" && (substr_count($html,"class=\"sp-office-phone\"")!==4 || substr_count($html,"class=\"sp-contact-phone\"")!==1)) exit(22);
+              if($file==="v2/rb/index.php" && strpos($html,"Помощь менеджера")===false) exit(19);
+              foreach(["переносим","старого сайта","следующий этап"] as $internal){ if(stripos($html,$internal)!==false) exit(14); }
+            }
+            $_SERVER["SCRIPT_NAME"]="/country/turkey/index.php";
+            ob_start(); include "v2/country/turkey/index.php"; $country=ob_get_clean();
+            if(substr_count($country,"data-related-destinations")!==1) exit(30);
+            if(substr_count($country,"class=\"sp-country\"")!==3) exit(31);
+            if(strpos($country,"href=\"/country/turkey/\"")!==false) exit(32);
+            foreach(["/country/egypt/","/country/tunis/","/country/cyprus/"] as $href){ if(strpos($country,"href=\"$href\"")===false) exit(33); }
+            if(strpos($country,"href=\"/poisk-turov/?country=4\"")===false) exit(34);
+            if(strpos($country,"Помощь менеджера")===false) exit(35);
+            echo "STANDALONE_CONTENT_UX_OK\n";
+          '
+      - name: Validate Maldives hotel-tour family integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require 'v2/seo-content-pilot-maldives-v1.php';
+          function fail_family(string $message): void {
+              fwrite(STDERR, "MALDIVES_HOTEL_FAMILY_FAIL:$message\n");
+              exit(1);
+          }
+
+          $record = v2_seo_content_pilot_maldives();
+          $parentSlugs = [];
+          foreach (($record['data']['related'] ?? []) as $link) {
+              $href = trim((string)($link['href'] ?? ''));
+              if (!preg_match('#^/country/maldives/hotel/([a-z0-9-]+)/$#', $href, $m)) continue;
+              if (isset($parentSlugs[$m[1]])) fail_family('duplicate_parent_link:'.$m[1]);
+              $parentSlugs[$m[1]] = true;
+          }
+
+          $routeSlugs = [];
+          foreach (glob('v2/country/maldives/hotel/*/index.php') ?: [] as $routeFile) {
+              $slug = basename(dirname($routeFile));
+              if (isset($routeSlugs[$slug])) fail_family('duplicate_route:'.$slug);
+              $routeSlugs[$slug] = true;
+              $source = file_get_contents($routeFile);
+              if ($source === false || strpos($source, 'v2_seo_render_hotel_tour_review') === false) {
+                  fail_family('route_not_review_renderer:'.$slug);
+              }
+              exec('php -l '.escapeshellarg($routeFile).' 2>&1', $lintOutput, $lintCode);
+              if ($lintCode !== 0) fail_family('route_syntax:'.$slug);
+          }
+
+          $contentSlugs = [];
+          $editorialFingerprints = [];
+          foreach (glob('v2/seo-content-pilot-maldives-*-v1.php') ?: [] as $contentFile) {
+              $source = file_get_contents($contentFile);
+              if ($source === false || strpos($source, 'v2_seo_hotel_tours_content_record') === false) continue;
+              if (!preg_match('/function\s+(v2_seo_content_pilot_maldives_[a-z0-9_]+)\s*\(/', $source, $fnMatch)) {
+                  fail_family('content_function_missing:'.basename($contentFile));
+              }
+              require_once $contentFile;
+              $fn = $fnMatch[1];
+              if (!function_exists($fn)) fail_family('content_function_unavailable:'.$fn);
+              $hotelRecord = $fn();
+              if (($hotelRecord['status'] ?? '') !== 'review' || ($hotelRecord['type'] ?? '') !== 'hotel_tours') {
+                  fail_family('record_contract:'.basename($contentFile));
+              }
+              $path = trim((string)($hotelRecord['path'] ?? ''));
+              if (!preg_match('#^/country/maldives/hotel/([a-z0-9-]+)/$#', $path, $pathMatch)) {
+                  fail_family('record_path:'.basename($contentFile));
+              }
+              $slug = $pathMatch[1];
+              $hotelId = (int)($hotelRecord['data']['search_state']['hotel'] ?? 0);
+              $countryId = (int)($hotelRecord['data']['search_state']['country'] ?? 0);
+              if ($countryId !== 8 || $hotelId <= 0 || !str_ends_with($slug, '-'.$hotelId)) {
+                  fail_family('record_identity:'.$slug);
+              }
+              if (isset($contentSlugs[$slug])) fail_family('duplicate_content_slug:'.$slug);
+              $contentSlugs[$slug] = true;
+
+              $hotelName = mb_strtolower(trim((string)($hotelRecord['data']['name'] ?? '')), 'UTF-8');
+              $editorial = [
+                  'description' => (string)($hotelRecord['data']['description'] ?? ''),
+                  'intro' => (string)($hotelRecord['data']['intro'] ?? ''),
+                  'sections' => $hotelRecord['data']['sections'] ?? [],
+              ];
+              $normalized = mb_strtolower((string)json_encode($editorial, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'UTF-8');
+              if ($hotelName !== '') $normalized = str_replace($hotelName, '{{hotel}}', $normalized);
+              $fingerprint = hash('sha256', preg_replace('/\s+/u', ' ', $normalized) ?? $normalized);
+              if (isset($editorialFingerprints[$fingerprint])) {
+                  fail_family('duplicate_editorial_copy:'.$editorialFingerprints[$fingerprint].':'.$slug);
+              }
+              $editorialFingerprints[$fingerprint] = $slug;
+
+              exec('php -l '.escapeshellarg($contentFile).' 2>&1', $lintOutput, $lintCode);
+              if ($lintCode !== 0) fail_family('content_syntax:'.$slug);
+          }
+
+          $normalize = static function(array $set): array {
+              $keys = array_keys($set);
+              sort($keys, SORT_STRING);
+              return $keys;
+          };
+          $parent = $normalize($parentSlugs);
+          $routes = $normalize($routeSlugs);
+          $content = $normalize($contentSlugs);
+          if ($parent !== $routes) {
+              fail_family('parent_route_drift parent='.implode(',', $parent).' routes='.implode(',', $routes));
+          }
+          if ($routes !== $content) {
+              fail_family('route_content_drift routes='.implode(',', $routes).' content='.implode(',', $content));
+          }
+          if (!$routes) fail_family('empty_family');
+
+          echo 'MALDIVES_HOTEL_FAMILY_OK count='.count($routes).' uniqueEditorial='.count($editorialFingerprints)."\n";
+          PHP

@@ -1,0 +1,603 @@
+{
+  "baseline": "880c92c982ed1efe72ac5a98873966c28382a500",
+  "status": "PUBLISHED_FOCUSED_LIVE_SCENARIO_VERIFIED",
+  "public_assets": {
+    "css_bytes": 205437,
+    "css_lines": 37,
+    "js_bytes": 115477,
+    "js_lines": 55,
+    "total_bytes": 320914,
+    "total_lines": 92
+  },
+  "previous_total_bytes": 336047,
+  "total_reduction_bytes": 15133,
+  "css_unchanged": true,
+  "source_runtime_modules_unchanged": true,
+  "optimization": "Build-only local variable/parameter/label renaming; compress=false, toplevel=false, eval=false, properties=false, keep_fnames=true, keep_classnames=true. First printing stage retains exact AST check; final stage parsed and compiled behavior tested.",
+  "routing": {
+    "keep": [
+      "Build Search3 whole-site preview artifact",
+      "Security guard",
+      "Validate Search3 whole-site preview boundary",
+      "Validate owner policy"
+    ],
+    "deferred": [
+      {
+        "path": ".github/workflows/build-anytour-hot.yml",
+        "name": "Build AnyTour hot inventory",
+        "jobs": [
+          "validate"
+        ]
+      },
+      {
+        "path": ".github/workflows/collect-anytour-tours.yml",
+        "name": "Collect AnyTour tour observations",
+        "jobs": [
+          "validate"
+        ]
+      },
+      {
+        "path": ".github/workflows/seo-controlled-growth-guard.yml",
+        "name": "SEO controlled growth guard",
+        "jobs": [
+          "guard"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-country-route-handoff.yml",
+        "name": "Validate standalone country route handoff",
+        "jobs": [
+          "country-handoff"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-search3-production-rollback.yml",
+        "name": "Validate Search3 production rollback readiness",
+        "jobs": [
+          "fixture-drill"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-seo-price-calendar-ui.yml",
+        "name": "Validate SEO price calendar UI",
+        "jobs": [
+          "contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-standalone-content-ux.yml",
+        "name": "Validate standalone content UX",
+        "jobs": [
+          "content-ux"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-standalone-navigation.yml",
+        "name": "Validate standalone navigation",
+        "jobs": [
+          "navigation-contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-bundles.yml",
+        "name": "Validate V2 startup bundles",
+        "jobs": [
+          "bundles"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-core.yml",
+        "name": "Validate V2 core",
+        "jobs": [
+          "core"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-flight-source.yml",
+        "name": "Validate V2 flight source contracts",
+        "jobs": [
+          "flight-source"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-primitives.yml",
+        "name": "Validate V2 SEO page primitives",
+        "jobs": [
+          "seo-primitives"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-publication-manifest.yml",
+        "name": "Validate V2 SEO publication manifest",
+        "jobs": [
+          "publication-manifest"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-publishability.yml",
+        "name": "Validate V2 SEO publishability",
+        "jobs": [
+          "publishability"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-readiness.yml",
+        "name": "Validate V2 SEO readiness",
+        "jobs": [
+          "seo-core"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-structure.yml",
+        "name": "Validate V2 SEO structure",
+        "jobs": [
+          "seo-structure"
+        ]
+      },
+      {
+        "path": ".github/workflows/verify-anytoour-seo-launch.yml",
+        "name": "Verify anytoour.ru SEO launch",
+        "jobs": [
+          "predeploy-contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/verify-seo-price-calendar-production.yml",
+        "name": "Verify SEO price calendar production evidence",
+        "jobs": [
+          "predeploy-contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/visual-standalone-content-live.yml",
+        "name": "Visual standalone content live",
+        "jobs": [
+          "content-live"
+        ]
+      }
+    ],
+    "condition": "github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1')"
+  },
+  "protected_contracts_changed": false,
+  "production_updated": false,
+  "source_sha": "4ad216b457562097c78a6a6b9c179e7365d87a0c",
+  "source_pr": 1414,
+  "deploy_pr": 1415,
+  "deploy_run": 34056652968,
+  "deploy_attempt": 1,
+  "control_sha": "2324544e04ab7bbe626362ae68a28990cb547585",
+  "verified_at": "2026-09-06T20:08:03.353302+00:00",
+  "artifact": {
+    "source_sha": "4ad216b457562097c78a6a6b9c179e7365d87a0c",
+    "source_tree": "9189866db333c7caacdb20ec5ac709f2e256ed9f",
+    "artifact_run": 34056483480,
+    "artifact_id": 9996124818,
+    "artifact_digest": "sha256:bec74724991723328cb8839c2e0cb54e4a7e7e5c97a5c279f2083f53004a2cf8",
+    "archive_sha256": "6367f391a6dceb8973768637f85199d4676c74e4a6db083d8e9b1413023cebf0",
+    "manifest_sha256": "b54fcf1f9ac7ad6a3a4a0d96529d46ecae94f163858f1d692bea09c7fa78578e",
+    "payload_sha256": "2769069225f72e10c65ad36d42045067344fd95934b2b94d34c4540dc28aff78",
+    "payload_count": 715
+  },
+  "evidence": {
+    "id": 9996165721,
+    "digest": "sha256:5333ce5d982a72f78d62eb392895eb1d830e746bcfad605d218ac8b129e4fc4a",
+    "source_sha": "4ad216b457562097c78a6a6b9c179e7365d87a0c",
+    "run": 34056652968,
+    "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+    "production_fingerprints_equal": 13,
+    "evidence": {
+      "artifact_id": 9996124818,
+      "artifact_run": 34056483480,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 715,
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "4ad216b457562097c78a6a6b9c179e7365d87a0c",
+      "source_tree": "9189866db333c7caacdb20ec5ac709f2e256ed9f"
+    }
+  },
+  "ci": {
+    "policy": "LEAN_PREVIEW_OWNER_AUTHORIZED",
+    "source_pr": 1414,
+    "source_success": 3,
+    "source_deferred": 3,
+    "release_draft_success": 4,
+    "release_draft_deferred": 20,
+    "broader_jobs_deferred_by_policy": 19,
+    "existing_migration_skip": 1,
+    "artifact_run": 34056483480,
+    "required": [
+      "Security guard",
+      "Validate owner policy",
+      "Build Search3 whole-site preview artifact",
+      "Validate Search3 whole-site preview boundary"
+    ],
+    "note": "Working source PR ran three relevant required workflows; preview-boundary paths were not changed. Release draft ran four required workflows. Nineteen broad jobs deferred plus the prior migration skip. One unchanged release-push rollback job also passed. Full matrix intentionally not run; skipped is not passed."
+  },
+  "ci_runs": [
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566585,
+      "name": "Validate V2 SEO page primitives",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566633,
+      "name": "Validate V2 SEO publication manifest",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056566642,
+      "name": "Validate owner policy",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566600,
+      "name": "Validate V2 SEO readiness",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566590,
+      "name": "Validate anytoour.ru migrated content",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566555,
+      "name": "Validate standalone navigation",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566605,
+      "name": "Validate standalone content UX",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566574,
+      "name": "Validate Search3 production rollback readiness",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566598,
+      "name": "Verify anytoour.ru SEO launch",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566571,
+      "name": "Validate SEO price calendar UI",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566601,
+      "name": "Validate V2 flight source contracts",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566522,
+      "name": "Validate standalone country route handoff",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566584,
+      "name": "Validate V2 startup bundles",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566561,
+      "name": "SEO controlled growth guard",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566612,
+      "name": "Verify SEO price calendar production evidence",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566510,
+      "name": "Validate V2 SEO structure",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566587,
+      "name": "Visual standalone content live",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566650,
+      "name": "Build AnyTour hot inventory",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566595,
+      "name": "Collect AnyTour tour observations",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056566550,
+      "name": "Validate Search3 whole-site preview boundary",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056566497,
+      "name": "Security guard",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566558,
+      "name": "Validate V2 SEO publishability",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056566559,
+      "name": "Validate V2 core",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056566486,
+      "name": "Build Search3 whole-site preview artifact",
+      "status": "completed"
+    },
+    {
+      "branch": "release/search3-production-ready-v1",
+      "conclusion": "success",
+      "event": "push",
+      "id": 34056565059,
+      "name": "Validate Search3 production rollback readiness",
+      "status": "completed"
+    },
+    {
+      "branch": "perf/search3-lean-preview-local-names",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056483517,
+      "name": "Validate Search3 production rollback readiness",
+      "status": "completed"
+    },
+    {
+      "branch": "perf/search3-lean-preview-local-names",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056483511,
+      "name": "Validate owner policy",
+      "status": "completed"
+    },
+    {
+      "branch": "perf/search3-lean-preview-local-names",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056483557,
+      "name": "Validate standalone content UX",
+      "status": "completed"
+    },
+    {
+      "branch": "perf/search3-lean-preview-local-names",
+      "conclusion": "skipped",
+      "event": "pull_request",
+      "id": 34056483518,
+      "name": "Validate standalone navigation",
+      "status": "completed"
+    },
+    {
+      "branch": "perf/search3-lean-preview-local-names",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056483529,
+      "name": "Security guard",
+      "status": "completed"
+    },
+    {
+      "branch": "perf/search3-lean-preview-local-names",
+      "conclusion": "success",
+      "event": "pull_request",
+      "id": 34056483480,
+      "name": "Build Search3 whole-site preview artifact",
+      "status": "completed"
+    }
+  ],
+  "live_assets": [
+    {
+      "name": "search3-entry-v1.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=6112f3d1090550f0",
+      "bytes": 10091,
+      "sha256": "6112f3d1090550f0fdd5b24e264401c8924bd2703a9bb2ebed613c42a2d47dbe",
+      "exact": true,
+      "verification_method": "artifact_and_deployment_payload_hashes"
+    },
+    {
+      "name": "search3-entry-v1.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=f5910630b7a56b7c",
+      "bytes": 3569,
+      "sha256": "f5910630b7a56b7c7527f93dc33356cadf72edd09a4f1c094bc5f2e6741d38c5",
+      "exact": true,
+      "verification_method": "direct_http_and_artifact"
+    },
+    {
+      "name": "search3-results-cards-v2.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=913064b624b590ad",
+      "bytes": 4253,
+      "sha256": "913064b624b590ad17647eadd8bc081b2871114a29547e41e4dd8f246286070d",
+      "exact": true,
+      "verification_method": "artifact_and_deployment_payload_hashes"
+    },
+    {
+      "name": "search3-results-cards-v2.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19",
+      "bytes": 88,
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+      "exact": true,
+      "verification_method": "artifact_and_deployment_payload_hashes"
+    },
+    {
+      "name": "search3-results-filters-v1.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=5dc479479d56bb31",
+      "bytes": 183507,
+      "sha256": "5dc479479d56bb3151a99b68a8f7b80d655d06e2803f2094352e43127d2d2ca3",
+      "exact": true,
+      "verification_method": "artifact_and_deployment_payload_hashes"
+    },
+    {
+      "name": "search3-results-filters-v1.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=d8b2fedb2755248e",
+      "bytes": 102932,
+      "sha256": "d8b2fedb2755248e31024116c75bb79cbb020a1c09e0b9926c3d9ca908f14d8b",
+      "exact": true,
+      "verification_method": "direct_http_and_artifact"
+    },
+    {
+      "name": "search3-selected-flow-v2.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=159232e271e36b13",
+      "bytes": 7586,
+      "sha256": "159232e271e36b13ef015e1333bd1c2943e7a0021bfd4c92fb9f1974d95c7002",
+      "exact": true,
+      "verification_method": "artifact_and_deployment_payload_hashes"
+    },
+    {
+      "name": "search3-selected-flow-v2.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=15c63d04c5e766fc",
+      "bytes": 8888,
+      "sha256": "15c63d04c5e766fcf625e0fc6ab6c9571a7dd756a147cee30ca8d80f456778c3",
+      "exact": true,
+      "verification_method": "direct_http_and_artifact"
+    }
+  ],
+  "direct_http_assets": 3,
+  "browser": {
+    "source_sha": "4ad216b457562097c78a6a6b9c179e7365d87a0c",
+    "viewport_width": 1363,
+    "hotels": 100,
+    "tours": 425,
+    "search": {
+      "departure": "Москва",
+      "country": "Турция",
+      "date_from": "2026-09-10",
+      "date_to": "2026-09-11",
+      "nights": 7,
+      "adults": 2
+    },
+    "real_lead_submitted": false,
+    "physical_safari_tested": false,
+    "full_responsive_matrix_run": false,
+    "zero_filter": {
+      "home_cards": 0,
+      "rail_visible": true,
+      "end_cards": 100,
+      "new_search": false,
+      "horizontal_overflow": false
+    },
+    "hotel": "ANAHTAR APART",
+    "initial_price_rub": 72099,
+    "changed_flight": "SU2156 / SU2157",
+    "selected_price_rub": 89317,
+    "review_price_rub": 89317,
+    "lead_price_rub": 89317,
+    "phone_empty": true,
+    "lead_screenshot_inspected": true,
+    "horizontal_overflow": false,
+    "editor_return_verified": true,
+    "editor_dates_preserved": true,
+    "editor_nights_preserved": true,
+    "return_cards": 100,
+    "return_selected_hidden": true,
+    "verified_at": "2026-09-06T20:08:03.324710+00:00",
+    "scope": "One focused desktop scenario after this batch. No full responsive/site matrix, physical Safari, no-flight fallback or real lead submission."
+  },
+  "next_action": "Continue measured CSS/JS reduction in release-based draft batches with the lean preview cycle. Local-name shortening and workflow routing are complete. Inspect remaining repeated static presentation markup or build compaction opportunities; preserve public keys/globals, price/API/lead contracts and eight paths. Do not rerun full site/SEO/responsive matrices without a concrete failure; restore full applicable gates for production review. Preview-only exact publication, production locked, scheduler paused.",
+  "verification_policy": {
+    "source": "explicit_owner_request_2026_09_06_reduce_preview_checks",
+    "scope": "Search3 draft preview only",
+    "working_pr_base": "release/search3-production-ready-v1",
+    "required": [
+      "security",
+      "owner direction",
+      "exact artifact build and focused presentation/source checks",
+      "preview isolation"
+    ],
+    "defer": [
+      "full core/flight CI",
+      "SEO/site-wide checks",
+      "full responsive screenshot matrix"
+    ],
+    "restore": "ready_for_review event on each affected workflow; production approval still required",
+    "live": "One focused live scenario per published batch; mobile/desktop if layout changed",
+    "production_guards_unchanged": true
+  }
+}

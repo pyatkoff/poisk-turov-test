@@ -1,0 +1,55 @@
+{
+  "id": "S3_CURRENT_PRESENTATION_RUNTIME_CONSOLIDATION",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "sourcePr": 1587,
+  "sourceSha": "3f9f5896ad56a6851be07f616506e8c815ac2571",
+  "checkedReleaseSha": "c155faa2cfcbb2e04dbafa841022d491ee863abe",
+  "scope": "Search3 current generated assets only",
+  "retiredStandaloneRuntimes": [
+    "src/search3/behavior/flight-price-presentation.js IIFE/observer/queue/global",
+    "src/search3/behavior/filter-rail.js IIFE"
+  ],
+  "retainedCurrentOwners": [
+    "localized decimal flight tradeoff correction in selected-flow-v2 scheduler",
+    "bounded zero-result filter bridge in results-presentation lifecycle"
+  ],
+  "protected": [
+    "v2/flight-price-sync-v1.js authoritative price synchronization",
+    "price arithmetic and events",
+    "URL/payload and Tourvisor/API",
+    "lead transport and field mapping",
+    "Metrika/analytics/goals"
+  ],
+  "bytes": {
+    "eightPublicAssetsRaw": {
+      "before": 178418,
+      "after": 177847,
+      "saved": 571
+    },
+    "routeLoadedRaw": {
+      "before": 458693,
+      "after": 458122,
+      "saved": 571
+    }
+  },
+  "ci": {
+    "securityRun": 34224138160,
+    "exactRun": 34224138265,
+    "conclusion": "success",
+    "artifactId": 10055011556,
+    "artifactDigest": "sha256:5fb3eba01d21851bea83b2701907a2f7ab134105234b3f5b16eed9707d32807a",
+    "selectedGeometryArtifactId": 10055010965,
+    "selectedGeometryDigest": "sha256:0911a7eb49d6c1bd920c09ef36a280aff99c596d6382607e59440bce5ac67e1",
+    "selectedGeometryStates": "12 detail/review/lead states at 375/760/1000/1440"
+  },
+  "publication": {
+    "published": false,
+    "publishedPreviewSource": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "mainObserved": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "productionChanged": false
+  },
+  "deferred": [
+    "live current-source interaction",
+    "physical Safari/safe-area"
+  ]
+}

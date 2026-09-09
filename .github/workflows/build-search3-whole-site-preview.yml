@@ -1,0 +1,462 @@
+name: Build Search3 whole-site preview artifact
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths:
+      - 'src/search3/**'
+      - 'scripts/build/search3_assets.py'
+      - 'scripts/build/search3-js/**'
+      - 'tests/search3-js-compaction.cjs'
+      - 'tests/search3-andromeda-provider.cjs'
+      - 'tests/search3-andromeda-provider-config.php'
+      - 'tests/search3-css-printing.cjs'
+      - 'tests/search3_source_build_test.py'
+      - 'v2/**'
+      - 'tests/site-preview-path-smoke.php'
+      - 'tests/search-handoff-smoke.php'
+      - 'tests/seo-price-calendar-ui-smoke.php'
+      - 'tests/home-search-loading-handoff.cjs'
+      - 'tests/search3_production_presentation_test.py'
+      - 'tests/search3_site_preview_isolation_test.py'
+      - 'tests/search3-selected-geometry-browser.cjs'
+      - 'tests/search3-lazy-selected-browser.cjs'
+      - 'tests/search3-lean-entry-browser.cjs'
+      - 'tests/search3-header-geometry-browser.cjs'
+      - 'tests/search3-entry-owner-browser.cjs'
+      - 'tests/search3-current-results-browser.cjs'
+      - 'tests/search3-shortlist-browser.cjs'
+      - 'scripts/build/search3_site_preview_isolation.py'
+      - '.github/workflows/build-search3-whole-site-preview.yml'
+
+permissions:
+  contents: read
+
+env:
+  PREVIEW_BASE: /_preview/search3-site-candidate
+
+jobs:
+  build-preview-artifact:
+    # Build once on the working PR; release/docs retain that exact source artifact.
+    if: ${{ !github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+
+      - name: Verify source identity and focused contracts
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git diff --check "$BASE_SHA" "$SOURCE_SHA"
+          php tests/site-preview-path-smoke.php production
+          php tests/site-preview-path-smoke.php preview
+          php tests/search-handoff-smoke.php
+          php tests/seo-price-calendar-ui-smoke.php
+          php tests/offer-freshness-smoke.php
+          node tests/home-search-loading-handoff.cjs
+          python3 -B scripts/build/search3_assets.py --check
+          node scripts/build/search3-js/shared-runtime.cjs --check
+          php tests/search3-shared-runtime-smoke.php
+          php tests/search3-lean-base-bundle-smoke.php
+          node tests/search3-js-compaction.cjs
+          node tests/search3-andromeda-provider.cjs
+          php tests/search3-andromeda-provider-config.php
+          node tests/search3-css-printing.cjs
+          node tests/search3-honest-results-controls.cjs
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+          python3 -B tests/search3_site_preview_isolation_test.py
+          echo SEARCH3_SITE_SOURCE_CONTRACTS_OK
+
+      - name: Build exact isolated site payload
+        id: build
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/search3-site-release"
+          payload="$root/payload"
+          control="$root/control"
+          test ! -e "$root"
+          mkdir -p "$payload" "$control"
+
+          rsync -a \
+            --exclude='*.md' \
+            --exclude='_preview/' \
+            --exclude='api.php' \
+            --exclude='api-v2.php' \
+            --exclude='lead-adapter.php' \
+            --exclude='lead-adapter-v2.php' \
+            --exclude='lead-bridge-v1.php' \
+            --exclude='lead-receiver-v1.php' \
+            --exclude='lead-price-v1.php' \
+            --exclude='lead-idempotency-v1.php' \
+            v2/ "$payload/"
+
+          test -f "$payload/index.php"
+          test -f "$payload/home-entry-v1.php"
+          cp "$payload/index.php" "$payload/search-page-v2.php"
+          cp "$payload/home-entry-v1.php" "$payload/index.php"
+          python3 -B scripts/build/search3_site_preview_isolation.py "$payload"
+
+          cat > "$payload/.htaccess" <<'HTACCESS'
+          Options -Indexes
+          <FilesMatch "\.php$">
+            Require all denied
+          </FilesMatch>
+          <Files "index.php">
+            Require all granted
+          </Files>
+          <Files "bundle-v1.php">
+            Require all granted
+          </Files>
+          <Files "preview-lead-disabled.php">
+            Require all granted
+          </Files>
+          HTACCESS
+
+          test -z "$(find "$payload" -type l -print -quit)"
+          test ! -e "$payload/api-v2.php"
+          test ! -e "$payload/lead-adapter-v2.php"
+          test -f "$payload/preview-lead-disabled.php"
+          test -f "$payload/poisk-turov/index.php"
+          test -f "$payload/country/index.php"
+          test -f "$payload/hot/index.php"
+          test -f "$payload/contacts/index.php"
+          test -f "$payload/rb/index.php"
+          test -f "$payload/how-to-buy/index.php"
+
+          # Independent files can be parsed concurrently; xargs propagates any failure.
+          find "$payload" -type f -name '*.php' -print0 | xargs -0 -r -n 1 -P 2 php -l >/dev/null
+          find "$payload" -type f -name '*.js' -print0 | xargs -0 -r -n 1 -P 2 node --check >/dev/null
+
+          source_tree="$(git rev-parse "$SOURCE_SHA^{tree}")"
+          export SOURCE_TREE="$source_tree"
+          file_count="$(find "$payload" -type f | wc -l)"
+          (cd "$payload" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) > "$control/payload.sha256"
+          payload_manifest_sha="$(sha256sum "$control/payload.sha256" | awk '{print $1}')"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ['RUNNER_TEMP']) / 'search3-site-release'
+          payload = root / 'payload'
+          files = []
+          for path in sorted(p for p in payload.rglob('*') if p.is_file()):
+              rel = path.relative_to(payload).as_posix()
+              data = path.read_bytes()
+              files.append({'path': rel, 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)})
+          manifest = {
+              'schema_version': 1,
+              'source_sha': os.environ['SOURCE_SHA'],
+              'source_tree_sha': os.environ['SOURCE_TREE'],
+              'target': 'search3-whole-site-preview',
+              'route': '/_preview/search3-site-candidate/',
+              'file_count': len(files),
+              'invariants': {
+                  'production_api_path': '/api-v2.php',
+                  'production_lead_delivery': False,
+                  'preview_lead_path': '/_preview/search3-site-candidate/preview-lead-disabled.php',
+                  'production_metrika_changes': False,
+                  'preview_metrika_counter': 0,
+                  'production_document_root_bootstrap': False,
+                  'external_consultant_widget': False,
+              },
+              'files': files,
+          }
+          (root / 'control' / 'manifest.json').write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          manifest_sha="$(sha256sum "$control/manifest.json" | awk '{print $1}')"
+          archive="$RUNNER_TEMP/search3-whole-site-preview.tar.gz"
+          tar -C "$root" -czf "$archive" control payload
+          archive_sha="$(sha256sum "$archive" | awk '{print $1}')"
+          printf '%s  %s\n' "$archive_sha" "$(basename "$archive")" > "$RUNNER_TEMP/search3-whole-site-preview.tar.gz.sha256"
+          printf '%s\n' \
+            "source_sha=$SOURCE_SHA" \
+            "source_tree_sha=$source_tree" \
+            "file_count=$file_count" \
+            "manifest_sha256=$manifest_sha" \
+            "payload_checksums_sha256=$payload_manifest_sha" \
+            "archive_sha256=$archive_sha" > "$RUNNER_TEMP/search3-site-release.txt"
+          cat "$RUNNER_TEMP/search3-site-release.txt"
+          echo "manifest_sha=$manifest_sha" >> "$GITHUB_OUTPUT"
+          echo "archive_sha=$archive_sha" >> "$GITHUB_OUTPUT"
+          echo "file_count=$file_count" >> "$GITHUB_OUTPUT"
+          echo "SEARCH3_SITE_ARTIFACT_BUILT source=$SOURCE_SHA files=$file_count archive=$archive_sha"
+
+      - name: Smoke transformed site under exact preview prefix
+        shell: bash
+        run: |
+          set -euo pipefail
+          docroot="$RUNNER_TEMP/search3-site-docroot"
+          target="$docroot$PREVIEW_BASE"
+          mkdir -p "$(dirname "$target")"
+          cp -a "$RUNNER_TEMP/search3-site-release/payload" "$target"
+          # Poison production-like bootstraps: HTTP smoke must never execute them.
+          mkdir -p "$docroot/bitrix/modules/main/include"
+          printf '%s\n' '<?php throw new RuntimeException("PRODUCTION_SITE_CONF_EXECUTED");' > "$docroot/site_conf.php"
+          printf '%s\n' '<?php throw new RuntimeException("PRODUCTION_PROLOG_EXECUTED");' > "$docroot/bitrix/modules/main/include/prolog_before.php"
+          printf '%s\n' '<?php define("METRIKA_COUNTER_ID",987654321);' > "$target/config.php"
+          php -S 127.0.0.1:8098 -t "$docroot" >"$RUNNER_TEMP/search3-site-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS -H 'Host: anytoour.ru' "http://127.0.0.1:8098$PREVIEW_BASE/" -o /dev/null && break; sleep 0.25; done
+          for path in / /poisk-turov/ /poisk-turov-old/ /country/ /country/turkey/ /hot/ /contacts/ /rb/ /how-to-buy/; do
+            out="$RUNNER_TEMP/site-$(echo "$path" | tr '/-' '__').html"
+            code="$(curl -sS -H 'Host: anytoour.ru' -o "$out" -w '%{http_code}' "http://127.0.0.1:8098$PREVIEW_BASE$path")"
+            if test "$code" != 200; then
+              echo "SEARCH3_PREVIEW_HTTP_FAILURE path=$path status=$code" >&2
+              tail -n 40 "$RUNNER_TEMP/search3-site-php.log" >&2
+              exit 1
+            fi
+            grep -Fq '<meta name="robots" content="noindex,follow,max-image-preview:large' "$out"
+            if grep -Eo 'href="/[^"]*"' "$out" | grep -Ev "^href=\"$PREVIEW_BASE/|^href=\"/images/|^href=\"/favicon"; then
+              echo "SEARCH3_PREVIEW_LINK_ESCAPE path=$path" >&2
+              exit 1
+            fi
+            echo "SEARCH3_PREVIEW_ROUTE_OK path=$path"
+          done
+          grep -Fq "action=\"$PREVIEW_BASE/poisk-turov/\"" "$RUNNER_TEMP/site-_.html"
+          grep -Fq 'api:"/api-v2.php"' "$RUNNER_TEMP/site-_poisk_turov_.html"
+          grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$RUNNER_TEMP/site-_poisk_turov_.html"
+          for page in "$RUNNER_TEMP/site-_poisk_turov_.html" "$RUNNER_TEMP/site-_poisk_turov_old_.html"; do
+            grep -Fq 'id="tourSearch"' "$page"
+            grep -Fq 'metrikaCounter:0' "$page"
+            grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$page"
+            if grep -Fq 'web-consultant/widget.js' "$page"; then exit 1; fi
+          done
+          if grep -Fq '<body class="search3-candidate">' "$RUNNER_TEMP/site-_poisk_turov_old_.html"; then exit 1; fi
+          lead_code="$(curl -sS -H 'Host: anytoour.ru' -o "$RUNNER_TEMP/lead.json" -w '%{http_code}' -H 'Content-Type: application/json' --data '{"synthetic":true}' "http://127.0.0.1:8098$PREVIEW_BASE/preview-lead-disabled.php")"
+          test "$lead_code" = 403
+          grep -Fq PREVIEW_LEAD_DISABLED "$RUNNER_TEMP/lead.json"
+          kill "$php_pid" >/dev/null 2>&1 || true
+          trap - EXIT
+          echo SEARCH3_SITE_LOCAL_PREVIEW_SMOKE_OK
+
+      - name: Detect owner-authorized half-size reset
+        id: half-size-reset
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- docs/project/search3-half-size-reset.json; then
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect selected-tour geometry changes
+        id: selected-geometry
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/behavior/selected-runtime.js tests/search3-lazy-selected-browser.cjs src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect results-card or entry-form geometry changes
+        id: results-geometry
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/behavior/results/shortlist.js src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-current-results-browser.cjs tests/search3-shortlist-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect entry behavior owner changes
+        id: entry-owner
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/behavior/search-form.js src/search3/behavior/search-form tests/search3-entry-owner-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install browser geometry tooling
+        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
+          "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Verify half-size reset core journey
+        if: steps.half-size-reset.outputs.active == 'true'
+        shell: bash
+        env:
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          SEARCH3_RESET_OUTPUT: ${{ runner.temp }}/search3-half-size-reset
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          cat > "$RUNNER_TEMP/search3-reset-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-reset-router.php" >"$RUNNER_TEMP/search3-reset-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-half-size-reset-browser.cjs
+
+      - name: Verify native entry controls only
+        if: steps.entry-owner.outputs.required == 'true'
+        shell: bash
+        env:
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          SEARCH3_ENTRY_OWNER_OUTPUT: ${{ runner.temp }}/search3-entry-owner
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          cat > "$RUNNER_TEMP/search3-entry-owner-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-entry-owner-router.php" >"$RUNNER_TEMP/search3-entry-owner-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-entry-owner-browser.cjs
+
+      - name: Verify selected-tour retirement geometry only
+        if: steps.selected-geometry.outputs.required == 'true'
+        shell: bash
+        env:
+          SEARCH3_GEOMETRY_BASE: 7eadf95d1164f51530fe545a5e42fb1ea977096e # checked current route after selected owner retirement
+          SEARCH3_RUNTIME_BASE: 7eadf95d1164f51530fe545a5e42fb1ea977096e # exact current route closure for protected-content and entry comparison
+          SEARCH3_ENTRY_BASE: 454d4def6615cea2995ea23358a67429f5621e70 # exact checked release before selected-flow retirement
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+          SEARCH3_GEOMETRY_OUTPUT: ${{ runner.temp }}/search3-selected-geometry
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          # Match the canonical host gate without contacting the live origin.
+          cat > "$RUNNER_TEMP/search3-geometry-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-geometry-router.php" >"$RUNNER_TEMP/search3-geometry-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-selected-geometry-browser.cjs
+          node tests/search3-lazy-selected-browser.cjs
+          node tests/search3-lean-entry-browser.cjs
+          node tests/search3-flight-fallback-browser.cjs
+
+      - name: Verify results-card and entry-form geometry
+        if: steps.results-geometry.outputs.required == 'true'
+        shell: bash
+        env:
+          SEARCH3_RESULTS_OUTPUT: ${{ runner.temp }}/search3-results-geometry
+          SEARCH3_ENTRY_OWNER_OUTPUT: ${{ runner.temp }}/search3-results-geometry/native-entry
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
+          # The reset retired the old fabricated disclosure/drawer/guest/header
+          # fixtures. Exercise the actual served route and its native controls.
+          cat > "$RUNNER_TEMP/search3-current-results-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-current-results-router.php" >"$RUNNER_TEMP/search3-current-results-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-current-results-browser.cjs
+          node tests/search3-shortlist-browser.cjs
+          node tests/search3-entry-owner-browser.cjs
+
+      - name: Retain native entry evidence
+        if: always() && steps.entry-owner.outputs.required == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-entry-owner-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-entry-owner/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain selected-tour geometry evidence
+        if: always() && steps.selected-geometry.outputs.required == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-selected-geometry-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-selected-geometry/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain half-size reset evidence
+        if: always() && steps.half-size-reset.outputs.active == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-half-size-reset-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-half-size-reset/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain results-card geometry evidence
+        if: always() && steps.results-geometry.outputs.required == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-results-geometry-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-results-geometry/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload exact whole-site artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-site-preview-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/search3-whole-site-preview.tar.gz
+            ${{ runner.temp }}/search3-whole-site-preview.tar.gz.sha256
+            ${{ runner.temp }}/search3-site-release.txt
+            ${{ runner.temp }}/search3-site-release/control/manifest.json
+            ${{ runner.temp }}/search3-site-release/control/payload.sha256
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,57 @@
+{
+  "id": "S3_LEAN_APP_PRESENTATION_LAYER",
+  "date": "2026-09-08",
+  "status": "CHECKED_RELEASE_NOT_PUBLISHED_NOT_PRODUCTION",
+  "source_pr": 1591,
+  "source_sha": "7fe04821c961c48243a69d6edee0e345bcc43d8a",
+  "release_sha": "de49b39989891945b8e47434e72d5e79d9f4080b",
+  "legacy_layer": {
+    "path": "v2/app.css",
+    "raw_bytes": 12911,
+    "search3_loaded": false,
+    "old_route_loaded": true
+  },
+  "retained_current_owners": [
+    "scoped box sizing and body baseline",
+    "entry grid and native field dimensions",
+    "selected-tour, flight and lead primitives",
+    "result-card image, container, typography and breakpoint geometry",
+    "status, skeleton and empty-state primitives still required before the next state-layer audit"
+  ],
+  "raw_bytes": {
+    "loaded_before": 448524,
+    "loaded_after": 438274,
+    "loaded_delta": -10250,
+    "shared_css_before": 82345,
+    "shared_css_after": 69434,
+    "shared_js_before": 183740,
+    "shared_js_after": 183740,
+    "eight_assets_before": 182439,
+    "eight_assets_after": 185100,
+    "eight_assets_delta": 2661
+  },
+  "verification": {
+    "security_run": 34230516546,
+    "exact_run": 34230516579,
+    "whole_site_artifact": 10057632192,
+    "whole_site_digest": "sha256:8248e14765ed95dce5f84ff16799e893a16a1dd479aebb07910e7282a7bdbb4f",
+    "selected_artifact": 10057629961,
+    "selected_digest": "sha256:d854e0350839288dd2da6635f5dc6ed6bca8fcf7876be24df0e32cebb700cc22",
+    "results_entry_artifact": 10057631078,
+    "results_entry_digest": "sha256:dfb7988688678d2a4907dcda54c6bc612ce427f2620ddb9c0c3285a8364a653f",
+    "states": "selected detail/review/lead at 375/760/1000/1440; entry lifecycle and breakpoint resize; result card and drawer collapsed/expanded at 375/760/761/999/1000/1440"
+  },
+  "publication": {
+    "published": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "production_changed": false
+  },
+  "deferred": [
+    "live current-source interaction",
+    "manual screenshot inspection",
+    "physical Safari and safe-area verification",
+    "owner visual acceptance"
+  ],
+  "next": "Re-audit search-states-design.css after app.css retirement; preserve explicit current status, skeleton and empty-state ownership."
+}

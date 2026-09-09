@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "703935c4ad5b0f7e3082e14f3abeeb1cb85f4f57",
+  "checked_code_release_sha": "26fc0efbe8b306fbaca87b2d5330bc3311d97c6b",
+  "source_prs": [
+    1516,
+    1517,
+    1520
+  ],
+  "source_shas": [
+    "93e7cfbd685d32cf0a377262a5b29c1e3e6f5dbb",
+    "56345ec59e08808336d0bdfbc0449b31c27ff44c",
+    "2230920eb0a96c16d3eced698dcbdc4b420b6120"
+  ],
+  "retired_search3_owners": [
+    "results-layout-guard-v1.css",
+    "search-header-layout-guard-v1.css",
+    "ds2-search-tablet-filters-v1.css"
+  ],
+  "retained_behavior": [
+    "Current Search3 result-card, drawer and photo geometry",
+    "Current shared desktop and tablet site header",
+    "Current Search3 quality grid and native form lifecycle at 700/701/760/761",
+    "Full legacy route manifest and files"
+  ],
+  "payload": {
+    "before": {
+      "css": 218589,
+      "js": 235774,
+      "eight_assets": 151125,
+      "raw_total": 605488,
+      "gzip_total": 133134
+    },
+    "after": {
+      "css": 207164,
+      "js": 235774,
+      "eight_assets": 151125,
+      "raw_total": 594063,
+      "gzip_total": 131441
+    }
+  },
+  "raw_saved_bytes": 11425,
+  "gzip_saved_bytes": 1693,
+  "measurement_scope": "raw_total sums route-scoped shared CSS/JS files and eight generated Search3 paths. gzip_total compresses exact emitted endpoint bodies and eight independent files at level 9. No bytes moved into current Search3 assets.",
+  "packages": {
+    "results_layout_guard": {
+      "source_pr": 1516,
+      "source_sha": "93e7cfbd685d32cf0a377262a5b29c1e3e6f5dbb",
+      "release_sha": "26a9b5dc5d41922bb464dd706b9525eff5db326e",
+      "raw_saved": 4281,
+      "gzip_saved": 563,
+      "security_run": 34167475861,
+      "exact_runs": [
+        34167475846,
+        34167577360
+      ],
+      "artifact_id": 10034674966,
+      "artifact_digest": "sha256:0213a1db4828ffb75f5b5c18db9159bd3b4aaf6b18c78f39c69a2961f2156d83"
+    },
+    "search_header_guard": {
+      "source_pr": 1517,
+      "source_sha": "56345ec59e08808336d0bdfbc0449b31c27ff44c",
+      "release_sha": "fd8ee8299d25fe6213fad213426b88c86be35941",
+      "raw_saved": 3934,
+      "gzip_saved": 547,
+      "security_run": 34167795105,
+      "exact_runs": [
+        34167795073,
+        34167934629
+      ],
+      "artifact_id": 10034788422,
+      "artifact_digest": "sha256:f5b3d371fd07cd97bb774f97024e3eb0d691bad80da8d18543bc8cd688cce1f4"
+    },
+    "tablet_extras": {
+      "source_pr": 1520,
+      "source_sha": "2230920eb0a96c16d3eced698dcbdc4b420b6120",
+      "release_sha": "26fc0efbe8b306fbaca87b2d5330bc3311d97c6b",
+      "raw_saved": 3210,
+      "gzip_saved": 583,
+      "security_run": 34168181748,
+      "exact_runs": [
+        34168181757,
+        34168312060
+      ],
+      "artifact_id": 10034902803,
+      "artifact_digest": "sha256:9420a39c0a653f38de70e6f0300dc5126e2cca3c7b0d398f91312ce55833b61f"
+    }
+  },
+  "browser_evidence": {
+    "entry_widths": [
+      375,
+      700,
+      701,
+      760,
+      761,
+      1440
+    ],
+    "entry_lifecycle_states": 30,
+    "selected_states": 12,
+    "result_states": 12,
+    "manual_screenshot_inspection": false,
+    "selected_artifact": 10034902422,
+    "results_entry_artifact": 10034902626
+  },
+  "protected_contracts": "Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, logo and eight public Search3 paths unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "Live current-source visual interaction",
+    "Manual screenshot inspection",
+    "Physical Safari and safe-area"
+  ],
+  "next_action": "Combine the remaining small Search3-only legacy guards (`selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css`, `search-shell-grid-v1.css`) into one >=1 KB audit packet. Remove only if current selected/shell/footer owners preserve exact geometry. Keep full legacy manifest unchanged; do not open separate micro PRs.",
+  "main_sha_at_start": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+  "main_sha_observed_after_checkpoint": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "main_change_scope": "Independent PR #1519 changed only .github/workflows/deploy-anytoour.yml. None of the Search3 source or docs PRs in this audit targeted main.",
+  "production_verification": "NOT_PERFORMED_IN_THIS_SEARCH3_INVOCATION; no Search3 production deployment was made."
+}

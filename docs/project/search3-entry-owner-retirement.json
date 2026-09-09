@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
+  "eight_assets": {
+    "before_raw_bytes": 60811,
+    "after_raw_bytes": 54605,
+    "saved_raw_bytes": 6206
+  },
+  "main_js": {
+    "before_raw_bytes": 28806,
+    "after_raw_bytes": 22600
+  },
+  "loaded_route": {
+    "before_raw_bytes": 179424,
+    "after_raw_bytes": 173218
+  },
+  "removed": [
+    "behavior/search-form/entry-presentation.js: excluded price-calendar wrapper, duplicate result-summary copy, four-timer responsive DOM relocation, obsolete mobile collapse classes",
+    "custom tourist popup and mirrored summary/outside-click handlers",
+    "mobile trust/filter presentation with no remaining CSS owner and duplicate delayed field relocation"
+  ],
+  "retained": [
+    "same canonical adult/child/child-age nodes, names, values and core handlers",
+    "direct native date and night controls; URL and payload mapping",
+    "meals/catalog restore and filter reset handling",
+    "all eight public asset paths and all shared core files",
+    "results/selected/API/Tourvisor/price/lead/analytics/logo unchanged"
+  ],
+  "local_checks": [
+    "source --write once and --check",
+    "native entry ownership",
+    "meal catalog/URL/reset",
+    "git diff --check"
+  ],
+  "required_ci": {
+    "artifact_digest": "sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38",
+    "artifact_id": 10063598031,
+    "artifact_rebuilt_for_docs": false,
+    "artifact_rebuilt_on_release": false,
+    "artifact_run": 34244914086,
+    "checked_release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+    "conclusion": "success",
+    "evidence_digest": "sha256:90572d15f4f4a850fd73393fc5af6aeaa6e5a66e355b2a72582866d328bffd24",
+    "evidence_id": 10063597221,
+    "preview_published": false,
+    "required_passed": 2,
+    "security_run": 34244914013,
+    "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055"
+  },
+  "actual_browser_checks": {
+    "widths": [
+      375,
+      1440
+    ],
+    "states": [
+      "native entry",
+      "URL guest hydration",
+      "changed adults/children/child ages",
+      "night range FormData"
+    ],
+    "external_requests_blocked": true,
+    "lead_sent": 0,
+    "overflow": false,
+    "tap_targets_min_px": 44,
+    "screenshots_inspected": [
+      "entry-375",
+      "entry-1440"
+    ],
+    "visual_scope": "Native form controls and labels visible; intentionally unstyled shell remains from prior reset. Catalog/image requests blocked; not live or owner visual acceptance."
+  },
+  "guards": "No existing source/PHP/path/presentation/isolation guard or geometry condition weakened. Entry fixture assertions replaced with direct-control contract; build drift/malformed-input fixtures moved to retained private module.",
+  "superseded_local_pr": 1608,
+  "superseded_local_pr_saved_bytes_counted": 0,
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": [
+    "owner visual acceptance",
+    "physical Safari/safe-area",
+    "published-preview current-source smoke",
+    "full lead/responsive/site/SEO matrix"
+  ],
+  "next_step": "Retire selected-flow presentation only as one coarse package after rechecking parallel PRs. Preserve no-flight retry/review fallback, selected-open state and decimal-safe price labels; do not remove these with cosmetic disclosures.",
+  "source_pr": 1610,
+  "source_sha": "ca42aa75d7558b902399b72f5135c3d52a4a0055",
+  "release_sha": "def1cf844aa1b9d15bb59219d8633ad4e1409314",
+  "next_selected_audit": {
+    "base_release_sha": "686cd04e26a7d07bed559d637301cf30b4aed7b2",
+    "unchanged_selected_asset_raw_bytes": 18705,
+    "removed_bytes_counted": 0,
+    "status": "AUDITED_NOT_IMPLEMENTED",
+    "retained_required": [
+      "no-flight retry/review fallback",
+      "selected-open state",
+      "decimal-safe price labels"
+    ],
+    "optional_candidates": [
+      "trust insertion",
+      "description/facts disclosure wrappers",
+      "unstyled mobile bar",
+      "unconsumed checkout classes",
+      "optional lead-field wrapper",
+      "flight disclosure"
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "baseline": "02cd0fdaf7b89e359e18ac25f355a1816c4c8cfd",
+  "method": "Full recursive CSS component token sequences match after normalizing whitespace-token contents only; no token removed/reordered. Strings, escapes, identifiers, functions, blocks and comments preserved. Four JavaScript assets byte-identical.",
+  "assets": [
+    {
+      "asset": "search3-results-filters-v1.js",
+      "before_bytes": 123837,
+      "after_bytes": 123837,
+      "lines": 1428,
+      "before_sha256": "27654265c45a52a979d55c742941085944b8dc32b8b0c65ece5c8087bf8e05b0",
+      "sha256": "27654265c45a52a979d55c742941085944b8dc32b8b0c65ece5c8087bf8e05b0"
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before_bytes": 262609,
+      "after_bytes": 258997,
+      "lines": 2949,
+      "before_sha256": "0af1948f7b2741ba737ff7cc1b00366343335efeb268e7cd0f2741b8af5585af",
+      "sha256": "90301e5e99955c7c8ce860e06b2d1acaae992aa3c9d343b715d467efa2aea549"
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before_bytes": 14240,
+      "after_bytes": 13696,
+      "lines": 269,
+      "before_sha256": "385a82fe64f63b67a6bab7cee1699ab1cdbca0edeb6ae06bfbc7113e48b4cea2",
+      "sha256": "71d0661f94c6346bad2c96bac21da39d3938a4c8c0403220c1e78cabbc2d700d"
+    },
+    {
+      "asset": "search3-entry-v1.js",
+      "before_bytes": 5050,
+      "after_bytes": 5050,
+      "lines": 132,
+      "before_sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b",
+      "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b"
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before_bytes": 8238,
+      "after_bytes": 8027,
+      "lines": 140,
+      "before_sha256": "91bf0abec5f334554f1d1cc4b09b5693e3d734f558c6c10d9445cf39b8d1a6ba",
+      "sha256": "429226e14e572a98eabeccbf4f23a3eb1c176c285c09c67234e89a501ce7e1ec"
+    },
+    {
+      "asset": "search3-results-cards-v2.js",
+      "before_bytes": 88,
+      "after_bytes": 88,
+      "lines": 1,
+      "before_sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266"
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before_bytes": 10426,
+      "after_bytes": 10126,
+      "lines": 235,
+      "before_sha256": "453db6a734306a459699649ef6df8a4a7f17ddce9e8b616625b1c6ea429f88b8",
+      "sha256": "970dfb87748f61692de0332a5c01305c3708dba392db4556d6a37ac73c69af7d"
+    },
+    {
+      "asset": "search3-selected-flow-v2.js",
+      "before_bytes": 13205,
+      "after_bytes": 13205,
+      "lines": 342,
+      "before_sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c",
+      "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c"
+    }
+  ],
+  "reduction_bytes": 4667,
+  "source_formatting_changed": false,
+  "limits": "Uncompressed payload reduction only; no speed benchmark. Whitespace after newline escape terminators preserved by focused regression."
+}

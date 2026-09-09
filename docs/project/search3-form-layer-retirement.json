@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "stage": "SOURCE_CI_CHECKED_VISUAL_DEFERRED",
+  "base_release_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+  "published_preview_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+  "retired_layers": [
+    "styles/form-compatibility.css"
+  ],
+  "retained": [
+    "Advanced quality grid: three columns,12px gap",
+    "Submit nowrap and >=1261px min-height0",
+    "Native entry four-column initial/editing layout and hidden lifecycle owners byte-identical"
+  ],
+  "public_assets": [
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before": 92082,
+      "after": 92082,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before": 129440,
+      "after": 121818,
+      "saved": 7622
+    },
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before": 3226,
+      "after": 3226,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before": 4007,
+      "after": 4007,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before": 0,
+      "after": 0,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before": 6814,
+      "after": 6814,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before": 7882,
+      "after": 7882,
+      "saved": 0
+    }
+  ],
+  "totals": {
+    "before": 253113,
+    "after": 245491,
+    "saved": 7622,
+    "css_after": 142301,
+    "js_after": 103190
+  },
+  "local_checks": {
+    "source_build": "PASS one --write after source package",
+    "entry_summary": "PASS entry summary/layout/price-calendar scheduler",
+    "css_parse": "PASS two changed sources",
+    "protected_owners": "PASS eight native entry/results owners byte-identical; all four public JS assets unchanged",
+    "diff_check": "PASS"
+  },
+  "source_ci": {
+    "required_passed": 2,
+    "first_attempt_passed": true,
+    "security_run": 34068042044,
+    "artifact_run": 34068042025,
+    "artifact_id": 9999577320,
+    "artifact_digest": "sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c",
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false,
+    "additional_validate_owner_policy_workflow": "skipped by draft policy; owner validators ran inside required Security job"
+  },
+  "visual_verification": {
+    "status": "DEFERRED",
+    "performed": false,
+    "required": [
+      "initial/editing form768/1440",
+      "advanced parameters",
+      "inherited review/selected/lead checks from#1428"
+    ],
+    "reason": "No browser capability exposed in current runtime; no pixel-equivalence claim."
+  },
+  "preview_updated": false,
+  "production_updated": false,
+  "next_action": "Next justified isolated publication must reuse exact artifact9999577320 and inspect initial/editing768/1440 plus selected/no-flight, review mobile/tablet/desktop and lead-entry boundaries. Visual evidence is deferred: no browser capability exposed in this runtime. Do not repeat 17 retired CSS layers and one JS recap owner. Next substantial candidate is active injected selected-tour-mobile.css; establish a compact replacement for its hidden/lead/mobile/tablet state ownership before retiring it. Continue independent permitted development; production acceptance does not pause automation.",
+  "source_sha": "373821646774a1adc277b8818fc548e87ea17701",
+  "source_pr": 1429,
+  "release_integration_sha": "373821646774a1adc277b8818fc548e87ea17701",
+  "verified_at": "2026-09-06T23:54:21.913430+00:00"
+}

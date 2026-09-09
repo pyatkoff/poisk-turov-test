@@ -1,0 +1,1182 @@
+{
+  "baseline": "c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52",
+  "retired_classes": [
+    "search3-advanced-open",
+    "search3-advanced-toggle",
+    "search3-date-button",
+    "search3-filter-note",
+    "search3-filter-scenarios",
+    "search3-filter-select",
+    "search3-hotel-highlight",
+    "search3-hotel-highlight--flight",
+    "search3-hotel-highlight--operator",
+    "search3-hotel-highlight--rating",
+    "search3-hotel-highlight--room",
+    "search3-hotel-highlight--sea",
+    "search3-hotel-highlights",
+    "search3-hotel-tabs",
+    "search3-hotel-tours-open",
+    "search3-native-control",
+    "search3-night-proxy",
+    "search3-quick__label--instant",
+    "search3-stage-nav",
+    "search3-tour-filters",
+    "search3-tours-focused"
+  ],
+  "proof": "Retired markers absent from current v2 JS/PHP. Only positive requirements removed; all negative conditions retained. Original retained selector/declaration/media stream equals current after expanding the separately audited equal-specificity selector groups.",
+  "retired_rules": 136,
+  "retired_selectors": 147,
+  "empty_containers_removed": 2,
+  "retired_css_bytes": 21788,
+  "selector_group_bytes": 2566,
+  "selector_groups": [
+    {
+      "source": "styles/base.css",
+      "before": "body.search3-candidate #tourSearch select,body.search3-candidate #tourSearch input[type=date],body.search3-candidate #tourSearch input[type=number],body.search3-candidate #tourSearch input[type=text],body.search3-candidate .search3-tourists__summary",
+      "after": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch :is(input[type=date],input[type=number],input[type=text]),\nbody.search3-candidate .search3-tourists__summary"
+    },
+    {
+      "source": "styles/hotel-results.css",
+      "before": "body.search3-candidate .search3-hotel-action__copy strong,body.search3-candidate .search3-hotel-action__copy span",
+      "after": "body.search3-candidate .search3-hotel-action__copy :is(strong,span)"
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "before": "body.search3-candidate .search3-hotel-action__copy strong,body.search3-candidate .search3-hotel-action__copy span",
+      "after": "body.search3-candidate .search3-hotel-action__copy :is(strong,span)"
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "before": "body.search3-candidate .search3-hotel-facts small,body.search3-candidate .search3-hotel-facts b",
+      "after": "body.search3-candidate .search3-hotel-facts :is(small,b)"
+    },
+    {
+      "source": "styles/results-width-compatibility.css",
+      "before": "body.search3-candidate .results-search-summary[hidden],body.search3-candidate .results-tools--ds2[hidden]",
+      "after": "body.search3-candidate :is(.results-search-summary[hidden],.results-tools--ds2[hidden])"
+    },
+    {
+      "source": "styles/results-context.css",
+      "before": "body.search3-candidate.search3-has-results #v2ResultsConfidence,body.search3-candidate.search3-has-results #v2AgencyTrust",
+      "after": "body.search3-candidate.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust)"
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "before": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch input[type=date],\nbody.search3-candidate #tourSearch input[type=number],\nbody.search3-candidate #tourSearch input[type=text],\nbody.search3-candidate :is(.search3-tourists__summary,.search3-composite__control)",
+      "after": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch :is(input[type=date],input[type=number],input[type=text]),\nbody.search3-candidate :is(.search3-tourists__summary,.search3-composite__control)"
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "before": "body.search3-candidate .results-filter-rail label,body.search3-candidate .results-filter-rail button,body.search3-candidate .results-filter-rail select,body.search3-candidate .results-filter-rail input",
+      "after": "body.search3-candidate .results-filter-rail :is(label,button,select,input)"
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "before": "body.search3-candidate .results-filter-rail input[type=radio],\n  body.search3-candidate .results-filter-rail input[type=checkbox]",
+      "after": "body.search3-candidate .results-filter-rail :is(input[type=radio],input[type=checkbox])"
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "before": "body.search3-candidate #results .search3-hotel-action__copy strong,\n  body.search3-candidate #results .search3-hotel-action__copy span",
+      "after": "body.search3-candidate #results .search3-hotel-action__copy :is(strong,span)"
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "before": "body.search3-candidate #results .search3-hotel-action__copy strong,\n  body.search3-candidate #results .search3-hotel-action__copy span",
+      "after": "body.search3-candidate #results .search3-hotel-action__copy :is(strong,span)"
+    },
+    {
+      "source": "styles/booking-summary.css",
+      "before": "body.search3-candidate #selectedTour .lead-form input,body.search3-candidate #selectedTour .lead-form textarea",
+      "after": "body.search3-candidate #selectedTour .lead-form :is(input,textarea)"
+    },
+    {
+      "source": "styles/lead-review.css",
+      "before": "body.search3-candidate #selectedTour .lead-form input,body.search3-candidate #selectedTour .lead-form textarea",
+      "after": "body.search3-candidate #selectedTour .lead-form :is(input,textarea)"
+    },
+    {
+      "source": "styles/lead-review.css",
+      "before": "body.search3-candidate #selectedTour .lead-form input:focus,body.search3-candidate #selectedTour .lead-form textarea:focus",
+      "after": "body.search3-candidate #selectedTour .lead-form :is(input:focus,textarea:focus)"
+    },
+    {
+      "source": "styles/shell.css",
+      "before": "html body.search3-candidate.search3-selected-open :is(.search3-page-intro,.search3-mobile-toolbar,.results-layout),\nhtml body.search3-candidate.search3-selected-open #tourSearch,\nhtml body.search3-candidate.search3-selected-open #status,\nhtml body.search3-candidate.search3-selected-open #resultsSearchSummary,\nhtml body.search3-candidate.search3-selected-open #resultsTools",
+      "after": "html body.search3-candidate.search3-selected-open :is(.search3-page-intro,.search3-mobile-toolbar,.results-layout),\nhtml body.search3-candidate.search3-selected-open :is(#tourSearch,#status,#resultsSearchSummary,#resultsTools)"
+    },
+    {
+      "source": "styles/visual-compatibility.css",
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour .tour-flights[hidden],html body.search3-candidate.search3-selected-open #selectedTour .flight-variants[hidden]",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden])"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch input[type=date],\nbody.search3-candidate #tourSearch input[type=number],\nbody.search3-candidate #tourSearch input[type=text],\nbody.search3-candidate :is(.search3-tourists__summary,.search3-composite__control)",
+      "after": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch :is(input[type=date],input[type=number],input[type=text]),\nbody.search3-candidate :is(.search3-tourists__summary,.search3-composite__control)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .search3-quality__grid select,body.search3-candidate .search3-quality__grid input",
+      "after": "body.search3-candidate .search3-quality__grid :is(select,input)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch input[type=date],\nbody.search3-candidate #tourSearch input[type=number],\nbody.search3-candidate #tourSearch input[type=text],\nbody.search3-candidate :is(.search3-tourists__summary,.search3-composite__control)",
+      "after": "body.search3-candidate #tourSearch select,\nbody.search3-candidate #tourSearch :is(input[type=date],input[type=number],input[type=text]),\nbody.search3-candidate :is(.search3-tourists__summary,.search3-composite__control)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .search3-quality__grid select,body.search3-candidate .search3-quality__grid input",
+      "after": "body.search3-candidate .search3-quality__grid :is(select,input)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .results-search-summary small,body.search3-candidate .results-search-summary strong",
+      "after": "body.search3-candidate .results-search-summary :is(small,strong)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .results-search-summary b,body.search3-candidate .results-search-summary span",
+      "after": "body.search3-candidate .results-search-summary :is(b,span)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .results-filter-rail h3,body.search3-candidate .results-filter-rail h4",
+      "after": "body.search3-candidate .results-filter-rail :is(h3,h4)"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .results-filter-rail select,body.search3-candidate .results-filter-rail input[type=text],body.search3-candidate .results-filter-rail input[type=number]",
+      "after": "body.search3-candidate .results-filter-rail select,\nbody.search3-candidate .results-filter-rail :is(input[type=text],input[type=number])"
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "before": "body.search3-candidate .search3-hotel-action__copy strong,body.search3-candidate .search3-hotel-action__copy span",
+      "after": "body.search3-candidate .search3-hotel-action__copy :is(strong,span)"
+    },
+    {
+      "source": "styles/review-responsive.css",
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.facts>div:nth-child(5),\n  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.facts>div:nth-child(6)",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.facts>:is(div:nth-child(5),div:nth-child(6))"
+    },
+    {
+      "source": "styles/results-layout.css",
+      "before": "body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small,\nbody.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b",
+      "after": "body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts :is(small,b)"
+    },
+    {
+      "source": "styles/acceptance-guards.css",
+      "before": "html body.search3-candidate.search3-results-active #resultsSearchSummary,\nhtml body.search3-candidate.search3-results-active #resultsTools,\nhtml body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.results-layout)",
+      "after": "html body.search3-candidate.search3-results-active :is(#resultsSearchSummary,#resultsTools),\nhtml body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.results-layout)"
+    },
+    {
+      "source": "styles/acceptance-guards.css",
+      "before": "html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > .results-layout,\nhtml body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > #resultsSearchSummary,\nhtml body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > #resultsTools",
+      "after": "html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > .results-layout,\nhtml body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > :is(#resultsSearchSummary,#resultsTools)"
+    },
+    {
+      "source": "styles/acceptance-guards.css",
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price span,\n  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price small",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price :is(span,small)"
+    },
+    {
+      "source": "styles/entry-v1.css",
+      "before": "html body.search3-candidate #tourSearch,\n  html body.search3-candidate #tourSearch .search3-primary-grid,\n  html body.search3-candidate #tourSearch .search3-quality__grid",
+      "after": "html body.search3-candidate #tourSearch,\nhtml body.search3-candidate #tourSearch :is(.search3-primary-grid,.search3-quality__grid)"
+    },
+    {
+      "source": "styles/entry-v1.css",
+      "before": "html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quality,\n  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quick",
+      "after": "html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick)"
+    },
+    {
+      "source": "styles/results-cards-v2.css",
+      "before": "html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .search3-hotel-facts small,\nhtml body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .search3-hotel-facts b,\nhtml body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .hotel-price-context span,\nhtml body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .search3-hotel-action__copy strong,\nhtml body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .search3-hotel-action__copy span ",
+      "after": "html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .search3-hotel-facts :is(small,b),\nhtml body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .hotel-price-context span,\nhtml body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)\n  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout\n  #results .hotel-card .search3-hotel-action__copy :is(strong,span)"
+    },
+    {
+      "source": "styles/selected-flow-v2.css",
+      "before": "html body.search3-candidate #selectedTour .checkout-journey,\nhtml body.search3-candidate #selectedTour .checkout-facts-heading ",
+      "after": "html body.search3-candidate #selectedTour :is(.checkout-journey,.checkout-facts-heading)"
+    },
+    {
+      "source": "styles/selected-flow-v2.css",
+      "before": "body.search3-candidate #selectedTour .search3-flight-continue--fallback button:focus-visible,\nbody.search3-candidate #selectedTour .search3-flight-fallback-rail-action:focus-visible,\nbody.search3-candidate #selectedTour .search3-flight-show-all:focus-visible ",
+      "after": "body.search3-candidate #selectedTour .search3-flight-continue--fallback button:focus-visible,\nbody.search3-candidate #selectedTour :is(.search3-flight-fallback-rail-action:focus-visible,.search3-flight-show-all:focus-visible)"
+    }
+  ],
+  "changes": [
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 9,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlights"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 10,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 11,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight small"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 12,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight b"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 13,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight--rating"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 14,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight--rating small",
+        "body.search3-candidate .search3-hotel-highlight--rating b"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 15,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight--rating small"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 29,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlights"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 31,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 32,
+      "removed_selectors": [
+        "body.search3-candidate .search3-hotel-highlight b"
+      ]
+    },
+    {
+      "source": "styles/hotel-card-convergence.css",
+      "line": 33,
+      "removed_selectors": [
+        "body.search3-candidate :is(.search3-hotel-highlight--room,.search3-hotel-highlight--operator)"
+      ]
+    },
+    {
+      "source": "styles/hotel-results.css",
+      "line": 18,
+      "removed_selectors": [
+        ".search3-hotel-tabs",
+        ".search3-tour-filters"
+      ]
+    },
+    {
+      "source": "styles/filters.css",
+      "line": 28,
+      "removed_selectors": [
+        "body.search3-candidate :is(.search3-filter-scenarios,.search3-filter-note)"
+      ]
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "line": 16,
+      "removed_selectors": [
+        "body.search3-candidate .search3-date-button"
+      ]
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "line": 17,
+      "removed_selectors": [
+        "body.search3-candidate .search3-night-proxy"
+      ]
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "line": 42,
+      "removed_selectors": [
+        "body.search3-candidate .search3-date-button"
+      ]
+    },
+    {
+      "source": "styles/form-compatibility.css",
+      "line": 43,
+      "removed_selectors": [
+        "body.search3-candidate .search3-night-proxy"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open :is(.search3-page-intro,.results-search-summary,.results-tools--ds2,.search3-mobile-toolbar,.results-filter-rail)"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results>.hotel-card:not(.search3-tours-focused)"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-title"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-bottom"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-hotel-action"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-show-tours"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 24,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 24,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs button"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 24,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs button.is-active"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 24,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs button:disabled"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 25,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-tours"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 25,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-tour-list-head"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 25,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-tour-filters"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 25,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-tour-filters button"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 25,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-tour-filters button.is-active"
+      ]
+    },
+    {
+      "source": "styles/hotel-packages.css",
+      "line": 25,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .tour-row"
+      ]
+    },
+    {
+      "source": "styles/visual-compatibility.css",
+      "line": 9,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-selected-open #selectedTour .search3-stage-nav"
+      ]
+    },
+    {
+      "source": "styles/results-context.css",
+      "line": 44,
+      "removed_selectors": [
+        "body.search3-candidate .search3-filter-scenarios"
+      ]
+    },
+    {
+      "source": "styles/results-width-compatibility.css",
+      "line": 36,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .v2-shell"
+      ]
+    },
+    {
+      "source": "styles/results-width-compatibility.css",
+      "line": 36,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .v2-shell::before",
+        "body.search3-candidate.search3-hotel-tours-open .v2-shell::after",
+        "body.search3-candidate.search3-hotel-tours-open .results-layout::before",
+        "body.search3-candidate.search3-hotel-tours-open .results-layout::after",
+        "body.search3-candidate.search3-hotel-tours-open #results::before",
+        "body.search3-candidate.search3-hotel-tours-open #results::after"
+      ]
+    },
+    {
+      "source": "styles/results-width-compatibility.css",
+      "line": 36,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .results-layout"
+      ]
+    },
+    {
+      "source": "styles/results-width-compatibility.css",
+      "line": 36,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 16,
+      "removed_selectors": [
+        "body.search3-candidate #tourSearch .search3-nights .search3-night-proxy"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 178,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-has-results #results .search3-hotel-highlight--room"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 179,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-has-results #results .search3-hotel-highlight b"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 196,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlights"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 202,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results :is(.search3-hotel-highlight--room,.search3-hotel-highlight--operator,.search3-hotel-highlight--flight)"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 205,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results :is(.search3-hotel-highlight--rating,.search3-hotel-highlight--sea)"
+      ]
+    },
+    {
+      "source": "styles/result-cards.css",
+      "line": 216,
+      "removed_selectors": [
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating small",
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating b",
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea small",
+        "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea b"
+      ]
+    },
+    {
+      "source": "styles/base.css",
+      "line": 20,
+      "removed_selectors": [
+        "body.search3-candidate .search3-native-control"
+      ]
+    },
+    {
+      "source": "styles/base.css",
+      "line": 21,
+      "removed_selectors": [
+        "body.search3-candidate .search3-date-button"
+      ]
+    },
+    {
+      "source": "styles/base.css",
+      "line": 23,
+      "removed_selectors": [
+        "body.search3-candidate .search3-night-proxy"
+      ]
+    },
+    {
+      "source": "styles/base.css",
+      "line": 40,
+      "removed_selectors": [
+        "body.search3-candidate .search3-quick__label--instant"
+      ]
+    },
+    {
+      "source": "styles/base.css",
+      "line": 65,
+      "removed_selectors": [
+        ".search3-date-button"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 13,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 16,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 17,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quick"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 33,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 34,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality__grid"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 35,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 78,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 87,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 88,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 89,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2.css",
+      "line": 91,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-row"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-form-contract.css",
+      "line": 36,
+      "removed_selectors": [
+        "html body.search3-candidate #tourSearch .search3-quick__label--instant span"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 44,
+      "removed_selectors": [
+        ".search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 59,
+      "removed_selectors": [
+        "body.search3-candidate #tourSearch.search3-advanced-open .search3-quality"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 60,
+      "removed_selectors": [
+        "body.search3-candidate .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 61,
+      "removed_selectors": [
+        "body.search3-candidate .search3-advanced-toggle b"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 64,
+      "removed_selectors": [
+        "body.search3-candidate #tourSearch.search3-advanced-open .search3-quick .search3-quick__label"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 79,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 81,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-tours"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1.css",
+      "line": 82,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-row"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 8,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 20,
+      "removed_selectors": [
+        "body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 29,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 32,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 33,
+      "removed_selectors": [
+        "body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quick"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 19,
+      "removed_selectors": [
+        "body.search3-candidate .search3-filter-scenarios"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 20,
+      "removed_selectors": [
+        "body.search3-candidate .search3-filter-scenarios button"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 28,
+      "removed_selectors": [
+        "body.search3-candidate .search3-filter-select"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 61,
+      "removed_selectors": [
+        "body.search3-candidate #results .search3-tour-filters"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 62,
+      "removed_selectors": [
+        "body.search3-candidate #results .search3-tour-filters button"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 103,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .hotel-tours"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 105,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-filters"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 106,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-filters button"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 107,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-row"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration2c.css",
+      "line": 108,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .direct-tour"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 66,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 68,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 69,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs button"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 70,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-tour-filters"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 71,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .search3-tour-filters button"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 72,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-row"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 73,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-action>b"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 48,
+      "removed_selectors": [
+        "body.search3-candidate .search3-advanced-toggle"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 65,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 53,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 54,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 55,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .hotel-tours"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 56,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 57,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head strong"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 58,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head span"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 59,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-row"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 60,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-meta"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 61,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-fact small"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 62,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-fact b"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 63,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-action"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 64,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-action>b"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 65,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .direct-tour"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 100,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open :is(.search3-page-intro,.results-tools--ds2,.search3-mobile-toolbar)",
+        "body.search3-candidate.search3-hotel-tours-open #resultsSearchSummary"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 102,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open .results-layout"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 103,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .hotel-card:not(.search3-tours-focused)"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 104,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 105,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 106,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 107,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-title"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 108,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-hotel-facts"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 109,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-hotel-action"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 110,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-hotel-action__copy"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 111,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .search3-show-tours"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 112,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .hotel-tours"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 113,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 114,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head strong"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 115,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head span"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 116,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-row"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 117,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-meta>strong"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 118,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-facts"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 119,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-fact"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 120,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-fact small"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 121,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-fact b"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 122,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-action"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 123,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .tour-action>b"
+      ]
+    },
+    {
+      "source": "styles/cascade/search3-convergence.css",
+      "line": 124,
+      "removed_selectors": [
+        "body.search3-candidate.search3-hotel-tours-open #results .direct-tour"
+      ]
+    }
+  ],
+  "labels_verification": {
+    "baseline": "c4641c8",
+    "differential_cases": 537,
+    "public_results_api_unchanged": true,
+    "same_handler_and_observer_counts": true,
+    "bundle_idempotency_unchanged": true,
+    "scope": "Historical local experiment in d6c0b9d1; withdrawn in favor of concurrent canonical inflection/text ownership, not shipped."
+  }
+}

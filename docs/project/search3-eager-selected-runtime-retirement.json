@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-08",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "source_pr": 1640,
+  "source_sha": "d123a1d8b7cae29c39d7c2678445238d3763ae96",
+  "source_tree": "8d76145840c17c6cb9ffbf2051fe80719423ee45",
+  "release_integration_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+  "baseline_release_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
+  "scope": "Retire the whole Search3 selected-runtime lazy proxy. The page requests the existing compact shared Search3 runtime once; canonical tour, flight recovery, price and lead owners remain byte-identical.",
+  "retired_whole_sources": [
+    "src/search3/behavior/selected-runtime.js"
+  ],
+  "public_assets": {
+    "paths": 8,
+    "before_raw_bytes": 11984,
+    "after_raw_bytes": 10097,
+    "removed_raw_bytes": 1887,
+    "removed_percent": 15.75,
+    "changed_asset": {
+      "path": "v2/search3-results-filters-v1.js",
+      "before_raw_bytes": 6607,
+      "after_raw_bytes": 4720
+    }
+  },
+  "loaded_file_payload": {
+    "before_raw_bytes": 116150,
+    "after_raw_bytes": 114263,
+    "removed_raw_bytes": 1887,
+    "accounting": "The same protected shared owners are present once before and after; the complete-path reduction is the deleted proxy, not a source move."
+  },
+  "initial_file_payload_tradeoff": {
+    "before_raw_bytes": 73840,
+    "after_raw_bytes": 114263,
+    "added_raw_bytes": 40423,
+    "reason": "The former 42310-byte selected phase is now eager while the 1887-byte proxy is removed. Selection no longer incurs a second runtime request or click replay."
+  },
+  "preserved": [
+    "all eight public Search3 asset paths",
+    "canonical tour controller and return focus",
+    "flight empty recovery and retry",
+    "decimal price and flight tradeoff arithmetic",
+    "lead guard, stale-event protection, transport and field mapping",
+    "URL, payload, Tourvisor/API and analytics contracts",
+    "same-origin compact shared-runtime source hashes"
+  ],
+  "verification": {
+    "local_build": "SEARCH3_SOURCE_BUILD_OK assets=8 in write and check modes",
+    "source_build_tests": "13 passed",
+    "focused_units": "selected-flow scheduler and booking navigation passed",
+    "browser_fixture": "Three direct/reset/tour-retry scenarios made zero selected-phase requests and retained reset cancellation, decimal price, phone validation, stale lead blocking, native lead handoff and return focus.",
+    "selected_geometry": "8 states at 375/760/1000/1440 passed with native lead handoff and no real lead.",
+    "security_ci": {
+      "run": 34287755060,
+      "conclusion": "success"
+    },
+    "navigation_ci": {
+      "run": 34287754978,
+      "conclusion": "success"
+    },
+    "exact_artifact_ci": {
+      "run": 34287754975,
+      "conclusion": "success",
+      "artifact_id": 10080169508,
+      "artifact_digest": "sha256:4eef8d02507356d150edc6146455bcd0450b75b24687b9c3f75c6b1bb8e26de2",
+      "archive_sha256": "8395ecc1a2ba5639ced1a3ad790c6e91be80e2fb359207f8b61e0390d572b922",
+      "file_count": 717,
+      "selected_evidence_id": 10080169022,
+      "selected_evidence_digest": "sha256:a987a3cb2e4522f26870dbc2e16b4a557ec968d8f07d7cd0ec07797b338572d9"
+    }
+  },
+  "publication": {
+    "published": false,
+    "published_preview_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
+    "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "production_changed": false,
+    "main_changed": false
+  },
+  "rollback": "Revert this package independently to restore the split selected phase and proxy.",
+  "deferred": [
+    "publish only with a later justified accumulated or visual package",
+    "current-source live/manual screenshots",
+    "physical Safari and safe-area verification",
+    "owner visual acceptance and full lead/site/SEO journey"
+  ],
+  "next_action": "Audit a new coarse results-state boundary and proceed only for a complete owner with material eight-asset savings. Do not restore the proxy or remove protected business behavior."
+}

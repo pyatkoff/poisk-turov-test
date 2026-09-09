@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://anytoour.ru/sitemap.xml

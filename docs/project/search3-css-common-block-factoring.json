@@ -1,0 +1,996 @@
+{
+  "baseline_source": "9cf5fe886201e59c9f0be3acc096992dba308290",
+  "method": "Factor exact contiguous multi-declaration sequences shared by immediately adjacent flat rules under one unchanged parent/media. Combine original selectors into a leaf selector list and retain each residual rule. Move shared declarations only across properties with disjoint conservative reset families. No arbitrary nonadjacent merge, selector rewriting, variable/value change, new nesting or protected-source change.",
+  "sites": [
+    {
+      "file": "styles/booking-board-tablet.css",
+      "line": 21,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:641px) and (max-width:999px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-selected-open"
+          ],
+          [
+            "Rule",
+            "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)"
+          ]
+        ],
+        "ordinal": 8,
+        "count": 2
+      },
+      "selectors": [
+        "& .selected-head h2",
+        "& .selected-head p"
+      ],
+      "shared_declarations": [
+        [
+          "word-break",
+          "normal",
+          true
+        ],
+        [
+          "overflow-wrap",
+          "break-word",
+          true
+        ],
+        [
+          "white-space",
+          "normal",
+          true
+        ]
+      ],
+      "residual_families": [
+        "width",
+        "max",
+        "font"
+      ],
+      "shared_families": [
+        "word",
+        "overflow",
+        "white"
+      ],
+      "source_before_sha256": "9e1149779d30426db8ebdd7a2dbe49482d1405565efe781103b6f1ee00af2e00",
+      "source_after_sha256": "d85cf37329f8f327c8d047f6d64ba3dc5fc4583fc84b9ba00e446c5c1475c7fc",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/booking-board-tablet.css",
+      "line": 24,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:641px) and (max-width:999px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-selected-open"
+          ],
+          [
+            "Rule",
+            "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)"
+          ]
+        ],
+        "ordinal": 11,
+        "count": 2
+      },
+      "selectors": [
+        "& .tour-flights",
+        "& .search3-final-sections"
+      ],
+      "shared_declarations": [
+        [
+          "width",
+          "100%",
+          true
+        ],
+        [
+          "margin",
+          "10px 0 0",
+          true
+        ]
+      ],
+      "residual_families": [
+        "display",
+        "grid",
+        "padding",
+        "box"
+      ],
+      "shared_families": [
+        "width",
+        "margin"
+      ],
+      "source_before_sha256": "1bfd45e05d47ef98672c57f864fcf0cea960b0e21a040c0b18275a32395175e5",
+      "source_after_sha256": "5314c5ecaea139a439cbc930bbcf2eaed53d5a6f79c124b03b08f775b1cbafa6",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration2.css",
+      "line": 18,
+      "parent": {
+        "path": [
+          [
+            "Rule",
+            "body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&:not(.search3-has-results)"
+          ]
+        ],
+        "ordinal": 3,
+        "count": 2
+      },
+      "selectors": [
+        "& .results-layout",
+        "& #results:empty"
+      ],
+      "shared_declarations": [
+        [
+          "min-height",
+          "0",
+          true
+        ],
+        [
+          "margin",
+          "0",
+          true
+        ]
+      ],
+      "residual_families": [
+        "display",
+        "padding"
+      ],
+      "shared_families": [
+        "min",
+        "margin"
+      ],
+      "source_before_sha256": "098e5ca1ba72befe92d347348f10f5921cc722cc9197703da6a5ae1eb6530cba",
+      "source_after_sha256": "cbea0926c4643aaf977a447f40124c55724331847aaf74900972c07f30e6b4be",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/lead-review.css",
+      "line": 13,
+      "parent": {
+        "path": [
+          [
+            "Rule",
+            "body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "& #selectedTour"
+          ]
+        ],
+        "ordinal": 6,
+        "count": 2
+      },
+      "selectors": [
+        "& .lead-message",
+        "& .search3-lead-protection"
+      ],
+      "shared_declarations": [
+        [
+          "color",
+          "var(--at-muted)",
+          false
+        ],
+        [
+          "font",
+          "700 8px/1.35 var(--at-font)",
+          false
+        ]
+      ],
+      "residual_families": [
+        "min",
+        "margin",
+        "display",
+        "alignment",
+        "gap",
+        "column"
+      ],
+      "shared_families": [
+        "color",
+        "font"
+      ],
+      "source_before_sha256": "007fefc55a159b76bcfa01ca7a09c9b74156919365a04b1c80deba2aea261ad0",
+      "source_after_sha256": "97f2480ac89ce0b9c70bbf25d85eb15a9839edc337ca709ccea4dedc63f016e4",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/mobile-results-toolbar.css",
+      "line": 15,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(max-width:999px)"
+          ],
+          [
+            "Rule",
+            "body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-results-active"
+          ]
+        ],
+        "ordinal": 0,
+        "count": 3
+      },
+      "selectors": [
+        "& .results-search-summary",
+        "& .results-tools--ds2",
+        "& .results-layout"
+      ],
+      "shared_declarations": [
+        [
+          "width",
+          "auto",
+          true
+        ],
+        [
+          "max-width",
+          "none",
+          true
+        ]
+      ],
+      "residual_families": [
+        "margin",
+        "display"
+      ],
+      "shared_families": [
+        "width",
+        "max"
+      ],
+      "source_before_sha256": "2aab99b4fb87c4a48114ecdc7c0eb717c29ed14e534fe6f85c145747452129e0",
+      "source_after_sha256": "09f246843aa090a8103fad59bc348512d87960d5dee6e05f9a5d30d380519c6f",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/mobile-results-toolbar.css",
+      "line": 102,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(max-width:999px)"
+          ],
+          [
+            "Rule",
+            "body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-results-active #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results"
+          ]
+        ],
+        "ordinal": 0,
+        "count": 2
+      },
+      "selectors": [
+        "& .hotel-main",
+        "& .hotel-photo,& .hotel-photo>img"
+      ],
+      "shared_declarations": [
+        [
+          "height",
+          "218px",
+          true
+        ],
+        [
+          "min-height",
+          "218px",
+          true
+        ]
+      ],
+      "residual_families": [
+        "grid",
+        "max"
+      ],
+      "shared_families": [
+        "height",
+        "min"
+      ],
+      "source_before_sha256": "fe1ea20b7a7e93e9d2ef8ab257aef733aca4d79b2ddde744e482eb88c2144479",
+      "source_after_sha256": "bf175f5b5a48d9ea266593dd89ac319c93582663921e8438be1c1bf6ffe1937e",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/result-cards.css",
+      "line": 135,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:761px)"
+          ],
+          [
+            "Rule",
+            "body.search3-candidate"
+          ]
+        ],
+        "ordinal": 1,
+        "count": 2
+      },
+      "selectors": [
+        "& #results .hotel-photo",
+        "& #results .hotel-photo img"
+      ],
+      "shared_declarations": [
+        [
+          "height",
+          "100%",
+          true
+        ],
+        [
+          "min-height",
+          "188px",
+          true
+        ]
+      ],
+      "residual_families": [
+        "alignment"
+      ],
+      "shared_families": [
+        "height",
+        "min"
+      ],
+      "source_before_sha256": "fc83dedb63bdc3fa224840548f42fb5676241cdc779175d74f3ba92db4eec7c1",
+      "source_after_sha256": "0c4d777ed4f6533de3d9159fdfe5393aaba230f5db96d2b28a7050324bbf177a",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/result-cards.css",
+      "line": 158,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:761px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card"
+          ]
+        ],
+        "ordinal": 0,
+        "count": 2
+      },
+      "selectors": [
+        "& .hotel-photo",
+        "& .hotel-photo>img"
+      ],
+      "shared_declarations": [
+        [
+          "min-height",
+          "188px",
+          true
+        ],
+        [
+          "max-height",
+          "none",
+          true
+        ]
+      ],
+      "residual_families": [
+        "height",
+        "alignment"
+      ],
+      "shared_families": [
+        "min",
+        "max"
+      ],
+      "source_before_sha256": "c03e3be44d1a447a468bdf4116c99fe4ba8dbf6eab0e18134105c33a7442bc1e",
+      "source_after_sha256": "c03f79bf6e4ade2fa03c2dcf294b3bdbc7c49a73e5c3060b158bf429e51d5fa7",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/result-cards.css",
+      "line": 238,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:1000px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card"
+          ]
+        ],
+        "ordinal": 0,
+        "count": 2
+      },
+      "selectors": [
+        "& .hotel-main",
+        "& .hotel-photo,& .hotel-photo>img"
+      ],
+      "shared_declarations": [
+        [
+          "height",
+          "166px",
+          true
+        ],
+        [
+          "min-height",
+          "166px",
+          true
+        ]
+      ],
+      "residual_families": [
+        "max",
+        "object"
+      ],
+      "shared_families": [
+        "height",
+        "min"
+      ],
+      "source_before_sha256": "ac0df12f4fe2a9ab3d9180e6a06915627540321bfd3e6c7f1bca95d1edc6777a",
+      "source_after_sha256": "d4a07775aee1907e8f40797ffb5f41da59c3f5e1a9d671305fcdf3f74346c651",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/results-cards-v2.css",
+      "line": 122,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(max-width:760px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results .hotel-card"
+          ]
+        ],
+        "ordinal": 0,
+        "count": 2
+      },
+      "selectors": [
+        "& .hotel-photo",
+        "& .hotel-photo>img"
+      ],
+      "shared_declarations": [
+        [
+          "min-height",
+          "0",
+          true
+        ],
+        [
+          "max-height",
+          "none",
+          true
+        ]
+      ],
+      "residual_families": [
+        "position",
+        "aspect",
+        "height",
+        "inset",
+        "width",
+        "object"
+      ],
+      "shared_families": [
+        "min",
+        "max"
+      ],
+      "source_before_sha256": "d75334d5d255763b780ad4b22fae1aa7e8ed2a22ef7b1f44713d7f51b5e0465c",
+      "source_after_sha256": "7c4016be203f8b4830d406cd40244deb148265e18992f63ac7e6fbd2b5d51458",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/results-context.css",
+      "line": 25,
+      "parent": {
+        "path": [
+          [
+            "Rule",
+            "body.search3-candidate"
+          ]
+        ],
+        "ordinal": 17,
+        "count": 2
+      },
+      "selectors": [
+        "& .results-tools__actions",
+        "& .results-tools label"
+      ],
+      "shared_declarations": [
+        [
+          "display",
+          "flex",
+          true
+        ],
+        [
+          "align-items",
+          "center",
+          true
+        ],
+        [
+          "gap",
+          "6px",
+          true
+        ]
+      ],
+      "residual_families": [
+        "color",
+        "font"
+      ],
+      "shared_families": [
+        "display",
+        "alignment",
+        "gap",
+        "column"
+      ],
+      "source_before_sha256": "82111fb184e1a12abfa3a07f0452c86a6d918263019f7573d3e0c2ba17194c46",
+      "source_after_sha256": "2057cb9376ce9904f00795c80f64255b3a6d8c0a12a6376a0d953a46f9085ad0",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/results-layout.css",
+      "line": 159,
+      "parent": {
+        "path": [
+          [
+            "Rule",
+            "body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-results-active #resultsSearchSummary~#resultsTools:not([hidden])~.results-layout #results"
+          ]
+        ],
+        "ordinal": 2,
+        "count": 2
+      },
+      "selectors": [
+        "& .hotel-photo",
+        "& .hotel-photo>img"
+      ],
+      "shared_declarations": [
+        [
+          "min-height",
+          "210px",
+          true
+        ],
+        [
+          "max-height",
+          "210px",
+          true
+        ]
+      ],
+      "residual_families": [
+        "width",
+        "height",
+        "margin",
+        "border",
+        "object"
+      ],
+      "shared_families": [
+        "min",
+        "max"
+      ],
+      "source_before_sha256": "a84e49ba2174afb4648f13863aab9b37b65b18f1e566bd1426bfa012745930b7",
+      "source_after_sha256": "e376fe49614e59cabb0b5f0d919cef8f15e870d3758b2ea11bc23a375b6b47c0",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/results-width-compatibility.css",
+      "line": 8,
+      "parent": {
+        "path": [
+          [
+            "Rule",
+            "body.search3-candidate"
+          ]
+        ],
+        "ordinal": 3,
+        "count": 2
+      },
+      "selectors": [
+        "& #results .hotel-card",
+        "& #results .hotel-main"
+      ],
+      "shared_declarations": [
+        [
+          "width",
+          "100%",
+          true
+        ],
+        [
+          "min-width",
+          "0",
+          true
+        ],
+        [
+          "max-width",
+          "none",
+          true
+        ]
+      ],
+      "residual_families": [
+        "display",
+        "alignment"
+      ],
+      "shared_families": [
+        "width",
+        "min",
+        "max"
+      ],
+      "source_before_sha256": "0f9f5ca1ecaf4b49ebef559da4611650ebdc13908d26feebf2acafac56ca5189",
+      "source_after_sha256": "bf05c95421177e2a22211c5bb0f7c1c2ff808b5a3bf73280ee8afcb52dce657b",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/review-responsive.css",
+      "line": 111,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:641px) and (max-width:999px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights"
+          ]
+        ],
+        "ordinal": 2,
+        "count": 3
+      },
+      "selectors": [
+        "& .flight-choice>span",
+        "& .flight-choice-summary",
+        "& .flight-choice-tradeoffs"
+      ],
+      "shared_declarations": [
+        [
+          "min-width",
+          "0",
+          true
+        ],
+        [
+          "max-width",
+          "100%",
+          true
+        ]
+      ],
+      "residual_families": [
+        "display",
+        "grid",
+        "white",
+        "word",
+        "overflow",
+        "margin",
+        "flex",
+        "gap",
+        "column"
+      ],
+      "shared_families": [
+        "min",
+        "max"
+      ],
+      "source_before_sha256": "36647002895248fb3a8860bb059bc7787b27163c0c930d2c98b4500a7caf4cdc",
+      "source_after_sha256": "2833ce3a0f3284216b52c6421d733cc9a6f107d3aa960a46b35d9d98512b6bf8",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/selected-flow-v2.css",
+      "line": 214,
+      "parent": {
+        "path": [
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry"
+          ]
+        ],
+        "ordinal": 3,
+        "count": 2
+      },
+      "selectors": [
+        "& :is(.lead-phone-hint, .lead-consent, .lead-message)",
+        "& .lead-trust-note"
+      ],
+      "shared_declarations": [
+        [
+          "font-size",
+          "12px",
+          true
+        ],
+        [
+          "line-height",
+          "1.5",
+          true
+        ]
+      ],
+      "residual_families": [
+        "margin",
+        "padding",
+        "border",
+        "background",
+        "color"
+      ],
+      "shared_families": [
+        "font"
+      ],
+      "source_before_sha256": "86a03281f349146b979ba17e4f8c28604ce17151793a3da896b6635683bc7a2b",
+      "source_after_sha256": "21416ff33760da7b88af0967cba20ab8d199389a2d2fb308d3346296739589ce",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/tour-detail-convergence.css",
+      "line": 17,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:1000px)"
+          ],
+          [
+            "Rule",
+            "body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "& #selectedTour:not(.search3-final-review)"
+          ]
+        ],
+        "ordinal": 6,
+        "count": 2
+      },
+      "selectors": [
+        "& .hotel-desc",
+        "& .tour-flights"
+      ],
+      "shared_declarations": [
+        [
+          "border",
+          "1px solid var(--at-line)",
+          true
+        ],
+        [
+          "border-radius",
+          "12px",
+          true
+        ],
+        [
+          "background",
+          "#fff",
+          true
+        ]
+      ],
+      "residual_families": [
+        "padding",
+        "color",
+        "font"
+      ],
+      "shared_families": [
+        "border",
+        "background"
+      ],
+      "source_before_sha256": "a2a03296faf3d5438d0cb2f645b6ecddf0f72e988244e26a34cb557d6d1a30a0",
+      "source_after_sha256": "77eef3c9aa7a784cd0f003817d9eb5cca5f13e5683193c09b36e2bb41dfa5749",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    },
+    {
+      "file": "styles/visual-compatibility.css",
+      "line": 13,
+      "parent": {
+        "path": [
+          [
+            "Atrule",
+            "(min-width:1000px)"
+          ],
+          [
+            "Rule",
+            "html body.search3-candidate"
+          ],
+          [
+            "Rule",
+            "&.search3-has-results"
+          ]
+        ],
+        "ordinal": 0,
+        "count": 2
+      },
+      "selectors": [
+        "& .results-tools--ds2",
+        "& .results-layout"
+      ],
+      "shared_declarations": [
+        [
+          "margin-left",
+          "auto",
+          true
+        ],
+        [
+          "margin-right",
+          "auto",
+          true
+        ]
+      ],
+      "residual_families": [
+        "width",
+        "padding",
+        "box",
+        "background",
+        "grid",
+        "gap",
+        "column"
+      ],
+      "shared_families": [
+        "margin"
+      ],
+      "source_before_sha256": "7c3d94e0c945d66db65e026d3fda4419bf73e70e82c318e35d714a6be5be99a6",
+      "source_after_sha256": "2c73320e2a0ed8f53bf1efe681625b4678587b4c16fb7764fe9bc74bbc2dabe5",
+      "proof": "Same-parent adjacent leaf rules; shared sequence exact in every original rule; shared and residual reset families disjoint; per-selector declaration sequences within every reset family exact. Every original selector remains byte-identical; no selector is factored into a nesting parent."
+    }
+  ],
+  "files": [
+    {
+      "file": "styles/results-width-compatibility.css",
+      "before_sha256": "885cd10fa7e81bd5bbe9613b12045605e033fabb91228388f8ff0b5ed20d92c2",
+      "after_sha256": "e97d5da4c2b928e39868cd447e0a13180cdc460bba7a7005df832f20209d1fde",
+      "before_bytes": 3633,
+      "after_bytes": 3608
+    },
+    {
+      "file": "styles/results-context.css",
+      "before_sha256": "cba60c531bd8fc25d972b5c57e206c957c2d1853050bd712ad619f9027a421bc",
+      "after_sha256": "adf98125f30e473ae36b42df7df991d9cbdd19591ad1f52fcbbe0dec0bce0e1a",
+      "before_bytes": 6980,
+      "after_bytes": 6956
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration2.css",
+      "before_sha256": "2be6a58022972a7be43cad1ca1c1ddfa87364e1daaad10f6c1a88739fea699b4",
+      "after_sha256": "8d1329d49218eb237fad0506a28acc9afb42860521360faf261e6413ce4e7f3f",
+      "before_bytes": 4590,
+      "after_bytes": 4580
+    },
+    {
+      "file": "styles/lead-review.css",
+      "before_sha256": "8b9c93f3f805bed60fddd633ffc4e2abd01bf9e35bebc16b385611b4633e8577",
+      "after_sha256": "b0f1b714a27fc5e23ebe2bda9e9fd33136c7f107714a1b0b3b9bfe1a89d5f428",
+      "before_bytes": 6418,
+      "after_bytes": 6436
+    },
+    {
+      "file": "styles/tour-detail-convergence.css",
+      "before_sha256": "4f06cf7d0c47246d565f67551836681d5ed8ce744d6eb1ffa86aee016e30372d",
+      "after_sha256": "dcce06040af8199c849db236d2ea120bb88c88922102f28a3f611d8a09230fda",
+      "before_bytes": 5849,
+      "after_bytes": 5809
+    },
+    {
+      "file": "styles/visual-compatibility.css",
+      "before_sha256": "1b47c425004e5d2b8286efa085b242811a92547a6394363600ce5c06668a0cb9",
+      "after_sha256": "6618fd2bdd097758ef60698489897271ba56cb28538272497af19260994d02bb",
+      "before_bytes": 6766,
+      "after_bytes": 6785
+    },
+    {
+      "file": "styles/booking-board-tablet.css",
+      "before_sha256": "78a63b5698b8a4d3612abf3f4d43e89f65e39e0c09a00668e66bdcbd8c864d87",
+      "after_sha256": "23ceefde39e6d107c038823f4fc1255b6d68cb6622c815afb5d76934a9663b33",
+      "before_bytes": 3826,
+      "after_bytes": 3833
+    },
+    {
+      "file": "styles/result-cards.css",
+      "before_sha256": "996550a7baafe583823dcd765991f1add023ca5b71137fc737d51b680766fb6f",
+      "after_sha256": "a88c8e5dec717e8be150c82aaee0cbf954bc067fe88f7d999d3991a3c70abb4f",
+      "before_bytes": 9167,
+      "after_bytes": 9115
+    },
+    {
+      "file": "styles/review-responsive.css",
+      "before_sha256": "99aa458d9850e38010462adf6b71282562704d19f7b9d468ad8e5f53a62f3d4b",
+      "after_sha256": "b5a6fef88175369fd8c494b5f590da726a7995f8c95f63bb9def763e749bff46",
+      "before_bytes": 8753,
+      "after_bytes": 8671
+    },
+    {
+      "file": "styles/results-layout.css",
+      "before_sha256": "0686ad12b7b9558c46b24dac4b4bc610fc9a5230745813ef100126f707c9cecf",
+      "after_sha256": "a35de99c38480d67f7bdfc04f85e7e87e04397e7a90d624a4a86ece9037e0c57",
+      "before_bytes": 9105,
+      "after_bytes": 9081
+    },
+    {
+      "file": "styles/mobile-results-toolbar.css",
+      "before_sha256": "98152a00acde669b7d5ed972ac694af6a40f877205e4b180139a34e35e0d4191",
+      "after_sha256": "2daa67edd1e8f2aa91f2d05ed5a014fd303d0e9c5d654e0f8a68a09acecb9a4c",
+      "before_bytes": 3514,
+      "after_bytes": 3424
+    },
+    {
+      "file": "styles/results-cards-v2.css",
+      "before_sha256": "acd6384c15d84c0bf84303e543bef4c78deef4528e3208a31c165a635668b8fe",
+      "after_sha256": "d63bd85b376c8dc5443308b40eb0a672d8c2ecedbe89e018a1c24a01dd3aa3bc",
+      "before_bytes": 5035,
+      "after_bytes": 5056
+    },
+    {
+      "file": "styles/selected-flow-v2.css",
+      "before_sha256": "13db9a089f17887fb117285195bcdd76a8b534530bda63ddb353be0a86ba3b44",
+      "after_sha256": "28104ed63b097dc247af34b88ba0e51d03fc22a8bd8a1ae24ce346af40fbc324",
+      "before_bytes": 8714,
+      "after_bytes": 8671
+    }
+  ],
+  "metrics": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before": 174135,
+      "after": 173738,
+      "saving": 397
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662,
+      "saving": 0
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before": 4022,
+      "after": 4007,
+      "saving": 15
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before": 7354,
+      "after": 7322,
+      "saving": 32
+    }
+  ],
+  "source_bytes_removed": 325,
+  "served_bytes_removed": 444,
+  "verification": {
+    "draft_matches_current_source": true,
+    "exact_shared_signatures": true,
+    "residual_reset_conflicts": 0,
+    "per_selector_conflict_family_declaration_order": "exact",
+    "specificity": "Each complete selector string is unchanged, and merged rule contains declarations only; inherited parent nesting specificity is unchanged.",
+    "parent_media_order": "Same existing parent; only the contiguous witnessed rule range changes.",
+    "nesting": "No new nesting; existing maximum retained.",
+    "acceptance_guards": "unchanged"
+  },
+  "deferred": "Parent performs one combined build/import/cascade check and existing CI for CSS plus JS batch; no browser/deployment in this source pass."
+}

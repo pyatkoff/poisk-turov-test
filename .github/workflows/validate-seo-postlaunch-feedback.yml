@@ -1,0 +1,39 @@
+name: Validate SEO postlaunch feedback
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-postlaunch-feedback-v1.php'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'tests/seo-postlaunch-feedback-smoke.php'
+      - '.github/workflows/validate-seo-postlaunch-feedback.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-postlaunch-feedback-v1.php'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'tests/seo-postlaunch-feedback-smoke.php'
+      - '.github/workflows/validate-seo-postlaunch-feedback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-seo-postlaunch-feedback-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  feedback-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate postlaunch feedback contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-postlaunch-feedback-v1.php >/dev/null
+          php -l tests/seo-postlaunch-feedback-smoke.php >/dev/null
+          php tests/seo-postlaunch-feedback-smoke.php

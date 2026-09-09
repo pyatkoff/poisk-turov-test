@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "assets": {
+    "search3-results-filters-v1.js": [
+      "behavior/search-form.js",
+      "behavior/search-form/primary-controls.js",
+      "behavior/search-form/secondary-controls.js",
+      "behavior/filter-rail.js",
+      "behavior/mobile-search-entry.js",
+      "behavior/results/toolbar.js",
+      "behavior/results/local-hotel-filter.js",
+      "behavior/results/shortlist.js",
+      "behavior/selected-tour-mobile-styles.js",
+      "behavior/maket7-lock.js",
+      "behavior/lead-flow.js",
+      "behavior/flight-presentation.js",
+      "behavior/presentation-text.js",
+      "behavior/booking-summary.js",
+      "behavior/booking/format.js",
+      "behavior/booking-stepper.js",
+      "behavior/final-sections.js",
+      "behavior/flight-continue.js",
+      "behavior/review-heading.js",
+      "behavior/summary-cta-styles.js",
+      "behavior/summary-cta.js",
+      "behavior/lead-note.js",
+      "behavior/tour-detail-rail.js",
+      "behavior/tour-presentation.js",
+      "behavior/flight-price-presentation.js",
+      "behavior/selected-tour-handoff.js"
+    ],
+    "search3-results-filters-v1.css": [
+      "styles/results-layout.css"
+    ],
+    "search3-entry-v1.css": [
+      "styles/entry-native-controls.css"
+    ],
+    "search3-entry-v1.js": [
+      "behavior/entry-v1.js"
+    ],
+    "search3-results-cards-v2.css": [
+      "styles/result-cards.css"
+    ],
+    "search3-results-cards-v2.js": [
+      "behavior/results-cards-v2.js"
+    ],
+    "search3-selected-flow-v2.css": [
+      "styles/selected-tour.css"
+    ],
+    "search3-selected-flow-v2.js": []
+  }
+}

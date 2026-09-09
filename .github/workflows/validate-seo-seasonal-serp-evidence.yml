@@ -1,0 +1,43 @@
+name: Validate SEO seasonal SERP evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-seasonal-preview-opportunity-evidence-v1.php'
+      - 'v2/data/report-seo-seasonal-preview-opportunity-evidence-v1.php'
+      - 'v2/data/evidence/seo-seasonal-manual-serp-*.json'
+      - 'v2/seo-seasonal-review-page-v1.php'
+      - 'v2/seo-seasonal-review-content-v1.php'
+      - 'v2/seo-opportunity-evidence-packet-v1.php'
+      - 'tests/seo-seasonal-preview-opportunity-evidence-smoke.php'
+      - '.github/workflows/validate-seo-seasonal-serp-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-seasonal-preview-opportunity-evidence-v1.php'
+      - 'v2/data/report-seo-seasonal-preview-opportunity-evidence-v1.php'
+      - 'v2/data/evidence/seo-seasonal-manual-serp-*.json'
+      - 'v2/seo-seasonal-review-page-v1.php'
+      - 'v2/seo-seasonal-review-content-v1.php'
+      - 'v2/seo-opportunity-evidence-packet-v1.php'
+      - 'tests/seo-seasonal-preview-opportunity-evidence-smoke.php'
+      - '.github/workflows/validate-seo-seasonal-serp-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seasonal-serp-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate syntax and captured evidence contract
+        run: |
+          set -euo pipefail
+          php -l v2/seo-seasonal-preview-opportunity-evidence-v1.php >/dev/null
+          php -l v2/data/report-seo-seasonal-preview-opportunity-evidence-v1.php >/dev/null
+          php -l tests/seo-seasonal-preview-opportunity-evidence-smoke.php >/dev/null
+          php tests/seo-seasonal-preview-opportunity-evidence-smoke.php

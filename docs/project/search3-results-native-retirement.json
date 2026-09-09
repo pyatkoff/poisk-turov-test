@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+  "base_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+  "baseline_includes": [
+    1625,
+    1626
+  ],
+  "finding_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+  "finding_preview_deploy": 34272077289,
+  "findings": [
+    "Live1363px Moscow/Turkey search returned100hotels with dead summary: direction placeholder, dates/nights/guests dashes.",
+    "Selected-tour accessibility snapshot leaked repeated generated Вылет text from old tour-decoration CSS."
+  ],
+  "change": [
+    "Search3 no longer renders orphan results summary; canonical resultsSearchEdit moved into resultsTools; legacy summary byte-identical.",
+    "Delete whole summary styling, unused search-dirty banner family, desktop tour-fact decoration including duplicate pseudo label.",
+    "Keep actual renderer, all form parameters, sorting, tour actions and protected shared owners unchanged.",
+    "Current owner bounds images to100%; removes entire obsolete sidebar width/offset family in favor of centered full-width results. Required no-overflow guard unchanged."
+  ],
+  "eight_assets_raw": {
+    "before": 15426,
+    "after": 11814,
+    "removed": 3612,
+    "by_file": {
+      "before": {
+        "search3-results-filters-v1.js": 5120,
+        "search3-results-filters-v1.css": 5490,
+        "search3-entry-v1.css": 331,
+        "search3-entry-v1.js": 0,
+        "search3-results-cards-v2.css": 1,
+        "search3-results-cards-v2.js": 0,
+        "search3-selected-flow-v2.css": 1,
+        "search3-selected-flow-v2.js": 4483
+      },
+      "after": {
+        "search3-results-filters-v1.js": 5120,
+        "search3-results-filters-v1.css": 1878,
+        "search3-entry-v1.css": 331,
+        "search3-entry-v1.js": 0,
+        "search3-results-cards-v2.css": 1,
+        "search3-results-cards-v2.js": 0,
+        "search3-selected-flow-v2.css": 1,
+        "search3-selected-flow-v2.js": 4483
+      },
+      "eight_before": 15426,
+      "eight_after": 11814,
+      "removed": 3612
+    }
+  },
+  "shared_file_payload_raw": {
+    "before": 101537,
+    "after": 101537,
+    "removed": 0
+  },
+  "complete_route_file_payload_raw": {
+    "before": 116963,
+    "after": 113351,
+    "removed": 3612
+  },
+  "initial_route_file_payload_raw": {
+    "before": 76733,
+    "after": 73121,
+    "removed": 3612
+  },
+  "selected_file_payload_raw": {
+    "before": 40230,
+    "after": 40230,
+    "removed": 0
+  },
+  "css_raw": {
+    "before": 5490,
+    "after": 1878,
+    "removed": 3612
+  },
+  "javascript_changed": false,
+  "preview_updated": true,
+  "published_preview_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+  "validation": {
+    "local": "One initial build plus one corrective build for confirmed overflow; no unrelated rebuild.",
+    "required": "Security with owner validators and exact artifact with existing source/PHP/path/presentation/isolation guards; current-results browser matrix",
+    "fixture_extensions": "No orphan summary, one native edit action, preserved FormData, no generated duplicate date label; existing sorting/tour/decimal/geometry checks unchanged"
+  },
+  "deferred": [
+    "physical Safari/safe-area",
+    "owner visual/design acceptance",
+    "full lead/site/SEO/responsive journey"
+  ],
+  "next_action": "The confirmed empty-summary/mobile-overflow repair is complete. Do not repeat the retired layers or create a31B printer micro-PR. Read-only audit of all17 shared owners found only31B AST-identical further compaction (101537→101506); keep existing build contract and protected originals. Next useful work is a coherent native results/selected-form presentation pass guided by the published preview, preserving the11814B eight-asset budget where practical, all selection/edit/phone/retry behavior and protected price/API/lead/analytics contracts. Separate initial loading from actual deletion. Main/production still need explicit owner visual approval.",
+  "rollback": "Revert this source package; shared lead/price/runtime files are unchanged.",
+  "first_attempt": {
+    "source_sha": "4b1af2fc1a71caf2fa9bf235608f88f197943b12",
+    "security_run": 34272896644,
+    "security": "success",
+    "navigation_run": 34272896634,
+    "navigation": "success",
+    "exact_run": 34272896628,
+    "exact": "failure",
+    "reason": "Real375px overflow: unbounded600px hotel images and obsolete234px sidebar reservation after donor base skin deletion.",
+    "fix": "Current owner bounds images to100%; removes entire obsolete sidebar width/offset family in favor of centered full-width results. Required no-overflow guard unchanged."
+  },
+  "source_pr": 1629,
+  "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+  "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+  "release_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+  "ci": {
+    "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "security_run": 34273162448,
+    "exact_run": 34273162444,
+    "navigation_run": 34273162381,
+    "conclusion": "success",
+    "results_artifact": {
+      "id": 10074666336,
+      "digest": "sha256:f404e007cd0ddf90658e941bb6bccc36750377468fd8fc46e73623a1e201ba06"
+    },
+    "results_geometry": "12states375/760/761/999/1000/1440; raw served parity; nativeedit keeps FormData; nooverflow; decimals/sorting/touractions",
+    "native_entry": "375/1440",
+    "selected_runtime": "Unchanged from exact#1625; not rerun for this CSS/index-only package",
+    "real_leads": 0
+  },
+  "artifact": {
+    "id": 10074666815,
+    "run": 34273162444,
+    "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+    "digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+    "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+    "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+    "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+    "payload_file_count": 717
+  },
+  "publication": {
+    "artifact_id": 10074666815,
+    "artifact_run": 34273162444,
+    "http_status": 200,
+    "internal_php_denied": true,
+    "lead_probe_status": 403,
+    "metrika_counter": 0,
+    "payload_file_count": 717,
+    "production_fingerprint_sha256": "c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce",
+    "production_fingerprint_unchanged": true,
+    "production_lead_delivery": false,
+    "robots": "noindex,follow",
+    "rollback_backup_retained": true,
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "route_count": 9,
+    "schema_version": 1,
+    "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "source_tree": "9ef663d955ad9750f17ac53c13fd9f832480c142",
+    "published": true,
+    "published_source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "control_pr": 1630,
+    "control_sha": "25af7faeb0d09940fc19907a549c1db630399103",
+    "deploy_pr": 1630,
+    "deploy_run": 34273519277,
+    "conclusion": "success",
+    "deployment_evidence_artifact": 10074779677,
+    "deployment_evidence_digest": "sha256:b07aaaad1da7ddef11ba678f4e1e85e1bed42f4d90c9c8e1c2f05ba696aacbf1",
+    "release_pin_sha": "b03edfbb9ab50f27e7591a7ffe6af0f81485c0b6",
+    "artifact_digest": "sha256:36e0d1bf58eb20648dcfcfdd1db177d6198b30531fed760f7e6eb9b5aecd5102",
+    "archive_sha256": "27af8cd4e647a91da3916b02166ebeab0f1feb99efe8ca3d5a8f696b8d3654b2",
+    "manifest_sha256": "359256ccb8a13f2e7de51c4952270d1f42302b8349aa2d6e2484eeaecbcad56f",
+    "payload_sha256": "9037bfe16a65463de815c395128badba8f1796bcc005151ef4d82347db52a5e4",
+    "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "physical_safari_tested": false,
+    "real_lead_submitted": false,
+    "production_unchanged": true,
+    "production_fingerprint_files": 13,
+    "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+    "supersedes_source_sha": "fda61fbd8e1c2fd3101165504befa69b4d74e799",
+    "control_closed_without_merge": true
+  },
+  "visual_checks": {
+    "date": "2026-09-08",
+    "source_sha": "a960efd5ed65143bc111554689a5deb9e52a3f69",
+    "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "browser": "cloud Chromium",
+    "viewport_width": 1348,
+    "live_search": "Moscow/Turkey,Sep9–22,7–10nights,2adults;100hotels",
+    "placeholder_summary": "absent",
+    "native_edit_buttons": 1,
+    "horizontal_overflow": false,
+    "edit_search": "native form visible, focus departure, all input/select values preserved",
+    "screenshot_inspected": "actual100hotel results at1348px; intentionally bare native design, not accepted design",
+    "lead_sent": 0,
+    "first_tour_and_phone": "verified on preceding#1625 exactpublishedsource in same pass; JS unchanged in#1629, not repeated",
+    "full_visual_acceptance": false
+  },
+  "http_route_payload_raw": {
+    "initial": 73670,
+    "selected": 40408,
+    "complete": 114078,
+    "scope": "Response bodies including shared boundary bytes; excludes headers,HTML and compression."
+  },
+  "next_candidate_audit": {
+    "shared_owners": 17,
+    "before": 101537,
+    "after": 101506,
+    "saved": 31,
+    "method": "Read-only pinned Terser print with compression/mangling disabled; full Acorn AST equality excluding positions/raw literal spelling.",
+    "decision": "Rejected as micro-PR; no files/build/CI changed."
+  }
+}

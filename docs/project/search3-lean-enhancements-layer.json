@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "8684f214d6098581acfe736228fd56d3214851f8",
+  "source_pr": 1554,
+  "source_sha": "d42367668ebfbfc13938f8b6c07a2106d7e51b8d",
+  "checked_code_release_sha": "942ed8d0f895ea17d69e7c41b9d77b3a77224ca8",
+  "retired_search3_owner": "enhancements.css",
+  "retained_legacy_owner": "The unchanged 11744-byte layer remains in the full manifest used by /poisk-turov-old/.",
+  "retained_current_geometry": [
+    "Selected-tour picture positioning context",
+    "Flight-variant positioning context"
+  ],
+  "payload": {
+    "before": {"css": 178591, "js": 183740, "eight_assets": 173277, "raw_total": 535608, "gzip_total": 119180},
+    "after": {"css": 166900, "js": 183740, "eight_assets": 173330, "raw_total": 523917, "gzip_total": 117126}
+  },
+  "legacy_layer_bytes_removed": 11744,
+  "current_owner_bytes_added": 53,
+  "raw_saved_bytes": 11691,
+  "gzip_saved_bytes": 2054,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Gzip carries the preceding absolute with a same-method exact endpoint and eight-file delta.",
+  "ci": {
+    "security_run": 34197557533,
+    "failed_exact_runs": [34197097949],
+    "green_exact_runs": [34197557413, 34197764610],
+    "artifact_id": 10044609590,
+    "artifact_digest": "sha256:c935859742995af5186953d99910c964e5a5096d9a94234dae1db9b1cc0c4ec0",
+    "selected_geometry_artifact": 10044607873,
+    "selected_geometry_digest": "sha256:d7fe22d24daab982493566cf2f006ef941e075413a04b11fed51e836361a8e71",
+    "results_geometry_artifact": 10044608762,
+    "results_geometry_digest": "sha256:10d070c639646fed78730b4d9f12984c7b4500ee13fd6880cc139a034b684171"
+  },
+  "focused_evidence": {
+    "initial_failure": "All source, build and isolation guards passed. Exact Chromium found only position:relative missing from selected-picture and flight-variant in detail/review states at 375/760/1000/1440; node counts and rectangles were unchanged.",
+    "repair": "The two declarations were added to the current selected-tour-ux.css owner. Both subsequent exact runs passed selected, result and entry geometry without external API or lead requests."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API parameters, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": ["Live current-source interaction and manual screenshots", "Physical Safari and safe-area", "Owner visual acceptance"],
+  "next_action": "Audit tour-design-v1.css as the next complete legacy presentation-layer candidate; retain it unchanged on the old route and use exact geometry to recover only current-owner rules.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}

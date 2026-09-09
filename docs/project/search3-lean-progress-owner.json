@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "26ffef886f919b73b6bd35e5d29971f74492d14e",
+  "source_pr": 1533,
+  "source_sha": "a9653110264e6b47c0f4467afb14300c6a80c16d",
+  "checked_code_release_sha": "aad34a0590b94bf3b140097411e935e9be33116f",
+  "retired_search3_owners": [
+    "search-progress-ux-v1.js",
+    "search-progress-ux-v1.css"
+  ],
+  "retained_legacy_owner": "Both unchanged files and V2SearchProgressUXV1 remain in the full manifest used by /poisk-turov-old/.",
+  "retained_current_behavior": [
+    "All 13 started/progress/complete/dirty/error and continue-search event states",
+    "Accessible progress, done, empty, adjusted and error presentation",
+    "Non-submitting date and nights relaxation with input/change events, scroll and submit focus",
+    "Edit and filter recovery actions",
+    "Normal lifecycle retry and result-only search_results retry",
+    "searchId, generation and dirty-state protection against stale result recovery",
+    "Outgoing v2:search-dirty and recovered v2:search-complete events consumed by current Search3 owners"
+  ],
+  "retired_behavior": [
+    "Second Search3 runtime owner and unused Search3 global",
+    "Legacy mobile-summary safe-area selector whose owner and DOM are excluded from Search3",
+    "Post-results sticky override made unnecessary by a scoped initial-loading rule",
+    "Repeated CSS selectors and declarations dominated by current shared control rules"
+  ],
+  "payload": {
+    "before": {
+      "css": 195452,
+      "js": 225026,
+      "eight_assets": 156903,
+      "raw_total": 577381,
+      "gzip_total": 128290
+    },
+    "after": {
+      "css": 192384,
+      "js": 212257,
+      "eight_assets": 169877,
+      "raw_total": 574518,
+      "gzip_total": 127657
+    }
+  },
+  "raw_saved_bytes": 2863,
+  "gzip_saved_bytes": 633,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 public paths. Gzip total compresses exact bundle-v1.php endpoint bodies plus each of the eight paths independently at level 9. The 12974 current-owner bytes are included in the net result.",
+  "focused_tests": {
+    "progress_states": 13,
+    "recovery": [
+      "dates",
+      "nights",
+      "edit",
+      "filters",
+      "normal retry",
+      "result-only retry success",
+      "result-only retry failure",
+      "stale generation rejection"
+    ],
+    "result": "PASS"
+  },
+  "ci": {
+    "security_run": 34178713799,
+    "exact_runs": [
+      34178713803,
+      34178849497
+    ],
+    "artifact_id": 10038202718,
+    "artifact_digest": "sha256:86cf62bcbe99f2a3619550c740f6d3e78b2dd1e19b006e96ce90a414cf76eda8",
+    "selected_geometry_artifact": 10038202139,
+    "selected_geometry_digest": "sha256:f29db0f523ce4379982205861cb1944b5c7c789753e67cc38fa7a9970042452b",
+    "results_geometry_artifact": 10038202445,
+    "results_geometry_digest": "sha256:a9ab05fde18a7702063793e1c6083b437523ae227ec4d38e9c3471a555c43dad"
+  },
+  "browser_evidence": {
+    "selected_states": 12,
+    "selected_widths": [375, 760, 1000, 1440],
+    "entry_states": 30,
+    "entry_widths": [375, 700, 701, 760, 761, 1440],
+    "result_states": 12,
+    "result_widths": [375, 760, 761, 999, 1000, 1440],
+    "result": "Exact Chromium geometry and lifecycle jobs passed twice after the final source commit. No supplier request or lead was sent."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": [
+    "Live current-source interaction",
+    "Physical Safari and safe-area",
+    "Manual focused screenshot inspection",
+    "Pre-existing browser-default styling of search-progress-retry-results",
+    "Owner visual acceptance"
+  ],
+  "next_action": "Exclude the complete 6266-byte header-current-site.css owner from Search3 after focused global-header geometry proves it only targets absent legacy header classes; retain the full legacy manifest and do not touch selected-tour-layout-guard-v1.css.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}

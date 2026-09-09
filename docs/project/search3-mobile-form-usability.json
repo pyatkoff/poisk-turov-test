@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "base_release_sha": "6626ac58e27c85229de0f4e2d60cbbb2f5da5221",
+  "scope": "Make the mobile Search3 entry and edit form readable and touch-safe without changing search values or transport.",
+  "root_cause": "The mobile form inherited 9px labels, 11px primary controls, 40px fields and a 12px/40px submit action; these values reduced readability and could trigger iOS input zoom.",
+  "change": [
+    "Mobile field labels are at least 12px and primary inputs are 16px",
+    "Primary controls, submit and advanced-filter action are at least 48px high",
+    "Quick filters and tourist selectors retain at least 44px touch targets",
+    "The tourist popover offset follows the taller summary control",
+    "Exact artifact CI now asserts entry geometry at 375, 760 and 761px"
+  ],
+  "served_assets": {
+    "before_bytes": 145676,
+    "after_bytes": 146599,
+    "delta_bytes": 923,
+    "changed": {
+      "path": "v2/search3-entry-v1.css",
+      "before_bytes": 15099,
+      "after_bytes": 16022,
+      "delta_bytes": 923
+    },
+    "unchanged_asset_count": 7
+  },
+  "protected_contracts": "Eight public paths, form values, URL/payload, price arithmetic, Tourvisor/API, lead transport/mapping, Metrika/goals and the canonical logo are unchanged.",
+  "verification": {
+    "local": "Owner validators, exact source build/check, 13 source-build tests, 24 presentation tests with one PHP-only skip, isolation, JS/CSS printing and browser-test syntax passed. Local PHP and Chromium execution were unavailable.",
+    "source_sha": "d65a0f8e2acfdcc1c7475806563cdb80119b967b",
+    "source_pr": 1494,
+    "security_run": 34148483288,
+    "initial_artifact_run": 34148483292,
+    "ready_repeat_artifact_run": 34148657647,
+    "artifact_id": 10028594347,
+    "artifact_digest": "sha256:84f9e32eb8a2e9fbff1ad0ca77f0d81b42be00df44fad728a9d8b9a7aadf763a",
+    "results_and_entry_geometry_artifact": 10028594064,
+    "results_and_entry_geometry_digest": "sha256:ca6aff6e7a028fcd431b5d44c53b253810f5a1c605840c4aa22abb4e09313fc3",
+    "entry_widths": [375, 760, 761],
+    "entry_states": 3,
+    "existing_result_states": 12,
+    "horizontal_overflow": false,
+    "screenshots_retained": true,
+    "screenshots_manually_inspected": false,
+    "source_ci": "SUCCESS"
+  },
+  "release_sha": "8d5db6ca041c4d6b84271b8d1cf0cc1a7ccde4a0",
+  "publication": "NOT_PUBLISHED",
+  "production_updated": false,
+  "deferred": [
+    "Physical iPhone and Safari safe-area acceptance",
+    "Live current-source interaction and visual inspection"
+  ],
+  "next_action": "Add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner; accumulate before the next isolated preview publication."
+}

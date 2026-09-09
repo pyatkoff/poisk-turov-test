@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "baseline_source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+  "base_release_sha": "86723a7203f115f30c381543e98bdd1d6836b372",
+  "publication_status": "NOT_PUBLISHED",
+  "assets": [
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before_bytes": 98598,
+      "after_bytes": 95346,
+      "saved_bytes": 3252
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before_bytes": 179464,
+      "after_bytes": 177697,
+      "saved_bytes": 1767
+    },
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before_bytes": 9923,
+      "after_bytes": 9923,
+      "saved_bytes": 0
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before_bytes": 3440,
+      "after_bytes": 3234,
+      "saved_bytes": 206
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before_bytes": 4157,
+      "after_bytes": 4109,
+      "saved_bytes": 48
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before_bytes": 88,
+      "after_bytes": 0,
+      "saved_bytes": 88
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before_bytes": 7470,
+      "after_bytes": 7470,
+      "saved_bytes": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before_bytes": 8547,
+      "after_bytes": 8455,
+      "saved_bytes": 92
+    }
+  ],
+  "total_before_bytes": 311687,
+  "total_after_bytes": 306234,
+  "saved_bytes": 5453,
+  "changes": [
+    "Omit ordinary source comments only in the second JS output stage; readable sources and first-stage ordered AST/comment equality retained. License/copyright/exclamation/preservation/source URL-map comments retained.",
+    "Remove 61 CSS declarations dominated by exact matching or HTML-equivalent higher-specificity witnesses, then 14 empty rules. Different values restricted to simple supported numeric longhands; no supports/nonnumeric media/variable fallbacks.",
+    "Test adapters locate one compiled top-level statement by a stable runtime marker instead of relying on removable source comments."
+  ],
+  "local_evidence": [
+    "One final eight-asset source build succeeded.",
+    "All four final generated JS executable ASTs exactly match the preceding published assets.",
+    "Existing JS compaction execution, closures, eval, public keys, names, arity and getter checks passed; legal/tool comments retained.",
+    "CSS retained declaration stream exact; selector/property/priority cascade equivalent across all 42 width partition samples.",
+    "Eight affected compiled adapters and the two corrected executable source-drift fixtures passed."
+  ],
+  "css_audit": "docs/project/search3-css-numeric-dominance.json",
+  "boundaries": [
+    "Eight public paths and source manifest order retained, including the existing now-empty JS overlay slot.",
+    "Protected URL/payload, price arithmetic, Tourvisor, lead transport/mapping, analytics and acceptance source unchanged.",
+    "No browser run, new preview publication or production change for this technical batch."
+  ],
+  "size_scope": "Uncompressed served bytes; excludes source/docs/shared runtime/legacy. Moving source does not count as payload reduction.",
+  "checked_source_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+  "source_pr": 1422,
+  "ci": {
+    "policy": "OWNER_AUTHORIZED_BATCHED_REDUCTION",
+    "source_pr": 1422,
+    "source_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+    "security_run": 34061763860,
+    "artifact_run": 34061763852,
+    "artifact_id": 9997701449,
+    "artifact_digest": "sha256:c6cbd40248a146f75ad1069bf7d36bcb7360dd602fc5e4266a4bb8ba92743476",
+    "required_passed": 2,
+    "initial_failure": {
+      "sha": "234f9b3d6a1d167ba51dd8a7a2b0f779afe95155",
+      "artifact_run": 34061674368,
+      "reason": "Two source-drift fixtures used ordinary comments, which are now intentionally omitted. Corrected fixtures mutate executable statements; guards unchanged."
+    },
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false,
+    "preview_published": false,
+    "full_responsive_site_seo": "deferred, not passed"
+  }
+}

@@ -1,0 +1,109 @@
+name: Deploy AnyTour favicon
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/favicon.svg'
+      - '.github/workflows/deploy-favicon.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-anytoour-favicon
+  cancel-in-progress: true
+
+jobs:
+  deploy-favicon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build browser-compatible favicon files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, pathlib, re, struct
+
+          src = pathlib.Path('v2/favicon.svg')
+          svg = src.read_text(encoding='utf-8')
+          match = re.search(r'data:image/png;base64,([^"\']+)', svg)
+          if not match:
+              raise SystemExit('Embedded PNG not found in v2/favicon.svg')
+
+          png = base64.b64decode(match.group(1))
+          if not png.startswith(b'\x89PNG\r\n\x1a\n'):
+              raise SystemExit('Embedded favicon is not a valid PNG')
+
+          pathlib.Path('v2/favicon.png').write_bytes(png)
+
+          # ICO container with the original 64x64 PNG payload.
+          header = struct.pack('<HHH', 0, 1, 1)
+          entry = struct.pack('<BBBBHHII', 64, 64, 0, 0, 1, 32, len(png), 22)
+          pathlib.Path('v2/favicon.ico').write_bytes(header + entry + png)
+
+          print('FAVICON_BUILD_OK', len(png))
+          PY
+          test -s v2/favicon.svg
+          test -s v2/favicon.png
+          test -s v2/favicon.ico
+          file v2/favicon.png v2/favicon.ico
+
+      - name: Prepare SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$DEPLOY_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$DEPLOY_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$DEPLOY_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Deploy favicon to site root
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$DEPLOY_USER@$DEPLOY_HOST"
+          root='~/www/anytoour.ru'
+          timeout 60s scp "${opts[@]}" v2/favicon.svg v2/favicon.png v2/favicon.ico "$remote:$root/"
+          timeout 60s ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            test -s "$root/favicon.svg"
+            test -s "$root/favicon.png"
+            test -s "$root/favicon.ico"
+            chmod 644 "$root/favicon.svg" "$root/favicon.png" "$root/favicon.ico"
+            echo "ANYTOOUR_FAVICON_FILES_READY"
+          '
+
+      - name: Verify public favicon
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' https://anytoour.ru/favicon.svg -o /tmp/favicon.svg
+          curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' https://anytoour.ru/favicon.png -o /tmp/favicon.png
+          curl -fsSL --max-time 30 -H 'Cache-Control: no-cache' https://anytoour.ru/favicon.ico -o /tmp/favicon.ico
+          grep -q '<svg' /tmp/favicon.svg
+          python3 - <<'PY'
+          import pathlib, struct
+          png = pathlib.Path('/tmp/favicon.png').read_bytes()
+          ico = pathlib.Path('/tmp/favicon.ico').read_bytes()
+          assert png.startswith(b'\x89PNG\r\n\x1a\n')
+          assert len(ico) > 22
+          reserved, kind, count = struct.unpack('<HHH', ico[:6])
+          assert (reserved, kind, count) == (0, 1, 1)
+          assert b'\x89PNG\r\n\x1a\n' in ico[22:]
+          print('ANYTOOUR_FAVICON_PUBLIC_OK')
+          PY

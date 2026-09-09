@@ -1,0 +1,104 @@
+{
+  "assets": [
+    {
+      "after": 9662,
+      "asset": "search3-entry-v1.css",
+      "before": 9662,
+      "saved": 0,
+      "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3"
+    },
+    {
+      "after": 3226,
+      "asset": "search3-entry-v1.js",
+      "before": 3226,
+      "saved": 0,
+      "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+    },
+    {
+      "after": 4007,
+      "asset": "search3-results-cards-v2.css",
+      "before": 4007,
+      "saved": 0,
+      "sha256": "b82c4bbb1b9cbfdaa9ae0508245143da117288aa919876b4b6387e56200341aa"
+    },
+    {
+      "after": 0,
+      "asset": "search3-results-cards-v2.js",
+      "before": 0,
+      "saved": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "after": 138267,
+      "asset": "search3-results-filters-v1.css",
+      "before": 139876,
+      "saved": 1609,
+      "sha256": "11cca90316ef9efa7de7405e03c74b363bafbf48b61852f7a1187cbea8cbada0"
+    },
+    {
+      "after": 95089,
+      "asset": "search3-results-filters-v1.js",
+      "before": 95089,
+      "saved": 0,
+      "sha256": "d49673b20b7d201bdaf15c3fd9349d1dd96b30b832554af199a153795e0b76aa"
+    },
+    {
+      "after": 7237,
+      "asset": "search3-selected-flow-v2.css",
+      "before": 7237,
+      "saved": 0,
+      "sha256": "effbd3db6902528238c586e22e7b08770b1b01f976dd398f737e84f0a83b9564"
+    },
+    {
+      "after": 8439,
+      "asset": "search3-selected-flow-v2.js",
+      "before": 8439,
+      "saved": 0,
+      "sha256": "89c8b09a855c8a7b2846926cd6a0d6f315b8280591b24b3e6b0f2ea725c7d7fa"
+    }
+  ],
+  "baseline_release": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
+  "baseline_source": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+  "next_action": "Keep checked follow-up separate from published preview until a justified layout publication; no repeated minifier/dominance/micro scans.",
+  "retired_layers": [
+    "src/search3/styles/results-width-compatibility.css",
+    "src/search3/styles/hotel-card-convergence.css"
+  ],
+  "salvage": {
+    "hotel-packages.css": "Appended original convergence facts/decision/mobile title-place/price row and best-offer fallbacks immediately before retired module position.",
+    "results-context.css": "Prepended original shell/hidden/MRF/expanded-card guards, required width/stretch fallbacks and uncertain toolbar padding/letterspacing/gap. Obsolete margin-left/right resets omitted because intervening filters.css shorthand already overrides them."
+  },
+  "status": "CHECKED_REQUIRED_CI_PASSED_NOT_PUBLISHED",
+  "totals": {
+    "after": 265927,
+    "before": 267536,
+    "saved": 1609
+  },
+  "verification": {
+    "build": "One build passed",
+    "full_responsive_site_seo": "deferred, not passed",
+    "javascript": "All four public JS files byte-identical to published source9b4303a5.",
+    "preview_published": false,
+    "review": "Independent source-order review retained mobile flex fallback and original hidden/MRF selectors; no new inheritance variables.",
+    "visual": "Not performed on this follow-up source. Published ten-layer source9b4303a5 desktop evidence remains separate.",
+    "ci": {
+      "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+      "source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "source_pr": 1427,
+      "security_run": 34066837695,
+      "artifact_run": 34066837736,
+      "artifact_id": 9999214211,
+      "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
+      "required_passed": 2,
+      "first_attempt_passed": true,
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
+    }
+  },
+  "source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+  "source_tree": "12b8ac0d6455b933c6d39e1ed50f8e2065696ce1",
+  "source_pr": 1427,
+  "updated_at": "2026-09-06T23:27:36.471Z"
+}

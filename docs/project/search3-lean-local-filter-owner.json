@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "base_release_sha": "70d83f7b91247a2ac875bc56376d64535a343ca8",
+  "source_pr": 1550,
+  "source_sha": "4cd7961bb85b3654a1c2cfae32d78747deb5c888",
+  "checked_code_release_sha": "1ed8fec4b87792b5274d7a61ba4f5a1930cace89",
+  "retired_search3_owner": "results-local-filters-v1.js",
+  "retained_legacy_owner": "The unchanged 5765-byte runtime and V2ResultsLocalFiltersV1 global remain in the full manifest used by /poisk-turov-old/.",
+  "retained_current_behavior": [
+    "Search-form stars, rating, price-from and price-to narrow the loaded supplier result set immediately",
+    "Region and subregion accept scalar or object identifiers; region clears subregion and refreshes the dependent catalog once",
+    "Any change that broadens the supplier lifecycle snapshot is left to the current explicit submit path",
+    "Tour-price pruning and hotel minimum-price recomputation remain exact",
+    "Desktop DS2 facets, completeness guards, zero-result recovery and reset share the same canonical source list"
+  ],
+  "payload": {
+    "before": {"css": 186118, "js": 185600, "eight_assets": 172266, "raw_total": 543984, "gzip_total": 120947},
+    "after": {"css": 186118, "js": 183740, "eight_assets": 172266, "raw_total": 542124, "gzip_total": 120509}
+  },
+  "legacy_runtime_bytes_removed": 5765,
+  "current_owner_bytes_added": 3905,
+  "raw_saved_bytes": 1860,
+  "gzip_saved_bytes": 438,
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Gzip uses the preceding exact absolute plus the same-method exact endpoint delta; eight public assets are byte-identical.",
+  "ci": {
+    "security_run": 34192366116,
+    "exact_runs": [34192366178, 34192605097],
+    "artifact_id": 10042768273,
+    "artifact_digest": "sha256:6b1e966e07714ccff226269fd0ee8099288b34e3ffb87e1f93c9ca764cf588df",
+    "selected_geometry_artifact": 10042767008,
+    "selected_geometry_digest": "sha256:ede37e35a92a7ca573371a9d28776702f7fc1d35191ac07842d092e4061ca583",
+    "results_geometry_artifact": 10042767642,
+    "results_geometry_digest": "sha256:6a1cb432427f5f28337440ed6b3eaac68c153ae70a701253cc7bf4550f2ec39f"
+  },
+  "focused_evidence": {
+    "source_states": ["stars narrow and clear", "region clears subregion", "catalog refresh", "price tour pruning", "supplier-bound broadening", "DS2 facet recovery", "Search3 compatibility global absent", "legacy global retained"],
+    "selected_geometry_states": 12,
+    "entry_states": 30,
+    "result_states": 12,
+    "header_states": 10,
+    "result": "Required source and exact artifact suites passed; no external API or lead request was sent."
+  },
+  "protected_contracts": "Eight public paths preserved. Tourvisor/API parameters, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "deferred": ["Live current-source interaction and manual screenshots", "Physical Safari and safe-area", "Owner visual acceptance"],
+  "next_action": "Audit complete design-v1.css and enhancements.css legacy presentation layers against current Search3 private and DS2 owners; keep old-route owners and avoid micro-removals.",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
+}

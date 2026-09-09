@@ -1,0 +1,6 @@
+{
+  "table": "catalog_departures",
+  "fields": ["id", "name", "name_genitive", "slug", "is_active", "synced_at", "updated_at"],
+  "fallback": "name_genitive || name",
+  "source": "Tourvisor /departures?departureCountryId=1"
+}

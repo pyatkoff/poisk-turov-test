@@ -1,0 +1,61 @@
+{
+  "package": "SEARCH3_BASE_SKIN_RETIREMENT",
+  "date": "2026-09-08",
+  "source_pr": 1626,
+  "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
+  "source_tree_sha": "9fa329f9a886c6bade96284e6b908029ecefb701",
+  "base_release_sha": "c423da23deafb6782eb0d1994c42d6e68d5b7941",
+  "checked_release_sha": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+  "scope": "Delete the entire preview-era Search3 donor base skin without moving any of its rules; retain the current entry, results and selected owners.",
+  "accounting": {
+    "eight_public_assets": {"before_bytes": 18356, "after_bytes": 15426, "removed_bytes": 2930},
+    "results_filter_css": {"before_bytes": 8420, "after_bytes": 5490, "removed_bytes": 2930},
+    "initial_route": {"before_bytes": 79663, "after_bytes": 76733, "removed_bytes": 2930},
+    "complete_route": {"before_bytes": 119893, "after_bytes": 116963, "removed_bytes": 2930}
+  },
+  "retained_contracts": [
+    "all eight public asset paths",
+    "native entry controls and 44px input minimum",
+    "current results layout and direct-tour owners",
+    "protected Tourvisor/API, URL/payload, price, lead transport/field mapping and analytics sources",
+    "canonical logo"
+  ],
+  "ci": {
+    "security_run": 34271552421,
+    "artifact_run": 34271552328,
+    "conclusion": "success",
+    "artifact_id": 10074024154,
+    "artifact_name": "search3-site-preview-98aed98b0ac90575be43bc22f58e8c2fcf4071b5-34271552328-1",
+    "artifact_digest": "sha256:2fe82654ae24ade1baf27b395e2f7e68189e7d0c08de7d3d2c509ad97611e003",
+    "archive_sha256": "d5a27e56c8a4e4ad650930cbf48c0dd7a428f4950dd764e6593ff1e90fdee5bf",
+    "files": 717,
+    "preview_published": false
+  },
+  "verification": {
+    "source_build": "passed",
+    "PHP_path_presentation_isolation_guards": "passed",
+    "protected_closures": "passed",
+    "local_preview_routes": 9,
+    "lead_sent": 0,
+    "actual_browser_geometry": "deferred; workflow geometry selectors do not include the retired base donor owner",
+    "manual_screenshot_inspection": false
+  },
+  "red_history": {
+    "source_sha": "571a4aae9b675958680a352bb32003b37f1d35df",
+    "artifact_run": 34271267151,
+    "result": "source gate expected the retired filename; no artifact or browser run was produced",
+    "repair": "The guard now requires the file to remain absent, pins the smaller output ceiling, and retains native/results owner assertions."
+  },
+  "publication": {
+    "checked_release": "69fa28aa1224026cf05e6c2b4b5993236481396e",
+    "published_preview_source": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "preview_updated": false,
+    "main_observed": "86fc165277a13ae9bef1369659e9b150399f0e35",
+    "main_updated": false,
+    "production_updated": false
+  },
+  "rollback": "Revert merge 69fa28aa1224026cf05e6c2b4b5993236481396e.",
+  "deferred": ["actual browser geometry for the donor-skin design reset", "manual screenshots", "physical Safari/safe-area", "live current-source preview", "owner visual acceptance", "full lead/responsive/site/SEO journey"],
+  "parallel_integration": "Independent #1625 merged first as c423da23; its 769B eight-asset saving and 15395B initial-route saving are not counted in this package. The final combined release was not rebuilt.",
+  "next_action": "Do not micro-trim the remaining 15426B. The remaining public owners are results layout 5490B, results/lazy/native-lead JS 5120B, selected flow 4483B and native entry 331B; retire another owner only as a coarse product/design boundary with real eight-asset savings."
+}

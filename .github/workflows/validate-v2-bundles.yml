@@ -1,0 +1,156 @@
+name: Validate V2 startup bundles
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '!v2/data/**'
+      - 'v2/data/destinations-v1.php'
+      - '.github/workflows/validate-v2-bundles.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundles:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate bundle manifest and endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/bundle-manifest-v1.php
+          php -l v2/bundle-v1.php
+          php -l v2/assets.php
+          php -l v2/data/destinations-v1.php
+          php -l v2/sales-leaders-v1.php
+          php diagnostics/sales_leaders_v1_test.php
+          php <<'PHP'
+          <?php
+          require 'v2/assets.php';
+          $manifest=v2_bundle_manifest();
+          foreach (['css','js'] as $type) {
+              if (empty($manifest[$type])) {fwrite(STDERR,"empty $type bundle\n"); exit(1);}
+              if (count($manifest[$type]) !== count(array_unique($manifest[$type]))) {fwrite(STDERR,"duplicate $type asset\n"); exit(2);}
+              foreach ($manifest[$type] as $file) {
+                  if (!is_file('v2/'.$file) || filesize('v2/'.$file) < 1) {fwrite(STDERR,"missing $file\n"); exit(3);}
+              }
+              $a=v2_bundle_content_version($type);
+              $b=v2_bundle_content_version($type);
+              if ($a==='0' || $a!==$b || strlen($a)!==16) {fwrite(STDERR,"unstable $type version\n"); exit(4);}
+              $url=v2_bundle_asset($type);
+              if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
+          }
+          if (count($manifest['css'])!==38) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (($manifest['css'][0]??'')!=='design-system-v2.css') {fwrite(STDERR,"AnyTour Design System 2.0 token layer must load first\n"); exit(8);}
+          if (in_array('design-system-v1.css',$manifest['css'],true)) {fwrite(STDERR,"retired Design System 1.0 token layer must not be active\n"); exit(29);}
+          if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
+          if (!in_array('hotel-autocomplete-v1.css',$manifest['css'],true)) {fwrite(STDERR,"hotel autocomplete css missing\n"); exit(13);}
+          if (!in_array('search-shell-grid-v1.css',$manifest['css'],true)) {fwrite(STDERR,"shared search shell grid css missing\n"); exit(16);}
+          if (!in_array('current-price-calendar-v1.css',$manifest['css'],true)) {fwrite(STDERR,"current price calendar css missing\n"); exit(18);}
+          if (!in_array('sales-leader-ui-v1.css',$manifest['css'],true)) {fwrite(STDERR,"sales leader css missing\n"); exit(23);}
+          if (!in_array('search-params-filter-rail-v1.css',$manifest['css'],true)) {fwrite(STDERR,"parameter/filter split css missing\n"); exit(27);}
+          $expectedCssTail=[
+              'search-header-layout-guard-v1.css',
+              'search-footer-rhythm-v1.css',
+              'search-header-shared-shell-v1.css',
+              'ds2-search-intro-v1.css',
+              'ds2-search-tablet-filters-v1.css',
+              'ds2-selected-tour-convergence-v1.css',
+              'ds2-search.css',
+              'selected-tour-layout-guard-v1.css',
+          ];
+          if (array_slice($manifest['css'],-count($expectedCssTail))!==$expectedCssTail) {fwrite(STDERR,"unexpected protected CSS tail order\n"); exit(30);}
+          if (count($manifest['js'])!==44) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
+          if (!in_array('country-matrix-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"country matrix router missing\n"); exit(20);}
+          if (!in_array('hotel-autocomplete-v1.js',$manifest['js'],true)) {fwrite(STDERR,"hotel autocomplete js missing\n"); exit(14);}
+          if (!in_array('passive-price-observer-v1.js',$manifest['js'],true)) {fwrite(STDERR,"passive price observer missing\n"); exit(17);}
+          if (!in_array('current-price-calendar-v1.js',$manifest['js'],true)) {fwrite(STDERR,"current price calendar missing\n"); exit(19);}
+          if (!in_array('results-filter-autorefresh-v1.js',$manifest['js'],true)) {fwrite(STDERR,"results filter autorefresh missing\n"); exit(22);}
+          if (!in_array('sales-leader-ui-v1.js',$manifest['js'],true)) {fwrite(STDERR,"sales leader js missing\n"); exit(24);}
+          if (!in_array('search-params-filter-rail-v1.js',$manifest['js'],true)) {fwrite(STDERR,"parameter/filter split js missing\n"); exit(28);}
+          foreach (['results-depth-v1.js','results-local-filters-v1.js','ds2-results-filters.js','search-redesign-v2.js'] as $search2) {
+              if (!in_array($search2,$manifest['js'],true)) {fwrite(STDERR,"Search 2.0 runtime missing: $search2\n"); exit(31);}
+          }
+          echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
+          PHP
+      - name: Validate bundled JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '$_GET=["type"=>"js"]; include "v2/bundle-v1.php";' > "$RUNNER_TEMP/v2-active-bundle.js"
+          test -s "$RUNNER_TEMP/v2-active-bundle.js"
+          node --check "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2Runtime=runtime' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'catalog-local-routing-v1' v2/bundle-manifest-v1.php
+          grep -Fq 'window.V2CountryMatrixRoutingV1=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2SearchLifecycle=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2PassivePriceObserver=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2CurrentPriceCalendar=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2SelectedTourReturnV1=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2TourController=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2FlightEmptyRecoveryV1=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2LeadUiRaceGuardV1=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'data-v2-hotel-query' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'v2:results-filter-autorefresh' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'sales-leader-badge' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'Фильтры результатов' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'results-depth-v1' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'results-local-filters-v1' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'at-search2-results' "$RUNNER_TEMP/v2-active-bundle.js"
+          echo "BUNDLED_JS_SYNTAX_OK"
+      - name: Validate bundle HTTP cache contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(php -r 'require "v2/assets.php"; echo v2_bundle_content_version("css");')
+          port=18099
+          php -S "127.0.0.1:$port" -t "$PWD/v2" >"$RUNNER_TEMP/php-server.log" 2>&1 &
+          pid=$!
+          trap 'kill $pid >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS "http://127.0.0.1:$port/bundle-v1.php?type=css&v=$version" -o "$RUNNER_TEMP/bundle.css"; then ready=1; break; fi
+            if ! kill -0 "$pid" >/dev/null 2>&1; then cat "$RUNNER_TEMP/php-server.log" >&2 || true; exit 12; fi
+            sleep .25
+          done
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/php-server.log" >&2 || true; exit 13; fi
+          test -s "$RUNNER_TEMP/bundle.css"
+          curl -fsSI "http://127.0.0.1:$port/bundle-v1.php?type=css&v=$version" > "$RUNNER_TEMP/headers"
+          grep -iq '^Content-Type: text/css' "$RUNNER_TEMP/headers"
+          grep -iq '^Cache-Control: public, max-age=31536000, immutable' "$RUNNER_TEMP/headers"
+          grep -Fq '.search-submit' "$RUNNER_TEMP/bundle.css"
+          grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
+          grep -Fq '.at-global-header' "$RUNNER_TEMP/bundle.css"
+          grep -Fq '.hotel-autocomplete__option' "$RUNNER_TEMP/bundle.css"
+          grep -Fq '.current-price-calendar__day' "$RUNNER_TEMP/bundle.css"
+          grep -Fq '.sales-leader-badge' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'DS2 semantic split' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'AnyTour Design System 2.0: keep the mature search surface' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Owner-confirmed AnyTour Design System 2.0 search composition' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'AnyTour Design System 2.0 — tablet advanced-filter convergence' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'AnyTour Design System 2.0 selected-tour convergence' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'approved Search 2.0 results layer' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Final selected-tour responsive layout guard' "$RUNNER_TEMP/bundle.css"
+          echo "BUNDLE_HTTP_CACHE_OK"
+      - name: Validate startup request collapse
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -o "v2_bundle_asset('css')" v2/index.php | wc -l)" -eq 1
+          test "$(grep -o "v2_bundle_asset('js')" v2/index.php | wc -l)" -eq 1
+          test "$(grep -o '<link[^>]*v2_bundle_asset' v2/index.php | wc -l)" -eq 1
+          test "$(grep -o '<script src=[^>]*v2_bundle_asset' v2/index.php | wc -l)" -eq 1
+          grep -Fq 'CI source-closure markers only; this PHP comment emits no browser requests.' v2/index.php
+          grep -Fq 'id="v2-primary-search-ux-style"' v2/index.php
+          echo "STARTUP_ASSET_REQUESTS=2 PREVIOUS=44 REDUCTION=42"

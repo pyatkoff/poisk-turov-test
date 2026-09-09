@@ -1,0 +1,110 @@
+name: Validate standalone navigation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths:
+      - 'v2/index.php'
+      - 'v2/home-v1.php'
+      - 'v2/home-entry-v1.php'
+      - 'v2/site-header-v2.php'
+      - 'v2/site-header-v2.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/form-defaults.php'
+      - 'v2/poisk-turov/**'
+      - 'v2/header-current-site.js'
+      - 'tests/home-search-loading-handoff.cjs'
+      - '.github/workflows/validate-standalone-navigation.yml'
+
+jobs:
+  navigation-contract:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep one canonical navigation renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/index.php >/dev/null
+          php -l v2/site-header-v2.php >/dev/null
+          php -l v2/site-page-shell-v1.php >/dev/null
+          php -l v2/home-v1.php >/dev/null
+          grep -Fq "require_once(__DIR__.'/site-header-v2.php');" v2/index.php
+          grep -Fq "require_once __DIR__ . '/site-header-v2.php';" v2/home-v1.php
+          grep -Fq "require_once __DIR__ . '/site-header-v2.php';" v2/site-page-shell-v1.php
+          grep -Fq "v2_render_site_header(\$sitePhone, \$phoneHref, '/poisk-turov/');" v2/index.php
+          grep -Fq 'v2_render_site_header($homePhone, $homePhoneHref' v2/home-v1.php
+          grep -Fq "v2_render_site_header(\$c['phone'],\$c['phoneHref'],\$c['path'])" v2/site-page-shell-v1.php
+          ! grep -Fq '<header class="at-site-header"' v2/index.php
+          grep -Fq "['/rb/', 'Раннее бронирование']" v2/site-header-v2.php
+          grep -Fq "['/how-to-buy/', 'Как купить']" v2/site-header-v2.php
+          grep -Fq "['/country/', 'Страны']" v2/site-header-v2.php
+          grep -Fq '@media(max-width:1024px)' v2/site-header-v2.css
+          grep -Fq '.at-global-header__mobile{display:block' v2/site-header-v2.css
+          grep -Fq '.at-global-header__nav,.at-global-header__cta{display:none}' v2/site-header-v2.css
+          php <<'PHP'
+          <?php
+          require 'v2/site-header-v2.php';
+          ob_start();
+          v2_render_site_header('8 (800) 100-61-50', '+78001006150', '/country/turkey/');
+          $html = ob_get_clean();
+          if (substr_count($html, 'href="/country/" aria-current="page"') !== 2) {
+              fwrite(STDERR, "nested country page must mark Countries in desktop and mobile navigation\n");
+              exit(1);
+          }
+          if (substr_count($html, 'href="/how-to-buy/"') !== 2) {
+              fwrite(STDERR, "purchase guide must be present in desktop and mobile canonical navigation\n");
+              exit(2);
+          }
+          if (str_contains($html, 'href="/poisk-turov/" aria-current="page"')) {
+              fwrite(STDERR, "nested country page must not mark Search as current\n");
+              exit(3);
+          }
+          if (!v2_header_path_is_active('/country/turkey/', '/country/') || v2_header_path_is_active('/contacts/', '/country/')) {
+              fwrite(STDERR, "section active-state helper contract failed\n");
+              exit(4);
+          }
+          ob_start();
+          v2_render_site_header('8 (800) 100-61-50', '+78001006150', '/how-to-buy/');
+          $purchaseHtml = ob_get_clean();
+          if (substr_count($purchaseHtml, 'href="/how-to-buy/" aria-current="page"') !== 2) {
+              fwrite(STDERR, "purchase guide must mark itself current in desktop and mobile navigation\n");
+              exit(5);
+          }
+          echo "NESTED_NAVIGATION_STATE_OK\n";
+          PHP
+          echo 'STANDALONE_NAVIGATION_OK'
+
+      - name: Validate homepage search handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/home-v1.php >/dev/null
+          php -l v2/home-entry-v1.php >/dev/null
+          php -l v2/site-header-v2.php >/dev/null
+          php -l v2/poisk-turov/index.php >/dev/null
+          node --check v2/header-current-site.js
+          mkdir -p /tmp/empty-document-root
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["SCRIPT_NAME"]="/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
+            if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
+            if (strpos($html, "name=\"daysFrom\"") === false || strpos($html, "name=\"daysTill\"") === false) exit(11);
+            if (strpos($html, "<select name=\"daysFrom\"") === false || strpos($html, "<select name=\"daysTill\"") === false) exit(12);
+            foreach (["/country/","/hot/","/contacts/","/how-to-buy/","/rb/"] as $path) {
+              if (strpos($html, "href=\"".$path."\"") === false) exit(13);
+            }
+            if (strpos($html, "https://anytour.online/country/") !== false) exit(14);
+          '
+          php tests/search-handoff-smoke.php
+          node tests/home-search-loading-handoff.cjs
+          grep -Fq "'/country/'" v2/header-current-site.js
+          grep -Fq "'/hot/'" v2/header-current-site.js
+          grep -Fq "'/contacts/'" v2/header-current-site.js
+          grep -Fq "'/how-to-buy/'" v2/header-current-site.js
+          grep -Fq "'/payment/'" v2/header-current-site.js
+          echo HOME_SEARCH_HANDOFF_OK

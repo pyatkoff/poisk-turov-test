@@ -1,0 +1,27 @@
+{
+  "baseline": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+  "pre_run_baseline": "b3b508d00af2149e04882b777ca30c9002ca91c0",
+  "status": "LOCAL_FIX_VERIFIED_AWAITING_CI",
+  "live_reproduction": "1363px; Moscow/Turkey 10-11 Sep 2026, 7 nights, 2 adults; 100 hotels / 429 tours; slider Home -> 70000 below 72099 minimum; zero matching cards removes search3-results-active and search3-has-results; parent results-layout becomes display:none and hides the recovery slider.",
+  "cause": "Card-count-only presentation state treats local zero matches as a cleared search. Existing rail passes keepResultsShell but presentation subscribers and the result observer did not retain their shell classes.",
+  "baseline_evidence": "New compiled results-scheduler regression fails at the exact empty-shell assertion on both c7ccf7f9 and pre-run b3b508d0 bundles; it passes with this fix.",
+  "fix": "The existing rail marks its own zero-match render before synchronous subscribers. Results-top geometry/state and card presentation preserve their shell classes only for that marker. Restore, external fresh results and actual reset clear it. No new observer/event/global or filtering algorithm change.",
+  "local_checks": [
+    "compiled zero-state/resize/reset scheduler regression",
+    "rail marker ordering before render and clear on restore/reset",
+    "14 presentation tests, one local PHP skip for CI",
+    "source build --check"
+  ],
+  "browser_check": "Added zero matches -> resize 1000/1440 -> slider End restore -> reset case to existing responsive workflow fixture, with network/search/lead blocked. CI pending.",
+  "public_assets": {
+    "css_bytes": 205437,
+    "css_lines": 37,
+    "js_bytes": 130610,
+    "js_lines": 55,
+    "total_bytes": 336047,
+    "total_lines": 92
+  },
+  "extra_js_bytes_for_fix": 347,
+  "net_reduction_this_run": 15475,
+  "protected": "CSS and seven public assets unchanged; price arithmetic, API/lead/analytics contracts and production untouched"
+}

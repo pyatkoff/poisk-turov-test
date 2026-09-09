@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "scope": "One coarse Search3 route reduction followed by removal of two unused footer generations.",
+  "source_prs": [1602, 1603],
+  "source_shas": [
+    "ba53409864d25d44f6900e83d0095d03fe155d33",
+    "7c509cdd9f8c8073c30383445029f5b7a6273731"
+  ],
+  "release_shas": [
+    "e8c50167b32a08bc2e21aab084f61ff64ba969c9",
+    "789f4cdb200ca19bab9967aad5f64edbe60014da"
+  ],
+  "size": {
+    "package_raw_before": 419167,
+    "package_raw_after": 324836,
+    "package_raw_saved": 94331,
+    "original_raw_before": 665247,
+    "original_raw_after": 324836,
+    "original_raw_saved": 340411,
+    "original_percent_saved": 51.17,
+    "shared_css_before": 57078,
+    "shared_css_after": 20670,
+    "shared_js_before": 183740,
+    "shared_js_after": 126853,
+    "eight_assets_before": 178349,
+    "eight_assets_after": 177313
+  },
+  "removed_from_search3": {
+    "css_layers": [
+      "ds2-search-intro-v1.css",
+      "ds2-search.css",
+      "hotel-autocomplete-v1.css"
+    ],
+    "js_owners": [
+      "hotel-actions-v3.js",
+      "room-details-v3.js",
+      "hotel-autocomplete-v1.js",
+      "lead-ui-race-guard-v1.js",
+      "passive-price-observer-v1.js",
+      "current-price-calendar-v1.js",
+      "mobile-results-filters-v1.js",
+      "ds2-results-filters.js",
+      "accessibility.js"
+    ],
+    "dead_global_footer_generations": [
+      "v2-site-community",
+      "at-site-footer"
+    ]
+  },
+  "retained": [
+    "selected-tour focus CSS moved from the misleading DS2 intro layer to the current tour-detail owner",
+    "core runtime and search lifecycle",
+    "Tourvisor/API and catalogue routing",
+    "tour selection and authoritative price arithmetic",
+    "URL and payload routing",
+    "Metrika, analytics and goals",
+    "lead transport, field mapping and primary lead-form guard",
+    "active DS2 shared footer, logo, contacts and links",
+    "all eight public Search3 paths",
+    "full old-search manifest"
+  ],
+  "ci": {
+    "security_runs": [34238161870, 34239017232],
+    "exact_runs": [34238161854, 34239017211],
+    "final_conclusion": "SUCCESS",
+    "initial_exact_failure": {
+      "run": 34237093531,
+      "evidence_artifact": 10060370921,
+      "evidence_digest": "sha256:a4ac4facee5b6ac84646c02d54afa3df42e0ee1e8c8d6fd197a58492124a25bd",
+      "finding": "Every selected-tour state differed because ds2-search-intro-v1.css contained an undocumented live selected focus block. The block was retained in the current owner without restoring the legacy layer."
+    },
+    "artifact": {
+      "id": 10060846914,
+      "digest": "sha256:8b111ac4af05d0a459022f956189950c472dbeb7439e08e3be703aabfd2e34af"
+    },
+    "selected_geometry": {
+      "id": 10060844850,
+      "digest": "sha256:2219dfa938529d8a38c8ad25af4821ead910f9d4ad1c65a88b7d933d77a7ec0c",
+      "states": "detail/review/lead at 375/760/1000/1440",
+      "differences": 0
+    },
+    "results_geometry": {
+      "id": 10060845900,
+      "digest": "sha256:91c60d11e8235d8907b26baabf3852327cc96bc9479ebefafecde1420fba4248"
+    },
+    "footer_artifact": {
+      "id": 10061148819,
+      "digest": "sha256:06b40cdd95b9e384819884efdd608984c3fb4f0de0751a315c0aa28d6e6d92ca"
+    }
+  },
+  "publication": {
+    "published": false,
+    "published_preview_source": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "checked_release_source": "789f4cdb200ca19bab9967aad5f64edbe60014da",
+    "main_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "production_changed": false
+  },
+  "deferred": [
+    "live current-source interaction",
+    "manual screenshot inspection",
+    "physical Safari and safe-area",
+    "optional room gallery/details",
+    "optional price calendar",
+    "hotel autocomplete",
+    "secondary filters over already-loaded results"
+  ],
+  "next_action": "Treat the remaining JavaScript as required until a whole optional owner can be proven independent; make the next change as one coarse package rather than micro-PRs."
+}

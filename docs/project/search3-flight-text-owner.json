@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "a5a494c1b85131b9603d5e3619720c4b18908577",
+  "scope": "Retire the standalone flight-presentation.js runtime owner into the shared presentation-text.js owner and reuse its recursive supplier text formatter.",
+  "retired_runtime_owner": "src/search3/behavior/flight-presentation.js",
+  "current_owner": "src/search3/behavior/presentation-text.js",
+  "served_assets": {
+    "before_bytes": 163750,
+    "after_bytes": 163556,
+    "removed_bytes": 194,
+    "changed": {
+      "v2/search3-results-filters-v1.js": {
+        "before_bytes": 54877,
+        "after_bytes": 54683,
+        "removed_bytes": 194
+      }
+    },
+    "unchanged_asset_count": 7
+  },
+  "preserved": [
+    "immutable Search3PresentationText and Search3FlightPresentation adapters",
+    "recursive supplier-name and scalar normalization",
+    "placeholder SU000 display semantics without supplier-data mutation",
+    "real, mixed and empty flight labels",
+    "unknown, zero and known baggage presentation",
+    "booking summary and services consumers"
+  ],
+  "removed": [
+    "one runtime IIFE",
+    "one duplicate recursive supplier text formatter"
+  ],
+  "checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test"
+  ],
+  "publication": "NOT_PUBLISHED",
+  "protected_contracts": "Supplier data, URL, payload, Tourvisor/API, price, lead and analytics unchanged"
+}

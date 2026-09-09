@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_AND_PUBLISHED_DESKTOP_LEAD_SMOKE_MOBILE_DEFERRED",
+  "base_release_sha": "3bb780783bd0ae1698b631c8fafdf6d3c3656a05",
+  "scope": "Retire the complete lead-review CSS layer and the injected selected-tour-mobile lead-entry owner, salvaging only active lifecycle and compact lead-layout rules in current owners.",
+  "removed": [
+    "styles/lead-review.css: complete superseded lead review/presentation layer",
+    "styles/injected/selected-tour-mobile.css: complete private lead-entry presentation owner"
+  ],
+  "retained": [
+    "review-layout.css owns current final/review/lead visibility and shell geometry",
+    "selected-flow-v2.css owns current lead form and summary layout",
+    "lead-state.css owns consent/protection presentation and sending/success/error lifecycle",
+    "Pending lifecycle steps remain blank until completed; sending uses the retained spinner instead of premature ticks",
+    "Lead comment stays hidden, the duplicate mobile summary stays hidden, and current mobile final-row visibility is retained",
+    "All eight public paths and protected price, URL/payload, Tourvisor/API, lead transport/mapping and analytics contracts"
+  ],
+  "source_packages": [
+    {
+      "source_sha": "4c3915920ea652eacd1bea5cf35c3b3541e05cad",
+      "scope": "Retire lead-review.css and move only active lifecycle/lead essentials to lead-state.css",
+      "before": 225972,
+      "after": 221797,
+      "saved": 4175
+    },
+    {
+      "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "scope": "Retire the injected selected-tour-mobile lead-entry owner; current source owners retain the compact layout",
+      "before": 221797,
+      "after": 219880,
+      "saved": 1917
+    }
+  ],
+  "public_assets": [
+    {"path": "v2/search3-results-filters-v1.css", "size": 104004, "sha256": "257feb506f32cc17f79f5a11ed2dc117ca3e4d7afc174d14d29b593b61abec4d"},
+    {"path": "v2/search3-entry-v1.css", "size": 9662, "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3"},
+    {"path": "v2/search3-results-cards-v2.css", "size": 4007, "sha256": "b82c4bbb1b9cbfdaa9ae0508245143da117288aa919876b4b6387e56200341aa"},
+    {"path": "v2/search3-selected-flow-v2.css", "size": 6814, "sha256": "a397b15a06d853f9012f9335f80de17609e5b2eba350da426029069b8d66f58c"},
+    {"path": "v2/search3-results-filters-v1.js", "size": 84285, "sha256": "d5a348b8d4946b14639848f43ecab0a18ffd013be6486570dd5dc0e924875d01"},
+    {"path": "v2/search3-entry-v1.js", "size": 3226, "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"},
+    {"path": "v2/search3-results-cards-v2.js", "size": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"path": "v2/search3-selected-flow-v2.js", "size": 7882, "sha256": "9073087372ffaac8d0d0b04afc00a9da0f10739e9865692691727f20ea19587b"}
+  ],
+  "totals": {
+    "before": 225972,
+    "after": 219880,
+    "saved": 6092,
+    "css_before": 128494,
+    "css_after": 124487,
+    "css_saved": 4007,
+    "js_before": 97478,
+    "js_after": 95393,
+    "js_saved": 2085,
+    "run_baseline": 235139,
+    "run_saved": 15259,
+    "whole_layer_baseline": 301524,
+    "whole_layer_saved": 81644
+  },
+  "accounting_note": "Raw bytes across the same eight checked-in public assets. The second package moves 168 public bytes into CSS while deleting 2085 embedded JS bytes; only the net eight-asset saving is counted.",
+  "local_checks": {
+    "source_build": "PASS once per useful package; final artifact built once after the second package",
+    "production_presentation": "PASS 14 of 15 locally; one PHP-dependent case skipped locally and passed in source CI",
+    "injected_styles": "PASS; removed private CSS no longer owns lead-entry",
+    "selected_flow_scheduler": "PASS",
+    "booking_summary": "PASS",
+    "diff_check": "PASS"
+  },
+  "source_ci": {
+    "source_pr": 1437,
+    "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "source_tree": "d00be539e6ca873658d22cbea0ae99f7996f8383",
+    "security_run": 34072173651,
+    "artifact_run": 34072173661,
+    "artifact_id": 10000822583,
+    "artifact_digest": "sha256:47025ef6e71d2e1ceaf24081fee8f8f7daf7ea1a56cb4516ecac2aa6d46ede7d",
+    "archive_sha256": "f3a5efb81d93592db70322587a887a1c32ea35c7b2435570b1cd737e34531950",
+    "manifest_sha256": "806d3796e3a365becea0dcfa7a65af45880128b8f9434766319702b791d54f44",
+    "payload_sha256": "aa000c8bb58d1cf545a37b3333702530c768283d091d42be93488313f386c9ed",
+    "file_count": 715,
+    "conclusion": "success",
+    "guards": "unchanged"
+  },
+  "preview_publication": {
+    "failed_preflight": {
+      "control_pr": 1438,
+      "deploy_run": 34072338032,
+      "reason": "Incorrect locally reconstructed payload-control hash; exact-artifact preflight rejected before SSH, so preview and server state were unchanged. Corrected from the downloaded artifact rather than bypassed."
+    },
+    "control_pr": 1439,
+    "control_sha": "abfb620b74432d6f4d17ad55b932edf2632ba0fa",
+    "deploy_run": 34072481129,
+    "security_run": 34072482545,
+    "deployment_evidence_artifact": 10000913111,
+    "deployment_evidence_digest": "sha256:bced6c9554d9fbeb32421c994b1fd3edb35fc3842056c43ffd7eebd0343b0f60",
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "source_tree": "d00be539e6ca873658d22cbea0ae99f7996f8383",
+    "file_count": 715,
+    "noindex": true,
+    "preview_metrika_counter": 0,
+    "preview_lead_status": 403,
+    "production_leads": false,
+    "rollback": "retained",
+    "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+    "production_fingerprints": "unchanged",
+    "conclusion": "success"
+  },
+  "visual_verification": {
+    "status": "DESKTOP_SEARCH_TO_LEAD_SMOKE",
+    "viewport": [1363, 936],
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "observed": "Live search, first hotel expansion, selected tour, real alternative flight list, final review and empty lead form inspected without submission. Fallback is 'Аэрофлот · рейс уточняется', not a fabricated SU000. No horizontal overflow; lead form, summary, consent checkbox and protection note are visible and unclipped. All eight live cache keys match exact source hashes; no external Metrika or consultant script.",
+    "geometry": {
+      "viewport": [1363, 936],
+      "document_scroll_width": 1363,
+      "lead_form_width": 596,
+      "lead_form_height": 530,
+      "consent_width": 558,
+      "consent_checkbox": [15, 15],
+      "summary_width": 320
+    },
+    "real_lead_submitted": false,
+    "full_matrix_run": false,
+    "deferred": [
+      "mobile lead/final at 375/430",
+      "tablet lead/flight boundaries at 641/768/999",
+      "sending/success/error visual states in preview",
+      "physical Safari",
+      "full site/responsive/SEO matrix",
+      "real lead submission"
+    ]
+  },
+  "production_updated": false,
+  "next_action": "Audit obsolete rule families inside acceptance-guards.css and lead-state.css; whole-file deletion is unsafe. Delete only proven superseded families in one measured source batch and retain lifecycle/hidden/accessibility fallbacks."
+}

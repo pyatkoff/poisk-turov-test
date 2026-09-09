@@ -1,0 +1,69 @@
+<?php
+require __DIR__ . '/../v2/assets.php';
+
+function lean_bundle_fail(string $message): void
+{
+    fwrite(STDERR, "SEARCH3_LEAN_BASE_FAIL: $message\n");
+    exit(1);
+}
+
+$fullJs = v2_bundle_files('js', 'full');
+$search3Js = v2_bundle_files('js', 'search3');
+$fullCss = v2_bundle_files('css', 'full');
+$search3Css = v2_bundle_files('css', 'search3');
+
+$excludedJs = ['header-current-site.js', 'sales-leader-ui-v1.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'hotel-actions-v3.js', 'room-details-v3.js', 'selected-tour-return-v1.js', 'selected-tour-description-v1.js', 'checkout-experience-v1.js', 'price-confidence-v1.js', 'hotel-autocomplete-v1.js', 'search-filters-ux-v1.js', 'search-params-filter-rail-v1.js', 'results-depth-v1.js', 'results-local-filters-v1.js', 'results-filter-autorefresh-v1.js', 'mobile-results-filters-v1.js', 'primary-meal-ux-v1.js', 'search-progress-ux-v1.js', 'search-complete-recovery-v1.js', 'search-dirty-ux-v1.js', 'mobile-search-summary-v1.js', 'ds2-results-filters.js', 'search-redesign-v2.js', 'accessibility.js'];
+foreach ($excludedJs as $excluded) {
+    if (!in_array($excluded, $fullJs, true)) lean_bundle_fail('legacy owner missing: ' . $excluded);
+    if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
+}
+if (count($fullJs) !== count($search3Js) + count($excludedJs)) lean_bundle_fail('unexpected JavaScript scope delta');
+if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css', 'current-price-calendar-v1.css']) lean_bundle_fail('Search3 must load the canonical shared shell and current price calendar CSS');
+if (count(array_keys($search3Css, 'site-header-v2.css', true)) !== 1) lean_bundle_fail('canonical shared header owner is not exact');
+if (!in_array('site-footer-v1.css', $fullCss, true)) lean_bundle_fail('canonical shared footer owner missing');
+if (!in_array('app.css', $fullCss, true)) lean_bundle_fail('legacy application layer missing');
+if (!in_array('enhancements.css', $fullCss, true)) lean_bundle_fail('legacy enhancements layer missing');
+if (!in_array('design-v1.css', $fullCss, true)) lean_bundle_fail('legacy design layer missing');
+if (!in_array('hotel-details-design.css', $fullCss, true)) lean_bundle_fail('legacy hotel details layer missing');
+if (!in_array('tour-design-v1.css', $fullCss, true)) lean_bundle_fail('legacy tour design layer missing');
+if (!in_array('search-states-design.css', $fullCss, true)) lean_bundle_fail('legacy search states layer missing');
+if (!in_array('mobile-results-filters-v1.css', $fullCss, true)) lean_bundle_fail('legacy mobile results filter CSS missing');
+if (!in_array('current-price-calendar-v1.css', $fullCss, true)) lean_bundle_fail('legacy current price calendar CSS missing');
+if (count(array_keys($search3Css, 'current-price-calendar-v1.css', true)) !== 1) lean_bundle_fail('current price calendar CSS is not shared exactly once');
+if (count(array_keys($search3Js, 'current-price-calendar-v1.js', true)) !== 1) lean_bundle_fail('current price calendar runtime is not shared exactly once');
+if (!in_array('room-details.css', $fullCss, true)) lean_bundle_fail('legacy room details CSS missing');
+if (!in_array('anytour-brand.css', $fullCss, true)) lean_bundle_fail('legacy AnyTour brand layer missing');
+if (!in_array('results-experience-v1.css', $fullCss, true)) lean_bundle_fail('legacy results experience layer missing');
+if (!in_array('product-shell-v1.css', $fullCss, true)) lean_bundle_fail('legacy product shell layer missing');
+if (!in_array('search-header-shared-shell-v1.css', $fullCss, true)) lean_bundle_fail('legacy shared header shell missing');
+if (!in_array('ds2-selected-tour-convergence-v1.css', $fullCss, true)) lean_bundle_fail('legacy selected convergence layer missing');
+if (!in_array('br3-control-consistency-v1.css', $fullCss, true)) lean_bundle_fail('legacy BR3 control layer missing');
+if (!in_array('selected-tour-layout-guard-v1.css', $fullCss, true)) lean_bundle_fail('legacy selected layout guard missing');
+if (!in_array('search-filters-ux-v1.css', $fullCss, true)) lean_bundle_fail('legacy search filters layer missing');
+if (!in_array('selected-tour-ux.css', $fullCss, true)) lean_bundle_fail('legacy selected-tour UX layer missing');
+if (!in_array('header-current-site.css', $fullCss, true)) lean_bundle_fail('legacy header CSS missing');
+if (!in_array('header-current-site.js', $fullJs, true)) lean_bundle_fail('legacy header runtime missing');
+if (!in_array('selected-tour-return-v1.js', $fullJs, true)) lean_bundle_fail('legacy selected return runtime missing');
+if (!in_array('flight-empty-recovery-v1.js', $fullJs, true)) lean_bundle_fail('canonical flight recovery runtime missing');
+if (!in_array('flight-empty-recovery-v1.js', $search3Js, true)) lean_bundle_fail('canonical flight recovery runtime missing from Search3');
+$initialJs = v2_bundle_phase_files('js', 'search3', 'initial');
+$selectedJs = v2_bundle_phase_files('js', 'search3', 'selected');
+if (count(array_keys($selectedJs, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery selected owner is not exact');
+if (count(array_keys($search3Js, 'flight-empty-recovery-v1.js', true)) !== 1) lean_bundle_fail('flight recovery eager owner is not exact');
+if (!in_array('price-confidence-v1.js', $fullJs, true)) lean_bundle_fail('legacy price confidence runtime missing');
+if (!in_array('results-filter-autorefresh-v1.js', $fullJs, true)) lean_bundle_fail('legacy filter autorefresh runtime missing');
+if (!in_array('results-depth-v1.js', $fullJs, true)) lean_bundle_fail('legacy results depth runtime missing');
+if (!in_array('results-local-filters-v1.js', $fullJs, true)) lean_bundle_fail('legacy form-local filter runtime missing');
+if (!in_array('conversion-confidence-v1.css', $fullCss, true)) lean_bundle_fail('legacy confidence CSS missing');
+if (v2_bundle_content_version('css', 'full') === v2_bundle_content_version('css', 'search3')) lean_bundle_fail('CSS scope versions collide');
+if (v2_bundle_content_version('js', 'full') === v2_bundle_content_version('js', 'search3')) lean_bundle_fail('scope versions collide');
+
+$legacyUrl = v2_bundle_asset('js', 'full');
+$search3Url = v2_bundle_asset('js', 'search3');
+if (str_contains($legacyUrl, 'scope=')) lean_bundle_fail('legacy URL changed scope contract');
+if (!str_contains($legacyUrl, 'search-redesign-v2.js')) lean_bundle_fail('legacy closure lost view owner');
+if (!str_contains($search3Url, '&scope=search3')) lean_bundle_fail('Search3 scope missing from URL');
+if (str_contains($search3Url, 'search-redesign-v2.js')) lean_bundle_fail('Search3 closure exposes excluded owner');
+if (str_contains($search3Url, 'phase=')) lean_bundle_fail('Search3 page runtime must use one eager bundle');
+
+echo 'SEARCH3_LEAN_BASE_OK full_js=' . count($fullJs) . ' search3_js=' . count($search3Js) . "\n";

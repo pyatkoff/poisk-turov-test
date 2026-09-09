@@ -1,0 +1,91 @@
+{
+  "task": "S3_LEAN_SHARED_HEADER_SHELL_LAYER",
+  "date": "2026-09-08",
+  "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
+  "source": {
+    "pr": 1573,
+    "sha": "2b6afe8602587ff6e45e13127129daec4187e22d",
+    "release_sha": "e887eef45e8a23560d5f5138c0b38908f0be7ca3"
+  },
+  "retirement": {
+    "file": "v2/search-header-shared-shell-v1.css",
+    "raw_bytes": 4455,
+    "search3_excluded": true,
+    "legacy_full_manifest_retained": true,
+    "current_owner_compensation_bytes": 0,
+    "rationale": "All selectors are anchored to legacy .at-site-header/.at-site-* or .at-mobile-menu-* families. Current Search3 renders .at-global-header and site-header-v2.css owns its geometry, logo, navigation and mobile menu."
+  },
+  "metrics": {
+    "before": {
+      "shared_css": 129086,
+      "shared_js": 183740,
+      "eight_assets": 173509,
+      "raw_total": 486335,
+      "gzip_total": 110185
+    },
+    "after": {
+      "shared_css": 124631,
+      "shared_js": 183740,
+      "eight_assets": 173509,
+      "raw_total": 481880,
+      "gzip_total": 109432
+    },
+    "saved": {
+      "raw": 4455,
+      "gzip": 753
+    }
+  },
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 public paths. Gzip total compresses exact bundle-v1.php endpoint bodies plus each of the eight paths independently at level 9. Both exact artifact trees were recounted with the same method; the eight public assets are byte-identical.",
+  "verification": {
+    "local": [
+      "python3 scripts/build/search3_assets.py --check",
+      "13 Search3 source-build tests",
+      "45 presentation tests passed with one local PHP-dependent skip",
+      "owner-priority validator"
+    ],
+    "security": {
+      "run": 34209958561,
+      "conclusion": "success"
+    },
+    "exact_artifact_runs": [
+      34209962002,
+      34210172714
+    ],
+    "final_artifact": {
+      "id": 10049486332,
+      "digest": "sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c"
+    },
+    "results_geometry": {
+      "id": 10049485574,
+      "digest": "sha256:1da978383f64e0401a269ca7cd312033610c6c2743a3bbe66999a1349d2f49e5"
+    },
+    "selected_geometry": {
+      "id": 10049484807,
+      "digest": "sha256:1d4a362e8ed0255888f343830f540337abb913e5380cbcb88aca2d231cbf24f7"
+    },
+    "scope": "Exact source/PHP/path/presentation/isolation guards plus header, entry, results and selected-tour Chromium geometry. No external API or lead request."
+  },
+  "protected_contracts": [
+    "eight public Search3 paths",
+    "price arithmetic",
+    "URL/payload",
+    "Tourvisor/API",
+    "lead transport and field mapping",
+    "Metrika/analytics/goals",
+    "canonical /images/logo.svg",
+    "native browser/nesting"
+  ],
+  "publication": {
+    "published": false,
+    "published_preview_source": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "main_changed": false,
+    "production_changed": false
+  },
+  "deferred": [
+    "live current-source visual pass",
+    "representative screenshot inspection",
+    "physical Safari and safe-area",
+    "owner visual acceptance"
+  ],
+  "next_action": "Audit ds2-search-intro-v1.css and ds2-selected-tour-convergence-v1.css as whole reversible candidates; retain active entry/selected behavior and geometry."
+}

@@ -1,0 +1,71 @@
+{
+  "id": "S3_LEAN_SEARCH_FILTER_SKIN",
+  "checkedReleaseSha": "f1a7fe122d878918157cb27f4c83165569f0638e",
+  "implementationSourceSha": "a201f645bc614bdab65ee3008ebfd152a70b78af",
+  "sourcePr": 1584,
+  "scope": "Search3 only; full legacy manifest and /poisk-turov-old/ unchanged",
+  "removedLayers": [
+    {
+      "path": "v2/search-filters-ux-v1.css",
+      "rawBytes": 12025
+    }
+  ],
+  "bytes": {
+    "loadedRaw": {
+      "before": 470476,
+      "after": 458693,
+      "saved": 11783
+    },
+    "sharedCss": {
+      "before": 108560,
+      "after": 96535
+    },
+    "sharedJs": {
+      "before": 183740,
+      "after": 183740
+    },
+    "eightPublicAssets": {
+      "before": 178176,
+      "after": 178418
+    }
+  },
+  "retainedCurrentOwners": [
+    "native date/night controls",
+    "tourist selects/popover and child ages",
+    "quality controls",
+    "mobile advanced filters",
+    "scoped pre-init hidden wrapper"
+  ],
+  "ci": {
+    "security": {
+      "run": 34222910866,
+      "conclusion": "success"
+    },
+    "exactArtifact": {
+      "run": 34222910847,
+      "conclusion": "success",
+      "artifactId": 10054529522,
+      "digest": "sha256:84a7c55e4612fbd9395f5b315477945ccee8f9f0d1ee44ebbb9baf3031dbcccd"
+    },
+    "resultsGeometry": {
+      "artifactId": 10054528862,
+      "digest": "sha256:d94e1bbd8346c7f1ed5a81b017cfd8e6ca7d896bd083b39cc4408c26f68d0fd4"
+    },
+    "selectedGeometry": {
+      "artifactId": 10054528235,
+      "digest": "sha256:5894f02f87fb9c79d3a75dc897af259508f4702d13b4f257ff5a1b329b584066"
+    }
+  },
+  "publication": {
+    "published": false,
+    "publishedPreviewSource": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "mainObserved": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "productionChanged": false
+  },
+  "deferred": [
+    "live current-source interaction",
+    "physical Safari/safe-area",
+    "manual screenshot inspection"
+  ],
+  "next": "Retire selected-tour-ux.css from Search3 as one large reversible package, then repair only confirmed detail/flight/room/lead breakage in current owners."
+}

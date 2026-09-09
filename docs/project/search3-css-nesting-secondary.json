@@ -1,0 +1,244 @@
+{
+  "baseline": "9597192cb58c00814a84ba21ee3f32f96f38dc53",
+  "stage": "secondary",
+  "method": "Only consecutive rules with the same single parent selector are grouped. Every child starts with explicit &. Expanding & restores ordered selector/declaration/media streams exactly; declaration values and important flags unchanged. No declarations or at-rules in grouping parents. Original source declaration bytes retained.",
+  "parents": [
+    "html body.search3-candidate",
+    "body.search3-candidate"
+  ],
+  "parent_specificities": {
+    "body.search3-candidate": [
+      0,
+      1,
+      1
+    ],
+    "html body.search3-candidate": [
+      0,
+      1,
+      2
+    ]
+  },
+  "browser_contract": "Native CSS nesting with explicit &, including Safari16.5+ per WebKit. Older engines without nesting unsupported by this preview variant. Current Chromium CI required; physical Safari not tested.",
+  "references": [
+    "https://www.w3.org/TR/css-nesting-1/#nest-selector",
+    "https://webkit.org/blog/14154/webkit-features-in-safari-16-5/"
+  ],
+  "modules": [
+    {
+      "module": "styles/entry-calendar.css",
+      "before_bytes": 3929,
+      "after_bytes": 3263,
+      "groups": [
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 21,
+          "selectors": 21
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 7,
+          "selectors": 7
+        }
+      ]
+    },
+    {
+      "module": "styles/entry-v1.css",
+      "before_bytes": 7097,
+      "after_bytes": 6155,
+      "groups": [
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 2
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 4,
+          "selectors": 8
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 17,
+          "selectors": 19
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 9,
+          "selectors": 12
+        }
+      ]
+    },
+    {
+      "module": "styles/entry-toolbar.css",
+      "before_bytes": 708,
+      "after_bytes": 661,
+      "groups": [
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 3,
+          "selectors": 3
+        }
+      ]
+    },
+    {
+      "module": "styles/entry-native-controls.css",
+      "before_bytes": 3052,
+      "after_bytes": 2651,
+      "groups": [
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 5,
+          "selectors": 5
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 8,
+          "selectors": 10
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 4,
+          "selectors": 4
+        }
+      ]
+    },
+    {
+      "module": "styles/results-cards-v2.css",
+      "before_bytes": 8758,
+      "after_bytes": 8263,
+      "groups": [
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 9,
+          "selectors": 11
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 4,
+          "selectors": 4
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 2
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 2
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 6,
+          "selectors": 6
+        }
+      ]
+    },
+    {
+      "module": "styles/selected-flow-v2.css",
+      "before_bytes": 10780,
+      "after_bytes": 9755,
+      "groups": [
+        {
+          "parent": "body.search3-candidate",
+          "rules": 16,
+          "selectors": 18
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 2
+        },
+        {
+          "parent": "body.search3-candidate",
+          "rules": 5,
+          "selectors": 5
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 9,
+          "selectors": 9
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 2
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 11,
+          "selectors": 12
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 2
+        },
+        {
+          "parent": "html body.search3-candidate",
+          "rules": 2,
+          "selectors": 3
+        }
+      ]
+    }
+  ],
+  "public_assets": [
+    {
+      "asset": "search3-results-filters-v1.js",
+      "before_bytes": 123837,
+      "after_bytes": 123837,
+      "lines": 1428,
+      "sha256": "27654265c45a52a979d55c742941085944b8dc32b8b0c65ece5c8087bf8e05b0"
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before_bytes": 229195,
+      "after_bytes": 229195,
+      "lines": 3165,
+      "sha256": "c1b0d02a09e24a6135e96bfdbf82f2219f496c04ede7d79f30900c83c4711e23"
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before_bytes": 13696,
+      "after_bytes": 11640,
+      "lines": 289,
+      "sha256": "4bb5ab8f95950872e0f9d3a2ac6ce0f4ec9135345888e3d4898b24c0b61c55f8"
+    },
+    {
+      "asset": "search3-entry-v1.js",
+      "before_bytes": 5050,
+      "after_bytes": 5050,
+      "lines": 132,
+      "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b"
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before_bytes": 8027,
+      "after_bytes": 7532,
+      "lines": 150,
+      "sha256": "443245d844059d26e4b58dff54d9cdc2ebebb0a15403d19d1cb87c1b6336adc2"
+    },
+    {
+      "asset": "search3-results-cards-v2.js",
+      "before_bytes": 88,
+      "after_bytes": 88,
+      "lines": 1,
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266"
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before_bytes": 10126,
+      "after_bytes": 9101,
+      "lines": 251,
+      "sha256": "e2755b0d795748decadb4e9a333b9db843d47f2971384f91ce6b08d8fc662f6d"
+    },
+    {
+      "asset": "search3-selected-flow-v2.js",
+      "before_bytes": 13205,
+      "after_bytes": 13205,
+      "lines": 342,
+      "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c"
+    }
+  ],
+  "public_reduction_bytes": 3576
+}
