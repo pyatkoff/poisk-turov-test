@@ -1,0 +1,28 @@
+name: Validate search observation persistence
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/passive-price-observer-v1.js'
+      - 'v2/data/observe-search-v1.php'
+      - 'v2/data/observe-search-batches-v1.php'
+      - 'v2/data/price-observer-v1.php'
+      - 'tests/passive-price-observer-smoke.cjs'
+      - 'tests/observe-search-batches-smoke.php'
+      - '.github/workflows/validate-search-observation.yml'
+permissions:
+  contents: read
+jobs:
+  observation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate acknowledgement, original context and complete batching
+        run: |
+          set -euo pipefail
+          php -l v2/data/observe-search-v1.php
+          php -l v2/data/observe-search-batches-v1.php
+          node --check v2/passive-price-observer-v1.js
+          node tests/passive-price-observer-smoke.cjs
+          php tests/observe-search-batches-smoke.php
