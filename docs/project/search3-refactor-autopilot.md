@@ -14,7 +14,44 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — canonical site-to-Search3 handoff #1663 — 2026-09-09
+## Current product checkpoint — truthful current-price calendar #1665 — 2026-09-09
+
+Source `049ceba47ee170699cc7792b050c7af47224c7ee`, tree
+`8e80442911a4fc328d870e8fbca4341e7f460f5a`; checked release
+`946ee3b7c2c035dd391a66731d2315de740f4bbb`. Search3 now reuses the existing
+shared `current-price-calendar-v1` owner. It shows per-day minima only from the
+already received result set and states that the data is current search output, not
+price history. A reproduced stale-data boundary was fixed: `v2:search-continued`
+now refreshes the dates and highlighted minimum.
+
+Eight Search3 assets remain 12865 B. Shared calendar CSS/JS adds 6686 served bytes:
+eager route **77532→84218 B**, full scenario **119950→126636 B**; selected phase
+remains 42418 B. This is intentional product growth, not a claimed reduction.
+
+Security `34306214649` and exact artifact `34306214593` passed. Artifact
+`10086760175`, digest
+`sha256:573a3fccd7ed3bb9e5e5618129195d35384fb2d10fa1c635680284c7457a132d`.
+Browser coverage at 375/760/761/999/1000/1024/1025/1440 verifies daily minima,
+zero-price exclusion, continued refresh, one submit, non-date parameter preservation,
+44 px targets and no overflow.
+
+Deploy `34306579270` through non-merged control #1666 published only the isolated
+preview. Nine routes returned 200; noindex, disabled production leads, counter0,
+rollback and unchanged production fingerprint
+`c6f30c6980bb91963601c9f88036ebfb47734c293f05cc3ad2975bd9335134ce`
+are recorded by evidence artifact `10086859273`. Live desktop 1363 px loaded
+100 hotels and 14 calendar dates; the inspected calendar had no overflow and a
+77.39 px minimum date target. Main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; main/production were not changed
+by this package, real leads0. Audit:
+`docs/project/search3-current-price-calendar-product.json`.
+
+Next: continue `S3_PRODUCT_USEFUL_FEATURES` with a bounded audit of local result
+filters. Require a demonstrated user-facing gap; do not restore retired filter layers
+wholesale or duplicate the separate ANEX work. Physical Safari and owner production
+acceptance remain deferred.
+
+## Previous product checkpoint — canonical site-to-Search3 handoff #1663 — 2026-09-09
 
 Source `e010aa325d110091f244b3abed789038e1f3288c`, tree
 `ca14dc6045bf7e1bcf9f004a7517fc2d157be54e`; checked release
