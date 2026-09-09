@@ -67,6 +67,7 @@ const vm = require('node:vm');
   const original = focusableTour(17);
   const replacement = focusableTour(17);
   const document = {
+    body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
     cookie: '',
     contains(node) { return !!(node && node.connected); },
     getElementById(id) { return id === 'selectedTour' ? selected : id === 'results' ? results : null; },
