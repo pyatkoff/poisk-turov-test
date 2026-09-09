@@ -1,0 +1,48 @@
+{
+  "actions": [
+    "login",
+    "price"
+  ],
+  "complete_catalog": false,
+  "fees": "unknown",
+  "finished_at": "2026-09-09T14:39:23+00:00",
+  "page": 1,
+  "pages_count": 0,
+  "params": {
+    "ADULT": 2,
+    "CHECKIN_BEG": "20260918",
+    "CHECKIN_END": "20260918",
+    "CHILD": 0,
+    "CURRENCYINC": 643,
+    "MEAL": "5",
+    "NIGHTS_FROM": 8,
+    "NIGHTS_TILL": 8,
+    "OPERATORS": "5",
+    "PACKETTYPE": 0,
+    "PAGE": 1,
+    "STATEINC": 3,
+    "TOWNFROMINC": 1
+  },
+  "response_sha256": "14b6e76ddadb0524c18e0f89f1d15a371f873175abf45ab10e91ebc7b5d67413",
+  "rows": 0,
+  "stage": "price_moscow_egypt_20260918_v1",
+  "state": "completed",
+  "ui_enabled": false,
+  "source_sha": "614aaffe2fa7c028d993a572773bfe80e3b6dec6",
+  "workflow_sha": "97ab483f2f42b3b77017d1b3b3fd2954d2a22e47",
+  "run": 34365017272,
+  "job": 102511377050,
+  "artifact": 10109459345,
+  "artifact_digest": "sha256:238c8c9d55e67822912fcf7ddff7e090ca3a331f562063a0438d75b126e5554b",
+  "checks": {
+    "price": 24,
+    "protocol": 92,
+    "transport": 10,
+    "security": 34364905193
+  },
+  "interpretation": "Valid empty response for these exact filters; cause unknown; no claim of overall unavailability.",
+  "next_action": "Inspect saved raw empty response and operator setup contract; separate bounded comparison with one other catalog operator before normalizing real offers. Do not rerun this completed pilot.",
+  "db_writes": 0,
+  "booking_calls": 0,
+  "published": false
+}
