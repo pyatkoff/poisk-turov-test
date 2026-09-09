@@ -73,7 +73,6 @@ async function checkMealFacet(page, width, previous) {
     const field = page.locator('.search3-meal-filter'), select = field.locator('select');
     const name = page.locator('.search3-hotel-filter input'), category = page.locator('.search3-category-filter select');
     const visible = () => page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId));
-    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     const calendar = page.locator('#currentPriceCalendar');
@@ -142,7 +141,6 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await select.inputValue(), 'всё включено', 'dirty edit preserves the retained result projection');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'dirty event does not reveal excluded stale offers');
     await page.evaluate(() => window.V2Results.rerender());
-    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.equal(await field.isVisible(), true);
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'returning to completed results restores the meal-filtered calendar');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'returning to the retained results preserves meal selection');
@@ -161,7 +159,6 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await select.inputValue(), '', 'a real new search clears the local meal');
     assert.equal(await field.isVisible(), false);
     await page.evaluate(items => window.V2Results.render(items), items);
-    if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
     assert.equal(await calendar.isVisible(), false, 'new search cannot show a calendar before its terminal event');
     await select.selectOption('всё включено');
@@ -259,15 +256,6 @@ async function run(browser, width, previous) {
     const localSeaFilter = page.locator('.search3-sea-filter');
     const localSeaSelect = localSeaFilter.locator('select');
     const localReset = page.locator('.search3-filter-reset');
-    const mobilePanel = page.locator('.search3-mobile-filter-panel');
-    if (width < 1025) {
-      assert.equal(await mobilePanel.isVisible(), true, 'tablet and mobile expose one compact current filter disclosure');
-      assert.equal(await mobilePanel.getAttribute('open'), null, 'mobile disclosure starts compact');
-      const mobileSummary = mobilePanel.locator('summary');
-      await mobileSummary.focus();
-      await page.keyboard.press('Enter');
-      assert.notEqual(await mobilePanel.getAttribute('open'), null, 'native summary opens current filters from the keyboard');
-    } else assert.equal(await mobilePanel.isVisible(), false, 'desktop does not expose the mobile disclosure');
     assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
     assert.equal(await localBudgetFilter.isVisible(), true, 'complete loaded offer prices expose a budget facet');
     assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
@@ -281,7 +269,7 @@ async function run(browser, width, previous) {
       assert.ok(railBox.width >= 220 && resultsBox.x >= railBox.x + railBox.width - 1, 'desktop rail and cards use separate readable columns');
     } else {
       assert.equal(await rail.isVisible(), false, 'tablet and mobile do not reserve an empty rail');
-      assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'search3-mobile-filter-panel__body', 'tablet and mobile reuse the current controls inside one disclosure');
+      assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'results-tools__actions', 'tablet and mobile retain top filter controls');
       assert.equal(await actions.isVisible(), true);
     }
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -297,8 +285,7 @@ async function run(browser, width, previous) {
     await localCategorySelect.selectOption('5');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'category facet filters only the already loaded hotels');
     assert.equal(await localReset.isVisible(), true, 'an active local facet exposes one reset action at every responsive width');
-    assert.equal(await localReset.evaluate(node => node.parentElement.className), width >= 1025 ? 'results-filter-rail' : 'search3-mobile-filter-panel__body', 'reset action follows the current responsive filter owner');
-    if (width < 1025) assert.match(await mobilePanel.locator('summary').innerText(), /Подходит: 1 · выбрано: 1/, 'compact summary exposes the current result and active-filter counts');
+    assert.equal(await localReset.evaluate(node => node.parentElement.className), width >= 1025 ? 'results-filter-rail' : 'results-tools__actions', 'reset action follows the current responsive filter owner');
     assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'category facet reports a truthful loaded-card count');
     await localHotelInput.fill('  ВТОРОЙ  ');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and category filters combine locally');
@@ -336,7 +323,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await card.locator('.tour-meta>strong').innerText(), tour.date, 'compact facts preserve the actual departure date');
     assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW']], 'primary comparison facts keep their labels and original values');
-    assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Размещение', 'DBL'], ['Оператор', 'TEST OPERATOR']], 'secondary facts remain available with unambiguous labels');
+    assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR'], ['Размещение', 'DBL']], 'source and operator remain distinct while secondary facts keep unambiguous labels');
     const photo = await card.locator('.hotel-photo').boundingBox();
     const body = await card.locator('.hotel-body').boundingBox();
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
