@@ -1,0 +1,19 @@
+name: Andromeda offline protocol
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-client.php'
+      - 'tests/andromeda-client-smoke.php'
+      - '.github/workflows/andromeda-offline.yml'
+permissions:
+  contents: read
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP lint and offline fixtures
+        run: |
+          php -l app/integrations/andromeda-client.php
+          php -l tests/andromeda-client-smoke.php
+          php tests/andromeda-client-smoke.php
