@@ -6,7 +6,7 @@ on:
 permissions: {contents: read, actions: read}
 concurrency: {group: andromeda-hotel-filter-20260909, cancel-in-progress: false}
 env:
-  SOURCE_SHA: 871c1a2df84a617248c91edc675c636d0c9a9524
+  SOURCE_SHA: cca041137dd015f608dca478d7dc67453c455366
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -21,15 +21,15 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-hotel-filter.yml/runs" -f branch="$GITHUB_REF_NAME" -f head_sha="$GITHUB_SHA" --jq '[.workflow_runs[].id] | min' > "$RUNNER_TEMP/first-run"
           test "$(cat "$RUNNER_TEMP/first-run")" = "$GITHUB_RUN_ID"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34387111168" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34389551889" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol"
           test "$(cat "$RUNNER_TEMP/protocol")" = "$SOURCE_SHA:success"
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34387111162" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34389551794" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security"
           test "$(cat "$RUNNER_TEMP/security")" = "$SOURCE_SHA:success"
           git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
           git diff --exit-code "$SOURCE_SHA" HEAD -- app/ v2/ tests/
           python3 -c 'import sys;sys.path.insert(0,"scripts/diagnostics");from andromeda_hotel_filter_install import SOURCE;print("<?php"+SOURCE)' > "$RUNNER_TEMP/patch.php"
           php -l "$RUNNER_TEMP/patch.php"
-      - name: Publish Turkey country search and verify committed identities
+      - name: Publish saved offer detail view and verify retained snapshots
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
