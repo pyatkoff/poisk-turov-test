@@ -1,0 +1,58 @@
+name: Andromeda public read-only search patch
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-public-search.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-public-search-20260909, cancel-in-progress: false}
+env:
+  SOURCE_SHA: 64bca6e0946e55f597eda2e6d06624b642ea3437
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, fetch-depth: 2}
+      - name: Verify exact checked runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-public-search.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count' > "$RUNNER_TEMP/count"
+          test "$(cat "$RUNNER_TEMP/count")" = 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34378028354" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol"
+          test "$(cat "$RUNNER_TEMP/protocol")" = "$SOURCE_SHA:success"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34378028355" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security"
+          test "$(cat "$RUNNER_TEMP/security")" = "$SOURCE_SHA:success"
+          git diff --exit-code "$SOURCE_SHA" HEAD -- app/ v2/ tests/
+          python3 -c 'import sys;sys.path.insert(0,"scripts/diagnostics");from andromeda_public_search_install import SOURCE;print("<?php"+SOURCE)' > "$RUNNER_TEMP/patch.php"
+          php -l "$RUNNER_TEMP/patch.php"
+      - name: Publish only the corrected route and existing addon
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_public_search_install.py
+      - name: Check public validation without a supplier request
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.request,urllib.error
+          base="https://anytoour.ru/_preview/search3-anex-candidate/api-andromeda-search3-preview.php"
+          checks=[]
+          for origin,expected in [("https://anytoour.ru",400),("https://example.org",403)]:
+              request=urllib.request.Request(base,data=b"{}",headers={"Content-Type":"application/json","X-Requested-With":"AnyTourSearch3","Origin":origin})
+              try:
+                  with urllib.request.urlopen(request,timeout=30) as response: status=response.status
+              except urllib.error.HTTPError as error: status=error.code
+              checks.append({"origin":origin,"status":status})
+              assert status==expected,checks
+          pathlib.Path(os.environ["RUNNER_TEMP"]+"/andromeda-public/http-checks.json").write_text(json.dumps(checks))
+          print(json.dumps(checks))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-public-search-result
+          path: ${{ runner.temp }}/andromeda-public
+          if-no-files-found: error
