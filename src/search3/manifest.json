@@ -9,6 +9,7 @@
       "behavior/mobile-search-entry.js",
       "behavior/results/toolbar.js",
       "behavior/results/local-hotel-filter.js",
+      "behavior/results/shortlist.js",
       "behavior/selected-tour-mobile-styles.js",
       "behavior/maket7-lock.js",
       "behavior/lead-flow.js",

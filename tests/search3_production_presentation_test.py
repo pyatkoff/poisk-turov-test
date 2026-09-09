@@ -940,8 +940,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
         self.assertLessEqual(
             (ROOT / 'v2/search3-results-filters-v1.css').stat().st_size,
-            17900,
-            'OTA decision rows reuse one CSS owner: 17402 B decision baseline +329 B native description =17731 B',
+            20700,
+            'one results owner includes the authorized OTA shortlist: 17854 B prior release +2779 B =20633 B',
         )
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
@@ -1076,6 +1076,22 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn('fetch(', source)
         self.assertGreaterEqual(self.bundle.count("'mobile-results-filters-v1.js'"), 2)
         self.assertGreaterEqual(self.bundle.count("'ds2-results-filters.js'"), 2)
+
+    def test_one_shortlist_owner_keeps_exact_local_offer_snapshots(self):
+        parts = self.source['assets']['search3-results-filters-v1.js']
+        owner = 'behavior/results/shortlist.js'
+        self.assertEqual(parts.count(owner), 1)
+        source = (ROOT / 'src/search3' / owner).read_text()
+        for marker in (
+            "limit=3", "source='tourvisor'", 'observedPrice',
+            "window.localStorage.setItem", "window.localStorage.getItem",
+            "window.addEventListener('search3:local-results-filtered'",
+            "window.addEventListener('v2:tour-returned'",
+            "window.Search3Shortlist={storageKey",
+        ):
+            self.assertIn(marker, source)
+        for forbidden in ('fetch(', 'XMLHttpRequest', 'leadApi', 'phone', 'comment', 'consent'):
+            self.assertNotIn(forbidden, source)
 
     def test_protected_core_files_and_hashes_remain_exact(self):
         protected = MANIFEST['protectedSha256']
