@@ -3,7 +3,7 @@
   "issue": 1759,
   "batch": "2026-09-09-batch2",
   "status": "checked_not_applied",
-  "checked_at_utc": "2026-09-09T19:20:00Z",
+  "checked_at_utc": "2026-09-09T19:34:00Z",
   "source_observed_queue_artifact": 10096927331,
   "source_observed_queue_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a",
   "criteria": {
@@ -20,9 +20,9 @@
     "regular_flights": true
   },
   "counts": {
-    "reserved": 5,
-    "checked": 5,
-    "visible_operator_link": 2,
+    "reserved": 6,
+    "checked": 6,
+    "visible_operator_link": 3,
     "unknown": 3,
     "accepted_mappings": 0,
     "database_writes": 0,
@@ -95,6 +95,25 @@
       "dossier_digest": "358d0316023872531d742996126749840111500acb096f9d38380e796081f29b",
       "result": "unknown",
       "evidence_note": "Focused Tourvisor PRO search completed with no visible offer; no operator link, therefore unknown (not no_match)."
+    },
+    {
+      "local_hotel_id": 1600,
+      "anex_hotel_id": 23894,
+      "local_name": "GREENPORT HOTEL BODRUM (EX. AEGEAN GARDEN)",
+      "anex_name": "Greenport Hotel",
+      "dossier_digest": "",
+      "result": "confirmed",
+      "operator_link": {
+        "origin": "https://agent.anextour.ru",
+        "path": "/search/tour",
+        "field": "HOTELLIST",
+        "value": "23894",
+        "safe_url": "https://agent.anextour.ru/search/tour?HOTELLIST=23894",
+        "origin_valid": true,
+        "path_valid": true,
+        "expected_id_matches": true
+      },
+      "evidence_note": "Tourvisor PRO search showed Greenport Hotel Bodrum (Ex. Aegean Garden) and an Anex tour; visible operator link carried HOTELLIST=23894."
     }
   ],
   "controls": {
@@ -111,5 +130,5 @@
     "status": "not_requested",
     "reason": "Direct-link evidence is recorded; acceptance requires existing strict append-only importer and DB readback."
   },
-  "next_action": "Continue with a fresh queue slice only after reserving the next checkpoint; do not replay these five rows or infer mappings from unknown results."
+  "next_action": "Continue with a fresh reserved slice only after checkpoint; do not replay these six rows or infer mappings from unknown results."
 }
