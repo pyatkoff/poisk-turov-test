@@ -11,7 +11,9 @@ import anex_review_storage as storage
 
 class StorageTests(unittest.TestCase):
     def fixture(self, directory):
-        cp={'rows':[{} for _ in range(292)],'in_flight':[],'batch_needs_finalization':False}
+        cp={'inherited':[{'external_id':i} for i in range(1,91)],
+            'rows':[{'external_id':i} for i in range(91,293)],'completed_total':292,
+            'in_flight':[],'batch_needs_finalization':False}
         triage={'schema_version':1,'scope':'preview','kind':'observed_review_dossiers','source_sha':'a'*40,
                 'checkpoint_sha256':storage.gaps.digest(cp),'summary':{'count':0},'rows':[]}
         for name,value in [('anex-observed-hotel-checkpoint.json',cp),('anex-observed-hotel-triage.json',triage),
@@ -44,6 +46,13 @@ class StorageTests(unittest.TestCase):
             d=Path(temp);self.fixture(d)
             with self.assertRaises(ValueError):storage.prepare(d,'not-sha')
             with self.assertRaises(ValueError):storage.prepare(d,'b'*40,{'action':'inspect','schema_sha256':'0'*64})
+    def test_inherited_history_count_and_duplicates(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d=Path(temp);cp,triage=self.fixture(d)
+            self.assertEqual(storage.prepare(d,'b'*40)[0]['action'],'inspect')
+            cp['rows'][0]['external_id']=1
+            (d/'anex-observed-hotel-checkpoint.json').write_text(json.dumps(cp))
+            with self.assertRaisesRegex(ValueError,'completed'):storage.prepare(d,'b'*40)
     def test_php_composition_and_no_supplier(self):
         source=storage.php_source()
         self.assertEqual(source.count('declare(strict_types=1);'),1)

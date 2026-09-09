@@ -40,7 +40,12 @@ def prepare(directory, source_sha, plan=None):
         raise ValueError('review plan/schema mismatch')
     restored = json.loads((directory / 'anex-checkpoint-source.json').read_bytes())
     cp = json.loads((directory / 'anex-observed-hotel-checkpoint.json').read_bytes())
-    if cp.get('in_flight') or cp.get('batch_needs_finalization') or len(cp.get('rows', [])) < 292:
+    history = cp.get('inherited', []) + cp.get('rows', [])
+    identifiers = [row.get('external_id') for row in history]
+    if (cp.get('in_flight') or cp.get('batch_needs_finalization')
+            or cp.get('completed_total') != len(history) or len(history) < 292
+            or any(type(i) is not int or i <= 0 for i in identifiers)
+            or len(set(identifiers)) != len(identifiers)):
         raise ValueError('completed live checkpoint required')
     raw = (directory / 'anex-observed-hotel-triage.json').read_bytes()
     sha = digest(raw)
@@ -127,5 +132,9 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as error:
-        print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reset_performed': False}))
+        allowed = {'completed live checkpoint required', 'triage checkpoint mismatch', 'review plan/schema mismatch',
+                   'apply requires pinned inspected evidence', 'reserved source changed', 'source_digest_or_bound',
+                   'source_contract', 'row_contract', 'evidence_digest', 'source_count'}
+        reason = str(error) if isinstance(error, ValueError) and str(error) in allowed else 'see_failure_kind'
+        print(json.dumps({'status': 'failed', **gaps.failure_report(error, 'review_storage'), 'reason': reason, 'reset_performed': False}))
         raise SystemExit(1)
