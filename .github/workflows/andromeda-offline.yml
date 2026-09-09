@@ -26,6 +26,8 @@ on:
       - 'tests/andromeda_hotel_shortlist_test.py'
       - 'v2/api-andromeda-search3-preview.php'
       - 'v2/anex-search3-preview-v1.js'
+      - 'v2/catalogs-v2.js'
+      - 'tests/catalogs-hydrated-hotel.test.js'
       - 'tests/anex-search3-preview.test.js'
       - 'tests/andromeda-live-search-smoke.php'
       - 'tests/andromeda-pages-smoke.php'
@@ -50,7 +52,7 @@ jobs:
           php tests/andromeda-live-search-smoke.php
           php tests/andromeda-pages-smoke.php
           php tests/andromeda-search-smoke.php
-          node --test tests/anex-search3-preview.test.js
+          node --test tests/anex-search3-preview.test.js tests/catalogs-hydrated-hotel.test.js
           php -l app/integrations/andromeda-transport.php
           php -l scripts/diagnostics/andromeda-access-probe.php
           php tests/andromeda-transport-smoke.php
