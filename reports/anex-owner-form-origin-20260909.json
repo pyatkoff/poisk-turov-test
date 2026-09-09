@@ -1,0 +1,64 @@
+{
+  "date": "2026-09-09",
+  "issue": 1647,
+  "pr": 1752,
+  "source": "e5b086b224908eba5d2d49ae42a0cff7e0263e33",
+  "root_cause": "Native POST navigation under no-referrer has Origin:null; strict Origin guard rejects it. Manual API fixture concealed this browser behavior.",
+  "change": "same-origin login referrer policy; strict POST/CSRF unchanged",
+  "checks": {
+    "security": 34352049658,
+    "build": 34352049677,
+    "panel": 34352049640,
+    "http": 24,
+    "publisher": 5,
+    "native_form_regression": true,
+    "live_owner": false
+  },
+  "publication": {
+    "run": 34352245496,
+    "job": 102468111498,
+    "artifact": 10104219046,
+    "digest": "ed484376e6dd76190b3298c5bd295c7ab3bee6d6de3dc14809ffc106f4d163a6",
+    "report": {
+      "report_sha256": "94106c603c73f2e851d0b899577e6cd50f67123da3a1a402fb6820a4e41e788e",
+      "status": "published",
+      "source_sha": "e5b086b224908eba5d2d49ae42a0cff7e0263e33",
+      "before": {
+        ".htaccess": "362ffa2eab0b8bf0c793e8caf79944144c32f9f700299f3175bae36ad419ac35",
+        "anex-owner-login.php": null,
+        "anex-hotel-review.php": "c687d8141cd89d7bf46d9340f7bc64ed59da042cca919e7ea96ade097a8a5db3"
+      },
+      "after": {
+        "anex-owner-login.php": "015eda5242b5560075aacce65ef7d6e223df68fc5d8b23e39c37fdc36fd07744",
+        "anex-hotel-review.php": "557a4ecdf84e3a6232d407781cca839ca16af6583fb5edf49e5e0ed70336910b",
+        ".htaccess": "99b35637f5c3c9637720afcb5a2b9ccc92dd3e041c8108630248d9d6e66c5e51"
+      },
+      "runtime_files": {
+        "app/admin/anex-review/access.php": "ee2fe0f9f16506e80fea95ed4287cf1c465f1405bc05d3a0a08e1e4cf7a1e817",
+        "app/admin/anex-review/service.php": "2c2f4166ea067dfa6d68ab8698550c006a5d29649b0281cef3af5391adfe874b",
+        "app/admin/anex-review/view.php": "197ede5bba03963c50886ebfb91bf552edd6007b9029b274ccfcf4fa6d54784f",
+        "app/admin/anex-review/dossier-store.php": "11a76e43415db0bb6de22aad94c010f5e66f6688f02396fb1369dcbcaba97d3f",
+        "app/admin/anex-review/owner-auth.php": "6f81a21490f641a9310dbf4594d1d95d43727d88989ee3f5dfb70d8db1c45cab",
+        "app/admin/anex-review/owner-login.php": "2bca9668943912deab20e68a16158aec2124d7dc90a960fee4dec40941076118",
+        "app/admin/anex-review/public-cards.json": "8af1e10bc997cb9f27fc4705344b96ab90b3c542361dc86e2ab632712f30bccc",
+        "v2/anex-hotel-review.php": "c67012f0e289a301f3aaa8721b98b034e5e08a9000682b3611161964b9151f1a",
+        "v2/anex-owner-login.php": "e0503c4f95793cb3caf84452460bb6b174655d6e3d12a2e69eda5c6841cc9909"
+      },
+      "write_enabled": false,
+      "database_calls": 0,
+      "supplier_requests": 0,
+      "owner_activated": false,
+      "activation_expires_at": 1788959564,
+      "previous_source_sha": "167a182523cfc36ef4ad54f8a095de8a173b5ab2",
+      "account_preserved": true,
+      "config_preserved": true,
+      "ssh_attempts": 1
+    }
+  },
+  "next_action": "Owner reopens activation fragment link and enrolls. Link expires 2026-09-09T13:12:44Z (16:12 Moscow). No reset/repair replay. Decision writes remain disabled.",
+  "deferred": [
+    "real owner activation and live authenticated panel readback",
+    "physical Safari confirmation"
+  ],
+  "independent_zip_download": false
+}
