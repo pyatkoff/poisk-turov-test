@@ -54,7 +54,6 @@ jobs:
             await page.waitForSelector('.hotel-card',{timeout:90000});
             await page.waitForSelector('.hotel-card .tour-row',{timeout:15000});
             await page.waitForTimeout(700);
-            const compact=el=>{if(!el)return null;const x=el.getBoundingClientRect();return{x:x.x,y:x.y,w:x.width,h:x.height,right:x.right,bottom:x.bottom};};
 
             const auditResults=async width=>{
               await page.setViewportSize({width,height:1000});
@@ -83,8 +82,12 @@ jobs:
                 if(state.badgeWriting!=='horizontal-tb')throw new Error(width+': stars badge writing mode '+state.badgeWriting);
               }
               if(width>=1360){
-                if(state.photo.w<280)throw new Error(width+': hotel photo too narrow: '+state.photo.w);
-                if(state.body.w<500)throw new Error(width+': hotel body too narrow: '+state.body.w);
+                // The current desktop results layout intentionally reserves a left filter rail.
+                // Protect the two-column card itself instead of requiring the pre-rail 500px body width.
+                if(state.main.display!=='grid')throw new Error(width+': hotel main must stay grid, got '+state.main.display);
+                if(state.card.w<540)throw new Error(width+': hotel card too narrow beside filter rail: '+state.card.w);
+                if(state.photo.w<270)throw new Error(width+': hotel photo too narrow: '+state.photo.w);
+                if(state.body.w<300)throw new Error(width+': hotel body too narrow: '+state.body.w);
               }else if(width>=860){
                 if(state.main.display!=='grid')throw new Error(width+': hotel main must stay grid, got '+state.main.display);
                 if(state.photo.w<300)throw new Error(width+': hotel photo too narrow: '+state.photo.w);
