@@ -167,7 +167,7 @@ async function checkJourney(browser, width) {
     assert.equal(await selected.locator('.facts>div').filter({ hasText: 'Номер' }).locator('b').innerText(), 'STANDARD');
     assert.equal((await selected.locator('.selected-price').innerText()).replace(/\D/g, ''), '120000', 'selection rechecks and uses the exact current offer price');
     assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [['tour', 'offer-standard', 731], ['flights', 'offer-standard', 731]], 'shortlist selection uses only the existing detail/flights path');
-    await selected.locator('.back-results').click();
+    await selected.locator(':scope > .back-results').click();
     await page.waitForFunction(() => document.activeElement?.matches('[data-offer-id="offer-standard"],.direct-tour[data-tid="offer-standard"]'));
     assert.equal(await page.evaluate(() => document.activeElement?.dataset.offerId === 'offer-standard' || document.activeElement?.dataset.tid === 'offer-standard'), true, 'return restores focus to the exact offer source action');
 
