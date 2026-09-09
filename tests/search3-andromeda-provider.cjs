@@ -31,6 +31,7 @@ assert.equal(merged[0].tours.length,2);
 assert.equal(merged[0].picturelink,tv.picturelink,'existing catalog presentation remains authoritative');
 const unresolved=api.merge([tv],[rawHotel(null,'Movenpick Resort')]);
 assert.equal(unresolved.length,1,'unresolved Andromeda hotels stay out of customer results');
+assert.equal(unresolved[0],tv,'an unresolved Andromeda hotel cannot replace or copy the visible local Tourvisor card');
 assert.equal(unresolved[0].tours.length,1,'matching names alone never merge an unresolved Andromeda offer');
 const invalid=rawHotel(21477);invalid.tours[0].offer_context={...context,generation:0};
 assert.equal(api.normalizeHotel(invalid),null,'invalid offer context is rejected before rendering');
