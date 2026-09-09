@@ -1240,7 +1240,6 @@
       "no_independent_safe_task_available"
     ],
     "active_queue_ids": [
-      "S3_OTA_RESULTS_DECISION",
       "S3_OTA_SELECTED_OPTIONS",
       "S3_OTA_SHORTLIST_COMPARE",
       "S3_OTA_MOBILE_JOURNEY",
@@ -1251,7 +1250,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Docs-only OTA plan extension; first implementation is S3_OTA_RESULTS_DECISION, then selected options and shortlist. Use current product plan for acceptance and dependencies. No runtime build/deploy or new product benchmark performed."
+    "last_execution_continuation": "Two source packages implemented, integrated and published: #1768 decision rows and #1770 native long-description disclosure. CSS+788 B, served shared JS+426 B, initial/full external+1214 B, inline0. Remaining OTA2 full-offer switching contract documented; user pilot not measured. Continue from current_task; stop this pass at execution-resource checkpoint, no production changes."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1270,8 +1269,8 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_OTA_RESULTS_DECISION",
-    "title": "Decision-focused results and hotel cards in current DS2",
+    "id": "S3_OTA_SELECTED_OPTIONS",
+    "title": "Compare complete loaded offers with exact room, meal and selection identity",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
     "coordinator_issue": 996,
@@ -1279,11 +1278,11 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: expand the existing development and improvement plan to catch leading OTAs",
-    "last_fully_checked_release_sha": "60882d56743ee0a8722dc0c59569aa0314a31c57",
-    "published_source_sha": "1bc18971ca900cfa0808998ec94e710bd105b9a4",
-    "acceptance_status": "NOT_STARTED",
-    "next_action": "Claim current results renderer/styles in #996 from a fresh release; use saved fixtures and a short before/after brief in the existing results-clarity audit. Build one coherent decision-focused card/toolbar packet in current DS2, retaining existing photos/facts/filters/calendar and same-offer pricing; no new supplier API calls or retired layers. Baseline five user tasks and mark unavailable facts unknown. This owner-authorized product scenario does not require a new bug. Then continue selected-options packet. Physical Safari/production approval and ready INT handoff remain separate gates.",
-    "audit": "docs/project/search3-results-clarity-product.json"
+    "last_fully_checked_release_sha": "77cf8a6e713c7749980fd7d7732f65a3695defa5",
+    "published_source_sha": "dd91cd3626ce9aa02adeeed9367eb63de7f8f062",
+    "acceptance_status": "PARTIAL_PREVIEW_VERIFIED_USER_PILOT_DEFERRED",
+    "next_action": "Continue remaining OTA2 from fresh release: first validate selected tour -> return -> expanded hotel -> another complete offer under active AI filter (RO90k excluded, AI120k STANDARD and AI125k FAMILY). Preserve projection, expanded state, exact tour/search identity, return focus and latest-response generation. Existing direct-tour click remembers return source; raw V2Results.state.items is not the filtered projection. If adding an inline option chooser, expose a read-only current-projection getter and use complete offers, never independent room x meal combinations. Preserve typed contact fields or make the transition explicit. No new supplier discovery calls. OTA1 card/disclosure and OTA2 native long description are already published; do not repeat them. Physical Safari, user benchmark and production approval remain deferred.",
+    "audit": "docs/project/search3-selected-lead-product.json"
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",

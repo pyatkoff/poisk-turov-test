@@ -117,7 +117,7 @@
   "rollback": "Revert release merge d6b71962c2a1fa47de2ffeab9158e2f3133f2d28 for code; restore the retained preview backup recorded by deploy run34300274732 for preview.",
   "next_action": "Advance to S3_PRODUCT_SHARED_SITE: converge the shared DS2 content controls into one current owner across representative public routes, removing superseded site-coherence overrides in the same package.",
   "ota_native_description_20260909": {
-    "stage": "IMPLEMENTED_PENDING_CI",
+    "stage": "PUBLISHED_PREVIEW_PARTIAL_OTA2",
     "baseline_release_sha": "73eafb1e12f3b48226f60e6ecf4cf64336b86f2f",
     "scope": "Partial S3_OTA_SELECTED_OPTIONS: Search3 native long hotel-description disclosure only",
     "benefit": "Flights follow a compact 48px disclosure instead of the full long supplier description; full escaped content remains available. Short and legacy descriptions remain unchanged.",
@@ -131,16 +131,25 @@
     },
     "verification": {
       "local": "source build/check, shared runtime build, syntax, meal-owner and honest-controls passed",
-      "CI": "pending",
-      "visual": "pending",
+      "CI": "Security and exact artifact passed on final source",
+      "visual": "375/1440 closed/open fixture screenshots reviewed; native Enter/Space, focus, full inert text, API count and flight/price/lead contracts passed; live preview readback confirmed",
       "production_leads_sent": 0
     },
-    "published": false,
+    "published": true,
     "deferred": [
       "Physical Safari/iPhone",
       "Full OTA2 room/meal option selection and freshness handoff",
       "User pilot"
     ],
-    "next_action": "Check exact CI and mobile/desktop disclosure states, integrate and publish existing source artifact"
+    "next_action": "Validate the existing return -> expanded hotel -> alternative complete offer journey, then one current-owner inline chooser only if needed; active projection, search/offer identity, return source and typed contact state must be preserved.",
+    "source_sha": "dd91cd3626ce9aa02adeeed9367eb63de7f8f062",
+    "release_sha": "77cf8a6e713c7749980fd7d7732f65a3695defa5",
+    "artifact_run": 34365308626,
+    "deploy_run": 34365701650,
+    "remaining_ota2_contract": {
+      "known_api": "V2Results.state.items is raw; viewItems/expandedHotels private; direct-tour click remembers source, public selectTour does not",
+      "fixture": "RO90k, AI120k STANDARD, AI125k FAMILY; AI active, select STANDARD, return, choose FAMILY; stale responses and return focus remain correct",
+      "excluded": "No Cartesian room/meal combinations, no mutating filter project call as getter, no new provider experiments"
+    }
   }
 }
