@@ -45,7 +45,7 @@ on:
     inputs:
       operation:
         type: choice
-        options: [observed, gaps, preview, paired, segments]
+        options: [observed, gaps, preview, paired, segments, content]
         default: observed
         description: Focused hotel queue, isolated preview, or reserved search experiment
 
@@ -78,15 +78,21 @@ jobs:
               mode = requested or 'observed'
           else:
               paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
+              content = any(p.startswith('scripts/diagnostics/anex_search3_catalog_content') or p == 'scripts/diagnostics/anex_search3_hotel_content.php' for p in paths)
               paired = any(p.startswith('scripts/diagnostics/anex_search3_paired_') for p in paths)
               segments = any(p.startswith('scripts/diagnostics/anex_search3_segment_') for p in paths)
-              mode = 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
-          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments'): raise SystemExit('Invalid ANEX operation')
+              mode = 'content' if content else 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
+          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content'): raise SystemExit('Invalid ANEX operation')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
           print('ANEX operation:', mode)
           PYTHON
       - name: Verify request and credential boundaries locally
         run: |
+          python3 -B tests/anex_search3_catalog_content_test.py
+          php -l scripts/diagnostics/anex_search3_catalog_content_reader.php
+          php -l scripts/diagnostics/anex_search3_catalog_content_collect.php
+          php -l scripts/diagnostics/anex_search3_hotel_content.php
+          php tests/anex-hotel-content-smoke.php
           python3 -B tests/anex_access_probe_test.py
           python3 -B tests/anex_price_probe_test.py
           python3 -B tests/anex_hotel_match_probe_test.py
@@ -166,6 +172,14 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --preflight
+      - name: Audit saved Tourvisor catalog and collect the owner ANEX content pilot
+        if: steps.operation.outputs.mode == 'content'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_catalog_content.py
       - name: Reserve the owner-requested one-day paired-search experiment
         if: steps.operation.outputs.mode == 'paired'
         env:
@@ -480,3 +494,4 @@ jobs:
           path: ${{ runner.temp }}/anex-catalog/
           if-no-files-found: error
           retention-days: 30
+
