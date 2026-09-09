@@ -104,6 +104,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-layout:has(#results>*){grid-template-columns:230px minmax(0,1fr);align-items:start}
 & .results-filter-rail{position:sticky;top:18px;display:grid!important;gap:16px;padding:18px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .results-filter-rail:is(:empty,[hidden]){display:none!important}
+& .results-filter-rail:is(:empty,[hidden])+#results{grid-column:1/-1}
 & .search3-filter-rail__head{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--at-line-soft,#e9edf6)}
 & .search3-filter-rail__head strong{font-size:20px}
 & .search3-filter-rail__head span{color:#526078;font-size:12px}
@@ -177,6 +178,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-action>small{grid-column:1}
 & .tour-action>.hotel-price{grid-column:1}
 & .tour-action .direct-tour{grid-column:2;grid-row:1/3;width:auto;margin-top:0;padding-inline:14px}
+& .tour-action>.tour-selection-note{grid-column:1/-1}
 & .search3-shortlist-toggle{grid-column:1/-1}
 & .tour-more-toggle{justify-self:stretch}
 }
