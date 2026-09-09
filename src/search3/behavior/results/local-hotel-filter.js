@@ -6,12 +6,21 @@ let field=null,input=null,status=null,categoryField=null,categorySelect=null,cat
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function mealKey(value){
-  const label=normalize(value),code=(label.match(/^(uai|ai|bb)(?=$|[+\s-])/)||[])[1]||'';
-  if(code==='ai'||code==='uai'||/вс[её] включено/.test(label))return'meal:all-inclusive';
-  if(code==='bb'||/(?:только )?завтрак/.test(label))return'meal:breakfast';
+  const label=normalize(value),code=(label.match(/^(uai|ai|bb|hb|fb|ro|sc)(?=$|[+\s-])/)||[])[1]||'';
+  if(code==='ai'||code==='uai'||/(?:ultra\s+)?all[ -]?inclusive|вс[её] включено/.test(label))return'meal:all-inclusive';
+  if(code==='bb'||/bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтрак/.test(label))return'meal:breakfast';
+  if(code==='hb'||/half[ -]?board|полупансион/.test(label))return'meal:half-board';
+  if(code==='fb'||/full[ -]?board|полный пансион/.test(label))return'meal:full-board';
+  if(code==='ro'||/room[ -]?only|no[ -]?meal|без питания/.test(label))return'meal:room-only';
+  if(code==='sc'||/self[ -]?catering|самообслуживан/.test(label))return'meal:self-catering';
+  if(/on[ -]?request|по запросу/.test(label))return'meal:on-request';
   return label;
 }
-function mealOptionLabel(key,label){return key==='meal:all-inclusive'?'Всё включено':key==='meal:breakfast'?'Завтрак':label;}
+function mealOptionLabel(key,label){return({
+  'meal:all-inclusive':'Всё включено','meal:breakfast':'Завтрак','meal:half-board':'Полупансион',
+  'meal:full-board':'Полный пансион','meal:room-only':'Без питания','meal:self-catering':'Самообслуживание',
+  'meal:on-request':'По запросу'
+})[key]||label;}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
 function cards(){return Array.from(results.querySelectorAll('.hotel-card'));}
 function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Number(item&&item[key]||0)]));return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||0);}
