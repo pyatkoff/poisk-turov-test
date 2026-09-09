@@ -30,7 +30,12 @@ async function snapshot(page) {
     await document.fonts.ready;
     for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
     scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    // Focus/filter actions can leave a pending scroll-anchor adjustment. Measure
+    // both representations at a settled document origin, not during that scroll.
+    for (let i = 0; i < 2; i++) await new Promise(r => requestAnimationFrame(r));
+    scrollTo({ top: 0, left: 0, behavior: 'instant' });
   });
+  await page.waitForFunction(() => scrollX === 0 && scrollY === 0);
   return page.evaluate(() => {
     const result = document.getElementById('results');
     const nodes = [...result.querySelectorAll('*')].map(node => {
