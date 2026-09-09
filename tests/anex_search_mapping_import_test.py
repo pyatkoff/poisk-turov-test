@@ -148,6 +148,7 @@ class MappingTestStatement extends PDOStatement {
     public function __construct($db, $sql) { $this->db=$db; $this->sql=$sql; }
     public function execute($params=null) { $this->records=$this->db->run($this->sql,$params ?? array()); return true; }
     public function fetchAll($mode=PDO::FETCH_DEFAULT,...$args) {
+        if ($mode === PDO::FETCH_KEY_PAIR) return array_column($this->records,'ENGINE','TABLE_NAME');
         return $mode === PDO::FETCH_COLUMN ? array_map(function($row) { return reset($row); },$this->records) : $this->records;
     }
     public function fetch($mode=PDO::FETCH_DEFAULT,$orientation=PDO::FETCH_ORI_NEXT,$offset=0) { return array_shift($this->records) ?? false; }
@@ -165,11 +166,42 @@ class MappingTestPDO extends PDO {
     public function prepare($sql,$options=array()) { return new MappingTestStatement($this,$sql); }
     public function query($sql,...$args) { $statement=$this->prepare($sql); $statement->execute(); return $statement; }
     public function run($sql,$params) {
+        if (strpos($sql,'SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES') === 0) {
+            if ($this->state['fail_review_schema_read'] ?? false) throw new Exception();
+            return empty($this->state['review_schema']) ? array() : array(
+                array('TABLE_NAME'=>'anex_review_pair_exclusions','ENGINE'=>array_key_exists('review_engine',$this->state) ? $this->state['review_engine'] : 'InnoDB'),
+                array('TABLE_NAME'=>'anex_search_hotel_observations','ENGINE'=>'InnoDB'));
+        }
+        if ($sql === 'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions WHERE 1=0') {
+            if (empty($this->state['review_schema'])) {
+                $error=new PDOException(); $error->errorInfo=array('42S02',1146,'missing review table'); throw $error;
+            }
+            if ($this->state['fail_exclusion_permission'] ?? false) {
+                $error=new PDOException(); $error->errorInfo=array('42000',1142,'permission denied'); throw $error;
+            }
+            return array();
+        }
+        if (strpos($sql,'SELECT anex_hotel_id FROM anex_search_hotel_observations') === 0) {
+            if (count($params)>250 || strpos($sql,'ORDER BY anex_hotel_id FOR UPDATE') === false) throw new Exception();
+            $this->state['review_mutex_locked']=true;
+            // Model another owner's commit while the importer waits on the shared mutex.
+            if (isset($this->state['rejection_during_mutex_wait'])) {
+                $this->state['exclusions'][]=$this->state['rejection_during_mutex_wait'];
+                unset($this->state['rejection_during_mutex_wait']);
+            }
+            return array();
+        }
+        if (strpos($sql,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions') === 0) {
+            if (empty($this->state['review_mutex_locked']) || strpos($sql,'FOR UPDATE') === false
+                || ($this->state['fail_exclusion_read'] ?? false)) throw new Exception();
+            return array_values(array_filter($this->state['exclusions'] ?? array(),function($row) use($params) { return in_array($row['anex_hotel_id'],$params,true); }));
+        }
         if ($sql === 'SELECT COUNT(*) FROM anex_hotels') return array(array('count'=>8362));
         if ($sql === 'SELECT * FROM anex_hotel_search_mappings ORDER BY anex_hotel_id') return array_values($this->state['mappings']);
         if ($sql === 'SELECT * FROM anex_hotel_decisions ORDER BY anex_hotel_id') return array_values($this->state['manual']);
         if (strpos($sql,'SELECT ENGINE FROM information_schema.TABLES') === 0) return array(array('ENGINE'=>$this->state['engine'] ?? 'InnoDB'));
         if (strpos($sql,'SELECT id FROM catalog_hotels') === 0) {
+            if (!empty($this->state['review_schema']) && empty($this->state['review_mutex_locked'])) throw new Exception();
             if (count($params)>250) throw new Exception();
             return array_map(function($id) { return array('id'=>$id); },array_values(array_intersect($params,$this->state['targets'])));
         }
@@ -194,6 +226,7 @@ class MappingTestPDO extends PDO {
             foreach($this->state['mappings'] as $row) {
                 if (!$row['enabled'] || $row['scope']!=='preview' || $row['approval_policy']!==$params[1]
                     || in_array($row['anex_hotel_id'],$manualIds,true) || !in_array($row['catalog_hotel_id'],$this->state['targets'],true)) continue;
+                if (in_array(array('anex_hotel_id'=>$row['anex_hotel_id'],'catalog_hotel_id'=>$row['catalog_hotel_id']),$this->state['exclusions'] ?? array(),true)) continue;
                 $counts['total_enabled']++; $targets[$row['catalog_hotel_id']]=true;
                 $counts[$row['match_class']==='exact'?'exact':'strong']++;
             }
@@ -302,6 +335,56 @@ class MappingWriterTest(unittest.TestCase):
         self.save()
         self.assertEqual(self.execute()["status"], "mapping_import_failed")
         self.assertEqual((self.state["writes"], self.state["commits"]), (0, 0))
+
+    def test_rejected_pair_is_skipped_on_first_and_repeated_import(self):
+        self.state.update(review_schema=True, exclusions=[{"anex_hotel_id": 10, "catalog_hotel_id": 100}])
+        self.save()
+        first = self.execute()
+        self.assertEqual((first['inserted'], first['skipped_pair_excluded'], first['total_enabled']), (1, 1, 1))
+        self.assertNotIn('10', self.state['mappings'])
+        self.assertEqual(self.execute()['skipped_pair_excluded'], 1)
+        self.assertEqual(self.state['writes'], 1)
+
+    def test_other_rejected_candidate_does_not_block_supplied_pair(self):
+        self.state.update(review_schema=True, exclusions=[{"anex_hotel_id": 10, "catalog_hotel_id": 300}])
+        self.save()
+        report = self.execute()
+        self.assertEqual((report['inserted'], report['skipped_pair_excluded']), (2, 0))
+        self.assertEqual(self.state['mappings']['10']['catalog_hotel_id'], 100)
+
+    def test_rejection_committed_while_waiting_is_read_before_insert(self):
+        self.state.update(review_schema=True, rejection_during_mutex_wait={"anex_hotel_id": 10, "catalog_hotel_id": 100})
+        self.save()
+        self.assertEqual(self.execute()['skipped_pair_excluded'], 1)
+        self.assertNotIn('10', self.state['mappings'])
+
+    def test_exclusion_read_failure_rolls_back_without_mapping_changes(self):
+        self.execute()
+        before = copy.deepcopy(self.state['mappings'])
+        self.state.update(review_schema=True, fail_exclusion_read=True)
+        self.save()
+        self.assertEqual(self.execute()['status'], 'mapping_import_failed')
+        self.assertEqual(self.state['mappings'], before)
+        self.assertEqual(self.state['rollbacks'], 1)
+
+    def test_existing_review_view_or_permission_failure_never_bypasses_guard(self):
+        for failure in ({'review_engine': None}, {'fail_exclusion_permission': True}):
+            with self.subTest(failure=failure):
+                self.state.update(review_schema=True, **failure)
+                self.save()
+                self.assertEqual(self.execute()['status'], 'mapping_import_failed')
+                self.assertEqual((self.state['writes'], self.state['commits']), (0, 0))
+                for key in failure:
+                    self.state.pop(key)
+
+    def test_existing_excluded_mapping_is_preserved_but_not_counted(self):
+        self.execute()
+        before = copy.deepcopy(self.state['mappings'])
+        self.state.update(review_schema=True, exclusions=[{"anex_hotel_id": 10, "catalog_hotel_id": 100}])
+        self.save()
+        report = self.execute(self.append_protocol())
+        self.assertEqual((report['skipped_pair_excluded'], report['total_enabled'], report['updated']), (1, 1, 0))
+        self.assertEqual(self.state['mappings'], before)
 
     def append_protocol(self):
         lines = self.protocol.splitlines(keepends=True)

@@ -137,6 +137,30 @@ try {
     $engine = $pdo->query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anex_hotel_search_mappings'")->fetchColumn();
     if (strtoupper((string)$engine) !== 'INNODB' || !$pdo->beginTransaction()) throw new RuntimeException();
     $transaction = true;
+    $tables = $pdo->query("SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()"
+        . " AND TABLE_NAME IN ('anex_review_pair_exclusions','anex_search_hotel_observations')")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $reviewEnabled = array_key_exists('anex_review_pair_exclusions', $tables);
+    try {
+        // information_schema can hide an inaccessible table. Probe permission
+        // directly, without reading rows; only genuine absence is optional.
+        $probe = $pdo->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions WHERE 1=0');
+        if ($probe === false || !$reviewEnabled) throw new RuntimeException('review_schema_unavailable');
+    } catch (PDOException $error) {
+        $info = $error->errorInfo ?? array();
+        if ($reviewEnabled || ($info[0] ?? null) !== '42S02' || (int)($info[1] ?? 0) !== 1146) throw $error;
+    }
+    if ($reviewEnabled) {
+        if (strtoupper((string)$tables['anex_review_pair_exclusions']) !== 'INNODB'
+            || strtoupper((string)($tables['anex_search_hotel_observations'] ?? '')) !== 'INNODB') throw new RuntimeException();
+        // Same mutex and first lock as AnexReviewService::decide. A rejection
+        // committed while this importer waits must be seen by the locking read.
+        foreach (array_chunk(array_keys($rows), 250) as $ids) {
+            $marks = implode(',', array_fill(0, count($ids), '?'));
+            $statement = $pdo->prepare('SELECT anex_hotel_id FROM anex_search_hotel_observations WHERE anex_hotel_id IN (' . $marks . ') ORDER BY anex_hotel_id FOR UPDATE');
+            $statement->execute($ids);
+            $statement->fetchAll(PDO::FETCH_COLUMN);
+        }
+    }
     $preservation = $appendOnly ? anex_mapping_preservation($pdo, array_keys($rows)) : null;
     if ($appendOnly && $preservation['staging_total'] !== 8362) throw new RuntimeException();
 
@@ -150,6 +174,7 @@ try {
     }
     $manual = array();
     $existing = array();
+    $exclusions = array();
     foreach (array_chunk(array_keys($rows), 250) as $ids) {
         $marks = implode(',', array_fill(0, count($ids), '?'));
         $statement = $pdo->prepare('SELECT anex_hotel_id,decision_status,catalog_hotel_id FROM anex_hotel_decisions WHERE anex_hotel_id IN (' . $marks . ') FOR UPDATE');
@@ -161,14 +186,25 @@ try {
             if ($item['scope'] !== 'preview' || $item['approval_policy'] !== $policy) throw new RuntimeException();
             $existing[(int)$item['anex_hotel_id']] = $item;
         }
+        if ($reviewEnabled) {
+            $statement = $pdo->prepare('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions WHERE anex_hotel_id IN (' . $marks . ') ORDER BY anex_hotel_id,catalog_hotel_id FOR UPDATE');
+            $statement->execute($ids);
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $item) {
+                $exclusions[(int)$item['anex_hotel_id']][(int)$item['catalog_hotel_id']] = true;
+            }
+        }
     }
     $insert = $pdo->prepare('INSERT INTO anex_hotel_search_mappings (anex_hotel_id,catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled) VALUES (?,?,?,?,?,?,?,1)');
     $update = $pdo->prepare('UPDATE anex_hotel_search_mappings SET catalog_hotel_id=?,match_class=?,source_row_digest=?,mapping_digest=?,enabled=1 WHERE anex_hotel_id=? AND scope=? AND approval_policy=?');
     $disable = $pdo->prepare('UPDATE anex_hotel_search_mappings SET enabled=0 WHERE anex_hotel_id=? AND scope=? AND approval_policy=? AND enabled<>0');
     $stats = array('inserted' => 0, 'updated' => 0, 'unchanged' => 0, 'skipped_manual' => 0,
-        'inactivated_manual' => 0, 'manual_accepted_count' => 0, 'manual_conflicts' => 0);
+        'inactivated_manual' => 0, 'manual_accepted_count' => 0, 'manual_conflicts' => 0, 'skipped_pair_excluded' => 0);
     foreach ($rows as $id => $row) {
         $old = $existing[$id] ?? null;
+        if (isset($exclusions[$id][$row['catalog_hotel_id']])) {
+            $stats['skipped_pair_excluded']++;
+            continue; // Never choose another candidate or overwrite a previous mapping here.
+        }
         if (isset($manual[$id])) {
             $stats['skipped_manual']++;
             $decision = $manual[$id];
@@ -200,11 +236,13 @@ try {
         COALESCE(SUM(m.match_class='exact'),0) AS exact,COALESCE(SUM(m.match_class='strong_candidate'),0) AS strong
         FROM anex_hotel_search_mappings m INNER JOIN catalog_hotels c ON c.id=m.catalog_hotel_id
         LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=m.anex_hotel_id
-        WHERE m.scope=? AND m.approval_policy=? AND m.enabled=1 AND d.anex_hotel_id IS NULL");
+        WHERE m.scope=? AND m.approval_policy=? AND m.enabled=1 AND d.anex_hotel_id IS NULL"
+        . ($reviewEnabled ? ' AND NOT EXISTS (SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=m.anex_hotel_id AND x.catalog_hotel_id=m.catalog_hotel_id)' : ''));
     $effective->execute(array('preview', $policy));
     $enabled = $effective->fetch(PDO::FETCH_ASSOC);
     if (!is_array($enabled)) throw new RuntimeException();
-    $manualAccepted = $pdo->query("SELECT COUNT(*) FROM anex_hotel_decisions d INNER JOIN catalog_hotels c ON c.id=d.catalog_hotel_id WHERE d.decision_status='accepted'")->fetchColumn();
+    $manualAccepted = $pdo->query("SELECT COUNT(*) FROM anex_hotel_decisions d INNER JOIN catalog_hotels c ON c.id=d.catalog_hotel_id WHERE d.decision_status='accepted'"
+        . ($reviewEnabled ? ' AND NOT EXISTS (SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=d.anex_hotel_id AND x.catalog_hotel_id=d.catalog_hotel_id)' : ''))->fetchColumn();
     if ($manualAccepted === false) throw new RuntimeException();
     if ($appendOnly && $preservation !== anex_mapping_preservation($pdo, array_keys($rows))) throw new RuntimeException();
     $pdo->commit();

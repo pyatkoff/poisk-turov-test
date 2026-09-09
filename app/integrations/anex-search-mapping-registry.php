@@ -32,16 +32,39 @@ final class AnyTourAnexSearchMappingRegistry
             . ' h.id AS existing_catalog_hotel_id FROM anex_hotel_decisions d'
             . ' LEFT JOIN catalog_hotels h ON h.id=d.catalog_hotel_id LIMIT 50001'
         );
-        return self::fromRows($mappingRows, $decisions->fetchAll(PDO::FETCH_ASSOC));
+        $decisionRows = $decisions->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $exclusions = $pdo->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions LIMIT 50001');
+            if ($exclusions === false) throw new RuntimeException('anex_search_mapping_exclusions_unavailable');
+            $pairs = $exclusions->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $error) {
+            // Legacy deployments have no review schema. Only a missing table is
+            // optional: permission, schema and connection failures stay closed.
+            $info = $error->errorInfo ?? [];
+            $missing = ($info[0] ?? null) === '42S02' && (int)($info[1] ?? 0) === 1146;
+            if ($missing) {
+                // A broken view/dependency can also report 1146. Its existence
+                // means review is installed and the read must not be bypassed.
+                $present = $pdo->query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anex_review_pair_exclusions'");
+                if ($present === false || $present->fetchColumn() !== false) throw $error;
+            }
+            $missingSqlite = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite'
+                && (int)($info[1] ?? 0) === 1
+                && ($info[2] ?? '') === 'no such table: anex_review_pair_exclusions';
+            if (!$missing && !$missingSqlite) throw $error;
+            $pairs = [];
+        }
+        return self::fromRows($mappingRows, $decisionRows, $pairs);
     }
 
     /**
      * Rows use the SQL projection above; existing_catalog_hotel_id establishes
      * that the target exists. No price or availability evidence is required.
      */
-    public static function fromRows(array $mappingRows, array $decisionRows = []): self
+    public static function fromRows(array $mappingRows, array $decisionRows = [], array $pairExclusions = []): self
     {
-        if (count($mappingRows) > self::MAX_ROWS || count($decisionRows) > self::MAX_ROWS) {
+        if (count($mappingRows) > self::MAX_ROWS || count($decisionRows) > self::MAX_ROWS
+            || count($pairExclusions) > self::MAX_ROWS) {
             throw new UnexpectedValueException('anex_search_mapping_registry_invalid');
         }
         $index = [];
@@ -68,6 +91,14 @@ final class AnyTourAnexSearchMappingRegistry
             if (($row['decision_status'] ?? null) === 'accepted' && $target !== null) {
                 $index[$id] = $target;
             }
+        }
+        foreach ($pairExclusions as $pair) {
+            $id = is_array($pair) ? self::id($pair['anex_hotel_id'] ?? null, 8) : null;
+            $target = is_array($pair) ? self::id($pair['catalog_hotel_id'] ?? null, 10) : null;
+            if ($id === null || $target === null || (float)$target > 2147483647) {
+                throw new UnexpectedValueException('anex_search_mapping_registry_invalid');
+            }
+            if (($index[$id] ?? null) === (int)$target) unset($index[$id]);
         }
         return new self($index);
     }

@@ -23,6 +23,10 @@ function search_mapping_decision(int $id, string $status, ?int $target): array
     return ['anex_hotel_id' => $id, 'decision_status' => $status,
         'catalog_hotel_id' => $target, 'existing_catalog_hotel_id' => $target];
 }
+function search_mapping_exclusion(int $id, int $target): array
+{
+    return ['anex_hotel_id' => $id, 'catalog_hotel_id' => $target];
+}
 
 search_mapping_check($includeOutput === '', 'include has no output or runtime work');
 $rows = [];
@@ -77,6 +81,43 @@ search_mapping_check($normalized['offers'][0]['hotel']['local_id'] === 102
     && $normalized['offers'][0]['supplier_booking_flag'] === false,
     'ordinary Online price normalization uses DB identity without a booking flag requirement');
 
+$pairRegistry = AnyTourAnexSearchMappingRegistry::fromRows([
+    search_mapping_row(21, 121), search_mapping_row(22, 122, 'strong_candidate'),
+    search_mapping_row(23, 123), search_mapping_row(24, 124), search_mapping_row(25, 125),
+    search_mapping_row(26, 126), search_mapping_row(27, 127), search_mapping_row(29, 121),
+], [
+    search_mapping_decision(23, 'accepted', 223), search_mapping_decision(24, 'accepted', 224),
+    search_mapping_decision(26, 'needs_review', 226), search_mapping_decision(28, 'accepted', 228),
+], [
+    search_mapping_exclusion(21, 121), search_mapping_exclusion(22, 122),
+    search_mapping_exclusion(23, 223), search_mapping_exclusion(24, 124),
+    search_mapping_exclusion(25, 225), search_mapping_exclusion(25, 325),
+    search_mapping_exclusion(26, 226), search_mapping_exclusion(28, 228),
+]);
+search_mapping_check($pairRegistry->count() === 4, 'only permitted exact pairs remain available');
+foreach ([21, 22, 23, 26, 28] as $id) {
+    search_mapping_check($pairRegistry->resolve('anex_online', $id, 'preview') === null,
+        'rejected exact/strong/manual pair or existing review decision stays blocked ' . $id);
+}
+search_mapping_check($pairRegistry->resolve('anex_online', 23, 'preview') === null,
+    'excluded manual target never falls back to a different automated target');
+search_mapping_check($pairRegistry->resolve('anex_online', 24, 'preview') === 224,
+    'manual acceptance of an alternative target survives exclusion of the old pair');
+search_mapping_check($pairRegistry->resolve('anex_online', 25, 'preview') === 125,
+    'several excluded alternatives do not block an allowed target for the same ANEX hotel');
+search_mapping_check($pairRegistry->resolve('anex_online', 27, 'preview') === 127,
+    'unrelated existing mapping remains available');
+search_mapping_check($pairRegistry->resolve('anex_online', 29, 'preview') === 121,
+    'pair exclusion does not become a global catalog hotel exclusion');
+search_mapping_check($pairRegistry->resolve('anex_xml', 21, 'preview') === null
+    && ($pairRegistry->previewResolver())('anex_online', '21') === null,
+    'pair exclusion applies to both accepted namespaces and the normalizer resolver');
+$duplicateExclusions = AnyTourAnexSearchMappingRegistry::fromRows([search_mapping_row(1, 101)], [], [
+    search_mapping_exclusion(1, 101), ['anex_hotel_id' => '1', 'catalog_hotel_id' => '101'],
+]);
+search_mapping_check($duplicateExclusions->count() === 0,
+    'repeated exclusion of the same exact pair is idempotent for numeric SQL strings and integers');
+
 foreach ([[search_mapping_row(1, 101), search_mapping_row(1, 102)],
     [array_replace(search_mapping_row(1, 101), ['anex_hotel_id' => '01'])],
     array_fill(0, 50001, search_mapping_row(1, 101))] as $invalidRows) {
@@ -96,6 +137,27 @@ try {
     search_mapping_check(true, 'duplicate manual decisions cannot become order-dependent');
 }
 
+$invalidExclusions = [
+    [null], [[]],
+    array_fill(0, 50001, search_mapping_exclusion(1, 101)),
+];
+foreach (['01', '+1', '1 ', '1e0', '', '-1', 1.0, true, null, '100000000'] as $bad) {
+    $invalidExclusions[] = [array_replace(search_mapping_exclusion(1, 101), ['anex_hotel_id' => $bad])];
+}
+foreach (['0101', '+101', '101 ', '1e2', '', '-1', 101.0, true, null, '2147483648', '10000000000'] as $bad) {
+    $invalidExclusions[] = [array_replace(search_mapping_exclusion(1, 101), ['catalog_hotel_id' => $bad])];
+}
+foreach ($invalidExclusions as $exclusions) {
+    try {
+        AnyTourAnexSearchMappingRegistry::fromRows([search_mapping_row(1, 101)], [], $exclusions);
+        throw new RuntimeException('FAILED: invalid pair exclusions accepted');
+    } catch (UnexpectedValueException $error) {
+        search_mapping_check($error->getMessage() === 'anex_search_mapping_registry_invalid',
+            'malformed/oversized pair exclusions fail closed');
+    }
+}
+unset($invalidExclusions);
+
 if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
     $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec('CREATE TABLE catalog_hotels (id INTEGER PRIMARY KEY)');
@@ -110,13 +172,56 @@ if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
     $insert = $pdo->prepare('INSERT INTO anex_hotel_decisions VALUES (?,?,?)');
     foreach ($decisions as $row) $insert->execute([$row['anex_hotel_id'], $row['catalog_hotel_id'], $row['decision_status']]);
     $fromDb = AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
-    search_mapping_check($fromDb->count() === 4, 'SQL joins exclude missing targets and preserve manual acceptance');
+    search_mapping_check($fromDb->count() === 4,
+        'legacy database without exclusions table still joins valid targets and manual acceptance');
     search_mapping_check($fromDb->resolve('anex_online', 1, 'preview') === 101
         && $fromDb->resolve('anex_online', 2, 'preview') === 102, 'SQL reads exact and strong identities');
     search_mapping_check($fromDb->resolve('anex_online', 6, 'preview') === 206
         && $fromDb->resolve('anex_online', 13, 'preview') === 213, 'SQL reads independent manual overrides');
     search_mapping_check((int) $pdo->query('SELECT COUNT(*) FROM anex_hotel_decisions')->fetchColumn() === 7,
         'registry never writes manual decisions');
+
+    $pdo->exec('CREATE TABLE anex_review_pair_exclusions (anex_hotel_id INTEGER NOT NULL,'
+        . 'catalog_hotel_id INTEGER NOT NULL,PRIMARY KEY (anex_hotel_id,catalog_hotel_id))');
+    $pdo->exec('INSERT INTO anex_review_pair_exclusions VALUES (1,101),(2,999),(2,998),(6,206)');
+    $storedDecisions = $pdo->query('SELECT * FROM anex_hotel_decisions ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC);
+    $storedExclusions = $pdo->query('SELECT * FROM anex_review_pair_exclusions ORDER BY anex_hotel_id,catalog_hotel_id')
+        ->fetchAll(PDO::FETCH_ASSOC);
+    $fromDbWithExclusions = AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
+    search_mapping_check($fromDbWithExclusions->count() === 2
+        && $fromDbWithExclusions->resolve('anex_online', 1, 'preview') === null
+        && $fromDbWithExclusions->resolve('anex_online', 6, 'preview') === null,
+        'SQL exclusions suppress policy and historical manual acceptance of rejected pairs');
+    search_mapping_check($fromDbWithExclusions->resolve('anex_online', 2, 'preview') === 102
+        && $fromDbWithExclusions->resolve('anex_online', 13, 'preview') === 213,
+        'SQL exclusions preserve allowed alternatives and unrelated manual decisions');
+    search_mapping_check($pdo->query('SELECT * FROM anex_hotel_decisions ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC)
+        === $storedDecisions
+        && $pdo->query('SELECT * FROM anex_review_pair_exclusions ORDER BY anex_hotel_id,catalog_hotel_id')
+            ->fetchAll(PDO::FETCH_ASSOC) === $storedExclusions,
+        'registry reads never modify exclusions or previous manual decisions');
+
+    $pdo->exec('DROP TABLE anex_review_pair_exclusions');
+    $pdo->exec('CREATE TABLE anex_review_pair_exclusions (anex_hotel_id INTEGER PRIMARY KEY)');
+    $failedClosed = false;
+    try {
+        AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
+    } catch (Throwable $error) {
+        $failedClosed = true;
+    }
+    search_mapping_check($failedClosed, 'existing exclusions table with missing columns cannot silently enable mappings');
+
+    $pdo->exec('DROP TABLE anex_review_pair_exclusions');
+    $pdo->exec('CREATE VIEW anex_review_pair_exclusions AS'
+        . ' SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions_v2');
+    $failedClosed = false;
+    try {
+        AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
+    } catch (Throwable $error) {
+        $failedClosed = true;
+    }
+    search_mapping_check($failedClosed,
+        'missing dependency during exclusion reads is not mistaken for an absent optional exclusions table');
 } else {
     echo "ANEX search mapping registry: SQLite integration unavailable\n";
 }
