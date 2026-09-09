@@ -58,6 +58,44 @@ search3_check(anytour_anex_search3_project($normalized['offers'], $lowerRated, $
 search3_check(anytour_anex_search3_project($normalized['offers'], $metadata, $params + ['regionIds' => [77]]) === [], 'requested region honored');
 search3_check(anytour_anex_search3_project($normalized['offers'], $metadata, $params + ['priceTo' => 10000]) === [], 'requested price ceiling honored');
 
+// The full-search AI filter must retain the same known meals as the local result filter.
+foreach (['AI', 'ALL', 'ALL INCLUSIVE', 'UAI', 'ULTRA ALL INCLUSIVE', 'AI-WITHOUT ALCOHOL',
+    ' ai without alcohol ', 'всё включено', 'ультра всё включено', 'всё включено без алкоголя'] as $meal) {
+    $offer = $normalized['offers'][0];
+    $offer['meal'] = $meal;
+    $matched = anytour_anex_search3_project([$offer], $metadata, $params + ['meal' => '7']);
+    search3_check(count($matched) === 1 && $matched[0]['tours'][0]['meal'] === $meal,
+        'known All Inclusive meal retained without rewriting supplier text: ' . $meal);
+}
+foreach (['HB', 'FB', 'BB', 'RO', '', '7', 'unknown', 'NOT ALL INCLUSIVE'] as $meal) {
+    $offer = $normalized['offers'][0];
+    $offer['meal'] = $meal;
+    search3_check(anytour_anex_search3_project([$offer], $metadata, $params + ['meal' => '7']) === [],
+        'unconfirmed All Inclusive meal stays excluded: ' . $meal);
+}
+$cheapHb = $normalized['offers'][0];
+$cheapHb['meal'] = 'HB';
+$expensiveAi = $cheapHb;
+$expensiveAi['meal'] = 'AI-WITHOUT ALCOHOL';
+$expensiveAi['price']['amount'] = '20000';
+search3_check(anytour_anex_search3_project([$cheapHb, $expensiveAi], $metadata,
+    $params + ['meal' => '7', 'priceTo' => 15000]) === [], 'meal and budget apply to the same offer');
+
+$received = [];
+foreach (range(1, 5) as $index) {
+    $offer = $cheapHb;
+    $offer['price']['amount'] = (string) (10000 + $index * 1000);
+    $received[] = $offer;
+}
+$received[] = $expensiveAi;
+$fullHotel = anytour_anex_search3_project($received, $metadata, array_replace($params, ['meal' => '']));
+search3_check(count($fullHotel) === 1 && count($fullHotel[0]['tours']) === 6,
+    'all received tours survive projection for later local filtering');
+search3_check($fullHotel[0]['tours'][0]['price']['amount'] === '11000'
+    && $fullHotel[0]['tours'][5]['meal'] === 'AI-WITHOUT ALCOHOL', 'minimum and sixth matching offer preserved');
+$boundedHotel = anytour_anex_search3_project(array_fill(0, 301, $cheapHb), $metadata, array_replace($params, ['meal' => '']));
+search3_check(count($boundedHotel[0]['tours']) === 300, 'existing total received-offer bound preserved');
+
 $calls = 0;
 $fake = new class($calls) {
     private $calls;

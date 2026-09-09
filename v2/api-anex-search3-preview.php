@@ -98,7 +98,8 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
         if (!$fits || (float) ($row['category'] ?? 0) < (float) ($params['hotelCategory'] ?? 0)
             || (float) ($row['rating'] ?? 0) < $rating) continue;
         if (!empty($params['meal']) && !in_array(anytour_anex_search3_name((string) ($offer['meal'] ?? '')),
-            ['ai', 'all', 'all inclusive', 'uai', 'ultra all inclusive', 'все включено', 'ультра все включено'], true)) continue;
+            ['ai', 'all', 'all inclusive', 'uai', 'ultra all inclusive', 'ai without alcohol',
+                'все включено', 'ультра все включено', 'все включено без алкоголя'], true)) continue;
         $price = ($offer['price']['currency'] ?? '') === 'RUB' ? $offer['price'] : ($offer['converted_price'] ?? null);
         if (!$price || $price['currency'] !== 'RUB' || !anytour_anex_normalizer_decimal($price['amount'] ?? null)) continue;
         if ((!empty($params['priceFrom']) && (float) $price['amount'] < (float) $params['priceFrom'])
@@ -114,7 +115,7 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
     }
     foreach ($hotels as &$hotel) {
         usort($hotel['tours'], static function ($a, $b) { return (float) $a['price']['amount'] <=> (float) $b['price']['amount']; });
-        $hotel['tours'] = array_slice($hotel['tours'], 0, 5);
+        // Keep the bounded received set so later local filters can find every matching tour.
     }
     unset($hotel);
     return array_values($hotels);

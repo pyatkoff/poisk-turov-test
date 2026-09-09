@@ -325,6 +325,45 @@ test('late supplemental metadata keeps incomplete facets hidden and never activa
   assert.equal(page.requests.length, 1);
 });
 
+test('local meal and budget filters retain an ANEX offer beyond the first five prices', async () => {
+  const page = preview(true);
+  page.reset(1, snapshot());
+  page.window.V2Results.render([{ id: 245, category: 4, price: 100000,
+    tours: [{ price: 100000, meal: 'AI' }] }]);
+  const anex = hotel({ local_id: 900, tours: [
+    ['40000', 'HB'], ['41000', 'HB'], ['42000', 'HB'], ['43000', 'HB'], ['44000', 'HB'], ['80000', 'AI']
+  ].map(([amount, meal]) => ({ ...hotel().tours[0], price: { amount, currency: 'RUB' }, meal })) });
+  const original = plain(anex);
+  page.requests[0].respond(response(1, [anex]));
+  await tick();
+  assert.equal(page.results.querySelectorAll('.anex-search3-offer').length, 6);
+  page.controls.price.value = '90000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+  page.rail.dispatchEvent({ type: 'change', target: page.controls.meal.find(input => input.value === 'ai') });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 1);
+  assert.equal(page.results.querySelectorAll('.anex-search3-offer').length, 1);
+  assert.match(page.results.textContent, /80\s*000/);
+  assert.doesNotMatch(page.results.textContent, /Полупансион/);
+  page.controls.price.value = '60000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 0);
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset });
+  await tick();
+  assert.equal(page.results.querySelectorAll('.hotel-card').length, 2);
+  assert.equal(page.results.querySelectorAll('.anex-search3-offer').length, 6);
+  assert.equal(page.requests.length, 1);
+  assert.deepEqual(anex, original);
+});
+
+test('ANEX hotel validation accepts the bounded full supplier page and rejects oversized tours', () => {
+  const valid = helpers().validHotel;
+  const tour = hotel().tours[0];
+  assert.equal(valid(hotel({ tours: Array(300).fill(tour) })), true);
+  assert.equal(valid(hotel({ tours: Array(301).fill(tour) })), false);
+});
+
 test('text meals and ANEX aliases share the same filter without inventing missing meals', async () => {
   const page = preview(true);
   page.reset(1, snapshot());

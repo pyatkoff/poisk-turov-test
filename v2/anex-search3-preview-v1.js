@@ -30,7 +30,7 @@
   function validHotel(hotel) {
     return !!hotel && Number.isSafeInteger(hotel.local_id) && hotel.local_id > 0
       && typeof hotel.name === 'string' && hotel.name.length > 0 && hotel.name.length <= 300
-      && Array.isArray(hotel.tours) && hotel.tours.length > 0 && hotel.tours.length <= 5
+      && Array.isArray(hotel.tours) && hotel.tours.length > 0 && hotel.tours.length <= 300
       && hotel.tours.every(tour => tour && tour.price && tour.price.currency === 'RUB'
         && typeof tour.price.amount === 'string' && /^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/.test(tour.price.amount)
         && Number(tour.price.amount) > 0 && typeof tour.checkin === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(tour.checkin)
