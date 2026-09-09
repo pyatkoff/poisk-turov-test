@@ -1,0 +1,292 @@
+{
+  "date": "2026-09-09",
+  "status": "published_saved_response_verified",
+  "source_sha": "c9f56ca55cc29a7e62a2675b7ebda6f15e239f52",
+  "control_sha": "dab4e5e8dd2000b33044f94c69601c55ed817435",
+  "deploy_run": 34385871759,
+  "deploy_job": 102581853674,
+  "artifacts": [
+    {
+      "id": 10117666482,
+      "digest": "sha256:61eb570e8cc68a1200178d61f69c91160d6b248981a96539576252c909c3371f"
+    }
+  ],
+  "result": {
+    "status": "deployed",
+    "source_sha": "c9f56ca55cc29a7e62a2675b7ebda6f15e239f52",
+    "owner_login_required": false,
+    "sha256": {
+      "api-andromeda-search3-preview.php": "ef32b70dc3d11d7a331da8ed7166119b681cb794c06c8ec47bafdf47ac99e150"
+    },
+    "private_credentials_unchanged": true,
+    "database_changed": false,
+    "production_changed": false,
+    "verification": {
+      "status": "checked",
+      "saved_pages": 59,
+      "unresolved_identities": 67,
+      "retained_at_4_stars": 61,
+      "retained": [
+        {
+          "name": "Roulette 4* Sharm El Sheikh",
+          "category": 4
+        },
+        {
+          "name": "Paradise Beach Resort Abu Soma (ex.Eagles)",
+          "category": 4
+        },
+        {
+          "name": "IL Mercato Splash Aqua Park Hotel",
+          "category": 5
+        },
+        {
+          "name": "Faraana Heights Aqua Park",
+          "category": 4
+        },
+        {
+          "name": "Parrotel Lagoon Resort",
+          "category": 5
+        },
+        {
+          "name": "Viva Blue Resort",
+          "category": 4
+        },
+        {
+          "name": "Sunrise Azalea Aqua Park Resort (ex. Sunrise Aster Aqua Park Resort)",
+          "category": 4
+        },
+        {
+          "name": "Ivy Cyrene Sharm",
+          "category": 4
+        },
+        {
+          "name": "Ivy Cyrene Island Aqua Park Resort",
+          "category": 4
+        },
+        {
+          "name": "Nuweiba Club Resort",
+          "category": 4
+        },
+        {
+          "name": "Retac Qunay Resort & Spa (ex. Le Meridien Dahab Resort)",
+          "category": 5
+        },
+        {
+          "name": "Amwaj Beach Club (ex.Albatros Beach Club)",
+          "category": 4
+        },
+        {
+          "name": "Parrotel Beach Resort",
+          "category": 5
+        },
+        {
+          "name": "Flamenco Beach",
+          "category": 4
+        },
+        {
+          "name": "Fiord Club Resort & SPA",
+          "category": 4
+        },
+        {
+          "name": "Life Resort Coral Hills (ex.Coral Hills Resort)",
+          "category": 4
+        },
+        {
+          "name": "Verginia Sharm Resort & Aqua Park",
+          "category": 4
+        },
+        {
+          "name": "Amphoras Aqua (Adult Only 12+)",
+          "category": 4
+        },
+        {
+          "name": "Flow Spectrum Resort",
+          "category": 4
+        },
+        {
+          "name": "FUN&SUN ACTIVE Naama Waves",
+          "category": 5
+        },
+        {
+          "name": "Domina Coral Bay Bellavista",
+          "category": 5
+        },
+        {
+          "name": "FUN&SUN FAMILY Sea Beach",
+          "category": 4
+        },
+        {
+          "name": "Domina Coral Bay Harem Junior Suite",
+          "category": 5
+        },
+        {
+          "name": "Gravity Hurghada And Aqua Park",
+          "category": 5
+        },
+        {
+          "name": "Sheraton Sharm Hotel, Resort, Villas & SPA",
+          "category": 4
+        },
+        {
+          "name": "Gravity Sahl Hasheesh Hotel",
+          "category": 5
+        },
+        {
+          "name": "Sunrise Juman Beach Resort (ex. Coral Beach Sahl Hasheesh)",
+          "category": 5
+        },
+        {
+          "name": "Sharm Club Beach Resort (ex. Labranda Sharm Club)",
+          "category": 4
+        },
+        {
+          "name": "Amphoras Blue (Adult Only 16+)",
+          "category": 4
+        },
+        {
+          "name": "Marina Resort Port Ghalib By Radisson Individuals",
+          "category": 5
+        },
+        {
+          "name": "Novotel Palm",
+          "category": 5
+        },
+        {
+          "name": "Coral Sea Waterworld",
+          "category": 5
+        },
+        {
+          "name": "Pickalbatros Villaggio Resort - Portofino Marsa Alam",
+          "category": 4
+        },
+        {
+          "name": "Pickalbatros Alf Leila Wa Leila Resort - Neverland Hurghada",
+          "category": 4
+        },
+        {
+          "name": "Sierra Hotel",
+          "category": 5
+        },
+        {
+          "name": "Romance Regency Club Adult Only (Honeymoon)",
+          "category": 5
+        },
+        {
+          "name": "Stella Di Mare Beach Hotel & Spa",
+          "category": 5
+        },
+        {
+          "name": "Regina Resort & Aqua Park Hurghada",
+          "category": 4
+        },
+        {
+          "name": "Pickalbatros Royal Albatros Moderna",
+          "category": 5
+        },
+        {
+          "name": "V Hotel Sharm El Sheikh",
+          "category": 5
+        },
+        {
+          "name": "Hurghada Long Beach Resort",
+          "category": 4
+        },
+        {
+          "name": "Hurghada Marriott Beach Resort",
+          "category": 5
+        },
+        {
+          "name": "Pickalbatros Aqua Park Resort Sharm El Sheikh",
+          "category": 5
+        },
+        {
+          "name": "Domina Coral Bay King's Lake",
+          "category": 5
+        },
+        {
+          "name": "Stella Gardens Resort & Spa Makadi Hurghada",
+          "category": 5
+        },
+        {
+          "name": "FUN&SUN FAMILY Albatros Palace",
+          "category": 5
+        },
+        {
+          "name": "Sunny Days Palma De Mirette",
+          "category": 4
+        },
+        {
+          "name": "Magic Life Redsina (ex. Iberotel Redsina)",
+          "category": 5
+        },
+        {
+          "name": "Pickalbatros Royal Grand Resort - Sharm El Sheikh (Adults only)",
+          "category": 5
+        },
+        {
+          "name": "The Old Palace Resort",
+          "category": 5
+        },
+        {
+          "name": "Sunrise Grand Select Montemare Resort",
+          "category": 5
+        },
+        {
+          "name": "Movenpick Resort Sharm El Sheikh",
+          "category": 5
+        },
+        {
+          "name": "Baron Resort",
+          "category": 5
+        },
+        {
+          "name": "Pickalbatros Aqua Park Resort Hurghada",
+          "category": 4
+        },
+        {
+          "name": "Baron Palms Resort",
+          "category": 5
+        },
+        {
+          "name": "Savoy Hotel",
+          "category": 5
+        },
+        {
+          "name": "Pickalbatros Water Valley Resort - Neverland Hurghada",
+          "category": 5
+        },
+        {
+          "name": "FUN&SUN FAMILY Sultan Gardens",
+          "category": 5
+        },
+        {
+          "name": "Pickalbatros Citadel Resort Sahl Hasheesh",
+          "category": 5
+        },
+        {
+          "name": "Jaz Elite Palace (Adults Only 16+)",
+          "category": 5
+        },
+        {
+          "name": "Sunrise Arabian Beach Resort - Grand Select",
+          "category": 5
+        }
+      ],
+      "supplier_calls": 0,
+      "database_writes": 0
+    }
+  },
+  "checks": {
+    "protocol": 34385795510,
+    "security": 34385795355,
+    "unresolved_stars_test": "passed",
+    "existing_addon_tests": 50
+  },
+  "interpretation": "61 retained namespaced groups from historical saved responses, not 61 new mappings or fresh live search hotels. Historical unresolved snapshots can predate accepted mappings.",
+  "behavior": "Minimum stars use supplier category for unresolved cards. Unknown/lower category excluded when a threshold is selected. Exact hotel/region/subregion and local rating still require local catalog identity. Price and meal filters preserved.",
+  "supplier_calls": 0,
+  "database_writes": 0,
+  "ui_styles_changed": false,
+  "browser_verification": "not rerun; endpoint-only change with real saved-page projection and HTTP validation",
+  "next": "Remaining form criteria/countries and source-qualified selection handoff; continue ANEX-only correlation where relevant."
+}
