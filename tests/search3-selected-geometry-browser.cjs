@@ -62,6 +62,54 @@ async function capture(page, label) {
   await page.locator('#selectedTour').screenshot({ path: path.join(output, label+'.png'), animations:'disabled' });
   return snapshot;
 }
+async function checkLargeList(page,width){
+  const many=Array.from({length:89},(_,index)=>({...flights[0],isDefault:index===0,price:{value:148500+index*1250},forward:[{...segment,number:'AB'+(123+index)}],backward:[{...segment,number:'AB'+(223+index)}]}));
+  await page.evaluate(({tour,many})=>{
+    window.__largeCalls={tour:0,flights:0,other:0};
+    window.V2Runtime.api=async action=>{
+      if(action==='tour'){window.__largeCalls.tour++;return {...tour,id:'large-flight-tour'};}
+      if(action==='flights'){window.__largeCalls.flights++;return many;}
+      window.__largeCalls.other++;throw Error('unexpected large-list API action');
+    };
+    window.V2TourController.selectTour('large-flight-tour');
+  },{tour,many});
+  const root=page.locator('#selectedTour'),list=root.locator('.flight-variants'),toggle=root.locator('.search3-flight-toggle');
+  await toggle.waitFor();
+  await settle(page);
+  assert.equal(await list.locator('input[name=v2flight]').count(),89,'all supplier choices retained');
+  assert.equal(await list.locator('input:visible').count(),1,'large list initially shows the selected flight');
+  assert.equal(await toggle.getAttribute('aria-expanded'),'false');
+  assert.match(await toggle.textContent(),/89/,'disclosure announces the total');
+  assert.ok((await toggle.boundingBox()).height>=44,'disclosure has a touch target');
+  const collapsedHeight=(await root.locator('.tour-flights').boundingBox()).height;
+  assert.ok(collapsedHeight<1600,'large-list closed height does not grow with89 alternatives');
+  await root.locator('.tour-flights').screenshot({path:path.join(output,'large-'+width+'-collapsed.png')});
+  await toggle.focus();await page.keyboard.press('Enter');
+  assert.equal(await toggle.getAttribute('aria-expanded'),'true','keyboard opens every choice');
+  assert.equal(await list.locator('input:visible').count(),89,'every alternative becomes reachable');
+  assert.deepEqual(await list.locator('.flight-variant').evaluateAll(nodes=>nodes.map(n=>Number(n.dataset.flightIndex))),Array.from({length:89},(_,i)=>i),'original supplier order and indices remain unchanged');
+  const expandedHeight=(await list.boundingBox()).height;
+  assert.ok(expandedHeight<=641,'expanded list scrolls within a bounded panel');
+  await list.locator('input[value="88"]').click();
+  await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant.is-selected')?.dataset.flightIndex==='88');
+  assert.match((await root.locator('.selected-price').innerText()).replace(/\s/g,''),/258500₽/,'last alternative keeps its canonical total');
+  await list.locator('input[value="88"]').focus();await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant.is-selected')?.dataset.flightIndex==='87');
+  assert.match((await root.locator('.selected-price').innerText()).replace(/\s/g,''),/257250₽/,'native radio keyboard changes the total');
+  await toggle.click();
+  assert.equal(await list.locator('input:visible').count(),1,'collapse retains only the actual selected node');
+  assert.equal(await list.locator('input[value="87"]').isVisible(),true);
+  assert.equal(await list.locator('.is-selected .flight-segment:visible').count(),2,'both selected directions remain directly readable');
+  assert.equal(await root.locator('.search3-flight-continue button:visible').count(),1);
+  await root.locator('.search3-flight-continue button').click();
+  await page.waitForFunction(()=>document.activeElement?.name==='phone');
+  assert.match((await root.locator('.lead-selection-summary').innerText()).replace(/\s/g,''),/257250₽/,'contact summary agrees with canonical total');
+  assert.match(await root.locator('.lead-selection-summary').innerText(),/AB210/,'contact summary retains selected identity');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,'large choices never overflow the page');
+  assert.deepEqual(await page.evaluate(()=>window.__largeCalls),{tour:1,flights:1,other:0},'disclosure/selection do not call supplier or leads');
+  await root.locator('.tour-flights').screenshot({path:path.join(output,'large-'+width+'-selected.png')});
+  return {choices:89,collapsedHeight,expandedHeight,selectedIndex:87,price:257250,allChoicesReachable:true,keyboard:true,realLeads:0};
+}
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
   const errors=[];
@@ -150,6 +198,7 @@ async function run(browser, width, previous) {
     }
     const calls=await page.evaluate(()=>window.__geometryCalls);
     assert.deepEqual(calls,{tour:1,flights:1,other:0});
+    if(!previous && [375,1440].includes(width)) states.large=await checkLargeList(page,width);
     assert.deepEqual(errors,[],'fixture must not cause browser errors');
     return states;
   } catch(error) {
