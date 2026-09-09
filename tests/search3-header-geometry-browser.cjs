@@ -13,10 +13,17 @@ const searchNames = JSON.parse(execFileSync('php', ['-r',
 const searchScripts = JSON.parse(execFileSync('php', ['-r',
   'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'
 ], { cwd: root, encoding: 'utf8' }));
-assert.ok(!searchNames.includes('site-header-v2.css'), 'retired header CSS leaked into Search3');
+assert.deepEqual(searchNames, ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css'],
+  'Search3 shared shell CSS closure drifted');
+assert.equal(searchNames.filter(name => name === 'site-header-v2.css').length, 1,
+  'canonical header CSS must load exactly once');
 assert.ok(!searchNames.includes('header-current-site.css'), 'legacy header CSS leaked into Search3');
 assert.ok(!searchScripts.includes('header-current-site.js'), 'legacy header runtime leaked into Search3');
-const css = searchNames.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n');
+const searchPresentation = fs.readFileSync(path.join(root, 'v2', 'search3-results-filters-v1.css'), 'utf8');
+assert.ok(!searchPresentation.includes('.at-global-header'),
+  'Search3 presentation must not restore a private header owner');
+const css = searchNames.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n')
+  + '\n' + searchPresentation;
 const logo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='40'%3E%3Crect width='180' height='40' fill='%232743cb'/%3E%3C/svg%3E";
 const labels = ['Поиск туров', 'Страны', 'Горящие туры', 'Раннее бронирование', 'Как купить', 'Контакты'];
 const nav = labels.map(label => `<a href="#">${label}</a>`).join('');
@@ -28,14 +35,13 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
   if (output) fs.mkdirSync(output, { recursive: true });
   let states = 0;
   try {
-    for (const width of [375, 520, 521, 768, 769, 1024, 1025, 1100, 1101, 1440]) {
+    for (const width of [375, 520, 521, 768, 769, 999, 1000, 1024, 1025, 1100, 1101, 1440]) {
       const page = await browser.newPage({ viewport: { width, height: 900 } });
       try {
         await page.setContent(html);
         await page.addStyleTag({ content: css });
         await page.evaluate(() => document.fonts && document.fonts.ready);
-        await page.locator('.at-global-header__mobile > summary').click();
-        const state = await page.evaluate(() => {
+        const before = await page.evaluate(() => {
           const box = selector => document.querySelector(selector).getBoundingClientRect();
           const visible = selector => {
             const node = document.querySelector(selector);
@@ -54,20 +60,41 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
             mobile: visible('.at-global-header__mobile'),
             panel: visible('.at-global-header__mobile-panel'),
             menuButton: box('.at-global-header__mobile summary'),
+            ctaMinHeight: getComputedStyle(document.querySelector('.at-global-header__cta')).minHeight,
           };
         });
-        assert.ok(state.overflow <= 1, `${width}: header overflow ${state.overflow}`);
-        assert.equal(state.headers, 1, `${width}: current header count`);
-        assert.equal(state.legacy, 0, `${width}: legacy header markup leaked`);
-        assert.ok(state.header.width > 0 && state.header.height > 0 && state.logo.width > 0, `${width}: header geometry missing`);
-        assert.equal(state.nav, true, `${width}: native navigation missing`);
-        assert.equal(state.actions, true, `${width}: native header actions missing`);
-        assert.equal(state.mobile, true, `${width}: native menu missing`);
-        assert.equal(state.panel, true, `${width}: open native menu panel missing`);
-        assert.ok(state.menuButton.height > 0, `${width}: native menu target collapsed`);
-        await page.locator('.at-global-header__mobile > summary').click();
-        assert.equal(await page.locator('.at-global-header__mobile').evaluate(node => node.open), false,
-          `${width}: native menu did not close without header runtime`);
+        const compact = width <= 768;
+        const tablet = width <= 1024;
+        assert.ok(before.overflow <= 1, `${width}: header overflow ${before.overflow}`);
+        assert.equal(before.headers, 1, `${width}: current header count`);
+        assert.equal(before.legacy, 0, `${width}: legacy header markup leaked`);
+        assert.ok(before.header.width > 0 && before.header.height > 0 && before.logo.width > 0, `${width}: header geometry missing`);
+        assert.ok(Math.abs(before.header.width - (tablet ? width : Math.min(1180, width - 40))) <= 1,
+          `${width}: canonical shared header width drifted (${before.header.width})`);
+        assert.equal(before.nav, !tablet, `${width}: canonical navigation breakpoint drifted`);
+        assert.equal(before.actions, !compact, `${width}: canonical header actions breakpoint drifted`);
+        assert.equal(before.mobile, tablet, `${width}: canonical mobile-menu breakpoint drifted`);
+        assert.equal(before.panel, false, `${width}: closed native menu panel leaked`);
+        assert.ok(parseFloat(before.ctaMinHeight) >= 44, `${width}: canonical header CTA target collapsed`);
+        if (tablet) {
+          assert.ok(before.menuButton.height >= (width <= 520 ? 44 : 40), `${width}: native menu target collapsed`);
+          await page.locator('.at-global-header__mobile > summary').click();
+          const open = await page.evaluate(() => {
+            const node = document.querySelector('.at-global-header__mobile-panel');
+            const rect = node.getBoundingClientRect();
+            return {
+              visible: getComputedStyle(node).display !== 'none' && rect.width > 0 && rect.height > 0,
+              left: rect.left,
+              right: rect.right,
+              viewport: document.documentElement.clientWidth,
+            };
+          });
+          assert.equal(open.visible, true, `${width}: open native menu panel missing`);
+          assert.ok(open.left >= -1 && open.right <= open.viewport + 1, `${width}: native menu panel escaped viewport`);
+          await page.locator('.at-global-header__mobile > summary').click();
+          assert.equal(await page.locator('.at-global-header__mobile').evaluate(node => node.open), false,
+            `${width}: native menu did not close without header runtime`);
+        }
         if (output) await page.screenshot({ path: path.join(output, `header-${width}.png`), fullPage: true, animations: 'disabled' });
         states += 1;
       } finally {

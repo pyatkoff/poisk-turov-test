@@ -18,7 +18,8 @@ foreach ($excludedJs as $excluded) {
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
 if (count($fullJs) !== count($search3Js) + count($excludedJs)) lean_bundle_fail('unexpected JavaScript scope delta');
-if ($search3Css !== ['site-footer-v1.css']) lean_bundle_fail('Search3 must load only the canonical shared footer CSS');
+if ($search3Css !== ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css']) lean_bundle_fail('Search3 must load the canonical shared design tokens, header and footer CSS');
+if (count(array_keys($search3Css, 'site-header-v2.css', true)) !== 1) lean_bundle_fail('canonical shared header owner is not exact');
 if (!in_array('site-footer-v1.css', $fullCss, true)) lean_bundle_fail('canonical shared footer owner missing');
 if (!in_array('app.css', $fullCss, true)) lean_bundle_fail('legacy application layer missing');
 if (!in_array('enhancements.css', $fullCss, true)) lean_bundle_fail('legacy enhancements layer missing');
