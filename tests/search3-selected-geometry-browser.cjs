@@ -196,6 +196,10 @@ async function checkOfferJourney(page,width){
     for(const name of Object.keys(contact))assert.equal(await root.locator('[name="'+name+'"]').inputValue(),'','new search clears previous contact '+name);
     assert.equal(await root.locator('[name=consent]').isChecked(),false,'new search has unchecked consent');
     assert.equal(await page.evaluate(()=>window.__offerCalls.length),6,'reset verification adds only one selected detail/flight pair');
+    await page.evaluate(()=>window.V2Results.render([]));
+    await root.locator('.other-hotel-offers').click();
+    await page.waitForFunction(()=>document.activeElement?.id==='results');
+    assert.equal(await root.isVisible(),false,'expired alternatives return safely to results');
     assert.deepEqual(posts,[],'offer comparison never sends a lead or any POST');
     return{filter:'AI',selected:['offer-standard','offer-family'],prices:[120000,125000],contactsPreserved:true,consentCarried:false,resetClearsContacts:true,returnFocus:true,detailCalls:3,flightCalls:3,realLeads:0};
   }finally{page.off('request',record);}
