@@ -146,7 +146,7 @@ async function checkMealFacet(page, width, previous) {
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
     assert.equal(await field.isVisible(), false, 'dirty edit hides stale controls');
     assert.equal(await calendar.isVisible(), false, 'dirty edit hides the calendar until retained results are shown again');
-    assert.equal(await select.inputValue(), 'всё включено', 'dirty edit preserves the retained result projection');
+    assert.equal(await select.inputValue(), 'meal:all-inclusive', 'dirty edit preserves the retained result projection');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'dirty event does not reveal excluded stale offers');
     await page.evaluate(() => window.V2Results.rerender());
     if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
@@ -157,13 +157,13 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'clear restores every loaded hotel and original ordering');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'clearing all local filters restores the full calendar minimum');
     assert.equal(await a.locator('[data-tid=a-ro]').count(), 1, 'clear restores original tours, including earlier excluded meals');
-    await select.selectOption('всё включено');
+    await select.selectOption('meal:all-inclusive');
     await page.evaluate(items => window.V2Results.render(items.concat([{ id: 'meal-incomplete', name: 'Неполные данные', price: 70000, tours: [{ id: 'unknown', price: 70000, meal: { id: 7 } }] }])), items);
     assert.equal(await field.isVisible(), false, 'incomplete progressive set hides the facet');
     assert.equal(await select.inputValue(), '', 'incomplete set resets selection before rendering prices');
     assert.equal((await visible()).length, 4, 'no silent filtering remains on incomplete data');
     await page.evaluate(items => window.V2Results.render(items), items);
-    await select.selectOption('всё включено');
+    await select.selectOption('meal:all-inclusive');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 101 } })));
     assert.equal(await select.inputValue(), '', 'a real new search clears the local meal');
     assert.equal(await field.isVisible(), false);
@@ -171,7 +171,7 @@ async function checkMealFacet(page, width, previous) {
     if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
     assert.equal(await calendar.isVisible(), false, 'new search cannot show a calendar before its terminal event');
-    await select.selectOption('всё включено');
+    await select.selectOption('meal:all-inclusive');
     assert.equal(await calendar.isVisible(), false, 'a facet chosen during progressive results waits for completion');
     await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } })), items);
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'completion uses the facet chosen before the terminal event');
