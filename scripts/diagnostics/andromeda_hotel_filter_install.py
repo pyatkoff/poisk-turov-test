@@ -39,7 +39,7 @@ try {
         $files=glob(dirname($config['catalog_path']).'/searches/*.json')?:[];
         $seen=[];$retained=[];$pages=0;
         foreach($files as $path){
-            if(str_ends_with($path,'-auth.json'))continue;
+            if(substr($path,-10)==='-auth.json')continue;
             $state=json_decode(file_get_contents($path),true);
             $page=$state['store']['snapshot']??null;if(!is_array($page)||!isset($page['offers'],$page['page'],$page['pages_count']))continue;
             ++$pages;
