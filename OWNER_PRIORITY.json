@@ -1,20 +1,21 @@
 {
-  "schema_version": 14,
-  "active_mode": "search_ux_ds2",
-  "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
-  "current_stage": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
+  "schema_version": 15,
+  "active_mode": "search3_stabilization",
+  "active_phase": "ANYTOUR_SEARCH3_STABILIZATION",
+  "current_stage": "PROJECT_DEFINITION_AND_RELEASE_BASELINE",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "priority_after_emergency_overrides": [
-    "search_user_journey",
-    "results_filters_full_search",
-    "hotel_tour_cards_and_selected_tour",
-    "desktop_mobile_visual_consistency",
-    "shared_header_navigation_footer_ds2",
-    "site_visual_convergence_ds2",
-    "technical_refactor_deferred",
-    "content_seo",
-    "cosmetic_cleanup"
+    "release_identity_and_contract_baseline",
+    "search3_failure_recovery",
+    "truthful_booking_state",
+    "search3_form_results_filters",
+    "selected_tour_review_lead",
+    "accessibility_responsive_performance",
+    "factual_content_and_trust",
+    "controlled_owner_approved_release",
+    "measured_conversion_and_seo_growth",
+    "technical_refactor_deferred"
   ],
-  "source": "explicit_owner_direction_2026_08_31_pause_technical_refactor_update_design_and_search_ds2",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the tour-search UX and user-facing visual layer using ANYTOUR DESIGN SYSTEM 2.0 as the only canonical design system. Improve search form, full-search filters, results, hotel/tour cards, selected-tour UX and desktop/mobile visual consistency; converge shared header/navigation/footer and broader site visuals on DS2 where required by user-facing work. Keep technical_refactor deferred until a new explicit owner direction. Do not introduce or restore Design System 1.0. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
+  "source": "explicit_owner_direction_2026_09_04_start_project_definition",
+  "rule": "Build a commercially effective and reliable AnyTour site through small reversible slices from fresh main. Treat Search3 as an owner-designated UX and behavior target under review, not a mergeable production branch. First audit release identity and establish protected contract baselines; then resolve the confirmed no-flight lead-path and coverage risk plus false booking progress before migrating the remaining Search3 views into canonical owners. Production Search3 remains locked until one exact candidate passes release gates and receives owner approval. Preserve Yandex Metrica and goals, analytics semantics, Tourvisor and pricing contracts, external lead transport and field mapping, manager operations, neighboring projects, canonical AnyTour logo, verified destinations and Design System 2.0."
 }

@@ -1,8 +1,15 @@
 # Codex Execution Queue
 
+> Historical queue retained for audit context. Do not launch its `READY` items
+> as the current priority. The active dependency-ordered queue is
+> `docs/project/MASTER_PLAN.md` plus `AUTOPILOT_STATE.json`.
+
 Purpose: keep a small, self-contained queue of implementation slices that can be pasted/launched in Codex without reconstructing project context manually.
 
-Codex is an execution lane. `AGENTS.md`, `ARCHITECTURE.md`, `AUTOPILOT.md`, `AUTOPILOT_STATE.json`, `TEST_MATRIX.md` and the explicit task below remain authoritative.
+Codex remains an execution lane, but the tasks below are historical and must
+not be launched as current work. Use `AGENTS.md`, `START_HERE.md`,
+`AUTOPILOT_STATE.json`, `docs/project/MASTER_PLAN.md`, `ARCHITECTURE.md` and
+`TEST_MATRIX.md` for current authority and select a fresh explicit task there.
 
 ## Operating rules
 

@@ -1,6 +1,11 @@
 # AnyTour V2 — Brand + Product Experiments Roadmap
 
-This roadmap is the active pre-traffic product plan. Paid/real-user traffic analysis is intentionally out of scope until the owner explicitly decides the product is ready for traffic. Current visitors are the owner/team and must not be treated as conversion evidence.
+> Historical snapshot. This roadmap records the pre-Search3 assessment and is
+> not the active execution queue or current release-readiness claim. Use
+> `START_HERE.md`, `docs/project/PRODUCT_BRIEF.md` and
+> `docs/project/MASTER_PLAN.md` for current direction.
+
+This roadmap was the active pre-traffic product plan at the time of its evidence. Paid/real-user traffic analysis was intentionally out of scope until the owner explicitly decided the product was ready for traffic. Current visitors in that snapshot were the owner/team and must not be treated as conversion evidence.
 
 ## Release gate
 
