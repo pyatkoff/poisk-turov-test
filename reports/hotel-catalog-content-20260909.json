@@ -1,0 +1,339 @@
+{
+  "anex": {
+    "description_pilot_source": "117aff39f6cc0990ba177a79983ee4e71b7d0798",
+    "description_run": 34317447615,
+    "descriptions_saved": 5,
+    "hotel_ids": [
+      8121,
+      16193,
+      16229,
+      16330,
+      17097
+    ],
+    "manual_decisions_changed": 0,
+    "mappings_changed": 0,
+    "persistent_tables": [
+      "anex_hotel_content",
+      "anex_hotel_content_requests"
+    ],
+    "photo_batch": {
+      "requested": 5,
+      "returned": 5,
+      "rows": [
+        {
+          "id": 8121,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 16193,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 16229,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 16330,
+          "photos": 0,
+          "status": "empty"
+        },
+        {
+          "id": 17097,
+          "photos": 0,
+          "status": "empty"
+        }
+      ]
+    },
+    "photos_run": 34317826725,
+    "photos_source": "ff5c2f5d14491ec9ad78754a186584f0af1ba066",
+    "total_supplier_requests_this_task": 6,
+    "unproven": "Five empty galleries do not establish absence of photos for all ANEX hotels."
+  },
+  "audit_and_repair": {
+    "artifact_digest": "sha256:440a0d522411c182109ef31662cfe34285f6780287b69d7a2fea9afce8147d69",
+    "artifact_id": 10090833841,
+    "conclusion": "success",
+    "job_id": 102358694272,
+    "report_sha256": "f01385d81ba4f723f5f075a7e0bdb0aeee1f4f947b0aa3f0bdaabe0712c455cb",
+    "run_id": 34318160847,
+    "source_sha": "59bf73ce2b3ead8185dcc0b9f842478150c0e978"
+  },
+  "canonical_fix": {
+    "files": [
+      "v2/data/hotel-details-v1.php",
+      "tests/hotel-details-smoke.php"
+    ],
+    "main_sha": "41ec8876c5c92a4a9d1b71d7387dcae6b5efee66",
+    "php_smoke_run": 34318224463,
+    "pr": 1679,
+    "production": {
+      "bootstrap_run": 34318308859,
+      "collector_job": 102359178556,
+      "collector_result": {
+        "attempted": 176,
+        "batch_descriptions": 165,
+        "batch_images": 175,
+        "failed": 0,
+        "fresh_success": 1996,
+        "source_hotels": 2006,
+        "success": 176,
+        "total_descriptions": 1851,
+        "total_images": 1970
+      },
+      "collector_run": 34318308899,
+      "conclusion": "success",
+      "deploy_run": 34318308876
+    },
+    "security_run": 34318224338,
+    "source_sha": "2f7c90c5ecbcf2f04c0f8e483c2fac5672e228d8"
+  },
+  "catalog": {
+    "active_hotels": 133692,
+    "hotels": 133692,
+    "hotels_with_primary_image": 1986
+  },
+  "countries_requiring_interpretation": [
+    {
+      "active_departure_count": 62,
+      "active_hotels": 8794,
+      "country_active": 1,
+      "country_id": 2,
+      "country_name": "Таиланд",
+      "hotel_count": 8794,
+      "rows_seen": 8790,
+      "successful_rows_seen_mismatch": true,
+      "sync_finished_at": "2026-09-07 18:54:38",
+      "sync_status": "success"
+    },
+    {
+      "active_departure_count": 63,
+      "active_hotels": 11150,
+      "country_active": 1,
+      "country_id": 4,
+      "country_name": "Турция",
+      "hotel_count": 11150,
+      "rows_seen": 11149,
+      "successful_rows_seen_mismatch": true,
+      "sync_finished_at": "2026-09-07 14:24:44",
+      "sync_status": "success"
+    },
+    {
+      "active_departure_count": 62,
+      "active_hotels": 509,
+      "country_active": 1,
+      "country_id": 10,
+      "country_name": "Куба",
+      "hotel_count": 509,
+      "rows_seen": 508,
+      "successful_rows_seen_mismatch": true,
+      "sync_finished_at": "2026-09-08 12:58:58",
+      "sync_status": "success"
+    },
+    {
+      "active_departure_count": 62,
+      "active_hotels": 3096,
+      "country_active": 1,
+      "country_id": 12,
+      "country_name": "Шри-Ланка",
+      "hotel_count": 3096,
+      "rows_seen": 3095,
+      "successful_rows_seen_mismatch": true,
+      "sync_finished_at": "2026-09-08 22:47:51",
+      "sync_status": "success"
+    },
+    {
+      "active_departure_count": 62,
+      "active_hotels": 5280,
+      "country_active": 1,
+      "country_id": 13,
+      "country_name": "Китай",
+      "hotel_count": 5280,
+      "rows_seen": 5279,
+      "successful_rows_seen_mismatch": true,
+      "sync_finished_at": "2026-09-08 22:48:24",
+      "sync_status": "success"
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 8,
+      "country_active": 1,
+      "country_id": 19,
+      "country_name": "Чехия",
+      "hotel_count": 8,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 1,
+      "country_active": 1,
+      "country_id": 30,
+      "country_name": "Израиль",
+      "hotel_count": 1,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 42,
+      "country_name": "Словакия",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 44,
+      "country_name": "Великобритания",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 63,
+      "active_hotels": 30556,
+      "country_active": 1,
+      "country_id": 47,
+      "country_name": "Россия",
+      "hotel_count": 30556,
+      "rows_seen": 30550,
+      "successful_rows_seen_mismatch": true,
+      "sync_finished_at": "2026-09-07 18:53:50",
+      "sync_status": "success"
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 6,
+      "country_active": 1,
+      "country_id": 52,
+      "country_name": "Швейцария",
+      "hotel_count": 6,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 65,
+      "country_name": "Польша",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 67,
+      "country_name": "Фиджи",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 71,
+      "country_name": "Албания",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 72,
+      "country_name": "Аруба",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    },
+    {
+      "active_departure_count": 0,
+      "active_hotels": 0,
+      "country_active": 1,
+      "country_id": 90,
+      "country_name": "Венесуэла",
+      "hotel_count": 0,
+      "rows_seen": null,
+      "successful_rows_seen_mismatch": false,
+      "sync_finished_at": null,
+      "sync_status": null
+    }
+  ],
+  "coverage": {
+    "active_route_countries_missing_success": 0,
+    "countries": 74,
+    "failed_sync": 0,
+    "missing_sync": 10,
+    "running_sync": 0,
+    "success_sync": 64,
+    "successful_rows_seen_mismatch": 6
+  },
+  "coverage_limit": "All 74 stored countries audited; all countries with active departure routes have successful sync history. This is not a fresh external ID-set reconciliation. Ten countries without active routes have no complete-sync record. Six successful counts differ by additional local rows, not a proven missing supplier set.",
+  "date": "2026-09-09",
+  "details": {
+    "raw_rows_over_byte_limit": 0,
+    "rows_total": 1830,
+    "successful_descriptions": 1686,
+    "successful_primary_images": 1795,
+    "successful_raw_rows": 1820,
+    "successful_rows": 1820
+  },
+  "media_repair": {
+    "catalog_missing_photos_filled": 878,
+    "description_and_fetch_time_untouched": true,
+    "details_repaired": 1795,
+    "photos_retained": 74700,
+    "raw_json_unchanged": true,
+    "selected": 1820,
+    "status": "ok",
+    "supplier_requests": 0,
+    "without_usable_photos": 25
+  },
+  "next_task": {
+    "action": "Continue the parallel panel implementation, preserve its files, and consume the already stored hotel content; do not rebuild it.",
+    "issue": 1647,
+    "panel_ready": false,
+    "parallel_panel_source": "1aff640f381aaf51dac266e942698dd33162bf85"
+  },
+  "owner_request": "Check Tourvisor catalogue completeness and collect ANEX hotel descriptions/photos before the manual-review panel.",
+  "photo_root_cause": {
+    "cards_with_photo_arrays": 1795,
+    "description_and_fetch_time_untouched": true,
+    "format": "scheme-relative // CDN URLs",
+    "normalizer_limit_per_hotel": 100,
+    "raw_cards_examined": 1820,
+    "raw_links_profiled": 76443,
+    "stored_links_after_repair": 74700
+  },
+  "schema_version": 1
+}
