@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-09-09T15:14:02Z",
+  "issue": 1717,
+  "source_sha": "b62a70487ec25a12e83675277306f2dc0ffdd512",
+  "pull_request": "https://github.com/pyatkoff/poisk-turov-test/pull/1763",
+  "status": "checked_not_published",
+  "changes": {
+    "private_offer_store": {
+      "ttl_seconds": 900,
+      "max_bytes": 2097152,
+      "first_page_only": true,
+      "raw_supplier_offer_ids": "server_only",
+      "guards": [
+        "search_ref",
+        "generation",
+        "expiry",
+        "single_capture",
+        "bounded_state"
+      ]
+    },
+    "hotel_resolver": {
+      "source": "explicit_current_rows_only",
+      "target_exists_required": true,
+      "negative_decisions_preserved": true,
+      "mapping_version_required": true,
+      "selection_enabled": false
+    }
+  },
+  "checks": {
+    "workflow_run": 34368860979,
+    "job": 102524578905,
+    "security_run": 34368860995,
+    "offer_store_checks": 24,
+    "hotel_resolver_checks": 13,
+    "previous_regression": "passed"
+  },
+  "artifact": {
+    "id": 10111024073,
+    "digest": "sha256:031389bb087230ece6eec5192681a766b9aafb1eacd881010516139567c25cbc",
+    "contains": "re-normalized pinned 50-offer fixture"
+  },
+  "effects": {
+    "supplier_requests": 0,
+    "database_reads": 0,
+    "database_writes": 0,
+    "booking_requests": 0,
+    "ui_changes": 0,
+    "deployment": false
+  },
+  "remaining": [
+    "No accepted Andromeda hotel identity rows exist yet",
+    "Runtime search and selection remain disabled",
+    "Supplier price validity and fee finality remain unknown"
+  ],
+  "next_action": "Read-only candidate evidence for the 46 catalog-key offers from saved evidence, excluding four operator-key/roulette rows; import only explicit accepted identities before coordinated SEARCH handoff."
+}
