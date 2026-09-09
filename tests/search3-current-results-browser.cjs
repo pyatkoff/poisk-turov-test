@@ -14,8 +14,8 @@ const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
 const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
-  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, picturelink: picture, tours: [{ ...tour, id: 'other-tour', price: 159000 }, tour, { ...tour, id: 'third-tour', price: 155000 }] },
-  { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
+  { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, seaDistance: 100, picturelink: picture, tours: [{ ...tour, id: 'other-tour', price: 159000 }, tour, { ...tour, id: 'third-tour', price: 155000 }] },
+  { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, seaDistance: 800, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000 }] }
 ];
 const calendarHotels = [
   { id: 'calendar-a', tours: [
@@ -83,6 +83,12 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
+    const budget = page.locator('.search3-budget-filter input');
+    await budget.evaluate(node => { node.value = '110000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    assert.deepEqual(await visible(), ['meal-b'], 'budget and meal must match the same loaded offer');
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'budget calendar uses the same matching offer projection');
+    await budget.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'restoring the budget keeps the active meal projection');
     await page.evaluate(() => {
       const items = window.__mealOriginal;
       window.V2Results.render(items);
@@ -242,13 +248,43 @@ async function run(browser, width, previous) {
     const localHotelInput = localHotelFilter.locator('input');
     const localCategoryFilter = page.locator('.search3-category-filter');
     const localCategorySelect = localCategoryFilter.locator('select');
+    const localBudgetFilter = page.locator('.search3-budget-filter');
+    const localBudgetInput = localBudgetFilter.locator('input');
+    const localRatingFilter = page.locator('.search3-rating-filter');
+    const localRatingSelect = localRatingFilter.locator('select');
+    const localSeaFilter = page.locator('.search3-sea-filter');
+    const localSeaSelect = localSeaFilter.locator('select');
     assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
+    assert.equal(await localBudgetFilter.isVisible(), true, 'complete loaded offer prices expose a budget facet');
     assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
+    assert.equal(await localRatingFilter.isVisible(), true, 'rating facet appears when every loaded hotel has a rating');
+    assert.equal(await localSeaFilter.isVisible(), true, 'sea facet appears when every loaded hotel has a distance');
+    const rail = page.locator('.results-filter-rail'), actions = page.locator('#resultsTools .results-tools__actions');
+    if (width >= 1025) {
+      assert.equal(await rail.isVisible(), true, 'desktop exposes one canonical left filter rail');
+      assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'results-filter-rail', 'desktop moves current filter owners into the rail');
+      const railBox = await rail.boundingBox(), resultsBox = await page.locator('#results').boundingBox();
+      assert.ok(railBox.width >= 220 && resultsBox.x >= railBox.x + railBox.width - 1, 'desktop rail and cards use separate readable columns');
+    } else {
+      assert.equal(await rail.isVisible(), false, 'tablet and mobile do not reserve an empty rail');
+      assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'results-tools__actions', 'tablet and mobile retain top filter controls');
+      assert.equal(await actions.isVisible(), true);
+    }
+    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['cheap'], 'budget filters only offers within the selected loaded total');
+    assert.equal(await page.locator('#results [data-hotel-id=cheap] .hotel-price').innerText().then(text => text.replace(/\s/g, '')), '90000₽', 'budget retains the exact qualifying offer price');
+    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localRatingSelect.selectOption('4.5');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'rating threshold filters the loaded hotels locally');
+    await localRatingSelect.selectOption('0');
+    await localSeaSelect.selectOption('200');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'sea threshold filters only complete loaded distance data');
+    await localSeaSelect.selectOption('0');
     await localCategorySelect.selectOption('5');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'category facet filters only the already loaded hotels');
     assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'category facet reports a truthful loaded-card count');
     await localHotelInput.fill('  ВТОРОЙ  ');
-    assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and rating filters combine locally');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and category filters combine locally');
     assert.match(await localHotelFilter.locator('small').innerText(), /Показано 0 из 2 загруженных отелей/, 'combined filters report their truthful loaded-card count');
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');

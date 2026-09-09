@@ -940,8 +940,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
         self.assertLessEqual(
             (ROOT / 'v2/search3-results-filters-v1.css').stat().st_size,
-            20900,
-            'one results owner includes the authorized OTA shortlist and lead-local return: 20633 B prior release +209 B =20842 B',
+            22600,
+            'one results owner includes the authorized responsive desktop filter rail; superseded hidden-rail rules were replaced in place',
         )
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
@@ -1067,11 +1067,15 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("window.addEventListener('v2:results-rendered',rendered)", source)
         self.assertIn("window.addEventListener('v2:search-reset',clear)", source)
         self.assertIn("Array.isArray(event.detail.items)", source)
-        self.assertIn("values.every(value=>value>0)", source)
-        self.assertIn("categoryField.hidden=!available", source)
-        self.assertIn("categories[index]===category", source)
-        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,version:4}", source)
+        self.assertIn("list.every(value=>value>0)", source)
+        self.assertIn("fieldNode.hidden=options.length<2", source)
+        self.assertIn("facets.categories[index]===facets.category", source)
+        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:5}", source)
         self.assertIn("mealField.hidden=!available", source)
+        self.assertIn("window.matchMedia('(min-width:1025px)')", source)
+        self.assertIn("Number(t&&t.price||0)<=budget", source)
+        self.assertIn("cardValues('rating')", source)
+        self.assertIn("cardValues('seaDistance')", source)
         self.assertNotIn('V2SearchLifecycle', source)
         self.assertNotIn('fetch(', source)
         self.assertGreaterEqual(self.bundle.count("'mobile-results-filters-v1.js'"), 2)

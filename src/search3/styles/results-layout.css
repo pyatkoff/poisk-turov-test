@@ -31,10 +31,11 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-state--done{border-color:#b8dcc8;background:#f5fff9}
 & .results-tools{margin:20px 0;padding:20px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-hotel-filter{flex:2 1 250px}
-& :is(.search3-category-filter,.search3-meal-filter){flex:1 1 185px}
-& :is(.search3-hotel-filter,.search3-category-filter,.search3-meal-filter)[hidden]{display:none}
-& .search3-hotel-filter small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
-& .search3-hotel-filter small:empty{display:none}
+& :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter){flex:1 1 185px}
+& :is(.search3-hotel-filter,.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter)[hidden]{display:none}
+& :is(.search3-hotel-filter,.search3-budget-filter) small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
+& :is(.search3-hotel-filter,.search3-budget-filter) small:empty{display:none}
+& .search3-budget-filter input[type=range]{padding:0;accent-color:#2743cb}
 & .search3-shortlist{display:grid;gap:18px;margin:20px 0;padding:20px;border:1px solid #cbd6ef;border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-shortlist[hidden]{display:none!important}
 & .search3-shortlist__head{display:flex;align-items:start;justify-content:space-between;gap:16px}
@@ -61,6 +62,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist-remove{color:#526078}
 & .search3-shortlist-status{min-height:0;margin:0;color:#526078;font-size:13px}
 & .search3-shortlist-status:empty{display:none}
+& .results-layout{display:grid;gap:22px}
 & #results{display:grid;gap:22px}
 & .results-filter-rail,&:not(:has(#results>*)) :is(.results-layout,.results-tools--ds2){display:none!important}
 &:is(:has(#results>*),.search3-selected-open) :is(.v2-product-hero,#tourSearch){display:none!important}
@@ -72,12 +74,28 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools>div:first-child>strong{font-size:22px}
 & .results-tools__actions{gap:12px}
 & .search3-hotel-filter{flex-basis:100%}
-& :is(.search3-category-filter,.search3-meal-filter){flex-basis:160px}
+& :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-rating-filter,.search3-sea-filter){flex-basis:160px}
 & #resultsSearchEdit{flex:1 1 120px}
 & .search3-shortlist{padding:16px;margin-block:16px}
 & .search3-shortlist__head{display:grid}
 & .search3-shortlist-clear{justify-self:start}
 & .search3-shortlist__items{grid-template-columns:1fr}
+}
+@media(min-width:1025px){
+& .results-tools__actions>:not(label:has(#sortResults)):not(#resultsSearchEdit){display:none}
+& .results-layout:has(#results>*){grid-template-columns:230px minmax(0,1fr);align-items:start}
+& .results-filter-rail{position:sticky;top:18px;display:grid!important;gap:16px;padding:18px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
+& .results-filter-rail:is(:empty,[hidden]){display:none!important}
+& .search3-filter-rail__head{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--at-line-soft,#e9edf6)}
+& .search3-filter-rail__head strong{font-size:20px}
+& .search3-filter-rail__head span{color:#526078;font-size:12px}
+& .results-filter-rail>label{display:grid;gap:6px;color:#526078;font-size:13px;line-height:1.4;font-weight:600}
+& .results-filter-rail>label[hidden]{display:none}
+& .results-filter-rail :is(input:not([type=range]),select){width:100%;min-height:44px;padding:9px 10px;background:var(--at-soft,#f5f8ff);font-size:15px;font-weight:400}
+& .results-filter-rail input[type=range]{width:100%;min-height:32px}
+& .search3-filter-reset{width:100%;color:#2743cb;font-weight:600}
+& .search3-filter-reset[hidden]{display:none}
+& #results .hotel-main{grid-template-columns:minmax(200px,32%) minmax(0,1fr)}
 }
 }
 
