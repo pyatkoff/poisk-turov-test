@@ -1,0 +1,70 @@
+{
+  "date": "2026-09-09",
+  "issue": 1647,
+  "pr": 1735,
+  "source_sha": "77e53b1f83eb9ea969762d0a87949377c6cabb49",
+  "merged_sha": "b817cd9eb6610c4ef5bd832752167e9c5fb9646a",
+  "run_id": 34345729947,
+  "job_id": 102446752220,
+  "artifact_id": 10101619906,
+  "artifact_sha256": "4e17149c7948ea97813f8f8d50655ea33d3861cda2e115a497b12296c2bec8c1",
+  "restored_artifact": 10100996931,
+  "storage": "already_finalized; new_database_operations=0",
+  "report": {
+    "report_sha256": "720a156bd4efc8b1314e508abf3cbd27ddd76285ae19800c8066b88e78e34e83",
+    "status": "ok",
+    "scope": "cli_presence_only",
+    "components": {
+      "bitrix_bootstrap": {
+        "present": false,
+        "inside_anytour_root": false,
+        "readable_file": false
+      },
+      "bitrix_admin_entry": {
+        "present": false,
+        "inside_anytour_root": false,
+        "readable_file": false
+      },
+      "bitrix_user_class": {
+        "present": false,
+        "inside_anytour_root": false,
+        "readable_file": false
+      },
+      "site_auth_entry": {
+        "present": false,
+        "inside_anytour_root": false,
+        "readable_file": false
+      },
+      "review_entry": {
+        "present": true,
+        "inside_anytour_root": true,
+        "readable_file": true
+      }
+    },
+    "trusted_adapter": {
+      "configured_in_cli": false,
+      "outside_document_root": false,
+      "readable_file": false
+    },
+    "owner_authority": "not_established",
+    "web_session_verified": false,
+    "session_started": false,
+    "application_code_executed": false,
+    "database_calls": 0,
+    "supplier_requests": 0,
+    "data_writes": 0,
+    "limitation": "CLI presence does not prove web environment, role, expiry or owner authorization.",
+    "ssh_attempts": 1,
+    "source_sha": "b817cd9eb6610c4ef5bd832752167e9c5fb9646a",
+    "inventory_sha256": "c3a8b7bcc3b6cb90975959a2c8dc958edd7e37ef989a68dfd062d6925f3a1b09"
+  },
+  "checks": {
+    "storage_python_php": 16,
+    "security_run": 34345554140,
+    "panel_run": 34345554073,
+    "local_php": "unavailable; new PHP-backed test verified in CI",
+    "anonymous_http": "not verified: web tool returned non-retryable URL safety rejection; no retry/bypass"
+  },
+  "conclusion": "Fixed Bitrix/bootstrap/admin/user/auth paths absent; review entry file present. Repository references are not proof Bitrix is installed in this root. CLI environment does not establish web owner authority or absence of all auth systems. Presence does not establish deployed source/protected HTTP availability.",
+  "next_action": "Identify the owner's actual existing AnyTour login URL/authority. Then reviewed adapter and isolated entrypoint provenance/HTTP gates; do not invent credentials or use a public session as owner. Do not repeat completed263 storage."
+}
