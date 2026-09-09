@@ -19,6 +19,21 @@ function v2_offer_hot_search_window(?DateTimeImmutable $now = null): array
     return [$from->format('Y-m-d'), $from->modify('+14 days')->format('Y-m-d')];
 }
 
+/** Search dates for a monthly page, clamped to the month and Moscow business day. */
+function v2_offer_month_search_window(int $year, int $month, ?DateTimeImmutable $now = null): ?array
+{
+    if ($year < 2020 || $year > 2100 || $month < 1 || $month > 12) return null;
+    $timezone = new DateTimeZone('Europe/Moscow');
+    $start = new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month), $timezone);
+    $tomorrow = (new DateTimeImmutable(v2_offer_business_date($now), $timezone))->modify('+1 day');
+    if ($start < $tomorrow) $start = $tomorrow;
+    $end = (new DateTimeImmutable(sprintf('%04d-%02d-01', $year, $month), $timezone))->modify('last day of this month');
+    if ($start > $end) return null;
+    $last = $start->modify('+21 days');
+    if ($last > $end) $last = $end;
+    return [$start->format('Y-m-d'), $last->format('Y-m-d')];
+}
+
 function v2_offer_departure_is_current(string $departureDate, string $businessDate): bool
 {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $departureDate)) return false;

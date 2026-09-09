@@ -4,6 +4,7 @@ require_once __DIR__.'/site-page-shell-v1.php';
 require_once __DIR__.'/seo-page-contract-v1.php';
 require_once __DIR__.'/seo-seasonal-offer-snapshot-v1.php';
 require_once __DIR__.'/seo-price-calendar-v1.php';
+require_once __DIR__.'/offer-freshness-v1.php';
 
 /** Render an approved/review seasonal page on its final clean URL. */
 function v2_seo_render_seasonal(array $record): void
@@ -19,16 +20,9 @@ function v2_seo_render_seasonal(array $record): void
     if($pageKey==='')throw new InvalidArgumentException('SEO seasonal runtime requires exact seasonal page key');
     $page=v2_seo_page_contract($raw);
     $month=(int)($identity['month']??0);$year=(int)($identity['year']??0);
-    if($month>=1&&$month<=12&&$year>=2020){
-        $start=new DateTimeImmutable(sprintf('%04d-%02d-01',$year,$month));
-        $tomorrow=new DateTimeImmutable('tomorrow');
-        $end=$start->modify('last day of this month');
-        if($start<$tomorrow)$start=$tomorrow;
-        if($start<=$end){
-            $last=$start->modify('+21 days');if($last>$end)$last=$end;
-            $page['search_state']['dateFrom']=$start->format('Y-m-d');
-            $page['search_state']['dateTo']=$last->format('Y-m-d');
-        }
+    $searchWindow=v2_offer_month_search_window($year,$month);
+    if($searchWindow!==null){
+        [$page['search_state']['dateFrom'],$page['search_state']['dateTo']]=$searchWindow;
     }
 
     $context=sp_context($path,$page['title'],$page['description']);
