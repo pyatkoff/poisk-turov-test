@@ -10,6 +10,11 @@ class CatalogTest(unittest.TestCase):
         self.assertIn('sea paradise',names('APERION BEACH HOTEL (EX. SEA PARADISE)'))
         self.assertEqual(names('Lemon & Soul Hotel'),names('Lemon and Soul'))
 
+    def test_cyrillic_former_name_marker(self):
+        current='VERGINIA SHARM RESORT & AQUA PARK'
+        for marker in ['EX.', 'ЕХ.', 'EХ.', 'ЕX.']:
+            self.assertIn('verginia sharm aqua park',names(current+' ('+marker+' VERGINIA SHARM, SOL VERGINIA)'))
+
     def test_distinctive_qualifiers_preserved(self):
         self.assertNotEqual(names('Empire Beach Hotel'),names('Empire Hotel'))
         self.assertNotEqual(names('Sharm Holiday Rentals'),names('Sharm Holiday'))

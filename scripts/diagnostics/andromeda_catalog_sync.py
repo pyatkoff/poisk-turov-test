@@ -13,7 +13,7 @@ CATALOG_SHA = '01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641'
 def names(value):
     # Parenthesized EX names are alternate names, not an excuse to remove BEACH/PALACE.
     value = unicodedata.normalize('NFKC', value).casefold().replace('ё','е').replace('&',' and ')
-    parts = re.split(r'\(\s*(?:ex[.\s:-]*|быв[.\s:-]*)', value)
+    parts = re.split(r'\(\s*(?:[eе][xх][.\s:-]*|быв[.\s:-]*)', value)
     result = set()
     for part in parts:
         words = re.findall(r'[^\W_]+', part.split(')')[0], re.UNICODE)
