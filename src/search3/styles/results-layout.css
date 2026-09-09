@@ -31,8 +31,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-state--done{border-color:#b8dcc8;background:#f5fff9}
 & .results-tools{margin:20px 0;padding:20px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-hotel-filter{flex:2 1 250px}
-& .search3-category-filter{flex:1 1 185px}
-& :is(.search3-hotel-filter,.search3-category-filter)[hidden]{display:none}
+& :is(.search3-category-filter,.search3-meal-filter){flex:1 1 185px}
+& :is(.search3-hotel-filter,.search3-category-filter,.search3-meal-filter)[hidden]{display:none}
 & .search3-hotel-filter small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
 & .search3-hotel-filter small:empty{display:none}
 & #results{display:grid;gap:22px}
@@ -46,7 +46,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools>div:first-child>strong{font-size:22px}
 & .results-tools__actions{gap:12px}
 & .search3-hotel-filter{flex-basis:100%}
-& .search3-category-filter{flex-basis:160px}
+& :is(.search3-category-filter,.search3-meal-filter){flex-basis:160px}
 & #resultsSearchEdit{flex:1 1 120px}
 }
 }
