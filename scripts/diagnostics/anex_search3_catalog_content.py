@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit saved Tourvisor coverage and collect one explicit durable ANEX content cohort."""
+"""Inspect preserved ANEX fields. Content collection is stopped per supplier clarification."""
 import ast
 import hashlib
 import json
@@ -53,22 +53,11 @@ def remote_run(payload):
         if result.returncode or len(result.stdout) > 10000000:
             raise ValueError('remote PHP failed')
         return json.loads(result.stdout)
-    before = php(SNAPSHOT_PHP, {'mode': 'snapshot'})
-    if before.get('status') != 'ok':
-        raise ValueError('preservation unavailable')
-    # The completed Tourvisor backfill is a separate operation, never repeated here.
-    repair = {'status': 'not_run', 'reason': 'saved_media_repair_completed'}
-    audit = php(AUDIT_PHP, {'raw_limit': 2000})
-    content = php(CONTENT_PHP, payload, timeout=220)
-    photos = php(PHOTOS_PHP, {'source_sha': payload['source_sha'], 'plan': payload['plan']})
-    if photos.get('status') == 'completed':
-        refreshed = php(CONTENT_PHP, payload, timeout=45)
-        content = dict(refreshed, supplier_requests=content.get('supplier_requests', 0), cached=content.get('cached'))
-    after = php(SNAPSHOT_PHP, {'mode': 'snapshot'})
-    if before != after:
-        raise ValueError('mapping preservation mismatch')
-    return {'schema_version': 2, 'source_sha': payload['source_sha'], 'plan': payload['plan'],
-            'tourvisor': audit, 'anex': content, 'photos': photos, 'media_repair': repair, 'preservation': after}
+    report = php(INSPECT_PHP, payload)
+    if report.get('status') != 'ok' or report.get('supplier_requests') != 0 or report.get('read_only') is not True:
+        raise ValueError('read-only content inspection failed')
+    return dict(report, source_sha=payload['source_sha'])
+
 
 
 def execute(payload):
@@ -81,13 +70,8 @@ def execute(payload):
     own = Path(__file__).read_text()
     node = next(n for n in ast.parse(own).body if isinstance(n, ast.FunctionDef) and n.name == 'remote_run')
     source = 'import json, subprocess, sys\n'
-    for var, body in {
-        'SNAPSHOT_PHP': php_body('anex_search3_gap_details.php'),
-        'AUDIT_PHP': php_body('anex_search3_catalog_content_reader.php'),
-        'PHOTOS_PHP': Path(__file__).resolve().parents[2].joinpath('app/integrations/anex-client.php').read_text().removeprefix('<?php').replace('declare(strict_types=1);', '', 1) + '\n' + php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_plan.php') + '\n' + php_body('anex_search3_catalog_content_photos.php'),
-        'CONTENT_PHP': php_body('anex_search3_hotel_content.php') + '\n' + php_body('anex_search3_catalog_content_plan.php') + '\n' + php_body('anex_search3_catalog_content_collect.php'),
-    }.items():
-        source += var + ' = ' + repr('declare(strict_types=1);\n' + body) + '\n'
+    body = php_body('anex_search3_catalog_content_plan.php') + '\n' + php_body('anex_search3_catalog_content_inspect.php')
+    source += 'INSPECT_PHP = ' + repr('declare(strict_types=1);\n' + body) + '\n'
     source += ast.get_source_segment(own, node) + '\n'
     source += "try:\n    print(json.dumps(remote_run(json.load(sys.stdin)), ensure_ascii=False))\n"
     source += "except Exception as error:\n    print(json.dumps({'error': type(error).__name__}))\n"
@@ -119,26 +103,16 @@ def main():
     source_sha = os.environ.get('GITHUB_SHA', '')
     if not re.fullmatch('[0-9a-f]{40}', source_sha):
         raise ValueError('source SHA required')
-    report = execute({'source_sha': source_sha, 'verified_ids': verified_ids(directory), 'plan': batch_plan()})
-    path = directory / 'anex-catalog-content-report.json'
+    report = execute({'source_sha': source_sha})
+    path = directory / 'anex-catalog-content-inspection.json'
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
-    anex = report['anex']
-    summary = {'source_sha': source_sha, 'report_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
-        'tourvisor_status': report['tourvisor'].get('status'),
-        'catalog': report['tourvisor'].get('catalog'), 'coverage': report['tourvisor'].get('coverage'),
-        'coverage_countries': [row for row in report['tourvisor'].get('countries', []) if row['sync_status'] != 'success' or row['successful_rows_seen_mismatch']],
-        'raw_media_profile': report['tourvisor'].get('raw_media_profile'),
-        'photos': report['photos'], 'media_repair': report['media_repair'],
-        'details': report['tourvisor'].get('details'), 'anex_status': anex.get('status'),
-        'supplier_requests': anex.get('supplier_requests'), 'cached': anex.get('cached'),
-        'plan': report.get('plan'), 'batch_status': anex.get('batch_status'),
-        'anex_rows': [{'id': row['anex_hotel_id'], 'status': row['status'],
-            'availability': (row.get('payload') or {}).get('availability'),
-            'photos': len(((row.get('payload') or {}).get('content') or {}).get('photos', []))}
-            for row in anex.get('rows', [])]}
-    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
-    if anex.get('status') != 'ok' or report['tourvisor'].get('status') != 'ok' or report['photos'].get('status') != 'completed':
-        raise ValueError('one content operation incomplete; inspect preserved report')
+    print(json.dumps({'inspection_status': report['status'], 'source_sha': source_sha,
+        'report_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+        'read_only': report['read_only'], 'supplier_requests': report['supplier_requests'],
+        'rows': report['count'], 'collection_disabled': report['collection_disabled']}, ensure_ascii=False))
+    for row in report['rows']:
+        print('ANEX_SAVED_CONTENT ' + json.dumps(row, ensure_ascii=False, sort_keys=True))
+
 
 
 if __name__ == '__main__':
