@@ -149,6 +149,7 @@ margin:0;background:#f5f7fb;color:#17233b;
   & .section-heading strong {color:var(--at-ink,#151b24);font-size:23px;line-height:1.25;letter-spacing:-.02em}
   & .section-heading span {display:block;color:#526078;font-size:14px;line-height:1.5}
   & .hotel-desc {padding:20px}
+  & .other-hotel-offers {margin-top:16px;min-height:48px;padding:12px 16px;border-color:#c4cfeb;color:#2743cb;font-weight:600}
   & .selected-description summary {min-height:48px;padding:14px 20px;cursor:pointer;color:#2743cb;font-weight:600}
   & .selected-description[open] summary {border-bottom:1px solid var(--at-line-soft,#e9edf6)}
   & .search3-flight-toggle {display:flex;align-items:center;justify-content:center;min-height:46px;width:100%;padding:12px 16px;border-color:#c4cfeb;color:#2743cb;font-size:15px;font-weight:600}

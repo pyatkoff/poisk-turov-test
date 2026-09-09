@@ -151,5 +151,40 @@
       "fixture": "RO90k, AI120k STANDARD, AI125k FAMILY; AI active, select STANDARD, return, choose FAMILY; stale responses and return focus remain correct",
       "excluded": "No Cartesian room/meal combinations, no mutating filter project call as getter, no new provider experiments"
     }
+  },
+  "ota_offer_switch_20260909": {
+    "stage": "IMPLEMENTED_PENDING_CI",
+    "baseline_release_sha": "56c9bf12ec55ca862d15f54757444541a0b86d81",
+    "benefit": [
+      "Selected tour exposes other complete offers of the same hotel through the existing filtered result rows",
+      "Switching offer retains name, phone and comment in memory; consent is unchecked, a new search clears contact draft"
+    ],
+    "ownership": [
+      "v2/results-renderer-v5.js unique current projection and reveal",
+      "v2/tour-controller-v4.js canonical selection and memory-only editor retention",
+      "existing results-layout.css one visual owner",
+      "src/search3/behavior/summary-cta.js existing capture-phase return state"
+    ],
+    "contracts": "No new selector/Cartesian combinations; existing detail/flights only on explicit selection; price arithmetic, lead transport/field mapping unchanged and protected baseline bytes recovered by exact reversal",
+    "size": {
+      "css_delta_bytes": 123,
+      "served_shared_js_delta_bytes": 2120,
+      "initial_full_external_delta_bytes": 2277,
+      "inline_delta_bytes": 0,
+      "public_js_delta_bytes": 34
+    },
+    "verification": {
+      "local": "source/shared build, source check, syntax, return/meal/honest owners, exact controller reverse and owner validators passed",
+      "ci": "34367277256 failed new focus assertion; existing capture handler corrected, stale-projection fallback now closes selected before returning to results; rerun pending",
+      "browser": "375/1440 existing fixture extended, execution pending",
+      "real_leads": 0
+    },
+    "published": false,
+    "deferred": [
+      "Physical Safari/iPhone",
+      "User pilot",
+      "Production approval"
+    ],
+    "next_action": "Run applicable exact CI, inspect same-hotel/contacts states, merge and reuse exact artifact in preview"
   }
 }

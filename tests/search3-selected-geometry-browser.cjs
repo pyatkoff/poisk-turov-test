@@ -111,6 +111,99 @@ async function checkLargeList(page,width){
   await root.locator('.tour-flights').screenshot({path:path.join(output,'large-'+width+'-selected.png')});
   return {choices:89,collapsedHeight,expandedHeight,selectedIndex:87,price:257250,allChoicesReachable:true,keyboard:true,realLeads:0};
 }
+async function checkOfferJourney(page,width){
+  const hotel={id:'offer-hotel',name:'Отель с вариантами номера',country:{name:'Турция'},region:{name:'Анталья'},category:5,picturelink:picture};
+  const offer=(id,price,roomType,meal)=>({...tour,id,price,roomType,meal,hotel,hotelDescription:'Отель рядом с пляжем.'});
+  const offers=[offer('offer-ro',90000,'STANDARD',{name:'RO',fullName:'Без питания'}),offer('offer-standard',120000,'STANDARD',{name:'AI',fullName:'Всё включено'}),offer('offer-family',125000,'FAMILY',{name:'AI',fullName:'Всё включено'})];
+  const items=[{...hotel,price:90000,tours:offers},{id:'other-hotel',name:'Другой отель без питания',price:80000,category:4,tours:[{...offers[0],id:'other-ro',price:80000}]}];
+  const posts=[],record=request=>{if(request.method()!=='GET')posts.push({method:request.method(),url:request.url()});};
+  page.on('request',record);
+  try{
+    await page.locator('#selectedTour .back-results').click();
+    await page.evaluate(({items,offers,segment})=>{
+      window.dispatchEvent(new CustomEvent('v2:search-reset'));
+      window.V2Runtime.state.searchId=731;
+      const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
+      window.__offerItems=freeze(items);
+      window.__offerCalls=[];
+      window.V2Runtime.api=async(action,params)=>{
+        window.__offerCalls.push({action,tourId:params&&params.tourId,currency:params&&params.currency,searchId:window.V2Runtime.state.searchId});
+        const chosen=offers.find(item=>item.id===params?.tourId);
+        if(!chosen)throw Error('unexpected offer identity');
+        if(action==='tour')return chosen;
+        if(action==='flights')return[{isDefault:true,price:{value:chosen.price},forward:[segment],backward:[segment]}];
+        throw Error('unexpected offer API action '+action);
+      };
+      window.V2Results.render(window.__offerItems);
+      window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{searchId:731,items:window.__offerItems}}));
+    },{items,offers,segment});
+    const meal=page.locator('.search3-meal-filter select');
+    await meal.selectOption('всё включено');
+    const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard'],'collapsed filtered card selects the complete STANDARD AI offer');
+    const selectOffer=async(id,price,room)=>{
+      await card.locator('.direct-tour[data-tid="'+id+'"]').click();
+      await root.locator('.search3-flight-continue button').waitFor();
+      assert.equal(await page.evaluate(()=>window.V2TourController.currentTour.id),id,'selected identity matches the clicked complete offer');
+      assert.equal(await root.locator('.facts>div').filter({hasText:'Номер'}).locator('b').innerText(),room,'room comes from the selected offer');
+      assert.equal(await root.locator('.facts>div').filter({hasText:'Питание'}).locator('b').innerText(),'Всё включено','meal comes from the same selected offer');
+      assert.equal((await root.locator('.selected-price').innerText()).replace(/\D/g,''),String(price),'selected price matches the same offer');
+      await root.locator('.search3-flight-continue button').click();
+      await page.waitForFunction(()=>document.activeElement?.name==='phone');
+      assert.match((await root.locator('.lead-selection-summary').innerText()).replace(/\s/g,''),new RegExp(price+'₽'),'contact summary retains the selected total');
+    };
+    await selectOffer('offer-standard',120000,'STANDARD');
+    const contact={name:'Проверка сохранения',phone:'+7 999 123-45-67',comment:'Нужен семейный номер'};
+    for(const [name,value] of Object.entries(contact))await root.locator('[name="'+name+'"]').fill(value);
+    await root.locator('[name=consent]').check();
+    const alternatives=root.locator('.other-hotel-offers');
+    assert.equal(await alternatives.count(),1,'one action returns to the existing offer list');
+    assert.equal(await alternatives.innerText(),'Другие варианты этого отеля (1)','alternative count excludes the selected offer and filtered RO');
+    assert.ok((await alternatives.boundingBox()).height>=44,'offer action retains a full touch target');
+    await capture(page,'offers-'+width+'-standard-contact');
+    await alternatives.focus();await alternatives.press('Enter');
+    await page.waitForFunction(()=>document.activeElement?.dataset.tid==='offer-standard');
+    assert.equal(await root.isVisible(),false,'alternative action returns to results');
+    assert.equal(await meal.inputValue(),'всё включено','meal filter survives selected-tour return');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard','offer-family'],'only matching complete offers are expanded');
+    assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'),'true','same hotel stays expanded');
+    assert.doesNotMatch(await card.innerText(),/Без питания|90\s?000/,'excluded cheaper RO cannot return through alternatives');
+    await card.screenshot({path:path.join(output,'offers-'+width+'-alternatives.png'),animations:'disabled'});
+    await selectOffer('offer-family',125000,'FAMILY');
+    for(const [name,value] of Object.entries(contact))assert.equal(await root.locator('[name="'+name+'"]').inputValue(),value,'typed '+name+' survives offer change in memory');
+    assert.equal(await root.locator('[name=consent]').isChecked(),false,'consent is not silently transferred to another offer');
+    assert.equal(await page.evaluate(()=>window.V2Runtime.state.searchId),731,'offer changes retain search identity');
+    const selected=await capture(page,'offers-'+width+'-family-contact');
+    assert.equal(selected.overflow,false,'offer journey stays within viewport');
+    assert.deepEqual(await page.evaluate(()=>window.__offerItems[0].tours.map(item=>[item.id,item.price,item.roomType,item.meal.name])),offers.map(item=>[item.id,item.price,item.roomType,item.meal.name]),'source offers remain unchanged');
+    assert.deepEqual(await page.evaluate(()=>window.__offerCalls),[
+      {action:'tour',tourId:'offer-standard',currency:'RUB',searchId:731},{action:'flights',tourId:'offer-standard',currency:'RUB',searchId:731},
+      {action:'tour',tourId:'offer-family',currency:'RUB',searchId:731},{action:'flights',tourId:'offer-family',currency:'RUB',searchId:731}
+    ],'each selected offer makes one detail and one flights call; local alternatives make none');
+    await root.locator('.back-results').click();
+    await page.waitForFunction(()=>document.activeElement?.dataset.tid==='offer-family');
+    assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'),'true','ordinary return retains expanded alternatives and focuses the last offer');
+    await page.evaluate(()=>{
+      window.dispatchEvent(new CustomEvent('v2:search-reset'));
+      window.__staleAlternatives=window.V2Results.offerAlternatives('offer-family');
+      window.V2Runtime.state.searchId=732;
+      window.V2Results.render(window.__offerItems);
+      window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{searchId:732,items:window.__offerItems}}));
+    });
+    assert.equal(await page.evaluate(()=>window.__staleAlternatives),null,'reset invalidates the old offer projection');
+    await meal.selectOption('всё включено');
+    await selectOffer('offer-standard',120000,'STANDARD');
+    for(const name of Object.keys(contact))assert.equal(await root.locator('[name="'+name+'"]').inputValue(),'','new search clears previous contact '+name);
+    assert.equal(await root.locator('[name=consent]').isChecked(),false,'new search has unchecked consent');
+    assert.equal(await page.evaluate(()=>window.__offerCalls.length),6,'reset verification adds only one selected detail/flight pair');
+    await page.evaluate(()=>window.V2Results.render([]));
+    await root.locator('.other-hotel-offers').click();
+    await page.waitForFunction(()=>document.activeElement?.id==='results');
+    assert.equal(await root.isVisible(),false,'expired alternatives return safely to results');
+    assert.deepEqual(posts,[],'offer comparison never sends a lead or any POST');
+    return{filter:'AI',selected:['offer-standard','offer-family'],prices:[120000,125000],contactsPreserved:true,consentCarried:false,resetClearsContacts:true,returnFocus:true,detailCalls:3,flightCalls:3,realLeads:0};
+  }finally{page.off('request',record);}
+}
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
   const errors=[];
@@ -246,7 +339,10 @@ async function run(browser, width, previous) {
     }
     const calls=await page.evaluate(()=>window.__geometryCalls);
     assert.deepEqual(calls,{tour:1,flights:1,other:0});
-    if(!previous && [375,1440].includes(width)) states.large=await checkLargeList(page,width);
+    if(!previous && [375,1440].includes(width)) {
+      states.large=await checkLargeList(page,width);
+      states.offers=await checkOfferJourney(page,width);
+    }
     assert.deepEqual(errors,[],'fixture must not cause browser errors');
     return states;
   } catch(error) {
