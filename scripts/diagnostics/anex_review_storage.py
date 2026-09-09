@@ -239,7 +239,7 @@ def php_string(value):
     return "'" + value.replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
-def execute(payload):
+def execute(payload, inventory=False):
     names = ('ANYTOOUR_DEPLOY_SSH_KEY', 'ANYTOOUR_DEPLOY_HOST', 'ANYTOOUR_DEPLOY_USER')
     if any(not os.environ.get(n, '').strip() for n in names):
         raise ValueError('missing SSH configuration')
@@ -256,7 +256,9 @@ def execute(payload):
             '-o', 'StrictHostKeyChecking=accept-new', '-o', 'UserKnownHostsFile=' + str(Path(temp) / 'known_hosts'),
             '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=2',
             '-o', 'LogLevel=DEBUG1', '-l', user, host,
-            'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r ' + shlex.quote(php_source())]
+            'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r ' + shlex.quote(
+                Path(__file__).with_name('anex_review_auth_inventory.php').read_text().removeprefix('<?php')
+                if inventory else php_source())]
         result, attempts = gaps.run_ssh(command, json.dumps(payload),
             {k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
     if len(result.stdout) > 200000:
@@ -268,9 +270,30 @@ def execute(payload):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(); parser.add_argument('--prepare', action='store_true'); args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--prepare', action='store_true'); mode.add_argument('--auth-inventory', action='store_true')
+    args = parser.parse_args()
     directory = Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
     source = os.environ.get('GITHUB_SHA', '')
+    if args.auth_inventory:
+        if not re.fullmatch('[0-9a-f]{40}', source):
+            raise ValueError('source SHA required')
+        path = directory / 'anex-review-auth-inventory.json'
+        inventory_sha = digest(Path(__file__).with_name('anex_review_auth_inventory.php').read_bytes())
+        if path.exists():
+            saved = json.loads(path.read_bytes())
+            if saved.get('inventory_sha256') == inventory_sha and saved.get('status') == 'ok':
+                print(json.dumps({'status': 'already_inspected', 'new_ssh_calls': 0})); return
+        report = execute({}, inventory=True)
+        if (report.get('status') != 'ok' or report.get('scope') != 'cli_presence_only'
+                or any(report.get(k) != 0 for k in ('database_calls', 'supplier_requests', 'data_writes'))
+                or report.get('application_code_executed') is not False or report.get('session_started') is not False):
+            raise ValueError('auth inventory failed')
+        report['source_sha'] = source
+        report['inventory_sha256'] = inventory_sha
+        write_json(path, report)
+        print(json.dumps({'report_sha256': digest(path.read_bytes()), **report})); return
     if args.prepare:
         reservation, envelope = prepare(directory, source)
         # The historical saved-search audit is already finished. Storage is not a new search experiment.

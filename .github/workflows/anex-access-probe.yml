@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/anex-access-probe.yml'
       - 'scripts/diagnostics/anex_review_storage*'
+      - 'scripts/diagnostics/anex_review_auth_inventory.php'
       - 'app/admin/anex-review/schema-manager.php'
       - 'scripts/diagnostics/anex_access_probe.py'
       - 'scripts/diagnostics/anex_hotel_match_probe.py'
@@ -80,7 +81,7 @@ jobs:
               mode = requested or 'observed'
           else:
               paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
-              review = any(p.startswith('scripts/diagnostics/anex_review_storage') or p == 'app/admin/anex-review/schema-manager.php' for p in paths)
+              review = any(p.startswith('scripts/diagnostics/anex_review_storage') or p in ('scripts/diagnostics/anex_review_auth_inventory.php', 'app/admin/anex-review/schema-manager.php') for p in paths)
               content = any(p.startswith('scripts/diagnostics/anex_search3_catalog_content') or p == 'scripts/diagnostics/anex_search3_hotel_content.php' for p in paths)
               topup = any(p.startswith('scripts/diagnostics/anex_search3_topup_') or p in ('tests/anex_search3_topup_experiment_test.py', 'tests/anex-search3-topup-runner-smoke.php') for p in paths)
               paired = any(p.startswith('scripts/diagnostics/anex_search3_paired_') for p in paths)
@@ -211,6 +212,15 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_review_storage.py
+      - name: Inventory installed review authentication components without bootstrapping sessions
+        # Review inventory never includes the application, adapter, DB helper or a supplier.
+        if: steps.operation.outputs.mode == 'review'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_review_storage.py --auth-inventory
       - name: Reserve one owner-approved Tourvisor hotel batch
         if: steps.operation.outputs.mode == 'topup'
         env:
