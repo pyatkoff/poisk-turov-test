@@ -111,10 +111,12 @@ async function checkMealFacet(page, width, previous) {
     if (!previous) await page.screenshot({ path: path.join(output, `meal-filter-${width}.png`), fullPage: true });
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
     assert.equal(await field.isVisible(), false, 'dirty edit hides stale controls');
+    assert.equal(await calendar.isVisible(), false, 'dirty edit hides the calendar until retained results are shown again');
     assert.equal(await select.inputValue(), 'всё включено', 'dirty edit preserves the retained result projection');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'dirty event does not reveal excluded stale offers');
     await page.evaluate(() => window.V2Results.rerender());
     assert.equal(await field.isVisible(), true);
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'returning to completed results restores the meal-filtered calendar');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'returning to the retained results preserves meal selection');
     await select.selectOption('');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'clear restores every loaded hotel and original ordering');
@@ -132,6 +134,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await field.isVisible(), false);
     await page.evaluate(items => window.V2Results.render(items), items);
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b'], 'new search starts without inherited local selection');
+    assert.equal(await calendar.isVisible(), false, 'new search cannot show a calendar before its terminal event');
     const longLabel = '<img src=x onerror=bad()> Очень длинное описание питания от поставщика без сокращений';
     await page.evaluate(({ items, longLabel }) => { items[0].tours[0].meal = { fullName: longLabel }; window.V2Results.render(items); }, { items, longLabel });
     assert.equal(await select.locator('img').count(), 0, 'supplier labels are rendered as text, never HTML');

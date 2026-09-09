@@ -9,7 +9,7 @@ function ensure(){let box=document.getElementById('currentPriceCalendar');if(box
 function render(items){const box=ensure();if(!box)return[];const days=collect(items);if(days.length<2){box.hidden=true;box.innerHTML='';return days;}const best=Math.min.apply(null,days.map(x=>x.price));box.innerHTML='<div class="current-price-calendar__head"><div><span>Цены по датам</span><strong id="currentPriceCalendarTitle">Когда дешевле вылететь</strong></div><small>Минимум среди найденных сейчас туров</small></div><div class="current-price-calendar__days">'+days.map(x=>'<button type="button" class="current-price-calendar__day'+(x.price===best?' is-best':'')+'" data-calendar-date="'+x.date+'"><span>'+dateLabel(x.date)+'</span><strong>'+money.format(x.price)+' ₽</strong>'+(x.price===best?'<small>самая низкая</small>':'<small>проверить дату</small>')+'</button>').join('')+'</div><p class="current-price-calendar__note">Это текущие цены из уже выполненного поиска, а не история. Нажмите дату, чтобы перепроверить предложения именно на неё.</p>';box.hidden=false;return days;}
 function clear(){const box=document.getElementById('currentPriceCalendar');if(box){box.hidden=true;box.innerHTML='';}}
 function complete(event){terminal=true;render(event&&event.detail&&event.detail.items);}
-function reset(){terminal=false;clear();}
+function reset(event){if(!(event&&event.detail&&event.detail.dirty))terminal=false;clear();}
 window.addEventListener('v2:search-complete',complete);
 window.addEventListener('v2:search-continued',complete);
 window.addEventListener('search3:local-results-filtered',e=>{if(terminal)render(e&&e.detail&&e.detail.items);});
