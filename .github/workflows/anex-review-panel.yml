@@ -6,12 +6,16 @@ on:
       - 'app/admin/anex-review/**'
       - 'v2/anex-hotel-review.php'
       - 'tests/anex-review-panel-test.php'
+      - 'tests/anex-review-panel-browser.cjs'
+      - 'tests/anex-review-http-fixture.php'
       - '.github/workflows/anex-review-panel.yml'
   pull_request:
     paths:
       - 'app/admin/anex-review/**'
       - 'v2/anex-hotel-review.php'
       - 'tests/anex-review-panel-test.php'
+      - 'tests/anex-review-panel-browser.cjs'
+      - 'tests/anex-review-http-fixture.php'
       - '.github/workflows/anex-review-panel.yml'
 permissions:
   contents: read
@@ -21,7 +25,10 @@ concurrency:
 jobs:
   panel:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
+    env:
+      ANEX_REVIEW_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_review_test;charset=utf8mb4'
+      ANEX_REVIEW_TEST_ROOT: '${{ runner.temp }}/anex-review-http'
     services:
       mysql:
         image: mysql:8.0
@@ -39,9 +46,34 @@ jobs:
           ANEX_REVIEW_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_review_test;charset=utf8mb4'
           ANEX_REVIEW_TEST_HTML: '${{ runner.temp }}/anex-review-panel-fixture.html'
         run: |
-          for f in app/admin/anex-review/*.php v2/anex-hotel-review.php tests/anex-review-panel-test.php; do php -l "$f"; done
+          for f in app/admin/anex-review/*.php v2/anex-hotel-review.php tests/anex-review-panel-test.php tests/anex-review-http-fixture.php; do php -l "$f"; done
           php tests/anex-review-panel-test.php
           php v2/anex-hotel-review.php | grep -q 'Панель пока недоступна'
+      - name: Install isolated browser test dependency
+        run: |
+          npm install --prefix "$RUNNER_TEMP/anex-review-browser" --no-save --ignore-scripts playwright@1.55.0
+          "$RUNNER_TEMP/anex-review-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify real entrypoint against synthetic owner session and local MySQL
+        run: |
+          mkdir -p "$ANEX_REVIEW_TEST_ROOT"
+          php tests/anex-review-http-fixture.php
+          php -S 127.0.0.1:8765 tests/anex-review-http-fixture.php > "$ANEX_REVIEW_TEST_ROOT/server.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for attempt in 1 2 3 4 5; do
+            if curl --silent --output /dev/null http://127.0.0.1:8765/; then break; fi
+            sleep 1
+          done
+          NODE_PATH="$RUNNER_TEMP/anex-review-browser/node_modules" node tests/anex-review-panel-browser.cjs
+      - name: Retain synthetic browser evidence (never sessions or adapter)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anex-review-panel-browser
+          path: |
+            ${{ runner.temp }}/anex-review-http/panel-*.png
+            ${{ runner.temp }}/anex-review-http/browser-report.json
+          if-no-files-found: warn
       - name: Retain synthetic renderer fixture
         uses: actions/upload-artifact@v4
         with:

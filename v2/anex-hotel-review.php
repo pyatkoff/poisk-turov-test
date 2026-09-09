@@ -57,7 +57,8 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $service->decide($_POST, $actor);
         // PRG prevents browser refresh from creating a new action. Replay tokens remain in audit.
-        header('Location: ?id=' . (int)$result['id'] . '&saved=1', true, 303);
+        $_SESSION['anex_review_flash'] = 'Решение сохранено. Проверьте журнал ниже.';
+        header('Location: ?id=' . (int)$result['id'], true, 303);
         exit;
     }
     $filters = [];
@@ -66,8 +67,9 @@ try {
         if (isset($_GET[$key])) $filters[$key] = $_GET[$key];
     }
     $detail = isset($_GET['id']) ? $service->detail($_GET['id']) : null;
-    echo anex_review_render($service->queue($filters), $detail, $filters, $csrf, $write, $nonce,
-        ($_GET['saved'] ?? '') === '1' ? 'Решение сохранено. Проверьте журнал ниже.' : '');
+    $flash = (string)($_SESSION['anex_review_flash'] ?? '');
+    unset($_SESSION['anex_review_flash']);
+    echo anex_review_render($service->queue($filters), $detail, $filters, $csrf, $write, $nonce, $flash);
 } catch (Throwable $e) {
     $code = in_array($e->getCode(), [400,403,404,405,409,413,503], true) ? $e->getCode() : 503;
     http_response_code($code);
