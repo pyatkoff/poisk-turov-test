@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/api-anex-search3-preview.php';
 $andromedaApp=is_file(__DIR__.'/app/integrations/andromeda-client.php')?__DIR__.'/app/integrations':__DIR__.'/../app/integrations';
-foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
+foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file) require_once $andromedaApp.'/'.$file.'.php';
 
 
 /** Restrict upstream only with complete accepted catalog coverage; otherwise retain local filtering. */
@@ -105,27 +105,8 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         $tour['selection_enabled']=false;
     }
     unset($hotel,$tour);
-    // Unresolved identities stay separate and never borrow an unaccepted catalog ID.
-    $unresolved=[];$p=$request['params'];
-    $needsCatalog=false;
-    foreach(['hotelIds','regionIds','subregionIds','hotelRating'] as $filter)if(!empty($p[$filter]))$needsCatalog=true;
-    if(!$needsCatalog)foreach($page['offers'] as $offer){
-        if($offer['local_hotel_id']!==null || $offer['price']['currency']!=='RUB')continue;
-        $category=$offer['hotel_content']['category']??null;
-        if(!empty($p['hotelCategory']) && (!is_int($category)||$category<1||$category>5||$category<(float)$p['hotelCategory']))continue;
-        $amount=(float)$offer['price']['amount'];
-        if((!empty($p['priceFrom'])&&$amount<(float)$p['priceFrom'])||(!empty($p['priceTo'])&&$amount>(float)$p['priceTo']))continue;
-        if(!empty($p['meal'])&&!in_array(anytour_anex_search3_name($offer['meal']['label']),['ai','all','all inclusive','uai','ultra all inclusive','ai without alcohol','все включено','ультра все включено','все включено без алкоголя'],true))continue;
-        $key='andromeda:'.$offer['supplier_namespace'].':'.$offer['external_hotel_id'];
-        if(!isset($unresolved[$key]))$unresolved[$key]=['local_id'=>null,'card_key'=>$key,'provider'=>'andromeda','mapping_status'=>'unresolved',
-            'name'=>$offer['hotel'],'category'=>$offer['hotel_content']['category']??null,'rating'=>null,'country'=>(string)($saved['local_country_name']??'Египет'),
-            'region'=>$offer['hotel_content']['region']??'','catalog'=>null,'andromeda_content'=>$offer['hotel_content']??null,'tours'=>[]];
-        $unresolved[$key]['tours'][]=['provider'=>'andromeda','operator'=>$offer['operator'],'offer_ref'=>$offer['offer_ref'],
-            'offer_context'=>['provider'=>'andromeda','search_ref'=>$page['search_ref'],'generation'=>$page['generation'],'page'=>$page['page'],'offer_ref'=>$offer['offer_ref']],
-            'price'=>$offer['price'],'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
-            'meal'=>$offer['meal']['label'],'room'=>$offer['room'],'kind'=>'offer','selection_enabled'=>false,'final_price_verified'=>false];
-    }
-    foreach($unresolved as $hotel){usort($hotel['tours'],static function($a,$b){return (float)$a['price']['amount']<=>(float)$b['price']['amount'];});$hotels[]=$hotel;}
+    // Customer output is local-catalog keyed: unresolved supplier identities are
+    // retained server-side as observations and can never become standalone cards.
     return ['provider'=>'andromeda','generation'=>$request['generation'],'hotels'=>$hotels,
         'date_range'=>['from'=>$request['params']['dateFrom'],'to'=>$request['params']['dateTo']],
         'first_page_only'=>false,'page'=>$page['page'],'pages_count'=>$page['pages_count'],'external_search_pending'=>false,
@@ -205,6 +186,10 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
             if($number===1 && $client->privateSession())anytour_andromeda_search3_save($authPath,['created_at'=>$state['store']['created_at'],'session'=>$client->privateSession()]);
         }
         if(in_array($page['status'],['pending','unavailable'],true))throw new RuntimeException('supplier_unavailable');
+        // Persistence is deliberately fail-open for the customer search. The explicit
+        // installer and its readback gate own schema readiness; this call never matches.
+        try { AnyTourAndromedaHotelObservations::record($pdo,$page,$saved); }
+        catch(Throwable $ignored) {}
         return anytour_andromeda_search3_project($request,$pdo,$page,$saved);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
