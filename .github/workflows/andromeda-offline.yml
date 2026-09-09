@@ -24,6 +24,10 @@ on:
       - 'tests/andromeda_hotel_candidates_test.py'
       - 'scripts/diagnostics/andromeda_hotel_shortlist.py'
       - 'tests/andromeda_hotel_shortlist_test.py'
+      - 'v2/api-andromeda-search3-preview.php'
+      - 'v2/anex-search3-preview-v1.js'
+      - 'tests/anex-search3-preview.test.js'
+      - 'tests/andromeda-live-search-smoke.php'
       - 'reports/andromeda-hotel-shortlist-20260909.json'
 permissions:
   contents: read
@@ -38,6 +42,10 @@ jobs:
           php -l app/integrations/andromeda-client.php
           php -l tests/andromeda-client-smoke.php
           php tests/andromeda-client-smoke.php
+          php -l v2/api-andromeda-search3-preview.php
+          php -l scripts/diagnostics/andromeda_preview_install.php
+          php tests/andromeda-live-search-smoke.php
+          node --test tests/anex-search3-preview.test.js
           php -l app/integrations/andromeda-transport.php
           php -l scripts/diagnostics/andromeda-access-probe.php
           php tests/andromeda-transport-smoke.php

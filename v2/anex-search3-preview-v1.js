@@ -113,7 +113,25 @@
     }).sort((a, b) => Number(a.price) - Number(b.price));
     return tours.length ? Object.assign({}, h, { tours, price: Number(tours[0].price) }) : null;
   }
-  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, version: 1 };
+  function combineSources(pages) {
+    const merged = new Map();
+    Object.entries(pages).forEach(([provider, page]) => {
+      if (!['anex', 'andromeda'].includes(provider)) return;
+      const seen = new Set();
+      page.slice(0, 300).filter(validHotel).forEach(hotel => {
+        if (seen.has(hotel.local_id)) return;
+        seen.add(hotel.local_id);
+        const row = merged.get(hotel.local_id) || Object.assign({}, hotel, { tours: [] });
+        row.tours.push(...hotel.tours.map(t => Object.assign({}, t, { provider })));
+        row.tours.sort((a,b) => Number(a.price.amount)-Number(b.price.amount));
+        row.tours = row.tours.slice(0, 300);
+        merged.set(hotel.local_id, row);
+      });
+    });
+    return Array.from(merged.values());
+  }
+  function sourceLabel(tour) { return tour.provider === 'andromeda' ? 'Андромеда' : 'ANEX API'; }
+  window.AnyTourAnexSearch3 = { capture, isCurrent, validHotel, errorMessage, dateRangeLabel, compareCards, filterItem, mealLabel, pointSearchParams, pointSearchHotel, combineSources, version: 2 };
   if (!/^\/_preview\/search3-anex-candidate\//.test(window.location.pathname)) return;
   const script = document.currentScript;
   if (!script || !script.src) return;
@@ -130,7 +148,7 @@
   let calendarBox = null, calendarObserver = null;
   let sourceMode = 'all';
   const sourceChoices = [
-    ['all', 'Все отели'], ['anex', 'С предложениями ANEX API'],
+    ['all', 'Все отели'], ['anex', 'С предложениями ANEX API'], ['andromeda', 'С предложениями Андромеды'],
     ['tourvisor', 'С предложениями Tourvisor'], ['both', 'В обоих источниках']
   ];
   const replacedText = new Map(), hiddenEmpty = new Map(), sourceDisplay = new Map();
@@ -245,26 +263,26 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
   function sourceBadge(hotel) {
     const badge = node('div', 'anex-search3-source');
     badge.setAttribute('data-anex-search3-row', String(hotel.local_id));
-    badge.appendChild(node('span', '', 'ANEX API'));
+    badge.appendChild(node('span', '', Array.from(new Set(hotel.tours.map(sourceLabel))).join(' · ')));
     badge.appendChild(node('strong', '', price(hotel.tours[0])));
     return badge;
   }
   function offers(hotel, embedded = false) {
     const details = node(embedded ? 'section' : 'details', 'anex-search3-offers');
     details.setAttribute('data-anex-search3-row', String(hotel.local_id));
-    details.appendChild(node(embedded ? 'h4' : 'summary', '', embedded ? 'Предложения ANEX API' : 'Показать предложения ANEX API · ' + price(hotel.tours[0])));
+    details.appendChild(node(embedded ? 'h4' : 'summary', '', embedded ? 'Предложения поставщиков' : 'Показать предложения · ' + price(hotel.tours[0])));
     if (!embedded) {
       details.open = openHotels.has(hotel.local_id);
     }
     hotel.tours.forEach(tour => {
       const row = node('div', 'anex-search3-offer');
       const date = tour.checkin.split('-').reverse().join('.');
-      row.appendChild(node('p', '', [date, tour.nights + ' ноч.', mealLabel(tour.meal), tour.room,
+      row.appendChild(node('p', '', [sourceLabel(tour) + (tour.operator ? ' · ' + tour.operator : ''), date, tour.nights + ' ноч.', mealLabel(tour.meal), tour.room,
         tour.adults + ' взр.' + (tour.children ? ', ' + tour.children + ' дет.' : '')].filter(Boolean).join(' · ')));
       row.appendChild(node('strong', '', price(tour)));
       details.appendChild(row);
     });
-    details.appendChild(node('p', 'anex-search3-note', 'Цена из поиска ANEX. Включение топливного сбора уточняется; итоговую стоимость подтвердит менеджер.'));
+    details.appendChild(node('p', 'anex-search3-note', 'Цена из поиска поставщика. Включение топливного сбора уточняется; итоговую стоимость подтвердит менеджер.'));
     return details;
   }
   function attach(card, hotel) {
@@ -563,7 +581,7 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     panel.style.setProperty('display', 'block', 'important');
     panel.style.setProperty('grid-column', '1 / -1');
     panel.setAttribute('aria-label', 'Источники предложений');
-    panel.appendChild(node('h2', '', 'Tourvisor и ANEX API'));
+    panel.appendChild(node('h2', '', 'Tourvisor · ANEX API · Андромеда'));
     if (dates) panel.appendChild(node('p', 'anex-search3-status', dates));
     const status = node('p', 'anex-search3-status', filterNotice || message);
     status.setAttribute('role', 'status');
@@ -580,12 +598,14 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
         if (!hotel) return;
         attach(existing, hotel);
         const item = ranked.find(row => row.card === existing);
-        item.anex = true;
+        item.anex = hotel.tours.some(t => t.provider === 'anex');
+        item.andromeda = hotel.tours.some(t => t.provider === 'andromeda');
         item.price = Math.min(priceRank(item.price), priceRank(hotel.tours[0].price.amount));
         merged++; return;
       }
       const card = standalone(original, hotel, point);
-      ranked.push({ id, card, tourvisor: !!point, anex: !!hotel,
+      ranked.push({ id, card, tourvisor: !!point, anex: !!hotel && hotel.tours.some(t => t.provider === 'anex'),
+        andromeda: !!hotel && hotel.tours.some(t => t.provider === 'andromeda'),
         price: Math.min(hotel ? priceRank(hotel.tours[0].price.amount) : Infinity, point ? priceRank(point.price) : Infinity),
         category: original.category, rating: original.rating, seaDistance: filterItem(original).seaDistance });
       if (hotel) { if (point) merged++; else added++; }
@@ -605,24 +625,24 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
       document.body.classList.add('search3-has-results', 'search3-results-active');
       if (tools) tools.hidden = false;
       if (tools) replaceText(tools.querySelector('strong'), 'Найдено отелей: ' + ranked.length);
-      replaceText(document.getElementById('resultSummary'), 'Tourvisor: ' + tvCount + ' · ANEX API: ' + (added + merged));
+      replaceText(document.getElementById('resultSummary'), 'Tourvisor: ' + tvCount + ' · Другие API: ' + (added + merged));
       replaceText(document.querySelector('[data-ds2-filter-count]'), String(ranked.length));
       replaceText(document.querySelector('[data-ds2-filter-word]'), 'в выдаче');
       status.textContent = 'Отелей в выдаче: ' + ranked.length + '. Через Tourvisor: ' + tvCount
-        + ', через ANEX API: ' + (added + merged) + '. В обоих источниках: ' + merged + '.'
-        + (ambiguous ? ' Часть предложений ожидает уточнения связи.' : '');
+        + ', через ANEX/Андромеду: ' + (added + merged) + '. В обоих источниках: ' + merged + '.'
+        + (ambiguous ? ' Часть предложений ожидает уточнения связи.' : '') + ' ' + message;
     } else {
       // Restore the original source order when ANEX is hidden by changed filters.
       tvCards.filter(card => card.parentNode === results).forEach(card => results.appendChild(card));
-      if (!filterNotice && hotels.length && !ambiguous) status.textContent = 'По выбранным фильтрам предложений ANEX нет. Измените фильтры или сбросьте их.';
+      if (!filterNotice && hotels.length && !ambiguous) status.textContent = 'По выбранным фильтрам предложений других поставщиков нет. Измените фильтры или сбросьте их.';
     }
-    const counts = { all: ranked.length, anex: added + merged, tourvisor: ranked.filter(item => item.tourvisor).length, both: merged };
+    const counts = { all: ranked.length, anex: ranked.filter(i => i.anex).length, andromeda: ranked.filter(i => i.andromeda).length, tourvisor: ranked.filter(item => item.tourvisor).length, both: merged };
     sourceChoices.forEach(([value, label], index) => { sourceSelect.children[index].textContent = label + ' · ' + counts[value]; });
     sourceSelect.value = sourceMode;
     panel.appendChild(sourceFilter);
     let visible = 0;
     ranked.forEach(item => {
-      const shown = sourceMode === 'all' || (sourceMode === 'both' ? item.anex && item.tourvisor : item[sourceMode]);
+      const shown = sourceMode === 'all' || (sourceMode === 'both' ? (item.anex || item.andromeda) && item.tourvisor : item[sourceMode]);
       if (shown) visible++; else {
         item.card.classList.add('anex-search3-source-hidden');
         sourceDisplay.set(item.card, { value: item.card.style.getPropertyValue('display'), priority: item.card.style.getPropertyPriority('display') });
@@ -674,33 +694,36 @@ body.search3-candidate #results .hotel-card.anex-search3-source-hidden{display:n
     active = run; lastGeneration = run.generation;
     controller = new AbortController();
     const signal = controller.signal;
-    message = 'Ищем предложения ANEX…'; render();
+    const pages = {}, statuses = { anex: 'ANEX: поиск…', andromeda: 'Андромеда: поиск…' };
+    message = Object.values(statuses).join(' · '); render();
     const timeout = setTimeout(() => { if (isCurrent(run, window.V2SearchLifecycle) && controller) controller.abort(); }, 90000);
-    try {
-      const response = await window.fetch(endpoint.href, { method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(run), signal });
-      const payload = await response.json();
-      if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
-      if (!response.ok || !payload.ok) {
-        message = errorMessage(payload.error);
-      } else if (payload.data && payload.data.generation === run.generation && payload.data.provider === 'anex' && Array.isArray(payload.data.hotels)) {
-        dates = dateRangeLabel(payload.data.date_range);
-        const seen = new Set();
-        hotels = payload.data.hotels.slice(0, 300).filter(hotel => {
-          if (!validHotel(hotel) || seen.has(hotel.local_id)) return false;
-          seen.add(hotel.local_id); return true;
-        });
-        updateSupplemental();
-        message = hotels.length ? 'Найдено отелей: ' + hotels.length
-          : payload.data.external_search_pending ? 'ANEX продолжает расчёт. Повторите поиск позже.' : 'Подходящих предложений ANEX пока нет.';
-      } else message = errorMessage(null);
-      render();
-    } catch (error) {
-      if (isCurrent(run, window.V2SearchLifecycle) && active === run) {
-        message = errorMessage(null); render();
+    await Promise.allSettled(['anex', 'andromeda'].map(async provider => {
+      const label = provider === 'andromeda' ? 'Андромеда' : 'ANEX';
+      try {
+        const url = new URL('api-' + provider + '-search3-preview.php', endpoint);
+        const response = await window.fetch(url.href, { method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(run), signal });
+        const payload = await response.json();
+        if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
+        if (!response.ok || !payload.ok) {
+          statuses[provider] = errorMessage(payload.error).replace(/ANEX/g, label);
+        } else if (payload.data && payload.data.generation === run.generation && payload.data.provider === provider && Array.isArray(payload.data.hotels)) {
+          pages[provider] = payload.data.hotels;
+          statuses[provider] = label + ': ' + payload.data.hotels.length + ' отелей (первая страница)';
+        } else statuses[provider] = label + ': ответ недоступен';
+      } catch (error) {
+        if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
+        statuses[provider] = label + ': ответ недоступен';
       }
-    } finally { clearTimeout(timeout); }
+      if (!isCurrent(run, window.V2SearchLifecycle) || active !== run) return;
+      hotels = combineSources(pages);
+      message = Object.values(statuses).join(' · ');
+      dates = 'Показана первая страница ответов поставщиков.';
+      updateSupplemental(); render();
+    }));
+    clearTimeout(timeout);
   }
+
   window.addEventListener('v2:search-reset', start);
   function broadFinished(event) {
     const lifecycle = window.V2SearchLifecycle, detail = event && event.detail;

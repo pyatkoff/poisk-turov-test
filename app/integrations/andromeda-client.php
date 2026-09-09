@@ -99,11 +99,29 @@ final class AnyTourAndromedaClient
 
     public function priceProbe(): array
     {
+        return $this->price(self::priceProbeParams());
+    }
+
+    /** One validated price page per server request; no automatic pagination/retry. */
+    public function price(array $params): array
+    {
+        $required=['TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TILL','ADULT','CHILD','CURRENCYINC','PACKETTYPE','PAGE'];
+        if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['TOWNFROMINC','STATEINC','NIGHTS_FROM','NIGHTS_TILL','ADULT','CURRENCYINC'] as $key)
+            if(!is_int($params[$key]) || $params[$key]<1) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if($params['PAGE']!==1 || $params['PACKETTYPE']!==0 || !is_int($params['CHILD']) || $params['CHILD']<0 || $params['CHILD']>3
+            || $params['ADULT']>6 || $params['NIGHTS_FROM']>$params['NIGHTS_TILL'] || $params['NIGHTS_TILL']>28) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['CHECKIN_BEG','CHECKIN_END'] as $key){
+            $date=is_string($params[$key])?DateTimeImmutable::createFromFormat('!Ymd',$params[$key]):false;
+            if(!$date || $date->format('Ymd')!==$params[$key]) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        }
+        if($params['CHECKIN_BEG']>$params['CHECKIN_END'] || (new DateTimeImmutable($params['CHECKIN_BEG']))->diff(new DateTimeImmutable($params['CHECKIN_END']))->days>21) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['MEAL','OPERATORS','AGES'] as $key) if(isset($params[$key]) && (!is_string($params[$key]) || strlen($params[$key])>300 || !preg_match('/^[0-9]+(?:,[0-9]+)*$/D',$params[$key]))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         if ($this->priceAttempted) throw new RuntimeException('ANDROMEDA_PRICE_REPLAY_REFUSED');
         if ($this->sid === null || time() >= $this->expires) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
         $this->priceAttempted = true; // Reserve before sending, including unknown failures.
         $sid = $this->sid;
-        $reply = $this->send('price', ['sid'=>$sid] + self::priceProbeParams());
+        $reply = $this->send('price', ['sid'=>$sid] + $params);
         $this->rejectSessionEcho($reply, $sid);
         if (!isset($reply['PAGE'], $reply['PAGES_COUNT'], $reply['PRICES'])
             || !is_array($reply['PRICES'])
