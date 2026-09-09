@@ -2,7 +2,7 @@
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions'),rail=document.querySelector('.results-filter-rail');
 if(!results||!actions||!rail)return;
 const desktop=window.matchMedia('(min-width:1025px)');
-let field=null,input=null,status=null,categoryField=null,categorySelect=null,mealField=null,mealSelect=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null;
+let field=null,input=null,status=null,categoryField=null,categorySelect=null,mealField=null,mealSelect=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
@@ -11,10 +11,17 @@ function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Numb
 function money(value){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value||0));}
 function fields(){return[field,budgetField,mealField,categoryField,ratingField,seaField];}
 function active(){return!!(normalize(input.value)||Number(categorySelect.value)||mealSelect.value||budgetActive||Number(ratingSelect.value)||Number(seaSelect.value));}
+function activeCount(){return[normalize(input.value),Number(categorySelect.value),mealSelect.value,budgetActive,Number(ratingSelect.value),Number(seaSelect.value)].filter(Boolean).length;}
+function syncContainers(shown){
+  const available=fields().some(node=>!node.hidden),selected=activeCount();
+  count.textContent=String(shown);mobileSummary.textContent='Подходит: '+shown+(selected?' · выбрано: '+selected:'');
+  resetButton.hidden=!selected;rail.hidden=!desktop.matches||!available;mobilePanel.hidden=desktop.matches||!available;
+}
 function mount(){
   if(!field)return;
-  if(desktop.matches){fields().forEach(node=>rail.appendChild(node));rail.append(resetButton);}
-  else{const anchor=actions.querySelector('#sortResults')?.closest('label')||actions.firstChild;fields().forEach(node=>actions.insertBefore(node,anchor));actions.insertBefore(resetButton,anchor);}
+  if(desktop.matches){mobilePanel.open=false;fields().forEach(node=>rail.appendChild(node));rail.append(resetButton);}
+  else{const anchor=actions.querySelector('#sortResults')?.closest('label')||actions.firstChild;actions.insertBefore(mobilePanel,anchor);fields().forEach(node=>mobileBody.appendChild(node));mobileBody.append(resetButton);}
+  syncContainers(Number(count.textContent||0));
 }
 function option(value,label){const node=document.createElement('option');node.value=String(value);node.textContent=label;return node;}
 function ensure(){
@@ -22,6 +29,9 @@ function ensure(){
   rail.hidden=true;
   rail.innerHTML='<div class="search3-filter-rail__head"><strong>Фильтры</strong><span>Подходит: <b data-search3-filter-count>0</b></span></div>';
   count=rail.querySelector('[data-search3-filter-count]');
+  mobilePanel=document.createElement('details');mobilePanel.className='search3-mobile-filter-panel';mobilePanel.hidden=true;
+  mobilePanel.innerHTML='<summary><strong>Фильтры</strong><span data-search3-mobile-filter-summary>Подходит: 0</span></summary><div class="search3-mobile-filter-panel__body"></div>';
+  mobileSummary=mobilePanel.querySelector('[data-search3-mobile-filter-summary]');mobileBody=mobilePanel.querySelector('.search3-mobile-filter-panel__body');
   field=document.createElement('label');field.className='search3-hotel-filter';field.hidden=true;
   field.innerHTML='<span>Название отеля</span><input type="search" autocomplete="off" placeholder="Введите название" aria-describedby="search3HotelFilterStatus"><small id="search3HotelFilterStatus" aria-live="polite"></small>';
   budgetField=document.createElement('label');budgetField.className='search3-budget-filter';budgetField.hidden=true;
@@ -76,13 +86,13 @@ function project(items){
 function apply(){
   ensure();const list=cards(),query=normalize(input.value),facets=syncHotelFacets(),visibleIds=new Set();let shown=0;
   list.forEach((card,index)=>{const title=card.querySelector('.hotel-title'),matchesName=!query||normalize(title&&title.textContent).includes(query),matchesCategory=!facets.category||facets.categories[index]===facets.category,matchesRating=!facets.rating||facets.ratings[index]>=facets.rating,matchesSea=!facets.sea||facets.seas[index]<=facets.sea;card.hidden=!(matchesName&&matchesCategory&&matchesRating&&matchesSea&&!unmatched.has(String(card.dataset.hotelId)));if(!card.hidden){shown++;visibleIds.add(String(card.dataset.hotelId||''));}});
-  field.hidden=list.length<2;count.textContent=String(shown);status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';resetButton.hidden=!active();rail.hidden=fields().every(node=>node.hidden);
+  field.hidden=list.length<2;status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';syncContainers(shown);
   const items=projectedItems.filter(item=>visibleIds.has(id(item)));window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:active()}}));
 }
 function reset(){ensure();input.value='';categorySelect.value='0';mealSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();}
 function clear(event){
-  ensure();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});resetButton.hidden=true;rail.hidden=true;return;}
-  sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';count.textContent='0';fields().forEach(node=>{node.hidden=true;});resetButton.hidden=true;rail.hidden=true;
+  ensure();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);return;}
+  sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);

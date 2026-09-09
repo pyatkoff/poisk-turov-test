@@ -256,6 +256,15 @@ async function run(browser, width, previous) {
     const localSeaFilter = page.locator('.search3-sea-filter');
     const localSeaSelect = localSeaFilter.locator('select');
     const localReset = page.locator('.search3-filter-reset');
+    const mobilePanel = page.locator('.search3-mobile-filter-panel');
+    if (width < 1025) {
+      assert.equal(await mobilePanel.isVisible(), true, 'tablet and mobile expose one compact current filter disclosure');
+      assert.equal(await mobilePanel.getAttribute('open'), null, 'mobile disclosure starts compact');
+      const mobileSummary = mobilePanel.locator('summary');
+      await mobileSummary.focus();
+      await page.keyboard.press('Enter');
+      assert.notEqual(await mobilePanel.getAttribute('open'), null, 'native summary opens current filters from the keyboard');
+    } else assert.equal(await mobilePanel.isVisible(), false, 'desktop does not expose the mobile disclosure');
     assert.equal(await localHotelFilter.isVisible(), true, 'one local hotel filter appears for multiple loaded hotels');
     assert.equal(await localBudgetFilter.isVisible(), true, 'complete loaded offer prices expose a budget facet');
     assert.equal(await localCategoryFilter.isVisible(), true, 'category facet appears when every loaded hotel has a category');
@@ -269,7 +278,7 @@ async function run(browser, width, previous) {
       assert.ok(railBox.width >= 220 && resultsBox.x >= railBox.x + railBox.width - 1, 'desktop rail and cards use separate readable columns');
     } else {
       assert.equal(await rail.isVisible(), false, 'tablet and mobile do not reserve an empty rail');
-      assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'results-tools__actions', 'tablet and mobile retain top filter controls');
+      assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'search3-mobile-filter-panel__body', 'tablet and mobile reuse the current controls inside one disclosure');
       assert.equal(await actions.isVisible(), true);
     }
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -285,7 +294,8 @@ async function run(browser, width, previous) {
     await localCategorySelect.selectOption('5');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'category facet filters only the already loaded hotels');
     assert.equal(await localReset.isVisible(), true, 'an active local facet exposes one reset action at every responsive width');
-    assert.equal(await localReset.evaluate(node => node.parentElement.className), width >= 1025 ? 'results-filter-rail' : 'results-tools__actions', 'reset action follows the current responsive filter owner');
+    assert.equal(await localReset.evaluate(node => node.parentElement.className), width >= 1025 ? 'results-filter-rail' : 'search3-mobile-filter-panel__body', 'reset action follows the current responsive filter owner');
+    if (width < 1025) assert.match(await mobilePanel.locator('summary').innerText(), /Подходит: 1 · выбрано: 1/, 'compact summary exposes the current result and active-filter counts');
     assert.match(await localHotelFilter.locator('small').innerText(), /Показано 1 из 2 загруженных отелей/, 'category facet reports a truthful loaded-card count');
     await localHotelInput.fill('  ВТОРОЙ  ');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and category filters combine locally');
