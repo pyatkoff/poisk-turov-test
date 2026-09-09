@@ -1,0 +1,203 @@
+{
+  "date": "2026-09-09",
+  "scope": "AnyTour ANEX integration only",
+  "source_sha": "e9083cbfe8d337e218e2ef3b2490e8ff98c40d70",
+  "prs": [
+    1704,
+    1706,
+    1709
+  ],
+  "run_id": 34333956876,
+  "job_id": 102409045342,
+  "artifact": {
+    "archive_download_url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10096966061/zip",
+    "created_at": "2026-09-09T09:20:07Z",
+    "digest": "sha256:1f6ce4ea91c6478faa0d4e6ca02da4e3286104e88b69034407cf1114866d6e8b",
+    "expired": false,
+    "expires_at": "2026-10-09T09:20:03Z",
+    "id": 10096966061,
+    "name": "anex-hotel-catalog-match-34333956876-1",
+    "size_in_bytes": 27008651,
+    "updated_at": "2026-09-09T09:20:07Z",
+    "url": "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10096966061",
+    "workflow_run": {
+      "head_branch": "feature/anex-search-adapter-20260907",
+      "head_repository_id": 1345518271,
+      "head_sha": "e9083cbfe8d337e218e2ef3b2490e8ff98c40d70",
+      "id": 34333956876,
+      "repository_id": 1345518271
+    }
+  },
+  "restored_artifact_id": 10096927331,
+  "verified_evidence": [
+    {
+      "dossiers": 263,
+      "meaning": "Existing Tourvisor availability can prioritize candidate review; no match or mismatch is established by this intersection.",
+      "new_bindings": 0,
+      "new_supplier_requests": 0,
+      "saved_tv_unique_hotels": 69,
+      "scope": "saved_triage_only",
+      "source_artifact_id": 10096927331,
+      "triage_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a",
+      "with_candidate_seen_in_saved_tv": 25,
+      "with_historical_hint_only_seen_in_saved_tv": 0,
+      "with_saved_candidates": 132
+    },
+    {
+      "action": "inspect",
+      "compact_bytes": 5456105,
+      "formatted_bytes": 10132204,
+      "rows": 263,
+      "schema_sha256": "712c83a682b62763f8daf710739e831fd1a2a8a604d39dac10bff4fa5a756c0e",
+      "schema_version": 1,
+      "source_artifact_id": 10096927331,
+      "source_sha": "e9083cbfe8d337e218e2ef3b2490e8ff98c40d70",
+      "supplier_requests": 0,
+      "triage_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a"
+    },
+    {
+      "auth_adapter_configured": false,
+      "import": {
+        "inserted": 0,
+        "status": "not_requested"
+      },
+      "panel_published": false,
+      "report_sha256": "e7a035f4d184db851db5f252d8504b543cf5529f75717629bf35e3e4e80adc1a",
+      "reservation": {
+        "action": "inspect",
+        "compact_bytes": 5456105,
+        "formatted_bytes": 10132204,
+        "rows": 263,
+        "schema_sha256": "712c83a682b62763f8daf710739e831fd1a2a8a604d39dac10bff4fa5a756c0e",
+        "schema_version": 1,
+        "source_artifact_id": 10096927331,
+        "source_sha": "e9083cbfe8d337e218e2ef3b2490e8ff98c40d70",
+        "supplier_requests": 0,
+        "triage_sha256": "a80ec41ec29da2896330f7b1f1504c780022ad5ae9f55b0ed479fe532c07690a"
+      },
+      "schema": {
+        "after": {
+          "anex_hotel_auto_matches": {
+            "count": 8362,
+            "sha256": "57f4c95318299f8da7af21648e6884476220ce86209054da1589392e42ae6c8f"
+          },
+          "anex_hotel_candidates": {
+            "count": 25077,
+            "sha256": "3666a9d14b1bb41f5bd5f374a5483dfaf3b198797c54a02cbb5e6e0f2eb3d093"
+          },
+          "anex_hotel_decisions": {
+            "count": 9,
+            "sha256": "ea904af4ffc46be31b066518f7603790fec89de79a9d00f597cf1f787c473411"
+          },
+          "anex_hotel_search_mappings": {
+            "count": 12890,
+            "sha256": "a0bae51642bdd871380922d049b95abb1893f3d85a133171d02f96ad60b7de92"
+          },
+          "anex_hotels": {
+            "count": 8362,
+            "sha256": "db93eb7a5afdc063c7f812bb51b54a539d3bb661ddf465786db6f54ae10e6ef7"
+          },
+          "catalog_hotels": {
+            "count": 133703,
+            "sha256": "d5efb625514ae0660abb076ab3af85e9d921aae2498af87a3e8dab02202ba76a"
+          }
+        },
+        "after_schema": {
+          "installed": [],
+          "missing": [
+            "anex_review_state",
+            "anex_review_pair_exclusions",
+            "anex_review_audit",
+            "anex_review_dossier_batches",
+            "anex_review_dossiers"
+          ],
+          "ready": false
+        },
+        "before": {
+          "anex_hotel_auto_matches": {
+            "count": 8362,
+            "sha256": "57f4c95318299f8da7af21648e6884476220ce86209054da1589392e42ae6c8f"
+          },
+          "anex_hotel_candidates": {
+            "count": 25077,
+            "sha256": "3666a9d14b1bb41f5bd5f374a5483dfaf3b198797c54a02cbb5e6e0f2eb3d093"
+          },
+          "anex_hotel_decisions": {
+            "count": 9,
+            "sha256": "ea904af4ffc46be31b066518f7603790fec89de79a9d00f597cf1f787c473411"
+          },
+          "anex_hotel_search_mappings": {
+            "count": 12890,
+            "sha256": "a0bae51642bdd871380922d049b95abb1893f3d85a133171d02f96ad60b7de92"
+          },
+          "anex_hotels": {
+            "count": 8362,
+            "sha256": "db93eb7a5afdc063c7f812bb51b54a539d3bb661ddf465786db6f54ae10e6ef7"
+          },
+          "catalog_hotels": {
+            "count": 133703,
+            "sha256": "d5efb625514ae0660abb076ab3af85e9d921aae2498af87a3e8dab02202ba76a"
+          }
+        },
+        "before_schema": {
+          "installed": [],
+          "missing": [
+            "anex_review_state",
+            "anex_review_pair_exclusions",
+            "anex_review_audit",
+            "anex_review_dossier_batches",
+            "anex_review_dossiers"
+          ],
+          "ready": false
+        },
+        "created": [],
+        "preserved": true,
+        "read_only": true,
+        "schema_sha256": "712c83a682b62763f8daf710739e831fd1a2a8a604d39dac10bff4fa5a756c0e",
+        "status": "migration_required"
+      },
+      "source_sha": "e9083cbfe8d337e218e2ef3b2490e8ff98c40d70",
+      "ssh_attempts": 1,
+      "status": "ok",
+      "supplier_requests": 0
+    }
+  ],
+  "validation": {
+    "guard_run": 34333602715,
+    "panel_run": 34333602614,
+    "panel_checks": 96,
+    "schema_checks": 16,
+    "archive_checks": 29,
+    "runtime_python": 9,
+    "packer_python": 8,
+    "browser_widths": [
+      1280,
+      820,
+      390,
+      320
+    ],
+    "overflow": false,
+    "synthetic_owner": true,
+    "independent_zip_download": false
+  },
+  "live_effects": {
+    "supplier_calls": 0,
+    "tourvisor_calls": 0,
+    "ddl_statements": 0,
+    "new_bindings": 0,
+    "dossier_imports": 0,
+    "preview_deploy": false,
+    "panel_published": false
+  },
+  "limits": {
+    "audit_scope": "Restored historical 263-row triage, not a fresh count of all observations",
+    "candidate_intersection": "At least one saved candidate ID is in a completed saved Tourvisor result; this does not establish the correct candidate or independence",
+    "current_owner_auth": "Not identified; CLI env presence false does not establish the web server has no owner authority"
+  },
+  "next_steps": [
+    "Read and prioritize the 25 candidate intersections by actual saved source/name/country/coordinates/section and competing candidates; current mappings/manual decisions must be read before any new acceptance.",
+    "Do not treat all pending records as proven hotel differences. Use a bounded Tourvisor search only for a specific unresolved gap not answered by saved evidence; preserve accepted mapping criteria.",
+    "The P2 schema readiness inspection succeeded: all five additive tables are absent. Next storage action can bind the exact inspected schema and triage in an apply manifest, then migration/import/readback through the checked runner.",
+    "Identify actual owner auth before isolated panel publication; do not invent a login or publish unprotected writes."
+  ]
+}
