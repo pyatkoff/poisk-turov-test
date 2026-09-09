@@ -15,11 +15,15 @@ try {
     $request=json_decode(file_get_contents('php://stdin'),true,16,JSON_THROW_ON_ERROR);
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/hotel-filter-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
-    $release=$private.'/hotel-filter-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['api-andromeda-search3-preview.php'=>'0566e1e674450394c19417b5a58f270d31bd5f673fc317f4b3e9ec42acb7ebbb','anex-search3-preview-v1.js'=>'29731e3ac19f7d5e56070ab075ab29aac8a08fd10a2572b47ae82c5434860de7'];
+    $release=$private.'/hotel-filter-'.$request['source_sha'].'-detail-cache-v1';if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
+    $expected=['api-andromeda-search3-preview.php'=>'fa968565ffe3831beba0aaefacf2f2c7085a6c6934bcb329eb81dbf4cf15409e','anex-search3-preview-v1.js'=>'721d7d6a2da151d6a78ee99811753ddba8db2f153262ed9baec94b3e5217f872'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
+    if(is_link($target.'/search-page-v2.php'))throw new RuntimeException();
+    $page=file_get_contents($target.'/search-page-v2.php');$count=0;
+    $files['search-page-v2.php']=str_replace('anex-search3-preview-v1.js?v=544366a2008222bab0ba7b594026243326a9a112','anex-search3-preview-v1.js?v='.$request['source_sha'],$page,$count);
+    if($count!==1)throw new RuntimeException();
     foreach($files as $path=>$data){
         $backups[$path]=file_get_contents($target.'/'.$path);
         if(file_put_contents($release.'/'.str_replace('/','__',$path),$backups[$path])!==strlen($backups[$path]))throw new RuntimeException();

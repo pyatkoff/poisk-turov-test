@@ -29,7 +29,7 @@ jobs:
           git diff --exit-code "$SOURCE_SHA" HEAD -- app/ v2/ tests/
           python3 -c 'import sys;sys.path.insert(0,"scripts/diagnostics");from andromeda_hotel_filter_install import SOURCE;print("<?php"+SOURCE)' > "$RUNNER_TEMP/patch.php"
           php -l "$RUNNER_TEMP/patch.php"
-      - name: Publish saved offer detail view and verify retained snapshots
+      - name: Refresh exact offer-detail asset version and verify saved snapshots
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
