@@ -14,6 +14,14 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
+## Current product checkpoint — filtered calendar and seasonal freshness #1705/#1707 — 2026-09-09
+
+Календарь и корректность витрин завершены в #1705/#1707 и включены в проверенную рабочую ветку `fd944fca0043bc44510e26d354c2806e41db1c27`. Календарь учитывает локальные фильтры и возврат к сохранённой выдаче; страницы месяцев отбрасывают прошедшие и некорректные даты до выбора самых дешёвых карточек. Общий прирост пакета: CSS 0 B, JS +602 B; сезонное исправление не добавляет CSS/JS. Общие компоненты и переходы #1693/#1694/#1699/#1700 также уже завершены.
+
+Следующий пакет — `S3_PRODUCT_CURRENT_ACCEPTANCE`: одна накопленная публикация изолированного превью из проверенного артефакта 10096730023 (source `5fc42aad0f5afa895666065407ad61dbcb4bc101`), затем адресный осмотр изменённых участков на телефоне и компьютере. Текущий опубликованный preview всё ещё `8382d1bd8543fd3f0efb623673d1b70fa2be823d`; эту подготовку не считать публикацией. Safari и окончательная приёмка сайта остаются открыты; production — только после визуального одобрения конкретной версии. Не повторять завершённые пакеты и не дублировать отдельную интеграцию ANEX.
+
+Security34333468240 and exact34333468227 passed. Artifact digest `sha256:1a54dc2ac687ee20e5e56c5e268316354e6e44e0920411f75182c4c25491883e`; source and release trees match. #1705's original failure was a real dirty-edit/retained-results lifecycle bug, fixed in the existing calendar reset handler. Focused smoke and existing raw/served375/1440 browser scenario verify filter→zero→restore, dirty→return and true new-search suppression. #1707 reuses the existing Moscow date owner; the existing in-memory SQLite test now covers country/resort/hotel/hot/month/resort_month, stale cheap dates before limits, same-day retention and expired snapshots. No live DB, supplier or lead calls. Historical checkpoints below are provenance, not the current queue.
+
 ## Current product checkpoint — homepage handoff and shared CTA owner #1693/#1694 — 2026-09-09
 
 #1693 keeps both homepage GET handoffs unavailable until country data is complete, preserves country after readiness, and ignores stale country responses after rapid departure changes. #1694 removes567B of generic primary/secondary CTA duplicates from `site-page-v1.css`; `shared-content-primitives-v1.css` is the single later owner and contextual variants remain.
