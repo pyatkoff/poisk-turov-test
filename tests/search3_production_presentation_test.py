@@ -937,7 +937,11 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertFalse((ROOT / 'src/search3/styles/base.css').exists())
         self.assertFalse((ROOT / 'src/search3/behavior/selected-flow-v2.js').exists())
         self.assertFalse((ROOT / 'src/search3/behavior/selected/flight-fallback.js').exists())
-        self.assertLessEqual((ROOT / 'v2/search3-results-filters-v1.css').stat().st_size, 5490)
+        self.assertLessEqual(
+            (ROOT / 'v2/search3-results-filters-v1.css').stat().st_size,
+            8000,
+            'current results owner may grow for the approved card/state product package',
+        )
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
             (ROOT / 'v2/search3-selected-flow-v2.css').read_text(),
@@ -985,6 +989,32 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn(':has(#results>*)', results)
         self.assertNotIn('search3-results-active', compiled)
         self.assertNotIn('search3-has-results', compiled)
+
+    def test_current_renderer_owns_clear_cards_and_truthful_states(self):
+        renderer = (ROOT / 'v2/results-renderer-v5.js').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        for marker in (
+            '<h3 class="hotel-title">',
+            '<small>Итого за тур</small>',
+            'Выбрать тур',
+            "showSearchStatus('loading'",
+            "showSearchStatus('error'",
+            'aria-valuenow',
+            'Уже найденные отели сохранены',
+        ):
+            self.assertIn(marker, renderer)
+        self.assertNotIn('hotel-best-offer', renderer)
+        self.assertIn('& .results-state{', results)
+        self.assertIn('& .tour-row{display:grid', results)
+        lifecycle = (ROOT / 'v2/search-lifecycle-v6.js').read_text()
+        self.assertIn("renderer.render(list,{empty:!!terminal})", lifecycle)
+        self.assertIn("loadResults(id,run,25,false)", lifecycle)
+        self.assertIn("loadResults(id,run,100,true)", lifecycle)
+        search3_js = json.loads(subprocess.check_output([
+            'php', '-r',
+            'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'
+        ], cwd=ROOT, text=True))
+        self.assertNotIn('search-progress-ux-v1.js', search3_js)
 
     def test_native_controls_and_isolation_remain(self):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
