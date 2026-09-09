@@ -1,14 +1,40 @@
 # Search3 presentation sources
 
-Current entry ownership (2026-09-08): the retired `search-form/entry-presentation.js`
-and its calendar/summary/timer-based layout are not shipped. Primary controls keep
-the original adult, child and child-age nodes directly visible, without a tourist
-popup. Region stays in the primary form; quality fields stay directly available.
-The native date/night, catalog/meal and URL/payload contracts remain. Older entry
-adapter notes below are historical. Exact CI checks the native entry only when its
-owner changes; this does not repeat the full lead journey or publish a preview.
+Start with the [AnyTour development entrypoint](../../docs/project/anytour-development.md)
+for lane ownership, coordination and the current queue. Follow [AGENTS.md](AGENTS.md)
+and the [repository rules](../../AGENTS.md). `AUTOPILOT_STATE.json.current_task`
+is the resume point; this README maps implementation, not priorities or release status.
 
-Edit this directory, then run from the repository root:
+## Current source owners
+
+Paths below are relative to the repository root. Source bodies and
+[manifest.json](manifest.json) determine what ships; a retained filename or donor
+comment does not establish an active owner.
+
+| Concern | Current owner |
+| --- | --- |
+| Native form markup, date/night/party fields and page composition | `v2/index.php`; defaults in `v2/form-defaults.php`, catalogs in `v2/catalogs-v2.js` |
+| Search3 result busy state and edit/focus glue | `src/search3/behavior/search-form.js` |
+| Loaded hotel name/category/meal filtering and renderer projection | `src/search3/behavior/results/local-hotel-filter.js` with `v2/results-renderer-v5.js` |
+| Native selected-tour lead handoff, large flight-list disclosure and display corrections | `src/search3/behavior/summary-cta.js`; canonical selected markup/state remains in `v2/tour-controller-v4.js` |
+| Search form layout and native controls | `src/search3/styles/entry-native-controls.css` |
+| Results toolbar/cards, responsive layout, selected tour and lead presentation | `src/search3/styles/results-layout.css` |
+| Selected image width bound | `src/search3/styles/selected-tour.css` |
+| Search lifecycle, progressive loading and supplier-facing client runtime | Existing `v2/search-lifecycle-v6.js`, `v2/search-continue-v6.js`, `v2/runtime-v3.js` |
+| Shared site header/footer and content controls | Existing `v2/site-header-v2.php/.css`, `v2/site-footer-v1.php/.css`, `v2/shared-content-primitives-v1.css` |
+
+The three active Search3 behavior owners are `search-form.js`,
+`results/local-hotel-filter.js` and `summary-cta.js`. Other manifest behavior slots
+currently preserve provenance; do not restore their old decorators or handlers.
+In particular, `search-form/primary-controls.js`, `secondary-controls.js`,
+`results/toolbar.js`, `booking-summary.js` and `booking/format.js` are retired slots.
+The separate cards CSS/JS and entry JS slots do not supply another implementation.
+`results-presentation.js`, the former entry adapter and older split CSS owners
+are not current source paths. Historical comments may still name them.
+
+## Build and generated outputs
+
+Run from the repository root; install the pinned build dependencies once:
 
 ```sh
 npm ci --prefix scripts/build/search3-js --ignore-scripts
@@ -16,304 +42,57 @@ python3 scripts/build/search3_assets.py --write
 python3 scripts/build/search3_assets.py --check
 ```
 
-Commit source changes, generated `v2/search3-*` assets and the updated
-`docs/project/search3-production-import.json` together. CI rejects stale bundles,
-unlisted modules and missing source files. Python assembles the private modules;
-Node 18+ prints assets using pinned build-only Terser, Acorn and CSS Tree dependencies.
-Install them once with the command above. The build itself makes no network requests.
-These tools are outside the site payload and add no browser dependency or request.
+Node 18+ and Python build these files without adding a browser dependency.
+Commit source changes, generated outputs and
+[`docs/project/search3-production-import.json`](../../docs/project/search3-production-import.json)
+together. Preserve its hashes and the existing import checks.
+Do not edit generated `v2/search3-*` assets independently.
 
-The first JavaScript printing stage disables compression and name mangling. It retains all source
-comments, quoted property keys and number spelling. An independent Acorn parse
-compares every statement, operator, name, value, directive, template raw string and
-ordered comment before any output is written. Only source positions, literal
-spelling and the safe `{name}` / `{name:name}` notation are normalized; `__proto__`
-is excluded from that shorthand equivalence. Syntax/comment changes fail closed,
-including otherwise harmless empty-statement removal or template raw rewrites.
-Non-shrinking assets keep their original bytes. No transpilation is performed.
-
-A second build-only Terser stage shortens local variable/parameter and label names.
-The second stage also applies standard control-flow compression with unsafe
-arithmetic, pure-getter assumptions and cross-statement sequence merging disabled.
-Global/top-level names, property keys, function/class names, argument arity and
-scopes using direct eval are preserved. This intentional renaming is outside the first
-stage's exact-name AST equality; execution/closure/eval/name cases and the existing
-compiled presentation checks cover it. The final output is parsed before writes.
-The second stage omits ordinary source comments from served JavaScript. Readable
-modules and first-stage comment equality remain intact; license/copyright,
-exclamation, preservation and source URL/map notices stay in the output.
-The second stage also selects shorter quote and number spellings, omits optional
-property-key quotes and avoids optional IIFE wrapping. These are output formatting
-choices; the exact first-stage print and public property names remain unchanged.
-
-The CSS build replaces private source comments with empty comment separators;
-license/copyright/source-map notes, strings and escapes remain. The output also
-omits horizontal indentation after ordinary newlines, retaining the newline as
-a token separator. Whitespace within strings/comments and after a newline
-consumed by an escape stays intact. Source formatting remains readable.
-The linked CSS files then omit formatting around blocks and declarations.
-CSS Tree 3.2.1 preserves exact source slices for selectors, at-rule conditions and
-declaration values; it does not optimize values, combine rules or alter nesting.
-A full ordered AST roundtrip must match. License comments stay in place; assets
-with non-exclamation copyright/license/source-map notes retain their entire bytes.
-After exact CSS printing, the pinned Lightning CSS optimizer reduces rules and
-values while retaining native nesting and the existing browser targets. Raw token
-values containing comments bypass optimization so separators cannot disappear.
-Before that optimizer, adjacent identical single-selector parents can share one
-wrapper across media blocks. Only declaration-free parents with explicit `&`
-children qualify. Selector paths, media conditions, declaration order and style
-nesting depth stay intact; comments in discarded wrappers prevent grouping.
-Nested media uses the same [WebKit nesting support](https://webkit.org/blog/13813/try-css-nesting-today-in-safari-technology-preview/)
-as the existing preview. Readable source structure remains unchanged.
-Private injected CSS support uses this same pipeline before JavaScript escaping.
-Both historical Search3 style injectors are now retired: current linked selected
-and review owners supply their live rules. Synthetic builder fixtures retain the
-escaping, invalid-path and invalid-CSS guards without shipping a style injector.
-JavaScript concatenation
-expands private full-line `/* @include behavior/path.js */` markers in place.
-Included functions retain their original enclosing IIFE, declaration order and
-shared state. There is no runtime loader, new global or additional request.
-Source comments and donor markers stay available for maintenance.
-
-`manifest.json` records the exact concatenation order. Each behavior module retains
-its original IIFE scope. CSS modules retain the existing cascade order. The nine
-historical `styles/cascade/` modules and `visual-compatibility.css` now retain only
-provenance markers after the owner-authorized whole-layer retirement. Their needed
-lead lifecycle, hidden-state and tour-grid rules live in the current `lead-state`,
-`tour-detail-convergence`, `results-context` and `hotel-packages` owners.
-The ten-layer retirement and its verification scope are recorded in
-`docs/project/search3-whole-layer-retirement.json`.
-Do not sort the manifest or load modules
-independently in the browser. Static style strings in behavior modules also retain
-their original insertion order. Private CSS sources can be compiled into those
-same insertion points; moving them into earlier linked stylesheets requires
-separate cascade evidence.
-
-## Where to make changes
-
-| Concern | Source |
+| Public output under `v2/` | Manifest input under `src/search3/` |
 | --- | --- |
-| Primary form and field placement | `behavior/search-form.js` |
-| Responsive entry and existing price-calendar adapter | `behavior/search-form/entry-presentation.js` inside `behavior/search-form.js`, `styles/entry-v1.css` |
-| Desktop local result-filter rail | Existing `v2/ds2-results-filters.js`, `styles/results-layout.css`; `behavior/results-presentation.js` owns the bounded zero-result bridge |
-| Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
-| Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
-| Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
-| Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
-| Selected tour and mobile action | Shared `v2/tour-controller-v4.js`, `behavior/summary-cta.js`, `styles/selected-flow-v2.css` |
-| Flight labels and display-only price parsing | Shared `v2/flight-price-sync-v1.js`; decimal-safe Search3 correction in `behavior/summary-cta.js` |
-| Compact total and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
-| Selected services and tourists | Original selected-tour facts; duplicate booking services card retired |
-| Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
-| Lead heading and fields | Native controller form; duplicate note injector retired |
-| Lead entry and lifecycle presentation | `behavior/summary-cta.js`, shared `v2/lead-form-guard-v1.js` / `v2/lead-ui-race-guard-v1.js`, `styles/lead-state.css` |
-| Selected price and empty-flight recovery | Shared `v2/flight-price-sync-v1.js`, `v2/flight-empty-recovery-v1.js`, plus the native handoff in `behavior/summary-cta.js` |
-| Accepted isolation/readability/hidden contracts | Current `results-layout.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
+| `search3-results-filters-v1.js` | Ordered behavior entries in `manifest.json`, including the three active owners above |
+| `search3-results-filters-v1.css` | `styles/results-layout.css` |
+| `search3-entry-v1.css` | `styles/entry-native-controls.css` |
+| `search3-entry-v1.js` | `behavior/entry-v1.js` — retired slot |
+| `search3-results-cards-v2.css` | `styles/result-cards.css` — retired slot |
+| `search3-results-cards-v2.js` | `behavior/results-cards-v2.js` — empty overlay slot |
+| `search3-selected-flow-v2.css` | `styles/selected-tour.css` — image bound |
+| `search3-selected-flow-v2.js` | Empty input list |
 
-## Smaller source owners
+Keep all eight public paths, manifest order, IIFE/include boundaries and the
+single ordered inclusion in `v2/search3-presentation-v1.php`. Private includes
+remain inside their enclosing scope; do not load source modules independently.
+`v2/search3-shared-runtime.json` is also generated code, not a replacement source
+owner. Shared renderer/controller changes must follow their existing build and
+verification contract; coordinate them across lanes before editing.
 
-Repeated complete descendant prefixes inside all four stylesheets now use
-one additional single-selector parent, with at most three nesting levels. Each
-child retains one explicit leading `&`; a bare `&` targets the unchanged parent.
-Parents contain only rules, never declarations or at-rules. Recursive expansion
-reproduces the complete ordered selector/declaration/media stream. The audit is
-`docs/project/search3-css-descendant-results.json` and
-`docs/project/search3-css-descendant-secondary.json`. Public paths and the existing
-native nesting browser boundary remain unchanged.
+The pinned JavaScript/CSS printers and optimizers have existing AST, syntax,
+source/path and composition guards. Preserve them. Source work requires `--check`,
+the import hash check and focused applicable evidence; use the existing source
+build and production presentation tests. Follow the current task's CI policy
+instead of rerunning historical test lists or rebuilding for documentation.
 
-Consecutive rules across the four stylesheets share one native nesting parent:
-`body.search3-candidate` or `html body.search3-candidate`. Every child starts with
-an explicit `&`; expanding it restores the original selector. The parents have
-one selector each, so specificity stays `(0,1,1)` or `(0,1,2)` plus the child.
-Group only adjacent rules in the same source/media context. Keep declarations
-and at-rules outside grouping parents; do not combine parents into selector lists.
-The selector/declaration/media equivalence audit is
-`docs/project/search3-css-nesting-results.json` and
-`docs/project/search3-css-nesting-secondary.json`.
+## Boundaries and evidence
 
-This preview uses native CSS nesting, supported by
-[Safari 16.5 and later](https://webkit.org/blog/14154/webkit-features-in-safari-16-5/)
-and current Chromium/Firefox. Engines without nesting do not support this variant.
-Explicit `&` avoids reliance on relaxed type-selector parsing. The
-[nesting specificity rule](https://www.w3.org/TR/css-nesting-1/#nest-selector)
-explains why each grouping parent must remain a single selector. This does not
-replace physical Safari acceptance or the production approval gate.
+Preserve canonical lifecycle/events, original result items/tour references,
+progressive counts, supplier API contracts, price arithmetic, lead delivery and
+field mapping, analytics, legacy search and preview isolation. Local facets must
+reset/hide when their loaded data is incomplete and must not submit a new search.
+Useful visual/functionality growth is allowed; replace superseded rules and
+handlers in their current owner rather than adding another presentation layer.
 
-`behavior/results-presentation.js` keeps its guard, shared state, subscriptions
-and public adapter. Its private `results/labels.js`, `results/cards.js` and
-`results/toolbar.js` parts own complete function groups. Distinct formatter
-contracts remain local. The duplicate `behavior/selected-flow-v2.js` boundary
-and its private fallback are retired: the selected phase loads the existing
-shared recovery and price owners, while `summary-cta.js` retains only Search3's
-selected-state, decimal-label and native lead-handoff glue.
+The shared site shell and SEO/path helpers remain outside this source directory;
+use the development entrypoint to coordinate changes to mixed-responsibility files.
+Source/build checks do not establish physical Safari acceptance or owner approval
+of a concrete production release. Documentation alone requires no preview deploy.
 
-Include paths are relative to `src/search3/`, must have the enclosing asset's
-extension and must occur exactly once in the build. Cycles, duplicate parts,
-outside-root paths and unlisted files fail before output is written. Private
-parts belong to their enclosing IIFE and must not be loaded independently.
+Historical evidence explains earlier changes; it is not a queue or instruction to
+restore retired owners:
 
-The large combined CSS sources are split at existing component and breakpoint
-boundaries. Hotel packages, card convergence and width compatibility have separate
-files; booking summary and stepper, final sections and lead review, desktop review
-board and specificity guards, and the phone result layout are separate too.
-`results-tablet-layout.css` is now a provenance-only slot; the live compact drawer
-belongs to `mobile-results-toolbar.css`, while `results-mobile-layout.css` retains
-only phone rules that still win in the accepted collapsed or expanded geometry.
-The manifest retains their original cascade positions. These are source modules,
-not additional browser requests.
-
-The entry stylesheet is split into calendar, responsive entry, toolbar and native
-control owners in the same order: `entry-calendar.css`, `entry-v1.css`,
-`entry-toolbar.css`, `entry-native-controls.css`. Their concatenation preserves
-source bytes. Adjacent rules with identical declarations share selector lists;
-the selector/declaration/media token proof is recorded in
-`docs/project/search3-css-build-compaction.json`.
-
-`behavior/summary-cta-styles.js` and its private CSS are retired provenance slots.
-Final-review presentation now has one linked owner in `styles/review-layout.css`;
-the source/build tests keep the private CSS-string compiler covered with isolated
-fixtures, without restoring a runtime style injector.
-
-The legacy selected-tour shell is retired. `styles/selected-tour.css` retains
-only the native selected-picture width bound, so remote hotel images cannot
-overflow the viewport; no card, mobile-bar or narrow-state presentation remains.
-
-Repeated ancestor prefixes in 74 CSS selector lists now use `:is()` for plain
-class alternatives with equal specificity. Declarations and media boundaries are
-unchanged; do not put alternatives of different specificity into the same group.
-
-The common PHP header/footer remain owned by their existing `v2/site-*` files.
-Search3 uses the canonical server-rendered footer. Its inactive client replacement
-and the corresponding private footer CSS have been removed.
-
-## Boundaries
-
-The eight public asset paths, PHP inclusion order, API/runtime, price calculation,
-lead transport/mapping, analytics and legacy search are unchanged. The initial
-extraction reproduced all eight assets byte for byte from release `3624278a`.
-These source files live outside `v2/` and are not included in the 715-file preview
-payload. Deployment continues to consume the checked-in generated assets.
-
-That initial extraction changed source ownership only. Later reductions and the
-owner-authorized whole-layer retirement are separate changes with their own
-audits; their verification must not be inferred from the byte-preserving split.
-
-The owner-authorized reset package intentionally keeps only `base.css`,
-`results-layout.css` and `entry-native-controls.css` in the active Search3 CSS
-composition. The card and selected CSS public files remain empty provenance slots.
-All retired readable source modules remain in this directory for a reversible
-repair pass, but they are not compiled into Search3. The full legacy manifest is
-unchanged. Search3 also excludes only optional shared presentation runtimes;
-canonical lifecycle, renderer, controller, URL, price, lead and analytics owners
-remain loaded.
-
-An earlier CSS-only consolidation removed proven duplicate declarations while
-preserving the final cascade; see `docs/project/search3-css-deduplication.json`.
-The later ten-layer retirement supersedes that audit's description of active
-compatibility layers. Public build paths and module order remain unchanged.
-
-## Retired presentation states
-
-CSS for retired hotel focus/advanced controls/highlights and other absent owners
-has been removed. Only positive requirements were retired; negative conditions
-remain because their specificity and active matching still matter. Another 35
-selector lists use equal-specificity compound alternatives in `:is()`; pseudo
-elements and unequal-specificity alternatives were excluded. The audit is in
-`docs/project/search3-css-owner-retirement.json`.
-
-## Update ownership
-
-`booking-summary.js` coalesces tour/flight/price/stage events into one deferred
-compact-total render. Full hotel/tourist/service details remain in the original
-selected-tour facts and are no longer copied into a second services/card layer.
-Its private `booking/format.js` retains escaping and the supplier flight label;
-private services/layout and lead-note injectors are retired. `summary-cta.js`
-keeps review/lead transitions, focus, isolation and the existing public methods.
-`results-presentation.js` owns one animation-frame queue for result state. Result
-mutations may synchronize search state; resize must remain geometry-only so
-an open search editor is preserved. Queued geometry reads current cards, not
-an item count captured before reset. Keep these queues local to their owners;
-do not add a global scheduler or another observer for the same work.
-The visible count and route remain here; the permanently hidden duplicate meta
-counter has been retired. Static page intro text belongs only to `search-form.js`
-and is not rewritten on results, reset or form-change events.
-
-The `results-top.js` bridge is retired entirely. Canonical shared lifecycle and
-renderer owners keep result/tool rendering; the compact native `search-form.js`
-owner retains only result-shell visibility, edit/focus and `aria-busy` state.
-Selected visibility uses the existing `search3-selected-open` class in CSS, so
-there is no second result/selected return listener or click replay.
-The retired `selected-tour-handoff.js` slot also retains provenance only. Result
-button labels, selected-tour busy state and entry focus share the existing
-results/reset/tour lifecycle in `results-presentation.js`; canonical return focus
-remains in the base runtime.
-Progressive-result and compact-breakpoint bursts share one pending task. Reset or
-empty results cancel it; a later eligible event can retry a missing canonical
-filter bar. Mounting retains the existing toolbar, native sort handoff and control
-listeners. This queue does not own filtering or search submission.
-
-Regression adapters: `tests/search3-booking-summary.cjs`,
-`tests/search3-results-scheduler.cjs`, `tests/search3-mobile-toolbar-scheduler.cjs`
-and `tests/search3-mobile-toolbar-ownership.cjs`, run by the presentation test suite.
-
-The selected-runtime lazy proxy is retired. Search3 now requests the existing
-compact shared runtime once, with the canonical controller, flight recovery,
-price and lead owners already present before the public Search3 adapters execute.
-This removes the proxy click replay, script-injection/error state and reset
-generation while preserving the protected owners byte-for-byte. The historical
-`initial`/`selected` bundle phases remain a reversible server capability but the
-Search3 page does not use them.
-
-
-A later cascade pass removes earlier declarations only when the same complete
-expanded selector list, media/supports context, property and important priority
-occur later in the same linked stylesheet. Each deletion records the later
-witness in `docs/project/search3-active-css-declarations.json`; existing browser
-CI verifies that those later values are supported, so unsupported-value fallbacks
-are not silently removed. No shorthand expansion or cross-context merging is used.
-Final declaration maps match the prior code; now-empty rules are removed without
-reordering retained declarations. Protected acceptance guards remain intact.
-
-Cross-asset duplicate removal also uses the mandatory main/entry/cards/selected
-order in `v2/search3-presentation-v1.php`. All four stylesheets share one enabled
-gate; the existing presentation test checks their order and single inclusion.
-Witnesses in a later linked stylesheet may cover an earlier declaration only
-under the same strict selector/media/value rules. This relies on loading the
-complete four-file presentation, not the main stylesheet in isolation. Audit:
-`docs/project/search3-css-cross-asset-dominance.json`.
-
-`behavior/booking-summary.js` retains state, supplier flight formatting, pending
-and confirmed price arithmetic, and the event lifecycle. Layout-only dataset and
-duplicate service-card owners are retired; focused compiled coverage verifies the
-coalesced total and that native selected facts remain available.
-
-The already loaded `v2/ds2-results-filters.js` is the single desktop local-filter
-owner. Search3's `results-presentation.js` retains only the local zero-result shell bridge;
-`filter-rail/availability.js` and `filter-rail/render.js` are provenance-only
-manifest slots. The results-layout owner styles the live DS2 budget, meal,
-category, rating and sea-distance controls. Presentation for the retired Search3
-section, radio and edit-row markup is intentionally absent.
-
-`search-form.js` retains initialization, field references and the existing form
-lifecycle. Its `search-form/primary-controls.js` and `secondary-controls.js` parts
-expand at the original positions inside `init()`. Dates, nights, guests, secondary
-fields and delayed cleanup keep their shared lexical scope and exact source bytes.
-The secondary composition now also owns the single mobile trust/filter entry and
-its ARIA toggle. The retired `mobile-search-entry.js` and `result-cards.css` remain
-provenance-only manifest slots; current entry/results owners supply their retained
-presentation. Legacy form presentation was removed from `base.css`; current form
-and guest rules live in `entry-v1.css`.
-
-The booking path uses one summary CTA owner for flight-to-review,
-summary-to-lead and lead-to-review transitions instead of separate listeners or
-a second clickable progress strip. `flight-continue.js`, `booking-stepper.js`,
-`booking-stepper.css` and `review-heading.js` are provenance-only slots; the
-selected hotel heading and booking summary retain the accessible review context.
-
-The subsequent results-layer passes retire `styles/results-width-compatibility.css`,
-`styles/hotel-card-convergence.css`, `styles/results-context.css` and
-`styles/hotel-packages.css`. Current shell, lifecycle, MRF, card and mobile-fact
-guards live in the base/results/toolbar/card owners; retired files contain
-provenance comments only.
-See `docs/project/search3-results-layer-retirement.json` for measured bytes and
-checked-versus-published scope.
+- [Whole-layer retirement](../../docs/project/search3-whole-layer-retirement.json)
+- [Native entry and shared compaction](../../docs/project/search3-native-entry-shared-compaction.json)
+- [Shared runtime compaction](../../docs/project/search3-shared-runtime-compaction.json)
+- [DS2 results and selected-tour restoration](../../docs/project/search3-ds2-restoration-product.json)
+- [Flight and meal presentation](../../docs/project/search3-flight-meal-product.json)
+- [Local meal facet](../../docs/project/search3-local-meal-facet-product.json)
+- [Calendar and acceptance corrections](../../docs/project/search3-calendar-acceptance-corrections.json)

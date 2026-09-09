@@ -2,7 +2,7 @@
 
 Status: canonical architecture source of truth for `pyatkoff/poisk-turov-test`.
 
-This document describes how the product is intended to be structured. Operational progress belongs in `AUTOPILOT.md` / `AUTOPILOT_STATE.json`; product roadmap belongs in `PRODUCT_ROADMAP.md`; test ownership belongs in `TEST_MATRIX.md`. When those documents disagree with this file about architecture, this file wins unless a deliberate architecture change updates it in the same PR.
+This document describes how the product is intended to be structured. Development routing belongs in `docs/project/anytour-development.md` / #996. Current product execution belongs in the fresh release `AUTOPILOT_STATE.json.current_task` and `docs/project/search3-product-development-plan.md`; scoped integration execution uses its ANEX plan. `PRODUCT_ROADMAP.md` remains long-term context, not the active queue. Test ownership belongs in `TEST_MATRIX.md`. When those documents disagree with this file about architecture, this file wins unless a deliberate architecture change updates it in the same PR.
 
 ## Core rule: one concept → one implementation
 

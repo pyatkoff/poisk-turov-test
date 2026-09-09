@@ -1258,7 +1258,7 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "last_material_progress": "#1699 and #1700 remove system-timezone drift from hot and monthly public Search3 handoffs. Both integrated through releaseb3da2002 with Security, exact artifact and applicable boundary/standalone CI green.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Refresh release/main/open PRs, then start S3_PRODUCT_USEFUL_FEATURES: audit the existing public/Search3 price-calendar path for one confirmed usability or state mismatch. Do not repeat completed name/category/meal facets and do not duplicate ANEX work.",
+    "next_action": "Read AUTOPILOT_STATE.json.current_task and continuation_policy.active_queue_ids; docs/project/anytour-development.md routes independent SITE/SEO/INT work. Historical stage text is not another execution queue.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -13253,5 +13253,32 @@
       "Full site/SEO acceptance beyond sampled homepage/country/month and selected/return route",
       "Production visual approval for the concrete release"
     ]
+  },
+  "development_coordination": {
+    "coordination_issue": 996,
+    "entrypoint": "docs/project/anytour-development.md",
+    "policy": "Routing only; no new queue, scheduling, code/deploy or production authorization.",
+    "workstreams": {
+      "integrations": {
+        "branch": "feature/anex-search-adapter-20260907",
+        "issues": [
+          1647,
+          1717,
+          1685
+        ],
+        "resume": "docs/integrations/anex-search3-autopilot.md",
+        "umbrella_pr": 1493
+      },
+      "search": {
+        "issue": 1646,
+        "resume": "AUTOPILOT_STATE.json.current_task"
+      },
+      "seo": {
+        "issue": 1720
+      },
+      "site": {
+        "issue": 1719
+      }
+    }
   }
 }
