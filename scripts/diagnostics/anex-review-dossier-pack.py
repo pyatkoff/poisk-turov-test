@@ -8,6 +8,7 @@ import re
 import sys
 
 MAX_BYTES = 8_000_000
+MAX_FORMATTED_BYTES = 32_000_000
 MAX_ROWS = 1000
 
 def canonical(value):
@@ -25,11 +26,13 @@ def no_duplicates(pairs):
     return result
 
 def pack(raw, expected_sha, artifact_id):
-    if len(raw) > MAX_BYTES or not re.fullmatch('[0-9a-f]{64}', expected_sha) or digest(raw) != expected_sha:
+    if len(raw) > MAX_FORMATTED_BYTES or not re.fullmatch('[0-9a-f]{64}', expected_sha) or digest(raw) != expected_sha:
         raise ValueError('source_digest_or_bound')
     if type(artifact_id) is not int or not 0 < artifact_id <= 9_000_000_000_000_000:
         raise ValueError('artifact_identity')
     data = json.loads(raw, object_pairs_hook=no_duplicates)
+    if len(canonical(data).encode()) > MAX_BYTES:
+        raise ValueError('source_compact_bound')
     if (data.get('schema_version') != 1 or data.get('scope') != 'preview'
             or data.get('kind') != 'observed_review_dossiers'
             or not re.fullmatch('[0-9a-f]{40}', data.get('source_sha', ''))
@@ -74,5 +77,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # Bound reads before parsing. stdout is for the approved DB-helper transport.
     with args.triage.open('rb') as stream:
-        raw = stream.read(MAX_BYTES + 1)
+        raw = stream.read(MAX_FORMATTED_BYTES + 1)
     print(canonical(pack(raw, args.sha256, args.artifact_id)))
