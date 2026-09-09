@@ -14,7 +14,21 @@ A blocked item or production visual-approval wait does not block independent saf
 Keep lean preview checks and all protected business/production boundaries.
 Older roadmap/checkpoint sections below are historical where superseded here.
 
-## Current product checkpoint — DS2 restoration #1675/#1676 — 2026-09-09
+## Current product checkpoint — flight choices and meal labels #1680/#1681 — 2026-09-09
+
+Two source packets completed sequentially and published together. #1680 keeps all original flight radios/indices/prices, showing only the selected choice until expanded in a bounded panel; small sets are unchanged. #1681 shares the canonical meal display label while retaining the exact original lead payload. DS2 donor17b674fc remains the design base; no retired owner/include returned.
+
+Flight source `cdf760bb610b43fdb2805584bd7d96abe20623bb`, release `5f2e12a8358062477f42d8c2dcbccbd882704474`; meal/final source `0754f3dbb52d715c82a1f7212c85ada65fb659d6`, tree `46664ef73ef1ac805693c20d9a0572975af86f6c`, checked code release `1569e01a721d16374c6eb87b70c00a3c1123ebc7`. Docs checkpoint is separate.
+
+Eight assets **25210→26579 B (+1369)**; CSS+462, JS+907; shared emitted JS+183, inline delta0. Correct current initial/full owned external CSS/JS **161307→162859 B (+1552)**, including both shared bundles and response separators. Current route eagerly loads JS `all`; historical phase42418 and old absolute eager/full totals below are superseded. Extra selected request0; exact source/artifact totals agree. No deletion or lazy-loading saving claimed.
+
+Security34318264527/34318776520 and exact34318264521/34318776481 passed.89 options at375/1440 preserve last choice, keyboard arrows, price/summary, phone focus and no extra requests; existing source/PHP/path/presentation/isolation gates pass. Meal shapes11, escaping and complete original leadPayload equality pass. Initial meal exact34318622993 was red on whole-controller hash. The guard now requires one reviewed display expression, reverses only it, and compares the entire controller against the unchanged protected baseline; all other bytes stay locked. No asset rebuild for this test-only repair.
+
+Published exact source0754f3db via artifact10091093868 (`sha256:47039ae87856dd47242b71da1f597ed1e2724ce8d89febf883f59bb4904852c4`), deploy34319053098, control#1682 closed without merge. Evidence10091160692 confirms9 routes, noindex, disabled production leads, counter0, rollback and13 unchanged production fingerprints. Live1363:100 cards, matching meal labels, actual4/1-flight short lists, selected80032 ₽/TK3025+TK3024 matches contact summary and phone focus; overflow0, real leads0. Live contact screenshot and CI375/1440 inspected. Large live supplier list was unavailable: mark live collapse/expand deferred, not passed. Live mobile/physical Safari/full site+SEO/production acceptance deferred. Historical flight-presentation test still targets a retired helper and is red outside the current required source gates; no weakening or false green.
+
+Main independently advanced through owner#1679 hotel-photo fix to41ec8876c5c92a4a9d1b71d7387dcae6b5efee66; this continuation made no main/production write. Before next packet audit whether that fix needs a release port. Next active S3_PRODUCT_USEFUL_FEATURES is a truthful meal facet: preserve original result state/events/continuation count, project matching original tours only for renderer view/price/sort/expand; clear/hide incomplete sets; one local filter owner; protect dirty/reset and lead/API. Concrete implementation and tests: `docs/project/search3-flight-meal-product.json` and the active product plan. Recurring development remains active.
+
+## Previous product checkpoint — DS2 restoration #1675/#1676 — 2026-09-09
 
 Owner requested faster reuse of previous polished components. Donor `17b674fc54fa6b49aaa73379bcbdc35bfccfda28` was adapted into the single current `results-layout.css` owner, replacing its result/toolbar and selected/flight/contact blocks. No retired includes, JS decorators, price, lead or analytics logic returned. Renderer-only `meal.fullName` fallback was repaired.
 
