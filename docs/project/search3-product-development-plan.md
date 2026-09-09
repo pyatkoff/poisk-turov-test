@@ -2,6 +2,21 @@
 
 Рост CSS/JS разрешён ради реального улучшения продукта. Уточнение владельца от 2026-09-09: быстрее использовать удачные компоненты предыдущей оформленной версии как доноры. Адаптировать их к текущей разметке и заменять правила в одном актуальном владельце; старые подключения, decorators и дополнительные JS-слои не возвращать.
 
+## Текущий checkpoint — безопасный переход с главной и один владелец CTA #1693/#1694 — 2026-09-09
+
+Два пакета выполнены последовательно. [#1693](https://github.com/pyatkoff/poisk-turov-test/pull/1693) блокирует обе GET-точки перехода с главной до готовности списка стран: disabled `country` больше не выпадает из `FormData`, Enter не обходит блокировку, а запоздалый ответ для старого города не перезаписывает актуальные страны. После готовности нативная отправка и «Расширенный поиск» сохраняют страну. Source `276fca32150cb5f4d0dff28736293e6bae98670a`, release `9a020881f73237d726e1587eeae0fd61ade62e1e`.
+
+[#1694](https://github.com/pyatkoff/poisk-turov-test/pull/1694) завершает shared CTA convergence: из `site-page-v1.css` удалены generic geometry/colour/hover/mobile-width правила `.sp-primary/.sp-secondary`; единственный поздний владелец — `shared-content-primitives-v1.css`. Контекстные card-primary и тёмный search-callout сохранены. Source `514d7fa92def05c65a1945266367dc8623c0d142`, checked release `865ee7b6b0f6e7b2c663393fcec08e24f1b6d94a`.
+
+Восемь Search3 assets не менялись (**0 B**). Homepage CSS `10415→10581 B (+166)`, inline controller `3458→4243 B (+785)`; shared `site-page-v1.css 11283→10716 B (−567)`. Security `34325953808/34326518960`, exact `34326140281/34326631635`, navigation `34326140349` и standalone content `34326140267/34326631536` зелёные. Новый детерминированный тест покрывает initial loading, оба CTA и rapid-departure race; source-order guard не позволяет вернуть второго CTA-владельца. Заявок 0.
+
+Preview не публиковался: первый пакет меняет короткое loading-состояние, второй сохраняет computed presentation. Published source остаётся `8382d1bd8543fd3f0efb623673d1b70fa2be823d`; main observed `41ec8876c5c92a4a9d1b71d7387dcae6b5efee66`, main/production не менялись. Live mobile/Safari и новый визуальный осмотр deferred до накопленного визуального пакета.
+
+**Следующий S3_PRODUCT_PAGES_HANDOFF:** проверить оставшиеся country/resort/hot/rb offer CTA на потерю направления, дат, ночей и состава туристов при переходе в Search3; исправлять только подтверждённый дефект в текущем route/helper owner. Homepage loading/race и shared CTA owner не перезапускать; ANEX остаётся отдельно.
+
+Audit: `docs/project/search3-shared-control-owner.json`.
+
+
 ## Текущий checkpoint — правдивый фильтр питания и фото #1686/#1687 — 2026-09-09
 
 Два source-пакета завершены последовательно и опубликованы вместе. #1686 переносит ровно два файла owner main#1679: CDN URL вида `//…` нормализуются в HTTPS, опасные URL отклоняются. Source `d75d21d31520142b864d965997f310840de80280`, release `f814829e2c7e397a83191e24836cb599d9db3ef8`. CSS/JS delta0; это подготовка нормализации, не обещание восстановления старых записей БД. Collector/DB не запускались.
