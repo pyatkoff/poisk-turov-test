@@ -105,9 +105,11 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
     // Unresolved identities stay separate and never borrow an unaccepted catalog ID.
     $unresolved=[];$p=$request['params'];
     $needsCatalog=false;
-    foreach(['hotelIds','regionIds','subregionIds','hotelCategory','hotelRating'] as $filter)if(!empty($p[$filter]))$needsCatalog=true;
+    foreach(['hotelIds','regionIds','subregionIds','hotelRating'] as $filter)if(!empty($p[$filter]))$needsCatalog=true;
     if(!$needsCatalog)foreach($page['offers'] as $offer){
         if($offer['local_hotel_id']!==null || $offer['price']['currency']!=='RUB')continue;
+        $category=$offer['hotel_content']['category']??null;
+        if(!empty($p['hotelCategory']) && (!is_int($category)||$category<1||$category>5||$category<(float)$p['hotelCategory']))continue;
         $amount=(float)$offer['price']['amount'];
         if((!empty($p['priceFrom'])&&$amount<(float)$p['priceFrom'])||(!empty($p['priceTo'])&&$amount>(float)$p['priceTo']))continue;
         if(!empty($p['meal'])&&!in_array(anytour_anex_search3_name($offer['meal']['label']),['ai','all','all inclusive','uai','ultra all inclusive','ai without alcohol','все включено','ультра все включено','все включено без алкоголя'],true))continue;

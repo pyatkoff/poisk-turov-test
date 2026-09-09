@@ -66,3 +66,25 @@ $full=$fullHandler->start($point,'full_point',1,time(),$fullClient,'test','test'
 if($full['status']!=='complete'||($pointSaved['store']['criteria']['HOTELS']??null)!=='2000042763')throw new RuntimeException('hotel criteria rejected by private store');
 if($fullHandler->resume('full_point',1,time())!==$full||$pointCalls!==2)throw new RuntimeException('point store resume changed or spent API');
 echo "Upstream hotel criteria retained through client, store and cached resume passed\n";
+
+$unmapped=[];foreach([3,4,5,null] as $n=>$category)$unmapped[]=[
+ 'local_hotel_id'=>null,'price'=>['currency'=>'RUB','amount'=>'100000'],'hotel_content'=>['category'=>$category,'region'=>'Sharm'],
+ 'meal'=>['label'=>'AI'],'supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>(string)(9000+$n),
+ 'hotel'=>'Unmapped fixture '.$n,'offer_ref'=>'unmapped'.$n,'operator'=>'Anex Tour',
+ 'check_in'=>'2027-01-02','nights'=>8,'adults'=>2,'children'=>0,'room'=>'Standard'];
+$page=['offers'=>$unmapped,'page'=>1,'pages_count'=>1,'search_ref'=>'unmapped_stars','status'=>'complete'];
+$filter=['generation'=>1,'params'=>['countryId'=>'1','dateFrom'=>'2027-01-02','dateTo'=>'2027-01-02','hotelCategory'=>'4','meal'=>'7']];
+$projected=anytour_andromeda_search3_project($filter,$pdo,$page);
+if(array_column($projected['hotels'],'category')!==[4,5])throw new RuntimeException('supplier minimum category lost unresolved hotels');
+$filter['params']['hotelCategory']='5';
+if(array_column(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels'],'category')!==[5])throw new RuntimeException('lower category admitted');
+unset($filter['params']['hotelCategory']);
+if(count(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels'])!==4)throw new RuntimeException('unfiltered unknown category hidden');
+$filter['params']['hotelCategory']='4';
+foreach(['hotelIds'=>['447'],'regionIds'=>['1'],'subregionIds'=>['1'],'hotelRating'=>'4'] as $key=>$value){
+ $f=$filter;$f['params'][$key]=$value;
+ if(anytour_andromeda_search3_project($f,$pdo,$page)['hotels']!==[])throw new RuntimeException('unresolved identity borrowed local filter metadata');
+}
+$filter['params']['priceTo']='90000';
+if(anytour_andromeda_search3_project($filter,$pdo,$page)['hotels']!==[])throw new RuntimeException('category bypassed price filter');
+echo "Unresolved supplier categories: minimum stars, unknowns, local identity filters and price passed\n";

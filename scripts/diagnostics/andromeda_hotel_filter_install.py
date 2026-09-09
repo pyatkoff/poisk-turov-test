@@ -1,4 +1,4 @@
-"""Publish accepted upstream hotel criteria and verify one bounded ANEX hotel search."""
+"""Publish unresolved supplier-category filtering and verify saved pages without supplier calls."""
 import base64
 import json
 import os
@@ -16,9 +16,7 @@ try {
     if(!preg_match('/^[a-f0-9]{40}$/D',$request['source_sha']))throw new RuntimeException();
     $lock=fopen($private.'/hotel-filter-update.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException();
     $release=$private.'/hotel-filter-'.$request['source_sha'];if(file_exists($release)||!mkdir($release,0700))throw new RuntimeException();
-    $expected=['app/integrations/andromeda-client.php'=>'1c25d3e27ded11e52d2023d70c7e4ce0debdd1fe516f5abcf9f32e4c3d954ae4',
-        'api-andromeda-search3-preview.php'=>'4c3ea5c4c7ad2c16d9506f2110015c53fa33fb4f9be245401efe578b51288cd7',
-        'app/integrations/andromeda-offer-store.php'=>'cc1d40b433df7f1ca39a1e5d005b7336adab0c6c06c4a9f9b8c472c6783e94de'];
+    $expected=['api-andromeda-search3-preview.php'=>'4c3ea5c4c7ad2c16d9506f2110015c53fa33fb4f9be245401efe578b51288cd7'];
     if(array_keys($request['files'])!==array_keys($expected))throw new RuntimeException();
     foreach($expected as $path=>$hash)if(is_link($target.'/'.$path)||hash_file('sha256',$target.'/'.$path)!==$hash)throw new RuntimeException();
     $files=[];foreach($request['files'] as $path=>$encoded){$data=base64_decode($encoded,true);if($data===false)throw new RuntimeException();$files[$path]=$data;}
@@ -38,25 +36,28 @@ try {
         require_once $target.'/api-andromeda-search3-preview.php';
         require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
         $pdo=v2_data_db();$config=require $target.'/.andromeda-private.php';
-        $saved=json_decode(file_get_contents($config['catalog_path']),true,32,JSON_THROW_ON_ERROR);
-        $saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
-        $search=['generation'=>1,'andromeda_operator_ids'=>['5'],'params'=>[
-            'countryId'=>'1','departureId'=>'1','dateFrom'=>'2026-09-18','dateTo'=>'2026-09-18',
-            'nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'meal'=>'7','hotelIds'=>['9365']]];
-        $criteria=anytour_andromeda_search3_params($search,$pdo,$saved);
-        if(($criteria['HOTELS']??null)!=='416247'||($criteria['OPERATORS']??null)!=='5')throw new RuntimeException();
-        $session='hotel-filter-'.$request['source_sha'];
-        $data=anytour_andromeda_search3_run($search,$pdo,$saved,$config,$session);
-        $budgetPath=dirname($config['catalog_path']).'/monthly-requests.json';
-        $budget=is_file($budgetPath)?hash_file('sha256',$budgetPath):null;
-        $again=anytour_andromeda_search3_run($search,$pdo,$saved,$config,$session);
-        $tours=[];$ids=[];foreach($data['hotels'] as $hotel){$ids[]=$hotel['local_id'];foreach($hotel['tours'] as $tour)$tours[]=$tour;}
-        $operators=array_values(array_unique(array_map(static function($t){return (string)$t['operator'];},$tours)));
-        $result['verification']=['status'=>'checked','criteria'=>['HOTELS'=>$criteria['HOTELS'],'OPERATORS'=>$criteria['OPERATORS']],
-            'page'=>$data['page'],'pages_count'=>$data['pages_count'],'received_offers'=>$data['received_offers'],
-            'displayed_offers'=>count($tours),'local_hotel_ids'=>$ids,'operator_labels'=>$operators,
-            'resume_equal'=>$again===$data,'resume_budget_unchanged'=>$budget===(is_file($budgetPath)?hash_file('sha256',$budgetPath):null)];
-        if($again!==$data||$result['verification']['resume_budget_unchanged']!==true||count($tours)!==$data['received_offers']||array_diff($ids,[9365])||array_diff($operators,['Anex Tour']))throw new RuntimeException();
+        $files=glob(dirname($config['catalog_path']).'/searches/*.json')?:[];
+        $seen=[];$retained=[];$pages=0;
+        foreach($files as $path){
+            if(str_ends_with($path,'-auth.json'))continue;
+            $state=json_decode(file_get_contents($path),true);
+            $page=$state['store']['snapshot']??null;if(!is_array($page)||!isset($page['offers'],$page['page'],$page['pages_count']))continue;
+            ++$pages;
+            // Apply the new projection to saved unresolved offers only; never re-run supplier search.
+            $offers=array_values(array_filter($page['offers'],static function($o){return $o['local_hotel_id']===null;}));
+            if(!$offers)continue;$page['offers']=$offers;
+            $page['status']=$page['status']??'complete';$page['search_ref']=$page['search_ref']??'saved_category_audit';
+            $p=['generation'=>1,'params'=>['countryId'=>'1','dateFrom'=>'2026-09-18','dateTo'=>'2026-09-18','hotelCategory'=>'4']];
+            $out=anytour_andromeda_search3_project($p,$pdo,$page);
+            foreach($offers as $offer)$seen[$offer['supplier_namespace'].':'.$offer['external_hotel_id']]=true;
+            foreach($out['hotels'] as $hotel){
+                if(!is_int($hotel['category'])||$hotel['category']<4||$hotel['category']>5||$hotel['local_id']!==null)throw new RuntimeException();
+                $retained[$hotel['card_key']]=['name'=>$hotel['name'],'category'=>$hotel['category']];
+            }
+        }
+        if($pages===0)throw new RuntimeException();
+        $result['verification']=['status'=>'checked','saved_pages'=>$pages,'unresolved_identities'=>count($seen),
+            'retained_at_4_stars'=>count($retained),'retained'=>array_values($retained),'supplier_calls'=>0,'database_writes'=>0];
     }catch(Throwable $probeError){$result['verification']['status']='failed';}
     file_put_contents($release.'/manifest.json',json_encode($result));
 }catch(Throwable $ignored){
@@ -70,7 +71,7 @@ def main():
     directory=Path(os.environ['RUNNER_TEMP'])/'andromeda-hotel-filter';directory.mkdir(exist_ok=True)
     root=Path(__file__).resolve().parents[2]
     request={'source_sha':os.environ['SOURCE_SHA'],'files':{}}
-    for name in ['app/integrations/andromeda-client.php','v2/api-andromeda-search3-preview.php','app/integrations/andromeda-offer-store.php']:
+    for name in ['v2/api-andromeda-search3-preview.php']:
         request['files'][name.removeprefix('v2/')]=base64.b64encode((root/name).read_bytes()).decode()
     save(directory/'reservation.json',{'state':'inflight','source_sha':request['source_sha']},exclusive=True)
     result=owner.ssh_php(SOURCE,request)
