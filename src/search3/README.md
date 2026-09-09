@@ -16,6 +16,7 @@ comment does not establish an active owner.
 | Native form markup, date/night/party fields and page composition | `v2/index.php`; defaults in `v2/form-defaults.php`, catalogs in `v2/catalogs-v2.js` |
 | Search3 result busy state and edit/focus glue | `src/search3/behavior/search-form.js` |
 | Loaded hotel name/category/meal filtering and renderer projection | `src/search3/behavior/results/local-hotel-filter.js` with `v2/results-renderer-v5.js` |
+| Local shortlist of exact loaded offer snapshots | `src/search3/behavior/results/shortlist.js`; current projection and canonical selection stay with the owners above |
 | Native selected-tour lead handoff, large flight-list disclosure and display corrections | `src/search3/behavior/summary-cta.js`; canonical selected markup/state remains in `v2/tour-controller-v4.js` |
 | Search form layout and native controls | `src/search3/styles/entry-native-controls.css` |
 | Results toolbar/cards, responsive layout, selected tour and lead presentation | `src/search3/styles/results-layout.css` |
@@ -23,8 +24,8 @@ comment does not establish an active owner.
 | Search lifecycle, progressive loading and supplier-facing client runtime | Existing `v2/search-lifecycle-v6.js`, `v2/search-continue-v6.js`, `v2/runtime-v3.js` |
 | Shared site header/footer and content controls | Existing `v2/site-header-v2.php/.css`, `v2/site-footer-v1.php/.css`, `v2/shared-content-primitives-v1.css` |
 
-The three active Search3 behavior owners are `search-form.js`,
-`results/local-hotel-filter.js` and `summary-cta.js`. Other manifest behavior slots
+The four active Search3 behavior owners are `search-form.js`,
+`results/local-hotel-filter.js`, `results/shortlist.js` and `summary-cta.js`. Other manifest behavior slots
 currently preserve provenance; do not restore their old decorators or handlers.
 In particular, `search-form/primary-controls.js`, `secondary-controls.js`,
 `results/toolbar.js`, `booking-summary.js` and `booking/format.js` are retired slots.

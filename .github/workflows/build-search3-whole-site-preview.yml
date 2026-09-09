@@ -23,6 +23,7 @@ on:
       - 'tests/search3-header-geometry-browser.cjs'
       - 'tests/search3-entry-owner-browser.cjs'
       - 'tests/search3-current-results-browser.cjs'
+      - 'tests/search3-shortlist-browser.cjs'
       - 'scripts/build/search3_site_preview_isolation.py'
       - '.github/workflows/build-search3-whole-site-preview.yml'
 
@@ -281,7 +282,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-current-results-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/behavior/results/shortlist.js src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-current-results-browser.cjs tests/search3-shortlist-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -404,6 +405,7 @@ jobs:
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
           node tests/search3-current-results-browser.cjs
+          node tests/search3-shortlist-browser.cjs
           node tests/search3-entry-owner-browser.cjs
 
       - name: Retain native entry evidence
