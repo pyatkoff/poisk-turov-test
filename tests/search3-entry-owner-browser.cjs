@@ -21,7 +21,12 @@ async function run(browser, width) {
   try {
     const response = await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8&daysFrom=7&daysTill=10', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
-    await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1' && window.V2SearchLifecycle);
+    // The presentation-ready flag precedes async catalog boot and URL hydration.
+    // Even the deliberately blocked catalog fixture must settle before editing.
+    await page.waitForFunction(() => {
+      const form = document.getElementById('tourSearch');
+      return form?.dataset.search3Ready === '1' && form.dataset.catalogSource && window.V2SearchLifecycle;
+    });
     const adults = page.locator('#tourSearch select[name=count_people]'), children = page.locator('#tourSearch select[name=child_count]');
     assert.equal(await adults.inputValue(), '3', 'URL adult value stays on original control');
     assert.equal(await children.inputValue(), '1', 'URL child count survives native presentation');
