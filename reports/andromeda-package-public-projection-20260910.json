@@ -1,0 +1,70 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "stage": "A3.2 captured-package public projection preparation",
+  "scope": "Source-only fail-closed projection after the existing PackageCapture read; not installed, not a live package capture, not a quote or booking action",
+  "base": "264655989a11d354b12463905171ca96ad639619",
+  "pr": 1936,
+  "source": "f093f5408df2d2f62c39f3090bee6e5bbcf5ef00",
+  "feature_merge": "6cee4476b1fbc0b6611ff6e1e7804346062a18b7",
+  "implementation": {
+    "path": "app/integrations/andromeda-package-public.php",
+    "test": "tests/andromeda-package-public-smoke.php",
+    "workflow": ".github/workflows/andromeda-saved-package-runtime-check.yml",
+    "authority": "record() proves only exact package binding; current() first calls existing PackageCapture::read to revalidate current retained context, mapping, expiry and digest before identity_verified may become true",
+    "binding": "Exact SHA256 relation between returned claimDocument.catalogKey bytes and retained supplier_offer_sha256; no fuzzy relation, price lookup or first-row fallback",
+    "temporary_offer": "Public composition requires claimDocument.condition=ccOffer; booked/prebooking/refusal states are not exposed as selectable offers",
+    "selected_composition": "Only claimDocument selected hotel/transport/service rows are projected; variants are not selected orders and only produce a boolean alternatives marker",
+    "tourist_price": "Exactly one buyerMoneys.buyerClaimMoney.net plus currency; amount preserved as a decimal string, no float arithmetic/conversion and no agency moneys.money.net/discoCost fallback",
+    "privacy": "Raw claim, supplier/catalog/order IDs, buyer/people/client links, provider support, notes, hidden services, variant contents and agency money are excluded",
+    "external_flights": "freightExternal>0 only marks requires_external_flights=true; no get_flights call is introduced",
+    "quote_verified": false,
+    "selection_enabled": false
+  },
+  "checks": {
+    "security": {"run": 34524990752, "conclusion": "success"},
+    "offline": {"run": 34524990681, "job": 103031590766, "conclusion": "success", "logs_read": true},
+    "new_projection_assertions": 59,
+    "existing_package_evidence_assertions": 78,
+    "existing_selected_cli_assertions": 113,
+    "existing_bridge_and_mapping_regressions": "passed",
+    "fixture": "Official-schema-shaped synthetic captured record only; not supplier evidence",
+    "supplier_calls": 0,
+    "ssh_calls": 0,
+    "production_db_operations": 0,
+    "filesystem_writes_in_projection_fixture": 0
+  },
+  "source_handoff": {
+    "automatic_artifact": 10171161898,
+    "artifact_zip_sha256": "42edac55ca2ee0330b63b87d0b592a134be3b186c505a37d46eb16c44662483b",
+    "note": "Existing workflow artifact still contains only the unchanged six #1901 runtime files and is not a new installation candidate; the new projection source is not installed by this PR"
+  },
+  "post_merge_containment": {
+    "run": 34525081025,
+    "offline_job": 103031891039,
+    "offline_conclusion": "success",
+    "private_job": 103032074914,
+    "private_conclusion": "skipped",
+    "supplier_or_ssh_operation_started": false
+  },
+  "approved_capture": {
+    "control_pr": 1927,
+    "main_merge": "d285a76c95dab5e475fc674ff599812cfe45a076",
+    "permission": "One bounded current selected-retained capture, max one broninit",
+    "capture_invoked": false,
+    "permission_consumed": false,
+    "missing_input": "Actual current common-preview publicSelection identity plus local country from SEARCH #1646 handoff comment 5623816616",
+    "no_new_permission_needed": true
+  },
+  "unverified": [
+    "real current publicSelection DTO",
+    "real PRICES.id to returned catalogKey/claim relation",
+    "real package composition",
+    "real tourist price from buyerMoneys",
+    "availability/final quote",
+    "full A2/A4 shared selected-tour flow",
+    "mobile and physical Safari",
+    "production approval"
+  ],
+  "boundaries": "No reinstall, new login/PRICE search, first-row substitution, fabricated/expired DTO, unknown replay, calc/get_flights/bron/bron_ticket, booking, real lead, matching/ANEX queue, shared UI, main/production product or analytics/SEO change."
+}
