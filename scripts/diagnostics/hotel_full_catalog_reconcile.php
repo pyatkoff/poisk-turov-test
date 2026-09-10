@@ -34,7 +34,7 @@ function fc_country($v): ?int {
 function fc_evidence($raw): array { try{$v=json_decode((string)$raw,true,64,JSON_THROW_ON_ERROR);return is_array($v)?$v:[];}catch(Throwable $e){return [];} }
 function fc_source(array $row): array { $e=fc_evidence($row['evidence_json']??'');$s=$e['source']??[];return is_array($s)?$s:[]; }
 function fc_category(array $source): ?int {
-    foreach(['category','star','stars','starName','star_name'] as $key){if(!array_key_exists($key,$source))continue;if(preg_match('/([1-5])/',(string)$source[$key],$m))return (int)$m[1];}return null;
+    foreach(['category','star','stars','starKey','starName','star_name'] as $key){if(!array_key_exists($key,$source))continue;if(preg_match('/([1-5])/',(string)$source[$key],$m))return (int)$m[1];}return null;
 }
 function fc_write_once(string $path,array $v): void { $raw=fc_json($v);$f=@fopen($path,'x');if(!$f)throw new RuntimeException('operation_already_reserved');@chmod($path,0600);try{if(fwrite($f,$raw)!==strlen($raw)||!fflush($f))throw new RuntimeException('receipt_write');if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('receipt_sync');}finally{fclose($f);} }
 function fc_require_tables(PDO $db): void {
