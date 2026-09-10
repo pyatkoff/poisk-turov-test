@@ -1,0 +1,98 @@
+{
+  "issue": 1717,
+  "date": "2026-09-11",
+  "scope": "Factual record of the first selected retained Andromeda package attempt and its no-replay checkpoint. No booking, lead, production deploy or follow-up supplier request is recorded here.",
+  "selected_context_source": {
+    "read_only_inspect_pr": 1944,
+    "main_merge": "bb0269f6388e431381764438cac3048f3cc81d05",
+    "inspect_run": 34534002808,
+    "inspect_job": 103061227739,
+    "inspect_conclusion": "success",
+    "artifact": 10174643448,
+    "artifact_sha256": "d621247df145000b4e36b986f3e5fad4aea7d3a058747a599b3db1842e983598",
+    "active_searches": 1,
+    "current_candidates": 20,
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "capture_invoked": false
+  },
+  "capture": {
+    "owner_approved_control_pr": 1927,
+    "main_at_attempt": "bb0269f6388e431381764438cac3048f3cc81d05",
+    "command_comment": 5625884702,
+    "request_sha256": "0010cbd4530c56669785d8a4333aa4b712eec17309139571939fe01cb555cbcd",
+    "runtime_source": "fdd099e36fdc1a20a561f285d22d0acb00f90e36",
+    "run": 34534107758,
+    "job": 103061570627,
+    "run_attempt": 1,
+    "job_conclusion": "failure",
+    "receipt_artifact": 10174689395,
+    "receipt_artifact_sha256": "18c722e74b0bd0c2d776e4b1419bf9ba51a0a521712d75f598c6c83ab847a057",
+    "receipt_status": "unconfirmed",
+    "receipt_reason": "ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN",
+    "automatic_retry": false,
+    "max_broninit": 1,
+    "identity_verified": false,
+    "quote_verified": false,
+    "selection_enabled": false,
+    "booking_invoked": false,
+    "calc_invoked": false,
+    "get_flights_invoked": false,
+    "new_price_search_invoked": false,
+    "new_login_invoked": false,
+    "replay_permitted": false
+  },
+  "checkpoint_read": {
+    "reader_pr": 1949,
+    "reader_merge": "39aad2b7e8e6eb30211e46ca07820fc5e9a3b398",
+    "control_pr": 1950,
+    "control_main_merge": "64f83caf2dfad298454b7994b264a866d963b587",
+    "command_comment": 5626171884,
+    "run": 34536602379,
+    "job": 103069572914,
+    "conclusion": "success",
+    "artifact": 10175633776,
+    "artifact_sha256": "08b6dceb3d19b8fee251fa880dfcedd81b9b85cca2dc4c86cf47542b7004d869",
+    "status": "ok",
+    "checkpoint_status": "unknown",
+    "context_match": true,
+    "source_match": true,
+    "package_present": false,
+    "package_hash_valid": null,
+    "verification_flags": "absent",
+    "supplier_effect": "unknown",
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "capture_invoked": false,
+    "automatic_retry": false
+  },
+  "documentation_observation": {
+    "search_doc": "https://dokuwiki.samo.ru/doku.php?id=andromeda:search",
+    "bron_doc": "https://dokuwiki.samo.ru/doku.php?id=andromeda:bron",
+    "facts": [
+      "action=price documents PRICES[].id as a unique price identifier",
+      "action=broninit documents claiminc as package id",
+      "the ordinary-tour broninit section does not explicitly state in the shown documentation that PRICES[].id is the claiminc source",
+      "the ticket broninit section explicitly says claiminc comes from price_ticket"
+    ],
+    "interpretation": "Do not infer ordinary-tour PRICES.id to claiminc identity solely from the documentation wording. Supplier clarification is pending."
+  },
+  "supplier_question": {
+    "status": "sent_by_owner",
+    "expected_reply": "2026-09-11 daytime",
+    "questions": [
+      "Is PRICES[].id the exact claiminc for ordinary-tour broninit?",
+      "If not, which search-response field supplies claiminc?",
+      "Does broninit only return the package structure or create any reservation/application side effect?",
+      "Is retry after a client/network-unknown outcome safe?"
+    ]
+  },
+  "current_gate": {
+    "state": "WAIT_SUPPLIER_CLARIFICATION_NO_REPLAY",
+    "next_safe_work": "Source-only diagnostics/tests/docs may continue. Do not issue another broninit, PRICE, calc, get_flights, bron, bron_ticket or booking action for this checkpoint while outcome remains unknown.",
+    "package_verified": false,
+    "tourist_price_verified": false,
+    "quote_verified": false,
+    "selection_enabled": false
+  }
+}
