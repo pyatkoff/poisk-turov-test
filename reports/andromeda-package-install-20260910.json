@@ -98,5 +98,48 @@
     "unverified": ["real PRICES.id to claiminc identity", "real package composition", "tourist-price projection", "verified quote", "complete shared selection flow", "mobile and physical Safari", "production approval"],
     "protected": "No shared UI/CSS/provider/publisher, production product code, catalog/manual/bindings, Tourvisor, price arithmetic, lead transport, analytics/SEO or server config changed. This report does not claim new production fingerprint or browser verification.",
     "history": "Previous package-entry/evidence/incident/unknown reports remain unchanged; their unpublished flags describe those earlier executions. This report records the later actual installation."
+  },
+  "selected_capture_relay_20260910": {
+    "pr": 1925,
+    "source": "2a352a49d573116117da7a04bdaffa22693c0b60",
+    "feature_merge": "b30854cb42999b9d39fe98c739d491e09c6b7281",
+    "source_blob": "0cf69bedbe710585768d2531109ef4b59b333b75",
+    "scope": "Separate --capture-selected mode in the existing Python operation helper relays pinned #1917 through existing ssh_php. Original installer functions and PHP body, its 14 tests, caller and installed runtime files remain unchanged.",
+    "checks": {
+      "security": 34513754620,
+      "offline": 34513754570,
+      "offline_job": 102993974330,
+      "conclusions": "success",
+      "cases": "14 original installation cases plus 10 relay cases, including 113 existing selected-CLI application assertions through actual PHP wire with disabled network and synthetic captured/SQLite state",
+      "local": "9 relay cases passed; full SQLite wire case deferred locally and passed on hosted runner",
+      "initial_failure": {
+        "run": 34513413022,
+        "job": 102992841849,
+        "cause": "Disposable copy retained direct CLI exit1 expectation for an application refusal; the SSH JSON transport deliberately exits0 while Python capture_main exits1 for the same refusal",
+        "fix": "Adjusted exactly three transport exit-code expectations in disposable fixture and added a real Python-process refusal case. Identity/mapping/privacy/checkpoint assertions unchanged; no failed live operation or rerun."
+      }
+    },
+    "control_proposal": {
+      "pr": 1927,
+      "source": "0a685c6e092bbb2004111aeabf16a4d2029eaec9",
+      "base_main": "ea190a98c4d2a72cc9d27357df539a5d47e95079",
+      "path": ".github/workflows/andromeda-detail-publish.yml",
+      "blob": "f964639f22d79fdba7f4f1b7483c1a15b801cc85",
+      "security": 34514553827,
+      "security_conclusion": "success",
+      "status": "draft; unmerged; not invoked; exact new-operation approval required",
+      "local_checks": "27 mocked JavaScript gate cases; YAML/read-only permissions and existing install steps/pins unchanged",
+      "permission_requested": "One bounded selected-retained capture through this same existing control, at most one broninit, no login/PRICE/calc/flights/booking/lead/production or matching. Prior #1914 installation permission is closed, not requested again.",
+      "input_privacy": "Only versioned public selected identity; canonical caller revalidates. Private runner input0600 never uploaded; only digest/status receipts retained; full claim stays in existing private server store."
+    },
+    "remaining_dependencies": [
+      "Explicit approval of exact #1927 control extension and one selected capture; main unchanged in this continuation",
+      "Actual currently valid publicSelection DTO from shared-preview details via SEARCH handoff, plus bounded shared saved-details acceptance; no fabricated or historical replacement context"
+    ],
+    "public_access": "Current run: container DNS failed before HTTP; public web preview access returned non-retryable safe-URL refusal. No further retry or alternate route. Not evidence of site outage; browser acceptance remains deferred.",
+    "effects": {"supplier_calls": 0, "ssh_calls": 0, "live_db_operations": 0, "runtime_installations": 0, "main_changes": 0, "real_package_captured": false, "quote_verified": false},
+    "coordination": {"source_claim": 5623251091, "scope_refinement": 5623299601, "source_completion": 5623419094, "docs_claim": 5623520117},
+    "queue": "Only the current INT1717 matrix row; do not turn this historical evidence section into a parallel next-action list",
+    "preservation": "All previous installation receipts, backups, unknown/completed checkpoints and audit fields remain unchanged. No reinstallation, first-PRICE fallback, credential re-provisioning or ANEX queue action."
   }
 }
