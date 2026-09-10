@@ -16,12 +16,12 @@ import anex_search3_topup_experiment as t
 class TopupTest(unittest.TestCase):
     def test_topup_only_test_fix_cannot_start_the_old_observed_queue(self):
         workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/anex-access-probe.yml').read_text()
-        selector = next(line.strip() for line in workflow.splitlines() if line.strip().startswith('topup ='))
-        for path in ['scripts/diagnostics/anex_search3_topup_runner.php',
-                     'tests/anex_search3_topup_experiment_test.py', 'tests/anex-search3-topup-runner-smoke.php']:
-            context = {'paths': [path]}
-            exec(selector, context)
-            self.assertTrue(context['topup'], path)
+        private_job = workflow.split('\n  verify-access:\n', 1)[1].split('    steps:\n', 1)[0]
+        # A changed path is no longer authority to run even the topup operation.
+        self.assertIn('    needs: offline-checks\n', private_job)
+        self.assertIn("    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/anex-search-adapter-20260907'\n", private_job)
+        self.assertNotIn('topup =', workflow)
+        self.assertNotIn('diff-tree', workflow)
 
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
