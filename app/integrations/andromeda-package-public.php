@@ -63,9 +63,13 @@ final class AnyTourAndromedaPackagePublic
 
     private static function date(mixed $value): ?string
     {
-        if (!is_string($value)) return null;
-        return preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}(?:Z|[+-][0-9]{2}:[0-9]{2})?$/D', $value) === 1
-            ? $value : null;
+        if (!is_string($value)
+            || preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}(?:Z|[+-](?:(?:0[0-9]|1[0-3]):[0-5][0-9]|14:00))?$/D', $value) !== 1) {
+            return null;
+        }
+        $calendar = substr($value, 0, 10);
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $calendar);
+        return $date !== false && $date->format('Y-m-d') === $calendar ? $value : null;
     }
 
     /** Missing collection is an empty list; malformed collection is null. */
@@ -240,7 +244,9 @@ final class AnyTourAndromedaPackagePublic
         }
         $external = self::integer($document['freightExternal'] ?? null, 0, 999999999);
         $result['requires_external_flights'] = $external === null ? null : $external > 0;
-        $result['alternatives_available'] = is_array($raw['variants'] ?? null) && ($raw['variants'] ?? []) !== [];
+        $variants = $raw['variants'] ?? null;
+        $result['alternatives_available'] = is_array($variants) && array_is_list($variants)
+            && $variants !== [] && count($variants) <= self::MAX_ROWS && self::plain($variants);
         $price = self::buyerPrice($document);
         if ($price !== null) {
             $result['price'] = $price;
