@@ -1,7 +1,7 @@
 {
   "issue": 1717,
   "date": "2026-09-10",
-  "status": "publisher_prepared_pending_ci",
+  "status": "checked_awaiting_exact_main_approval",
   "candidate_source": "eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7",
   "previous_publication_run": 34466239147,
   "previous_api_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
@@ -17,5 +17,17 @@
   "supplier_calls": 0,
   "database_writes": 0,
   "main_gate": "Separate exact manual-only launcher proposal; explicit approval required before main merge. Existing #1867 remains unchanged.",
-  "next_action": "Check publisher, pin manual launcher to successful immutable source/CI, present concrete owner approval gate."
+  "next_action": "Owner approval required for exact #1878 main merge; then one manual GitHub UI Run workflow with confirmation publish-andromeda-detail-1873. Save two-file receipt/readback before acceptance; no replay of completed #1867.",
+  "publisher": {
+    "pr": 1876,
+    "source": "be6c382aea670908145c4eb63f3549374a57a419",
+    "offline_ci": 34468460984,
+    "security_ci": 34468460886
+  },
+  "launcher": {
+    "pr": 1878,
+    "source": "8d92f93c4acd78b58a84a51380067eee456589e7",
+    "base": "7384ffc36eea7e27509bf3d43690ad2ab350a40d",
+    "merged": false
+  }
 }
