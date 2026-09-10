@@ -1,0 +1,30 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "implemented_offline_check_pending",
+  "base": "d6bca2a45da1bdde562aa85bfd60809f2447e747",
+  "dependency_source": "7c3c5bb55c88e376d97c998d0ba77a46960584d6",
+  "path": "app/integrations/andromeda-saved-package-runtime.php",
+  "behavior": [
+    "Explicit default-off CLI-only entry, no public route.",
+    "Select exact saved search_ref/generation/page/offer_ref; existing mapping resolver before network.",
+    "Hold existing search lock; load existing private auth with matching search creation time.",
+    "Existing PackageCapture reserves and reads back private source envelope before one broninit.",
+    "Existing monthly budget writer; no login, price, calc, flights or booking.",
+    "Raw package retained only in private checkpoint; return receipt metadata only.",
+    "Repeated captured context reads locally; expired/unknown/reserved/stale blocks without supplier retry."
+  ],
+  "checks": {
+    "fixture": "tests/andromeda-saved-package-runtime-smoke.php",
+    "kind": "One disposable filesystem lifecycle with existing client/store/writer/counter and stub transport; no live supplier."
+  },
+  "runtime_published": false,
+  "live_supplier_calls": 0,
+  "database_writes": 0,
+  "next_action": "After narrow CI, prepare approved private invocation wiring the actual current-mapping reader and existing package-enabled transport. Capture only an explicitly selected current saved offer; do not substitute a new price search for a missing/unknown checkpoint. No current main approval for a package-capture launcher.",
+  "deferred": [
+    "Real broninit response and PRICES.id/claiminc/catalogKey confirmation",
+    "Public composition/tourist price projection based on real response",
+    "Shared selected-tour UI; mobile/physical Safari; production"
+  ]
+}

@@ -1,0 +1,28 @@
+name: Andromeda saved package runtime offline
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-saved-package-runtime.php'
+      - 'tests/andromeda-saved-package-runtime-smoke.php'
+      - '.github/workflows/andromeda-saved-package-runtime-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: change
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c3c5bb55c88e376d97c998d0ba77a46960584d6
+          path: runtime
+          persist-credentials: false
+      - name: Exercise existing private storage and client with local transport
+        run: |
+          cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
+          php -l runtime/app/integrations/andromeda-saved-package-runtime.php
+          php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
