@@ -1210,7 +1210,7 @@
   "compact_entry_visual_20260910": {
     "schema_version": 1,
     "date": "2026-09-10",
-    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "stage": "CHECKED_AND_PUBLISHED_IN_ACCUMULATED_SOURCE",
     "source_pr": 1862,
     "baseline_release_sha": "88305b72fd1dcb972241d335f32e40ad750a7c6c",
     "source_sha": "c124ea98c3aa20ec98e0803b45e0cb259e872129",
@@ -1242,7 +1242,13 @@
       "exact_artifact_run": 34463092725,
       "geometry_artifact_id": 10146433174,
       "whole_site_artifact_id": 10146433851,
-      "responsive_widths": [320, 375, 700, 1200, 1440],
+      "responsive_widths": [
+        320,
+        375,
+        700,
+        1200,
+        1440
+      ],
       "focused_contracts": [
         "one aligned desktop row for the four current native groups",
         "compact desktop submit and full-width mobile submit",
@@ -1259,31 +1265,85 @@
       "physical_safari_iphone": false
     },
     "publication": {
-      "published": false,
-      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
-      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "published": true,
+      "currently_published_source_sha": "500ded8f5b4fc702b463e2595e47b176286f4750",
+      "reason": "Published in the accumulated exact artifact after owner clarified legitimate one-shot publisher. Prior inability to dispatch is historical, not an active blocker.",
       "main_changed": false,
       "production_changed": false,
-      "real_leads_submitted": 0
+      "real_leads_submitted": 0,
+      "deploy_run": 34466704030
     },
     "scope_boundary": "Visual layout, responsive geometry and usability only. Technical search, API, provider data, pricing and lead contracts were intentionally untouched and remain with their assigned lane.",
     "deferred": [
-      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
       "Physical Safari/iPhone and unassisted user pilot.",
       "Owner approval and production migration."
     ],
     "rollback": "Revert release merge 84e8d164ee099fa2473fa89ea0fe892c2cb9efbb; the currently published isolated preview was not changed by this package.",
-    "next_action": "Continue only a newly confirmed visual or usability improvement from fresh checked release 84e8d164; keep technical search, API and data work in their assigned lane and publish only through an authorized exact dispatch."
+    "next_action": "Reference calendar is published; continue the approved native-form and card visual sequence, keeping technical search/API/data with their assigned lane."
   },
   "reference_calendar_disclosure_20260910": {
-    "stage": "IMPLEMENTED_PENDING_CI_AND_PREVIEW",
+    "stage": "CHECKED_AND_PREVIEW_PUBLISHED",
     "baseline_release_sha": "9721f6cda19568cb3b29d3b66e7a5a1ccb42be75",
     "approved_reference": "libfile_bcd3a18be788819193fbc1924082e3ca",
     "scope": "Existing current-price-calendar presentation only: native disclosure after the form and before result tools, desktop initially open, mobile initially collapsed, user choice retained during rendering.",
-    "preserved": ["existing collect/minimum calculation", "exact date action and one lifecycle submit", "source events and local filtering", "unknown prices remain absent", "one existing calendar owner"],
-    "verification": "Node syntax and source/generated checks passed locally. Full PHP and browser verification runs in the required exact-artifact CI; local PHP is unavailable.",
-    "deferred": ["physical Safari/iPhone", "exact preview publication and readback", "form redesign and card composition are subsequent visual packages"],
+    "preserved": [
+      "existing collect/minimum calculation",
+      "exact date action and one lifecycle submit",
+      "source events and local filtering",
+      "unknown prices remain absent",
+      "one existing calendar owner"
+    ],
+    "verification": {
+      "local": "Node syntax and source/generated checks passed. PHP unavailable locally; required PHP+Chromium CI passed.",
+      "owner_policy_run": 34466335675,
+      "security_run": 34466335399,
+      "exact_php_chromium_run": 34466335525,
+      "browser_artifact_id": 10147716006,
+      "visual_widths": [
+        375,
+        1440
+      ],
+      "contracts": [
+        "keyboard disclosure and retained state",
+        "44px target; reserved indicator space",
+        "no horizontal overflow",
+        "exact-date canonical submit stubbed; no supplier calls",
+        "single-date comparison hidden"
+      ],
+      "corrected_ci_finding": "Indicator clearance assertion failed34466178300 after visual finding; fixed existing owner selector in500ded8f and retained the assertion.",
+      "physical_safari_iphone": false
+    },
+    "deferred": [
+      "physical Safari/iPhone",
+      "unassisted user pilot",
+      "full reference-form and card redesign remain subsequent visual packages",
+      "production migration requires separate owner approval"
+    ],
     "production_changed": false,
-    "real_leads_submitted": 0
+    "real_leads_submitted": 0,
+    "source_pr": 1868,
+    "source_sha": "500ded8f5b4fc702b463e2595e47b176286f4750",
+    "release_integration_sha": "a1b46dbea0db760b1914e2a8a38c74fd3912d895",
+    "publication": {
+      "published": true,
+      "source_artifact_id": 10147716465,
+      "source_artifact_digest": "sha256:9d6a73141c1c9b9485992dc30895835789bf3557a3f6bb92b9e2c6299e4d8ba1",
+      "control_pr": 1869,
+      "control_sha": "9b6ce19f8e0c7ef02e38bed73c587dbfbc9641a9",
+      "deploy_run": 34466704030,
+      "deploy_evidence_artifact_id": 10147815859,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "robots": "noindex,follow",
+      "metrika_counter": 0,
+      "production_lead_delivery": false,
+      "synthetic_disabled_lead_probe_status": 403,
+      "production_fingerprint_unchanged": true,
+      "production_fingerprint_sha256": "f02285a4b938a21a221cc46979fdf56ad36e24fc40554e9f0c1d1a7bfab45702",
+      "rollback_backup_retained": true,
+      "main_changed_by_this_package": false,
+      "production_changed": false
+    },
+    "next_action": "Continue native-form reference package; do not rebuild or republish this successful source for a docs-only checkpoint."
   }
 }

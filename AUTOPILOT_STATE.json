@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-10: use the supplied AnyTour desktop/mobile search mockup as the visual reference; improve the native search form and include the existing price calendar. This lane owns visual/UX, not technical search/API/data.",
-    "last_fully_checked_release_sha": "84e8d164ee099fa2473fa89ea0fe892c2cb9efbb",
-    "published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
-    "acceptance_status": "URL_HOTEL_LOCAL_ZERO_SELECTION_LABEL_SHORTLIST_FILTER_RESET_RETRY_FOCUS_SERVICE_COUNT_760_CARD_EMPTY_RELAX_FOCUS_AND_COMPACT_ENTRY_CHECKED_RELEASE_PREVIEW_PENDING_SELECTION_DISABLED",
-    "next_action": "Complete the approved reference calendar disclosure and exact preview acceptance; then improve the native search form, especially date/night selection and additional parameters on mobile, before the coherent desktop/mobile card composition. Reuse current owners and source data; technical search/API/data stay with their assigned lane. Preserve exact artifact publication, noindex, disabled leads, counter0 and production isolation.",
+    "last_fully_checked_release_sha": "a1b46dbea0db760b1914e2a8a38c74fd3912d895",
+    "published_source_sha": "500ded8f5b4fc702b463e2595e47b176286f4750",
+    "acceptance_status": "ACCUMULATED_VISUAL_UX_AND_REFERENCE_CALENDAR_PREVIEW_PUBLISHED_SELECTION_DISABLED",
+    "next_action": "Improve the native search form toward the approved visual reference, especially date/night selection and additional parameters on mobile, before the coherent desktop/mobile card composition. Calendar and accumulated compact-form package are already published by exact run34466704030; do not repeat that deploy. Reuse current owners and source data; technical search/API/data stay with their assigned lane. Preserve noindex, disabled leads, counter0 and production isolation.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
