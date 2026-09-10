@@ -550,7 +550,7 @@ async function run(browser, width, previous) {
       window.__resultsRetrySubmits = 0;
       window.V2SearchLifecycle.submit = () => {
         window.__resultsRetrySubmits += 1;
-        document.getElementById('results').innerHTML = '<div class="skeleton-grid"><div class="skeleton-card"></div></div>';
+        if (window.__replaceResultsOnRecovery) document.getElementById('results').innerHTML = '<div class="skeleton-grid"><div class="skeleton-card"></div></div>';
         window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation: 45 } }));
         window.__releaseRetryStart = () => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 45 } }));
       };
@@ -582,6 +582,7 @@ async function run(browser, width, previous) {
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => {
+      window.__replaceResultsOnRecovery = true;
       document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label><label><input type="checkbox" name="hotel_service[]" value="2" checked>Пляж</label>';
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
