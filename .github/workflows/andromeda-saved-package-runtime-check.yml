@@ -12,6 +12,8 @@ on:
       - 'tests/andromeda-package-evidence-smoke.php'
       - 'scripts/diagnostics/andromeda-package-probe.php'
       - 'tests/andromeda-retained-cli-smoke.php'
+      - 'scripts/diagnostics/andromeda_package_checkpoint_read.py'
+      - 'tests/andromeda_package_checkpoint_read_test.py'
       - '.github/workflows/andromeda-saved-package-runtime-check.yml'
 permissions:
   contents: read
@@ -58,6 +60,7 @@ jobs:
           php -l change/app/integrations/andromeda-package-public.php
           php -l change/tests/andromeda-package-public-smoke.php
           php -d allow_url_fopen=0 change/tests/andromeda-package-public-smoke.php runtime
+          python3 -B change/tests/andromeda_package_checkpoint_read_test.py
       - name: Record exact source handoff without private runtime state
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
