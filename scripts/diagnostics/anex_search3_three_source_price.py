@@ -5,10 +5,13 @@ The remote PHP owns durable case reservations. This coordinator never retries an
 case and only persists the sanitized result returned by the server runner.
 """
 import json
+import os
 from pathlib import Path
+import shlex
 import sys
+import tempfile
 
-from anex_search3_owner_decisions import ssh_php
+import anex_search3_gap_queue as gaps
 
 EXPERIMENT = 'anex_three_source_price_20260911_v1'
 CASES = ('anex', 'andromeda', 'tourvisor')
@@ -31,6 +34,38 @@ def source() -> str:
     if not old.startswith('<?php') or not new.startswith('<?php'):
         raise ValueError('three_source_php_header')
     return "define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n" + old[5:] + '\n' + new[5:]
+
+
+def ssh_php_no_mux(source_text, request, maximum_bytes=4000000):
+    """Dedicated transport for this experiment after live preflight proved mux unhealthy.
+
+    Server-side case reservations remain the no-replay authority. The client-side retry
+    helper may retry only a TCP close before authentication/command, as in existing INT jobs.
+    """
+    if maximum_bytes not in (65536, 4000000):
+        raise ValueError('unsupported_diagnostic_response_limit')
+    names = ('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+    if any(not os.environ.get(name, '').strip() for name in names):
+        raise ValueError('missing_ssh_configuration')
+    host, user = (os.environ[name].strip() for name in names[1:])
+    if host.startswith('-') or user.startswith('-') or any(c.isspace() for c in host + user):
+        raise ValueError('invalid_ssh_target')
+    with tempfile.TemporaryDirectory(prefix='anex-three-price-', dir=os.environ.get('RUNNER_TEMP')) as temp:
+        key = Path(temp) / 'ssh_key'
+        key.write_text(os.environ[names[0]].rstrip() + '\n')
+        key.chmod(0o600)
+        command = [
+            'ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes',
+            '-o','ControlMaster=no','-o','ControlPath=none',
+            '-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile=' + str(Path(temp)/'known_hosts'),
+            '-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=DEBUG1',
+            '-l',user,host,'cd "$HOME/www/anytoour.ru" && php -r ' + shlex.quote(source_text),
+        ]
+        env = {k:v for k,v in os.environ.items() if k not in names and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+        result, _ = gaps.run_ssh(command, json.dumps(request, ensure_ascii=False), env)
+    if len(result.stdout.encode('utf-8')) > maximum_bytes:
+        raise ValueError('diagnostic_response_too_large')
+    return json.loads(result.stdout)
 
 
 def validate_case(value, case_id):
@@ -65,9 +100,6 @@ def validate_case(value, case_id):
 
 
 def aligned_key(row):
-    # Placement is intentionally not an equality key yet: the current shared Andromeda
-    # projection does not expose it. We preserve each source's placement beside the price
-    # and never claim identical supplier package identity from this display-level match.
     return (row['local_hotel_id'], row['date'], row['nights'], row['adults'], row['children'],
             row['meal_family'], row['room_norm'])
 
@@ -96,9 +128,8 @@ def compare(results):
         prices = [row for row in value['offers'] if row.get('price')]
         minima[case] = min(prices, key=lambda r: float(r['price'])) if prices else None
     subjects = [value.get('subject') for value in completed.values()]
-    same_subject = bool(subjects) and all(item == subjects[0] for item in subjects)
     return {
-        'same_subject_across_completed_cases': same_subject,
+        'same_subject_across_completed_cases': bool(subjects) and all(item == subjects[0] for item in subjects),
         'completed_cases': sorted(completed),
         'aligned_three_source_tour_count': len(triples),
         'aligned_three_source_examples': triples[:20],
@@ -117,7 +148,6 @@ def save(path: Path, value):
 
 
 def transport_failure(exc):
-    """Return fixed booleans/codes only; never stderr, host, user, command or credentials."""
     allowed_reasons = {
         'response_size_limit','ssh_exit_nonzero','ssh_authentication_failed','ssh_host_key_rejected',
         'ssh_connection_timeout','ssh_connection_refused','ssh_name_resolution_failed','ssh_network_unreachable',
@@ -129,39 +159,32 @@ def transport_failure(exc):
     reason = getattr(exc, 'reason_code', None)
     attempts = getattr(exc, 'attempts', None)
     return {
-        'status': 'transport_unconfirmed',
-        'error_kind': type(exc).__name__ if type(exc).__name__ == 'SSHBatchError' else 'other',
-        'reason_code': reason if reason in allowed_reasons else 'other',
-        'ssh_progress': clean_progress,
+        'status': 'transport_unconfirmed','error_kind': type(exc).__name__ if type(exc).__name__ == 'SSHBatchError' else 'other',
+        'reason_code': reason if reason in allowed_reasons else 'other','ssh_progress': clean_progress,
         'ssh_attempts': attempts if type(attempts) is int and 1 <= attempts <= 2 else None,
-        'automatic_retry': False,
-        'supplier_replay_requested': False,
+        'automatic_retry': False,'supplier_replay_requested': False,
     }
 
 
 def run(output: Path):
-    php = source()
-    results = {}
+    php = source(); results = {}
     for case in CASES:
         request = dict(SPEC, case_id=case)
-        value = validate_case(ssh_php(php, request, maximum_bytes=4000000), case)
+        value = validate_case(ssh_php_no_mux(php, request, maximum_bytes=4000000), case)
         results[case] = value
         save(output / f'{case}.json', value)
         if value['status'] == 'unknown':
             break
     report = {
-        'schema_version': 1,
-        'experiment_id': EXPERIMENT,
-        'spec': SPEC,
-        'case_statuses': {case: value['status'] for case, value in results.items()},
-        'comparison': compare(results),
+        'schema_version': 1,'experiment_id': EXPERIMENT,'spec': SPEC,
+        'case_statuses': {case: value['status'] for case, value in results.items()},'comparison': compare(results),
         'fuel_policy': {
             'tourvisor': 'store price and fuelCharge separately; official UI/docs call displayed price final, no arithmetic here',
             'anex': 'search price unverified; AdditionalPricesDaily is separate pending live contract evidence',
             'andromeda': 'action=price has no documented separate fuel field; search price remains unverified',
         },
-        'effects': {'booking_calls': 0, 'broninit_calls': 0, 'mapping_writes': 0},
-        'unknown_replay_allowed': False,
+        'transport_policy': 'ControlMaster=no after supplier-free preflight 34540781410: no_mux ok, isolated_mux failed before command',
+        'effects': {'booking_calls': 0, 'broninit_calls': 0, 'mapping_writes': 0},'unknown_replay_allowed': False,
     }
     save(output / 'report.json', report)
     return report
@@ -178,12 +201,9 @@ def main():
             'status':'unconfirmed','error_kind':type(exc).__name__ if type(exc).__name__ in {'ValueError','RuntimeError','JSONDecodeError'} else 'other',
             'automatic_retry':False,'supplier_replay_requested':False,
         }
-        try:
-            save(output / 'failure.json', report)
-        except Exception:
-            pass
-        print(json.dumps(report, sort_keys=True))
-        raise SystemExit(1) from None
+        try: save(output / 'failure.json', report)
+        except Exception: pass
+        print(json.dumps(report, sort_keys=True)); raise SystemExit(1) from None
 
 
 if __name__ == '__main__':

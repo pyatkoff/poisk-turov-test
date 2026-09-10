@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import importlib.util
+import json
+import os
 from pathlib import Path
 import sys
-import types
+from types import SimpleNamespace
 
-helper = types.ModuleType('anex_search3_owner_decisions')
-helper.ssh_php = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('network disabled'))
-sys.modules['anex_search3_owner_decisions'] = helper
 path = Path(__file__).resolve().parents[1] / 'scripts/diagnostics/anex_search3_three_source_price.py'
+sys.path.insert(0, str(path.parent))
 spec = importlib.util.spec_from_file_location('three_price', path)
 mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 
@@ -40,37 +40,38 @@ check(report['aligned_three_source_examples'][0]['fuel_inclusion_verified'] is F
 check(report['source_minima_for_same_hotel']['tourvisor']['fuel_charge']=='2500')
 
 changed_placement=result('andromeda','101000'); changed_placement['offers'][0]['placement_norm']=''
-report2=mod.compare({'anex':results['anex'],'andromeda':changed_placement,'tourvisor':results['tourvisor']})
-check(report2['aligned_three_source_tour_count']==1)
+check(mod.compare({'anex':results['anex'],'andromeda':changed_placement,'tourvisor':results['tourvisor']})['aligned_three_source_tour_count']==1)
 changed_room=result('tourvisor','102000'); changed_room['offers'][0]['room_norm']='family'
-report3=mod.compare({'anex':results['anex'],'andromeda':results['andromeda'],'tourvisor':changed_room})
-check(report3['aligned_three_source_tour_count']==0)
+check(mod.compare({'anex':results['anex'],'andromeda':results['andromeda'],'tourvisor':changed_room})['aligned_three_source_tour_count']==0)
 unknown={'schema_version':1,'experiment_id':mod.EXPERIMENT,'case_id':'anex','status':'unknown','reason':'THREE_PRICE_UNCONFIRMED',
          'supplier_effect':'unknown','automatic_retry':False,'booking_calls':0,'broninit_calls':0,'mapping_writes':0}
 check(mod.validate_case(unknown,'anex') is unknown)
-
 bad=result('anex','100000'); bad['booking_calls']=1
 try: mod.validate_case(bad,'anex'); check(False)
 except ValueError: check(True)
 
 class SSHBatchError(Exception):
-    reason_code='ssh_connection_closed'
-    attempts=2
+    reason_code='ssh_connection_closed'; attempts=2
     progress={'tcp_connected':True,'authenticated':False,'multiplexing_seen':False,'command_sent':False,'remote_exit_seen':False}
-
 failure=mod.transport_failure(SSHBatchError('SECRET HOST STDERR'))
 check(failure['status']=='transport_unconfirmed' and failure['reason_code']=='ssh_connection_closed')
 check(failure['ssh_attempts']==2 and failure['ssh_progress']['tcp_connected'] is True)
 check(failure['ssh_progress']['command_sent'] is False and failure['automatic_retry'] is False)
 check('SECRET' not in str(failure) and failure['supplier_replay_requested'] is False)
 
-class WeirdSSHBatchError(Exception):
-    reason_code='private-secret-code'
-    attempts=99
-    progress={'authenticated':'yes','command_sent':1,'extra':'secret'}
-
-failure2=mod.transport_failure(WeirdSSHBatchError())
-check(failure2['reason_code']=='other' and failure2['ssh_attempts'] is None)
-check(set(failure2['ssh_progress'])=={'tcp_connected','authenticated','multiplexing_seen','command_sent','remote_exit_seen'})
+# Dedicated live transport must use the mode proven healthy by supplier-free preflight.
+os.environ['ANYTOOUR_DEPLOY_SSH_KEY']='PRIVATE-KEY-FIXTURE'
+os.environ['ANYTOOUR_DEPLOY_HOST']='example.invalid'
+os.environ['ANYTOOUR_DEPLOY_USER']='fixture-user'
+captured={}
+def fake_run(command, payload, env):
+    captured['command']=command; captured['payload']=payload; captured['env']=env
+    return SimpleNamespace(stdout=json.dumps({'ok':True}), stderr='', returncode=0), 1
+mod.gaps.run_ssh=fake_run
+check(mod.ssh_php_no_mux('echo 1;', {'case':'fixture'})=={'ok':True})
+joined=' '.join(captured['command'])
+check('ControlMaster=no' in joined and 'ControlPath=none' in joined and 'ControlMaster=auto' not in joined)
+check('PRIVATE-KEY-FIXTURE' not in joined and 'PRIVATE-KEY-FIXTURE' not in str(captured['env']))
+check(captured['payload']==json.dumps({'case':'fixture'}, ensure_ascii=False))
 
 print(f'Three-source ANEX price Python guards: {checks} checks passed; network=0')

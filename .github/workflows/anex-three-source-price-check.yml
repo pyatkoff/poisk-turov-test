@@ -9,11 +9,9 @@ on:
       - '.github/workflows/anex-three-source-price-check.yml'
   push:
     branches:
-      - 'ops/int-anex-three-source-price-20260911'
-      - 'ops/int-anex-three-source-price-diagnostic-20260911'
+      - 'ops/int-anex-three-source-price-no-mux-20260911'
     paths:
-      - '.github/ops/anex-three-source-price-20260911'
-      - '.github/ops/anex-three-source-price-diagnostic-20260911'
+      - '.github/ops/anex-three-source-price-no-mux-20260911'
 permissions:
   contents: read
 concurrency:
@@ -38,20 +36,21 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           php=Path('scripts/diagnostics/anex_search3_three_source_price.php').read_text()
+          py=Path('scripts/diagnostics/anex_search3_three_source_price.py').read_text()
           assert '->bron(' not in php and 'broninit(' not in php and '->calc(' not in php and 'get_flights(' not in php
           assert "ANEX_THREE_PRICE_CASES = ['anex','andromeda','tourvisor']" in php
+          assert "'ControlMaster=no'" in py and "'ControlPath=none'" in py and 'ControlMaster=auto' not in py
           workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
-          assert "ops/int-anex-three-source-price-diagnostic-20260911" in workflow
-          assert 'cancel-in-progress: false' in workflow
-          assert 'if: always()' in workflow
-          print('Three-source parity static boundary: PASS')
+          assert "ops/int-anex-three-source-price-no-mux-20260911" in workflow
+          assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
+          print('Three-source parity no-mux boundary: PASS')
           PY
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-price-diagnostic-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-price-no-mux-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      SOURCE_SHA: d56c920aa4dc052095affc2ea5646b7f926a26a5
+      SOURCE_SHA: 7f7099abc226b514315d02a524541b0164a6e683
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -66,18 +65,18 @@ jobs:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - name: Bind exact diagnostic source after transport-unconfirmed run
+      - name: Bind exact no-mux continuation after supplier-free preflight
         run: |
-          test "$(cat control/.github/ops/anex-three-source-price-diagnostic-20260911)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-price-diagnostic;prior=34540109617;owner=2026-09-11"
+          test "$(cat control/.github/ops/anex-three-source-price-no-mux-20260911)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-price-no-mux;preflight=34540781410;owner=2026-09-11"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
-      - name: Resume through the durable server case checkpoint
+      - name: Resume only through durable server case checkpoints
         id: parity
         continue-on-error: true
         run: |
           mkdir -m 700 "$RUNNER_TEMP/three-source-price"
           python3 -B source/scripts/diagnostics/anex_search3_three_source_price.py "$RUNNER_TEMP/three-source-price"
-      - name: Preserve sanitized evidence even on transport failure
+      - name: Preserve sanitized evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
         with:
