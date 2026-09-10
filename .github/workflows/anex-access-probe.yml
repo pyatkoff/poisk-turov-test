@@ -5,6 +5,7 @@ on:
     branches: ['feature/anex-search-adapter-20260907']
     paths:
       - '.github/workflows/anex-access-probe.yml'
+      - 'tests/anex_workflow_isolation_test.py'
       - 'scripts/diagnostics/anex_review_storage*'
       - 'scripts/diagnostics/anex_review_auth_inventory.php'
       - 'scripts/diagnostics/anex_review_owner_*'
@@ -45,12 +46,17 @@ on:
       - 'tests/anex_search3_*'
       - 'tests/anex-*-smoke.php'
       - 'tests/anex_adapter_probe_test.py'
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - '.github/workflows/anex-access-probe.yml'
+      - 'tests/anex_workflow_isolation_test.py'
   workflow_dispatch:
     inputs:
       operation:
         type: choice
         options: [observed, gaps, preview, paired, segments, content, topup, review]
-        default: observed
+        required: true
         description: Focused hotel queue, isolated preview, or reserved search experiment
 
 permissions:
@@ -58,40 +64,22 @@ permissions:
   actions: read
 
 concurrency:
-  group: anytour-anex-access-probe
+  # Automatic checks must not replace a pending explicitly requested operation.
+  group: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/anex-search-adapter-20260907' && 'anytour-anex-access-probe' || format('anytour-anex-access-probe-offline-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
-  verify-access:
+  offline-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          fetch-depth: 2
-      - name: Choose the requested ANEX operation
-        id: operation
-        env:
-          REQUESTED_OPERATION: ${{ inputs.operation }}
-        run: |
-          python3 - <<'PYTHON'
-          import os, subprocess
-          requested = os.environ.get('REQUESTED_OPERATION', '')
-          if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
-              mode = requested or 'observed'
-          else:
-              paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
-              review = any(p.startswith(('scripts/diagnostics/anex_review_storage', 'scripts/diagnostics/anex_review_owner_')) or p in ('scripts/diagnostics/anex_review_auth_inventory.php', 'app/admin/anex-review/schema-manager.php') for p in paths)
-              content = any(p.startswith('scripts/diagnostics/anex_search3_catalog_content') or p == 'scripts/diagnostics/anex_search3_hotel_content.php' for p in paths)
-              topup = any(p.startswith('scripts/diagnostics/anex_search3_topup_') or p in ('tests/anex_search3_topup_experiment_test.py', 'tests/anex-search3-topup-runner-smoke.php') for p in paths)
-              paired = any(p.startswith('scripts/diagnostics/anex_search3_paired_') for p in paths)
-              segments = any(p.startswith('scripts/diagnostics/anex_search3_segment_') for p in paths)
-              mode = 'review' if review else 'topup' if topup else 'content' if content else 'segments' if segments else 'paired' if paired else 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
-          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content', 'topup', 'review'): raise SystemExit('Invalid ANEX operation')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
-          print('ANEX operation:', mode)
-          PYTHON
+      - name: Verify explicit-operation isolation without private access
+        run: python3 -B tests/anex_workflow_isolation_test.py
       - name: Verify request and credential boundaries locally
         run: |
           python3 -B tests/anex_review_storage_test.py
@@ -171,6 +159,37 @@ jobs:
           php tests/anex-search3-preview-smoke.php
           php tests/anex-search-observations-smoke.php
           php -l scripts/diagnostics/anex_search3_observations_setup.php
+
+  verify-access:
+    needs: offline-checks
+    # A code change is not authorization to restore or run any private queue.
+    # This job-level gate also covers every always() finalizer and artifact upload.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/anex-search-adapter-20260907'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Choose the requested ANEX operation
+        id: operation
+        env:
+          REQUESTED_OPERATION: ${{ inputs.operation }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          if os.environ.get('GITHUB_EVENT_NAME') != 'workflow_dispatch':
+              raise SystemExit('Explicit workflow_dispatch required')
+          if os.environ.get('GITHUB_REF') != 'refs/heads/feature/anex-search-adapter-20260907':
+              raise SystemExit('Assigned INT branch required')
+          mode = os.environ.get('REQUESTED_OPERATION', '')
+          if mode not in ('observed', 'gaps', 'preview', 'paired', 'segments', 'content', 'topup', 'review'):
+              raise SystemExit('Explicit valid ANEX operation required')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('mode=' + mode + '\n')
+          print('ANEX operation:', mode)
+          PYTHON
       - name: Restore cumulative hotel enrichment checkpoint
         env:
           GH_TOKEN: ${{ github.token }}
