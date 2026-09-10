@@ -7,6 +7,7 @@ on:
       - '.github/workflows/andromeda-detail-publisher-check.yml'
 permissions:
   contents: read
+  actions: read
 jobs:
   offline:
     runs-on: ubuntu-latest
@@ -14,12 +15,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           path: change
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: ac9f16063deadb3b7b2e4fb665c7b51668fe4c6a
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
           path: previous
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7
+          path: details
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '10159104848'
+          run-id: '34494341744'
+          github-token: ${{ github.token }}
+          path: handoff
       - name: Check actual remote PHP on disposable local files
-        run: python3 -B change/tests/andromeda_detail_publish_test.py previous
+        run: python3 -B change/tests/andromeda_detail_publish_test.py handoff --previous previous --details details
