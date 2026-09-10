@@ -1,0 +1,37 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "checked_not_published",
+  "base": "d6bca2a45da1bdde562aa85bfd60809f2447e747",
+  "dependency_source": "7c3c5bb55c88e376d97c998d0ba77a46960584d6",
+  "path": "app/integrations/andromeda-saved-package-runtime.php",
+  "behavior": [
+    "Explicit default-off CLI-only entry, no public route.",
+    "Select exact saved search_ref/generation/page/offer_ref; existing mapping resolver before network.",
+    "Hold existing search lock; load existing private auth with matching search creation time.",
+    "Existing PackageCapture reserves and reads back private source envelope before one broninit.",
+    "Existing monthly budget writer; no login, price, calc, flights or booking.",
+    "Raw package retained only in private checkpoint; return receipt metadata only.",
+    "Repeated captured context reads locally; expired/unknown/reserved/stale blocks without supplier retry."
+  ],
+  "checks": {
+    "fixture": "tests/andromeda-saved-package-runtime-smoke.php",
+    "kind": "One disposable filesystem lifecycle with existing client/store/writer/counter and stub transport; no live supplier.",
+    "offline_run": 34471435733,
+    "security_run": 34471435671,
+    "result": "passed",
+    "first_attempt": "Missing baseline API fixture dependency corrected; first failing CI34471281612 not live/runtime failure."
+  },
+  "runtime_published": false,
+  "live_supplier_calls": 0,
+  "database_writes": 0,
+  "next_action": "After narrow CI, prepare approved private invocation wiring the actual current-mapping reader and existing package-enabled transport. Capture only an explicitly selected current saved offer; do not substitute a new price search for a missing/unknown checkpoint. No current main approval for a package-capture launcher.",
+  "deferred": [
+    "Real broninit response and PRICES.id/claiminc/catalogKey confirmation",
+    "Public composition/tourist price projection based on real response",
+    "Shared selected-tour UI; mobile/physical Safari; production"
+  ],
+  "source": "2941baa24bfcf296b99ee30bcd9881f3663f8694",
+  "pr": 1883,
+  "runtime_dependency_source": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa"
+}
