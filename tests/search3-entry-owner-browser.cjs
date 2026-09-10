@@ -27,6 +27,19 @@ async function run(browser, width) {
       const form = document.getElementById('tourSearch');
       return form?.dataset.search3Ready === '1' && form.dataset.catalogSource && window.V2SearchLifecycle;
     });
+    const recovery = page.locator('.catalog-recovery'), recoveryCopy = recovery.locator('.search-progress-error-copy'), recoveryRetry = recovery.locator('.catalog-retry');
+    assert.equal(await recovery.isVisible(), true, 'blocked catalog fixture exposes the existing recovery owner');
+    const recoveryGeometry = await page.evaluate(() => {
+      const root = document.querySelector('.catalog-recovery'), copy = root.querySelector('.search-progress-error-copy'), title = copy.querySelector('strong'), message = copy.querySelector('span'), retry = root.querySelector('.catalog-retry');
+      const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+      return { root: box(root), title: box(title), message: box(message), retry: box(retry), copyDisplay: getComputedStyle(copy).display };
+    });
+    assert.equal(recoveryGeometry.copyDisplay, 'grid', 'recovery heading and explanation use one readable copy owner');
+    assert.ok(recoveryGeometry.message.top >= recoveryGeometry.title.bottom, 'recovery explanation starts below its heading');
+    assert.ok(recoveryGeometry.retry.height >= 44, 'recovery action keeps a full touch target');
+    assert.ok(recoveryGeometry.root.width <= width, 'recovery card stays inside the viewport');
+    if (width <= 560) assert.ok(recoveryGeometry.retry.width >= recoveryGeometry.root.width - 30, 'mobile recovery action spans the card');
+    await page.screenshot({ path: path.join(output, `catalog-recovery-${width}.png`), fullPage: true });
     const adults = page.locator('#tourSearch select[name=count_people]'), children = page.locator('#tourSearch select[name=child_count]');
     assert.equal(await adults.inputValue(), '3', 'URL adult value stays on original control');
     assert.equal(await children.inputValue(), '1', 'URL child count survives native presentation');
