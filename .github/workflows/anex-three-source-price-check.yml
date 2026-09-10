@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      SOURCE_SHA: 7d7ebb79b0ddbae7988e3a521dc253c02993506f
+      SOURCE_SHA: 4b5939d82c72d0933d2114b33f6fd4f26a26fb4c
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
