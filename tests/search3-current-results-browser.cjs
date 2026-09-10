@@ -504,8 +504,13 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-meta>strong').innerText(), tour.date, 'compact facts preserve the actual departure date');
     assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW']], 'primary comparison facts keep their labels and original values');
     assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR'], ['Размещение', 'DBL']], 'source and operator remain distinct while secondary facts keep unambiguous labels');
-    const photo = await card.locator('.hotel-photo').boundingBox();
-    const body = await card.locator('.hotel-body').boundingBox();
+    const { photo, body } = await card.evaluate(node => {
+      const rect = element => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height };
+      };
+      return { photo: rect(node.querySelector('.hotel-photo')), body: rect(node.querySelector('.hotel-body')) };
+    });
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
     if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap: '+JSON.stringify({width,previous,photo,body}));
     else assert.ok(body.x >= photo.x + photo.width - 1, 'desktop hotel content sits beside the photo without overlap');
@@ -550,6 +555,7 @@ async function run(browser, width, previous) {
       window.__resultsRetrySubmits = 0;
       window.V2SearchLifecycle.submit = () => {
         window.__resultsRetrySubmits += 1;
+        if (window.__replaceResultsOnRecovery) document.getElementById('results').innerHTML = '<div class="skeleton-grid"><div class="skeleton-card"></div></div>';
         window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation: 45 } }));
         window.__releaseRetryStart = () => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 45 } }));
       };
@@ -581,24 +587,42 @@ async function run(browser, width, previous) {
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => {
+      window.__replaceResultsOnRecovery = true;
       document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label><label><input type="checkbox" name="hotel_service[]" value="2" checked>Пляж</label>';
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
     });
     assert.equal(await page.locator('#serviceCount').innerText(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
-    await page.locator('.empty-relax[data-relax="hotel_service[]"]').click();
+    const serviceRelax = page.locator('.empty-relax[data-relax="hotel_service[]"]');
+    await serviceRelax.focus();
+    await serviceRelax.press('Enter');
+    assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 2, 'keyboard service relaxation submits exactly once');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
-    assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'service relaxation immediately synchronizes its visible count');
+    assert.equal(await page.locator('#serviceCount').textContent(), 'не выбраны', 'service relaxation synchronizes the count stored for the advanced-filter summary');
+    await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
+    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'service relaxation keeps focus on a stable recovery target through reset');
+    await page.evaluate(() => window.__releaseRetryStart());
+    await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
+    assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'service relaxation moves focus to the visible loading status');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch'), arrival = form.elements.arrival;
       arrival.innerHTML = '<option value="77" selected>Тестовый аэропорт</option>';
+      arrival.addEventListener('change', () => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })), { once: true });
       document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label>';
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
     });
-    await page.locator('.empty-relax[data-relax="arrival"]').click();
+    const arrivalRelax = page.locator('.empty-relax[data-relax="arrival"]');
+    await arrivalRelax.focus();
+    await arrivalRelax.press('Enter');
+    assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 3, 'keyboard dependent relaxation submits exactly once');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'dependent arrival relaxation clears incompatible hotel services');
-    assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'dependent relaxation also synchronizes the service count');
+    assert.equal(await page.locator('#serviceCount').textContent(), 'не выбраны', 'dependent relaxation also synchronizes the advanced-filter summary count');
+    await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
+    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'dependent relaxation keeps focus on a stable recovery target through reset');
+    await page.evaluate(() => window.__releaseRetryStart());
+    await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
+    assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'dependent relaxation also moves focus to the visible loading status');
     await page.evaluate(() => window.V2Results.render([]));
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     await page.locator('.empty-edit-search').click();
