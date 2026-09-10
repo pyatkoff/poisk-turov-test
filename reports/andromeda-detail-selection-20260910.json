@@ -1,7 +1,7 @@
 {
   "issue": 1717,
   "date": "2026-09-10",
-  "status": "implemented_pending_ci",
+  "status": "checked_not_published",
   "base": "88b2dde5b24214e0c3c9ab29abf79b176dc11781",
   "resolver_source": "7c3c5bb55c88e376d97c998d0ba77a46960584d6",
   "behavior": "Existing offer_detail adds selected_offer through unchanged #1846 resolver and current accepted identity/activity/country/local-target guard. Existing display and disabled booking/selection preserved.",
@@ -23,5 +23,22 @@
     "shared selected UI",
     "mobile/Safari"
   ],
-  "next_action": "Complete CI and hand off checked two-file package; A3 real package still requires its separately approved runner."
+  "next_action": "Publish the two pinned files through a separately authorized exact package mechanism, then verify detail selected_offer without enabling quote/booking. Existing #1867 publisher is completed and not applicable. Shared banner fix remains SEARCH-owned.",
+  "pr": 1873,
+  "source": "eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7",
+  "merge": "bd5757ec7fcde2737efdb6c4594ffd6e3a5a4878",
+  "ci": {
+    "contract": 34467567059,
+    "security": 34467567073,
+    "build": 34467567058,
+    "result": "success"
+  },
+  "artifact": {
+    "id": 10148149747,
+    "digest": "9b0681e568da3a2318e0be2af3908be630744b6ee093d39fba7a0fd9dc94611e"
+  },
+  "file_sha256": {
+    "api-andromeda-search3-preview.php": "b7d245af694c41c319c6bcf5b92448a1bc6e0c80e0e57664c4adb6a5388c4587",
+    "andromeda-selected-offer.php": "06f5f608cb310fe0e3eafc11987ae1f70fa829aae70866c6f87ea1eb603fbc01"
+  }
 }
