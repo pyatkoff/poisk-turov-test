@@ -27,6 +27,43 @@ async function run(browser, width) {
       const form = document.getElementById('tourSearch');
       return form?.dataset.search3Ready === '1' && form.dataset.catalogSource && window.V2SearchLifecycle;
     });
+    // Exercise the actual served shared header; retired fabricated fixtures stay retired.
+    await page.evaluate(() => document.fonts.ready);
+    assert.equal(await page.locator('.at-global-header').count(), 1, 'one current shared header');
+    const headerGeometry = await page.evaluate(() => {
+      const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, width: r.width, height: r.height }; };
+      return {
+        inner: box(document.querySelector('.at-global-header__inner')),
+        actions: box(document.querySelector('.at-global-header__actions')),
+        menu: box(document.querySelector('.at-global-header__mobile > summary')),
+        nav: box(document.querySelector('.at-global-header__nav')),
+        links: [...document.querySelectorAll('.at-global-header__nav a')].map(box),
+      };
+    });
+    assert.equal(headerGeometry.links.length, 6, 'all current navigation destinations remain');
+    if (width > 1024) {
+      assert.ok(headerGeometry.links.every(link => link.height >= 44), 'desktop menu targets stay >=44px');
+      assert.ok(headerGeometry.links.every(link => link.right <= headerGeometry.actions.left - 8), 'desktop menu stays clear of phone/actions');
+      assert.ok(headerGeometry.actions.right <= headerGeometry.inner.right + 1, 'desktop actions remain inside the shell');
+      assert.equal(new Set(headerGeometry.links.map(link => Math.round(link.top))).size, 1, 'ordinary desktop navigation stays in one row');
+      assert.equal(headerGeometry.menu.width, 0, 'no second visible desktop menu');
+    } else {
+      assert.equal(headerGeometry.nav.width, 0, 'native menu replaces the desktop links');
+      assert.ok(headerGeometry.menu.width >= 44 && headerGeometry.menu.height >= 44, 'native menu target stays >=44px');
+      const menu = page.locator('.at-global-header__mobile'), toggle = menu.locator('summary');
+      await toggle.focus();
+      assert.ok(parseFloat(await toggle.evaluate(node => getComputedStyle(node).outlineWidth)) >= 3, 'menu keyboard focus stays visible');
+      await page.keyboard.press('Space');
+      assert.equal(await menu.evaluate(node => node.open), true, 'native menu opens with the keyboard');
+      const panel = await menu.locator('.at-global-header__mobile-panel').boundingBox();
+      assert.ok(panel.x >= 0 && panel.x + panel.width <= width + 1, 'menu panel stays inside the viewport');
+      for (const link of await menu.locator('.at-global-header__mobile-panel > a').all()) assert.ok((await link.boundingBox()).height >= 44, 'menu links keep full targets');
+      await page.screenshot({ path: path.join(output, `header-menu-${width}.png`), fullPage: true });
+      await page.keyboard.press('Space');
+      assert.equal(await menu.evaluate(node => node.open), false, 'native menu closes without another handler');
+    }
+    fs.writeFileSync(path.join(output, `header-${width}.json`), JSON.stringify(headerGeometry, null, 2) + '\n');
+    await page.screenshot({ path: path.join(output, `header-${width}.png`), fullPage: true });
     const recovery = page.locator('.catalog-recovery'), recoveryCopy = recovery.locator('.search-progress-error-copy'), recoveryRetry = recovery.locator('.catalog-retry');
     assert.equal(await recovery.isVisible(), true, 'blocked catalog fixture exposes the existing recovery owner');
     const recoveryGeometry = await page.evaluate(() => {
@@ -187,7 +224,7 @@ async function run(browser, width) {
 }
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  try { for (const width of [375, 1199, 1200, 1440]) await run(browser, width); }
+  try { for (const width of [375, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width); }
   finally { await browser.close(); }
-  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1199,1200,1440 lead_sent=0');
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1024,1025,1101,1199,1200,1440 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
