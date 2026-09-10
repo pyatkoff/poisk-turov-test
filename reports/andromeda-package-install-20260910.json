@@ -1,0 +1,102 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "scope": "Installation receipt for the existing #1901 backend, not a supplier package capture or full selected-tour acceptance",
+  "owner_approval": {
+    "pr": 1914,
+    "exact_head": "c3b7d5c4d415ca0dfdaa83587e89ea4d5779cd01",
+    "explicit_reply": "Разрешаю",
+    "scope": "Merge this one existing workflow-control change and perform one exact TEST-PREVIEW installation; no production, supplier capture, booking or real lead",
+    "record_comment": 5623011969,
+    "main_before": "efa403148ec2bcec065624be5efe149e8a1162de",
+    "main_merge": "ea190a98c4d2a72cc9d27357df539a5d47e95079",
+    "changed_path": ".github/workflows/andromeda-detail-publish.yml",
+    "readback_blob": "fc446e50421d72193b74b656431f5e63065904a1",
+    "security_run": 34506819700,
+    "security_conclusion": "success"
+  },
+  "installation": {
+    "publisher_pr": 1911,
+    "publisher_source": "22edc3a93fb8d46ac876d417e9c1cdda4161fef1",
+    "runtime_source": "fdd099e36fdc1a20a561f285d22d0acb00f90e36",
+    "source_artifact": 10159104848,
+    "source_artifact_zip_sha256": "269429a1e37c3e9dda8d3b706b28097a655b6914fe998c908e4b5af35491cc47",
+    "explicit_command_comment": 5623020209,
+    "run": 34510605994,
+    "job": 102983493955,
+    "run_attempt": 1,
+    "job_conclusion": "success",
+    "status": "published",
+    "target": "/_preview/search3-anex-candidate/",
+    "shared_consumer": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "receipt_artifact": 10165617032,
+    "receipt_artifact_zip_sha256": "4d67cf89b4cbdc31733f7870d898e6a431ae97ce9ecbdcd8d52543fd5d215538",
+    "reservation_json_sha256": "172bf68c8255225bb811ac918bc3565cfdd82a321e8a46675f2326234b49fe00",
+    "result_json_sha256": "d5036871408c9a9c285fdc2892be32ed45511f0baa670b073c1c29215c8b634a",
+    "receipt_independently_downloaded": true,
+    "receipt_matches_original_source_artifact": true,
+    "verified_files": 6,
+    "activated_files": 5,
+    "files_sha256": {
+      "app/integrations/andromeda-client.php": "ef45ade3710b26488e13cca995ac730baf6f0a699f9075a71d09174fd345f135",
+      "app/integrations/andromeda-transport.php": "457273021d5363a6b3e593ca5807110d0513b06ea2861a64a6719f86e837a470",
+      "app/integrations/andromeda-package-capture.php": "1d64913636cfec93bcc38fd011c6a1960f370f35f7df503941efada771f5ab6f",
+      "app/integrations/andromeda-saved-package-runtime.php": "52b2b7c394f99359997451ca162137527dc0189ec69fbd3671b670079cb5211e",
+      "app/integrations/andromeda-selected-offer.php": "06f5f608cb310fe0e3eafc11987ae1f70fa829aae70866c6f87ea1eb603fbc01",
+      "api-andromeda-search3-preview.php": "12cc0b0d4d9c0823eb78c6f78b3dfcbf6c692420bd9fa9209e620e860f437a28"
+    },
+    "changed_paths": [
+      "app/integrations/andromeda-client.php",
+      "app/integrations/andromeda-transport.php",
+      "app/integrations/andromeda-package-capture.php",
+      "app/integrations/andromeda-saved-package-runtime.php",
+      "api-andromeda-search3-preview.php"
+    ],
+    "backup_sha256": {
+      "app/integrations/andromeda-client.php": "53ae8d4cbe4a8fa4ccfe333e1d837f066014482522abb4d86e9b2621d2cce25a",
+      "app/integrations/andromeda-transport.php": "b3d44dfb547abac0453c58071e555e6e9ec64c54a8879a40581d242195cc3e95",
+      "app/integrations/andromeda-package-capture.php": null,
+      "app/integrations/andromeda-saved-package-runtime.php": null,
+      "api-andromeda-search3-preview.php": "b7d245af694c41c319c6bcf5b92448a1bc6e0c80e0e57664c4adb6a5388c4587"
+    },
+    "private_completed_checkpoint": "Written/read back by the checked publisher after all files and support dependencies matched; prior #1873 checkpoint preserved",
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "package_captured": false,
+    "selection_enabled": false,
+    "quote_verified": false,
+    "replayed": false
+  },
+  "selected_cli": {
+    "pr": 1917,
+    "source": "06f9303347ada44d6f32330c428bc67bd17f8095",
+    "feature_merge": "e01437775dc9048f5f6d6452e2ac1cbf40bcf5a1",
+    "status": "checked source, not invoked by this installation",
+    "runtime_check": 34508922317,
+    "legacy_refusal_check": 34508922316,
+    "security_check": 34508922333,
+    "checks": "113 caller and 10 legacy-refusal cases plus existing capture/mapping/evidence regressions; synthetic saved records, not supplier evidence"
+  },
+  "post_install_http": {
+    "common_preview": {"method": "GET", "attempts": 1, "error_type": "ConnectionError", "http_response_received": false},
+    "andromeda_api_get_guard": {"method": "GET", "attempts": 1, "error_type": "ConnectionError", "http_response_received": false},
+    "javascript_executed": false,
+    "retry_or_alternate_route": false,
+    "conclusion": "Current execution environment could not connect. HTTP/browser compatibility deferred, not proof of a website outage or acceptance. Installation hashes are independently verified."
+  },
+  "rollback": {
+    "status": "Backups preserved; no rollback executed",
+    "condition": "Confirmed regression of this exact installed package",
+    "procedure": "Verify current ownership/candidate and recorded backup hashes; restore previous API first, then previous client/transport. Do not overwrite a later writer, reset unknown checkpoints or automatically remove new inactive modules. Control rollback is the single approved workflow revert."
+  },
+  "handoff": {
+    "issue_comment": 5623061184,
+    "coordinator_comment": 5623064729,
+    "current_queue": "Only INT1717 row in docs/integrations/anex-search3-autopilot.md; no new task queue here",
+    "closed_gate": "#1914 approval and exact installation are completed. Do not reinstall, replay or request identical approval again.",
+    "remaining": "Bounded shared-preview saved-detail acceptance and separately permitted invocation of the checked selected-only CLI with one valid explicitly chosen retained offer; durable reservation and at most one broninit. No new login, PRICE, first-row substitution or unknown replay.",
+    "unverified": ["real PRICES.id to claiminc identity", "real package composition", "tourist-price projection", "verified quote", "complete shared selection flow", "mobile and physical Safari", "production approval"],
+    "protected": "No shared UI/CSS/provider/publisher, production product code, catalog/manual/bindings, Tourvisor, price arithmetic, lead transport, analytics/SEO or server config changed. This report does not claim new production fingerprint or browser verification.",
+    "history": "Previous package-entry/evidence/incident/unknown reports remain unchanged; their unpublished flags describe those earlier executions. This report records the later actual installation."
+  }
+}
