@@ -1,0 +1,33 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "implemented_ci_pending",
+  "base": "600c2a6532be22ba9b4ff0540dd0dd6cf9930e2a",
+  "server_reference": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+  "consumer_reference": "88305b72fd1dcb972241d335f32e40ad750a7c6c",
+  "root_cause": "The real Andromeda HTTP projector emits accepted local catalog cards without mapping_status; the common provider only admits mapping_status=resolved. A hand-written JS fixture included the missing field and concealed this producer/consumer defect.",
+  "fix": "Add mapping_status=resolved only to hotels returned by the existing accepted-local/catalog/activity/country/filter projector. No acceptance rules or mappings changed.",
+  "source_recovery": "The deployed API file is absent on the fresh feature base. Recover its exact published source with only three added lines; dependencies remain pinned to the published server for this CI/handoff. Do not deploy the feature tree as a whole.",
+  "checks": {
+    "scenario": "Run actual PHP projector against an ephemeral SQLite catalog, then pass its JSON directly to the current shared JS merge. Baseline must drop the accepted offer; patched response must retain it. Unresolved, inactive, wrong-country, filtered and absent catalog hotels stay excluded.",
+    "local_php": "unavailable; PHP behavior will be verified in offline CI",
+    "security": "pending",
+    "publication": "not_started"
+  },
+  "published": false,
+  "live_supplier_outcome": "not inferred from offline contract defect; previous unknown search not replayed",
+  "protected": {
+    "supplier_calls": 0,
+    "persistent_db_writes": 0,
+    "matching_writes": 0,
+    "shared_ui_edits": 0,
+    "production_changes": 0
+  },
+  "deferred": [
+    "Single-file API publication through approved exact artifact path",
+    "Common-preview live variants/details/return acceptance",
+    "A3 broninit runtime permission/access; unrelated to this display fix",
+    "Mobile/physical Safari"
+  ],
+  "next_action": "Verify offline baseline/fix and Security, retain exact single-file artifact, then publish API only through approved route and accept common preview."
+}

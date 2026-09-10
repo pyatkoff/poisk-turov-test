@@ -1,0 +1,48 @@
+name: Andromeda public projection contract
+on:
+  pull_request:
+    paths:
+      - 'v2/api-andromeda-search3-preview.php'
+      - 'tests/andromeda-public-projection-*'
+      - '.github/workflows/andromeda-projection-contract.yml'
+permissions:
+  contents: read
+jobs:
+  projection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: change
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: runtime
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 88305b72fd1dcb972241d335f32e40ad750a7c6c
+          path: shared
+          persist-credentials: false
+      - name: Reproduce the missing marker against the actual shared consumer
+        run: node change/tests/andromeda-public-projection-contract.cjs runtime shared/v2/andromeda-provider-v1.js rejected
+      - name: Verify the fixed server response and existing guards
+        run: |
+          cp change/v2/api-andromeda-search3-preview.php runtime/v2/api-andromeda-search3-preview.php
+          php -l runtime/v2/api-andromeda-search3-preview.php
+          node change/tests/andromeda-public-projection-contract.cjs runtime shared/v2/andromeda-provider-v1.js accepted
+          php runtime/tests/andromeda-live-search-smoke.php
+      - name: Preserve the checked single-file publication candidate
+        run: |
+          mkdir candidate
+          cp runtime/v2/api-andromeda-search3-preview.php candidate/
+          php change/tests/andromeda-public-projection-fixture.php runtime > candidate/synthetic-public-response.json
+          git -C change rev-parse HEAD > candidate/source-sha.txt
+          sha256sum candidate/api-andromeda-search3-preview.php > candidate/runtime-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-public-projection-candidate
+          path: candidate/
+          retention-days: 14
