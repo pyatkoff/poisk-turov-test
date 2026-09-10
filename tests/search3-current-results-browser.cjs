@@ -453,17 +453,27 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'sorting reapplies both local filters to rerendered cards');
     assert.equal(await localEmpty.count(), 1, 'sorting keeps exactly one local empty state');
     if (width < 1025) assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · 5★ · Отель: ВТОРОЙ/, 'sorting preserves the visible active-filter summary');
-    await localEmptyReset.click();
+    await localEmptyReset.focus();
+    await localEmptyReset.press('Enter');
+    await page.waitForFunction(() => document.activeElement?.matches('#results .hotel-card:not([hidden]) .hotel-title'));
     assert.equal(await localCategorySelect.inputValue(), '0', 'one reset clears the active category');
     assert.equal(await localHotelInput.inputValue(), '', 'one reset clears the hotel query');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'one reset restores every loaded card');
     assert.equal(await localEmpty.count(), 0, 'one reset removes the local empty state');
     assert.equal(await localReset.isVisible(), false, 'reset action hides when no local filter remains active');
     assert.equal(await categoryFive.getAttribute('aria-pressed'), 'false', 'common reset clears the mirrored quick choice state');
+    assert.equal(await page.locator('#results .hotel-card:visible .hotel-title').first().evaluate(node => node === document.activeElement), true, 'zero-match reset moves keyboard focus to the first restored hotel');
     if (width < 1025) {
       assert.equal(await mobileSummaryText.innerText(), 'Подходит: 2', 'reset removes stale active values from the compact summary');
       assert.equal(await mobileSummaryText.getAttribute('aria-label'), 'Подходит: 2; активных фильтров нет', 'reset exposes an accurate accessible empty-filter state');
     }
+    await categoryFive.focus();
+    await categoryFive.press('Enter');
+    await localReset.focus();
+    await localReset.press('Enter');
+    await page.waitForFunction(() => document.activeElement?.matches('.search3-hotel-filter input'));
+    assert.equal(await localCategorySelect.inputValue(), '0', 'common keyboard reset clears the active category');
+    assert.equal(await localHotelInput.evaluate(node => node === document.activeElement), true, 'common keyboard reset returns focus to the first visible filter');
     await localOperatorSelect.selectOption('test operator');
     await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], tours: [{ ...hotels[1].tours[0], operator: null }] }]);
     assert.equal(await localOperatorFilter.isVisible(), false, 'operator facet hides when any loaded offer lacks its operator label');
