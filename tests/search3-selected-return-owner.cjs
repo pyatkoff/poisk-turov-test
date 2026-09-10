@@ -9,6 +9,7 @@ const vm = require('node:vm');
   const frames = [];
   const returned = [];
   let listedButtons = [];
+  let tourShouldFail = false;
 
   function action(className) {
     return {
@@ -65,6 +66,7 @@ const vm = require('node:vm');
     scrollIntoView(options) { this.scrolls += 1; this.scrollOptions = options; }
   };
   const original = focusableTour(17);
+  original.textContent = 'Выбрать тур';
   const replacement = focusableTour(17);
   const document = {
     body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
@@ -80,6 +82,7 @@ const vm = require('node:vm');
     V2Runtime: {
       state: {},
       api(actionName) {
+        if (actionName === 'tour' && tourShouldFail) return Promise.reject(new Error('fixture failure'));
         if (actionName === 'tour') return Promise.resolve({
           id: 17,
           hotel: { name: 'Test' },
@@ -113,12 +116,15 @@ const vm = require('node:vm');
   assert.equal(typeof click, 'function');
 
   click({ target: original, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+  assert.equal(original.disabled, true, 'source action is disabled while the tour loads');
+  assert.equal(original.textContent, 'Загружаем…', 'source action reports its loading state');
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(selected.hidden, false, 'tour selection reveals the selected root');
   assert.equal(selected.focuses, 1, 'opening moves keyboard focus into selected tour');
   assert.equal(selected.focusOptions.preventScroll, true, 'focus preserves the explicit scroll transition');
   assert.equal(selectedAttributes.has('aria-hidden'), false, 'tour selection clears stale aria-hidden');
   assert.equal(original.disabled, false, 'source action is restored after tour load');
+  assert.equal(original.textContent, 'Выбрать тур', 'successful load restores the renderer\'s exact action label');
   assert.match(selected.innerHTML, /<div class="hotel-desc">Номер 25 м² &amp; SPA рядом &lt;script&gt;alert\(1\)&lt;\/script&gt;<\/div>/,
     'supplier entities become readable text while decoded markup remains escaped');
   assert.doesNotMatch(selected.innerHTML, /<script>/, 'decoded supplier text cannot inject markup');
@@ -153,6 +159,17 @@ const vm = require('node:vm');
   assert.equal(results.scrollOptions.block, 'center');
   fallbackBlur();
   assert.equal(resultsAttributes.has('tabindex'), false, 'temporary fallback tabindex is removed on blur');
+
+  const failed = focusableTour(18);
+  failed.textContent = 'Повторить загрузку тура';
+  tourShouldFail = true;
+  click({ target: failed, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+  assert.equal(failed.disabled, true, 'failed request keeps the action disabled while pending');
+  assert.equal(failed.textContent, 'Загружаем…');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(failed.disabled, false, 'failed request re-enables its source action');
+  assert.equal(failed.textContent, 'Повторить загрузку тура', 'failed request restores the exact retry label');
+  assert.match(selected.innerHTML, /Не удалось загрузить выбранный тур: fixture failure/);
 
   console.log('PASS: current tour controller owns exact source and fallback return lifecycle');
 })();
