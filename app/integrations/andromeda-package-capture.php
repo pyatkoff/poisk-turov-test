@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/andromeda-client.php';
 require_once __DIR__ . '/andromeda-offer-store.php';
+require_once __DIR__ . '/andromeda-selected-offer.php';
 
 /**
  * Private, default-off coordinator for one saved-offer package capture.
@@ -34,37 +35,22 @@ final class AnyTourAndromedaPackageCapture
 
     private function resolve(AnyTourAndromedaOfferStore $store, array $context): array
     {
-        $required = ['provider', 'search_ref', 'generation', 'page', 'offer_ref'];
-        if (array_diff($required, array_keys($context))
-            || array_diff(array_keys($context), array_merge($required, ['hotel_scope', 'operator_ref']))
-            || $context['provider'] !== 'andromeda' || !is_string($context['search_ref'])
-            || !is_string($context['offer_ref']) || !is_int($context['generation'])
-            || $context['generation'] < 1 || !is_int($context['page']) || $context['page'] < 1) {
-            throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
-        }
         $now = ($this->clock)();
         if (!is_int($now) || $now < 1) throw new RuntimeException('ANDROMEDA_PACKAGE_CLOCK_INVALID');
-        $page = $store->projection($context['search_ref'], $context['generation'], $now);
-        if (($page['page'] ?? null) !== $context['page']) throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
-        $lookup = $store->lookup($context['search_ref'], $context['generation'], $context['offer_ref'], $now);
-        $offer = $lookup['offer'];
-        $scope = $lookup['criteria']['HOTELS'] ?? null;
-        if ((array_key_exists('hotel_scope', $context) && $context['hotel_scope'] !== $scope)
-            || (array_key_exists('operator_ref', $context) && $context['operator_ref'] !== $offer['operator_ref'])) {
-            throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
+        try {
+            $resolved = AnyTourAndromedaSelectedOffer::resolve($store, $context, $this->mappingAllows, $now);
+        } catch (RuntimeException $error) {
+            if ($error->getMessage() === 'ANDROMEDA_SELECTION_MAPPING_UNAVAILABLE') {
+                throw new RuntimeException('ANDROMEDA_PACKAGE_MAPPING_UNAVAILABLE');
+            }
+            if ($error->getMessage() === 'ANDROMEDA_SELECTION_CONTEXT_MISMATCH') {
+                throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
+            }
+            throw $error;
         }
-        try { $mappingAllowed = ($this->mappingAllows)($offer); }
-        catch (Throwable $ignored) { $mappingAllowed = false; }
-        if (!is_int($offer['local_hotel_id']) || $offer['local_hotel_id'] < 1 || $mappingAllowed !== true) {
-            throw new RuntimeException('ANDROMEDA_PACKAGE_MAPPING_UNAVAILABLE');
-        }
-        return ['context' => ['provider' => 'andromeda', 'search_ref' => $context['search_ref'],
-            'generation' => $context['generation'], 'page' => $context['page'],
-            'offer_ref' => $context['offer_ref'], 'hotel_scope' => $scope,
-            'operator_ref' => $offer['operator_ref'], 'local_id' => $offer['local_hotel_id']],
-            'criteria_sha256' => hash('sha256', json_encode($lookup['criteria'], JSON_THROW_ON_ERROR)),
-            'supplier_offer_sha256' => hash('sha256', $lookup['supplier_offer_id']),
-            'supplier_offer_id' => $lookup['supplier_offer_id'], 'now' => $now];
+        $resolved['now'] = $now;
+        unset($resolved['offer']);
+        return $resolved;
     }
 
     private function save(array $next, array $expected): void
