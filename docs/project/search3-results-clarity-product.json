@@ -114,6 +114,7 @@
     "size": {
       "public_css_delta_bytes": 459,
       "shared_served_js_delta_bytes": 196,
+      "shared_source_js_delta_bytes": 296,
       "initial_full_external_delta_bytes": 655,
       "inline_delta_bytes": 0,
       "accounting": "Current compiled CSS and shared served renderer; no lazy-loading or transfer claimed as deletion."
