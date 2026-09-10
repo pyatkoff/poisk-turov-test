@@ -813,5 +813,68 @@
     ],
     "rollback": "Revert release merge 9c8d895a0013b442ec14dccffecedc1738b47d84; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue current acceptance and owner-review preparation; publish the accumulated exact release when an authorized dispatch is available, while Andromeda selection remains independently gated."
+  },
+  "selection_action_label_recovery_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1849,
+    "baseline_release_sha": "6e0c39f8f3d4b02118e3cf06b22f579e00b84162",
+    "source_sha": "1a293cb989ddbba79c7d6a07b6acfce3a4073d70",
+    "source_tree": "d5e8c0c7346f92c83f10832186e8bc7c156a47bc",
+    "release_integration_sha": "9f5953c80f8c559597002c70082f8922373060f8",
+    "product_result": [
+      "The selection action keeps its renderer-owned exact label after the tour request completes instead of shortening it to a different command.",
+      "Success and error paths both re-enable the initiating action and restore its exact original label, including the retry action.",
+      "The existing controller, request, tour identity, focus return, price and lead paths remain unchanged."
+    ],
+    "ownership": {
+      "runtime": "v2/tour-controller-v4.js",
+      "focused_test": "tests/search3-selected-return-owner.cjs",
+      "shared_runtime_guard": "scripts/build/search3-js/shared-source-normalization.cjs",
+      "generated_output": "v2/search3-shared-runtime.json",
+      "protected_core_guard": "tests/search3_production_presentation_test.py",
+      "new_handler_or_renderer": 0
+    },
+    "size": {
+      "source_js_delta_raw_bytes": 42,
+      "served_shared_runtime_js_delta_raw_bytes": 12,
+      "css_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0
+    },
+    "verification": {
+      "focused_paths": [
+        "loading state",
+        "successful load",
+        "failed load",
+        "exact renderer label restoration",
+        "enabled state",
+        "focus return and identity"
+      ],
+      "security_run": 34433130562,
+      "exact_artifact_run": 34433130467,
+      "exact_artifact_id": 10135216289,
+      "exact_artifact_digest": "sha256:ffce2c3620646db525a2e373261be4bac289613e3eb34b4d402a8dc86484ff2e",
+      "geometry_change_detected": false,
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge 9f5953c80f8c559597002c70082f8922373060f8; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue the next confirmed independent Search3 journey defect from the fresh checked release while publication and Andromeda selection remain separately gated."
   }
 }
