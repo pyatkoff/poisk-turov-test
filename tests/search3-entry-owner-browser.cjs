@@ -61,6 +61,7 @@ async function run(browser, width) {
     assert.equal(await calendar.count(), 1, 'one existing calendar owner');
     assert.equal(await disclosure.evaluate(node => node.open), width > 700, 'desktop opens and mobile starts compact');
     assert.ok((await summary.boundingBox()).height >= 44, 'calendar disclosure target >=44px');
+    assert.ok(await summary.evaluate(node => parseFloat(getComputedStyle(node).paddingRight) >= 32), 'disclosure reserves room for its indicator');
     assert.equal(await page.evaluate(() => {
       const form = document.getElementById('tourSearch'), calendar = document.getElementById('currentPriceCalendar'), tools = document.getElementById('resultsTools');
       return !!(form.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(calendar.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING);
