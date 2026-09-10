@@ -116,6 +116,29 @@ def save(path: Path, value):
         raise ValueError('three_source_report_readback')
 
 
+def transport_failure(exc):
+    """Return fixed booleans/codes only; never stderr, host, user, command or credentials."""
+    allowed_reasons = {
+        'response_size_limit','ssh_exit_nonzero','ssh_authentication_failed','ssh_host_key_rejected',
+        'ssh_connection_timeout','ssh_connection_refused','ssh_name_resolution_failed','ssh_network_unreachable',
+        'ssh_session_rejected','ssh_connection_closed',
+    }
+    progress = getattr(exc, 'progress', None)
+    progress_keys = ('tcp_connected','authenticated','multiplexing_seen','command_sent','remote_exit_seen')
+    clean_progress = {key: bool(progress.get(key)) for key in progress_keys} if isinstance(progress, dict) else {key: False for key in progress_keys}
+    reason = getattr(exc, 'reason_code', None)
+    attempts = getattr(exc, 'attempts', None)
+    return {
+        'status': 'transport_unconfirmed',
+        'error_kind': type(exc).__name__ if type(exc).__name__ == 'SSHBatchError' else 'other',
+        'reason_code': reason if reason in allowed_reasons else 'other',
+        'ssh_progress': clean_progress,
+        'ssh_attempts': attempts if type(attempts) is int and 1 <= attempts <= 2 else None,
+        'automatic_retry': False,
+        'supplier_replay_requested': False,
+    }
+
+
 def run(output: Path):
     php = source()
     results = {}
@@ -147,10 +170,19 @@ def run(output: Path):
 def main():
     if len(sys.argv) != 2:
         raise SystemExit('usage: anex_search3_three_source_price.py OUTPUT_DIR')
+    output = Path(sys.argv[1])
     try:
-        print(json.dumps(run(Path(sys.argv[1])), ensure_ascii=False, sort_keys=True))
+        print(json.dumps(run(output), ensure_ascii=False, sort_keys=True))
     except Exception as exc:
-        print(json.dumps({'status':'unconfirmed','error_kind':type(exc).__name__,'automatic_retry':False}, sort_keys=True))
+        report = transport_failure(exc) if type(exc).__name__ == 'SSHBatchError' else {
+            'status':'unconfirmed','error_kind':type(exc).__name__ if type(exc).__name__ in {'ValueError','RuntimeError','JSONDecodeError'} else 'other',
+            'automatic_retry':False,'supplier_replay_requested':False,
+        }
+        try:
+            save(output / 'failure.json', report)
+        except Exception:
+            pass
+        print(json.dumps(report, sort_keys=True))
         raise SystemExit(1) from None
 
 
