@@ -81,6 +81,7 @@ class ActualRemoteReadTest(unittest.TestCase):
         shutil.copytree(runtime/'app/integrations', self.target/'app/integrations')
         shutil.copy2(runtime/'v2/api-andromeda-search3-preview.php', self.target/'api-andromeda-search3-preview.php')
         shutil.copy2(runtime/'v2/api-anex-search3-preview.php', self.target/'api-anex-search3-preview.php')
+        shutil.copytree(runtime/'v2/data', self.target/'data')
         self.private = home / '.anytoour-andromeda'
         self.searches = self.private / 'searches'
         self.searches.mkdir(parents=True)
