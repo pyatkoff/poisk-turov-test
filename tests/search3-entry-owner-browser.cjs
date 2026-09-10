@@ -21,7 +21,12 @@ async function run(browser, width) {
   try {
     const response = await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8&daysFrom=7&daysTill=10', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
-    await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1' && window.V2SearchLifecycle);
+    // The presentation-ready flag precedes async catalog boot and URL hydration.
+    // Even the deliberately blocked catalog fixture must settle before editing.
+    await page.waitForFunction(() => {
+      const form = document.getElementById('tourSearch');
+      return form?.dataset.search3Ready === '1' && form.dataset.catalogSource && window.V2SearchLifecycle;
+    });
     const adults = page.locator('#tourSearch select[name=count_people]'), children = page.locator('#tourSearch select[name=child_count]');
     assert.equal(await adults.inputValue(), '3', 'URL adult value stays on original control');
     assert.equal(await children.inputValue(), '1', 'URL child count survives native presentation');
@@ -44,13 +49,33 @@ async function run(browser, width) {
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
     assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'URL child ages take a full form row');
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
+    if (width >= 1199) {
+      const rows = await page.locator('#tourSearch .search-group').evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size);
+      assert.equal(rows, width >= 1200 ? 1 : 2, 'served form changes group rows at the actual desktop boundary');
+      if (width >= 1200) for (const input of await page.locator('#tourSearch input[type=date]').all()) {
+        assert.ok((await input.boundingBox()).width >= 125, 'desktop dates retain readable native values');
+      }
+    }
     await page.locator('#tourSearch > .extras > summary').click();
     const openExtras = await page.locator('#tourSearch > .extras').boundingBox();
     const openSubmit = await page.locator('.search-submit').boundingBox();
     assert.ok(openExtras.width > formGeometry.form.width - 50, 'open advanced parameters take the full form width');
     assert.ok(openSubmit.y >= openExtras.y + openExtras.height, 'primary action remains below expanded fields');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'expanded form has no horizontal overflow');
+    const flightTargets = page.locator('#tourSearch .toggle');
+    assert.equal(await flightTargets.count(), 2, 'original two flight switches stay the only owners');
+    for (const target of await flightTargets.all()) {
+      assert.ok((await target.boundingBox()).height >= 44, 'flight option has a full 44px label target');
+      const input = target.locator('input');
+      await target.locator('span').click();
+      assert.equal(await input.isChecked(), true, 'clicking the flight label changes its canonical checkbox');
+      await input.focus();
+      await page.keyboard.press('Space');
+      assert.equal(await input.isChecked(), false, 'native keyboard toggle stays intact');
+    }
+    await flightTargets.first().locator('span').click();
     await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
+    await flightTargets.first().locator('span').click();
     await page.locator('#tourSearch > .extras > summary').click();
     await adults.selectOption('4');
     const editingLayout = await page.evaluate(() => {
@@ -149,7 +174,7 @@ async function run(browser, width) {
 }
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  try { for (const width of [375, 1440]) await run(browser, width); }
+  try { for (const width of [375, 1199, 1200, 1440]) await run(browser, width); }
   finally { await browser.close(); }
-  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1440 lead_sent=0');
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1199,1200,1440 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
