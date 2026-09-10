@@ -1206,5 +1206,73 @@
     ],
     "rollback": "Revert release merge b5025926ba42565ba85f7ee464311418504aa615; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue the next confirmed independent Search3 journey defect from fresh checked release b5025926; publish the accumulated release only through an authorized exact dispatch, and keep Andromeda selection gated on a fresh quote/revalidation handoff."
+  },
+  "compact_entry_visual_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1862,
+    "baseline_release_sha": "88305b72fd1dcb972241d335f32e40ad750a7c6c",
+    "source_sha": "c124ea98c3aa20ec98e0803b45e0cb259e872129",
+    "release_integration_sha": "84e8d164ee099fa2473fa89ea0fe892c2cb9efbb",
+    "product_result": [
+      "At desktop widths the four existing native search groups now share one aligned row and the submit action no longer stretches across the whole form.",
+      "At 375px destination controls stack while dates, nights and party remain useful two-column pairs, reducing vertical travel without reducing the 44px control height or 16px text.",
+      "Below 350px every group safely stacks into one column without horizontal overflow.",
+      "The final desktop geometry keeps both native date inputs at least 125px wide so four-digit years remain visible."
+    ],
+    "ownership": {
+      "entry_style_source": "src/search3/styles/entry-native-controls.css",
+      "compiled_entry_style": "v2/search3-entry-v1.css",
+      "focused_browser_test": "tests/search3-entry-geometry-browser.cjs",
+      "static_owner_test": "tests/search3_production_presentation_test.py",
+      "generated_manifest": "docs/project/search3-production-import.json",
+      "duplicate_handlers_added": 0,
+      "duplicate_renderers_added": 0,
+      "override_skin_added": false
+    },
+    "size": {
+      "entry_style_source_delta_raw_bytes": 304,
+      "compiled_entry_css_delta_raw_bytes": 298,
+      "js_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0
+    },
+    "verification": {
+      "security_run": 34463092761,
+      "exact_artifact_run": 34463092725,
+      "geometry_artifact_id": 10146433174,
+      "whole_site_artifact_id": 10146433851,
+      "responsive_widths": [320, 375, 700, 1200, 1440],
+      "focused_contracts": [
+        "one aligned desktop row for the four current native groups",
+        "compact desktop submit and full-width mobile submit",
+        "paired mobile dates, nights and party at 375px",
+        "safe full stack below 350px",
+        "minimum 44px controls and 16px native input text",
+        "desktop date inputs at least 125px wide",
+        "no horizontal overflow"
+      ],
+      "corrected_ci_finding": {
+        "finding": "The first desktop geometry showed clipped four-digit years because the date group was too narrow.",
+        "resolution": "The same PR widened the desktop date track and added a minimum 125px width assertion for both native date inputs before the final green run."
+      },
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "scope_boundary": "Visual layout, responsive geometry and usability only. Technical search, API, provider data, pricing and lead contracts were intentionally untouched and remain with their assigned lane.",
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge 84e8d164ee099fa2473fa89ea0fe892c2cb9efbb; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue only a newly confirmed visual or usability improvement from fresh checked release 84e8d164; keep technical search, API and data work in their assigned lane and publish only through an authorized exact dispatch."
   }
 }
