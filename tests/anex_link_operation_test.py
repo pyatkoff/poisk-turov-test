@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Offline checks for the explicit existing hotel-identity workflow; no network/DB."""
 import ast
-import copy
 from pathlib import Path
 import unittest
 import yaml
@@ -28,12 +27,14 @@ class OperationTests(unittest.TestCase):
         self.assertEqual(WORKFLOW['on']['push']['paths'], ['.github/workflows/andromeda-identity-accept.yml'])
 
     def test_only_reviewed_source_executed(self):
-        self.assertEqual(STEPS[0]['with']['ref'], '3d099dbd64c9b00234ac9bc77bd09ee9c3b5355c')
+        self.assertEqual(STEPS[0]['with']['ref'], '030021061ba7595dced08813a7b28b16689cfd5e')
+        self.assertEqual(STEPS[0]['with']['ref'], WORKFLOW['env']['SOURCE_SHA'])
         self.assertEqual(STEPS[0]['with']['persist-credentials'], 'false')
-        self.assertIn('34495764385', PREPARE)
-        self.assertIn('34495764441', PREPARE)
+        self.assertIn('34501866010', PREPARE)
+        self.assertIn('34501866003', PREPARE)
         self.assertIn("check.get('head_sha') != os.environ['SOURCE_SHA']", CODE)
-        self.assertIn('links.approved_delta', CODE)
+        self.assertIn('batch.request', CODE)
+        self.assertIn('2a83b140e1ba36ad2d41168cd67abb1b3f05329e29793af41f5f5d23b7905024', CODE)
 
     def test_reservation_before_ssh_and_failure_outcome_retained(self):
         reservation = next(i for i,s in enumerate(STEPS) if s.get('id') == 'reserved')
@@ -42,18 +43,21 @@ class OperationTests(unittest.TestCase):
         self.assertEqual(STEPS[-1]['if'], "always() && steps.reserved.outcome == 'success'")
         self.assertIn('--receipt', STEPS[apply]['run'])
         self.assertIn('--apply', STEPS[apply]['run'])
+        self.assertIn('andromeda_identity_batch_accept.py', STEPS[apply]['run'])
         self.assertNotIn('andromeda_identity_accept.py', STEPS[apply]['run'])
+        self.assertNotIn('anex_tourvisor_link_import.py', STEPS[apply]['run'])
         self.assertEqual(sum('secrets.' in str(s) for s in STEPS), 1)
         self.assertNotIn('secrets.', str(WORKFLOW['jobs']['check-operation']))
+        self.assertIn('receipt.json.outcome.json', STEPS[-1]['with']['path'])
 
     def test_first_named_operation_allowed(self):
-        GUARD([{'workflow_runs':[{'id':10}, {'id':1,'display_title':'Historical Kaftans'}]}],
+        GUARD([{'workflow_runs':[{'id':10}, {'id':1,'display_title':'ANEX 1759 four-pair acceptance v1'}]}],
               {'total_count':0,'artifacts':[]},10)
 
     def test_prior_operation_blocks_any_outcome(self):
         for outcome in ('success','failure','cancelled',None):
             with self.subTest(outcome=outcome), self.assertRaisesRegex(ValueError,'do_not_replay'):
-                GUARD([{'workflow_runs':[{'id':10},{'id':9,'display_title':'ANEX 1759 four-pair acceptance v1',
+                GUARD([{'workflow_runs':[{'id':10},{'id':9,'display_title':'Andromeda 1759 92-identity acceptance v1',
                                                   'conclusion':outcome}]}], {'total_count':0,'artifacts':[]},10)
 
     def test_prior_reservation_blocks_even_when_expired(self):
