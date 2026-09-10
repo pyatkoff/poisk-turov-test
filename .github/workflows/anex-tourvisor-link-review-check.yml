@@ -6,6 +6,10 @@ on:
       - 'scripts/diagnostics/anex_search_mapping_import.py'
       - 'scripts/diagnostics/anex_search_mapping_writer.php'
       - 'scripts/diagnostics/andromeda_bridge_review.py'
+      - 'scripts/diagnostics/andromeda_country_pending.php'
+      - 'scripts/diagnostics/andromeda_country_pending.py'
+      - 'tests/andromeda-country-pending-test.php'
+      - 'tests/andromeda_country_pending_test.py'
       - 'scripts/diagnostics/andromeda_identity_batch_accept.py'
       - 'scripts/diagnostics/andromeda_identity_batch_accept.php'
       - 'scripts/diagnostics/andromeda_country_expansion.py'
@@ -51,6 +55,8 @@ jobs:
           python3 -B tests/anex_search_mapping_import_test.py
           python3 -B tests/andromeda_bridge_review_test.py
           python3 -B tests/andromeda_country_expansion_test.py
+          php -l scripts/diagnostics/andromeda_country_pending.php
+          php -l tests/andromeda-country-pending-test.php
           php -l scripts/diagnostics/anex_search_mapping_writer.php
           php -l scripts/diagnostics/andromeda_identity_batch_accept.php
           php -l tests/andromeda-identity-batch-writer-test.php
@@ -128,6 +134,22 @@ jobs:
           ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
           BRIDGE_FIXTURE: ${{ runner.temp }}/link-review/bridge61-fixture.json
         run: php tests/andromeda-saved-bridge-writer-test.php
+      - name: Reproduce complete 403-row pending delta with real PHP Unicode support
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10165733820/zip" > "$RUNNER_TEMP/link-review/complete-catalogues.zip"
+          python3 -B scripts/diagnostics/andromeda_country_pending.py --archive "$RUNNER_TEMP/link-review/complete-catalogues.zip" --output "$RUNNER_TEMP/link-review/pending-request.json" --fixture "$RUNNER_TEMP/link-review/pending-bundle.json"
+      - name: Durable pending receipt and exact manifest tests
+        env:
+          ANDROMEDA_PENDING_REQUEST: ${{ runner.temp }}/link-review/pending-request.json
+        run: python3 -B tests/andromeda_country_pending_test.py
+      - name: Actual403 promotions, full19229 competitors, current guards and late rollback
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+          ANDROMEDA_PENDING_REQUEST: ${{ runner.temp }}/link-review/pending-request.json
+          ANDROMEDA_PENDING_BUNDLE: ${{ runner.temp }}/link-review/pending-bundle.json
+        run: php tests/andromeda-country-pending-test.php
       - uses: actions/upload-artifact@v4
         with:
           name: anex-tourvisor-link-review
@@ -137,6 +159,7 @@ jobs:
             ${{ runner.temp }}/link-review/scale-full.json
             ${{ runner.temp }}/link-review/scale-summary.json
             ${{ runner.temp }}/link-review/andromeda-92-request.json
+            ${{ runner.temp }}/link-review/pending-request.json
             ${{ runner.temp }}/link-review/bridge61-request.json
           if-no-files-found: error
           retention-days: 90
