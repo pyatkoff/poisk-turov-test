@@ -550,6 +550,7 @@ async function run(browser, width, previous) {
       window.__resultsRetrySubmits = 0;
       window.V2SearchLifecycle.submit = () => {
         window.__resultsRetrySubmits += 1;
+        document.getElementById('results').innerHTML = '<div class="skeleton-grid"><div class="skeleton-card"></div></div>';
         window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation: 45 } }));
         window.__releaseRetryStart = () => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 45 } }));
       };
@@ -589,9 +590,14 @@ async function run(browser, width, previous) {
     await page.locator('.empty-relax[data-relax="hotel_service[]"]').click();
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'service relaxation immediately synchronizes its visible count');
+    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'service relaxation keeps focus on a stable recovery target through reset');
+    await page.evaluate(() => window.__releaseRetryStart());
+    await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
+    assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'service relaxation moves focus to the visible loading status');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch'), arrival = form.elements.arrival;
       arrival.innerHTML = '<option value="77" selected>Тестовый аэропорт</option>';
+      arrival.addEventListener('change', () => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })), { once: true });
       document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label>';
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
@@ -599,6 +605,10 @@ async function run(browser, width, previous) {
     await page.locator('.empty-relax[data-relax="arrival"]').click();
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'dependent arrival relaxation clears incompatible hotel services');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'dependent relaxation also synchronizes the service count');
+    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'dependent relaxation keeps focus on a stable recovery target through reset');
+    await page.evaluate(() => window.__releaseRetryStart());
+    await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
+    assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'dependent relaxation also moves focus to the visible loading status');
     await page.evaluate(() => window.V2Results.render([]));
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     await page.locator('.empty-edit-search').click();
