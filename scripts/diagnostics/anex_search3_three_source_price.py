@@ -21,7 +21,11 @@ def source():
     here=Path(__file__).resolve().parent
     old=(here/'anex_search3_paired_runner.php').read_text(); new=(here/'anex_search3_three_source_price.php').read_text()
     if not old.startswith('<?php') or not new.startswith('<?php'): raise ValueError('three_source_php_header')
-    return "define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+new[5:]
+    new_body=new[5:]
+    strict='\ndeclare(strict_types=1);\n'
+    if not new_body.startswith(strict): raise ValueError('three_source_php_strict_header')
+    new_body=new_body[len(strict):]
+    return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+new_body
 
 
 def ssh_php_no_mux(source_text, request, maximum_bytes=4000000):
@@ -45,7 +49,6 @@ def ssh_php_no_mux(source_text, request, maximum_bytes=4000000):
     except Exception:
         error=gaps.SSHBatchError(result.returncode,result.stderr); error.attempts=1; raise error from None
     if not isinstance(value,dict): raise ValueError('three_source_remote_json_invalid')
-    # The PHP runner is intentionally sanitized and emits JSON even for a guarded refusal.
     return value
 
 
