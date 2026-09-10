@@ -84,8 +84,16 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
 }
 
 function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[]): array {
+    // A retained local ID is evidence of an earlier mapping, not current authority.
+    // Revalidate the whole page once; do not mutate its saved snapshot/observations.
+    $current=anytour_andromeda_search3_current_mappings($pdo,(int)$request['params']['countryId'],$page['offers']);
+    $offers=array_values(array_filter($page['offers'],static function($offer)use($current){
+        $key=json_encode([$offer['supplier_namespace'],(string)$offer['external_hotel_id']]);
+        return is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0
+            && ($current[$key]??null)===$offer['local_hotel_id'];
+    }));
     $converted=[];$ids=[];
-    foreach($page['offers'] as $offer){
+    foreach($offers as $offer){
         $id=$offer['local_hotel_id'];if(!$id || (isset($request['hotel_scope']) && $id!==$request['hotel_scope']['local_id']))continue;$ids[$id]=true;
         $converted[]=['hotel'=>['local_id'=>$id,'mapping_status'=>'resolved'],'price'=>$offer['price'],
             'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
@@ -104,7 +112,7 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
     // Projection sorts offers. Bind operator/source using full normalized display tuple, never price alone.
     $used=[];
     foreach($hotels as &$hotel)foreach($hotel['tours'] as &$tour){
-        $matches=array_values(array_filter($page['offers'],static function($o)use($hotel,$tour){
+        $matches=array_values(array_filter($offers,static function($o)use($hotel,$tour){
             return $o['local_hotel_id']===$hotel['local_id'] && $o['check_in']===$tour['checkin'] && $o['room']===$tour['room']
                 && $o['nights']===$tour['nights'] && $o['meal']['label']===$tour['meal'] && $o['price']['amount']===$tour['price']['amount'];
         }));
@@ -124,7 +132,7 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         'date_range'=>['from'=>$request['params']['dateFrom'],'to'=>$request['params']['dateTo']],
         'grouped'=>!isset($request['hotel_scope']),'first_page_only'=>false,'page'=>$page['page'],'pages_count'=>$page['pages_count'],'external_search_pending'=>false,
         'search_ref'=>$page['search_ref'],'status'=>$page['status'],
-        'received_offers'=>count($page['offers']),'mapped_offers'=>count(array_filter($page['offers'],static function($o){return $o['local_hotel_id']!==null;})),'selection_enabled'=>false];
+        'received_offers'=>count($page['offers']),'mapped_offers'=>count($offers),'selection_enabled'=>false];
 }
 
 /** Atomic private checkpoint: never save supplier credentials or sid. */
@@ -259,12 +267,30 @@ function anytour_andromeda_search3_detail(array $request, PDO $pdo, array $saved
         return anytour_andromeda_search3_detail_selection($state,$context,$now,$pdo,(int)$request['params']['countryId']);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
-/** Current accepted identity reader shared by saved detail and private package capture. */
+/** One local batch read for retained listings, saved detail and private capture.
+ * Query by external ID, NOT saved local ID: a reassignment/duplicate outside the
+ * displayed hotel set must still invalidate the old mapping. Namespaces stay distinct.
+ */
+function anytour_andromeda_search3_current_mappings(PDO $pdo,int $country,array $offers): array {
+    $ids=[];
+    foreach($offers as $offer)if(is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0){
+        $ids[(string)$offer['external_hotel_id']]=true;
+    }
+    if(!$ids)return [];
+    $query=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? AND i.external_hotel_id IN (".implode(',',array_fill(0,count($ids),'?')).')');
+    $query->execute(array_merge([$country],array_keys($ids)));
+    $current=[];
+    foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){
+        $key=json_encode([$row['supplier_namespace'],(string)$row['external_hotel_id']]);
+        $current[$key]=array_key_exists($key,$current)?null:(int)$row['local_hotel_id'];
+    }
+    return $current;
+}
 function anytour_andromeda_search3_mapping_allows(PDO $pdo,int $country,array $offer): bool {
-    $query=$pdo->prepare("SELECT i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace=? AND i.external_hotel_id=? AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? LIMIT 2");
-    $query->execute([$offer['supplier_namespace'],$offer['external_hotel_id'],$country]);
-    $ids=$query->fetchAll(PDO::FETCH_COLUMN);
-    return count($ids)===1&&(int)$ids[0]===$offer['local_hotel_id'];
+    $current=anytour_andromeda_search3_current_mappings($pdo,$country,[$offer]);
+    $key=json_encode([$offer['supplier_namespace'],(string)$offer['external_hotel_id']]);
+    return is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0
+        && ($current[$key]??null)===$offer['local_hotel_id'];
 }
 function anytour_andromeda_search3_detail_selection(array $state,array $context,int $now,PDO $pdo,int $country): array {
     global $andromedaApp;
