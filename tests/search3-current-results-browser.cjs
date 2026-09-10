@@ -229,14 +229,30 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
     assert.equal(await card.locator('.tour-secondary-facts').filter({ hasText: 'Андромеда' }).count(), 2, 'expanded provider variants remain visibly attributed');
     assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'перед выбором нужна проверка' }).count(), 2, 'every Andromeda variant keeps the quote-required boundary');
+    const detailToggle = card.locator('[data-andromeda-detail]').first();
+    assert.ok((await detailToggle.boundingBox()).height >= 44, 'provider detail action keeps a full touch target');
+    await detailToggle.click();
+    await card.locator('.provider-detail').filter({ hasText: 'Подтверждённый тестовый отель' }).waitFor();
+    assert.equal(await detailToggle.getAttribute('aria-expanded'), 'true', 'provider detail disclosure exposes its open state');
+    assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
+    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · AI · <script>номер<\/script> · DBL/);
+    assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
+    assert.match(await card.locator('.provider-detail').innerText(), /155 079 ₽/);
+    assert.match(await card.locator('.provider-detail').innerText(), /Бронирование пока недоступно/);
+    assert.deepEqual(control.requests.map(request => request.action || 'search'), ['search', 'hotel_offers', 'hotel_offers', 'offer_detail'], 'details add one explicit saved-offer request only');
+    await detailToggle.click();
+    assert.equal(await card.locator('.provider-detail').count(), 0, 'detail action closes the disclosure');
+    await detailToggle.click();
+    assert.equal(await card.locator('.provider-detail').count(), 1, 'cached detail reopens without a new request');
+    assert.equal(control.requests.length, 4, 'close and cached reopen do not replay detail or provider pages');
     if (width <= 760) {
       const providerPrice = await card.locator('.tour-row').first().locator('.hotel-price').boundingBox();
       assert.ok(providerPrice.width >= 90 && providerPrice.height <= 45, 'mobile unquoted provider price stays readable instead of wrapping digit by digit');
     }
     assert.equal((await snapshot(page)).overflow, false, width + ': complete provider expansion fits the viewport');
-    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-expanded-${width}.png`), fullPage: true });
+    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-details-${width}.png`), fullPage: true });
     await page.evaluate(() => window.AnyTourAndromedaProvider.expandHotel('21477'));
-    assert.equal(control.requests.length, 3, 'rerender or repeated expansion cannot replay provider pages');
+    assert.equal(control.requests.length, 4, 'rerender or repeated expansion cannot replay provider pages');
 
     control.failSecond = true;
     control.requests.length = 0;
@@ -264,6 +280,7 @@ async function run(browser, width, previous) {
       const input = JSON.parse(request.postData() || '{}');
       andromeda.requests.push(input);
       if (input.action === 'hotel_offers' && andromeda.failSecond && input.page === 2) return route.abort('failed');
+      if (input.action === 'offer_detail') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', offer_context: input.offer_context, hotel: 'Подтверждённый тестовый отель', operator: 'ANEX', room: '<script>номер<\/script>', placement: 'DBL', checkin: '2026-09-18', nights: 8, adults: 2, children: 0, meal: 'AI', price: { amount: '155079.00', currency: 'RUB' } } }) });
       const offerRef = 'offer_' + String(input.action === 'hotel_offers' ? input.page : 9).repeat(64);
       const seed = { provider: 'andromeda', search_ref: 'd'.repeat(64), generation: input.generation, page: 1, offer_ref: 'offer_' + '9'.repeat(64) };
       const context = input.action === 'hotel_offers'
