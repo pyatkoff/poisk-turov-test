@@ -1,0 +1,48 @@
+name: Andromeda pending category semantics audit
+run-name: Andromeda pending category semantics audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/hotel-andromeda-category-audit.yml']
+permissions: {contents: read}
+concurrency:
+  group: hotel-matching-readonly
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect saved supplier star fields and candidate target categories
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          php=r'''
+          error_reporting(0);$root=realpath(getcwd());$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('START TRANSACTION READ ONLY');
+          $rows=[];$keys=[];$combos=[];$samples=[];$q=$db->query("SELECT external_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY external_hotel_id");
+          $get=$db->prepare('SELECT id,name,country_id,country_name,region_name,subregion_name,category FROM catalog_hotels WHERE id=? AND is_active=1');
+          while($r=$q->fetch(PDO::FETCH_ASSOC)){$e=json_decode((string)$r['evidence_json'],true);if(!is_array($e))continue;$s=$e['source']??[];if(!is_array($s))$s=[];foreach(array_keys($s) as $k)$keys[$k]=($keys[$k]??0)+1;$cand=array_values(array_unique(array_map('intval',$e['candidate_ids']??[])));if(count($cand)!==1)continue;$get->execute([$cand[0]]);$h=$get->fetch(PDO::FETCH_ASSOC);if(!$h)continue;$fields=[];foreach(['category','star','stars','starKey','starName','star_name'] as $k)if(array_key_exists($k,$s))$fields[$k]=$s[$k];$sig=json_encode([$fields,$h['category']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$combos[$sig]=($combos[$sig]??0)+1;if(count($samples)<80)$samples[]=['external_hotel_id'=>$r['external_hotel_id'],'source_name'=>$s['name']??null,'source_star_fields'=>$fields,'candidate_id'=>(int)$h['id'],'candidate_name'=>$h['name'],'target_category'=>$h['category']===null?null:(int)$h['category'],'country'=>$h['country_name'],'region'=>$h['region_name'],'subregion'=>$h['subregion_name']];}
+          arsort($keys);arsort($combos);$comboRows=[];foreach($combos as $sig=>$n)$comboRows[]=['count'=>$n,'values'=>json_decode($sig,true)];$db->rollBack();echo json_encode(['status'=>'ok','supplier_calls'=>0,'database_writes'=>0,'pending_source_key_counts'=>$keys,'single_candidate_star_combos'=>$comboRows,'samples'=>$samples],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          '''
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          with tempfile.TemporaryDirectory(prefix='category-audit-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]].strip(),os.environ[req[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=120,env={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')})
+              try:value=json.loads(p.stdout)
+              except Exception:raise ValueError('category_non_json '+p.stderr[-1000:])
+              if p.returncode or value.get('status')!='ok':raise ValueError('category_audit_failed')
+              out=Path(os.environ['RUNNER_TEMP'])/'andromeda-category-audit.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps({'pending_source_key_counts':value['pending_source_key_counts'],'top_combos':value['single_candidate_star_combos'][:20]},ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-category-audit
+          path: ${{ runner.temp }}/andromeda-category-audit.json
+          if-no-files-found: error
+          retention-days: 30
