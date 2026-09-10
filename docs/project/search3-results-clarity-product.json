@@ -1539,7 +1539,10 @@
     "date": "2026-09-10",
     "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
     "baseline_release_sha": "8bdf8b69656f51ee484420127f1ae36600108e0c",
-    "source_prs": [1885, 1886],
+    "source_prs": [
+      1885,
+      1886
+    ],
     "release_integration_sha": "3427fae296a951efbff9b95b29191969bf29ff0c",
     "source_sha": "dbe2d1c28e739ed2bc1aa89d9822f1bb9122b6cf",
     "source_tree": "2d319335be1b2625c39e41903c07edaedae9ce88",
@@ -1562,14 +1565,29 @@
       "js_delta_bytes": 0
     },
     "verification": {
-      "security_runs": [34472355796, 34473224706],
-      "exact_php_chromium_runs": [34472356134, 34473224675],
+      "security_runs": [
+        34472355796,
+        34473224706
+      ],
+      "exact_php_chromium_runs": [
+        34472356134,
+        34473224675
+      ],
       "source_artifact_id": 10150457704,
       "source_artifact_digest": "sha256:690ce193170ae3a42caa81de28f2d0eefbb8a7aa55fb46232f069e03b337c16c",
       "geometry_artifact_id": 10150457263,
       "geometry_artifact_digest": "sha256:c36043e1816428070a175c0e6c9a56249b97ac57a0e5a484cac7c3f31d38888e",
       "results_states": 16,
-      "results_widths": [375, 430, 760, 761, 999, 1000, 1025, 1440],
+      "results_widths": [
+        375,
+        430,
+        760,
+        761,
+        999,
+        1000,
+        1025,
+        1440
+      ],
       "inspected": [
         "catalog recovery at375/1440",
         "expanded results at375/1440",
