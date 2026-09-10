@@ -1,5 +1,5 @@
 name: Reviewed hotel identity acceptance
-run-name: Andromeda 1759 country pending403 acceptance v1
+run-name: ANEX 1759 saved strong25 acceptance v1
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
@@ -12,8 +12,8 @@ concurrency:
   group: ${{ github.event_name == 'push' && 'andromeda-identity-writes' || format('hotel-operation-check-{0}', github.run_id) }}
   cancel-in-progress: false
 env:
-  SOURCE_SHA: 3fdd40cf1170272dde35f8802a2fe6551a3df77c
-  OPERATION_ID: andromeda-1759-country6-pending-20260910-v1
+  SOURCE_SHA: de5b7a08be4c6314622719becf67189ec0e60b81
+  OPERATION_ID: anex-1759-saved-strong25-20260910-v1
 jobs:
   check-operation:
     runs-on: ubuntu-latest
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Verify exact new operation boundaries without private access
+      - name: Verify exact operation boundaries without private access
         run: python3 -B tests/anex_link_operation_test.py
   accept:
     needs: check-operation
@@ -32,9 +32,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          ref: 3fdd40cf1170272dde35f8802a2fe6551a3df77c
+          ref: de5b7a08be4c6314622719becf67189ec0e60b81
           path: reviewed
-      - name: Verify checked source and new operation; prepare exact403 pending delta
+      - name: Verify checked source and new operation; prepare exact25 saved ANEX pairs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -43,12 +43,15 @@ jobs:
           test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
           mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
           export STATE="$RUNNER_TEMP/$OPERATION_ID"
-          for id in 34513027308 34513027295; do
+          for id in 34517850536 34517850459 34517850464; do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"
           done
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?branch=feat%2Fint-andromeda-live-20260909&event=push&per_page=100" > "$STATE/history.json"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/reservations.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10165733820/zip" > "$STATE/complete-catalogues.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10097668551/zip" > "$STATE/anex.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10113498830/zip" > "$STATE/egypt.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10118184869/zip" > "$STATE/turkey.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10165733820/zip" > "$STATE/full.zip"
           python3 - <<'PYTHON'
           import json, os, sys
           from pathlib import Path
@@ -63,47 +66,47 @@ jobs:
                   runs.extend(page['workflow_runs'])
               if not any(r.get('id')==current_run for r in runs):
                   raise ValueError('current_operation_missing')
-              prior=[r for r in runs if r.get('id')!=current_run and r.get('display_title')=='Andromeda 1759 country pending403 acceptance v1']
+              prior=[r for r in runs if r.get('id')!=current_run and r.get('display_title')=='ANEX 1759 saved strong25 acceptance v1']
               if prior or reservations.get('total_count')!=0 or reservations.get('artifacts')!=[]:
                   raise ValueError('prior_operation_do_not_replay')
 
           state=Path(os.environ['STATE'])
           require_new_operation(json.loads((state/'history.json').read_bytes()),json.loads((state/'reservations.json').read_bytes()),int(os.environ['GITHUB_RUN_ID']))
-          for run_id in (34513027308,34513027295):
+          for run_id in (34517850536,34517850459,34517850464):
               value=json.loads((state/f'check-{run_id}.json').read_bytes())
               if value.get('head_sha')!=os.environ['SOURCE_SHA'] or value.get('conclusion')!='success':
                   raise ValueError('checked_source_unconfirmed')
           sys.path.insert(0,str(Path('reviewed/scripts/diagnostics').resolve()))
-          import andromeda_country_pending as pending
-          from anex_tourvisor_link_import import save
-          payload=pending.request(state/'complete-catalogues.zip')
-          if pending.OPERATION_ID!=os.environ['OPERATION_ID'] or payload['count']!=403 or pending.digest(payload)!='9e89e6585b01205ac9a0b1bc47f91c99585eb8cc8863fc89e3b463c3b3d9d687':
-              raise ValueError('reviewed_pending_delta_changed')
-          save(state/'request.json',payload,exclusive=True)
-          pairs=[[r['external_hotel_id'],r['local_hotel_id'],c['country_id']] for c in payload['countries'].values() for r in c['rows']]
-          save(state/'reservation.json',{'state':'reserved_before_ssh','operation_id':pending.OPERATION_ID,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'request_sha256':pending.digest(payload),'pairs':pairs,'supplier_calls':0,'unknown_requires_readback_not_replay':True},exclusive=True)
-          print('Exactly403 retained pending identities prepared; completed imports not replayed.')
+          import anex_saved_strong_batch as batch
+          report=batch.review({k:state/(k+'.zip') for k in ('anex','egypt','turkey','full')})
+          payload=batch.delta(report)
+          if batch.OPERATION_ID!=os.environ['OPERATION_ID'] or len(payload['rows'])!=25 or batch.digest(report)!='5a04ff6b3ed11f0477ab8c06f4779d901f335af06cca652e8fd87864f29737f7' or batch.digest(payload)!='ca69d167a542023d008a9864c925cf9990d86b0f3f2c36bd7c7ed7379428773f':
+              raise ValueError('reviewed_strong_delta_changed')
+          batch.save(state/'strong-report.json',report,exclusive=True)
+          batch.save(state/'request.json',payload,exclusive=True)
+          batch.save(state/'reservation.json',{'state':'reserved_before_ssh','operation_id':batch.OPERATION_ID,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'delta_sha256':batch.digest(payload),'report_sha256':batch.digest(report),'pairs':[[r['anex_hotel_id'],r['catalog_hotel_id']] for r in payload['rows']],'supplier_calls':0,'unknown_requires_readback_not_replay':True},exclusive=True)
+          print('Exactly25 new saved ANEX pairs prepared; no supplier requests or previous queue replay.')
           PYTHON
       - name: Preserve reservation and exact request before application transaction
         id: reserved
         uses: actions/upload-artifact@v4
         with:
-          name: andromeda-1759-country6-pending-20260910-v1-reservation
+          name: anex-1759-saved-strong25-20260910-v1-reservation
           path: |
-            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/reservation.json
-            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/request.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/reservation.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/request.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/strong-report.json
           if-no-files-found: error
           retention-days: 90
-      - name: Accept403 pending identities through existing SSH and current guards
+      - name: Insert25 ANEX pairs through existing SSH importer and verify committed rows
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
-          python3 -B reviewed/scripts/diagnostics/andromeda_country_pending.py \
-            --archive "$RUNNER_TEMP/$OPERATION_ID/complete-catalogues.zip" \
-            --receipt "$RUNNER_TEMP/$OPERATION_ID/receipt.json" --apply \
-            --output "$RUNNER_TEMP/$OPERATION_ID/result.json" > "$RUNNER_TEMP/$OPERATION_ID/result.stdout.json"
+          python3 -B reviewed/scripts/diagnostics/anex_saved_strong_batch.py \
+            --report "$RUNNER_TEMP/$OPERATION_ID/strong-report.json" --apply \
+            --receipt "$RUNNER_TEMP/$OPERATION_ID/receipt.json" > "$RUNNER_TEMP/$OPERATION_ID/result.stdout.json"
           python3 - <<'PYTHON'
           import json, os
           from pathlib import Path
@@ -111,17 +114,18 @@ jobs:
           if value.get('state')!='finalized':
               raise ValueError('application_receipt_unconfirmed')
           result=value['result']
-          print(json.dumps({k:result.get(k) for k in ('status','updated','readback_verified','other_identities_unchanged','other_count','counts','live_coverage','supplier_calls')},ensure_ascii=False))
+          print(json.dumps({k:result.get(k) for k in ('status','inserted','updated','readback_verified','effective_mapped_count','preservation','live_coverage','supplier_calls')},ensure_ascii=False))
           PYTHON
       - name: Preserve outcome even when unknown; no automatic retries
         if: always() && steps.reserved.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: andromeda-1759-country6-pending-20260910-v1-result
+          name: anex-1759-saved-strong25-20260910-v1-result
           path: |
-            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/reservation.json
-            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/receipt.json
-            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/receipt.json.outcome.json
-            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/result.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/reservation.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/strong-report.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/receipt.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/receipt.json.outcome.json
+            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/result.stdout.json
           if-no-files-found: error
           retention-days: 90
