@@ -526,5 +526,59 @@
     ],
     "rollback": "Restore the retained isolated-preview backup and revert release merges 43d874d97283a8d4fb302167bb7303e6712f4bb6 and cf0ab86d82a75e56ed677fe9dc53c3eb38dee965 independently.",
     "next_action": "Advance to S3_PRODUCT_CURRENT_ACCEPTANCE: collect one reproducible accumulated-preview performance and five-task interaction baseline without a real lead, record physical Safari/user pilot as deferred, and do not reopen completed form/filter/calendar/provider-card packages. Consume further provider work only from a fresh bounded INT quote/selection handoff."
+  },
+  "ota_andromeda_expansion_eligibility_fix_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1838,
+    "baseline_release_sha": "a2f4bb0e671ad4b67344c04a2f07370bff7d163d",
+    "source_sha": "1cc0c0a9bff3a03e1045f28e6fe611f66966b43c",
+    "release_integration_sha": "83faf53e7f76c6f955ee0e18c24d7b04c78f1d27",
+    "product_result": "The Andromeda expansion control now appears only when an accepted resolved provider offer was actually merged into the current card. A rejected raw row sharing local_id no longer exposes a silent no-op action.",
+    "ownership": "One predicate was corrected inside the existing v2/andromeda-provider-v1.js owner; no renderer, handler, CSS or addon layer was added.",
+    "size": {
+      "public_js_delta_raw_bytes": -1,
+      "css_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0
+    },
+    "verification": {
+      "security_run": 34420185304,
+      "exact_artifact_run": 34420185282,
+      "exact_artifact_id": 10130592207,
+      "exact_artifact_digest": "sha256:ff58c69bdfe4df4fd34131a01c12ce7714c2e43d6a0f4aae6cd0b9a72f090fe7",
+      "focused": "Rejected mapping_status with the same local_id has no expansion action; accepted resolved offer keeps the action. Provider test, syntax and shared-runtime checks passed.",
+      "conclusion": "success"
+    },
+    "publication": {
+      "published": true,
+      "preview": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+      "release_pin_sha": "83faf53e7f76c6f955ee0e18c24d7b04c78f1d27",
+      "control_pr": 1839,
+      "control_sha": "045c08178782460ba13e558b7d9a7561571049e6",
+      "deploy_run": 34420494904,
+      "deployment_evidence_artifact": 10130700724,
+      "deployment_evidence_digest": "sha256:df31fb048614e88370818270c94e5429f24a2c6c48be36f972d7aec8ece72af5",
+      "route_count": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "preview_metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprints_unchanged": true,
+      "control_closed_without_merge": true,
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0,
+      "correction": "The earlier issue comment said no deploy run appeared. The full branch workflow listing showed successful push run34420494904; the stale statement was corrected without repeating deployment."
+    },
+    "deferred": [
+      "Live external hotel_offers status and saved mapped-offer capture remain INT-owned.",
+      "Quote/revalidation and provider selection remain disabled.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval for a concrete production release."
+    ],
+    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE without another supplier replay: consolidate exact five-task/geometry/performance evidence for the published preview, then prepare the concrete owner-review checkpoint. Consume provider selection only from a fresh bounded quote handoff."
   }
 }
