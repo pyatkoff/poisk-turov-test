@@ -1274,5 +1274,16 @@
     ],
     "rollback": "Revert release merge 84e8d164ee099fa2473fa89ea0fe892c2cb9efbb; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue only a newly confirmed visual or usability improvement from fresh checked release 84e8d164; keep technical search, API and data work in their assigned lane and publish only through an authorized exact dispatch."
+  },
+  "reference_calendar_disclosure_20260910": {
+    "stage": "IMPLEMENTED_PENDING_CI_AND_PREVIEW",
+    "baseline_release_sha": "9721f6cda19568cb3b29d3b66e7a5a1ccb42be75",
+    "approved_reference": "libfile_bcd3a18be788819193fbc1924082e3ca",
+    "scope": "Existing current-price-calendar presentation only: native disclosure after the form and before result tools, desktop initially open, mobile initially collapsed, user choice retained during rendering.",
+    "preserved": ["existing collect/minimum calculation", "exact date action and one lifecycle submit", "source events and local filtering", "unknown prices remain absent", "one existing calendar owner"],
+    "verification": "Node syntax and source/generated checks passed locally. Full PHP and browser verification runs in the required exact-artifact CI; local PHP is unavailable.",
+    "deferred": ["physical Safari/iPhone", "exact preview publication and readback", "form redesign and card composition are subsequent visual packages"],
+    "production_changed": false,
+    "real_leads_submitted": 0
   }
 }
