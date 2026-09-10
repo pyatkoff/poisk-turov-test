@@ -1,0 +1,81 @@
+name: ANEX three-source price parity
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_search3_three_source_price.php'
+      - 'scripts/diagnostics/anex_search3_three_source_price.py'
+      - 'tests/anex-search3-three-source-price-smoke.php'
+      - 'tests/anex_search3_three_source_price_test.py'
+      - '.github/workflows/anex-three-source-price-check.yml'
+  push:
+    branches:
+      - 'ops/int-anex-three-source-price-20260911'
+    paths:
+      - '.github/ops/anex-three-source-price-20260911'
+permissions:
+  contents: read
+concurrency:
+  group: anex-three-source-price-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate source without network
+        run: |
+          php -l scripts/diagnostics/anex_search3_three_source_price.php
+          php -l tests/anex-search3-three-source-price-smoke.php
+          php -d allow_url_fopen=0 tests/anex-search3-three-source-price-smoke.php
+          python3 -B tests/anex_search3_three_source_price_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          php=Path('scripts/diagnostics/anex_search3_three_source_price.php').read_text()
+          assert '->bron(' not in php and 'broninit(' not in php and '->calc(' not in php and 'get_flights(' not in php
+          assert "ANEX_THREE_PRICE_CASES = ['anex','andromeda','tourvisor']" in php
+          workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
+          assert "ops/int-anex-three-source-price-20260911" in workflow
+          assert 'cancel-in-progress: false' in workflow
+          print('Three-source parity static boundary: PASS')
+          PY
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-price-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      SOURCE_SHA: 7d7ebb79b0ddbae7988e3a521dc253c02993506f
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Bind exact owner-authorized one-shot source
+        run: |
+          test "$(cat control/.github/ops/anex-three-source-price-20260911)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-price;owner=2026-09-11"
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Run three independent reserved read-only search cases
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/three-source-price"
+          python3 -B source/scripts/diagnostics/anex_search3_three_source_price.py "$RUNNER_TEMP/three-source-price"
+      - name: Preserve sanitized evidence only
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-three-source-price-${{ github.run_id }}
+          path: ${{ runner.temp }}/three-source-price/
+          if-no-files-found: error
+          retention-days: 30
