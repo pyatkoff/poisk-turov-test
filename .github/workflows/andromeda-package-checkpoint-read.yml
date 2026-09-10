@@ -1,0 +1,105 @@
+name: Inspect unknown Andromeda package checkpoint
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+concurrency:
+  group: ${{ (github.actor == 'pyatkoff' && github.event.sender.id == 226193297 && github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.number == 996 && !github.event.issue.pull_request && github.event.comment.body == '/inspect-andromeda-package-checkpoint-1717') && 'anytoour-andromeda-package-checkpoint-read' || format('andromeda-package-checkpoint-ignored-{0}', github.run_id) }}
+  cancel-in-progress: false
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 996 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.body == '/inspect-andromeda-package-checkpoint-1717'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Bind read to the exact unknown capture and checked reader
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const crypto = require('crypto');
+            const fs = require('fs');
+            const path = require('path');
+            const owner = 226193297;
+            const command = '/inspect-andromeda-package-checkpoint-1717';
+            const captureComment = 5625884702;
+            const captureRun = 34534107758;
+            const captureArtifact = 10174689395;
+            const captureMain = 'bb0269f6388e431381764438cac3048f3cc81d05';
+            const requestSha = '0010cbd4530c56669785d8a4333aa4b712eec17309139571939fe01cb555cbcd';
+            const readerHead = 'b9c8f2b5769d247f60a6a8d2c85f4b906dc93a18';
+            const readerMerge = '39aad2b7e8e6eb30211e46ca07820fc5e9a3b398';
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay even a recovery read without reviewing its retained artifact.');
+            if (context.actor !== 'pyatkoff' || context.payload.sender?.id !== owner || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
+            if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 ||
+                context.payload.issue?.pull_request || context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) throw new Error('Exact owner recovery-read command required.');
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; review the control before reading.');
+            const {data: sourceComment} = await github.rest.issues.getComment({...context.repo, comment_id: captureComment});
+            const prefix = '/capture-andromeda-selected-1717 ';
+            if (sourceComment.user?.id !== owner || sourceComment.created_at !== '2026-09-10T21:47:45Z' ||
+                sourceComment.updated_at !== '2026-09-10T21:47:45Z' || typeof sourceComment.body !== 'string' ||
+                !sourceComment.body.startsWith(prefix) || /[\r\n]/.test(sourceComment.body)) throw new Error('Pinned capture command changed.');
+            const raw = sourceComment.body.slice(prefix.length);
+            if (!raw || Buffer.byteLength(raw, 'utf8') > 16384) throw new Error('Pinned request invalid.');
+            let input;
+            try { input = JSON.parse(raw); } catch { throw new Error('Pinned request JSON invalid.'); }
+            const exactKeys = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
+              Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+            if (!exactKeys(input, ['version','operation','runtime_source','local_country_id','selection']) ||
+                !exactKeys(input.selection, ['provider','search_ref','generation','page','offer_ref','hotel_scope','operator_ref','local_id']) ||
+                input.version !== 1 || input.operation !== 'capture-selected-retained-offer-1717' ||
+                input.runtime_source !== 'fdd099e36fdc1a20a561f285d22d0acb00f90e36' || input.selection.provider !== 'andromeda') throw new Error('Pinned request schema mismatch.');
+            const canonical = value => Array.isArray(value) ? value.map(canonical) :
+              (value && typeof value === 'object') ? Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])])) : value;
+            if (crypto.createHash('sha256').update(JSON.stringify(canonical(input))).digest('hex') !== requestSha) throw new Error('Pinned selected-request digest mismatch.');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: captureRun});
+            if (run.head_sha !== captureMain || run.event !== 'issue_comment' || run.status !== 'completed' || run.conclusion !== 'failure' || run.run_attempt !== 1) throw new Error('Unknown capture run provenance mismatch.');
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: captureArtifact});
+            if (artifact.expired !== false || artifact.workflow_run?.id !== captureRun || artifact.workflow_run?.head_sha !== captureMain ||
+                artifact.digest !== 'sha256:18c722e74b0bd0c2d776e4b1419bf9ba51a0a521712d75f598c6c83ab847a057') throw new Error('Unknown capture artifact mismatch.');
+            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: 1949});
+            if (!pr.merged || pr.merge_commit_sha !== readerMerge || pr.head.sha !== readerHead || pr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Reader provenance mismatch.');
+            for (const run_id of [34534647025, 34534647018]) {
+              const {data: gate} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
+              if (gate.head_sha !== readerHead || gate.status !== 'completed' || gate.conclusion !== 'success') throw new Error('Reader CI gate failed: ' + run_id);
+            }
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'andromeda-selected-request.json'), raw,
+              {encoding: 'utf8', mode: 0o600, flag: 'wx'});
+      - uses: actions/checkout@v4
+        with:
+          ref: b9c8f2b5769d247f60a6a8d2c85f4b906dc93a18
+          path: inspector
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Read only the exact selected package checkpoint
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B inspector/scripts/diagnostics/andromeda_package_checkpoint_read.py --inspect-package-checkpoint "$RUNNER_TEMP/andromeda-selected-request.json" helper
+      - name: Preserve only sanitized checkpoint classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-package-checkpoint-read-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-package-checkpoint-read/result.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove runner-private selected request
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/andromeda-selected-request.json"
