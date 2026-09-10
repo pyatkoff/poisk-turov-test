@@ -106,6 +106,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist-clear{justify-self:start}
 & .search3-shortlist__items{grid-template-columns:1fr}
 }
+@media(max-width:430px){
+& .search3-shortlist-item__actions{grid-template-columns:1fr}
+& .search3-shortlist-item__actions :is(.search3-shortlist-select,.search3-shortlist-remove){width:100%}
+}
 @media(min-width:1025px){
 & .results-tools__actions>:not(label:has(#sortResults)):not(#resultsSearchEdit){display:none}
 & .results-layout:has(#results>*){grid-template-columns:230px minmax(0,1fr);align-items:start}
@@ -205,8 +209,6 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-more-toggle{justify-self:stretch}
 }
 @media(max-width:430px){
-& .search3-shortlist-item__actions{grid-template-columns:1fr}
-& .search3-shortlist-item__actions :is(.search3-shortlist-select,.search3-shortlist-remove){width:100%}
 & .hotel-body{padding:16px}
 & .hotel-title{font-size:21px}
 & .hotel-tours>.hotel-choice-hint{padding-inline:16px}
