@@ -1,5 +1,5 @@
 name: Reviewed hotel identity acceptance
-run-name: Andromeda 1759 complete saved catalogue read v1
+run-name: Andromeda 1759 country pending403 acceptance v1
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
@@ -11,6 +11,9 @@ permissions: {contents: read, actions: read}
 concurrency:
   group: ${{ github.event_name == 'push' && 'andromeda-identity-writes' || format('hotel-operation-check-{0}', github.run_id) }}
   cancel-in-progress: false
+env:
+  SOURCE_SHA: 3fdd40cf1170272dde35f8802a2fe6551a3df77c
+  OPERATION_ID: andromeda-1759-country6-pending-20260910-v1
 jobs:
   check-operation:
     runs-on: ubuntu-latest
@@ -18,71 +21,107 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - run: python3 -B tests/anex_link_operation_test.py
-  read:
+      - name: Verify exact new operation boundaries without private access
+        run: python3 -B tests/anex_link_operation_test.py
+  accept:
     needs: check-operation
     if: github.event_name == 'push' && github.ref == 'refs/heads/feat/int-andromeda-live-20260909' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with: {persist-credentials: false, ref: d583c38fdbb08c711121b93108a40befeb608f7c, path: reviewed}
-      - name: Read only completed private catalogue files; no DB or supplier operations
+        with:
+          persist-credentials: false
+          ref: 3fdd40cf1170272dde35f8802a2fe6551a3df77c
+          path: reviewed
+      - name: Verify checked source and new operation; prepare exact403 pending delta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          for id in 34513027308 34513027295; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"
+          done
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?branch=feat%2Fint-andromeda-live-20260909&event=push&per_page=100" > "$STATE/history.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/reservations.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10165733820/zip" > "$STATE/complete-catalogues.zip"
+          python3 - <<'PYTHON'
+          import json, os, sys
+          from pathlib import Path
+
+          def require_new_operation(pages, reservations, current_run):
+              if not isinstance(pages,list) or not pages:
+                  raise ValueError('operation_history_unavailable')
+              runs=[]
+              for page in pages:
+                  if not isinstance(page,dict) or not isinstance(page.get('workflow_runs'),list):
+                      raise ValueError('operation_history_unavailable')
+                  runs.extend(page['workflow_runs'])
+              if not any(r.get('id')==current_run for r in runs):
+                  raise ValueError('current_operation_missing')
+              prior=[r for r in runs if r.get('id')!=current_run and r.get('display_title')=='Andromeda 1759 country pending403 acceptance v1']
+              if prior or reservations.get('total_count')!=0 or reservations.get('artifacts')!=[]:
+                  raise ValueError('prior_operation_do_not_replay')
+
+          state=Path(os.environ['STATE'])
+          require_new_operation(json.loads((state/'history.json').read_bytes()),json.loads((state/'reservations.json').read_bytes()),int(os.environ['GITHUB_RUN_ID']))
+          for run_id in (34513027308,34513027295):
+              value=json.loads((state/f'check-{run_id}.json').read_bytes())
+              if value.get('head_sha')!=os.environ['SOURCE_SHA'] or value.get('conclusion')!='success':
+                  raise ValueError('checked_source_unconfirmed')
+          sys.path.insert(0,str(Path('reviewed/scripts/diagnostics').resolve()))
+          import andromeda_country_pending as pending
+          from anex_tourvisor_link_import import save
+          payload=pending.request(state/'complete-catalogues.zip')
+          if pending.OPERATION_ID!=os.environ['OPERATION_ID'] or payload['count']!=403 or pending.digest(payload)!='9e89e6585b01205ac9a0b1bc47f91c99585eb8cc8863fc89e3b463c3b3d9d687':
+              raise ValueError('reviewed_pending_delta_changed')
+          save(state/'request.json',payload,exclusive=True)
+          pairs=[[r['external_hotel_id'],r['local_hotel_id'],c['country_id']] for c in payload['countries'].values() for r in c['rows']]
+          save(state/'reservation.json',{'state':'reserved_before_ssh','operation_id':pending.OPERATION_ID,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'request_sha256':pending.digest(payload),'pairs':pairs,'supplier_calls':0,'unknown_requires_readback_not_replay':True},exclusive=True)
+          print('Exactly403 retained pending identities prepared; completed imports not replayed.')
+          PYTHON
+      - name: Preserve reservation and exact request before application transaction
+        id: reserved
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-1759-country6-pending-20260910-v1-reservation
+          path: |
+            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/reservation.json
+            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/request.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Accept403 pending identities through existing SSH and current guards
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
+          python3 -B reviewed/scripts/diagnostics/andromeda_country_pending.py \
+            --archive "$RUNNER_TEMP/$OPERATION_ID/complete-catalogues.zip" \
+            --receipt "$RUNNER_TEMP/$OPERATION_ID/receipt.json" --apply \
+            --output "$RUNNER_TEMP/$OPERATION_ID/result.json" > "$RUNNER_TEMP/$OPERATION_ID/result.stdout.json"
           python3 - <<'PYTHON'
-          import hashlib, json, os, sys
+          import json, os
           from pathlib import Path
-          sys.path.insert(0,str(Path('reviewed/scripts/diagnostics').resolve()))
-          from anex_search3_owner_decisions import ssh_php
-          from anex_tourvisor_link_import import save, digest
-          PHP = r'''
-          error_reporting(0);ob_start();
-          try {
-            if(PHP_SAPI!=='cli'||basename(realpath(getcwd()))!=='anytoour.ru')throw new RuntimeException();
-            $request=json_decode(file_get_contents('php://stdin'),true,16,JSON_THROW_ON_ERROR);
-            if(!isset(CE_COUNTRIES[$request['country']??''])||!in_array($request['part']??'',['catalog','local','plan'],true))throw new RuntimeException();
-            $config=require getcwd().'/_preview/search3-anex-candidate/.andromeda-private.php';
-            $private=realpath(dirname($config['catalog_path']));if(!$private)throw new RuntimeException();
-            $stage=$private.'/'.CE_OPERATION.'-'.$request['country'];
-            $capture=ce_read($stage.'/capture.json');$meta=ce_read($stage.'/capture-result.json');$plan=ce_read($stage.'/plan.json');$done=ce_read($stage.'/result.json');
-            if(($done['status']??'')!=='imported'||($done['readback_verified']??false)!==true||ce_hash($capture)!==$meta['capture_sha256']||ce_hash($plan)!==$meta['plan_sha256']||ce_hash($capture['catalog'])!==$plan['catalog_sha256'])throw new RuntimeException();
-            $data=$request['part']==='plan'?$plan:$capture[$request['part']];
-            $result=['status'=>'saved_complete_part','country'=>$request['country'],'part'=>$request['part'],'country_id'=>$capture['country_id'],'country_name'=>$capture['country_name'],'supplier_country_id'=>$capture['supplier_country_id'],'capture_sha256'=>$meta['capture_sha256'],'plan_sha256'=>$meta['plan_sha256'],'data_sha256'=>ce_hash($data),'data'=>$data,'database_writes'=>0,'supplier_calls'=>0];
-            $out=ce_json($result);if(strlen($out)>4000000)throw new RuntimeException();
-            foreach([$config['username'],$config['password'],rawurlencode($config['username']),rawurlencode($config['password'])] as $secret)if($secret!==''&&strpos($out,$secret)!==false)throw new RuntimeException();
-          }catch(Throwable $e){$out='{"status":"saved_read_failed","database_writes":0,"supplier_calls":0}';}
-          while(ob_get_level())ob_end_clean();echo $out;
-          '''
-          source="define('CE_LIBRARY_ONLY',true);\n"+Path('reviewed/scripts/diagnostics/andromeda_country_expansion.php').read_text().removeprefix('<?php')+'\n'+PHP
-          root=Path(os.environ['RUNNER_TEMP'])/'saved-full-catalogues';root.mkdir(mode=0o700)
-          summary=[]
-          for country in ('uae','thailand','vietnam','sri-lanka','maldives','cuba'):
-              parts={}
-              for part in ('catalog','local','plan'):
-                  value=ssh_php(source,{'country':country,'part':part},maximum_bytes=4000000)
-                  if value.get('status')!='saved_complete_part' or value.get('country')!=country or value.get('part')!=part or digest(value['data'])!=value['data_sha256']:
-                      raise ValueError('saved_complete_part_unverified')
-                  save(root/f'{country}-{part}.json',value,exclusive=True);parts[part]=value
-              meta=parts['catalog'];capture={k:meta[k] for k in ('country_id','country_name','supplier_country_id')}
-              capture.update(catalog=parts['catalog']['data'],local=parts['local']['data'])
-              if digest(capture)!=meta['capture_sha256'] or digest(parts['plan']['data'])!=meta['plan_sha256']:
-                  raise ValueError('complete_capture_mismatch')
-              summary.append({'country':country,'hotels':len(capture['local']['hotels']),'aliases':len(capture['local']['aliases']),'sources':len(capture['catalog']['payload']['HOTELS']),'capture_sha256':meta['capture_sha256']})
-          save(root/'summary.json',{'countries':summary,'supplier_calls':0,'database_writes':0},exclusive=True)
-          print(json.dumps(summary,ensure_ascii=False))
+          value=json.loads((Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'receipt.json').read_bytes())
+          if value.get('state')!='finalized':
+              raise ValueError('application_receipt_unconfirmed')
+          result=value['result']
+          print(json.dumps({k:result.get(k) for k in ('status','updated','readback_verified','other_identities_unchanged','other_count','counts','live_coverage','supplier_calls')},ensure_ascii=False))
           PYTHON
-      - name: Retain exact tracked diagnostic sources for offline reproduction
-        run: |
-          test "$(git -C reviewed rev-parse HEAD)" = d583c38fdbb08c711121b93108a40befeb608f7c
-          git -C reviewed archive --format=tar HEAD AGENTS.md OWNER_PRIORITY.json scripts/diagnostics app/integrations tests .github/workflows docs/integrations/anex-search3-autopilot.md > "$RUNNER_TEMP/saved-full-catalogues/reviewed-source.tar"
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - name: Preserve outcome even when unknown; no automatic retries
+        if: always() && steps.reserved.outcome == 'success'
+        uses: actions/upload-artifact@v4
         with:
-          name: andromeda-1759-complete-saved-catalogues-v1
-          path: ${{ runner.temp }}/saved-full-catalogues/
+          name: andromeda-1759-country6-pending-20260910-v1-result
+          path: |
+            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/reservation.json
+            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/receipt.json
+            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/receipt.json.outcome.json
+            ${{ runner.temp }}/andromeda-1759-country6-pending-20260910-v1/result.json
           if-no-files-found: error
           retention-days: 90
