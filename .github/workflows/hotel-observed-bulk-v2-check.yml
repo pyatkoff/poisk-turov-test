@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php'
       - 'tests/hotel-observed-bulk-reconcile-v2-test.php'
+      - 'tests/hotel_observed_bulk_reconcile_v2_source_test.py'
       - '.github/workflows/hotel-observed-bulk-v2-check.yml'
 permissions: {contents: read}
 jobs:
@@ -23,7 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - run: php -l scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php
+      - run: |
+          php -l scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php
+          python3 -B tests/hotel_observed_bulk_reconcile_v2_source_test.py
       - name: Reconcile canonical/geo observations on isolated MySQL
         env:
           ANEX_LINK_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4
