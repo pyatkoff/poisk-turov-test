@@ -1,0 +1,27 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "implemented_pending_ci",
+  "base": "88b2dde5b24214e0c3c9ab29abf79b176dc11781",
+  "resolver_source": "7c3c5bb55c88e376d97c998d0ba77a46960584d6",
+  "behavior": "Existing offer_detail adds selected_offer through unchanged #1846 resolver and current accepted identity/activity/country/local-target guard. Existing display and disabled booking/selection preserved.",
+  "checks": [
+    "PHP integration fixture: public/display price consistency and revoked/inactive/wrong-country/reassigned mapping",
+    "Existing producer/consumer and live-search offline tests"
+  ],
+  "runtime_calls": 0,
+  "database_writes": 0,
+  "matching": 0,
+  "published": false,
+  "publication_requires": [
+    "API and unchanged selected-offer module installed together",
+    "Existing #1867 fixed-hash publisher is not applicable; never replay or loosen it"
+  ],
+  "deferred": [
+    "real package/verified quote",
+    "SEARCH global source-error banner",
+    "shared selected UI",
+    "mobile/Safari"
+  ],
+  "next_action": "Complete CI and hand off checked two-file package; A3 real package still requires its separately approved runner."
+}

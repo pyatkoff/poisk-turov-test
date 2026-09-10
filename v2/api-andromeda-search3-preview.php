@@ -256,8 +256,23 @@ function anytour_andromeda_search3_detail(array $request, PDO $pdo, array $saved
         $path=$number===1?$firstPath:$directory.'/'.$ref.'-'.$first['store']['created_at'].'-'.$number.'.json';
         if(!is_file($path)||is_link($path))throw new DomainException('offer_expired');
         $state=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
-        return anytour_andromeda_search3_detail_state($state,$context,$now);
+        return anytour_andromeda_search3_detail_selection($state,$context,$now,$pdo,(int)$request['params']['countryId']);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
+}
+function anytour_andromeda_search3_detail_selection(array $state,array $context,int $now,PDO $pdo,int $country): array {
+    global $andromedaApp;
+    require_once $andromedaApp.'/andromeda-selected-offer.php';
+    $store=$state['store'];
+    $allows=static function(array $offer)use($pdo,$country):bool {
+        $query=$pdo->prepare("SELECT i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace=? AND i.external_hotel_id=? AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? LIMIT 2");
+        $query->execute([$offer['supplier_namespace'],$offer['external_hotel_id'],$country]);
+        $ids=$query->fetchAll(PDO::FETCH_COLUMN);
+        return count($ids)===1&&(int)$ids[0]===$offer['local_hotel_id'];
+    };
+    $selection=AnyTourAndromedaSelectedOffer::publicSelection(new AnyTourAndromedaOfferStore($store,true),$context,$allows,$now);
+    $detail=anytour_andromeda_search3_detail_state($state,$context,$now);
+    $detail['selected_offer']=$selection;
+    return $detail;
 }
 function anytour_andromeda_search3_detail_state(array $state,array $context,int $now): array {
     if(!in_array($state['status']??null,['complete','partial'],true)

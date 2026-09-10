@@ -4,6 +4,8 @@ on:
     paths:
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-public-projection-*'
+      - 'tests/andromeda-detail-selection-smoke.php'
+      - 'app/integrations/andromeda-selected-offer.php'
       - '.github/workflows/andromeda-projection-contract.yml'
 permissions:
   contents: read
@@ -31,16 +33,19 @@ jobs:
       - name: Verify the fixed server response and existing guards
         run: |
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/api-andromeda-search3-preview.php
+          cp change/app/integrations/andromeda-selected-offer.php runtime/app/integrations/andromeda-selected-offer.php
           php -l runtime/v2/api-andromeda-search3-preview.php
+          php change/tests/andromeda-detail-selection-smoke.php runtime
           node change/tests/andromeda-public-projection-contract.cjs runtime shared/v2/andromeda-provider-v1.js accepted
           php runtime/tests/andromeda-live-search-smoke.php
-      - name: Preserve the checked single-file publication candidate
+      - name: Preserve the checked API and selection module candidate
         run: |
           mkdir candidate
           cp runtime/v2/api-andromeda-search3-preview.php candidate/
+          cp runtime/app/integrations/andromeda-selected-offer.php candidate/
           php change/tests/andromeda-public-projection-fixture.php runtime > candidate/synthetic-public-response.json
           git -C change rev-parse HEAD > candidate/source-sha.txt
-          sha256sum candidate/api-andromeda-search3-preview.php > candidate/runtime-sha256.txt
+          sha256sum candidate/api-andromeda-search3-preview.php candidate/andromeda-selected-offer.php > candidate/runtime-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: andromeda-public-projection-candidate
