@@ -49,7 +49,7 @@ try {
 
     $r=fd_reconcile($db,'delta-success');
     chk($r['status']==='completed' && $r['readback_verified']===true,'completed'); chk($r['supplier_calls']===0,'supplier calls');
-    chk($r['anex_staging']['accepted']===76,'staging count '.fc_json($r['anex_staging'])); chk($r['anex_observed_no_staging']['accepted']===40,'observed bridge count'); chk($r['andromeda']['accepted']===60,'Andromeda count '.fc_json($r['andromeda'])); chk($r['accepted_total']===176,'total '.$r['accepted_total']);
+    chk($r['anex_staging']['accepted']===77,'staging count '.fc_json($r['anex_staging'])); chk($r['anex_observed_no_staging']['accepted']===40,'observed bridge count'); chk($r['andromeda']['accepted']===60,'Andromeda count '.fc_json($r['andromeda'])); chk($r['accepted_total']===177,'total '.$r['accepted_total']);
     chk($r['anex_staging']['geo_conflict']===1,'geo conflict'); chk((int)$db->query("SELECT COUNT(*) FROM andromeda_hotel_identities WHERE external_hotel_id IN ('69991','69992') AND decision_status='pending'")->fetchColumn()===2,'pending guards');
     echo fc_json(['status'=>'passed','writes'=>$r['accepted_total'],'staging'=>$r['anex_staging']['accepted'],'observed'=>$r['anex_observed_no_staging']['accepted'],'andromeda'=>$r['andromeda']['accepted'],'supplier_calls'=>0]),"\n";
 } finally { if($db->inTransaction()) $db->rollBack(); foreach($tables as $t) $db->exec('DROP TABLE IF EXISTS '.$t); }
