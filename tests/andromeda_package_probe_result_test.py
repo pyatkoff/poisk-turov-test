@@ -1,77 +1,66 @@
-"""One CLI lifecycle fixture, with supplier calls replaced by local stubs."""
-import hashlib
+"""The retired first-PRICE CLI must refuse before includes or checkpoint changes.
+
+The workflow's historical checkout argument is intentionally not executed.
+Actual retained capture/readback/unknown lifecycle coverage lives in the existing
+saved-package runtime job; this regression prevents restoring the old algorithm.
+"""
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 PROBE = Path('scripts/diagnostics/andromeda-package-probe.php')
-STUB = r'''<?php
-final class AnyTourAndromedaClient {
-    public function __construct(...$args) {}
-    public static function priceProbeParams() { return ['PAGE'=>1]; }
-    private function call($method) {
-        $dir = getenv('FIXTURE_OUT');
-        $reservation = json_decode(file_get_contents($dir.'/reservation.json'), true);
-        if (($reservation['state']??null)!=='reserved') throw new RuntimeException('NO_RESERVATION');
-        file_put_contents($dir.'/calls.txt', $method."\n", FILE_APPEND);
-    }
-    public function login(...$args) { $this->call('login'); }
-    public function price($params) {
-        $this->call('price');
-        return ['PRICES'=>[['id'=>'fixture-offer']], 'PAGES_COUNT'=>1];
-    }
-    public function package($id) {
-        $this->call('broninit');
-        if (getenv('FIXTURE_FAIL')==='1') throw new RuntimeException('FIXTURE_UNKNOWN');
-        return ['claimDocument'=>[['catalogKey'=>'fixture-catalog']]];
-    }
-}
-'''
+POISON = "<?php file_put_contents(getenv('FIXTURE_LOADED'), 'loaded'); throw new RuntimeException('LEGACY_DEPENDENCY_LOADED');"
 
 
-def run_fixture(source, work, fail=False):
-    app = work / 'app/integrations'
-    app.mkdir(parents=True)
-    (app / 'andromeda-client.php').write_text(STUB)
-    (app / 'andromeda-transport.php').write_text(
-        '<?php final class AnyTourAndromedaTransport { public function __construct(...$args) {} }')
-    script = work / PROBE
-    script.parent.mkdir(parents=True)
-    shutil.copyfile(source, script)
-    out = work / 'evidence'
-    out.mkdir()
-    env = dict(os.environ, ANDROMEDA_USERNAME='fixture-user', ANDROMEDA_PASSWORD='fixture-password',
-               FIXTURE_OUT=str(out), FIXTURE_FAIL='1' if fail else '0')
-    command = ['php', str(script), '--execute', str(out)]
-    result = subprocess.run(command, env=env, capture_output=True, text=True)
-    return result, out, command, env
+def snapshot(root: Path) -> dict[str, bytes]:
+    return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*') if p.is_file()}
 
 
-with tempfile.TemporaryDirectory() as tmp:
-    root = Path(tmp)
-    old, old_out, _, _ = run_fixture(Path(sys.argv[1]) / PROBE, root / 'old')
-    assert old.returncode == 1 and json.loads(old.stdout)['state'] == 'reserved'
-    assert (old_out / 'private-package.json').exists(), 'baseline must reach successful capture'
+def main() -> None:
+    cases = 0
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory) / 'anytoour.ru'
+        app = root / 'app/integrations'
+        app.mkdir(parents=True)
+        for name in ('andromeda-client.php', 'andromeda-transport.php'):
+            (app / name).write_text(POISON)
+        script = root / PROBE
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / PROBE, script)
+        env = dict(os.environ, ANDROMEDA_USERNAME='fixture-user',
+                   ANDROMEDA_PASSWORD='fixture-password', FIXTURE_LOADED=str(root / 'loaded'))
+        for state in ('absent', 'reserved', 'unknown', 'captured'):
+            out = root / ('evidence-' + state)
+            if state != 'absent':
+                out.mkdir()
+                (out / 'reservation.json').write_text(json.dumps({'state': state}))
+                (out / 'result.json').write_text(json.dumps({'state': state, 'automatic_retry': False}))
+                (out / 'private-package.json').write_text('{"private":"fixture-only"}')
+            before = snapshot(root)
+            # Repetition is a local refusal test, not replay of any supplier action.
+            for _ in range(2):
+                result = subprocess.run(['php', str(script), '--execute', str(out)], cwd=root,
+                    env=env, input='not-a-selected-offer', capture_output=True, text=True, timeout=5)
+                expected = {'status': 'blocked', 'reason': 'operation_refused', 'automatic_retry': False,
+                            'identity_verified': False, 'quote_verified': False, 'selection_enabled': False}
+                assert result.returncode == 1 and result.stderr == '', 'legacy mode must refuse cleanly'
+                assert json.loads(result.stdout) == expected, 'legacy mode must not be treated as retained input'
+                assert snapshot(root) == before, 'no dependencies, output directories or checkpoints may change'
+                cases += 1
+        for args in ([], ['--capture-retained-package', 'extra']):
+            before = snapshot(root)
+            result = subprocess.run(['php', str(script), *args], cwd=root, env=env,
+                input='not-a-selected-offer', capture_output=True, text=True, timeout=5)
+            assert result.returncode == 1 and result.stderr == ''
+            assert json.loads(result.stdout)['reason'] == 'operation_refused'
+            assert snapshot(root) == before
+            cases += 1
+    print(f'Probe replacement: {cases} real CLI refusal cases passed; no historical execution, includes, network or checkpoint mutation.')
 
-    ok, out, command, env = run_fixture(ROOT / PROBE, root / 'fixed')
-    report = json.loads(ok.stdout)
-    assert ok.returncode == 0 and report['state'] == 'captured'
-    assert report == json.loads((out / 'result.json').read_text())
-    assert report['private_package_sha256'] == hashlib.sha256((out / 'private-package.json').read_bytes()).hexdigest()
-    assert report['selection_enabled'] is False and report['id_equals_catalog_key'] is False
-    calls = (out / 'calls.txt').read_text()
-    assert calls.splitlines() == ['login', 'price', 'broninit']
-    retry = subprocess.run(command, env=env, capture_output=True, text=True)
-    assert retry.returncode != 0 and (out / 'calls.txt').read_text() == calls
-    assert json.loads((out / 'result.json').read_text()) == report
 
-    unknown, out, _, _ = run_fixture(ROOT / PROBE, root / 'unknown', fail=True)
-    assert unknown.returncode == 1 and json.loads(unknown.stdout)['state'] == 'unknown'
-    assert json.loads(unknown.stdout)['phase'] == 'broninit'
-    assert not (out / 'private-package.json').exists()
-print('Probe lifecycle: baseline reproduced; captured, unknown and replay guard passed (offline).')
+if __name__ == '__main__':
+    main()
