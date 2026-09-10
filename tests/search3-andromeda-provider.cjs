@@ -66,6 +66,10 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   assert.equal(final.items[0].tours.length,2,'runtime adds Andromeda to the current shared result renderer');
   assert.equal(final.options.empty,true,'terminal Tourvisor options are restored after Andromeda completes');
   assert.deepEqual(providerEvents.map(item=>item.status),['loading','progress','complete']);
+  const collision={...tv,tours:tv.tours.concat({...normalized.tours[0],offerContext:{...context,search_ref:'b'.repeat(64)}})};
+  runtimeWindow.V2Results.render([collision],{empty:true});
+  assert.doesNotMatch(rendererWindow.V2Results.tourRow(renders.at(-1).items[0].tours[1]),/data-andromeda-detail/,'same offer ref with a different context cannot inherit detail eligibility');
+  runtimeWindow.V2Results.render([tv],{empty:true});
   const linkedButUnresolved=rawHotel(21477);linkedButUnresolved.mapping_status='observed';
   runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[linkedButUnresolved]}})});
   listeners.get('v2:search-reset')({detail:{generation:11}});await new Promise(resolve=>setImmediate(resolve));
@@ -122,9 +126,12 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   let failed=renders.at(-1).items[0].tours.find(t=>t.offerRef===other.offerRef).providerDetail;
   assert.equal(failed.retry,true);assert.equal(failed.status,'error');assert.doesNotMatch(failed.message,/истёк/);
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
-  runtimeWindow.fetch=async()=>({ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',offer_context:context,price:{amount:100,currency:'RUB'}}})});
+  let terminalCalls=0;runtimeWindow.fetch=async()=>{terminalCalls++;return{ok:true,status:200,json:async()=>({ok:true,data:{provider:'andromeda',offer_context:context,price:{amount:100,currency:'RUB'}}})};};
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
   failed=renders.at(-1).items[0].tours.find(t=>t.offerRef===other.offerRef).providerDetail;
   assert.equal(failed.retry,false,'mismatched context cannot expose details');
+  await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
+  await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
+  assert.equal(terminalCalls,1,'closing and reopening a terminal context error cannot replay the request');
   console.log('SEARCH3_ANDROMEDA_PROVIDER_OK resolved_merge=1 unresolved_hidden=1 expansion_complete=1 partial_retention=1 detail_eligible=1 detail_cached=1 detail_escape=1 detail_context=1 explicit_only=1 matching_writes=0');
 })().catch(error=>{console.error(error);process.exitCode=1;});

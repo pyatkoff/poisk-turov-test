@@ -237,7 +237,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
     assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · AI · <script>номер<\/script> · DBL/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
-    assert.match(await card.locator('.provider-detail').innerText(), /155 079 ₽/);
+    assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
     assert.match(await card.locator('.provider-detail').innerText(), /Бронирование пока недоступно/);
     assert.deepEqual(control.requests.map(request => request.action || 'search'), ['search', 'hotel_offers', 'hotel_offers', 'offer_detail'], 'details add one explicit saved-offer request only');
     await detailToggle.click();
