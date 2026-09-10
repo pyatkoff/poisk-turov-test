@@ -1,0 +1,34 @@
+name: Hotel full catalog delta reconcile check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_full_catalog_delta_reconcile.php'
+      - 'tests/hotel-full-catalog-delta-reconcile-test.php'
+      - 'tests/hotel_full_catalog_delta_reconcile_source_test.py'
+      - '.github/workflows/hotel-full-catalog-delta-reconcile-check.yml'
+permissions: {contents: read}
+jobs:
+  delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: anex_link_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --protocol=TCP --host=127.0.0.1 --port=3306 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Static scope and syntax
+        run: |
+          php -l scripts/diagnostics/hotel_full_catalog_delta_reconcile.php
+          python3 -B tests/hotel_full_catalog_delta_reconcile_source_test.py
+      - name: Exercise mass delta and late rollback on isolated MySQL
+        env:
+          ANEX_LINK_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4
+        run: php tests/hotel-full-catalog-delta-reconcile-test.php
