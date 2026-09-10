@@ -1427,5 +1427,111 @@
       "production migration requires separate approval"
     ],
     "next_action": "Follow the existing current_task toward coherent reference-form layout; no repeat calendar/nights work or docs-triggered publication."
+  },
+  "reference_compact_form_publication_20260910": {
+    "date": "2026-09-10",
+    "stage": "CHECKED_AND_PREVIEW_PUBLISHED_NOT_PRODUCTION_APPROVED",
+    "source_prs": [
+      1879,
+      1880
+    ],
+    "baseline_release_sha": "085211a108477d8057f560a9ff3f33a1d8ff71c2",
+    "source_sha": "4d884320917f1cfaac1c9418ea254b7f7880633d",
+    "source_tree": "61845fccdfdab9e6a56ed430e6a402af21e768f4",
+    "checked_release_sha": "b92ff7af6d9e2a7785b4fb7e5c88bdd7c05e6d3e",
+    "changes": [
+      "Candidate-only compact search heading and trip-parameter title; semantic fieldsets retained without decorative numbers or nested cards.",
+      "Desktop closed advanced parameters and orange primary action share one row; mobile action stays full width; child ages/open extras span the form.",
+      "Editing existing search retains the same grid.",
+      "Native direct/charter checkbox labels have separate 44px targets, checked-state styling and keyboard support; no new handlers."
+    ],
+    "verification": {
+      "security_run": 34470740985,
+      "exact_php_chromium_run": 34470740984,
+      "entry_artifact_id": 10149481619,
+      "geometry_artifact_id": 10149482871,
+      "served_entry_widths": [
+        375,
+        1199,
+        1200,
+        1440
+      ],
+      "full_raw_served_states": 16,
+      "full_raw_served_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "inspected": [
+        "entry375/1440 compact form on1879 final source",
+        "final expanded entry375/1200 selected flight targets",
+        "live HTML heading/title/native night owners and metrikaCounter:0"
+      ],
+      "strict_contracts": [
+        "URL and FormData values after catalog boot",
+        "children and expanded extras full width",
+        "return-to-edit grid",
+        "native click/Space checkbox state",
+        "existing calendar state and date action"
+      ],
+      "corrected_findings": [
+        "Removed unreachable candidate caption styles in1879.",
+        "Run34470284009 caught a test editing before catalogs.init/URL hydration completed; wait for existing catalogSource marker now precedes edits. FormData assertions unchanged. No runtime patch; early edit preservation remains a technical-lane finding.",
+        "1199/1200 checks are in the actually executed served-entry test, not solely the standalone fixture."
+      ],
+      "physical_safari_iphone": false,
+      "real_leads_submitted": 0
+    },
+    "size": {
+      "form_css_delta": 117,
+      "flight_targets_css_delta": 369,
+      "combined_css_delta": 486,
+      "combined_js_delta": 0,
+      "initial_and_complete_external_delta": 486,
+      "new_renderer_handler_layers": 0
+    },
+    "publication": {
+      "artifact_id": 10149483826,
+      "artifact_run": 34470740984,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 718,
+      "production_fingerprint_sha256": "f02285a4b938a21a221cc46979fdf56ad36e24fc40554e9f0c1d1a7bfab45702",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "4d884320917f1cfaac1c9418ea254b7f7880633d",
+      "source_tree": "61845fccdfdab9e6a56ed430e6a402af21e768f4",
+      "published": true,
+      "deploy_run": 34471225946,
+      "deploy_control_pr": 1882,
+      "deploy_control_sha": "4d032e3f0e8681c21ee245321f3701e93ecf3b0c",
+      "evidence_artifact_id": 10149597726,
+      "artifact_digest": "sha256:1522fca39bcfd3a262390a73d326732e6171a40def858b11fb48ff526e8bbdd6",
+      "control_closed_without_merge": true,
+      "production_fingerprint_files": 13,
+      "main_changed_by_this_package": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "physical Safari/iPhone",
+      "unassisted user pilot",
+      "full reference card composition",
+      "technical lane: edits before catalog boot may be overwritten by URL hydration",
+      "production migration requires separate explicit approval"
+    ],
+    "next_action": "Continue visual acceptance toward the supplied reference: first tidy the existing catalog-recovery message layout observed in blocked-network screenshots (heading/body currently run together), then compact desktop/mobile hotel-card composition and comparison actions. Coordinate any renderer/test changes with active PR #1861; do not fork technical search. The compact form, flight option targets, native nights and price calendar are published by exact run34471225946; do not repeat those implementations or deploys. Technical lane owns pre-bootstrap URL hydration/edit race reported in #996. Preserve noindex, disabled leads, counter0 and production isolation; physical Safari/iPhone and full reference-design acceptance remain deferred."
   }
 }
