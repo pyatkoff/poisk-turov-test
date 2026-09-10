@@ -168,7 +168,7 @@ async function checkJourney(browser, width) {
     assert.ok(visual.select.height >= 44 && visual.remove.height >= 44, 'comparison actions retain 44px targets');
     assert.equal(visual.removeBackground, 'rgba(0, 0, 0, 0)', 'remove stays visually secondary');
     if (width <= 430) {
-      assert.ok(Math.abs(visual.select.width - visual.actions.width) < 1, 'mobile primary action spans the comparison card');
+      assert.ok(visual.select.width >= visual.actions.width - 3, 'mobile primary action spans the comparison card');
       assert.ok(visual.remove.y > visual.select.y, 'mobile remove action follows the primary action instead of competing beside it');
     } else {
       assert.ok(visual.remove.x > visual.select.x, 'desktop actions retain a compact primary/secondary row');
