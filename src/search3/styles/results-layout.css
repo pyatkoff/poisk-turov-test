@@ -22,6 +22,12 @@ margin:0;background:#f5f7fb;color:#17233b;
 & #v2-search-title{font-size:clamp(26px,3vw,32px);line-height:1.2;max-width:720px;margin:0}
 & #resultSummary{display:block;color:#526078}
 & .status:not([hidden]){display:block;margin:18px 0}
+& .catalog-recovery{padding:16px 18px;border:1px solid #f0c6bd;border-radius:14px;background:#fff9f7;color:#7c2d20}
+& .catalog-recovery .search-progress-error{display:flex;align-items:center;justify-content:space-between;gap:16px}
+& .catalog-recovery .search-progress-error-copy{display:grid;gap:4px}
+& .catalog-recovery .search-progress-error-copy strong{display:block;font-size:15px;line-height:1.4}
+& .catalog-recovery .search-progress-error-copy span{display:block;color:#6b4a44;font-size:13px;line-height:1.5}
+& .catalog-recovery .catalog-retry{flex:0 0 auto;min-height:44px;padding:10px 16px;border-color:#d6a296;background:#fff;color:#7c2d20;font-weight:700}
 & .results-state{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:16px 18px;border:1px solid #cfd9eb;border-radius:14px;background:#fff}
 & .results-state-copy{display:grid;gap:3px}
 & .results-state-copy span{color:#526078;font-size:14px}
@@ -114,6 +120,11 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-filter-rail input[type=range]{width:100%;min-height:32px}
 & .search3-filter-reset{width:100%;color:#2743cb;font-weight:600}
 & #results .hotel-main{grid-template-columns:minmax(200px,32%) minmax(0,1fr)}
+}
+@media(max-width:560px){
+& .catalog-recovery{padding:14px}
+& .catalog-recovery .search-progress-error{align-items:stretch;flex-direction:column;gap:12px}
+& .catalog-recovery .catalog-retry{width:100%}
 }
 }
 
