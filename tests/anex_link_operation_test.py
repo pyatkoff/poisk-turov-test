@@ -1,83 +1,79 @@
 #!/usr/bin/env python3
-"""Offline checks for the explicit existing hotel-identity workflow; no network/DB."""
+"""Actual six-country operation guards: no private access during this check."""
 import ast
 from pathlib import Path
 import unittest
 import yaml
 
-PATH = Path(__file__).resolve().parents[1]/'.github/workflows/andromeda-identity-accept.yml'
-WORKFLOW = yaml.load(PATH.read_text(), Loader=yaml.BaseLoader)
-STEPS = WORKFLOW['jobs']['accept']['steps']
-PREPARE = next(s['run'] for s in STEPS if s.get('name','').startswith('Verify checked source'))
-CODE = PREPARE.split("python3 - <<'PYTHON'\n", 1)[1].rsplit('\nPYTHON', 1)[0]
-TREE = ast.parse(CODE)
-NODE = next(n for n in TREE.body if isinstance(n, ast.FunctionDef) and n.name == 'require_new_operation')
-NAMESPACE = {}
-exec(compile(ast.Module(body=[NODE], type_ignores=[]), '<actual-workflow-guard>', 'exec'), NAMESPACE)
-GUARD = NAMESPACE['require_new_operation']
+PATH=Path(__file__).resolve().parents[1]/'.github/workflows/andromeda-identity-accept.yml'
+WORKFLOW=yaml.load(PATH.read_text(),Loader=yaml.BaseLoader)
+STEPS=WORKFLOW['jobs']['accept']['steps']
+PREPARE=next(s['run'] for s in STEPS if s.get('name','').startswith('Verify checked source'))
+CODE=PREPARE.split("python3 - <<'PYTHON'\n",1)[1].rsplit('\nPYTHON',1)[0]
+NODE=next(n for n in ast.parse(CODE).body if isinstance(n,ast.FunctionDef) and n.name=='require_new_operation')
+NAMESPACE={}
+exec(compile(ast.Module(body=[NODE],type_ignores=[]),'<actual-workflow-guard>','exec'),NAMESPACE)
+GUARD=NAMESPACE['require_new_operation']
+TITLE='Andromeda 1759 six-country expansion v1'
 
 class OperationTests(unittest.TestCase):
     def test_only_explicit_existing_ops_branch_can_write(self):
-        job = WORKFLOW['jobs']['accept']
-        self.assertEqual(job['needs'], 'check-operation')
-        for condition in ("github.event_name == 'push'", "github.actor == 'pyatkoff'",
-                          "github.run_attempt == 1", "refs/heads/feat/int-andromeda-live-20260909"):
-            self.assertIn(condition, job['if'])
-        self.assertEqual(set(WORKFLOW['on']), {'push','pull_request'})
-        self.assertEqual(WORKFLOW['on']['push']['paths'], ['.github/workflows/andromeda-identity-accept.yml'])
+        job=WORKFLOW['jobs']['accept'];self.assertEqual(job['needs'],'check-operation')
+        for c in ("github.event_name == 'push'","github.actor == 'pyatkoff'","github.run_attempt == 1","refs/heads/feat/int-andromeda-live-20260909"):
+            self.assertIn(c,job['if'])
+        self.assertEqual(set(WORKFLOW['on']),{'push','pull_request'})
+        self.assertEqual(WORKFLOW['on']['push']['paths'],['.github/workflows/andromeda-identity-accept.yml'])
 
-    def test_only_reviewed_source_executed(self):
-        self.assertEqual(STEPS[0]['with']['ref'], '030021061ba7595dced08813a7b28b16689cfd5e')
-        self.assertEqual(STEPS[0]['with']['ref'], WORKFLOW['env']['SOURCE_SHA'])
-        self.assertEqual(STEPS[0]['with']['persist-credentials'], 'false')
-        self.assertIn('34501866010', PREPARE)
-        self.assertIn('34501866003', PREPARE)
-        self.assertIn("check.get('head_sha') != os.environ['SOURCE_SHA']", CODE)
-        self.assertIn('batch.request', CODE)
-        self.assertIn('2a83b140e1ba36ad2d41168cd67abb1b3f05329e29793af41f5f5d23b7905024', CODE)
+    def test_only_reviewed_source_and_six_countries(self):
+        self.assertEqual(STEPS[0]['with']['ref'],'6a62df9ba2e82651c9a136c044d576f6e59f7205')
+        self.assertEqual(STEPS[0]['with']['persist-credentials'],'false')
+        self.assertEqual(WORKFLOW['run-name'],TITLE)
+        self.assertIn('34506089235',PREPARE);self.assertIn('34506089363',PREPARE)
+        self.assertIn("check.get('head_sha') != os.environ['SOURCE_SHA']",CODE)
+        self.assertIn("('uae','thailand','vietnam','sri-lanka','maldives','cuba')",CODE)
+        self.assertIn("'max_supplier_calls': 18",CODE)
 
-    def test_reservation_before_ssh_and_failure_outcome_retained(self):
-        reservation = next(i for i,s in enumerate(STEPS) if s.get('id') == 'reserved')
-        apply = next(i for i,s in enumerate(STEPS) if 'ANYTOOUR_DEPLOY_SSH_KEY' in s.get('env', {}))
-        self.assertLess(reservation, apply)
-        self.assertEqual(STEPS[-1]['if'], "always() && steps.reserved.outcome == 'success'")
-        self.assertIn('--receipt', STEPS[apply]['run'])
-        self.assertIn('--apply', STEPS[apply]['run'])
-        self.assertIn('andromeda_identity_batch_accept.py', STEPS[apply]['run'])
-        self.assertNotIn('andromeda_identity_accept.py', STEPS[apply]['run'])
-        self.assertNotIn('anex_tourvisor_link_import.py', STEPS[apply]['run'])
-        self.assertEqual(sum('secrets.' in str(s) for s in STEPS), 1)
-        self.assertNotIn('secrets.', str(WORKFLOW['jobs']['check-operation']))
-        self.assertIn('receipt.json.outcome.json', STEPS[-1]['with']['path'])
+    def test_two_reservations_precede_capture_and_database_write(self):
+        first=next(i for i,s in enumerate(STEPS) if s.get('id')=='reserved')
+        captured=next(i for i,s in enumerate(STEPS) if s.get('id')=='captured')
+        private=[i for i,s in enumerate(STEPS) if 'ANYTOOUR_DEPLOY_SSH_KEY' in s.get('env',{})]
+        self.assertEqual(len(private),2)
+        self.assertLess(first,private[0]);self.assertLess(private[0],captured);self.assertLess(captured,private[1])
+        self.assertEqual(STEPS[private[1]]['if'],"steps.captured.outcome == 'success'")
+        for i,phase in zip(private,('capture','apply')):
+            self.assertIn('andromeda_country_expansion.py '+phase,STEPS[i]['run'])
+            self.assertIn('--execute',STEPS[i]['run']);self.assertIn('--directory',STEPS[i]['run'])
+            self.assertNotIn('andromeda_identity_batch_accept',STEPS[i]['run'])
+            self.assertNotIn('anex_tourvisor_link_import',STEPS[i]['run'])
+        self.assertEqual(STEPS[-1]['if'],"always() && steps.reserved.outcome == 'success'")
+        self.assertEqual(sum('secrets.' in str(s) for s in STEPS),2)
+        self.assertNotIn('secrets.',str(WORKFLOW['jobs']['check-operation']))
 
-    def test_first_named_operation_allowed(self):
-        GUARD([{'workflow_runs':[{'id':10}, {'id':1,'display_title':'ANEX 1759 four-pair acceptance v1'}]}],
-              {'total_count':0,'artifacts':[]},10)
+    def test_first_new_operation_allows_historical_completed_imports(self):
+        GUARD([{'workflow_runs':[{'id':10},{'id':1,'display_title':'Andromeda 1759 92-identity acceptance v1'}]}],{'total_count':0,'artifacts':[]},10)
 
-    def test_prior_operation_blocks_any_outcome(self):
+    def test_prior_operation_blocks_every_outcome(self):
         for outcome in ('success','failure','cancelled',None):
-            with self.subTest(outcome=outcome), self.assertRaisesRegex(ValueError,'do_not_replay'):
-                GUARD([{'workflow_runs':[{'id':10},{'id':9,'display_title':'Andromeda 1759 92-identity acceptance v1',
-                                                  'conclusion':outcome}]}], {'total_count':0,'artifacts':[]},10)
+            with self.subTest(outcome=outcome),self.assertRaisesRegex(ValueError,'do_not_replay'):
+                GUARD([{'workflow_runs':[{'id':10},{'id':9,'display_title':TITLE,'conclusion':outcome}]}],{'total_count':0,'artifacts':[]},10)
 
-    def test_prior_reservation_blocks_even_when_expired(self):
-        for expired in (False,True):
-            with self.subTest(expired=expired), self.assertRaisesRegex(ValueError,'do_not_replay'):
-                GUARD([{'workflow_runs':[{'id':10}]}], {'total_count':1,'artifacts':[{'expired':expired}]},10)
+    def test_prior_expired_reservation_still_blocks(self):
+        for expired in (True,False):
+            with self.assertRaisesRegex(ValueError,'do_not_replay'):
+                GUARD([{'workflow_runs':[{'id':10}]}],{'total_count':1,'artifacts':[{'expired':expired}]},10)
 
     def test_missing_history_or_current_run_fails_closed(self):
         for history in ([],{},[{}],[{'workflow_runs':[]}],[{'workflow_runs':[{'id':9}]}]):
-            with self.subTest(history=history), self.assertRaises(ValueError):
-                GUARD(history,{'total_count':0,'artifacts':[]},10)
+            with self.assertRaises(ValueError):GUARD(history,{'total_count':0,'artifacts':[]},10)
 
     def test_missing_artifact_response_fails_closed(self):
-        with self.assertRaises(ValueError): GUARD([{'workflow_runs':[{'id':10}]}],{},10)
+        with self.assertRaises(ValueError):GUARD([{'workflow_runs':[{'id':10}]}],{},10)
 
-    def test_all_embedded_python_compiles(self):
+    def test_embedded_python_compiles_and_partial_is_not_success(self):
         for step in STEPS:
-            run = step.get('run','')
-            if "python3 - <<'PYTHON'\n" in run:
-                code = run.split("python3 - <<'PYTHON'\n",1)[1].rsplit('\nPYTHON',1)[0]
-                compile(code,'<workflow-python>','exec')
+            text=step.get('run','')
+            if "python3 - <<'PYTHON'\n" in text:
+                compile(text.split("python3 - <<'PYTHON'\n",1)[1].rsplit('\nPYTHON',1)[0],'<workflow-python>','exec')
+        self.assertTrue(any("result.get('status') != 'completed'" in s.get('run','') for s in STEPS))
 
-if __name__ == '__main__': unittest.main(verbosity=2)
+if __name__=='__main__':unittest.main(verbosity=2)
