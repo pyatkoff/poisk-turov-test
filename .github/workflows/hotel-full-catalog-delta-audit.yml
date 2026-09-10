@@ -1,0 +1,73 @@
+name: Hotel full catalog post-v1 delta audit
+run-name: Hotel full catalog post-v1 delta audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/hotel-full-catalog-delta-audit.yml']
+permissions: {contents: read}
+concurrency:
+  group: hotel-matching-readonly
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Audit remaining core8 using current DB only
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          php=r'''
+          error_reporting(0);
+          function d5n($v){$v=mb_strtolower(trim((string)$v),'UTF-8');$v=strtr($v,['ё'=>'е','é'=>'e','è'=>'e','ê'=>'e','á'=>'a','à'=>'a','ä'=>'a','â'=>'a','ö'=>'o','ô'=>'o','ü'=>'u','ú'=>'u','ç'=>'c','ş'=>'s','ğ'=>'g','ı'=>'i']);preg_match_all('/[\p{L}\p{N}]+/u',$v,$m);return implode(' ',$m[0]);}
+          function d5t($v){$v=preg_replace('/\s*\(\s*(?:ex|ех)\s*\.?\s+[^()]+\)\s*$/ui',' ',(string)$v);$g=array_fill_keys(['hotel','hotels','resort','resorts','spa','the','and','club','apart','aparthotel','apartments','apartment','suite','suites','отель','отели','резорт','ресорт','спа','клуб','апартаменты'],1);return array_values(array_filter(explode(' ',d5n($v)),fn($x)=>$x!==''&&!isset($g[$x])));}
+          function d5k($v){$t=d5t($v);sort($t,SORT_STRING);return implode(' ',$t);}
+          function d5sim($a,$b){$a=array_fill_keys(array_unique(d5t($a)),1);$b=array_fill_keys(array_unique(d5t($b)),1);$i=count(array_intersect_key($a,$b));$u=count($a+$b);return [$u?$i/$u:0,$i];}
+          function d5num($v){if($v===null||$v==='')return null;$x=(float)$v;return is_finite($x)&&$x!=0.0?$x:null;}
+          function d5dist($a,$b,$c,$d){$p=[d5num($a),d5num($b),d5num($c),d5num($d)];if(in_array(null,$p,true))return null;$p=array_map('deg2rad',$p);[$a,$b,$c,$d]=$p;$x=sin(($c-$a)/2)**2+cos($a)*cos($c)*sin(($d-$b)/2)**2;return 6371000*2*asin(min(1,sqrt($x)));}
+          function d5place(array $a,array $b){$x=[];$y=[];foreach($a as $v){$n=d5n($v);if($n!=='')$x[$n]=1;}foreach($b as $v){$n=d5n($v);if($n!=='')$y[$n]=1;}return (bool)array_intersect_key($x,$y);}
+          function d5country($v){$n=d5n($v);$g=[1=>['egypt','египет'],2=>['thailand','таиланд','тайланд'],4=>['turkey','turkiye','türkiye','турция'],8=>['maldives','мальдивы'],9=>['united arab emirates','uae','оаэ','эмираты'],10=>['cuba','куба'],12=>['sri lanka','sri-lanka','шри ланка'],16=>['vietnam','viet nam','вьетнам']];foreach($g as $id=>$a)foreach($a as $x)if($n===d5n($x))return $id;return null;}
+          function d5e($raw){$v=json_decode((string)$raw,true);return is_array($v)?$v:[];}
+          function d5source($row){$e=d5e($row['evidence_json']??'');$s=$e['source']??[];return is_array($s)?$s:[];}
+          function d5cat($s){foreach(['category','star','stars','starKey','starName','star_name'] as $k)if(isset($s[$k])&&preg_match('/([1-5])/',(string)$s[$k],$m))return (int)$m[1];return null;}
+          $root=realpath(getcwd());$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('START TRANSACTION READ ONLY');$core=[1=>1,2=>1,4=>1,8=>1,9=>1,10=>1,12=>1,16=>1];
+          $hotels=[];$names=[];$places=[];$q=$db->query("SELECT h.id,h.country_id,h.name,h.region_name,h.subregion_name,h.category,COALESCE(d.latitude,h.latitude) lat,COALESCE(d.longitude,h.longitude) lon FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.is_active=1 AND h.country_id IN(1,2,4,8,9,10,12,16) ORDER BY h.country_id,h.id");while($h=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$h['id'];$c=(int)$h['country_id'];$hotels[$id]=$h;$names[$id]=[$h['name']];foreach([$h['region_name'],$h['subregion_name']] as $p){$p=d5n($p);if($p!=='')$places[$c][$p][$id]=1;}}
+          $q=$db->query("SELECT a.hotel_id,a.alias,h.country_id FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 AND h.country_id IN(1,2,4,8,9,10,12,16) ORDER BY a.hotel_id,a.id");while($a=$q->fetch(PDO::FETCH_ASSOC))if(isset($hotels[(int)$a['hotel_id']]))$names[(int)$a['hotel_id']][]=$a['alias'];
+          $andBridge=[];$q=$db->query("SELECT i.local_hotel_id,i.evidence_json,h.country_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.decision_status='accepted' AND i.local_hotel_id IS NOT NULL AND h.country_id IN(1,2,4,8,9,10,12,16)");while($r=$q->fetch(PDO::FETCH_ASSOC)){$s=d5source($r);foreach([$s['name']??'',$s['lName']??''] as $n){$k=d5k($n);if($k!=='')$andBridge[(int)$r['country_id']][$k][(int)$r['local_hotel_id']]=1;}}
+          $anexBridge=[];$q=$db->query("SELECT m.catalog_hotel_id,s.api_name,s.xml_name,s.xml_alternate_name,h.country_id FROM anex_hotel_search_mappings m LEFT JOIN anex_hotels s ON s.anex_hotel_id=m.anex_hotel_id JOIN catalog_hotels h ON h.id=m.catalog_hotel_id WHERE m.enabled=1 AND h.country_id IN(1,2,4,8,9,10,12,16) UNION ALL SELECT d.catalog_hotel_id,s.api_name,s.xml_name,s.xml_alternate_name,h.country_id FROM anex_hotel_decisions d LEFT JOIN anex_hotels s ON s.anex_hotel_id=d.anex_hotel_id JOIN catalog_hotels h ON h.id=d.catalog_hotel_id WHERE d.decision_status='accepted' AND h.country_id IN(1,2,4,8,9,10,12,16)");while($r=$q->fetch(PDO::FETCH_ASSOC))foreach([$r['api_name'],$r['xml_name'],$r['xml_alternate_name']] as $n){$k=d5k($n);if($k!=='')$anexBridge[(int)$r['country_id']][$k][(int)$r['catalog_hotel_id']]=1;}
+          $excluded=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=1;
+          $A=['remaining_staging_core'=>0,'new_andromeda_bridge'=>0,'tight_coord_name'=>0,'place_name_margin'=>0,'safe_union'=>0,'still_ambiguous'=>0];$seenA=[];
+          $q=$db->query("SELECT s.* FROM anex_hotels s LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=s.anex_hotel_id LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=s.anex_hotel_id WHERE m.anex_hotel_id IS NULL AND d.anex_hotel_id IS NULL ORDER BY s.anex_hotel_id");while($s=$q->fetch(PDO::FETCH_ASSOC)){$c=d5country($s['api_country']??'');if(!$c||!isset($core[$c]))continue;$A['remaining_staging_core']++;$id=(int)$s['anex_hotel_id'];$sn=array_values(array_filter([$s['api_name']??'',$s['xml_name']??'',$s['xml_alternate_name']??'']));$target=null;
+            $bridge=[];foreach($sn as $n){$k=d5k($n);if($k!=='')foreach(array_keys($andBridge[$c][$k]??[]) as $x)$bridge[(int)$x]=1;}if(count($bridge)===1){$x=(int)array_key_first($bridge);$h=$hotels[$x]??null;$dist=$h?d5dist($s['latitude'],$s['longitude'],$h['lat'],$h['lon']):null;if($h&&($dist===null||$dist<=5000)&&!isset($excluded[$id][$x])){$target=$x;$A['new_andromeda_bridge']++;}}
+            if($target===null){$cand=[];foreach($hotels as $x=>$h)if((int)$h['country_id']===$c){$dist=d5dist($s['latitude'],$s['longitude'],$h['lat'],$h['lon']);$place=d5place([$s['api_region'],$s['api_town']],[$h['region_name'],$h['subregion_name']]);if(($dist!==null&&$dist<=1000)||$place)$cand[$x]=[$dist,$place];}$best=[0,0,null,null,false];$second=0;foreach($cand as $x=>$meta){$score=0;$shared=0;foreach($sn as $a)foreach($names[$x] as $b){[$z,$i]=d5sim($a,$b);if($z>$score){$score=$z;$shared=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$shared,$x,$meta[0],$meta[1]];}elseif($score>$second)$second=$score;}if($best[2]!==null&&!isset($excluded[$id][$best[2]])&&$best[0]-$second>=0.15){if($best[3]!==null&&$best[3]<=200&&$best[0]>=0.75&&$best[1]>=2){$target=$best[2];$A['tight_coord_name']++;}elseif($best[4]&&$best[0]>=0.82&&$best[1]>=2){$target=$best[2];$A['place_name_margin']++;}}}
+            if($target!==null){$A['safe_union']++;$seenA[$id]=$target;}else$A['still_ambiguous']++;}
+          $O=['remaining_no_staging_observed'=>0,'accepted_andromeda_bridge'=>0];$q=$db->query("SELECT o.* FROM anex_search_hotel_observations o LEFT JOIN anex_hotels s ON s.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=o.anex_hotel_id WHERE s.anex_hotel_id IS NULL AND m.anex_hotel_id IS NULL AND d.anex_hotel_id IS NULL ORDER BY o.search_count DESC,o.anex_hotel_id");while($o=$q->fetch(PDO::FETCH_ASSOC)){$c=(int)$o['country_id'];if(!isset($core[$c]))continue;$O['remaining_no_staging_observed']++;$k=d5k($o['hotel_name']);$bridge=array_map('intval',array_keys($andBridge[$c][$k]??[]));if(count($bridge)===1&&!isset($excluded[(int)$o['anex_hotel_id']][$bridge[0]])&&count(d5t($o['hotel_name']))>=2)$O['accepted_andromeda_bridge']++;}
+          $shaCountry=[];$tmp=[];$q=$db->query("SELECT i.catalog_sha256,h.country_id,COUNT(*) n FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.local_hotel_id IS NOT NULL AND h.country_id IN(1,2,4,8,9,10,12,16) GROUP BY i.catalog_sha256,h.country_id");while($r=$q->fetch(PDO::FETCH_ASSOC))$tmp[$r['catalog_sha256']][(int)$r['country_id']]=(int)$r['n'];foreach($tmp as $sha=>$by){arsort($by);$ids=array_keys($by);if(count($ids)===1||$by[$ids[0]]>($by[$ids[1]]??0)*20)$shaCountry[$sha]=(int)$ids[0];}
+          $D=['pending'=>0,'fuzzy_saved_geo'=>0,'fuzzy_anex_bridge'=>0,'category_conflict'=>0,'safe_union'=>0,'still_ambiguous'=>0];$q=$db->query("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY external_hotel_id");while($r=$q->fetch(PDO::FETCH_ASSOC)){$D['pending']++;$e=d5e($r['evidence_json']);$s=$e['source']??[];if(!is_array($s))$s=[];$c=$shaCountry[$r['catalog_sha256']]??null;if(!$c||!isset($core[$c])){$D['still_ambiguous']++;continue;}$sn=array_values(array_filter([$s['name']??'',$s['lName']??'']));$g=$e['geography']??[];$candidateIds=array_values(array_unique(array_map('intval',$e['candidate_ids']??[])));$pool=[];if($candidateIds){foreach($candidateIds as $x)if(isset($hotels[$x])&&(int)$hotels[$x]['country_id']===$c)$pool[$x]=1;}else{foreach([$s['town']??'',$g['town']??'',$g['parent']??''] as $p){$p=d5n($p);foreach(array_keys($places[$c][$p]??[]) as $x)$pool[(int)$x]=1;}}
+            $best=[0,0,null,false];$second=0;foreach(array_keys($pool) as $x){$h=$hotels[$x];$place=d5place([$s['town']??'',$g['town']??'',$g['parent']??''],[$h['region_name'],$h['subregion_name']]);if(!$place)continue;$score=0;$shared=0;foreach($sn as $a)foreach($names[$x] as $b){[$z,$i]=d5sim($a,$b);if($z>$score){$score=$z;$shared=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$shared,$x,$place];}elseif($score>$second)$second=$score;}$target=null;if($best[2]!==null&&$best[0]>=0.82&&$best[1]>=2&&$best[0]-$second>=0.15){$sc=d5cat($s);$tc=$hotels[$best[2]]['category']===null?null:(int)$hotels[$best[2]]['category'];if($sc&&$tc&&$sc!==$tc)$D['category_conflict']++;else{$target=$best[2];$D['fuzzy_saved_geo']++;}}
+            if($target===null){$bridge=[];foreach($sn as $a){foreach($anexBridge[$c]??[] as $key=>$ids){[$score,$shared]=d5sim($a,$key);if($score>=0.90&&$shared>=2)foreach(array_keys($ids) as $x)$bridge[(int)$x]=max($bridge[(int)$x]??0,$score);}}if($bridge){arsort($bridge);$ids=array_keys($bridge);$top=$bridge[$ids[0]];$secondBridge=$bridge[$ids[1]]??0;if($top-$secondBridge>=0.10){$x=(int)$ids[0];$place=d5place([$s['town']??'',$g['town']??'',$g['parent']??''],[$hotels[$x]['region_name'],$hotels[$x]['subregion_name']]);$sc=d5cat($s);$tc=$hotels[$x]['category']===null?null:(int)$hotels[$x]['category'];if($place&&!($sc&&$tc&&$sc!==$tc)){$target=$x;$D['fuzzy_anex_bridge']++;}}}}
+            if($target!==null)$D['safe_union']++;else$D['still_ambiguous']++;}
+          $db->rollBack();$out=['status'=>'ok','supplier_calls'=>0,'database_writes'=>0,'anex_staging'=>$A,'anex_observed_no_staging'=>$O,'andromeda'=>$D];echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          '''
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          with tempfile.TemporaryDirectory(prefix='hotel-delta-audit-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]].strip(),os.environ[req[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=420,env={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')})
+              try:value=json.loads(p.stdout)
+              except Exception:raise ValueError('delta_non_json '+p.stderr[-800:])
+              if p.returncode or value.get('status')!='ok' or value.get('supplier_calls')!=0 or value.get('database_writes')!=0:raise ValueError('delta_failed')
+              out=Path(os.environ['RUNNER_TEMP'])/'hotel-full-catalog-delta-audit.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps(value,ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hotel-full-catalog-delta-audit
+          path: ${{ runner.temp }}/hotel-full-catalog-delta-audit.json
+          if-no-files-found: error
+          retention-days: 30
