@@ -3,8 +3,12 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Type publish-andromeda-package-1901 (installation only)"
+        description: "publish-andromeda-package-1901 OR capture-andromeda-selected-1717; different operations"
         required: true
+        type: string
+      selected_offer_json:
+        description: "Capture only: current public selected identity JSON; no credentials, raw supplier ID or personal data"
+        required: false
         type: string
   issue_comment:
     types: [created]
@@ -13,13 +17,13 @@ permissions:
   actions: read
 concurrency:
   # Irrelevant comments must not replace a pending explicit publication.
-  group: ${{ (github.actor == 'pyatkoff' && github.event.sender.id == 226193297 && ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-package-1901') || (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.number == 996 && !github.event.issue.pull_request && github.event.comment.body == '/publish-andromeda-package-1901'))) && 'anytoour-andromeda-detail-publication' || format('andromeda-detail-ignored-{0}', github.run_id) }}
+  group: ${{ (github.actor == 'pyatkoff' && github.event.sender.id == 226193297 && ((github.event_name == 'workflow_dispatch' && (github.event.inputs.confirmation == 'publish-andromeda-package-1901' || github.event.inputs.confirmation == 'capture-andromeda-selected-1717')) || (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.number == 996 && !github.event.issue.pull_request && (github.event.comment.body == '/publish-andromeda-package-1901' || startsWith(github.event.comment.body, '/capture-andromeda-selected-1717 '))))) && 'anytoour-andromeda-detail-publication' || format('andromeda-detail-ignored-{0}', github.run_id) }}
   cancel-in-progress: false
 jobs:
   publish:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' ||
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-package-1901') ||
        (github.event_name == 'issue_comment' && github.event.action == 'created' &&
         github.event.issue.number == 996 && !github.event.issue.pull_request &&
         github.event.sender.id == 226193297 &&
@@ -92,3 +96,96 @@ jobs:
           path: ${{ runner.temp }}/andromeda-detail-publication/
           if-no-files-found: ignore
           retention-days: 14
+  capture-selected:
+    # A created explicit owner command is an operation, never a prose comment or push.
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'capture-andromeda-selected-1717') ||
+       (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.number == 996 && !github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/capture-andromeda-selected-1717 ')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require one selected context and checked operation sources
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = 226193297;
+            const prefix = '/capture-andromeda-selected-1717 ';
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('No replay; inspect retained checkpoint.');
+            if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
+            if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
+            let raw;
+            if (context.eventName === 'workflow_dispatch') {
+              if (context.payload.inputs?.confirmation !== 'capture-andromeda-selected-1717') throw new Error('Capture confirmation required.');
+              raw = context.payload.inputs.selected_offer_json;
+            } else {
+              const body = context.payload.comment?.body;
+              if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
+                  context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
+                  context.payload.comment?.user?.id !== owner || typeof body !== 'string' ||
+                  !body.startsWith(prefix) || /[\r\n]/.test(body)) throw new Error('Exact created owner command and one-line JSON required.');
+              raw = body.slice(prefix.length);
+            }
+            if (typeof raw !== 'string' || !raw.trim() || Buffer.byteLength(raw, 'utf8') > 16384) throw new Error('One selected context is required.');
+            // Envelope privacy only; the pinned PHP caller is the domain/context validator.
+            // Preserve original bytes so duplicate JSON keys cannot be hidden by parsing.
+            let input;
+            try { input = JSON.parse(raw); } catch { throw new Error('Selected context JSON invalid.'); }
+            const exactKeys = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
+              Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
+            if (!exactKeys(input, ['version','operation','runtime_source','local_country_id','selection']) ||
+                !exactKeys(input.selection, ['provider','search_ref','generation','page','offer_ref','hotel_scope','operator_ref','local_id'])) throw new Error('Only selected public identity fields are accepted; no credentials or display facts.');
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
+            const gates = [
+              [34513754570, '2a352a49d573116117da7a04bdaffa22693c0b60'],
+              [34513754620, '2a352a49d573116117da7a04bdaffa22693c0b60'],
+              [34508922317, '06f9303347ada44d6f32330c428bc67bd17f8095'],
+              [34508922316, '06f9303347ada44d6f32330c428bc67bd17f8095'],
+              [34508922333, '06f9303347ada44d6f32330c428bc67bd17f8095'],
+              [34510605994, 'ea190a98c4d2a72cc9d27357df539a5d47e95079']
+            ];
+            for (const [run_id, sha] of gates) {
+              const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
+              if (run.head_sha !== sha || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned capture prerequisite failed: ' + run_id);
+            }
+            const fs = require('fs');
+            const path = require('path');
+            // Not an Actions output/env/shell interpolation; never upload this input file.
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'andromeda-selected-request.json'), raw,
+              {encoding: 'utf8', mode: 0o600, flag: 'wx'});
+      - uses: actions/checkout@v4
+        with:
+          ref: 2a352a49d573116117da7a04bdaffa22693c0b60
+          path: relay
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 06f9303347ada44d6f32330c428bc67bd17f8095
+          path: caller
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Capture only the explicitly selected retained offer
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B relay/scripts/diagnostics/andromeda_detail_publish.py --capture-selected "$RUNNER_TEMP/andromeda-selected-request.json" caller helper
+      - name: Preserve only sanitized capture reservation and result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-selected-capture-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-selected-capture/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove runner-private selected input
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/andromeda-selected-request.json"
