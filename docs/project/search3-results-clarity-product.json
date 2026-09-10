@@ -104,7 +104,7 @@
     "selected-tour flight-list and contact-handoff product work belongs to S3_PRODUCT_SELECTED_LEAD"
   ],
   "rollback": "Revert 4554e34b4cfed32d290a82b0ae05f3adaa828c80 for code; restore the retained preview backup recorded by deploy run34297374511 for preview.",
-  "next_action": "Run one bounded live provider-status acceptance to observe a mapped Andromeda offer in the shared preview without duplicates or selection; then require a separate quote/selection handoff before provider offers can enter the lead path.",
+  "next_action": "Follow the fresh release AUTOPILOT_STATE.current_task and #996, reconciling their pointers with actual checked/published PR receipts. This audit contains dated evidence, not another execution queue. Desktop offer readability #1923 is published; do not rebuild or redeploy it. Continue desktop-first current-owner selection/comparison visual acceptance, then mobile, while preserving shared writer ownership, existing tool denials, protected contracts and separate production/provider handoff gates.",
   "ota_results_decision_20260909": {
     "stage": "PUBLISHED_PREVIEW_AWAITING_PILOT",
     "baseline_release_sha": "9237deb7af50707c5f6d28dc77d8a3b97a0db0a8",
@@ -1622,5 +1622,106 @@
       "production migration requires separate explicit approval"
     ],
     "next_action": "Use the newly published preview for side-by-side visual acceptance against the supplied reference. Next take one bounded visual package for first-view hotel summary density and comparison-action clarity, preferably CSS-only; coordinate any renderer/test overlap with active PR1861 and do not fork technical search/API/data."
+  },
+  "next_action_20260909_history": "Run one bounded live provider-status acceptance to observe a mapped Andromeda offer in the shared preview without duplicates or selection; then require a separate quote/selection handoff before provider offers can enter the lead path.",
+  "desktop_offer_readability_20260910": {
+    "record_scope": "Dated PR1923 source, visual and actual publication evidence. Earlier root fields and dated objects remain historical evidence, not a new execution queue. This profile update does not synchronize AUTOPILOT_STATE.json.",
+    "source_pr": 1923,
+    "baseline_release_sha": "5202d5f752af67f7b067f26d26b0273252225748",
+    "source_sha": "b63f633b945f84f8c285accf940024dbb5fc87a9",
+    "source_tree_sha": "924634280bc9f9338998ed4a94806a160f76e401",
+    "release_sha": "3793ada206b8811f74cb16590ae7e8868d3554d6",
+    "implemented": true,
+    "checked": true,
+    "merged": true,
+    "preview_published": true,
+    "production_approved": false,
+    "product_result": [
+      "At desktop widths >=1025px, offer conditions and the existing price/action area start at the same top edge.",
+      "A stable right column with a soft background makes the whole-tour total and existing next action distinct from room/meal facts.",
+      "Room/meal values use15px, secondary source/operator/placement13px and total26px; all original text, control order, offer identity and provider selection restrictions remain unchanged."
+    ],
+    "owned_paths": [
+      "src/search3/styles/results-layout.css",
+      "v2/search3-results-filters-v1.css",
+      "docs/project/search3-production-import.json: assets.search3-results-filters-v1.css.productionSha256"
+    ],
+    "size": {
+      "public_css_before_bytes": 27964,
+      "public_css_after_bytes": 28439,
+      "public_css_delta_bytes": 475,
+      "gzip_delta_bytes": 66,
+      "runtime_js_delta_bytes": 0,
+      "php_delta_bytes": 0,
+      "inline_delta_bytes": 0,
+      "first_card_height_delta_1440_px": 6.67,
+      "accounting": "Useful readability growth, not a vertical-space saving. Only one of718 payload files differs from published1916; all717 other files are byte-identical."
+    },
+    "verification": {
+      "security_run": 34512287756,
+      "exact_build_run": 34512288491,
+      "exact_build_job": 102989113809,
+      "canonical_source_output_import_check": "success",
+      "existing_tests_or_gates_changed": false,
+      "result_widths": [375, 760, 761, 999, 1000, 1024, 1025, 1440],
+      "collapsed_expanded_states": 16,
+      "result_html_unchanged": true,
+      "recorded_geometry_through_1024_unchanged": true,
+      "horizontal_overflow": false,
+      "desktop_conditions_action_tops_aligned": true,
+      "action_width_1025_px": 224,
+      "action_width_1440_px": 240.3,
+      "screenshots_inspected": [
+        "results-collapsed-1440.png",
+        "results-expanded-1440.png",
+        "current-1440.png",
+        "current-1025.png",
+        "results-collapsed-375.png"
+      ],
+      "geometry_artifact_id": 10166345372,
+      "geometry_zip_sha256": "b878d0db98c812f94dc8f716ada8aa8d3205be9ffc659620b48b778c7c0d6770",
+      "source_artifact_id": 10166346467,
+      "source_zip_sha256": "05ecc03a73db8755f7913142c2273a15cde7f9cacb7507f4f8b0f06aaa1b1a62",
+      "all_payload_hashes_verified": 718,
+      "css_sha256": "d9db425abfc13fa68489f0aafbd66a1cdd2db0500be17d84c5979d3dcbabc6c0",
+      "browser_scope": "Existing hosted offline fixtures; no local browser or live supplier/brand acceptance is claimed.",
+      "local_limit": "Local npm/compiler unavailable; the unchanged hosted canonical compiler independently reconstructed and checked the generated output. Managed-browser denial was not retried or bypassed.",
+      "real_supplier_searches": 0,
+      "real_leads": 0
+    },
+    "publication": {
+      "publisher_pr": 1902,
+      "control_sha": "ea190a98c4d2a72cc9d27357df539a5d47e95079",
+      "owner_command_comment": 5623266816,
+      "deploy_run": 34513129735,
+      "source_artifact_id": 10166346467,
+      "receipt_artifact_id": 10166604997,
+      "receipt_zip_sha256": "9e3ed5a4370e95831656ed023208572557a1dd3d254f6d516306eef42376163b",
+      "receipt_status": "published",
+      "completion_status": "published",
+      "source_sha": "b63f633b945f84f8c285accf940024dbb5fc87a9",
+      "release_sha": "3793ada206b8811f74cb16590ae7e8868d3554d6",
+      "route": "/_preview/search3-site-candidate/",
+      "file_count": 718,
+      "routes_200": 9,
+      "noindex": true,
+      "counter": 0,
+      "disabled_lead_http": 403,
+      "served_asset_hashes_checked": true,
+      "production_unchanged": true,
+      "rollback_retained": true,
+      "artifact_rebuilt": false,
+      "replay_required": false,
+      "coordination": "Independent INT installation34510605994 completed first; this UI publication preserved the current backend instead of restoring historical API files."
+    },
+    "deferred": [
+      "Physical iPhone/Safari",
+      "New post-publication browser journey; actual readback is HTTP/hash/isolation evidence",
+      "Fresh live-provider and full branded/reference acceptance",
+      "Unassisted user pilot and concrete production release approval",
+      "History-preserving root AUTOPILOT_STATE publication-pointer synchronization"
+    ],
+    "protected": "API URL-payload, price arithmetic, lead transport/field mapping, analytics/goals, SEO/indexation, catalog identities, main product and production unchanged. PR1861 renderer/shared-runtime/test ownership and the blocked status/filter-rail proposal remained untouched.",
+    "rollback": "Revert PR1923 independently for source; restore only the ownership-checked predecessor retained by deploy34513129735 for preview. This documentation update requires no build, browser or deployment."
   }
 }
