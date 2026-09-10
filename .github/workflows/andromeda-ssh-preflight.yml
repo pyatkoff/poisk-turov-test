@@ -1,0 +1,82 @@
+name: Andromeda SSH preflight
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda_ssh_preflight.py'
+      - 'tests/andromeda_ssh_preflight_test.py'
+      - '.github/workflows/andromeda-ssh-preflight.yml'
+  push:
+    branches:
+      - 'ops/int-andromeda-ssh-preflight-20260911'
+    paths:
+      - '.github/ops/andromeda-ssh-preflight-20260911'
+permissions:
+  contents: read
+concurrency:
+  group: andromeda-ssh-preflight-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Check supplier-free diagnostic
+        run: |
+          python3 -m py_compile scripts/diagnostics/andromeda_ssh_preflight.py tests/andromeda_ssh_preflight_test.py
+          python3 -B tests/andromeda_ssh_preflight_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          source=Path('scripts/diagnostics/andromeda_ssh_preflight.py').read_text().lower()
+          for forbidden in ('php -r','curl ','mysql','api.anextour','gateway.samo','tourvisor'):
+              assert forbidden not in source
+          assert "for mode in ('no_mux','isolated_mux')" in source
+          assert "supplier_calls':0" in source.replace(' ', '')
+          print('SSH preflight static boundary: PASS')
+          PY
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-andromeda-ssh-preflight-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      SOURCE_SHA: 22aa31f5b6238b26ad86a042f45f615a294b37fb
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Bind exact harmless operation
+        run: |
+          test "$(cat control/.github/ops/andromeda-ssh-preflight-20260911)" = "source=${SOURCE_SHA};operation=ssh-preflight-no-supplier;owner=2026-09-11"
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Run fixed SSH transport checks
+        id: preflight
+        continue-on-error: true
+        run: |
+          umask 077
+          python3 -B source/scripts/diagnostics/andromeda_ssh_preflight.py > "$RUNNER_TEMP/ssh-preflight.json"
+      - name: Preserve sanitized classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-ssh-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/ssh-preflight.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Fail after evidence preservation when transport is unhealthy
+        if: steps.preflight.outcome != 'success'
+        run: exit 1
