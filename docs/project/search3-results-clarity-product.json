@@ -1122,5 +1122,89 @@
     ],
     "rollback": "Revert release merges 2c727a5ab60f44f7262e0690a638ca75d697fe02 and ba0152e968feade071e8888d13c4e28e75085daa independently; the currently published isolated preview was not changed by either package.",
     "next_action": "Continue the next confirmed independent Search3 journey defect from the fresh checked release while exact publication and Andromeda selection remain separately gated."
+  },
+  "empty_result_relax_focus_recovery_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1858,
+    "baseline_release_sha": "b7169674518b9fbbb82cdc36c2662ae38d6dc1ca",
+    "source_sha": "d6742bec9c0403ec35eac455b091afcd0504431a",
+    "release_integration_sha": "b5025926ba42565ba85f7ee464311418504aa615",
+    "product_result": [
+      "Enter or Space on an empty-result relaxation now submits exactly once and never drops keyboard focus to the document body.",
+      "Focus moves from the removed action to the visible native search form during reset, then to the observable loading or error status.",
+      "Direct service and dependent airport relaxation keep the hotel-service summary count synchronized after the canonical reset.",
+      "The existing mobile card owner now stacks photo and copy deterministically; its exact geometry assertion measures both boxes in one browser frame."
+    ],
+    "ownership": {
+      "shared_renderer": "v2/results-renderer-v5.js",
+      "responsive_source": "src/search3/styles/results-layout.css",
+      "focused_browser_test": "tests/search3-current-results-browser.cjs",
+      "generated_outputs": [
+        "v2/search3-shared-runtime.json",
+        "v2/search3-results-filters-v1.css",
+        "docs/project/search3-production-import.json"
+      ],
+      "duplicate_handlers_added": 0,
+      "duplicate_renderers_added": 0,
+      "override_skin_added": false
+    },
+    "size": {
+      "renderer_source_js_delta_raw_bytes": 755,
+      "generated_shared_runtime_json_delta_raw_bytes": 582,
+      "compiled_css_delta_raw_bytes": 31,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0,
+      "accounting": "The shared-runtime JSON includes metadata and a compact code body; it is reported separately and is not double-counted as another browser asset."
+    },
+    "verification": {
+      "security_run": 34454767115,
+      "exact_artifact_run": 34454766991,
+      "exact_artifact_id": 10143058887,
+      "exact_artifact_digest": "sha256:51816f92bf0ebc5d0e51560c606695bd41c1580f918cdfada41afa058d48497b",
+      "geometry_artifact_id": 10143058468,
+      "geometry_artifact_digest": "sha256:c6e25d26702acbd7e14ca1cda112abc85c85c44c4d21b077807cad837e101f29",
+      "responsive_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "focused_contracts": [
+        "one canonical submit for direct and dependent keyboard relaxation",
+        "stable form focus through synchronous result replacement and reset",
+        "loading-status focus when the replacement search becomes observable",
+        "service count synchronization after reset",
+        "mobile photo and copy non-overlap from one atomic geometry frame",
+        "raw and served runtime parity, external calls zero and real leads zero"
+      ],
+      "corrected_ci_finding": {
+        "finding": "Sequential Playwright boundingBox calls could auto-scroll between photo and body measurements and fabricate a 19 px overlap.",
+        "resolution": "The exact assertion now samples both getBoundingClientRect values in one page evaluation; the deterministic flex-column card still remains covered."
+      },
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge b5025926ba42565ba85f7ee464311418504aa615; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue the next confirmed independent Search3 journey defect from fresh checked release b5025926; publish the accumulated release only through an authorized exact dispatch, and keep Andromeda selection gated on a fresh quote/revalidation handoff."
   }
 }
