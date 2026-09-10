@@ -173,7 +173,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-more-toggle:hover,& .empty-edit-search:hover{background:#eef2ff}
 }
 @media(max-width:760px){
-& .hotel-main{display:block}
+& .hotel-main{display:flex;flex-direction:column}
 & .hotel-photo{width:100%;height:auto;min-height:0;aspect-ratio:16/9;max-height:300px}
 & .photo-placeholder{min-height:0}
 & .hotel-body{padding:20px}
