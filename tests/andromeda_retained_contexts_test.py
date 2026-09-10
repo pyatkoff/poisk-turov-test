@@ -131,7 +131,7 @@ class ActualRemoteReadTest(unittest.TestCase):
     def test_current_public_selection_and_country_are_read_only(self):
         before = (self.searches/(self.ref+'-1.json')).read_bytes()
         value = self.run_php()
-        self.assertEqual('ok', value['status'])
+        self.assertEqual('ok', value['status'], value)
         self.assertEqual(1, value['active_searches'])
         self.assertEqual(1, len(value['candidates']))
         row = value['candidates'][0]
@@ -146,16 +146,18 @@ class ActualRemoteReadTest(unittest.TestCase):
     def test_expired_and_revoked_mapping_never_become_candidates(self):
         self.write_state(expired=True)
         value = self.run_php()
+        self.assertEqual('ok', value['status'], value)
         self.assertEqual(0, value['active_searches']); self.assertEqual([], value['candidates'])
         self.write_state(expired=False)
         con = sqlite3.connect(self.db); con.execute("UPDATE andromeda_hotel_identities SET decision_status='pending'"); con.commit(); con.close()
-        value = self.run_php(); self.assertEqual(1, value['active_searches']); self.assertEqual([], value['candidates'])
+        value = self.run_php(); self.assertEqual('ok', value['status'], value); self.assertEqual(1, value['active_searches']); self.assertEqual([], value['candidates'])
 
     def test_ambiguous_current_identity_fails_closed(self):
         con = sqlite3.connect(self.db)
         con.execute("INSERT INTO andromeda_hotel_identities VALUES ('andromeda_catalog','3414',900,'accepted')")
         con.commit(); con.close()
         value = self.run_php()
+        self.assertEqual('ok', value['status'], value)
         self.assertEqual([], value['candidates'])
 
 
