@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1858 fixes keyboard focus loss when an empty-result relaxation synchronously removes its own action. Source d6742bec merged as release b5025926; direct service and dependent airport relaxation submit exactly once, focus the stable form through reset, then the observable status, and retain a synchronized service count. Security 34454767115 and exact artifact build 34454766991 passed; artifact 10143058887 and geometry evidence 10143058468 were retained. Renderer +755B and compiled CSS +31B from the fresh base. The accumulated release remains checked but not published because workflow dispatch is unavailable and a trigger-only commit is forbidden. Andromeda selection still waits for a fresh bounded quote/revalidation handoff."
+    "last_execution_continuation": "PR1862 is the independent Search3 visual/usability package. Source c124ea98 merged as release 84e8d164: desktop primary controls now share one aligned row with a compact submit action; mobile keeps full-width submission while preserving paired date, nights and party controls at 375px, with a safe full stack below 350px. CI caught clipped desktop date years; the same PR widened the date group and added a >=125px geometry contract before the final green runs. Security 34463092761 and exact PHP+Chromium 34463092725 passed; geometry artifact 10146433174 and whole-site artifact 10146433851 were retained. Compiled entry CSS grew by 298B, without another renderer or handler owner. Technical search/API/data were intentionally untouched. The accumulated release remains checked but not published because workflow dispatch is unavailable and a trigger-only commit is forbidden."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: finish Search3 quickly without restarting completed work or layering patches",
-    "last_fully_checked_release_sha": "b5025926ba42565ba85f7ee464311418504aa615",
+    "last_fully_checked_release_sha": "84e8d164ee099fa2473fa89ea0fe892c2cb9efbb",
     "published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
-    "acceptance_status": "URL_HOTEL_LOCAL_ZERO_SELECTION_LABEL_SHORTLIST_FILTER_RESET_RETRY_FOCUS_SERVICE_COUNT_760_CARD_AND_EMPTY_RELAX_FOCUS_CHECKED_RELEASE_PREVIEW_PENDING_SELECTION_DISABLED",
-    "next_action": "Continue the next confirmed independent Search3 journey defect from fresh checked release b5025926; publish the accumulated release only through an authorized exact dispatch, and keep Andromeda selection gated on a fresh quote/revalidation handoff.",
+    "acceptance_status": "URL_HOTEL_LOCAL_ZERO_SELECTION_LABEL_SHORTLIST_FILTER_RESET_RETRY_FOCUS_SERVICE_COUNT_760_CARD_EMPTY_RELAX_FOCUS_AND_COMPACT_ENTRY_CHECKED_RELEASE_PREVIEW_PENDING_SELECTION_DISABLED",
+    "next_action": "Continue the next confirmed visual or usability improvement from fresh checked release 84e8d164; leave technical search, API and data work to their assigned lane, publish the accumulated release only through an authorized exact dispatch, and keep Andromeda selection gated on a fresh quote/revalidation handoff.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
