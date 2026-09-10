@@ -593,6 +593,7 @@ async function run(browser, width, previous) {
     await serviceRelax.press('Enter');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'service relaxation immediately synchronizes its visible count');
+    await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
     const serviceRelaxFocus = await page.evaluate(() => ({ active: document.activeElement && { tag: document.activeElement.tagName, id: document.activeElement.id, classes: document.activeElement.className }, formTabindex: document.getElementById('tourSearch').getAttribute('tabindex') }));
     assert.equal(serviceRelaxFocus.active && serviceRelaxFocus.active.id, 'tourSearch', 'service relaxation keeps focus on a stable recovery target through reset: '+JSON.stringify(serviceRelaxFocus));
     await page.evaluate(() => window.__releaseRetryStart());
@@ -611,6 +612,7 @@ async function run(browser, width, previous) {
     await arrivalRelax.press('Enter');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'dependent arrival relaxation clears incompatible hotel services');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'dependent relaxation also synchronizes the service count');
+    await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
     assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'dependent relaxation keeps focus on a stable recovery target through reset');
     await page.evaluate(() => window.__releaseRetryStart());
     await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
