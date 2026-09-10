@@ -259,16 +259,18 @@ function anytour_andromeda_search3_detail(array $request, PDO $pdo, array $saved
         return anytour_andromeda_search3_detail_selection($state,$context,$now,$pdo,(int)$request['params']['countryId']);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
+/** Current accepted identity reader shared by saved detail and private package capture. */
+function anytour_andromeda_search3_mapping_allows(PDO $pdo,int $country,array $offer): bool {
+    $query=$pdo->prepare("SELECT i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace=? AND i.external_hotel_id=? AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? LIMIT 2");
+    $query->execute([$offer['supplier_namespace'],$offer['external_hotel_id'],$country]);
+    $ids=$query->fetchAll(PDO::FETCH_COLUMN);
+    return count($ids)===1&&(int)$ids[0]===$offer['local_hotel_id'];
+}
 function anytour_andromeda_search3_detail_selection(array $state,array $context,int $now,PDO $pdo,int $country): array {
     global $andromedaApp;
     require_once $andromedaApp.'/andromeda-selected-offer.php';
     $store=$state['store'];
-    $allows=static function(array $offer)use($pdo,$country):bool {
-        $query=$pdo->prepare("SELECT i.local_hotel_id FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace=? AND i.external_hotel_id=? AND i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? LIMIT 2");
-        $query->execute([$offer['supplier_namespace'],$offer['external_hotel_id'],$country]);
-        $ids=$query->fetchAll(PDO::FETCH_COLUMN);
-        return count($ids)===1&&(int)$ids[0]===$offer['local_hotel_id'];
-    };
+    $allows=static fn(array $offer):bool => anytour_andromeda_search3_mapping_allows($pdo,$country,$offer);
     $selection=AnyTourAndromedaSelectedOffer::publicSelection(new AnyTourAndromedaOfferStore($store,true),$context,$allows,$now);
     $detail=anytour_andromeda_search3_detail_state($state,$context,$now);
     $detail['selected_offer']=$selection;

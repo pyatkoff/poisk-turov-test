@@ -62,3 +62,69 @@ foreach (['success','unknown'] as $case) {
     check($budget['reserved_requests']===1 && $budget['monthly_limit']===5000000);
 }
 echo "Saved package bridge: private capture/readback, current mapping, budget, expiry and unknown no-replay passed offline.\n";
+
+// Exercise the concrete selected DTO -> current PDO mapping -> existing bridge path.
+// SQLite is disposable; transport is injected, so no supplier/production DB is used.
+$entryCalls = 0;
+foreach (['entry-captured', 'entry-stale'] as $case) {
+    $pdo = new PDO('sqlite::memory:');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('CREATE TABLE catalog_hotels (id INTEGER, country_id INTEGER, is_active INTEGER)');
+    $pdo->exec('CREATE TABLE andromeda_hotel_identities (supplier_namespace TEXT, external_hotel_id TEXT, local_hotel_id INTEGER, decision_status TEXT)');
+    $pdo->exec('INSERT INTO catalog_hotels VALUES (900,4,1),(901,4,1)');
+    $pdo->exec("INSERT INTO andromeda_hotel_identities VALUES ('andromeda_catalog','3414',900,'accepted')");
+    $saved = ['local_country_id' => 4];
+    $config = ['catalog_path' => $root . '/' . $case . '/catalog.json'];
+    $directory = dirname($config['catalog_path']) . '/searches';
+    mkdir($directory, 0700, true);
+    anytour_andromeda_search3_save($directory . '/' . $ref . '-1.json', ['status'=>'complete','store'=>$state]);
+    anytour_andromeda_search3_save($directory . '/' . $ref . '-auth.json', [
+        'created_at'=>1000,'session'=>['sid'=>'private-fixture-session','expires'=>time()+1800]]);
+    $selection = anytour_andromeda_search3_detail_selection(['status'=>'complete','store'=>$state], $context, $now, $pdo, 4)['selected_offer'];
+    $path = $directory . '/' . $ref . '-1000-1-' . $context['offer_ref'] . '-package.json';
+    $transport = static function($url) use (&$entryCalls, $path, $case, $pdo, $raw): array {
+        ++$entryCalls;
+        $disk = json_decode(file_get_contents($path), true);
+        check($disk['record']['status'] === 'reserved');
+        parse_str(parse_url($url, PHP_URL_QUERY), $query);
+        check($query['action'] === 'broninit' && $query['claiminc'] === 'private-selected-offer');
+        if ($case === 'entry-stale') $pdo->exec('UPDATE catalog_hotels SET is_active=0 WHERE id=900');
+        return ['status'=>200,'body'=>json_encode($raw)];
+    };
+    $run = static fn() => anytour_andromeda_capture_selected_package($config, $saved, $selection, $pdo, $source, true, $transport, $clock);
+    $before = $entryCalls;
+    refuse(fn() => anytour_andromeda_capture_selected_package($config, $saved, $selection, $pdo, $source));
+    refuse(fn() => anytour_andromeda_capture_selected_package($config, [], $selection, $pdo, $source, true, $transport, $clock));
+    refuse(fn() => anytour_andromeda_capture_selected_package($config, ['local_country_id'=>1], $selection, $pdo, $source, true, $transport, $clock));
+    refuse(fn() => anytour_andromeda_capture_selected_package($config, $saved, array_replace($selection, ['local_id'=>901]), $pdo, $source, true, $transport, $clock));
+    refuse(fn() => anytour_andromeda_capture_selected_package($config, $saved, array_replace($selection, ['operator_ref'=>'wrong-operator']), $pdo, $source, true, $transport, $clock));
+    $pdo->exec("UPDATE andromeda_hotel_identities SET decision_status='pending'");
+    refuse($run);
+    $pdo->exec("UPDATE andromeda_hotel_identities SET decision_status='accepted'");
+    check($entryCalls === $before && !file_exists($path));
+    if ($case === 'entry-captured') {
+        $receipt = $run();
+        check($receipt['context']['local_id'] === 900 && $receipt['context']['operator_ref'] === $selection['operator_ref']);
+        check(!$receipt['identity_verified'] && !$receipt['quote_verified'] && !$receipt['selection_enabled']);
+        check(!str_contains(json_encode($receipt), 'private-') && $run()['reused']);
+        $pdo->exec('UPDATE andromeda_hotel_identities SET local_hotel_id=901');
+        refuse($run);
+    } else {
+        refuse($run);
+        $disk = json_decode(file_get_contents($path), true);
+        check($disk['record']['status'] === 'stale');
+        $pdo->exec('UPDATE catalog_hotels SET is_active=1 WHERE id=900');
+        refuse($run);
+    }
+    check($entryCalls === $before + 1);
+    $budget = json_decode(file_get_contents(dirname($directory) . '/monthly-requests.json'), true);
+    check($budget['reserved_requests'] === 1);
+}
+// Exercise only rejected actions on the real pinned transport: these cannot reach cURL.
+$baseUrl = 'https://gateway.samo.ru/api/?version=1.01&action=';
+refuse(fn() => (new AnyTourAndromedaTransport())($baseUrl . 'broninit'));
+foreach (['bron','bron_ticket','calc','get_flights','price'] as $action) {
+    refuse(fn() => (new AnyTourAndromedaTransport(false, true))($baseUrl . $action));
+}
+check((new ReflectionMethod(AnyTourAndromedaTransport::class, '__construct'))->getNumberOfParameters() === 2);
+echo "Selected package entry: existing DTO/current PDO mapping, same capture, stale no-replay and transport exclusions passed offline.\n";

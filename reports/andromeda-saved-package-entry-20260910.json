@@ -1,0 +1,49 @@
+{
+  "issue": 1717,
+  "stage": "A3.1 selected retained package entry",
+  "base": "ff202c26fbe7e6aac506448f509d4609b8356417",
+  "implementation": "Existing selected DTO and current PDO mapping reader are connected to the unchanged capture_saved_package body. CLI-only and explicitly default-off; no new HTTP action or launcher.",
+  "dependencies": {
+    "runtime": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+    "package": "7c3c5bb55c88e376d97c998d0ba77a46960584d6",
+    "transport_only": "1f628e4b172ce9706eabe875784ce2b226175a0d"
+  },
+  "source_baseline_download": {
+    "artifact": 10148149747,
+    "zip_sha256": "9b0681e568da3a2318e0be2af3908be630744b6ee093d39fba7a0fd9dc94611e",
+    "api_sha256": "b7d245af694c41c319c6bcf5b92448a1bc6e0c80e0e57664c4adb6a5388c4587",
+    "independently_downloaded_and_checked": true
+  },
+  "checks": {
+    "local_php_lint": "API, runtime and fixture passed",
+    "local_fixture": "deferred: local PHP has no PDO SQLite driver; existing GitHub offline job runs disposable SQLite and stub transport",
+    "local_workflow": "YAML and source-only receipt script syntax validated",
+    "ci": "pending"
+  },
+  "effects": {
+    "supplier_calls": 0,
+    "live_db_operations": 0,
+    "ssh": 0,
+    "new_searches": 0,
+    "publication": false,
+    "real_package_captured": false,
+    "identity_verified": false,
+    "quote_verified": false,
+    "shared_ui_changed": false
+  },
+  "invariants": [
+    "Mapping accepted, active catalog hotel, country and selected local ID checked before and after capture",
+    "Captured readback stays local; expired, reassigned, unknown or stale cannot replay",
+    "Existing reservation, lock, private auth, monthly counter and private raw checkpoint are preserved",
+    "Only the prepared transport PHP is reused; superseded #1837 first-PRICE probe and launcher are excluded",
+    "No bron, bron_ticket, calc, get_flights, login or price request in this entry",
+    "Source handoff contains exactly six PHP source files and a digest receipt, never private checkpoints"
+  ],
+  "live_gate": {
+    "method_documentation": "Current official wiki open rejected by web safe-URL check; not retried or bypassed. No live method executed.",
+    "required": "Readable verified method-effect evidence, authorized exact private invocation and one valid explicitly selected retained context",
+    "not_authorized_by_this_package": "main/new launcher/production/lead transport/matching"
+  },
+  "deferred": ["real PRICES.id to claiminc evidence", "public composition and tourist-price projection", "actual quote", "shared selected flow", "current composite preview acceptance", "mobile and physical Safari"],
+  "historical_unknown_checkpoints": "Unchanged; not re-read, reset or replayed"
+}
