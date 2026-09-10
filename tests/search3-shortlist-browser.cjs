@@ -164,9 +164,9 @@ async function checkJourney(browser, width) {
 
     const staleClear = page.locator('.search3-shortlist-clear');
     await staleClear.focus(); await staleClear.press('Enter');
-    await page.waitForFunction(() => document.activeElement?.id === 'results');
+    await page.waitForFunction(() => document.activeElement?.id === 'tourSearch');
     assert.equal(await page.locator('.search3-shortlist-item').count(), 0, 'keyboard clear removes stale snapshots before a current projection exists');
-    assert.equal(await page.evaluate(() => document.activeElement?.id), 'results', 'stale clear moves focus to the stable results region instead of body');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'tourSearch', 'stale clear moves focus to the visible search form instead of body');
     assert.equal(await page.evaluate(() => localStorage.getItem(window.Search3Shortlist.storageKey)), null, 'stale clear removes persisted snapshots');
     await page.evaluate(({ key, value }) => localStorage.setItem(key, value), persistedBefore);
     await page.reload({ waitUntil: 'domcontentloaded' });
