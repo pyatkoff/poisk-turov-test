@@ -70,6 +70,15 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     }
     $hotels=anytour_andromeda_search3_hotels($p['hotelIds']??[],$pdo,$saved);
     if($hotels!==null)$params['HOTELS']=$hotels;
+    if(isset($request['hotel_scope'])) {
+        $scope=$request['hotel_scope'];
+        if(!is_array($scope)||!is_int($scope['local_id']??null)||$scope['local_id']<1||!is_array($scope['seed']??null)||isset($scope['seed']['hotel_scope']))throw new InvalidArgumentException();
+        $selected=$p['hotelIds']??[];
+        if($selected && !in_array((string)$scope['local_id'],array_map('strval',$selected),true))throw new InvalidArgumentException();
+        $ids=anytour_andromeda_search3_hotels([$scope['local_id']],$pdo,$saved);
+        if($ids===null)throw new DomainException('hotel_not_supported');
+        $params['HOTELS']=$ids;
+    } else $params['GROUP_BY']=32;
     AnyTourAndromedaClient::validatePriceParams($params);
     return $params;
 }
@@ -77,7 +86,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
 function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[]): array {
     $converted=[];$ids=[];
     foreach($page['offers'] as $offer){
-        $id=$offer['local_hotel_id'];if(!$id)continue;$ids[$id]=true;
+        $id=$offer['local_hotel_id'];if(!$id || (isset($request['hotel_scope']) && $id!==$request['hotel_scope']['local_id']))continue;$ids[$id]=true;
         $converted[]=['hotel'=>['local_id'=>$id,'mapping_status'=>'resolved'],'price'=>$offer['price'],
             'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
             'meal'=>$offer['meal']['label'],'room'=>$offer['room'],'kind'=>'offer'];
@@ -100,6 +109,7 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         foreach($matches as $match)if(!isset($used[$match['offer_ref']])){
             $tour['operator']=$match['operator'];$tour['offer_ref']=$match['offer_ref'];
             $tour['offer_context']=['provider'=>'andromeda','search_ref'=>$page['search_ref'],'generation'=>$page['generation'],'page'=>$page['page'],'offer_ref'=>$match['offer_ref']];
+            if(isset($request['hotel_scope']))$tour['offer_context']['hotel_scope']=$request['hotel_scope'];
             if(!isset($hotel['andromeda_content'])||empty($hotel['andromeda_content']['image_url']))$hotel['andromeda_content']=$match['hotel_content']??null;$used[$match['offer_ref']]=true;break;
         }
         $tour['selection_enabled']=false;
@@ -109,7 +119,7 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
     // retained server-side as observations and can never become standalone cards.
     return ['provider'=>'andromeda','generation'=>$request['generation'],'hotels'=>$hotels,
         'date_range'=>['from'=>$request['params']['dateFrom'],'to'=>$request['params']['dateTo']],
-        'first_page_only'=>false,'page'=>$page['page'],'pages_count'=>$page['pages_count'],'external_search_pending'=>false,
+        'grouped'=>!isset($request['hotel_scope']),'first_page_only'=>false,'page'=>$page['page'],'pages_count'=>$page['pages_count'],'external_search_pending'=>false,
         'search_ref'=>$page['search_ref'],'status'=>$page['status'],
         'received_offers'=>count($page['offers']),'mapped_offers'=>count(array_filter($page['offers'],static function($o){return $o['local_hotel_id']!==null;})),'selection_enabled'=>false];
 }
@@ -145,6 +155,13 @@ function anytour_andromeda_search3_budget(string $directory): void {
 }
 
 function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, array $config, string $session): array {
+    if(isset($request['hotel_scope'])) {
+        $seedRequest=$request;unset($seedRequest['hotel_scope']);
+        $seedRequest['offer_context']=$request['hotel_scope']['seed']??[];
+        $seedRequest['page']=$seedRequest['offer_context']['page']??null;
+        $seed=anytour_andromeda_search3_detail($seedRequest,$pdo,$saved,$config,$session);
+        if(($seed['local_id']??null)!==($request['hotel_scope']['local_id']??null))throw new DomainException('hotel_context_invalid');
+    }
     $criteria=anytour_andromeda_search3_params($request,$pdo,$saved);$number=$criteria['PAGE'];
     $directory=dirname($config['catalog_path']).'/searches';
     if(!is_dir($directory)&&!mkdir($directory,0700)&&!is_dir($directory))throw new RuntimeException();
@@ -246,7 +263,7 @@ function anytour_andromeda_search3_detail_state(array $state,array $context,int 
     $store=$state['store'];
     $lookup=(new AnyTourAndromedaOfferStore($store,true))->lookup($context['search_ref'],$context['generation'],$context['offer_ref'],$now);
     $o=$lookup['offer'];
-    return ['provider'=>'andromeda','offer_context'=>$context,'hotel'=>$o['hotel'],'operator'=>$o['operator'],
+    return ['provider'=>'andromeda','local_id'=>$o['local_hotel_id'],'offer_context'=>$context,'hotel'=>$o['hotel'],'operator'=>$o['operator'],
         'checkin'=>$o['check_in'],'nights'=>$o['nights'],'adults'=>$o['adults'],'children'=>$o['children'],
         'room'=>$o['room'],'placement'=>$o['placement'],'meal'=>$o['meal']['label'],'price'=>$o['price'],
         'quote_required'=>true,'selection_enabled'=>false,'booking_enabled'=>false];
@@ -277,7 +294,7 @@ function anytour_andromeda_search3_http(): void {
         $saved['excluded_operator_ids']=$config['excluded_operator_ids']??[];
         // Reject unsupported form conditions before spending supplier requests.
         anytour_andromeda_search3_params($request,$pdo,$saved);
-        if(isset($request['action'])&&$request['action']!=='offer_detail')throw new InvalidArgumentException();
+        if(isset($request['action'])&&!in_array($request['action'],['offer_detail','hotel_offers'],true))throw new InvalidArgumentException();
         $data=($request['action']??null)==='offer_detail'
             ?anytour_andromeda_search3_detail($request,$pdo,$saved,$config,$session)
             :anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);

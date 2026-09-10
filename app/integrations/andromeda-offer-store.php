@@ -72,7 +72,7 @@ final class AnyTourAndromedaOfferStore {
         $next=$this->state;
         $next['snapshot']=$projection;
         $allowed=['AGES','TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','ADULT','CHILD',
-            'NIGHTS_FROM','NIGHTS_TILL','CURRENCYINC','MEAL','OPERATORS','HOTELS','PACKETTYPE','PAGE'];
+            'NIGHTS_FROM','NIGHTS_TILL','CURRENCYINC','MEAL','OPERATORS','HOTELS','PACKETTYPE','PAGE','GROUP_BY'];
         if (array_diff(array_keys($criteria),$allowed)) throw new InvalidArgumentException('UNSUPPORTED_CRITERIA');
         foreach ($criteria as $value) if (!is_int($value) && !is_string($value))
             throw new InvalidArgumentException('UNSUPPORTED_CRITERIA');

@@ -1527,3 +1527,33 @@ test('ANEX-only Andromeda correlation link scopes supplier requests without alte
   assert.deepEqual(plain(next.body.andromeda_operator_ids),['5']);
   assert.match(page.document.getElementById('anexSearch3Results').textContent,/Андромеда \(ANEX\)/);
 });
+
+test('Andromeda explicit expansion keeps criteria, partial offers and avoids redraw replay', async () => {
+  const page=preview(false,true);page.reset(1,snapshot());
+  const context={provider:'andromeda',search_ref:'a'.repeat(64),offer_ref:'offer_'+'b'.repeat(64),generation:1,page:1};
+  const first={...hotel().tours[0],provider:'andromeda',offer_ref:context.offer_ref,offer_context:context};
+  page.requests.find(r=>r.url.includes('api-andromeda-')).respond({ok:true,data:{provider:'andromeda',generation:1,page:1,pages_count:1,grouped:true,hotels:[hotel({local_id:900,tours:[first]})]}});
+  await tick();assert.equal(page.requests.length,2);
+  const button=page.results.querySelectorAll('button').find(b=>b.textContent==='Все варианты Андромеды');page.click(button);await tick();
+  assert.equal(page.requests.length,3);
+  const req=page.requests[2];assert.equal(req.body.action,'hotel_offers');assert.equal(req.body.hotel_scope.local_id,900);
+  assert.deepEqual(plain(req.body.params),plain(page.requests[1].body.params));
+  const extra={...first,room:'Expansion retained room',offer_ref:'offer_'+'c'.repeat(64),offer_context:{...context,offer_ref:'offer_'+'c'.repeat(64),hotel_scope:req.body.hotel_scope}};
+  req.respond({ok:true,data:{provider:'andromeda',generation:1,page:1,pages_count:2,grouped:false,hotels:[hotel({local_id:900,tours:[extra]})]}});
+  await tick();assert.equal(page.requests.length,4);assert.match(page.results.textContent,/Expansion retained room/);
+  page.requests[3].respond({ok:false,error:'unavailable'});await tick();
+  page.window.dispatchEvent({type:'v2:results-rendered',detail:{items:[]}});await tick();
+  assert.equal(page.requests.length,4);assert.match(page.results.textContent,/Expansion retained room/);
+  assert.match(page.results.textContent,/Полученные предложения сохранены/);
+  page.reset(2,snapshot());await tick();assert.doesNotMatch(page.results.textContent,/Expansion retained room/);
+});
+
+
+test('expanded offer context compares serialized scope values and rejects changed identity', () => {
+  const expected={provider:'andromeda',search_ref:'a',offer_ref:'b',generation:2,page:1,hotel_scope:{local_id:447,seed:{search_ref:'parent',offer_ref:'seed',page:2,generation:2}}};
+  const same=helpers().sameOfferContext;
+  assert.equal(same(expected,plain(expected)),true);
+  for(const key of ['search_ref','offer_ref','generation','page'])assert.equal(same(expected,{...plain(expected),[key]:'changed'}),false);
+  const other=plain(expected);other.hotel_scope.local_id=999;assert.equal(same(expected,other),false);
+  assert.equal(same(expected,null),false);
+});

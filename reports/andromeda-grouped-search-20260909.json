@@ -1,0 +1,70 @@
+{
+  "issue": 1717,
+  "pr": 1821,
+  "code_sha": "fa2cf998a3e4f92e08648d0dc13ba76fa68940f6",
+  "behavior": [
+    "GROUP_BY=32 discovery",
+    "explicit accepted local hotel expansion without GROUP_BY",
+    "saved seed validation",
+    "original criteria retained",
+    "local filters apply to expansion",
+    "partial results retained; no redraw replay; generation reset"
+  ],
+  "checked": {
+    "node": 52,
+    "php_protocol_run": 34406547864,
+    "security_run": 34406547890,
+    "observations_run": 34406547832,
+    "build_run": 34406547866
+  },
+  "published": {
+    "source": "99fa70e1d1d9222993f9caf07d9c48347a9ddf2d",
+    "installer": "1600c72a80f783fbebe4c928d191b808137dfe58",
+    "run": 34406876710,
+    "job": 102651860457,
+    "runtime_artifact": 10125658525,
+    "runtime_digest": "9fe2484045ba1daed5ef7a126444fa19ad38e1a83a9fff30f4136f402943f7a4",
+    "readback_artifact": 10125660943,
+    "readback_digest": "3a4c9591e88b38bf4a2e6677ebdd61e547d390fc01a63421f52213e93e5e9fc3",
+    "scope": "/_preview/search3-anex-candidate/",
+    "database_changed": false,
+    "production_changed": false
+  },
+  "supplier_calls_this_package": 0,
+  "mapping_writes": 0,
+  "deferred": [
+    "mobile and physical Safari",
+    "post-fix live detail acceptance"
+  ],
+  "next_action": "SEARCH handoff of published grouped discovery and explicit expansion; initial URL form-dirty separate confirmed defect. No matching.",
+  "browser": {
+    "discovery": "74 Andromeda accepted-local cards; pages 2/2",
+    "operator_scope": "ANEX within Andromeda",
+    "criteria": "Moscow Egypt 2026-09-18 / 8 nights / 2 adults / AI",
+    "expansion": "SHARM HOLIDAY: 12 variants loaded",
+    "return": "12 retained after closing detail",
+    "visual": "desktop screenshot inspected; mobile/Safari deferred",
+    "defect": "Nested-context comparison fixed and published;52Node checks passed. Post-fix live detail deferred.",
+    "initial_url_issue": "form dirty message; normal manual submission succeeds",
+    "http_count": "not measured",
+    "final_counts": {
+      "all": 160,
+      "tourvisor": 100,
+      "anex_or_andromeda": 107,
+      "overlap": 47,
+      "andromeda": 74,
+      "anex": 41
+    }
+  },
+  "detail_fix_published": {
+    "source": "cfd8cc409c23d6603094ed39bb94916c70d229ab",
+    "installer": "bfbc6598abda708101044a0775f5896b950ae136",
+    "run": 34407567128,
+    "job": 102654108028,
+    "runtime_artifact": 10125920882,
+    "runtime_digest": "496e96fdc3d3a9658b35f3efd212e4b7115bd86a55b0449b303446d68ecf2322",
+    "readback_artifact": 10125923038,
+    "readback_digest": "6236738c5e6a4fd1b6d9de42d356747177f090bee81f7fb81bbcdc3730b2f230",
+    "supplier_calls": 0
+  }
+}
