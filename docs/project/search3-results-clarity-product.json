@@ -947,5 +947,77 @@
     ],
     "rollback": "Revert release merge 09b191b37b5884d3c28187401fb69b1aff9e35f2; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue the next confirmed independent Search3 journey defect while exact publication and provider selection remain separately gated."
+  },
+  "filter_reset_focus_recovery_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1853,
+    "baseline_release_sha": "1028c05ec410a5a04edc8d11ad523279137ec785",
+    "source_sha": "17f0c2ae24a9fc3be85a76e543e1aed82396ec1f",
+    "source_tree": "6759dde08b53b8a36bff69e0c64a2d7ba14ba34d",
+    "release_integration_sha": "cf31773c3edd2aae84e59953c52d15218076d0a0",
+    "product_result": [
+      "Resetting a zero-match local filter projection no longer drops keyboard focus to the document body; focus moves to the first restored hotel heading.",
+      "The persistent desktop/mobile reset returns focus to the still-visible hotel-name filter after its own control is hidden.",
+      "Programmatic reset without a user event does not steal focus; filtering, provider data, prices and the lead path remain unchanged."
+    ],
+    "ownership": {
+      "runtime": "src/search3/behavior/results/local-hotel-filter.js",
+      "generated_output": "v2/search3-results-filters-v1.js",
+      "focused_browser_test": "tests/search3-current-results-browser.cjs",
+      "new_handler_or_renderer": 0
+    },
+    "size": {
+      "source_js_delta_raw_bytes": 629,
+      "served_js_delta_raw_bytes": 439,
+      "css_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0
+    },
+    "verification": {
+      "source_build_cases": 13,
+      "security_run": 34438437249,
+      "exact_artifact_run": 34438437203,
+      "exact_artifact_id": 10137062271,
+      "exact_artifact_digest": "sha256:cbf77eaa173f1471af9cdb9edeeb987b576eac8bdc54781b47a05bbeb0614450",
+      "geometry_artifact_id": 10137061889,
+      "geometry_artifact_digest": "sha256:91ace5eec12febf9aeb2a45bdb60e310572a32b748458bade9af3b0b375a075c",
+      "responsive_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "focused_contracts": [
+        "zero-match keyboard reset restores loaded cards and focuses the first restored hotel",
+        "common keyboard reset focuses the visible hotel-name filter",
+        "raw and served runtime remain identical across 16 responsive states",
+        "shortlist reload, stale, duplicate, blocked, quota and corrupt cases remain green",
+        "external calls and real leads remain zero"
+      ],
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge cf31773c3edd2aae84e59953c52d15218076d0a0; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue the next confirmed independent Search3 journey defect while exact publication and provider selection remain separately gated."
   }
 }
