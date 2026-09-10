@@ -580,6 +580,25 @@ async function run(browser, width, previous) {
     assert.equal(await localOperatorFilter.isVisible(), false, 'search reset hides the stale local operator facet');
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
+    await page.evaluate(() => {
+      document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label><label><input type="checkbox" name="hotel_service[]" value="2" checked>Пляж</label>';
+      window.V2Catalogs.updateServiceCount();
+      window.V2Results.render([]);
+    });
+    assert.equal(await page.locator('#serviceCount').innerText(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
+    await page.locator('.empty-relax[data-relax="hotel_service[]"]').click();
+    assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
+    assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'service relaxation immediately synchronizes its visible count');
+    await page.evaluate(() => {
+      const form = document.getElementById('tourSearch'), arrival = form.elements.arrival;
+      arrival.innerHTML = '<option value="77" selected>Тестовый аэропорт</option>';
+      document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label>';
+      window.V2Catalogs.updateServiceCount();
+      window.V2Results.render([]);
+    });
+    await page.locator('.empty-relax[data-relax="arrival"]').click();
+    assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'dependent arrival relaxation clears incompatible hotel services');
+    assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'dependent relaxation also synchronizes the service count');
     await page.evaluate(() => window.V2Results.render([]));
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     await page.locator('.empty-edit-search').click();
