@@ -1,0 +1,43 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "checked_awaiting_owner_approval",
+  "purpose": "Publish only the checked #1863 API via existing ssh_php helper; no supplier call or whole-site deployment.",
+  "candidate_source": "ac9f16063deadb3b7b2e4fb665c7b51668fe4c6a",
+  "candidate_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
+  "predecessor_sha256": "07d8d9019833c36add09719014ebaa970e56cb85f292296d744f56ee2f36119d",
+  "helper_source": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+  "target": "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php",
+  "guardrails": [
+    "existing SSH helper and retry policy unchanged",
+    "fixed before/after hashes and filename",
+    "private reservation/backup before atomic replacement",
+    "hash readback and durable completed receipt",
+    "unknown prior outcome refused; completed receipt is read-only",
+    "no DB/credentials/UI/production write"
+  ],
+  "checks": {
+    "local_python_syntax": "passed",
+    "php": "passed on offline CI34464751692",
+    "launcher_yaml_permissions": "passed",
+    "default_trigger_audit": "Only Security guard matches new workflow path on main; production deploy paths do not match; no workflow_run consumer for new workflow."
+  },
+  "published": false,
+  "approval_required": "A separate manual-only default-branch launcher proposal must be approved before main merge; then one explicit manual dispatch. Drafting the proposal does not grant that approval.",
+  "next_action": "Owner approval required for #1867 main merge only; then authorized GitHub UI Run workflow with confirmation publish-andromeda-projection-1863. Current connector has no dispatch capability. Record runtime receipt/hash before common-preview acceptance. A3 broninit remains separate.",
+  "publisher": {
+    "pr": 1866,
+    "source": "c816582ab356a191a1c9ebc1cae313f57b3fb32b",
+    "offline_ci": 34464751692,
+    "security_ci": 34464751737
+  },
+  "launcher": {
+    "pr": 1867,
+    "base": "main",
+    "base_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+    "source": "8589d72672ee5832ec6029be5a7801fc737072ab",
+    "security_ci": 34465241572,
+    "trigger": "workflow_dispatch only",
+    "merged": false
+  }
+}
