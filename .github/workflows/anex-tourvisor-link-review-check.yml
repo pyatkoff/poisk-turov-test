@@ -5,6 +5,9 @@ on:
       - 'scripts/diagnostics/anex_tourvisor_link_*.py'
       - 'scripts/diagnostics/anex_search_mapping_import.py'
       - 'scripts/diagnostics/anex_search_mapping_writer.php'
+      - 'scripts/diagnostics/anex_saved_strong_batch.py'
+      - 'tests/anex_saved_strong_batch_test.py'
+      - 'tests/anex-saved-strong-writer-test.php'
       - 'scripts/diagnostics/andromeda_bridge_review.py'
       - 'scripts/diagnostics/andromeda_country_pending.php'
       - 'scripts/diagnostics/andromeda_country_pending.py'
@@ -64,6 +67,7 @@ jobs:
           php -l tests/andromeda-country-expansion-test.php
           php -l scripts/diagnostics/andromeda_saved_bridge.php
           php -l tests/andromeda-saved-bridge-writer-test.php
+          php -l tests/anex-saved-strong-writer-test.php
       - name: Read exact completed artifact and saved proof blobs (no suppliers)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -150,6 +154,15 @@ jobs:
           ANDROMEDA_PENDING_REQUEST: ${{ runner.temp }}/link-review/pending-request.json
           ANDROMEDA_PENDING_BUNDLE: ${{ runner.temp }}/link-review/pending-bundle.json
         run: php tests/andromeda-country-pending-test.php
+      - name: Reproduce saved ANEX strong25 and durable receipt boundaries
+        env:
+          ANEX_SAVED_DIR: ${{ runner.temp }}/link-review
+        run: python3 -B tests/anex_saved_strong_batch_test.py
+      - name: Existing ANEX writer with25 actual pairs and full country competition
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+          ANEX_SAVED_DIR: ${{ runner.temp }}/link-review
+        run: php tests/anex-saved-strong-writer-test.php
       - uses: actions/upload-artifact@v4
         with:
           name: anex-tourvisor-link-review
@@ -161,5 +174,7 @@ jobs:
             ${{ runner.temp }}/link-review/andromeda-92-request.json
             ${{ runner.temp }}/link-review/pending-request.json
             ${{ runner.temp }}/link-review/bridge61-request.json
+            ${{ runner.temp }}/link-review/strong-report.json
+            ${{ runner.temp }}/link-review/strong-protocol.ndjson
           if-no-files-found: error
           retention-days: 90

@@ -112,16 +112,19 @@ def write_protocol(path, meta, rows):
 
 def ssh_import(mapping_path, gap_checkpoint=None, observed_checkpoint=None, complete_review_checkpoint=None,
                saved_review_checkpoint=None, cached_review_checkpoint=None,
-               cached_detail_alias_checkpoint=None, link_review_checkpoint=None):
+               cached_detail_alias_checkpoint=None, link_review_checkpoint=None, saved_strong_checkpoint=None):
     checkpoints = (gap_checkpoint, observed_checkpoint, complete_review_checkpoint,
                    saved_review_checkpoint, cached_review_checkpoint, cached_detail_alias_checkpoint,
-                   link_review_checkpoint)
+                   link_review_checkpoint, saved_strong_checkpoint)
     if sum(p is not None for p in checkpoints) > 1:
         raise ValueError('choose one independent checkpoint')
     if all(p is None for p in checkpoints):
         meta, rows = load_mapping(mapping_path)
     else:
-        if link_review_checkpoint is not None:
+        if saved_strong_checkpoint is not None:
+            from anex_saved_strong_batch import approved_delta
+            document = approved_delta(saved_strong_checkpoint)
+        elif link_review_checkpoint is not None:
             from anex_tourvisor_link_import import approved_delta
             document = approved_delta(link_review_checkpoint)
         elif cached_detail_alias_checkpoint is not None:
@@ -156,6 +159,9 @@ def ssh_import(mapping_path, gap_checkpoint=None, observed_checkpoint=None, comp
     if host.startswith("-") or user.startswith("-") or any(char.isspace() for char in host + user):
         raise ValueError("invalid SSH target")
     source = Path(__file__).with_name("anex_search_mapping_writer.php").read_text(encoding="utf-8").removeprefix("<?php")
+    if saved_strong_checkpoint is not None:
+        registry = Path(__file__).resolve().parents[2] / 'app/integrations/anex-search-mapping-registry.php'
+        source = registry.read_text().removeprefix('<?php') + '\n' + source
     with tempfile.TemporaryDirectory(prefix="anex-mapping-", dir=os.environ.get("RUNNER_TEMP")) as temp:
         key = Path(temp) / "ssh_key"
         key.write_text(os.environ[names[0]].rstrip() + "\n", encoding="utf-8")
