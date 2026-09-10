@@ -19,14 +19,14 @@ async function run(browser, width) {
     return route.continue();
   });
   try {
-    const response = await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8', { waitUntil: 'domcontentloaded' });
+    const response = await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8&daysFrom=7&daysTill=10', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
     await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1' && window.V2SearchLifecycle);
     const adults = page.locator('#tourSearch select[name=count_people]'), children = page.locator('#tourSearch select[name=child_count]');
     assert.equal(await adults.inputValue(), '3', 'URL adult value stays on original control');
     assert.equal(await children.inputValue(), '1', 'URL child count survives native presentation');
     assert.equal(await page.locator('#childAges select').inputValue(), '8', 'URL child age survives');
-    for (const selector of ['input[type=date]', 'input[name=daysFrom]', 'input[name=daysTill]', 'select[name=count_people]', 'select[name=child_count]', '.search-submit']) {
+    for (const selector of ['input[type=date]', 'select[name=daysFrom]', 'select[name=daysTill]', 'select[name=count_people]', 'select[name=child_count]', '.search-submit']) {
       for (const control of await page.locator('#tourSearch ' + selector).all()) {
         assert.equal(await control.isVisible(), true, selector + ' remains directly visible');
         assert.ok((await control.boundingBox()).height >= 44, selector + ' native target >=44px');
@@ -40,13 +40,41 @@ async function run(browser, width) {
     await page.waitForFunction(() => document.querySelectorAll('#childAges select').length === 2);
     await page.locator('#childAges select').nth(0).selectOption('8');
     await page.locator('#childAges select').nth(1).selectOption('6');
-    await page.locator('input[name=daysFrom]').fill('8');
-    await page.locator('input[name=daysTill]').fill('9');
+    for (const [name, value] of [['daysFrom', '7'], ['daysTill', '10']]) {
+      const control = page.locator(`#tourSearch select[name=${name}]`);
+      assert.equal(await control.count(), 1, 'one native nights owner');
+      assert.equal(await control.inputValue(), value, 'URL nights survive on the native picker');
+      assert.deepEqual(await control.locator('option').evaluateAll(options => options.map(option => option.value)), Array.from({ length: 28 }, (_, i) => String(i + 1)), 'all supported nights are selectable');
+    }
+    await page.locator('select[name=daysFrom]').selectOption('8');
+    await page.locator('select[name=daysTill]').selectOption('9');
     const payload = await page.evaluate(() => {
       const data = new FormData(document.getElementById('tourSearch'));
       return { adults: data.get('count_people'), children: data.get('child_count'), ages: data.getAll('child_age[]'), from: data.get('daysFrom'), till: data.get('daysTill') };
     });
     assert.deepEqual(payload, { adults: '4', children: '2', ages: ['8', '6'], from: '8', till: '9' }, 'native changes retain canonical form field mapping');
+    const nightsContract = await page.evaluate(() => {
+      const lifecycle = window.V2SearchLifecycle, originalUrl = location.href;
+      const date = new Date(); date.setDate(date.getDate() + 2);
+      const future = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const valid = { ...lifecycle.params(), departureId: '1', countryId: '4', dateFrom: future, dateTo: future };
+      const rejected = [[0, 7], [7, 29], [1.5, 7], [9, 8], [1, 12]].map(([nightsFrom, nightsTo]) => !!lifecycle.validate({ ...valid, nightsFrom, nightsTo }));
+      history.replaceState(null, '', location.pathname + '?days_from=28&days_till=28');
+      lifecycle.hydrateUrlState();
+      const aliases = [document.forms.tourSearch.elements.daysFrom.value, document.forms.tourSearch.elements.daysTill.value];
+      history.replaceState(null, '', location.pathname + '?daysFrom=0&daysTill=29');
+      lifecycle.hydrateUrlState();
+      const invalidUrlRejected = !!lifecycle.validate({ ...valid, nightsFrom: document.forms.tourSearch.elements.daysFrom.value, nightsTo: document.forms.tourSearch.elements.daysTill.value });
+      for (const name of ['daysFrom', 'daysTill']) {
+        const control = document.forms.tourSearch.elements[name];
+        [...control.options].filter(option => Number(option.value) < 1 || Number(option.value) > 28).forEach(option => option.remove());
+      }
+      document.forms.tourSearch.elements.daysFrom.value = '8';
+      document.forms.tourSearch.elements.daysTill.value = '9';
+      history.replaceState(null, '', originalUrl);
+      return { valid: lifecycle.validate(valid), rejected, aliases, invalidUrlRejected, pending: lifecycle.pending };
+    });
+    assert.deepEqual(nightsContract, { valid: '', rejected: [true, true, true, true, true], aliases: ['28', '28'], invalidUrlRejected: true, pending: false }, 'native picker retains canonical range validation and URL aliases without auto-search');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'entry has no horizontal overflow');
     assert.deepEqual(errors, []);
     fs.writeFileSync(path.join(output, `entry-${width}.json`), JSON.stringify({ width, payload, blocked, lead_sent: 0 }, null, 2) + '\n');

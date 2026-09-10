@@ -1035,13 +1035,29 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             'from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
             'count_people', 'child_count',
         ):
-            self.assertEqual(index.count(f'name="{name}"'), 1, name)
+            # Nights have mutually exclusive native/legacy presentation branches.
+            self.assertEqual(index.count(f'name="{name}"'), 2 if name in ('daysFrom', 'daysTill') else 1, name)
         self.assertIn('& .search-group{', native)
         self.assertIn('@media(min-width:1200px){& .main-fields{grid-template-columns:minmax(230px,1.1fr) minmax(280px,1.25fr) repeat(2,minmax(200px,1fr))}', native)
         self.assertIn('@media(max-width:700px){& .main-fields{grid-template-columns:1fr}& .search-submit{width:100%;margin-left:0}', native)
         self.assertIn('@media(max-width:430px){& .search-group--route{grid-template-columns:1fr}', native)
         self.assertIn('@media(max-width:350px){& .search-group{grid-template-columns:1fr}', native)
         self.assertNotIn('.ds2-site-footer', results)
+
+    def test_native_nights_have_one_rendered_owner_and_legacy_stays_unchanged(self):
+        for candidate in (True, False):
+            rendered = subprocess.check_output([
+                'php', '-r',
+                'define("V2_SEARCH3_PRESENTATION", ' + ('true' if candidate else 'false') + ');'
+                '$_SERVER["DOCUMENT_ROOT"]=""; require "v2/index.php";'
+            ], cwd=ROOT, text=True)
+            for name in ('daysFrom', 'daysTill'):
+                self.assertEqual(rendered.count(f'name="{name}"'), 1)
+                if candidate:
+                    control = re.search(r'<select name="' + name + r'">(.*?)</select>', rendered).group(1)
+                    self.assertEqual(re.findall(r'<option value="(\d+)"', control), [str(i) for i in range(1, 29)])
+                else:
+                    self.assertIn(f'<input type="number" min="1" max="28" name="{name}"', rendered)
 
     def test_optional_duplicate_layers_are_search3_only_exclusions(self):
         self.assertEqual(self.bundle.count("'site-footer-v1.css'"), 1)
