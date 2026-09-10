@@ -1,5 +1,5 @@
 name: Reviewed hotel identity acceptance
-run-name: ANEX 1759 four-pair acceptance v1
+run-name: Andromeda 1759 92-identity acceptance v1
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
@@ -12,8 +12,8 @@ concurrency:
   group: ${{ github.event_name == 'push' && 'andromeda-identity-writes' || format('hotel-operation-check-{0}', github.run_id) }}
   cancel-in-progress: false
 env:
-  SOURCE_SHA: 3d099dbd64c9b00234ac9bc77bd09ee9c3b5355c
-  OPERATION_ID: anex-link-1759-20260910-v1
+  SOURCE_SHA: 030021061ba7595dced08813a7b28b16689cfd5e
+  OPERATION_ID: andromeda-1759-validated-92-v1
 jobs:
   check-operation:
     runs-on: ubuntu-latest
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          ref: 3d099dbd64c9b00234ac9bc77bd09ee9c3b5355c
+          ref: 030021061ba7595dced08813a7b28b16689cfd5e
           path: reviewed
       - name: Verify checked source, exact evidence and absence of prior operation
         env:
@@ -44,13 +44,13 @@ jobs:
           test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
           mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
           export STATE="$RUNNER_TEMP/$OPERATION_ID"
-          for id in 34495764385 34495764441; do
+          for id in 34501866010 34501866003; do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"
           done
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?branch=feat%2Fint-andromeda-live-20260909&event=push&per_page=100" > "$STATE/history.json"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/reservations.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10155224672" > "$STATE/input-meta.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10155224672/zip" > "$STATE/input.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10158366247" > "$STATE/input-meta.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10158366247/zip" > "$STATE/input.zip"
           python3 - <<'PYTHON'
           import hashlib, json, os, sys
           from pathlib import Path
@@ -67,7 +67,7 @@ jobs:
               if not any(r.get('id') == current_run for r in runs):
                   raise ValueError('current_operation_missing_from_history')
               prior = [r for r in runs if r.get('id') != current_run
-                       and r.get('display_title') == 'ANEX 1759 four-pair acceptance v1']
+                       and r.get('display_title') == 'Andromeda 1759 92-identity acceptance v1']
               if prior or reservations.get('total_count') != 0 or reservations.get('artifacts') != []:
                   raise ValueError('prior_reserved_or_completed_operation_do_not_replay')
 
@@ -75,54 +75,56 @@ jobs:
           require_new_operation(json.loads((state/'history.json').read_bytes()),
                                 json.loads((state/'reservations.json').read_bytes()),
                                 int(os.environ['GITHUB_RUN_ID']))
-          for run_id in (34495764385, 34495764441):
+          for run_id in (34501866010, 34501866003):
               check = json.loads((state/f'check-{run_id}.json').read_bytes())
               if check.get('head_sha') != os.environ['SOURCE_SHA'] or check.get('conclusion') != 'success':
                   raise ValueError('checked_source_not_verified')
           meta = json.loads((state/'input-meta.json').read_bytes())
-          archive_sha = '2daa045ee732484077ad33b23f040fc2781144d6ba4910c3cc233732b0da2f3e'
+          archive_sha = 'cf33f78acb0a0522df8f981a6a7435196927a83206f6e0bc7996ec02b81b0181'
           if meta.get('expired') is not False or meta.get('digest') != 'sha256:'+archive_sha:
               raise ValueError('retained_evidence_unavailable')
           if hashlib.sha256((state/'input.zip').read_bytes()).hexdigest() != archive_sha:
               raise ValueError('evidence_archive_digest_mismatch')
           with ZipFile(state/'input.zip') as archive:
-              raw = archive.read('review.json')
-          if hashlib.sha256(raw).hexdigest() != '324d25b3d08fd448a54fa2fd7dc2da6882f8858ea874b6820fc24f62b78cfa02':
-              raise ValueError('evidence_report_digest_mismatch')
-          (state/'review.json').write_bytes(raw)
+              raw = archive.read('scale-full.json')
+          (state/'scale-full.json').write_bytes(raw)
           sys.path.insert(0, str(Path('reviewed/scripts/diagnostics').resolve()))
-          import anex_tourvisor_link_import as links
-          delta = links.approved_delta(state/'review.json')
-          links.save(state/'reservation.json', {
+          import andromeda_identity_batch_accept as batch
+          from anex_tourvisor_link_import import save
+          payload = batch.request(state/'scale-full.json')
+          request_hash = batch.digest(payload)
+          if request_hash != '2a83b140e1ba36ad2d41168cd67abb1b3f05329e29793af41f5f5d23b7905024':
+              raise ValueError('exact_92_request_changed')
+          save(state/'reservation.json', {
               'state': 'reserved_before_ssh', 'operation_id': os.environ['OPERATION_ID'],
               'run_id': int(os.environ['GITHUB_RUN_ID']), 'source_sha': os.environ['SOURCE_SHA'],
-              'delta_sha256': links.digest(delta), 'checked_report_sha256': links.REPORT_SHA256,
-              'pairs': [[r['anex_hotel_id'], r['catalog_hotel_id']] for r in delta['rows']],
+              'request_sha256': request_hash, 'source_report_sha256': batch.REPORT_CANONICAL_SHA256,
+              'pairs': [[r['external_hotel_id'], r['local_hotel_id']] for r in payload['rows']],
               'supplier_calls': 0, 'database_writes_started': False,
               'unknown_result_requires_readback_not_replay': True
           }, exclusive=True)
-          print('Exact four-pair operation prepared; database not yet contacted.')
+          print('Exact 92-identity operation prepared; database not yet contacted.')
           PYTHON
       - name: Preserve durable reservation before the only SSH write
         id: reserved
         uses: actions/upload-artifact@v4
         with:
-          name: anex-link-1759-20260910-v1-reservation
+          name: andromeda-1759-validated-92-v1-reservation
           path: |
-            ${{ runner.temp }}/anex-link-1759-20260910-v1/reservation.json
-            ${{ runner.temp }}/anex-link-1759-20260910-v1/review.json
+            ${{ runner.temp }}/andromeda-1759-validated-92-v1/reservation.json
+            ${{ runner.temp }}/andromeda-1759-validated-92-v1/scale-full.json
           if-no-files-found: error
           retention-days: 90
-      - name: Apply four checked pairs through the existing SSH and SQL importer
+      - name: Accept 92 checked identities through existing SSH and verify post-COMMIT rows
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
-          python3 -B reviewed/scripts/diagnostics/anex_tourvisor_link_import.py \
-            --checkpoint "$RUNNER_TEMP/$OPERATION_ID/review.json" \
+          python3 -B reviewed/scripts/diagnostics/andromeda_identity_batch_accept.py \
+            --report "$RUNNER_TEMP/$OPERATION_ID/scale-full.json" \
             --receipt "$RUNNER_TEMP/$OPERATION_ID/receipt.json" --apply \
-            > "$RUNNER_TEMP/$OPERATION_ID/result.json"
+            --output "$RUNNER_TEMP/$OPERATION_ID/result.json"
           python3 - <<'PYTHON'
           import json, os
           from pathlib import Path
@@ -132,18 +134,18 @@ jobs:
               raise ValueError('application_import_not_finalized')
           result = value['result']
           print(json.dumps({k: result.get(k) for k in (
-              'status','inserted','updated','unchanged','skipped_manual','skipped_pair_excluded',
-              'readback_verified','effective_mapped_count','link_readback')}, ensure_ascii=False))
+              'status','input_count','updated','readback_verified','other_identities_unchanged',
+              'counts','live_coverage','supplier_calls')}, ensure_ascii=False))
           PYTHON
       - name: Retain outcome including unknown or failed receipt; never retry automatically
         if: always() && steps.reserved.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: anex-link-1759-20260910-v1-result
+          name: andromeda-1759-validated-92-v1-result
           path: |
-            ${{ runner.temp }}/anex-link-1759-20260910-v1/reservation.json
-            ${{ runner.temp }}/anex-link-1759-20260910-v1/receipt.json
-            ${{ runner.temp }}/anex-link-1759-20260910-v1/result.json
-            ${{ runner.temp }}/anex-link-1759-20260910-v1/receipt.json.mapping.json
+            ${{ runner.temp }}/andromeda-1759-validated-92-v1/reservation.json
+            ${{ runner.temp }}/andromeda-1759-validated-92-v1/receipt.json
+            ${{ runner.temp }}/andromeda-1759-validated-92-v1/receipt.json.outcome.json
+            ${{ runner.temp }}/andromeda-1759-validated-92-v1/result.json
           if-no-files-found: error
           retention-days: 90
