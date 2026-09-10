@@ -507,7 +507,7 @@ async function run(browser, width, previous) {
     const photo = await card.locator('.hotel-photo').boundingBox();
     const body = await card.locator('.hotel-body').boundingBox();
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
-    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap');
+    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap: '+JSON.stringify({width,previous,photo,body}));
     else assert.ok(body.x >= photo.x + photo.width - 1, 'desktop hotel content sits beside the photo without overlap');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), tour.id, 'selection identity retained');
     assert.equal(await card.locator('.direct-tour').innerText(), 'Выбрать тур', 'selection action identifies its target');
@@ -548,15 +548,25 @@ async function run(browser, width, previous) {
     const errorParameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
     await page.evaluate(() => {
       window.__resultsRetrySubmits = 0;
-      window.V2SearchLifecycle.submit = () => { window.__resultsRetrySubmits += 1; };
+      window.V2SearchLifecycle.submit = () => {
+        window.__resultsRetrySubmits += 1;
+        window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation: 45 } }));
+        window.__releaseRetryStart = () => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 45 } }));
+      };
       window.dispatchEvent(new CustomEvent('v2:search-error', { detail: { phase: 'status' } }));
     });
     assert.equal(await page.locator('#status .results-state--error').isVisible(), true, 'search failure exposes a distinct error state');
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'search failure leaves parameters editable even with retained results');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), errorParameters, 'error recovery preserves every search parameter');
     if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `search-error-edit-${width}.png`), fullPage: true });
-    await page.locator('#status .results-state-retry').click();
+    const retrySearch = page.locator('#status .results-state-retry');
+    await retrySearch.focus();
+    await retrySearch.press('Enter');
     assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 1, 'retry reuses the canonical search lifecycle');
+    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'retry reset keeps focus on a stable recovery target');
+    await page.evaluate(() => window.__releaseRetryStart());
+    await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
+    assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'retry moves focus to the visible loading status');
     assert.equal(await page.locator('#results .hotel-card').count(), 2, 'error state preserves already rendered cards');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-continue-error', { detail: {} })));
     assert.match(await page.locator('#status').innerText(), /Уже найденные отели сохранены/, 'continue failure truthfully preserves prior results');
