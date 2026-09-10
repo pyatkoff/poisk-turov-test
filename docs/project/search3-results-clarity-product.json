@@ -1019,5 +1019,108 @@
     ],
     "rollback": "Revert release merge cf31773c3edd2aae84e59953c52d15218076d0a0; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue the next confirmed independent Search3 journey defect while exact publication and provider selection remain separately gated."
+  },
+  "retry_service_recovery_and_mobile_card_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "baseline_release_sha": "515ff0bc4a8f907c25385c56931f350c23f10975",
+    "packages": [
+      {
+        "source_pr": 1855,
+        "source_sha": "c139bd6e0d433d66f4c372986a5b1de278d1c2a4",
+        "source_tree": "3b00f2ddaf29c1e1f3ca97fd4888793d64ad3a79",
+        "release_integration_sha": "ba0152e968feade071e8888d13c4e28e75085daa"
+      },
+      {
+        "source_pr": 1856,
+        "source_sha": "f66d0c96cc99f873ab056a5d45af88fe6bdfe51b",
+        "source_tree": "fc8b132f9406ecdb9c4c217a64cbae880a850494",
+        "release_integration_sha": "2c727a5ab60f44f7262e0690a638ca75d697fe02"
+      }
+    ],
+    "product_result": [
+      "Keyboard retry no longer loses focus when the canonical lifecycle synchronously removes the error action: focus remains on the stable form during reset and moves to the visible loading or error status.",
+      "Empty-result recovery now keeps the hotel-service count truthful after direct service relaxation and after airport or resort relaxation clears incompatible services.",
+      "At the 760 px boundary the hotel photo now fills its one-column grid track, so the full-width hotel body starts after the photo instead of overlapping its final 5 px."
+    ],
+    "ownership": {
+      "shared_renderer": "v2/results-renderer-v5.js",
+      "service_count_owner_reused": "V2Catalogs.updateServiceCount()",
+      "responsive_source": "src/search3/styles/results-layout.css",
+      "generated_outputs": [
+        "v2/search3-shared-runtime.json",
+        "v2/search3-results-filters-v1.css",
+        "docs/project/search3-production-import.json"
+      ],
+      "duplicate_handlers_added": 0,
+      "duplicate_renderers_added": 0,
+      "override_skin_added": false
+    },
+    "size": {
+      "renderer_source_js_delta_raw_bytes": 1269,
+      "served_compact_renderer_js_delta_raw_bytes": 875,
+      "compiled_css_delta_raw_bytes": 11,
+      "served_css_js_delta_raw_bytes": 886,
+      "generated_shared_runtime_json_delta_raw_bytes": 873,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0,
+      "accounting": "The generated shared-runtime JSON delta includes metadata and the compact code body; it is reported separately and is not double-counted as an additional browser asset."
+    },
+    "verification": {
+      "retry_security_run": 34442838158,
+      "retry_exact_artifact_run": 34442838168,
+      "retry_exact_artifact_id": 10138601655,
+      "retry_exact_artifact_digest": "sha256:5151bc84e970032488a3d201cc8271f27736d9ec0b56093373b079d455c0c355",
+      "retry_geometry_artifact_id": 10138601312,
+      "retry_geometry_artifact_digest": "sha256:04cd937e03fa52654b33e328133dbbed28590d2cedb32d3b5bb164d12a0a3c91",
+      "final_security_run": 34443622766,
+      "final_exact_artifact_run": 34443623058,
+      "final_exact_artifact_id": 10138870957,
+      "final_exact_artifact_digest": "sha256:189a6ee76bc3cad6efacfbe993f19a5e2044c48ad23b92d4e6579fd938700539",
+      "final_geometry_artifact_id": 10138870679,
+      "final_geometry_artifact_digest": "sha256:6cd6deeaf9d57ca215a8f967fb2e7e42e8d5569262dacbda5eb7eb52cb58c266",
+      "responsive_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "focused_contracts": [
+        "retry keyboard focus through synchronous reset and asynchronous start",
+        "direct and dependent hotel-service count synchronization",
+        "760 px photo/body non-overlap",
+        "raw and served runtime parity across 16 responsive states",
+        "shortlist, native entry and Andromeda detail regressions remain green",
+        "real supplier calls and leads remain zero"
+      ],
+      "corrected_ci_finding": {
+        "run": 34443335818,
+        "finding": "The existing 760 px served card rendered a 533.33 px photo inside a 718 px one-column track and overlapped the body by 5 px.",
+        "resolution": "The same PR added width:100% in the current responsive photo owner, rebuilt generated CSS/import hashes and reran the full exact matrix."
+      },
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful final exact artifact is retained for an authorized dispatch.",
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merges 2c727a5ab60f44f7262e0690a638ca75d697fe02 and ba0152e968feade071e8888d13c4e28e75085daa independently; the currently published isolated preview was not changed by either package.",
+    "next_action": "Continue the next confirmed independent Search3 journey defect from the fresh checked release while exact publication and Andromeda selection remain separately gated."
   }
 }
