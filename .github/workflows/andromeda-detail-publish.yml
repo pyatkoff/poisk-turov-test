@@ -1,0 +1,67 @@
+name: Publish checked Andromeda detail selection
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type publish-andromeda-detail-1873"
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytoour-andromeda-detail-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check explicit invocation and pinned CI
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay an unknown publication; inspect its checkpoint.');
+            if (context.payload.inputs.confirmation !== 'publish-andromeda-detail-1873') throw new Error('Confirmation mismatch.');
+            const gates = [
+              [34467567059, 'eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7'],
+              [34467567073, 'eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7'],
+              [34468460984, 'be6c382aea670908145c4eb63f3549374a57a419'],
+              [34468460886, 'be6c382aea670908145c4eb63f3549374a57a419']
+            ];
+            for (const [run_id, sha] of gates) {
+              const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
+              if (run.head_sha !== sha || run.status !== 'completed' || run.conclusion !== 'success') {
+                throw new Error('Pinned CI gate failed: ' + run_id);
+              }
+            }
+      - uses: actions/checkout@v4
+        with:
+          ref: be6c382aea670908145c4eb63f3549374a57a419
+          path: publisher
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7
+          path: candidate
+          persist-credentials: false
+      - name: Install checked module first and API last
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B publisher/scripts/diagnostics/andromeda_detail_publish.py candidate helper
+      - name: Preserve publication checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-detail-publication-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-detail-publication/
+          if-no-files-found: ignore
+          retention-days: 14
