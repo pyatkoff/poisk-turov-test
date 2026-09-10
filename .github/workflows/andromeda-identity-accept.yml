@@ -1,30 +1,19 @@
 name: Reviewed hotel identity acceptance
-run-name: ANEX 1759 complete106 acceptance v2
+run-name: Hotel observed bulk 1759 v1
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
     paths: ['.github/workflows/andromeda-identity-accept.yml']
-  pull_request:
-    branches: ['feat/int-andromeda-live-20260909']
-    paths: ['.github/workflows/andromeda-identity-accept.yml', 'tests/anex_link_operation_test.py']
 permissions: {contents: read, actions: read}
 concurrency:
-  group: ${{ github.event_name == 'push' && 'andromeda-identity-writes' || format('hotel-operation-check-{0}', github.run_id) }}
+  group: andromeda-identity-writes
   cancel-in-progress: false
 env:
-  SOURCE_SHA: ed5cdfb8c93d82cccfb46bb0f957fd14ed092f5e
-  OPERATION_ID: anex-1759-complete106-20260911-v2
+  SOURCE_SHA: 7a3b826686d0f335ef0f6a5e2a6a07b8ed24ac09
+  MERGE_SHA: 7f4f8f0f9ea53f4358c31757159d456245e011ea
+  OPERATION_ID: hotel-observed-bulk-1759-20260911-v1
 jobs:
-  check-operation:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-        with: {persist-credentials: false}
-      - name: Verify exact v2 live operation boundaries without private access
-        run: python3 -B tests/anex_link_operation_test.py
   accept:
-    needs: check-operation
     if: github.event_name == 'push' && github.ref == 'refs/heads/feat/int-andromeda-live-20260909' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -32,9 +21,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          ref: ed5cdfb8c93d82cccfb46bb0f957fd14ed092f5e
+          ref: 7a3b826686d0f335ef0f6a5e2a6a07b8ed24ac09
           path: reviewed
-      - name: Verify checked v2 source and new operation; prepare exact106 ANEX pairs
+      - name: Verify merged checked source and reserve operation
+        id: prepare
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -43,89 +33,103 @@ jobs:
           test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
           mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
           export STATE="$RUNNER_TEMP/$OPERATION_ID"
-          for id in 34532728599 34532728666; do
+          gh api "repos/$GITHUB_REPOSITORY/pulls/1951" > "$STATE/pr.json"
+          for id in 34535346574 34535346684; do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"
           done
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?branch=feat%2Fint-andromeda-live-20260909&event=push&per_page=100" > "$STATE/history.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/reservations.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10171167462/zip" > "$STATE/complete187.zip"
-          echo "1c4ad8fd32f5dfef1b52526a7050fb72c781d76fc1d2e455c72e6d09eff788bd  $STATE/complete187.zip" | sha256sum -c -
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/prior-reservation.json"
           python3 - <<'PYTHON'
-          import json, os, sys
+          import json, os
           from pathlib import Path
-
-          def require_new_operation(pages, reservations, current_run):
-              if not isinstance(pages,list) or not pages:
-                  raise ValueError('operation_history_unavailable')
-              runs=[]
-              for page in pages:
-                  if not isinstance(page,dict) or not isinstance(page.get('workflow_runs'),list):
-                      raise ValueError('operation_history_unavailable')
-                  runs.extend(page['workflow_runs'])
-              if not any(r.get('id')==current_run for r in runs):
-                  raise ValueError('current_operation_missing')
-              prior=[r for r in runs if r.get('id')!=current_run and r.get('display_title')=='ANEX 1759 complete106 acceptance v2']
-              if prior or reservations.get('total_count')!=0 or reservations.get('artifacts')!=[]:
-                  raise ValueError('prior_operation_do_not_replay')
-
           state=Path(os.environ['STATE'])
-          require_new_operation(json.loads((state/'history.json').read_bytes()),json.loads((state/'reservations.json').read_bytes()),int(os.environ['GITHUB_RUN_ID']))
-          for run_id in (34532728599,34532728666):
+          pr=json.loads((state/'pr.json').read_bytes())
+          if pr.get('merged_at') is None or pr.get('merge_commit_sha')!=os.environ['MERGE_SHA'] or pr.get('head',{}).get('sha')!=os.environ['SOURCE_SHA']:
+              raise ValueError('checked_source_not_merged')
+          for run_id in (34535346574,34535346684):
               value=json.loads((state/f'check-{run_id}.json').read_bytes())
               if value.get('head_sha')!=os.environ['SOURCE_SHA'] or value.get('conclusion')!='success':
                   raise ValueError('checked_source_unconfirmed')
-          sys.path.insert(0,str(Path('reviewed/scripts/diagnostics').resolve()))
-          import anex_complete_strong_accept as batch
-          payload=batch.request(state/'complete187.zip')
-          if batch.OPERATION_ID!=os.environ['OPERATION_ID'] or payload.get('count')!=106 or len({r['catalog_hotel_id'] for r in payload['rows']})!=91 or batch.digest(payload)!='cec6672929ccd3333c757be1dcc9ba1a0b0df3283d8cd529b1093a31d01e4433':
-              raise ValueError('reviewed_complete106_v2_delta_changed')
-          batch.save(state/'request.json',payload)
-          batch.save(state/'reservation.json',{'state':'reserved_before_ssh','operation_id':batch.OPERATION_ID,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'request_sha256':batch.digest(payload),'pairs':[[r['anex_hotel_id'],r['catalog_hotel_id']] for r in payload['rows']],'count':106,'unique_targets':91,'supplier_calls':0,'v1_failed_before_ssh_run':34532232902,'unknown_requires_readback_not_replay':True})
-          print('Exactly106 v2 ANEX links reserved; v1 and all completed operations will not replay.')
+          prior=json.loads((state/'prior-reservation.json').read_bytes())
+          if prior.get('total_count')!=0 or prior.get('artifacts')!=[]:
+              raise ValueError('prior_operation_do_not_replay')
+          script=(Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile.php').read_text())
+          if "const HB_OPERATION = 'hotel-observed-bulk-1759-20260911-v1';" not in script:
+              raise ValueError('operation_source_changed')
+          reservation={'state':'reserved_before_ssh','operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'merge_sha':os.environ['MERGE_SHA'],'rule':'unique_exact_current_name_or_alias_in_country','supplier_calls':0,'apply_must_not_retry':True,'unknown_must_use_receipt_only':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
           PYTHON
-      - name: Preserve v2 reservation and exact request before application transaction
+      - name: Preserve reservation before any application SSH
         id: reserved
         uses: actions/upload-artifact@v4
         with:
-          name: anex-1759-complete106-20260911-v2-reservation
-          path: |
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/reservation.json
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/request.json
+          name: hotel-observed-bulk-1759-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v1/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Insert106 v2 ANEX links through existing SSH and verify committed rows
+      - name: Apply once and verify server receipt
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
-          python3 -B reviewed/scripts/diagnostics/anex_complete_strong_accept.py \
-            --archive "$RUNNER_TEMP/$OPERATION_ID/complete187.zip" --apply \
-            --receipt "$RUNNER_TEMP/$OPERATION_ID/receipt.json" \
-            --output "$RUNNER_TEMP/$OPERATION_ID/result.json" > "$RUNNER_TEMP/$OPERATION_ID/result.stdout.json"
+          set -euo pipefail
           python3 - <<'PYTHON'
-          import json, os
+          import json, os, shlex, subprocess, tempfile
           from pathlib import Path
           state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
-          receipt=json.loads((state/'receipt.json').read_bytes())
-          if receipt.get('state')!='finalized':
-              raise ValueError('application_receipt_unconfirmed')
-          result=receipt['result']
-          if result.get('inserted')!=106 or result.get('readback_verified') is not True or result.get('previous_rows_unchanged') is not True or result.get('operation_id')!=os.environ['OPERATION_ID']:
-              raise ValueError('complete106_v2_live_write_unconfirmed')
-          print(json.dumps({k:result.get(k) for k in ('status','operation_id','inserted','updated','input_count','readback_verified','previous_rows_unchanged','live_coverage','supplier_calls')},ensure_ascii=False))
+          source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile.php').read_text()
+          if not source.startswith('<?php'):
+              raise ValueError('php_source')
+          code=source[len('<?php'):]
+          required=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(k,'').strip() for k in required):
+              raise ValueError('ssh_configuration')
+          host=os.environ['ANYTOOUR_DEPLOY_HOST'].strip(); user=os.environ['ANYTOOUR_DEPLOY_USER'].strip()
+          if host.startswith('-') or user.startswith('-') or any(c.isspace() for c in host+user):
+              raise ValueError('ssh_target')
+          with tempfile.TemporaryDirectory(prefix='hotel-observed-bulk-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key'; key.write_text(os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].rstrip()+'\n'); key.chmod(0o600)
+              known=Path(tmp)/'known_hosts'
+              command=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in required and not k.startswith('ANEX_')}
+              def call(phase, timeout=180):
+                  p=subprocess.run(command,input=json.dumps({'operation_id':os.environ['OPERATION_ID'],'phase':phase}),text=True,capture_output=True,timeout=timeout,env=clean)
+                  try: value=json.loads(p.stdout)
+                  except Exception: value={'status':'transport_unparseable'}
+                  return p.returncode,value
+              rc0,before=call('receipt',60)
+              (state/'server-before.json').write_text(json.dumps(before,sort_keys=True)+'\n')
+              if rc0!=0 or before.get('status')!='not_started':
+                  raise ValueError('server_operation_already_started')
+              # Exactly one apply attempt. Never replay this call, even on timeout/unknown reply.
+              try:
+                  apply_rc,apply_result=call('apply',180)
+              except subprocess.TimeoutExpired:
+                  apply_rc=124; apply_result={'status':'apply_reply_timeout'}
+              (state/'apply-response.json').write_text(json.dumps(apply_result,sort_keys=True)+'\n')
+              # Safe readback only. This phase never writes or calls a supplier.
+              receipt_rc,receipt=call('receipt',60)
+              (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+              if receipt_rc!=0 or receipt.get('status') not in ('completed','empty'):
+                  raise ValueError('live_operation_unknown_no_replay')
+              if receipt.get('operation_id')!=os.environ['OPERATION_ID'] or receipt.get('supplier_calls')!=0:
+                  raise ValueError('receipt_scope')
+              if receipt.get('status')=='completed' and receipt.get('readback_verified') is not True:
+                  raise ValueError('readback_unconfirmed')
+              summary={k:receipt.get(k) for k in ('status','operation_id','rule','catalog_scope','anex','andromeda','accepted_total','database_writes','readback_verified','before','after','supplier_calls')}
+              (state/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,sort_keys=True)+'\n')
+              print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
           PYTHON
-      - name: Preserve v2 outcome even when unknown; no automatic retries
+      - name: Preserve live result; no automatic retry
         if: always() && steps.reserved.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: anex-1759-complete106-20260911-v2-result
+          name: hotel-observed-bulk-1759-20260911-v1-result
           path: |
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/reservation.json
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/request.json
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/receipt.json
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/receipt.json.outcome.json
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/result.json
-            ${{ runner.temp }}/anex-1759-complete106-20260911-v2/result.stdout.json
-          if-no-files-found: error
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v1/reservation.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v1/server-before.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v1/apply-response.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v1/receipt.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v1/summary.json
+          if-no-files-found: warn
           retention-days: 90
