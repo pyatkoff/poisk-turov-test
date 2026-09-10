@@ -3,42 +3,67 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Type publish-andromeda-detail-1873"
+        description: "Type publish-andromeda-package-1901 (installation only)"
         required: true
         type: string
+  issue_comment:
+    types: [created]
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytoour-andromeda-detail-publication
+  # Irrelevant comments must not replace a pending explicit publication.
+  group: ${{ (github.actor == 'pyatkoff' && github.event.sender.id == 226193297 && ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-package-1901') || (github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.number == 996 && !github.event.issue.pull_request && github.event.comment.body == '/publish-andromeda-package-1901'))) && 'anytoour-andromeda-detail-publication' || format('andromeda-detail-ignored-{0}', github.run_id) }}
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.number == 996 && !github.event.issue.pull_request &&
+        github.event.sender.id == 226193297 &&
+        github.event.comment.body == '/publish-andromeda-package-1901'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check explicit invocation and pinned CI
+      - name: Check explicit owner invocation, pinned CI and retained artifact
         uses: actions/github-script@v7
         with:
           script: |
+            const owner = 226193297;
+            const command = '/publish-andromeda-package-1901';
             if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay an unknown publication; inspect its checkpoint.');
-            if (context.payload.inputs.confirmation !== 'publish-andromeda-detail-1873') throw new Error('Confirmation mismatch.');
+            if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
+            if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if (context.eventName === 'workflow_dispatch') {
+              if (context.payload.inputs?.confirmation !== 'publish-andromeda-package-1901') throw new Error('Confirmation mismatch.');
+            } else if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
+                       context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
+                       context.payload.comment?.body !== command) {
+              throw new Error('Exact created owner command in issue996 required.');
+            }
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
             const gates = [
-              [34467567059, 'eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7'],
-              [34467567073, 'eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7'],
-              [34468460984, 'be6c382aea670908145c4eb63f3549374a57a419'],
-              [34468460886, 'be6c382aea670908145c4eb63f3549374a57a419']
+              [34494341744, 'fdd099e36fdc1a20a561f285d22d0acb00f90e36'],
+              [34494341688, 'fdd099e36fdc1a20a561f285d22d0acb00f90e36'],
+              [34494341735, 'fdd099e36fdc1a20a561f285d22d0acb00f90e36'],
+              [34494341830, 'fdd099e36fdc1a20a561f285d22d0acb00f90e36'],
+              [34506166221, '22edc3a93fb8d46ac876d417e9c1cdda4161fef1'],
+              [34506166185, '22edc3a93fb8d46ac876d417e9c1cdda4161fef1']
             ];
             for (const [run_id, sha] of gates) {
               const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
-              if (run.head_sha !== sha || run.status !== 'completed' || run.conclusion !== 'success') {
-                throw new Error('Pinned CI gate failed: ' + run_id);
-              }
+              if (run.head_sha !== sha || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned CI gate failed: ' + run_id);
             }
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10159104848});
+            if (artifact.id !== 10159104848 || artifact.expired !== false || artifact.workflow_run?.id !== 34494341744 ||
+                artifact.workflow_run?.head_sha !== 'fdd099e36fdc1a20a561f285d22d0acb00f90e36' ||
+                artifact.digest !== 'sha256:269429a1e37c3e9dda8d3b706b28097a655b6914fe998c908e4b5af35491cc47') throw new Error('Artifact identity/digest mismatch.');
       - uses: actions/checkout@v4
         with:
-          ref: be6c382aea670908145c4eb63f3549374a57a419
+          ref: 22edc3a93fb8d46ac876d417e9c1cdda4161fef1
           path: publisher
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -46,12 +71,14 @@ jobs:
           ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
           path: helper
           persist-credentials: false
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          ref: eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7
+          artifact-ids: '10159104848'
+          run-id: '34494341744'
+          github-token: ${{ github.token }}
           path: candidate
-          persist-credentials: false
-      - name: Install checked module first and API last
+          merge-multiple: true
+      - name: Install checked dependencies first and API last without supplier calls
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
