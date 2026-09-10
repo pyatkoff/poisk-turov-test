@@ -1,5 +1,5 @@
 name: Reviewed hotel identity acceptance
-run-name: Andromeda 1759 six-country expansion v1
+run-name: Andromeda 1759 saved-country evidence read v1
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
@@ -13,133 +13,93 @@ concurrency:
   cancel-in-progress: false
 env:
   SOURCE_SHA: 6a62df9ba2e82651c9a136c044d576f6e59f7205
-  OPERATION_ID: andromeda-1759-country6-20260910-v1
 jobs:
   check-operation:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions: {contents: read}
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Check exact operation boundaries without private access
+      - name: Verify bounded saved-file reader without private access
         run: python3 -B tests/anex_link_operation_test.py
-  accept:
+  inspect:
     needs: check-operation
     if: github.event_name == 'push' && github.ref == 'refs/heads/feat/int-andromeda-live-20260909' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
           ref: 6a62df9ba2e82651c9a136c044d576f6e59f7205
           path: reviewed
-      - name: Verify checked source and absence of prior six-country operation
+      - name: Verify the completed source and import before reading retained files
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          test "$GITHUB_RUN_ATTEMPT" = 1
           test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
-          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
-          export STATE="$RUNNER_TEMP/$OPERATION_ID"
           for id in 34506089235 34506089363; do
-            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"
+            test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/$id --jq '.head_sha+":"+.conclusion')" = "$SOURCE_SHA:success"
           done
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?branch=feat%2Fint-andromeda-live-20260909&event=push&per_page=100" > "$STATE/history.json"
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/reservations.json"
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/34506730438 --jq '.head_sha+":"+.conclusion')" = 'ce0629c23987053f4ed339656b56ba185904cb28:success'
+      - name: Read only saved pending rows and dictionary geography without DB or suppliers
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
           python3 - <<'PYTHON'
           import json, os, sys
           from pathlib import Path
-
-          def require_new_operation(pages, reservations, current_run):
-              if not isinstance(pages, list) or not pages:
-                  raise ValueError('operation_history_unavailable')
-              runs = []
-              for page in pages:
-                  if not isinstance(page, dict) or not isinstance(page.get('workflow_runs'), list):
-                      raise ValueError('operation_history_unavailable')
-                  runs.extend(page['workflow_runs'])
-              if not any(r.get('id') == current_run for r in runs):
-                  raise ValueError('current_operation_missing_from_history')
-              prior = [r for r in runs if r.get('id') != current_run
-                       and r.get('display_title') == 'Andromeda 1759 six-country expansion v1']
-              if prior or reservations.get('total_count') != 0 or reservations.get('artifacts') != []:
-                  raise ValueError('prior_reserved_or_completed_operation_do_not_replay')
-
-          state = Path(os.environ['STATE'])
-          require_new_operation(json.loads((state/'history.json').read_bytes()),
-                                json.loads((state/'reservations.json').read_bytes()),
-                                int(os.environ['GITHUB_RUN_ID']))
-          for run_id in (34506089235, 34506089363):
-              check = json.loads((state/f'check-{run_id}.json').read_bytes())
-              if check.get('head_sha') != os.environ['SOURCE_SHA'] or check.get('conclusion') != 'success':
-                  raise ValueError('checked_source_not_verified')
           sys.path.insert(0, str(Path('reviewed/scripts/diagnostics').resolve()))
-          import andromeda_country_expansion as expansion
-          from anex_tourvisor_link_import import save
-          if expansion.OPERATION_ID != os.environ['OPERATION_ID'] or expansion.COUNTRIES != ('uae','thailand','vietnam','sri-lanka','maldives','cuba'):
-              raise ValueError('country_scope_changed')
-          save(state/'reservation.json', {
-              'state': 'reserved_before_capture', 'operation_id': expansion.OPERATION_ID,
-              'run_id': int(os.environ['GITHUB_RUN_ID']), 'source_sha': os.environ['SOURCE_SHA'],
-              'countries': expansion.COUNTRIES, 'max_supplier_calls': 18,
-              'policy': 'unique_current_country_name_alias_and_official_geography',
-              'price_calls': 0, 'public_country_activation': False,
-              'existing_identities_must_remain_unchanged': True,
-              'unknown_result_requires_readback_not_replay': True
-          }, exclusive=True)
-          print('Six new country catalogues reserved; no old imports or prices.')
+          from anex_search3_owner_decisions import ssh_php
+          from anex_tourvisor_link_import import save, digest
+          library = Path('reviewed/scripts/diagnostics/andromeda_country_expansion.php').read_text().removeprefix('<?php')
+          reader = r'''
+          error_reporting(0);ob_start();
+          try {
+            $q=json_decode(file_get_contents('php://stdin'),true,8,JSON_THROW_ON_ERROR);
+            $country=$q['country']??'';
+            if(!isset(CE_COUNTRIES[$country]))throw new RuntimeException();
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException();
+            $config=require $root.'/_preview/search3-anex-candidate/.andromeda-private.php';
+            $private=realpath(dirname($config['catalog_path']));if(!$private)throw new RuntimeException();
+            $stage=$private.'/'.CE_OPERATION.'-'.$country;
+            $cap=ce_read($stage.'/capture-result.json');$data=ce_read($stage.'/capture.json');
+            $plan=ce_read($stage.'/plan.json');$receipt=ce_read($stage.'/result.json');
+            if(($receipt['status']??'')!=='imported'||($receipt['readback_verified']??false)!==true||ce_hash($data)!==$cap['capture_sha256']||ce_hash($plan)!==$cap['plan_sha256']||$plan['catalog_sha256']!==ce_hash($data['catalog']))throw new RuntimeException();
+            $locals=[];foreach($data['local']['hotels'] as $h)$locals[(int)$h['id']]=$h;
+            $rows=[];
+            foreach($plan['rows'] as $r){
+              if($r['decision_status']!=='pending')continue;
+              $e=json_decode($r['evidence_json'],true,64,JSON_THROW_ON_ERROR);$targets=[];
+              foreach($e['candidate_ids'] as $id){if(!isset($locals[(int)$id]))throw new RuntimeException();$targets[]=$locals[(int)$id];}
+              $rows[]=['identity'=>$r,'evidence'=>$e,'targets'=>$targets,'evidence_sha256'=>hash('sha256',$r['evidence_json'])];
+            }
+            $value=['status'=>'saved_pending_read','country'=>$country,'country_id'=>$data['country_id'],'supplier_country_id'=>$data['supplier_country_id'],'capture_sha256'=>$cap['capture_sha256'],'plan_sha256'=>$cap['plan_sha256'],'catalog_sha256'=>$plan['catalog_sha256'],'towns'=>$data['catalog']['payload']['TOWNTO'],'rows'=>$rows,'supplier_calls'=>0,'database_writes'=>0];
+            $out=ce_json($value);
+            foreach([$config['username'],$config['password'],rawurlencode($config['username']),rawurlencode($config['password'])] as $secret)if($secret!==''&&strpos($out,$secret)!==false)throw new RuntimeException();
+            if(strlen($out)>4000000)throw new RuntimeException();
+          } catch(Throwable $e){$out='{"status":"saved_read_failed","supplier_calls":0,"database_writes":0}';}
+          while(ob_get_level())ob_end_clean();echo $out;
+          '''
+          source = "define('CE_LIBRARY_ONLY',true);\n" + library + '\n' + reader
+          dest=Path(os.environ['RUNNER_TEMP'])/'saved-country-review';dest.mkdir(mode=0o700)
+          summary=[]
+          for country in ('uae','thailand','vietnam','sri-lanka','maldives','cuba'):
+              value=ssh_php(source,{'country':country},maximum_bytes=4000000)
+              save(dest/(country+'.json'),value,exclusive=True)
+              if value.get('status')!='saved_pending_read' or value.get('country')!=country or value.get('supplier_calls')!=0 or value.get('database_writes')!=0:
+                  raise ValueError('saved_read_not_confirmed')
+              summary.append({'country':country,'pending':len(value['rows']),'sha256':digest(value)})
+          save(dest/'summary.json',{'countries':summary,'supplier_calls':0,'database_writes':0},exclusive=True)
+          print(json.dumps(summary,ensure_ascii=False))
           PYTHON
-      - name: Preserve operation reservation before supplier or database access
-        id: reserved
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: andromeda-1759-country6-20260910-v1-reservation
-          path: ${{ runner.temp }}/andromeda-1759-country6-20260910-v1/reservation.json
-          if-no-files-found: error
-          retention-days: 90
-      - name: Capture six full country catalogues and prepare source-bound matches
-        env:
-          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          python3 -B reviewed/scripts/diagnostics/andromeda_country_expansion.py capture \
-            --directory "$RUNNER_TEMP/$OPERATION_ID/data" --execute
-      - name: Preserve captured plans and all country reservations before inserts
-        id: captured
-        uses: actions/upload-artifact@v4
-        with:
-          name: andromeda-1759-country6-20260910-v1-captures
-          path: ${{ runner.temp }}/andromeda-1759-country6-20260910-v1/data/
-          if-no-files-found: error
-          retention-days: 90
-      - name: Insert only new country identities and verify committed rows
-        if: steps.captured.outcome == 'success'
-        env:
-          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: |
-          python3 -B reviewed/scripts/diagnostics/andromeda_country_expansion.py apply \
-            --directory "$RUNNER_TEMP/$OPERATION_ID/data" --execute
-          python3 - <<'PYTHON'
-          import json, os
-          from pathlib import Path
-          result = json.loads((Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'data/result-summary.json').read_bytes())
-          print(json.dumps(result, ensure_ascii=False))
-          if result.get('status') != 'completed':
-              raise SystemExit('Partial/unknown country results retained; never replay this operation.')
-          PYTHON
-      - name: Retain all completed or unknown country outcomes without automatic retries
-        if: always() && steps.reserved.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: andromeda-1759-country6-20260910-v1-result
-          path: |
-            ${{ runner.temp }}/andromeda-1759-country6-20260910-v1/reservation.json
-            ${{ runner.temp }}/andromeda-1759-country6-20260910-v1/data/
+          name: andromeda-1759-saved-country-review-v1
+          path: ${{ runner.temp }}/saved-country-review/
           if-no-files-found: error
           retention-days: 90
