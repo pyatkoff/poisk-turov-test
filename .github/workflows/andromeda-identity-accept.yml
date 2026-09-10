@@ -1,5 +1,5 @@
 name: Reviewed hotel identity acceptance
-run-name: ANEX 1759 saved strong25 acceptance v1
+run-name: ANEX 1759 complete187 read v1
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
@@ -12,8 +12,8 @@ concurrency:
   group: ${{ github.event_name == 'push' && 'andromeda-identity-writes' || format('hotel-operation-check-{0}', github.run_id) }}
   cancel-in-progress: false
 env:
-  SOURCE_SHA: de5b7a08be4c6314622719becf67189ec0e60b81
-  OPERATION_ID: anex-1759-saved-strong25-20260910-v1
+  SOURCE_SHA: 02d1b5de487623c500954da3c761323b6f1cc0ab
+  OPERATION_ID: anex-1759-complete187-review-20260910-v1
 jobs:
   check-operation:
     runs-on: ubuntu-latest
@@ -21,20 +21,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Verify exact operation boundaries without private access
+      - name: Verify exact read-only operation boundaries without private access
         run: python3 -B tests/anex_link_operation_test.py
   accept:
     needs: check-operation
     if: github.event_name == 'push' && github.ref == 'refs/heads/feat/int-andromeda-live-20260909' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          ref: de5b7a08be4c6314622719becf67189ec0e60b81
+          ref: 02d1b5de487623c500954da3c761323b6f1cc0ab
           path: reviewed
-      - name: Verify checked source and new operation; prepare exact25 saved ANEX pairs
+      - name: Verify checked source and new operation; prepare exact187 seed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -43,7 +43,7 @@ jobs:
           test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
           mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
           export STATE="$RUNNER_TEMP/$OPERATION_ID"
-          for id in 34517850536 34517850459 34517850464; do
+          for id in 34524075314 34524075324; do
             gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"
           done
           gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs?branch=feat%2Fint-andromeda-live-20260909&event=push&per_page=100" > "$STATE/history.json"
@@ -66,66 +66,68 @@ jobs:
                   runs.extend(page['workflow_runs'])
               if not any(r.get('id')==current_run for r in runs):
                   raise ValueError('current_operation_missing')
-              prior=[r for r in runs if r.get('id')!=current_run and r.get('display_title')=='ANEX 1759 saved strong25 acceptance v1']
+              prior=[r for r in runs if r.get('id')!=current_run and r.get('display_title')=='ANEX 1759 complete187 read v1']
               if prior or reservations.get('total_count')!=0 or reservations.get('artifacts')!=[]:
                   raise ValueError('prior_operation_do_not_replay')
 
           state=Path(os.environ['STATE'])
           require_new_operation(json.loads((state/'history.json').read_bytes()),json.loads((state/'reservations.json').read_bytes()),int(os.environ['GITHUB_RUN_ID']))
-          for run_id in (34517850536,34517850459,34517850464):
+          for run_id in (34524075314,34524075324):
               value=json.loads((state/f'check-{run_id}.json').read_bytes())
               if value.get('head_sha')!=os.environ['SOURCE_SHA'] or value.get('conclusion')!='success':
                   raise ValueError('checked_source_unconfirmed')
           sys.path.insert(0,str(Path('reviewed/scripts/diagnostics').resolve()))
-          import anex_saved_strong_batch as batch
-          report=batch.review({k:state/(k+'.zip') for k in ('anex','egypt','turkey','full')})
-          payload=batch.delta(report)
-          if batch.OPERATION_ID!=os.environ['OPERATION_ID'] or len(payload['rows'])!=25 or batch.digest(report)!='5a04ff6b3ed11f0477ab8c06f4779d901f335af06cca652e8fd87864f29737f7' or batch.digest(payload)!='ca69d167a542023d008a9864c925cf9990d86b0f3f2c36bd7c7ed7379428773f':
-              raise ValueError('reviewed_strong_delta_changed')
-          batch.save(state/'strong-report.json',report,exclusive=True)
-          batch.save(state/'request.json',payload,exclusive=True)
-          batch.save(state/'reservation.json',{'state':'reserved_before_ssh','operation_id':batch.OPERATION_ID,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'delta_sha256':batch.digest(payload),'report_sha256':batch.digest(report),'pairs':[[r['anex_hotel_id'],r['catalog_hotel_id']] for r in payload['rows']],'supplier_calls':0,'unknown_requires_readback_not_replay':True},exclusive=True)
-          print('Exactly25 new saved ANEX pairs prepared; no supplier requests or previous queue replay.')
+          import anex_saved_complete_review as review
+          from anex_tourvisor_link_import import save
+          paths={'anex':state/'anex.zip','egypt':state/'egypt.zip','turkey':state/'turkey.zip','full':state/'full.zip'}
+          seed=review.seed(paths)
+          if review.OPERATION_ID!=os.environ['OPERATION_ID'] or seed.get('count')!=187 or review.digest(seed)!='ba9c9e068fb9240cef81a87129e4a31ee91f9ecd79d259e5d54f2e7c016a7cd8':
+              raise ValueError('reviewed_complete187_seed_changed')
+          save(state/'seed.json',seed,exclusive=True)
+          save(state/'reservation.json',{'state':'reserved_before_read','operation_id':review.OPERATION_ID,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['SOURCE_SHA'],'seed_sha256':review.digest(seed),'count':187,'catalog_read_queries':187,'supplier_calls':0,'database_writes':0,'unknown_requires_readback_not_replay':True},exclusive=True)
+          print('Exactly187 candidate-limit IDs reserved for complete DB read; no supplier calls or writes.')
           PYTHON
-      - name: Preserve reservation and exact request before application transaction
+      - name: Preserve reservation and exact seed before current catalogue reads
         id: reserved
         uses: actions/upload-artifact@v4
         with:
-          name: anex-1759-saved-strong25-20260910-v1-reservation
+          name: anex-1759-complete187-review-20260910-v1-reservation
           path: |
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/reservation.json
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/request.json
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/strong-report.json
+            ${{ runner.temp }}/anex-1759-complete187-review-20260910-v1/reservation.json
+            ${{ runner.temp }}/anex-1759-complete187-review-20260910-v1/seed.json
           if-no-files-found: error
           retention-days: 90
-      - name: Insert25 ANEX pairs through existing SSH importer and verify committed rows
+      - name: Read all187 current complete candidate sets through existing SSH reader
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
-          python3 -B reviewed/scripts/diagnostics/anex_saved_strong_batch.py \
-            --report "$RUNNER_TEMP/$OPERATION_ID/strong-report.json" --apply \
-            --receipt "$RUNNER_TEMP/$OPERATION_ID/receipt.json" > "$RUNNER_TEMP/$OPERATION_ID/result.stdout.json"
+          python3 -B reviewed/scripts/diagnostics/anex_saved_complete_review.py \
+            --anex "$RUNNER_TEMP/$OPERATION_ID/anex.zip" --egypt "$RUNNER_TEMP/$OPERATION_ID/egypt.zip" \
+            --turkey "$RUNNER_TEMP/$OPERATION_ID/turkey.zip" --full "$RUNNER_TEMP/$OPERATION_ID/full.zip" \
+            --directory "$RUNNER_TEMP/$OPERATION_ID/data" > "$RUNNER_TEMP/$OPERATION_ID/result.stdout.json"
           python3 - <<'PYTHON'
           import json, os
           from pathlib import Path
-          value=json.loads((Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'receipt.json').read_bytes())
-          if value.get('state')!='finalized':
-              raise ValueError('application_receipt_unconfirmed')
-          result=value['result']
-          print(json.dumps({k:result.get(k) for k in ('status','inserted','updated','readback_verified','effective_mapped_count','preservation','live_coverage','supplier_calls')},ensure_ascii=False))
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          value=json.loads((state/'data/result.json').read_bytes())
+          if value.get('status')!='completed_read_only' or value.get('catalog_reads')!=187 or value.get('supplier_calls')!=0 or value.get('database_writes')!=0:
+              raise ValueError('complete187_read_unconfirmed')
+          report=json.loads((state/'data/complete-review.json').read_bytes())
+          if report.get('count')!=187 or report.get('supplier_calls')!=0 or report.get('database_writes')!=0:
+              raise ValueError('complete187_report_unconfirmed')
+          print(json.dumps({'status':value['status'],'eligible_count':value['eligible_count'],'reason_counts':value['reason_counts'],'review_sha256':value['review_sha256']},ensure_ascii=False))
           PYTHON
-      - name: Preserve outcome even when unknown; no automatic retries
+      - name: Retain every raw complete set and result; never replay this read
         if: always() && steps.reserved.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: anex-1759-saved-strong25-20260910-v1-result
+          name: anex-1759-complete187-review-20260910-v1-result
           path: |
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/reservation.json
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/strong-report.json
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/receipt.json
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/receipt.json.outcome.json
-            ${{ runner.temp }}/anex-1759-saved-strong25-20260910-v1/result.stdout.json
+            ${{ runner.temp }}/anex-1759-complete187-review-20260910-v1/reservation.json
+            ${{ runner.temp }}/anex-1759-complete187-review-20260910-v1/seed.json
+            ${{ runner.temp }}/anex-1759-complete187-review-20260910-v1/data/
+            ${{ runner.temp }}/anex-1759-complete187-review-20260910-v1/result.stdout.json
           if-no-files-found: error
           retention-days: 90
