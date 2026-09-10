@@ -50,7 +50,20 @@ async function run(browser, width) {
     assert.ok(openExtras.width > formGeometry.form.width - 50, 'open advanced parameters take the full form width');
     assert.ok(openSubmit.y >= openExtras.y + openExtras.height, 'primary action remains below expanded fields');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'expanded form has no horizontal overflow');
+    const flightTargets = page.locator('#tourSearch .toggle');
+    assert.equal(await flightTargets.count(), 2, 'original two flight switches stay the only owners');
+    for (const target of await flightTargets.all()) {
+      assert.ok((await target.boundingBox()).height >= 44, 'flight option has a full 44px label target');
+      const input = target.locator('input');
+      await target.locator('span').click();
+      assert.equal(await input.isChecked(), true, 'clicking the flight label changes its canonical checkbox');
+      await input.focus();
+      await page.keyboard.press('Space');
+      assert.equal(await input.isChecked(), false, 'native keyboard toggle stays intact');
+    }
+    await flightTargets.first().locator('span').click();
     await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
+    await flightTargets.first().locator('span').click();
     await page.locator('#tourSearch > .extras > summary').click();
     await adults.selectOption('4');
     const editingLayout = await page.evaluate(() => {

@@ -15,6 +15,10 @@ display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;pa
 & .extras[open]{grid-column:1/-1}
 & .extras>summary{padding:12px;border-color:transparent;background:#f5f7fb;color:#2743cb;font-weight:600}
 & .extras>summary span{margin-left:6px}
+& .toggle-row{display:flex;flex-wrap:wrap;gap:8px}
+& .toggle{display:flex;align-items:center;gap:8px;min-height:44px;padding:9px 12px;border:1px solid #dbe2ed;border-radius:10px;cursor:pointer;font-size:14px}
+& .toggle:has(input:checked){border-color:#2743cb;background:#eef2ff;color:#2743cb}
+& .toggle input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:#2743cb}
 & .search-submit{grid-column:2;display:block;width:100%;min-height:48px;margin:0;align-self:start;padding:12px 24px;background:#ff510c;font-weight:700}
 @media(min-width:1200px){& .main-fields{grid-template-columns:minmax(230px,1.1fr) minmax(280px,1.25fr) repeat(2,minmax(200px,1fr))}}
 @media(max-width:700px){grid-template-columns:minmax(0,1fr);& .main-fields{grid-template-columns:1fr}& .search-submit{grid-column:1;width:100%;margin-left:0}& .extras>summary span{display:block;margin:4px 0 0}}
