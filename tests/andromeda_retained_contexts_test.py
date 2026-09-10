@@ -85,7 +85,8 @@ class ActualRemoteReadTest(unittest.TestCase):
         self.searches = self.private / 'searches'
         self.searches.mkdir(parents=True)
         (self.private/'catalog.json').write_text('{}')
-        (self.target/'.andromeda-private.php').write_text("<?php return ['enabled'=>true,'catalog_path'=>" + repr(str(self.private/'catalog.json')) + "];\n")
+        catalog = str(self.private/'catalog.json').replace('\\','\\\\').replace("'","\\'")
+        (self.target/'.andromeda-private.php').write_text("<?php return ['enabled'=>true,'catalog_path'=>'" + catalog + "'];\n")
         self.db = self.private/'mapping.sqlite'
         con = sqlite3.connect(self.db)
         con.executescript("""
@@ -113,20 +114,30 @@ class ActualRemoteReadTest(unittest.TestCase):
                 'offer_ref':self.offer_ref,'supplier_namespace':'andromeda_catalog','external_hotel_id':'3414',
                 'local_hotel_id':900,'operator_ref':'5','hotel':'Fixture Hotel','operator':'ANEX',
                 'check_in':'22.09.2026','nights':7,'adults':2,'children':0,'room':'Standard','placement':'DBL',
-                'meal':{'label':'RO'},'price':{'amount':'83080','currency':'RUB'}}]},
+                'meal':{'key':1,'label':'RO'},'price':{'amount':'83080','currency':'RUB','currency_key':643}}]},
             'criteria':{'PAGE':1,'HOTELS':'3414'},'raw_ids':{self.offer_ref:self.raw_supplier}}
         (self.searches/(self.ref+'-1.json')).write_text(json.dumps({'status':'complete','generation':7,'store':store}))
         os.utime(self.searches/(self.ref+'-1.json'), (now, now))
 
-    def run_php(self):
-        run = subprocess.run(['php','-d','allow_url_fopen=0',
+    def php(self, source):
+        return subprocess.run(['php','-d','allow_url_fopen=0',
             '-d','disable_functions=curl_init,curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client',
-            '-r',probe.remote_source()], cwd=self.root, input=b'{}', capture_output=True, timeout=8)
+            '-r',source], cwd=self.root, input=b'{}', capture_output=True, timeout=8)
+
+    def run_php(self):
+        run = self.php(probe.remote_source())
         self.assertEqual(0, run.returncode, run.stderr.decode(errors='replace'))
         self.assertEqual(b'', run.stderr)
         self.assertNotIn(self.raw_supplier.encode(), run.stdout)
         self.assertNotIn(b'PRIVATE', run.stdout)
-        return probe.validate_result(json.loads(run.stdout))
+        value = probe.validate_result(json.loads(run.stdout))
+        if value.get('status') == 'blocked' and value.get('reason') == 'inspection_unconfirmed':
+            # Synthetic fixture only: expose exact PHP exception locally. This source is
+            # never passed to ssh_php and cannot contain production config/data.
+            debug = probe.remote_source().replace(":'inspection_unconfirmed';", ":('fixture_'.get_class($e).'_'.$e->getMessage());")
+            diag = self.php(debug)
+            self.fail('synthetic remote reason: ' + diag.stdout.decode(errors='replace'))
+        return value
 
     def test_current_public_selection_and_country_are_read_only(self):
         before = (self.searches/(self.ref+'-1.json')).read_bytes()
