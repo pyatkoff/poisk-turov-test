@@ -1,7 +1,8 @@
-"""Install the checked #1901 backend handoff using the existing preview SSH helper.
+"""Existing preview operations through the same authorized SSH helper.
 
-This replaces the completed #1873 operation, whose main control pins its old script.
-No supplier action, package capture, DB access, public selection or new launcher.
+Default mode installs the immutable #1901 handoff (no supplier action).
+The separate --capture-selected mode relays the checked #1917 caller once,
+only under explicit operation approval; never installs or starts a new search.
 """
 import base64
 import hashlib
@@ -196,5 +197,147 @@ def main():
         raise SystemExit('publication unconfirmed; inspect checkpoint, do not replay')
 
 
+# This mode NEVER calls the installer above. It relays the already checked #1917
+# caller once through the SAME ssh_php helper; no new supplier/client implementation.
+CALLER_SOURCE = '06f9303347ada44d6f32330c428bc67bd17f8095'
+CALLER_SHA256 = '32bb1d682793425a7d147e379ae97280685059a702cbf3152d12b5d05712a20e'
+CALLER_PATH = 'scripts/diagnostics/andromeda-package-probe.php'
+
+
+def checked_caller(directory):
+    path = Path(directory) / CALLER_PATH
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 20000:
+        raise ValueError('caller_invalid')
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != CALLER_SHA256 or not data.startswith(b'<?php\n'):
+        raise ValueError('caller_hash_mismatch')
+    return data.decode('utf-8').removeprefix('<?php')
+
+
+def selected_request(caller, raw):
+    """Reuse the PINNED PHP input validator, without loading any config or client."""
+    import subprocess
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= 16384:
+        raise ValueError('selected_request_invalid')
+    # Do not silently accept duplicate keys before PHP's canonical validation.
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('selected_request_invalid')
+            result[key] = value
+        return result
+    try:
+        json.loads(raw, object_pairs_hook=unique)
+    except (ValueError, UnicodeError):
+        raise ValueError('selected_request_invalid') from None
+    validate = caller + '''
+try { echo json_encode(anytour_retained_package_input(file_get_contents('php://stdin')), JSON_THROW_ON_ERROR); }
+catch (Throwable $ignored) { exit(2); }
+'''
+    run = subprocess.run(['php', '-d', 'display_errors=0', '-d', 'log_errors=0',
+        '-d', 'allow_url_fopen=0', '-r', validate], input=raw,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+    if run.returncode != 0 or run.stderr or len(run.stdout) > 16384:
+        raise ValueError('selected_request_invalid')
+    return json.loads(run.stdout)
+
+
+def selected_remote_source(caller):
+    # The pinned CLI's direct-file entry does not run under php -r. Invoke its
+    # same function explicitly; no caller file is installed or evaluated from stdin.
+    return caller + '''
+ini_set('display_errors','0'); ini_set('log_errors','0');
+ini_set('zend.exception_ignore_args','1'); error_reporting(0); umask(0077); ob_start();
+$raw=file_get_contents('php://stdin',false,null,0,16385);
+$result=anytour_retained_package_run(['probe','--capture-retained-package'],
+    is_string($raw)?$raw:'',(string)getcwd(),'anytour_retained_package_invoke');
+while(ob_get_level())ob_end_clean(); echo json_encode($result,JSON_THROW_ON_ERROR);
+'''
+
+
+def selected_receipt(value):
+    """Strict allowlist: unexpected output is UNKNOWN, never raw diagnostic data."""
+    import re
+    base = {'status', 'reason', 'automatic_retry', 'identity_verified', 'quote_verified', 'selection_enabled'}
+    if not isinstance(value, dict) or any(value.get(k) is not False for k in base - {'status', 'reason'}):
+        raise ValueError('selected_receipt_invalid')
+    if value.get('status') == 'captured':
+        if (set(value) != base | {'runtime_source', 'reused', 'package_sha256'}
+                or value['reason'] is not None or value['runtime_source'] != SOURCE_SHA
+                or type(value['reused']) is not bool or not isinstance(value['package_sha256'], str)
+                or re.fullmatch('[a-f0-9]{64}', value['package_sha256']) is None):
+            raise ValueError('selected_receipt_invalid')
+    else:
+        reasons = {'operation_refused', 'operation_unconfirmed', 'input_invalid', 'project_invalid',
+            'runtime_not_installed', 'publication_lock_missing', 'publication_busy',
+            'private_runtime_missing', 'receipt_invalid', 'ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN',
+            'ANDROMEDA_PACKAGE_NOT_CAPTURED', 'ANDROMEDA_PACKAGE_CONTEXT_STALE',
+            'ANDROMEDA_PACKAGE_CONTEXT_MISMATCH', 'ANDROMEDA_PACKAGE_MAPPING_UNAVAILABLE',
+            'ANDROMEDA_PACKAGE_CHECKPOINT_INVALID'}
+        if (set(value) != base or value.get('status') not in ('blocked', 'unconfirmed')
+                or not isinstance(value.get('reason'), str) or value['reason'] not in reasons):
+            raise ValueError('selected_receipt_invalid')
+    return dict(value)
+
+
+def capture_selected(caller_directory, raw, run_directory, execute):
+    """One explicitly authorized selected-offer relay; execute is an internal test seam."""
+    caller = checked_caller(caller_directory)
+    request = selected_request(caller, raw)
+    encoded = json.dumps(request, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode()
+    request_sha = hashlib.sha256(encoded).hexdigest()
+    directory = Path(run_directory)
+    # Existing/partial/unknown runner directory is a refusal, not a reset.
+    directory.mkdir(mode=0o700)
+    def durable(name, value):
+        path = directory / name
+        with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as out:
+            json.dump(value, out, sort_keys=True); out.flush(); os.fsync(out.fileno())
+        if json.loads(path.read_text()) != value:
+            raise ValueError('capture_receipt_write_unconfirmed')
+    metadata = {'caller_source': CALLER_SOURCE, 'caller_sha256': CALLER_SHA256,
+        'runtime_source': SOURCE_SHA, 'selected_request_sha256': request_sha,
+        'automatic_retry': False}
+    durable('reservation.json', dict(metadata, status='reserved', max_broninit=1,
+        login=False, price=False, calc=False, get_flights=False, booking=False))
+    try:
+        receipt = selected_receipt(execute(selected_remote_source(caller), request))
+    except Exception:
+        receipt = {'status': 'unconfirmed', 'reason': 'remote_outcome_unknown',
+            'automatic_retry': False, 'identity_verified': False,
+            'quote_verified': False, 'selection_enabled': False}
+    result = dict(metadata, receipt=receipt)
+    durable('result.json', result)
+    return result
+
+
+def capture_main():
+    # Request is a runner-private input file, never an environment variable/log.
+    if len(sys.argv) != 5:
+        raise SystemExit('usage: publisher --capture-selected PRIVATE_REQUEST PINNED_CALLER_REPO PINNED_HELPER_REPO')
+    request_file = Path(sys.argv[2])
+    if (request_file.is_symlink() or not request_file.is_file()
+            or request_file.stat().st_size > 16384 or request_file.stat().st_mode & 0o077):
+        raise SystemExit('private selected request invalid; no SSH call')
+    raw = request_file.read_bytes()
+    # Load the same helper lazily, only AFTER canonical validation and reservation.
+    def execute(source, request):
+        sys.path.insert(0, str(Path(sys.argv[4]) / 'scripts/diagnostics'))
+        from anex_search3_owner_decisions import ssh_php
+        return ssh_php(source, request)
+    try:
+        result = capture_selected(Path(sys.argv[3]), raw,
+            Path(os.environ['RUNNER_TEMP']) / 'andromeda-selected-capture', execute)
+    except Exception:
+        raise SystemExit('selected capture unconfirmed; inspect checkpoint, do not replay') from None
+    print(json.dumps(result, sort_keys=True))
+    if result['receipt']['status'] != 'captured':
+        raise SystemExit('selected capture not confirmed; no retry')
+
+
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1 and sys.argv[1] == '--capture-selected':
+        capture_main()
+    else:
+        main()
