@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-10",
+  "issue": 1759,
+  "scope": "offline_saved_catalogue_review",
+  "full_report_canonical_sha256": "97411f0e6fbd7400342456a5affab0082c39e24a51c28b94a6bdcd3ece890382",
+  "previous_shortlist_count": 39,
+  "additional_word_order_candidate_ids": ["2000068096"],
+  "catalogue_coverage": {
+    "1": {"aliases": 1992, "complete": true, "hotels": 1992},
+    "4": {"aliases": 11150, "complete": true, "hotels": 11150}
+  },
+  "counts": {
+    "ambiguous_bridge_or_original_conflict": 29,
+    "blocked_geography_conflict": 2,
+    "no_name_bridge": 1241,
+    "review_name_or_ambiguity": 1,
+    "validated_proposal_not_accepted": 37
+  },
+  "database_writes": 0,
+  "supplier_calls": 0,
+  "new_accepted_mappings": 0,
+  "effect_if_all_validated_proposals_are_accepted": {
+    "additional_provider_ids": 37,
+    "already_has_other_accepted_andromeda_id": 0,
+    "conditional_not_live": true,
+    "new_unique_local_hotels": 37,
+    "triple_after": 1193,
+    "triple_before": 1156
+  },
+  "pairs_by_status": {
+    "blocked_geography_conflict": [["82607",1298],["2000091699",2221]],
+    "review_name_or_ambiguity": [["2000087259",9324]],
+    "validated_proposal_not_accepted": [
+      ["812",5539],["1406",387],["4413",17277],["8066",3449],["13795",17311],
+      ["46462",3406],["49272",2221],["67800",17560],["74688",17611],["91644",38133],
+      ["114478",75387],["150659",1605],["193147",58793],["203605",1389],["227892",1594],
+      ["231576",17273],["234454",17270],["441492",30605],["2000023077",17425],
+      ["2000023698",31854],["2000025190",28489],["2000028642",51378],["2000035001",52914],
+      ["2000038699",5536],["2000044472",21665],["2000063004",74156],["2000063063",74313],
+      ["2000064733",127156],["2000068096",17342],["2000069004",54260],["2000069037",76588],
+      ["2000080438",75261],["2000085563",108585],["2000085565",108646],
+      ["2000095099",1465],["2000104632",111534],["2000105884",113178]
+    ]
+  },
+  "sources": {
+    "anex": {
+      "artifact_id": 10097668551,
+      "zip_sha256": "770d183c60ccff1537f1ce33879825f8fae6d40c68e882010d9bde8c49001021",
+      "members": {"anex-hotel-catalog-match.json":"8f1ee7bd288fe4f94a7e49a0245faffd4933e654443760d6454f7dfbf76d67f1"}
+    },
+    "egypt": {
+      "artifact_id": 10113498830,
+      "zip_sha256": "8d82b5b2e4db23c8af691e98d63e0c2c40df99a5822cb27494971879ef92cb63",
+      "members": {
+        "all.json":"01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+        "import-request.json":"7864595ebbb72fa8412841e0faa8b44e2b8baf9c77b5862a97bc717928173ed0",
+        "local-catalog.json":"1a83e46e763a55057d3ee55ea2cf9e104c9621e72b40138e40fc74acb0f5b09b"
+      }
+    },
+    "turkey": {
+      "artifact_id": 10118184869,
+      "zip_sha256": "b03e15604fb3a3035efeab97a7099aaafca76ee6ae9a70513cbf176bc70dc49a",
+      "members": {
+        "capture.json":"f97b0dfc4e9ac605dfeefcf80702c45bfda07ca7eba82725047f5fd15f3c62a1",
+        "import-request.json":"25aa3ad8296b98b95fe04407d0dfd23d2f66b07b1a7c40854b929c5a0032913f"
+      }
+    }
+  },
+  "limitations": [
+    "Saved 2026-09-09 data, not a fresh database read.",
+    "Proposal is not an import authorization or a live mapping.",
+    "Coordinate evidence is absent from these two local exports.",
+    "Before writes recheck active target/country, current pending row digest, accepted ANEX bridge and exclusions.",
+    "No existing accepted mapping was changed; conflict is a proposal-review status."
+  ]
+}
