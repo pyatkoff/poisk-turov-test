@@ -58,13 +58,14 @@ module.exports = async function calendarReadability(page, width, output) {
   const focus = await last.evaluate(node => {
     const item = node.getBoundingClientRect(), list = node.parentElement.getBoundingClientRect(), style = getComputedStyle(node);
     return { active: node === document.activeElement, width: parseFloat(style.outlineWidth), style: style.outlineStyle,
-      left: item.left, right: item.right, listLeft: list.left, listRight: list.right, scrollLeft: node.parentElement.scrollLeft };
+      left: item.left, right: item.right, top: item.top, bottom: item.bottom,
+      listLeft: list.left, listRight: list.right, listTop: list.top, listBottom: list.bottom, scrollLeft: node.parentElement.scrollLeft };
   });
   assert.equal(focus.active, true);
   assert.ok(focus.width >= 3 && focus.style !== 'none', 'keyboard focus is separate from best-price styling');
   if (width <= 640) {
     assert.ok(focus.scrollLeft > 0, 'native focus reaches late dates within mobile scrolling');
-    assert.ok(focus.left >= focus.listLeft - 1 && focus.right <= focus.listRight + 1, 'focused late date is fully visible');
+    assert.ok(focus.left - 5 >= focus.listLeft - 1 && focus.right + 5 <= focus.listRight + 1 && focus.top - 5 >= focus.listTop - 1 && focus.bottom + 5 <= focus.listBottom + 1, 'focused late date and its whole outline remain inside the scrollport');
     await calendar.screenshot({ path: path.join(output, `calendar-readable-${width}-focus.png`) });
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
