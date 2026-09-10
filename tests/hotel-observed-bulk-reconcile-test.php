@@ -1,6 +1,7 @@
 <?php
 define('HB_LIBRARY_ONLY',true);require __DIR__.'/../scripts/diagnostics/hotel_observed_bulk_reconcile.php';
 $dsn=getenv('ANEX_LINK_TEST_DSN');if($dsn!=='mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4')throw new RuntimeException('isolated only');$db=new PDO($dsn,'root','',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$mapDir=getcwd().'/_preview/search3-anex-candidate/app/integrations';if(!is_dir($mapDir)&&!mkdir($mapDir,0777,true))throw new RuntimeException('fixture path');copy(getcwd().'/app/integrations/anex-search-mapping-registry.php',$mapDir.'/anex-search-mapping-registry.php');
 $tables=['andromeda_search_hotel_observations','andromeda_hotel_identities','anex_review_pair_exclusions','anex_hotel_decisions','anex_hotel_search_mappings','anex_search_hotel_observations','hotel_aliases','catalog_hotels'];foreach($tables as $t)$db->exec('DROP TABLE IF EXISTS '.$t);
 try{
 $db->exec("CREATE TABLE catalog_hotels(id INT PRIMARY KEY,country_id INT,country_name VARCHAR(80),name VARCHAR(255),normalized_name VARCHAR(255),category INT NULL,is_active INT,ENGINE_DUMMY INT NULL) ENGINE=InnoDB");
@@ -13,7 +14,6 @@ $db->exec("CREATE TABLE andromeda_search_hotel_observations(observation_sha256 C
 $db->exec("CREATE TABLE andromeda_hotel_identities(supplier_namespace VARCHAR(40),external_hotel_id VARCHAR(128),local_hotel_id INT NULL,decision_status VARCHAR(16),catalog_sha256 CHAR(64),evidence_sha256 CHAR(64),evidence_json MEDIUMTEXT,PRIMARY KEY(supplier_namespace,external_hotel_id)) ENGINE=InnoDB");
 $h=$db->prepare('INSERT INTO catalog_hotels VALUES(?,?,?, ?,?,?,1,NULL)');$ao=$db->prepare("INSERT INTO anex_search_hotel_observations VALUES(?,?,?,5,NULL,NOW(),NOW(),10,'2026-09-20','2026-09-20',NULL)");$io=$db->prepare("INSERT INTO andromeda_search_hotel_observations VALUES(?,?,?,?,?,'[]','[]',?,?,'',?,NULL,NULL,NULL,?,NOW())");$ii=$db->prepare("INSERT INTO andromeda_hotel_identities VALUES('andromeda_catalog',?,NULL,'pending',REPEAT('a',64),?,?)");
 for($i=1;$i<=600;$i++){ $id=10000+$i;$name='UNIQUEPLACE'.$i;$h->execute([$id,4,'Turkey',$name,strtolower($name),5]);if($i<=350)$ao->execute([20000+$i,$name,4]);if($i<=250){$ext=(string)(30000+$i);$obs=hash('sha256','o'.$i);$io->execute([$obs,hash('sha256','s'.$i),'andromeda_catalog',$ext,$name,4,'Turkey',5,hash('sha256','c'.$i)]);$ev=hb_json(['source'=>['id'=>$ext,'name'=>$name]]);$ii->execute([$ext,hash('sha256',$ev),$ev]);}}
-// protect one ANEX manual and one pair exclusion; make one exact name ambiguous.
 $db->exec("INSERT INTO anex_hotel_decisions VALUES(20001,10001,'rejected')");$db->exec("INSERT INTO anex_review_pair_exclusions VALUES(20002,10002)");$h->execute([20000,4,'Turkey','UNIQUEPLACE3','uniqueplace3',5]);
 $result=hb_reconcile($db,'test-bulk');
 if($result['status']!=='completed'||!$result['readback_verified']||$result['supplier_calls']!==0)throw new RuntimeException('result');
