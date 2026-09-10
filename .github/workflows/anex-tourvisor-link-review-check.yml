@@ -5,6 +5,9 @@ on:
       - 'scripts/diagnostics/anex_tourvisor_link_*.py'
       - 'scripts/diagnostics/anex_search_mapping_import.py'
       - 'scripts/diagnostics/anex_search_mapping_writer.php'
+      - 'scripts/diagnostics/andromeda_bridge_review.py'
+      - 'tests/andromeda_bridge_review_test.py'
+      - 'reports/hotel-matching-scale-20260910.json'
       - 'tests/anex_tourvisor_link_*_test.py'
       - 'tests/anex-tourvisor-link-writer-test.php'
       - 'reports/anex-tourvisor-link-review-20260910.json'
@@ -34,6 +37,7 @@ jobs:
         run: |
           python3 -B tests/anex_tourvisor_link_review_test.py
           python3 -B tests/anex_search_mapping_import_test.py
+          python3 -B tests/andromeda_bridge_review_test.py
           php -l scripts/diagnostics/anex_search_mapping_writer.php
       - name: Read exact completed artifact and saved proof blobs (no suppliers)
         env:
@@ -42,6 +46,8 @@ jobs:
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/link-review"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10097668551/zip" > "$RUNNER_TEMP/link-review/archive.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10113498830/zip" > "$RUNNER_TEMP/link-review/egypt.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10118184869/zip" > "$RUNNER_TEMP/link-review/turkey.zip"
           gh api "repos/$GITHUB_REPOSITORY/git/blobs/4a0b0a9b4b8f02ea77c3a099639148ec69eac6d4" --jq .content | base64 --decode > "$RUNNER_TEMP/link-review/batch1.json"
           gh api "repos/$GITHUB_REPOSITORY/git/blobs/1e936d060bdbbba660450b69b28ee6338fc9919c" --jq .content | base64 --decode > "$RUNNER_TEMP/link-review/batch2.json"
       - name: Reproduce all ten links and six unknowns without database writes
@@ -53,6 +59,17 @@ jobs:
           expected = json.loads(Path('reports/anex-tourvisor-link-review-20260910.json').read_text())
           actual = (Path(os.environ['RUNNER_TEMP']) / 'link-review/review.json').read_bytes()
           assert hashlib.sha256(actual).hexdigest() == expected['full_report_sha256']
+          PYTHON
+      - name: Reproduce complete saved unresolved inventory and stable batches
+        run: |
+          python3 -B scripts/diagnostics/andromeda_bridge_review.py --scope all --anex "$RUNNER_TEMP/link-review/archive.zip" --egypt "$RUNNER_TEMP/link-review/egypt.zip" --turkey "$RUNNER_TEMP/link-review/turkey.zip" --output "$RUNNER_TEMP/link-review/scale-full.json" --summary "$RUNNER_TEMP/link-review/scale-summary.json"
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          expected = json.loads(Path('reports/hotel-matching-scale-20260910.json').read_text())
+          actual = json.loads((Path(os.environ['RUNNER_TEMP']) / 'link-review/scale-summary.json').read_text())
+          assert actual == expected
+          assert actual['previous_report_canonical_sha256'] == '97411f0e6fbd7400342456a5affab0082c39e24a51c28b94a6bdcd3ece890382'
           PYTHON
       - name: Checked-report adapter and no-replay receipt (synthetic transport)
         env:
@@ -69,5 +86,7 @@ jobs:
           path: |
             ${{ runner.temp }}/link-review/review.json
             ${{ runner.temp }}/link-review/protocol.ndjson
+            ${{ runner.temp }}/link-review/scale-full.json
+            ${{ runner.temp }}/link-review/scale-summary.json
           if-no-files-found: error
           retention-days: 90

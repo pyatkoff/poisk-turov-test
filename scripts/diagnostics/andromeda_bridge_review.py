@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline #1759 shortlist review. Reads pinned archives; no SQL, network or apply."""
+"""Offline #1759 shortlist or full inventory. Pinned archives; no SQL, network or apply."""
 from __future__ import annotations
 
 import argparse
@@ -86,10 +86,10 @@ def geography(source, target, towns):
     return dict(detail, status='unknown', reason='geography_not_established')
 
 
-def review_one(identity, target_id, local, catalogue, bridges):
+def review_one(identity, target_id, local, catalogue, bridges, require_bridge=True):
     if identity['decision_status'] != 'pending' or identity['local_hotel_id'] is not None:
         raise ValueError('only unresolved identities may be proposed')
-    if not bridges or any(b['local_id'] != target_id or type(b['anex_id']) is not int or b['anex_id'] <= 0 for b in bridges):
+    if (require_bridge and not bridges) or any(b['local_id'] != target_id or type(b['anex_id']) is not int or b['anex_id'] <= 0 for b in bridges):
         raise ValueError('accepted bridge target mismatch')
     evidence = json.loads(identity['evidence_json'])
     source = evidence['source']
@@ -135,7 +135,9 @@ def review_one(identity, target_id, local, catalogue, bridges):
     return dict(result, status=status)
 
 
-def build(paths):
+def build(paths, scope='shortlist'):
+    if scope not in ('shortlist', 'all'):
+        raise ValueError('unsupported scope')
     archives, provenance = {}, {}
     try:
         for key, (expected, artifact) in ARCHIVES.items():
@@ -205,7 +207,7 @@ def build(paths):
         current_local = {r['local_hotel_id'] for r in identities.values() if r['decision_status'] == 'accepted'}
         valid_local = {r['local_hotel_id'] for r in rows if r['status'] == 'validated_proposal_not_accepted'}
         triple = set(accepted.values()) & current_local
-        return {'schema_version': 1, 'date': '2026-09-10', 'scope': 'offline_saved_catalogue_review',
+        report = {'schema_version': 1, 'date': '2026-09-10', 'scope': 'offline_saved_catalogue_review',
                 'issue': 1759, 'sources': provenance, 'counts': dict(counts), 'rows': rows,
                 'previous_shortlist_count': 39, 'additional_word_order_candidate_ids': ['2000068096'],
                 'historical_promotions': PROMOTIONS,
@@ -223,9 +225,196 @@ def build(paths):
                                 'Coordinate evidence is absent from these two local exports.',
                                 'Before writes recheck active target/country, current pending row digest, accepted ANEX bridge and exclusions.',
                                 'No existing accepted mapping was changed; conflict is a proposal-review status.']}
+        if scope == 'all':
+            # Freeze legacy provenance before adding inventory-only evidence members.
+            report['sources'] = json.loads(json.dumps(provenance))
+            scaled = scale_report(identities, anex_rows, accepted, manual, locals_, catalogues, report, read)
+            scaled['sources'] = provenance
+            return scaled
+        return report
     finally:
         for archive in archives.values():
             archive.close()
+
+
+def exact_candidates(index, values):
+    result = set()
+    for value in values:
+        key = name_key(value)
+        if key:
+            result.update(index.get(key, set()))
+    return result
+
+
+def planned_batches(rows, size=100):
+    """Stable evidence-only batches; neither a SQL payload nor an apply permit."""
+    if type(size) is not int or not 1 <= size <= 500:
+        raise ValueError('invalid batch size')
+    ordered = sorted(rows, key=lambda r: (r['provider'], int(r['external_id'])))
+    identities = [(r['provider'], r['external_id']) for r in ordered]
+    if len(set(identities)) != len(identities):
+        raise ValueError('duplicate batch identity')
+    result = []
+    for start in range(0, len(ordered), size):
+        chunk = ordered[start:start + size]
+        members = [{'provider': r['provider'], 'external_id': r['external_id'],
+                    'local_hotel_id': r['local_hotel_id'], 'evidence_sha256': digest(r)} for r in chunk]
+        result.append({'batch_sha256': digest(members), 'rows': members,
+                       'count': len(members), 'state': 'planned_not_applied', 'apply_allowed': False})
+    return result
+
+
+def scale_report(identities, anex_rows, accepted, manual, locals_, catalogues, prior, read):
+    """Inventory every unresolved ID in the saved complete countries in one pass."""
+    contexts = {c: catalogue_index(local) for c, local in locals_.items()}
+    country_by_name = {normalized(label): c for c, (_, label) in COUNTRIES.items()}
+    country_by_supplier = {supplier: c for c, (supplier, _) in COUNTRIES.items()}
+    bridges_by_local = defaultdict(list)
+    for source in anex_rows:
+        a = source['external_id']
+        country = country_by_name.get(normalized(source['country']))
+        if a in accepted and country is not None and accepted[a] in contexts[country][0]:
+            bridges_by_local[accepted[a]].append({'anex_id': a, 'local_id': accepted[a],
+                'source_row_sha256': digest(source), 'manual_accepted': a in manual})
+    previous = {r['andromeda_id'] for r in prior['rows']
+                if r['status'] == 'validated_proposal_not_accepted'}
+    history = {}
+    for member in ('anex-hotel-geo-enrichment.json', 'anex-initial-search-checkpoint.json',
+                   'anex-observed-hotel-checkpoint.json'):
+        for row in read('anex', member)['rows']:
+            if row.get('api'):
+                history[row['external_id']] = (member, row)
+    observations = {r['anex_hotel_id']: r for r in read('anex', 'anex-observed-hotel-triage.json')['rows']}
+    ready_anex = {8121: 6319, 16275: 1326, 23775: 17568, 26688: 55648}
+    rows = []
+    for external, identity in sorted(identities.items(), key=lambda item: int(item[0])):
+        if identity['decision_status'] != 'pending':
+            continue
+        evidence = json.loads(identity['evidence_json'])
+        source = evidence['source']
+        country = country_by_supplier.get(source['stateKey'])
+        if country is None or str(source['id']) != external:
+            raise ValueError('unresolved source identity mismatch')
+        hotels, index = contexts[country]
+        candidates = exact_candidates(index, (source['name'], source.get('lName')))
+        row = {'provider': 'andromeda', 'external_id': external, 'country_id': country,
+               'name': source['name'], 'source_row_sha256': digest(source),
+               'expected_evidence_sha256': hashlib.sha256(identity['evidence_json'].encode()).hexdigest(),
+               'expected_catalog_sha256': identity['catalog_sha256'],
+               'candidate_ids': sorted(candidates), 'local_hotel_id': None,
+               'previously_validated': external in previous, 'live_guards_checked': False}
+        if len(candidates) != 1:
+            row['status'] = 'review_ambiguous_name' if candidates else 'no_exact_name_candidate'
+            row['original_candidate_ids'] = evidence['candidate_ids']
+        else:
+            target = next(iter(candidates))
+            detail = review_one(identity, target, locals_[country], catalogues[country],
+                               sorted(bridges_by_local[target], key=lambda b: b['anex_id']),
+                               require_bridge=False)
+            row.update(local_hotel_id=target, status=detail['status'], detail=detail)
+        rows.append(row)
+    outside = Counter()
+    for source in sorted(anex_rows, key=lambda r: r['external_id']):
+        a = source['external_id']
+        if a in accepted or a in manual:
+            continue
+        country = country_by_name.get(normalized(source['country']))
+        if country is None:
+            outside[source['country'] or '(unknown country)'] += 1
+            continue
+        hotels, index = contexts[country]
+        candidates = exact_candidates(index, (source['name'], source.get('alternate_name')))
+        row = {'provider': 'anex', 'external_id': str(a), 'country_id': country,
+               'name': source['name'], 'source_town': source.get('town'),
+               'source_row_sha256': digest(source), 'candidate_ids': sorted(candidates),
+               'local_hotel_id': None, 'previously_import_ready': a in ready_anex,
+               'live_guards_checked': False, 'observation': observations.get(a, {}).get('observation')}
+        if len(candidates) != 1:
+            row['status'] = 'review_ambiguous_name' if candidates else 'no_exact_name_candidate'
+        else:
+            target = next(iter(candidates)); hotel = hotels[target]
+            member, saved = history.get(a, (None, {})); api = saved.get('api', {})
+            online = (api.get('id') == a and saved.get('api_xml_relation') == 'same_record'
+                      and normalized(api.get('country')) == normalized(source['country']))
+            candidate = next((c for c in saved.get('candidates', []) if c['id'] == target), None)
+            distance = candidate.get('distance_m') if candidate else None
+            places = {normalized(hotel.get(k)) for k in ('region_name', 'subregion_name')} - {''}
+            supplier_places = {normalized(source.get('town'))} - {''}
+            if online:
+                supplier_places |= {normalized(api.get(k)) for k in ('region', 'town')} - {''}
+            status = 'review_online_identity_missing'
+            if online:
+                status = 'review_saved_online_evidence'
+                if distance is not None and distance > 5000:
+                    status = 'blocked_saved_coordinate_conflict'
+                elif saved.get('reason') == 'candidate_limit_reached' or len(saved.get('candidates', [])) >= 256:
+                    status = 'review_candidate_set_truncated'
+                elif distance is not None and distance <= 200:
+                    status = 'review_saved_close_coordinates'
+            row.update(local_hotel_id=target, status=status, local_hotel=hotel,
+                       local_row_sha256=digest(hotel), online_identity_recorded=online,
+                       geography_text_agrees=bool(places & supplier_places),
+                       saved_distance_m=distance, saved_evidence_member=member,
+                       saved_evidence_sha256=digest(saved) if saved else None,
+                       saved_reason=saved.get('reason'),
+                       saved_candidate_count=len(saved.get('candidates', [])))
+            if a in ready_anex and ready_anex[a] != target:
+                raise ValueError('previous four-pair package changed target')
+        rows.append(row)
+    counts = {provider: dict(Counter(r['status'] for r in rows if r['provider'] == provider))
+              for provider in ('andromeda', 'anex')}
+    valid = [r for r in rows if r['provider'] == 'andromeda'
+             and r['status'] == 'validated_proposal_not_accepted']
+    current_local = {r['local_hotel_id'] for r in identities.values() if r['decision_status'] == 'accepted'}
+    proposed_local = {r['local_hotel_id'] for r in valid}
+    prior_local = {r['local_hotel_id'] for r in prior['rows'] if r['andromeda_id'] in previous}
+    candidate_anex = [r for r in rows if r['provider'] == 'anex' and len(r['candidate_ids']) == 1]
+    previous_pairs = {(r['andromeda_id'], r['local_hotel_id']) for r in prior['rows'] if r['andromeda_id'] in previous}
+    if not previous_pairs <= {(r['external_id'], r['local_hotel_id']) for r in valid}:
+        raise ValueError('previous validated proposals were lost or reassigned')
+    queue_anex = [r for r in candidate_anex if not r['previously_import_ready']
+                  and not r['status'].startswith('blocked_')]
+    return {'schema_version': 1, 'issue': 1759, 'date': '2026-09-10',
+            'scope': 'all_saved_unresolved_turkey_egypt', 'sources': prior['sources'],
+            'previous_report_canonical_sha256': digest(prior),
+            'catalogue_coverage': prior['catalogue_coverage'], 'counts': counts,
+            'totals': {'andromeda_pending_examined': sum(counts['andromeda'].values()),
+                       'anex_unmapped_examined': sum(counts['anex'].values()),
+                       'all_unresolved_examined': len(rows),
+                       'andromeda_validated_proposals': len(valid),
+                       'previous_andromeda_proposals_preserved': len(previous),
+                       'additional_andromeda_proposals': sum(not r['previously_validated'] for r in valid),
+                       'anex_unique_name_candidates': len(candidate_anex),
+                       'anex_previous_import_ready': sum(r['previously_import_ready'] for r in candidate_anex),
+                       'anex_new_review_queue': len(queue_anex)},
+            'rows': rows, 'unmapped_anex_outside_loaded_countries': dict(sorted(outside.items())),
+            'batches': {'andromeda_validated': planned_batches(valid),
+                        'anex_candidates_requiring_review': planned_batches(queue_anex)},
+            'effect_if_all_validated_proposals_are_accepted': {
+                'conditional_not_live': True,
+                'triple_before': len(set(accepted.values()) & current_local),
+                'triple_after': len(set(accepted.values()) & (current_local | proposed_local)),
+                'additional_triples_beyond_previous_package': len((proposed_local - current_local - prior_local) & set(accepted.values())),
+                'new_unique_local_hotels': len(proposed_local - current_local)},
+            'database_writes': 0, 'supplier_calls': 0, 'new_accepted_mappings': 0,
+            'limitations': prior['limitations'] + [
+                'ANEX exact-name candidates are not eligible mappings; saved online evidence still requires strict revalidation.',
+                'Batch manifests are evidence only, not import authorization or executable SQL.',
+                'No arbitrary new country, API quota or protected production scope is enabled.']}
+
+
+def scale_summary(report):
+    keys = ('schema_version', 'issue', 'date', 'scope', 'sources', 'previous_report_canonical_sha256',
+            'catalogue_coverage', 'counts', 'totals', 'unmapped_anex_outside_loaded_countries',
+            'effect_if_all_validated_proposals_are_accepted', 'database_writes', 'supplier_calls',
+            'new_accepted_mappings', 'limitations')
+    result = {key: report[key] for key in keys}
+    result['full_report_canonical_sha256'] = digest(report)
+    result['batch_counts'] = {key: len(value) for key, value in report['batches'].items()}
+    result['additional_andromeda_pairs'] = [[r['external_id'], r['local_hotel_id']]
+        for r in report['rows'] if r['provider'] == 'andromeda'
+        and r['status'] == 'validated_proposal_not_accepted' and not r['previously_validated']]
+    return result
 
 
 def summary(report):
@@ -246,13 +435,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ARCHIVES:
         parser.add_argument('--' + key, required=True, type=Path)
+    parser.add_argument('--scope', choices=('shortlist', 'all'), default='shortlist')
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--summary', type=Path)
     args = parser.parse_args()
-    report = build({k: getattr(args, k) for k in ARCHIVES})
+    report = build({k: getattr(args, k) for k in ARCHIVES}, scope=args.scope)
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     if args.summary:
-        args.summary.write_text(json.dumps(summary(report), ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        args.summary.write_text(json.dumps(scale_summary(report) if args.scope == 'all' else summary(report), ensure_ascii=False, indent=2, sort_keys=True) + '\n', encoding='utf-8')
     print(json.dumps({'counts': report['counts'], 'effect': report['effect_if_all_validated_proposals_are_accepted']}, ensure_ascii=False))
 
 
