@@ -112,15 +112,19 @@ def write_protocol(path, meta, rows):
 
 def ssh_import(mapping_path, gap_checkpoint=None, observed_checkpoint=None, complete_review_checkpoint=None,
                saved_review_checkpoint=None, cached_review_checkpoint=None,
-               cached_detail_alias_checkpoint=None):
+               cached_detail_alias_checkpoint=None, link_review_checkpoint=None):
     checkpoints = (gap_checkpoint, observed_checkpoint, complete_review_checkpoint,
-                   saved_review_checkpoint, cached_review_checkpoint, cached_detail_alias_checkpoint)
+                   saved_review_checkpoint, cached_review_checkpoint, cached_detail_alias_checkpoint,
+                   link_review_checkpoint)
     if sum(p is not None for p in checkpoints) > 1:
         raise ValueError('choose one independent checkpoint')
     if all(p is None for p in checkpoints):
         meta, rows = load_mapping(mapping_path)
     else:
-        if cached_detail_alias_checkpoint is not None:
+        if link_review_checkpoint is not None:
+            from anex_tourvisor_link_import import approved_delta
+            document = approved_delta(link_review_checkpoint)
+        elif cached_detail_alias_checkpoint is not None:
             from anex_search3_cached_detail_alias_review import approved_delta
             document = approved_delta(cached_detail_alias_checkpoint)
         elif cached_review_checkpoint is not None:
