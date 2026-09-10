@@ -2,6 +2,9 @@
   "issue": 1717,
   "stage": "A3.1 selected retained package entry",
   "base": "ff202c26fbe7e6aac506448f509d4609b8356417",
+  "pr": 1893,
+  "source": "e96fdb5a0c3e65c12ee3ada9e3ae470fdc8a6d9c",
+  "feature_merge": "d67d019448ab94a381fb066874a13d83a16f0d14",
   "implementation": "Existing selected DTO and current PDO mapping reader are connected to the unchanged capture_saved_package body. CLI-only and explicitly default-off; no new HTTP action or launcher.",
   "dependencies": {
     "runtime": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
@@ -16,9 +19,31 @@
   },
   "checks": {
     "local_php_lint": "API, runtime and fixture passed",
-    "local_fixture": "deferred: local PHP has no PDO SQLite driver; existing GitHub offline job runs disposable SQLite and stub transport",
+    "local_fixture": "deferred: local PHP has no PDO SQLite driver; exact GitHub offline job executed disposable SQLite and stub transport",
     "local_workflow": "YAML and source-only receipt script syntax validated",
-    "ci": "pending"
+    "offline": {"run": 34480329960, "job": 102881227105, "conclusion": "success", "logs_read": true},
+    "projection": {"run": 34480329862, "conclusion": "success"},
+    "security": {"run": 34480329714, "conclusion": "success"},
+    "required_build": {"run": 34480329709, "conclusion": "success", "whole_site_artifact_must_not_publish": true},
+    "owner_scope": "Declared exact paths in #996; five-file source diff verified, no shared UI or publisher claim. Separate automated owner check not claimed. Post-merge isolation assumption was wrong; see incident below."
+  },
+  "source_handoff": {
+    "artifact": 10153281946,
+    "zip_sha256": "124ce8f647476c77a24dbf1c1011f8db7f3dd2cd46165d81a9ee71910fc7d2c0",
+    "size_bytes": 19609,
+    "independently_downloaded_and_checked": true,
+    "receipt_readback_verified": true,
+    "source_files": 6,
+    "files_sha256": {
+      "app/integrations/andromeda-client.php": "ef45ade3710b26488e13cca995ac730baf6f0a699f9075a71d09174fd345f135",
+      "app/integrations/andromeda-package-capture.php": "1d64913636cfec93bcc38fd011c6a1960f370f35f7df503941efada771f5ab6f",
+      "app/integrations/andromeda-saved-package-runtime.php": "52b2b7c394f99359997451ca162137527dc0189ec69fbd3671b670079cb5211e",
+      "app/integrations/andromeda-selected-offer.php": "06f5f608cb310fe0e3eafc11987ae1f70fa829aae70866c6f87ea1eb603fbc01",
+      "app/integrations/andromeda-transport.php": "457273021d5363a6b3e593ca5807110d0513b06ea2861a64a6719f86e837a470",
+      "v2/api-andromeda-search3-preview.php": "27bcec7ede1d2f12db614c46235a1d51d368a36a2c89b449ed078a5798367897"
+    },
+    "private_runtime_state_included": false,
+    "published": false
   },
   "effects": {
     "supplier_calls": 0,
@@ -39,11 +64,46 @@
     "No bron, bron_ticket, calc, get_flights, login or price request in this entry",
     "Source handoff contains exactly six PHP source files and a digest receipt, never private checkpoints"
   ],
+  "post_merge_isolation_incident": {
+    "run": 34480619394,
+    "job": 102882190139,
+    "source": "d67d019448ab94a381fb066874a13d83a16f0d14",
+    "workflow_blob": "319a610a67ee2a99d847f7f13cd93e2290e5b101",
+    "event": "push",
+    "actual_mode": "observed",
+    "conclusion": "failure",
+    "failure": "GEO_CHECKPOINT_RESTORE_FAILED: prior progress was not reset",
+    "incorrect_prior_assumption": "The PR description said the existing ANEX classifier was offline-only for these paths. Actual job/source has no offline mode. The description and #996 were corrected.",
+    "local_reproduction": {
+      "temporary_git_repository": true,
+      "network_calls": 0,
+      "legacy_diff_tree_merge_paths": [],
+      "explicit_first_parent_paths": ["app/integrations/andromeda-saved-package-runtime.php"],
+      "conclusion": "Default merge diff-tree returns no paths; existing selector falls through to observed. Changing only the diff command would still classify Andromeda as preview, so it is not sufficient isolation."
+    },
+    "supplier_ssh_live_db_deploy_steps": "skipped; job steps and logs read",
+    "runner_finalizers": "Ran after restore failure against missing/not-prepared local checkpoint; no live queue progress established",
+    "failure_artifact": 10153418162,
+    "failure_artifact_zip_sha256": "dc6517020bc810a4f363461b12d4c5812fb29a7f2b30df1a850b86e948821120",
+    "failure_artifact_is_restored_progress": false,
+    "rerun_attempted": false,
+    "old_checkpoint_recovery_attempted": false,
+    "workflow_repair_applied": false,
+    "boundary": "Further #1717 runtime merges to this base are blocked until automatic ANEX trigger isolation is separately fixed and verified. Docs-only completion and independent PR-only work remain possible. Do not recover or replay ANEX/P2/matching queues for this task.",
+    "required_fix_acceptance": [
+      "Andromeda-only source and merge commits cannot start any ANEX supplier/SSH/restore/finalization path",
+      "Unknown or empty changed-path evidence fails closed rather than selecting observed",
+      "Actual ANEX-owned behavior and explicit operation permissions require their owner's coordinated review",
+      "The containment change itself must not automatically execute a supplier/data queue"
+    ],
+    "coordination": "https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5619224761"
+  },
   "live_gate": {
     "method_documentation": "Current official wiki open rejected by web safe-URL check; not retried or bypassed. No live method executed.",
     "required": "Readable verified method-effect evidence, authorized exact private invocation and one valid explicitly selected retained context",
     "not_authorized_by_this_package": "main/new launcher/production/lead transport/matching"
   },
   "deferred": ["real PRICES.id to claiminc evidence", "public composition and tourist-price projection", "actual quote", "shared selected flow", "current composite preview acceptance", "mobile and physical Safari"],
-  "historical_unknown_checkpoints": "Unchanged; not re-read, reset or replayed"
+  "historical_unknown_checkpoints": "Not reset or replayed. Automatic restore failed; its failure artifact is not an authoritative replacement.",
+  "checkpoint_update": "Docs-only: this existing audit and the sole INT1717 current row; no runtime/workflow/build/browser/deploy change."
 }
