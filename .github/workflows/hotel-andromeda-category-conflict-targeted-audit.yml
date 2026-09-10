@@ -1,0 +1,58 @@
+name: Andromeda targeted category conflict audit
+run-name: Andromeda targeted category conflict audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/hotel-andromeda-category-conflict-targeted-audit.yml']
+permissions: {contents: read}
+concurrency:
+  group: hotel-matching-readonly
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reproduce fuzzy saved-geo winners and classify star semantics
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          php=r'''
+          error_reporting(0);
+          function c6n($v){$v=mb_strtolower(trim((string)$v),'UTF-8');$v=strtr($v,['ё'=>'е','é'=>'e','è'=>'e','ê'=>'e','á'=>'a','à'=>'a','ä'=>'a','â'=>'a','ö'=>'o','ô'=>'o','ü'=>'u','ú'=>'u','ç'=>'c','ş'=>'s','ğ'=>'g','ı'=>'i']);preg_match_all('/[\p{L}\p{N}]+/u',$v,$m);return implode(' ',$m[0]);}
+          function c6t($v){$v=preg_replace('/\s*\(\s*(?:ex|ех)\s*\.?\s+[^()]+\)\s*$/ui',' ',(string)$v);$g=array_fill_keys(['hotel','hotels','resort','resorts','spa','the','and','club','apart','aparthotel','apartments','apartment','suite','suites','отель','отели','резорт','ресорт','спа','клуб','апартаменты'],1);return array_values(array_filter(explode(' ',c6n($v)),fn($x)=>$x!==''&&!isset($g[$x])));}
+          function c6sim($a,$b){$a=array_fill_keys(array_unique(c6t($a)),1);$b=array_fill_keys(array_unique(c6t($b)),1);$i=count(array_intersect_key($a,$b));$u=count($a+$b);return [$u?$i/$u:0,$i];}
+          function c6place(array $a,array $b){$x=[];$y=[];foreach($a as $v){$n=c6n($v);if($n!=='')$x[$n]=1;}foreach($b as $v){$n=c6n($v);if($n!=='')$y[$n]=1;}return (bool)array_intersect_key($x,$y);}
+          function c6e($raw){$v=json_decode((string)$raw,true);return is_array($v)?$v:[];}
+          function c6oldcat($s){foreach(['category','star','stars','starKey','starName','star_name'] as $k)if(array_key_exists($k,$s)&&preg_match('/([1-5])/',(string)$s[$k],$m))return (int)$m[1];return null;}
+          function c6newcat($s){foreach(['category','star','stars','starName','star_name'] as $k){if(!array_key_exists($k,$s))continue;$v=trim((string)$s[$k]);if(preg_match('/^([1-5])(?:\s*(?:\*|★|stars?))?$/iu',$v,$m))return (int)$m[1];}return null;}
+          $root=realpath(getcwd());$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('START TRANSACTION READ ONLY');$core=[1=>1,2=>1,4=>1,8=>1,9=>1,10=>1,12=>1,16=>1];
+          $hotels=[];$names=[];$places=[];$q=$db->query("SELECT h.id,h.country_id,h.name,h.region_name,h.subregion_name,h.category FROM catalog_hotels h WHERE h.is_active=1 AND h.country_id IN(1,2,4,8,9,10,12,16) ORDER BY h.country_id,h.id");while($h=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$h['id'];$c=(int)$h['country_id'];$hotels[$id]=$h;$names[$id]=[$h['name']];foreach([$h['region_name'],$h['subregion_name']] as $p){$p=c6n($p);if($p!=='')$places[$c][$p][$id]=1;}}
+          $q=$db->query("SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 AND h.country_id IN(1,2,4,8,9,10,12,16) ORDER BY a.hotel_id,a.id");while($a=$q->fetch(PDO::FETCH_ASSOC))if(isset($hotels[(int)$a['hotel_id']]))$names[(int)$a['hotel_id']][]=$a['alias'];
+          $tmp=[];$q=$db->query("SELECT i.catalog_sha256,h.country_id,COUNT(*) n FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' AND i.local_hotel_id IS NOT NULL AND h.country_id IN(1,2,4,8,9,10,12,16) GROUP BY i.catalog_sha256,h.country_id");while($r=$q->fetch(PDO::FETCH_ASSOC))$tmp[$r['catalog_sha256']][(int)$r['country_id']]=(int)$r['n'];$shaCountry=[];foreach($tmp as $sha=>$by){arsort($by);$ids=array_keys($by);if(count($ids)===1||$by[$ids[0]]>($by[$ids[1]]??0)*20)$shaCountry[$sha]=(int)$ids[0];}
+          $out=['fuzzy_winners'=>0,'old_category_conflicts'=>0,'true_numeric_mismatch'=>0,'false_nonnumeric_type_block'=>0,'same_numeric'=>0,'unknown_category'=>0,'labels'=>[],'samples'=>[]];
+          $q=$db->query("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY external_hotel_id");while($r=$q->fetch(PDO::FETCH_ASSOC)){$e=c6e($r['evidence_json']);$s=$e['source']??[];if(!is_array($s))$s=[];$c=$shaCountry[$r['catalog_sha256']]??null;if(!$c||!isset($core[$c]))continue;$original=array_values(array_unique(array_map('intval',$e['candidate_ids']??[])));$pool=[];if($original){foreach($original as $x)if(isset($hotels[$x])&&(int)$hotels[$x]['country_id']===$c)$pool[$x]=1;}else{$g=$e['geography']??[];foreach([$s['town']??'',$g['town']??'',$g['parent']??''] as $p){$p=c6n($p);foreach(array_keys($places[$c][$p]??[]) as $x)$pool[(int)$x]=1;}}$sn=array_values(array_filter([$s['name']??'',$s['lName']??'']));$g=$e['geography']??[];$best=[0,0,null];$second=0;foreach(array_keys($pool) as $x){$h=$hotels[$x];if(!c6place([$s['town']??'',$g['town']??'',$g['parent']??''],[$h['region_name'],$h['subregion_name']]))continue;$score=0;$shared=0;foreach($sn as $a)foreach($names[$x] as $b){[$z,$i]=c6sim($a,$b);if($z>$score){$score=$z;$shared=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$shared,$x];}elseif($score>$second)$second=$score;}if($best[2]===null||$best[0]<0.82||$best[1]<2||$best[0]-$second<0.15)continue;$out['fuzzy_winners']++;$target=(int)$best[2];$tc=$hotels[$target]['category']===null?null:(int)$hotels[$target]['category'];$old=c6oldcat($s);$new=c6newcat($s);$label=trim((string)($s['star']??''));$sig=$label.' -> '.($tc===null?'null':$tc);$out['labels'][$sig]=($out['labels'][$sig]??0)+1;if($old&&$tc&&$old!==$tc){$out['old_category_conflicts']++;if($new&&$new!==$tc)$out['true_numeric_mismatch']++;elseif($new===null){$out['false_nonnumeric_type_block']++;if(count($out['samples'])<60)$out['samples'][]=['external_hotel_id'=>$r['external_hotel_id'],'source_name'=>$s['name']??null,'source_star'=>$s['star']??null,'source_starKey'=>$s['starKey']??null,'old_parsed'=>$old,'new_parsed'=>$new,'target_id'=>$target,'target_name'=>$hotels[$target]['name'],'target_category'=>$tc,'country_id'=>$c,'score'=>$best[0],'margin'=>$best[0]-$second];}else$out['unknown_category']++;}elseif($new&&$tc&&$new===$tc)$out['same_numeric']++;else$out['unknown_category']++;}
+          arsort($out['labels']);$db->rollBack();$out['status']='ok';$out['supplier_calls']=0;$out['database_writes']=0;echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          '''
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          with tempfile.TemporaryDirectory(prefix='cat-conflict-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]].strip(),os.environ[req[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=180,env={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')})
+              try:value=json.loads(p.stdout)
+              except Exception:raise ValueError('targeted_category_non_json '+p.stderr[-1000:])
+              if p.returncode or value.get('status')!='ok' or value.get('supplier_calls')!=0 or value.get('database_writes')!=0:raise ValueError('targeted_category_failed')
+              out=Path(os.environ['RUNNER_TEMP'])/'andromeda-category-conflict-targeted.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps({k:value[k] for k in ('fuzzy_winners','old_category_conflicts','true_numeric_mismatch','false_nonnumeric_type_block','same_numeric','unknown_category','labels')},ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-category-conflict-targeted
+          path: ${{ runner.temp }}/andromeda-category-conflict-targeted.json
+          if-no-files-found: error
+          retention-days: 30
