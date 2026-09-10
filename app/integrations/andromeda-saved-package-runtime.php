@@ -105,3 +105,43 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
         fclose($lock);
     }
 }
+
+
+/**
+ * Private invocation for an existing publicSelection DTO, not an HTTP action.
+ * Config/catalog/DB are loaded by the existing trusted caller, never browser input.
+ * No credential reads, lookup by price, new search, login or retry are introduced.
+ */
+function anytour_andromeda_capture_selected_package(array $config, array $catalog,
+    array $selection, PDO $pdo, string $source, bool $enabled = false,
+    ?callable $transport = null, ?callable $clock = null): array
+{
+    if (!$enabled || PHP_SAPI !== 'cli') throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
+    $country = $catalog['local_country_id'] ?? null;
+    $localId = $selection['local_id'] ?? null;
+    $catalogPath = $config['catalog_path'] ?? null;
+    $keys = ['provider', 'search_ref', 'generation', 'page', 'offer_ref', 'hotel_scope', 'operator_ref'];
+    if (!is_string($catalogPath) || $catalogPath === '' || !is_int($country) || $country < 1
+        || !is_int($localId) || $localId < 1 || array_diff($keys, array_keys($selection))) {
+        throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
+    }
+    if (!function_exists('anytour_andromeda_search3_mapping_allows')) {
+        throw new RuntimeException('ANDROMEDA_PACKAGE_RUNTIME_MISSING');
+    }
+    if ($transport === null) {
+        // An old installed transport ignores the second constructor argument.
+        // Refuse before reservation rather than turning a missing dependency into unknown.
+        $constructor = new ReflectionMethod(AnyTourAndromedaTransport::class, '__construct');
+        if ($constructor->getNumberOfParameters() < 2) {
+            throw new RuntimeException('ANDROMEDA_PACKAGE_TRANSPORT_MISSING');
+        }
+        $transport = new AnyTourAndromedaTransport(false, true);
+    }
+    $context = array_intersect_key($selection, array_flip($keys));
+    $allows = static function(array $offer) use ($pdo, $country, $localId): bool {
+        return ($offer['local_hotel_id'] ?? null) === $localId
+            && anytour_andromeda_search3_mapping_allows($pdo, $country, $offer);
+    };
+    return anytour_andromeda_capture_saved_package(dirname($catalogPath) . '/searches',
+        $context, $source, $allows, $transport, true, $clock);
+}
