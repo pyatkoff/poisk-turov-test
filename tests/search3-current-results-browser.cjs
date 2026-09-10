@@ -593,19 +593,14 @@ async function run(browser, width, previous) {
       window.V2Results.render([]);
     });
     assert.equal(await page.locator('#serviceCount').innerText(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
-    await page.evaluate(() => {
-      window.__relaxFocusTrace = [];
-      document.addEventListener('focusin', event => window.__relaxFocusTrace.push({ at: Math.round(performance.now()), tag: event.target.tagName, id: event.target.id, classes: event.target.className }), { capture: true });
-    });
     const serviceRelax = page.locator('.empty-relax[data-relax="hotel_service[]"]');
     await serviceRelax.focus();
     await serviceRelax.press('Enter');
     assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 2, 'keyboard service relaxation submits exactly once');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
     assert.equal(await page.locator('#serviceCount').textContent(), 'не выбраны', 'service relaxation synchronizes the count stored for the advanced-filter summary');
-    await page.waitForTimeout(200);
-    const serviceRelaxFocus = await page.evaluate(() => ({ active: document.activeElement && { tag: document.activeElement.tagName, id: document.activeElement.id, classes: document.activeElement.className }, formTabindex: document.getElementById('tourSearch').getAttribute('tabindex'), trace: window.__relaxFocusTrace }));
-    assert.equal(serviceRelaxFocus.active && serviceRelaxFocus.active.id, 'tourSearch', 'service relaxation keeps focus on a stable recovery target through reset: '+JSON.stringify(serviceRelaxFocus));
+    await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
+    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'service relaxation keeps focus on a stable recovery target through reset');
     await page.evaluate(() => window.__releaseRetryStart());
     await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'service relaxation moves focus to the visible loading status');
