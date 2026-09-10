@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, sys, tempfile, unittest
+import inspect, json, os, sys, tempfile, unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts/diagnostics'))
 import anex_complete_strong_accept as batch
@@ -31,4 +31,14 @@ class CompleteStrongTests(unittest.TestCase):
             with self.subTest(field=field),self.assertRaises(ValueError):batch.validate_result(bad,payload)
         bad=json.loads(json.dumps(good));bad['rows'][0]['catalog_hotel_id']=999999
         with self.assertRaises(ValueError):batch.validate_result(bad,payload)
+    def test_v2_uses_supported_ssh_limit_and_distinct_php_identity(self):
+        source=inspect.getsource(batch.apply)
+        self.assertIn('maximum_bytes=4000000',source)
+        self.assertNotIn('maximum_bytes=262144',source)
+        root=Path(__file__).resolve().parents[1]
+        php=batch.v2_php_source(root)
+        self.assertIn("const ANEX_COMPLETE_OPERATION = 'anex-1759-complete106-20260911-v2';",php)
+        self.assertIn("const ANEX_COMPLETE_REQUEST_SHA = 'cec6672929ccd3333c757be1dcc9ba1a0b0df3283d8cd529b1093a31d01e4433';",php)
+        self.assertNotIn(batch.V1_OPERATION,php)
+        self.assertNotIn(batch.V1_REQUEST_SHA,php)
 if __name__=='__main__':unittest.main(verbosity=2)
