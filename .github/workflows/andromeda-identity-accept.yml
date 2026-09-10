@@ -1,107 +1,66 @@
-name: Reviewed hotel identity acceptance
-run-name: Hotel observed bulk 1759 v2
+name: Hotel matching stage3 audit
+run-name: Hotel matching stage3 observation/fuzzy audit
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
     paths: ['.github/workflows/andromeda-identity-accept.yml']
-permissions: {contents: read, actions: read}
+permissions: {contents: read}
 concurrency:
-  group: andromeda-identity-writes
+  group: hotel-matching-readonly
   cancel-in-progress: false
-env:
-  SOURCE_SHA: dc7b438e4b395ebef564a6d52aa41418868811c5
-  MERGE_SHA: 95ee3804056c2915f4201b8e0b4415ecaec53322
-  OPERATION_ID: hotel-observed-bulk-1759-20260911-v2
 jobs:
-  accept:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/int-andromeda-live-20260909' && github.actor == 'pyatkoff' && github.run_attempt == 1
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
           ref: dc7b438e4b395ebef564a6d52aa41418868811c5
           path: reviewed
-      - name: Verify checked merge and reserve v2 before SSH
-        id: prepare
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
-          export STATE="$RUNNER_TEMP/$OPERATION_ID"
-          test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
-          gh api "repos/$GITHUB_REPOSITORY/pulls/1954" > "$STATE/pr.json"
-          for id in 34537851543 34537851417; do gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"; done
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/prior.json"
-          python3 - <<'PYTHON'
-          import json, os
-          from pathlib import Path
-          s=Path(os.environ['STATE']); pr=json.loads((s/'pr.json').read_bytes())
-          if pr.get('merged_at') is None or pr.get('merge_commit_sha')!=os.environ['MERGE_SHA'] or pr.get('head',{}).get('sha')!=os.environ['SOURCE_SHA']: raise ValueError('source_not_merged')
-          for run_id in (34537851543,34537851417):
-              r=json.loads((s/f'check-{run_id}.json').read_bytes())
-              if r.get('head_sha')!=os.environ['SOURCE_SHA'] or r.get('conclusion')!='success': raise ValueError('source_not_green')
-          prior=json.loads((s/'prior.json').read_bytes())
-          if prior.get('total_count')!=0 or prior.get('artifacts')!=[]: raise ValueError('operation_already_reserved')
-          source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php').read_text()
-          if "HB2_OPERATION = 'hotel-observed-bulk-1759-20260911-v2'" not in source or 'ANEX_API_TOKEN' in source: raise ValueError('source_scope')
-          (s/'reservation.json').write_text(json.dumps({'state':'reserved_before_ssh','operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'merge_sha':os.environ['MERGE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'apply_exactly_once':True,'supplier_calls':0},sort_keys=True)+'\n')
-          PYTHON
-      - name: Preserve v2 reservation
-        id: reserved
-        uses: actions/upload-artifact@v4
-        with:
-          name: hotel-observed-bulk-1759-20260911-v2-reservation
-          path: ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/reservation.json
-          if-no-files-found: error
-          retention-days: 90
-      - name: Apply v2 exactly once and verify durable receipt
+      - name: Estimate strict observation-only and geo-fuzzy safe candidates
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
-          set -euo pipefail
           python3 - <<'PYTHON'
           import json, os, shlex, subprocess, tempfile
           from pathlib import Path
-          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php').read_text(); code=source[len('<?php'):]
+          source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php').read_text()[len('<?php'):]
+          audit=r'''
+          function h3_tokens($v){$v=preg_replace('/\s*\(\s*(?:ex|ех)\s*\.?\s+[^()]+\)\s*$/ui',' ',(string)$v);$generic=array_fill_keys(['hotel','hotels','отель','отели'],true);return array_values(array_filter(explode(' ',hb2_norm($v)),fn($x)=>$x!==''&&!isset($generic[$x])));}
+          function h3_key($v){return implode(' ',h3_tokens($v));}
+          function h3_set($v){return array_fill_keys(array_unique(hb2_tokens($v)),true);}
+          function h3_sim($a,$b){$a=h3_set($a);$b=h3_set($b);$inter=count(array_intersect_key($a,$b));$union=count($a+$b);return [$union?$inter/$union:0,$inter];}
+          $root=realpath(getcwd());$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$pdo->exec('START TRANSACTION READ ONLY');
+          $hotels=[];$strict=[];$names=[];$countryName=[];$q=$pdo->query("SELECT h.id,h.country_id,h.country_name,h.name,h.region_name,h.subregion_name,h.category,COALESCE(d.latitude,h.latitude) latitude,COALESCE(d.longitude,h.longitude) longitude FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.is_active=1 ORDER BY h.country_id,h.id");while($h=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$h['id'];$c=(int)$h['country_id'];$hotels[$id]=$h;$countryName[$c]=$h['country_name'];$names[$id]=[$h['name']];$k=h3_key($h['name']);if($k!=='')$strict[$c][$k][$id]=true;}
+          $q=$pdo->query("SELECT a.hotel_id,a.alias,h.country_id FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 ORDER BY a.hotel_id,a.id");while($a=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$a['hotel_id'];$c=(int)$a['country_id'];$names[$id][]=$a['alias'];$k=h3_key($a['alias']);if($k!=='')$strict[$c][$k][$id]=true;}
+          $excluded=[];foreach($pdo->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=true;
+          $andBridge=[];$q=$pdo->query("SELECT o.hotel_name,i.local_hotel_id,o.country_id FROM andromeda_search_hotel_observations o JOIN andromeda_hotel_identities i ON i.supplier_namespace='andromeda_catalog' AND i.external_hotel_id=o.external_hotel_id AND i.decision_status='accepted' AND i.local_hotel_id IS NOT NULL WHERE o.supplier_namespace='andromeda_catalog'");while($r=$q->fetch(PDO::FETCH_ASSOC)){$k=h3_key($r['hotel_name']);if($k!=='')$andBridge[(int)$r['country_id']][$k][(int)$r['local_hotel_id']]=true;}
+          $anex=['unresolved'=>0,'no_staging'=>0,'strict_observation_unique'=>0,'strict_bridge_backed'=>0,'strict_last_local_backed'=>0,'with_staging_fuzzy_geo'=>0,'blocked_country'=>0];
+          $q=$pdo->query("SELECT o.*,s.api_name,s.xml_name,s.xml_alternate_name,s.api_region,s.api_town,s.latitude s_lat,s.longitude s_lon FROM anex_search_hotel_observations o LEFT JOIN anex_hotels s ON s.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=o.anex_hotel_id WHERE m.anex_hotel_id IS NULL AND d.anex_hotel_id IS NULL ORDER BY o.search_count DESC,o.anex_hotel_id");
+          while($o=$q->fetch(PDO::FETCH_ASSOC)){$anex['unresolved']++;$c=(int)$o['country_id'];if(!hb2_country_allowed($countryName[$c]??'')){$anex['blocked_country']++;continue;}$has=$o['api_name']!==null||$o['xml_name']!==null;if(!$has){$anex['no_staging']++;$k=h3_key($o['hotel_name']);$ids=array_keys($strict[$c][$k]??[]);if(count($ids)===1&&count(h3_tokens($o['hotel_name']))>=2&&!isset($excluded[(int)$o['anex_hotel_id']][(int)$ids[0]])){$anex['strict_observation_unique']++;if(isset($andBridge[$c][$k][(int)$ids[0]]))$anex['strict_bridge_backed']++;if((int)($o['last_catalog_hotel_id']??0)===(int)$ids[0])$anex['strict_last_local_backed']++;}continue;}
+            $best=[0,0,null];$second=0;foreach($hotels as $id=>$h){if((int)$h['country_id']!==$c)continue;$place=hb2_place_match([$o['api_region'],$o['api_town']],[$h['region_name'],$h['subregion_name']]);$dist=hb2_distance($o['s_lat'],$o['s_lon'],$h['latitude'],$h['longitude']);if(!$place&&!($dist!==null&&$dist<=1000))continue;$score=0;$inter=0;foreach(array_filter([$o['hotel_name'],$o['api_name'],$o['xml_name'],$o['xml_alternate_name']]) as $sn)foreach($names[$id] as $ln){[$s,$i]=h3_sim($sn,$ln);if($s>$score){$score=$s;$inter=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$inter,$id];}elseif($score>$second)$second=$score;}
+            if($best[2]!==null&&$best[0]>=0.80&&$best[1]>=2&&$best[0]-$second>=0.15&&!isset($excluded[(int)$o['anex_hotel_id']][(int)$best[2]]))$anex['with_staging_fuzzy_geo']++;}
+          $latest=[];$q=$pdo->query("SELECT o.* FROM andromeda_search_hotel_observations o JOIN andromeda_hotel_identities i ON i.supplier_namespace='andromeda_catalog' AND i.external_hotel_id=o.external_hotel_id AND i.decision_status='pending' AND i.local_hotel_id IS NULL WHERE o.supplier_namespace='andromeda_catalog' ORDER BY o.observed_at_utc DESC");while($o=$q->fetch(PDO::FETCH_ASSOC)){if(!isset($latest[$o['external_hotel_id']]))$latest[$o['external_hotel_id']]=$o;}
+          $andr=['pending_observed'=>count($latest),'fuzzy_region_category'=>0,'category_conflict_best'=>0,'blocked_country'=>0];foreach($latest as $o){$c=(int)$o['country_id'];if(!hb2_country_allowed($countryName[$c]??'')){$andr['blocked_country']++;continue;}$best=[0,0,null];$second=0;$bestConflict=false;foreach($hotels as $id=>$h){if((int)$h['country_id']!==$c||!hb2_place_match([$o['region_name']],[$h['region_name'],$h['subregion_name']]))continue;$score=0;$inter=0;foreach($names[$id] as $ln){[$s,$i]=h3_sim($o['hotel_name'],$ln);if($s>$score){$score=$s;$inter=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$inter,$id];$sc=$o['category']===null?null:(int)$o['category'];$tc=$h['category']===null?null:(int)$h['category'];$bestConflict=$sc&&$tc&&$sc!==$tc;}elseif($score>$second)$second=$score;}
+            if($best[2]!==null&&$best[0]>=0.80&&$best[1]>=2&&$best[0]-$second>=0.15){if($bestConflict)$andr['category_conflict_best']++;else $andr['fuzzy_region_category']++;}}
+          $pdo->rollBack();echo json_encode(['status'=>'ok','supplier_calls'=>0,'database_writes'=>0,'anex'=>$anex,'andromeda'=>$andr],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          '''
+          code="define('HB2_LIBRARY_ONLY',true);\n"+source+"\n"+audit
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
-          if any(not os.environ.get(k,'').strip() for k in req): raise ValueError('ssh_configuration')
-          host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
-          with tempfile.TemporaryDirectory(prefix='hotel-bulk-v2-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
-              key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600); known=Path(tmp)/'known_hosts'
-              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
-              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')}
-              def call(phase,timeout):
-                  p=subprocess.run(cmd,input=json.dumps({'operation_id':os.environ['OPERATION_ID'],'phase':phase}),text=True,capture_output=True,timeout=timeout,env=clean)
-                  try: out=json.loads(p.stdout)
-                  except Exception: out={'status':'transport_unparseable'}
-                  return p.returncode,out
-              _,before=call('receipt',60); (state/'server-before.json').write_text(json.dumps(before,sort_keys=True)+'\n')
-              if before.get('status')!='not_started': raise ValueError('server_operation_not_pristine')
-              try: arc,apply=call('apply',180)
-              except subprocess.TimeoutExpired: arc=124; apply={'status':'apply_reply_timeout'}
-              (state/'apply-response.json').write_text(json.dumps({'exit_code':arc,'result':apply},sort_keys=True)+'\n')
-              rrc,receipt=call('receipt',60); (state/'receipt.json').write_text(json.dumps({'exit_code':rrc,'result':receipt},sort_keys=True)+'\n')
-              if receipt.get('status') not in ('completed','empty'): raise ValueError('operation_unknown_do_not_replay')
-              if receipt.get('operation_id')!=os.environ['OPERATION_ID'] or receipt.get('supplier_calls')!=0: raise ValueError('receipt_scope')
-              if receipt.get('status')=='completed' and receipt.get('readback_verified') is not True: raise ValueError('readback_unconfirmed')
-              summary={k:receipt.get(k) for k in ('status','operation_id','rule','catalog_scope','anex','andromeda','accepted_total','database_writes','readback_verified','before','after','supplier_calls')}
-              (state/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,sort_keys=True)+'\n'); print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          with tempfile.TemporaryDirectory(prefix='hotel-stage3-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]].strip(),os.environ[req[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=300,env={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')});value=json.loads(p.stdout)
+              if p.returncode or value.get('status')!='ok' or value.get('supplier_calls')!=0 or value.get('database_writes')!=0: raise ValueError('stage3_audit_failed')
+              out=Path(os.environ['RUNNER_TEMP'])/'hotel-matching-stage3-audit.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps(value,ensure_ascii=False,sort_keys=True))
           PYTHON
-      - name: Preserve v2 outcome; never auto-retry
-        if: always() && steps.reserved.outcome == 'success'
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: hotel-observed-bulk-1759-20260911-v2-result
-          path: |
-            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/reservation.json
-            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/server-before.json
-            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/apply-response.json
-            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/receipt.json
-            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/summary.json
-          if-no-files-found: warn
-          retention-days: 90
+          name: hotel-matching-stage3-audit
+          path: ${{ runner.temp }}/hotel-matching-stage3-audit.json
+          if-no-files-found: error
+          retention-days: 30
