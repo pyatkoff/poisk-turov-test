@@ -105,5 +105,103 @@
   },
   "deferred": ["real PRICES.id to claiminc evidence", "public composition and tourist-price projection", "actual quote", "shared selected flow", "current composite preview acceptance", "mobile and physical Safari"],
   "historical_unknown_checkpoints": "Not reset or replayed. Automatic restore failed; its failure artifact is not an authoritative replacement.",
-  "checkpoint_update": "Docs-only: this existing audit and the sole INT1717 current row; no runtime/workflow/build/browser/deploy change."
+  "checkpoint_update": "Docs-only: this existing audit and the sole INT1717 current row; no runtime/workflow/build/browser/deploy change.",
+  "continuation_20260910": {
+    "date": "2026-09-10",
+    "containment": {
+      "pr": 1897,
+      "source": "d6928e868eaea1f96d0ef18ab32727a815201b36",
+      "feature_merge": "f06942110e606bd91601f607ce69c90dda18e87e",
+      "security_run": 34486502438,
+      "offline_run": 34486502269,
+      "post_merge_push": 34486664553,
+      "offline_job": 102902576831,
+      "offline": "success",
+      "private_job": 102902802413,
+      "private": "skipped",
+      "scope": "All private ANEX operations require explicit workflow_dispatch on the assigned branch. Incident block on runtime merges is resolved; original incident/unknown checkpoints retained as historical evidence."
+    },
+    "method_contract": {
+      "status": "official wiki readable through root index and Andromeda TOC",
+      "sources": [
+        "https://dokuwiki.samo.ru/doku.php?id=andromeda:bron",
+        "https://dokuwiki.samo.ru/doku.php?id=andromeda:claim_struct",
+        "https://dokuwiki.samo.ru/doku.php?id=andromeda:search"
+      ],
+      "roles": "broninit retrieves package; get_flights for freightExternal>0 and calc are separate operations. No bron/bron_ticket. Tourist buyerMoneys/buyerClaimMoney/net is not agency moneys/money/net.",
+      "live_identity_verified": false
+    },
+    "retained_mapping": {
+      "pr": 1901,
+      "base": "c7c9116851b9da8a7efa0bbac1268f5eab67c115",
+      "executable": "4b0bfef2b57917ff59d368d3d20e335eecf1b34c",
+      "source": "fdd099e36fdc1a20a561f285d22d0acb00f90e36",
+      "feature_merge": "f9e896abd5b887e14415ae93cf9600c7846eb776",
+      "change": "Public retained listing, saved detail and private capture share current accepted identity validation. One external-ID batch catches revoked/reassigned/ambiguous targets; operator/context only from surviving offers. No snapshot/observation mutation.",
+      "checks": {
+        "offline": 34494341744,
+        "projection": 34494341688,
+        "security": 34494341735,
+        "required_build": 34494341830,
+        "conclusions": "all success",
+        "local": "PHP lint/YAML/diff only; no local PDO drivers",
+        "fixture_failure": {
+          "run": 34494004534,
+          "job": 102927746658,
+          "cause": "Disposable projection fixture omitted current identity table; five-line fixture data fix, original guards retained."
+        }
+      },
+      "source_handoff": {
+        "artifact": 10159104848,
+        "zip_sha256": "269429a1e37c3e9dda8d3b706b28097a655b6914fe998c908e4b5af35491cc47",
+        "receipt": {
+          "dependencies": {
+            "package": "7c3c5bb55c88e376d97c998d0ba77a46960584d6",
+            "runtime": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+            "transport": "1f628e4b172ce9706eabe875784ce2b226175a0d"
+          },
+          "files_sha256": {
+            "app/integrations/andromeda-client.php": "ef45ade3710b26488e13cca995ac730baf6f0a699f9075a71d09174fd345f135",
+            "app/integrations/andromeda-package-capture.php": "1d64913636cfec93bcc38fd011c6a1960f370f35f7df503941efada771f5ab6f",
+            "app/integrations/andromeda-saved-package-runtime.php": "52b2b7c394f99359997451ca162137527dc0189ec69fbd3671b670079cb5211e",
+            "app/integrations/andromeda-selected-offer.php": "06f5f608cb310fe0e3eafc11987ae1f70fa829aae70866c6f87ea1eb603fbc01",
+            "app/integrations/andromeda-transport.php": "457273021d5363a6b3e593ca5807110d0513b06ea2861a64a6719f86e837a470",
+            "v2/api-andromeda-search3-preview.php": "12cc0b0d4d9c0823eb78c6f78b3dfcbf6c692420bd9fa9209e620e860f437a28"
+          },
+          "package_captured_live": false,
+          "published": false,
+          "quote_verified": false,
+          "scope": "private-source-handoff-only",
+          "source": "fdd099e36fdc1a20a561f285d22d0acb00f90e36",
+          "supplier_calls": 0
+        },
+        "independently_downloaded_and_verified": true
+      },
+      "post_merge_push_observed_runs": 0,
+      "post_merge_note": "No push workflow observed for this exact merge; these API/test/Andromeda-workflow paths do not match anex-access-probe push filter. Not a new live containment exercise; no trigger commit or dispatch.",
+      "published": false,
+      "live_accepted": false
+    },
+    "current_next_action": "Use verified six-file source handoff through a separately permitted exact private invocation and one explicitly selected valid retained offer. Current #1878 publisher is pinned to completed two-file #1873 install, not this six-file package. No available connector dispatch action; no push workaround, no new main launcher or first-PRICE fallback. SEARCH retains shared selection/UI/publication.",
+    "effects": {
+      "supplier_calls": 0,
+      "ssh": 0,
+      "live_db_operations": 0,
+      "new_searches": 0,
+      "publications": 0,
+      "matching": 0,
+      "real_package_captured": false,
+      "quote_verified": false
+    },
+    "deferred": [
+      "real PRICES.id to claiminc evidence",
+      "public composition and tourist-price projection",
+      "actual quote",
+      "shared selected flow",
+      "current composite preview acceptance",
+      "mobile and physical Safari"
+    ],
+    "owner_scope": "#996 claims5620738750/5620814337/5620964825; exact four-file runtime/test diff. Current checkpoint edits only this report and one INT1717 row. No separate automated owner check claimed.",
+    "history_note": "Original #1893 sections including then-current incident/live gates remain unchanged above; this dated continuation and the sole INT1717 row give current status."
+  }
 }
