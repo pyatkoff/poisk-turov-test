@@ -148,7 +148,10 @@ function apply(){
   field.hidden=list.length<2;status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';syncContainers(shown);syncEmptyState(list,shown);
   const items=projectedItems.filter(item=>visibleIds.has(id(item)));window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:active()}}));
 }
-function reset(){ensure();input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();}
+function focusAfterReset(trigger){
+  requestAnimationFrame(()=>{const restored=cards().find(card=>!card.hidden),target=trigger.classList.contains('search3-local-empty-reset')&&(restored&&restored.querySelector('.hotel-title')||results)||input;if(!target)return;const temporary=target!==input&&!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});});
+}
+function reset(event){ensure();const trigger=event&&event.currentTarget;input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();if(trigger)focusAfterReset(trigger);}
 function clear(event){
   ensure();const empty=results.querySelector('.search3-local-empty');if(empty)empty.remove();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);return;}
   sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);
