@@ -4,7 +4,6 @@ from pathlib import Path
 import sys
 import types
 
-# The comparison/validation layer is pure; replace the SSH helper import for this offline test.
 helper = types.ModuleType('anex_search3_owner_decisions')
 helper.ssh_php = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('network disabled'))
 sys.modules['anex_search3_owner_decisions'] = helper
@@ -34,14 +33,19 @@ results={case:result(case,price,fuel='2500' if case=='tourvisor' else None) for 
 for case,value in results.items(): check(mod.validate_case(value,case) is value)
 report=mod.compare(results)
 check(report['same_subject_across_completed_cases'] is True)
-check(report['exact_three_source_tuple_count']==1)
-check(report['exact_three_source_examples'][0]['identical_supplier_package_verified'] is False)
-check(report['exact_three_source_examples'][0]['fuel_inclusion_verified'] is False)
+check(report['aligned_three_source_tour_count']==1)
+check(report['aligned_three_source_examples'][0]['identical_supplier_package_verified'] is False)
+check(report['aligned_three_source_examples'][0]['placement_compared_but_not_identity_key'] is True)
+check(report['aligned_three_source_examples'][0]['fuel_inclusion_verified'] is False)
 check(report['source_minima_for_same_hotel']['tourvisor']['fuel_charge']=='2500')
 
-changed=result('tourvisor','102000'); changed['offers'][0]['room_norm']='family'
-report2=mod.compare({'anex':results['anex'],'andromeda':results['andromeda'],'tourvisor':changed})
-check(report2['exact_three_source_tuple_count']==0)
+# Placement may be absent in the current Andromeda shared projection and must not invent package identity.
+changed_placement=result('andromeda','101000'); changed_placement['offers'][0]['placement_norm']=''
+report2=mod.compare({'anex':results['anex'],'andromeda':changed_placement,'tourvisor':results['tourvisor']})
+check(report2['aligned_three_source_tour_count']==1)
+changed_room=result('tourvisor','102000'); changed_room['offers'][0]['room_norm']='family'
+report3=mod.compare({'anex':results['anex'],'andromeda':results['andromeda'],'tourvisor':changed_room})
+check(report3['aligned_three_source_tour_count']==0)
 unknown={'schema_version':1,'experiment_id':mod.EXPERIMENT,'case_id':'anex','status':'unknown','reason':'THREE_PRICE_UNCONFIRMED',
          'supplier_effect':'unknown','automatic_retry':False,'booking_calls':0,'broninit_calls':0,'mapping_writes':0}
 check(mod.validate_case(unknown,'anex') is unknown)
