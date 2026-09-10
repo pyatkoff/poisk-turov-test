@@ -4,6 +4,8 @@ error_reporting(0);
 ob_start();
 $pdo = null;
 $transaction = false;
+$serverReceipt = null;
+$savedCommitted = false;
 $result = array('status' => 'mapping_import_failed');
 
 function anex_mapping_json($value) {
@@ -46,6 +48,37 @@ function anex_mapping_preservation($pdo, $ids) {
     return $result;
 }
 
+
+function anex_saved_order($value) {
+    if (!is_array($value)) return $value;
+    if ($value !== [] && array_keys($value) !== range(0,count($value)-1)) ksort($value,SORT_STRING);
+    foreach ($value as &$item) $item=anex_saved_order($item);
+    unset($item); return $value;
+}
+function anex_saved_hash($value) { return hash('sha256',anex_mapping_json(anex_saved_order($value))); }
+function anex_saved_write($path,$value) {
+    $bytes=anex_mapping_json($value);$file=fopen($path,'x');if(!$file)throw new RuntimeException('existing_receipt');chmod($path,0600);
+    try {if(fwrite($file,$bytes)!==strlen($bytes)||!fflush($file))throw new RuntimeException('receipt_write');if(function_exists('fsync')&&!fsync($file))throw new RuntimeException('receipt_sync');}finally{fclose($file);}
+}
+function anex_saved_catalogue_guard($pdo,$countries) {
+    foreach($countries as $country=>$expected) {
+        $q=$pdo->prepare('SELECT id,name FROM catalog_hotels WHERE country_id=? AND is_active=1 ORDER BY id LIMIT 20001 FOR UPDATE');$q->execute([(int)$country]);
+        $hotels=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as $h)$hotels[]=[(int)$h['id'],$h['name']];
+        $q=$pdo->prepare('SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.country_id=? AND h.is_active=1 LIMIT 50001 FOR UPDATE');$q->execute([(int)$country]);
+        $aliases=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as $a)$aliases[]=[(int)$a['hotel_id'],$a['alias']];
+        usort($aliases,static fn($a,$b)=>$a[0]<=>$b[0] ?: strcmp($a[1],$b[1]));
+        if(count($hotels)>20000||count($aliases)>50000||anex_saved_hash(['country_id'=>(int)$country,'hotels'=>$hotels,'aliases'=>$aliases])!==$expected)throw new RuntimeException('current_full_catalogue_changed');
+    }
+}
+function anex_saved_coverage($pdo) {
+    $registry=AnyTourAnexSearchMappingRegistry::fromPdo($pdo);$anex=[];
+    $ids=$pdo->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings UNION SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN);
+    foreach($ids as $id){$target=$registry->resolve('anex_online',(string)$id,'preview');if($target!==null)$anex[$target]=true;}
+    $ids=$pdo->query("SELECT DISTINCT local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
+    $andromeda=array_fill_keys(array_map('intval',$ids),true);$triples=count(array_intersect_key($anex,$andromeda));
+    return ['anex_links'=>$registry->count(),'anex_unique_local'=>count($anex),'andromeda_unique_local'=>count($andromeda),'all_three'=>$triples,'anex_tv_only'=>count($anex)-$triples,'andromeda_tv_only'=>count($andromeda)-$triples,'exactly_two'=>count($anex)+count($andromeda)-2*$triples];
+}
+
 try {
     $policy = 'owner_exact_and_strong_20260908';
     $meta = anex_mapping_message();
@@ -66,6 +99,13 @@ try {
     if ($meta['counts']['total'] < 1 || $meta['counts']['total'] > 100000) throw new RuntimeException();
     $linkReview = $appendOnly && ($meta['sources']['gap_sha256'] ?? '') ===
         '324d25b3d08fd448a54fa2fd7dc2da6882f8858ea874b6820fc24f62b78cfa02';
+
+    $savedStrong = $appendOnly && ($meta['sources']['gap_sha256'] ?? '') ===
+        '5a04ff6b3ed11f0477ab8c06f4779d901f335af06cca652e8fd87864f29737f7';
+    $savedGuards = $meta['saved_strong_guards'] ?? null;
+    if ($savedStrong && (!is_array($savedGuards) || anex_saved_hash($savedGuards) !==
+        'a5bf066578531b1486ce977e26b3d90b91b7d277ce39f269ffdb1f25f8d0453f')) throw new RuntimeException();
+    if (!$savedStrong && $savedGuards !== null) throw new RuntimeException();
 
     // Validate the complete protocol before opening the DB or creating a table.
     $rows = array();
@@ -109,6 +149,10 @@ try {
         throw new RuntimeException('link_review_scope_changed');
     }
 
+    if ($savedStrong) {
+        if(count($rows)!==25||$counts['strong']!==25||count($savedGuards['targets'])!==25)throw new RuntimeException();
+        foreach($rows as $id=>$row){$g=$savedGuards['targets'][(string)$id]??null;if(!$g||$g['catalog_hotel_id']!==$row['catalog_hotel_id']||$g['source_row_digest']!==$row['source_row_digest'])throw new RuntimeException();}
+    }
     $root = realpath(getcwd());
     if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException();
     $helper = false;
@@ -120,6 +164,14 @@ try {
         }
     }
     if ($helper === false) throw new RuntimeException();
+    if($savedStrong){
+        $config=require $root.'/_preview/search3-anex-candidate/.andromeda-private.php';
+        $private=realpath(dirname($config['catalog_path']));if(!$private||strpos($private,$root.'/')===0)throw new RuntimeException('private_receipt_location');
+        $directory=$private.'/'.$savedGuards['operation_id'];
+        if(is_dir($directory)||!mkdir($directory,0700))throw new RuntimeException('reserved_operation_do_not_replay');
+        anex_saved_write($directory.'/reservation.json',['state'=>'reserved','operation_id'=>$savedGuards['operation_id'],'mapping_digest'=>$meta['mapping_digest']]);
+        $serverReceipt=$directory.'/result.json';
+    }
     require_once $helper;
     if (!function_exists('v2_data_db')) throw new RuntimeException();
     $pdo = v2_data_db();
@@ -127,7 +179,7 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // MySQL DDL commits implicitly; the four-link path requires the existing schema.
-    if (!$linkReview) $pdo->exec("CREATE TABLE IF NOT EXISTS anex_hotel_search_mappings (
+    if (!$linkReview && !$savedStrong) $pdo->exec("CREATE TABLE IF NOT EXISTS anex_hotel_search_mappings (
         anex_hotel_id INT UNSIGNED NOT NULL,
         catalog_hotel_id INT UNSIGNED NOT NULL,
         match_class VARCHAR(32) CHARACTER SET ascii NOT NULL,
@@ -146,7 +198,7 @@ try {
     $tables = $pdo->query("SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()"
         . " AND TABLE_NAME IN ('anex_review_pair_exclusions','anex_search_hotel_observations')")->fetchAll(PDO::FETCH_KEY_PAIR);
     $reviewEnabled = array_key_exists('anex_review_pair_exclusions', $tables);
-    if ($linkReview && !$reviewEnabled) throw new RuntimeException('link_review_schema_required');
+    if (($linkReview || $savedStrong) && !$reviewEnabled) throw new RuntimeException('link_review_schema_required');
     try {
         // information_schema can hide an inaccessible table. Probe permission
         // directly, without reading rows; only genuine absence is optional.
@@ -168,6 +220,7 @@ try {
             $statement->fetchAll(PDO::FETCH_COLUMN);
         }
     }
+    if($savedStrong)anex_saved_catalogue_guard($pdo,$savedGuards['countries']);
     $preservation = $appendOnly ? anex_mapping_preservation($pdo, array_keys($rows)) : null;
     if ($appendOnly && $preservation['staging_total'] !== 8362) throw new RuntimeException();
 
@@ -179,6 +232,14 @@ try {
         $statement->execute($ids);
         $found = $statement->fetchAll(PDO::FETCH_COLUMN);
         if (count(array_unique(array_map('intval', $found))) !== count($ids)) throw new RuntimeException();
+    }
+    if($savedStrong){
+        $q=$pdo->prepare('SELECT name,country_id,is_active,latitude,longitude FROM catalog_hotels WHERE id=? FOR UPDATE');
+        foreach($savedGuards['targets'] as $g){$q->execute([$g['catalog_hotel_id']]);$h=$q->fetch(PDO::FETCH_ASSOC);
+            if(!$h||(int)$h['is_active']!==1||(int)$h['country_id']!==$g['country_id']||$h['name']!==$g['target_name']
+                ||!is_numeric($h['latitude'])||!is_numeric($h['longitude'])
+                ||abs((float)$h['latitude']-(float)$g['target_latitude'])>0.000001
+                ||abs((float)$h['longitude']-(float)$g['target_longitude'])>0.000001)throw new RuntimeException('target_coordinates_changed');}
     }
     $manual = array();
     $existing = array();
@@ -202,6 +263,7 @@ try {
             }
         }
     }
+    if($savedStrong && ($manual || $existing || $exclusions))throw new RuntimeException('current_decision_protected');
     $insert = $pdo->prepare('INSERT INTO anex_hotel_search_mappings (anex_hotel_id,catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled) VALUES (?,?,?,?,?,?,?,1)');
     $update = $pdo->prepare('UPDATE anex_hotel_search_mappings SET catalog_hotel_id=?,match_class=?,source_row_digest=?,mapping_digest=?,enabled=1 WHERE anex_hotel_id=? AND scope=? AND approval_policy=?');
     $disable = $pdo->prepare('UPDATE anex_hotel_search_mappings SET enabled=0 WHERE anex_hotel_id=? AND scope=? AND approval_policy=? AND enabled<>0');
@@ -255,8 +317,9 @@ try {
     if ($appendOnly && $preservation !== anex_mapping_preservation($pdo, array_keys($rows))) throw new RuntimeException();
     $pdo->commit();
     $transaction = false;
+    $savedCommitted = $savedStrong;
     $linkReadback = [];
-    if ($linkReview) {
+    if ($linkReview || $savedStrong) {
         // Post-COMMIT readback. A lost/changed result remains unknown, never replayed.
         $readback = $pdo->prepare('SELECT catalog_hotel_id,source_row_digest,match_class,enabled FROM anex_hotel_search_mappings WHERE anex_hotel_id=? AND scope=? AND approval_policy=?');
         foreach ($rows as $id => $row) {
@@ -281,10 +344,15 @@ try {
         'effective_manual_accepted' => (int)$manualAccepted,
         'effective_mapped_count' => (int)$enabled['total_enabled'] + (int)$manualAccepted), $stats);
     if ($linkReview) $result += ['readback_verified'=>true, 'catalog_country_guard'=>4, 'link_readback'=>$linkReadback];
+    if($savedStrong)$result += ['operation_id'=>$savedGuards['operation_id'],'readback_verified'=>true,'link_readback'=>$linkReadback,'live_coverage'=>anex_saved_coverage($pdo),'supplier_calls'=>0];
 } catch (Throwable $ignored) {
     if ($pdo instanceof PDO && $transaction) {
         try { $pdo->rollBack(); } catch (Throwable $rollbackIgnored) {}
     }
+}
+if($serverReceipt!==null){
+    try{anex_saved_write($serverReceipt,['committed'=>$savedCommitted,'result'=>$result]);}
+    catch(Throwable $ignored){$result=['status'=>'mapping_import_failed','committed'=>$savedCommitted,'receipt_unconfirmed'=>true];}
 }
 while (ob_get_level() > 0) ob_end_clean();
 echo anex_mapping_json($result), "\n";
