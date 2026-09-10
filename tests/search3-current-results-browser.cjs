@@ -352,6 +352,9 @@ async function run(browser, width, previous) {
     }, calendarHotels);
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.isVisible(), true, 'current price calendar is visible after a terminal result set');
+    const calendarDisclosure = calendar.locator('details');
+    assert.equal(await calendarDisclosure.evaluate(node => node.open), width > 700, 'calendar starts compact only on mobile');
+    if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => [node.dataset.calendarDate, node.querySelector('strong').textContent.replace(/\s/g, '')])), [
       ['2026-09-10', '99000₽'], ['2026-09-12', '148500₽']
     ], 'calendar exposes per-day minima and ignores unpriced tours');
@@ -370,6 +373,7 @@ async function run(browser, width, previous) {
       window.__calendarSubmits = 0;
       window.V2SearchLifecycle.submit = () => { window.__calendarSubmits += 1; };
     });
+    if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
     await calendar.locator('[data-calendar-date="2026-09-14"]').click();
     assert.equal(await page.evaluate(() => window.__calendarSubmits), 1, 'calendar date submits through the canonical lifecycle exactly once');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [form.elements.dateFrom.value, form.elements.dateTo.value]), ['2026-09-14', '2026-09-14'], 'calendar applies the exact selected day');
