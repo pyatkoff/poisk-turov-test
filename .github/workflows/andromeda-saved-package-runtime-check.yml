@@ -8,6 +8,7 @@ on:
       - 'tests/andromeda-saved-package-runtime-smoke.php'
       - 'tests/andromeda-retained-mapping-smoke.php'
       - 'tests/andromeda-package-public-smoke.php'
+      - 'tests/andromeda-package-public-value-guards.php'
       - 'scripts/diagnostics/andromeda_package_evidence.php'
       - 'tests/andromeda-package-evidence-smoke.php'
       - 'scripts/diagnostics/andromeda-package-probe.php'
@@ -60,6 +61,8 @@ jobs:
           php -l change/app/integrations/andromeda-package-public.php
           php -l change/tests/andromeda-package-public-smoke.php
           php -d allow_url_fopen=0 change/tests/andromeda-package-public-smoke.php runtime
+          php -l change/tests/andromeda-package-public-value-guards.php
+          php -d allow_url_fopen=0 change/tests/andromeda-package-public-value-guards.php
           python3 -B change/tests/andromeda_package_checkpoint_read_test.py
       - name: Record exact source handoff without private runtime state
         env:
