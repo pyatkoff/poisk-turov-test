@@ -1,0 +1,26 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "prepared_offline_check_pending_owner_gate",
+  "purpose": "Publish only the checked #1863 API via existing ssh_php helper; no supplier call or whole-site deployment.",
+  "candidate_source": "ac9f16063deadb3b7b2e4fb665c7b51668fe4c6a",
+  "candidate_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
+  "predecessor_sha256": "07d8d9019833c36add09719014ebaa970e56cb85f292296d744f56ee2f36119d",
+  "helper_source": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+  "target": "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php",
+  "guardrails": [
+    "existing SSH helper and retry policy unchanged",
+    "fixed before/after hashes and filename",
+    "private reservation/backup before atomic replacement",
+    "hash readback and durable completed receipt",
+    "unknown prior outcome refused; completed receipt is read-only",
+    "no DB/credentials/UI/production write"
+  ],
+  "checks": {
+    "local_python_syntax": "passed",
+    "php": "pending offline CI; unavailable locally"
+  },
+  "published": false,
+  "approval_required": "A separate manual-only default-branch launcher proposal must be approved before main merge; then one explicit manual dispatch. Drafting the proposal does not grant that approval.",
+  "next_action": "Finish offline publisher CI; prepare main launcher pinned to checked publisher/source; present exact PR for approval. No trigger-commit workaround."
+}
