@@ -591,6 +591,7 @@ async function run(browser, width, previous) {
     const serviceRelax = page.locator('.empty-relax[data-relax="hotel_service[]"]');
     await serviceRelax.focus();
     await serviceRelax.press('Enter');
+    assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 2, 'keyboard service relaxation submits exactly once');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'service relaxation immediately synchronizes its visible count');
     await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
@@ -610,6 +611,7 @@ async function run(browser, width, previous) {
     const arrivalRelax = page.locator('.empty-relax[data-relax="arrival"]');
     await arrivalRelax.focus();
     await arrivalRelax.press('Enter');
+    assert.equal(await page.evaluate(() => window.__resultsRetrySubmits), 3, 'keyboard dependent relaxation submits exactly once');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'dependent arrival relaxation clears incompatible hotel services');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'dependent relaxation also synchronizes the service count');
     await page.waitForFunction(() => document.activeElement === document.getElementById('tourSearch'));
