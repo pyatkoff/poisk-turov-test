@@ -118,6 +118,8 @@ function inside(inner, outer, message) {
           inside(state.action.box, state.body.box, `${width}: hotel action stays inside body`);
           inside(state.disclosure.box, state.card.box, `${width}: disclosure stays inside card`);
           assert.ok(state.disclosure.box.height >= 43.5, `${width}: disclosure keeps a 44px target`);
+          if (width <= 760) assert.ok(state.photo.box.height <= 190.5,
+            `${width}: mobile hotel photo stays panoramic and leaves room for comparison`);
           assert.equal(state.retired, 0, `${width}: retired card chrome stays absent`);
           assert.ok(state.photo.box.right <= state.body.box.left + 1 || state.photo.box.bottom <= state.body.box.top + 1,
             `${width}: photo and body do not overlap`);
@@ -128,7 +130,7 @@ function inside(inner, outer, message) {
               inside(state.meta.box, state.row.box, `${width}: package facts stay inside row`);
               inside(state.tourAction.box, state.row.box, `${width}: package action stays inside row`);
               inside(state.direct.box, state.row.box, `${width}: package CTA stays inside row`);
-              assert.ok(state.direct.box.height >= 35.5, `${width}: package CTA remains actionable`);
+              assert.ok(state.direct.box.height >= 43.5, `${width}: package CTA retains a 44px target`);
               assert.equal(state.hierarchy.toursBackground, 'rgb(255, 255, 255)', `${width}: package list shares the white card surface`);
               assert.equal(state.hierarchy.rowBorderTop, '1px', `${width}: package row keeps one divider`);
               assert.equal(state.hierarchy.rowBorderRight, '0px', `${width}: nested package-card border stays absent`);
