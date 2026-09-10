@@ -1,0 +1,64 @@
+name: Andromeda grouped first page experiment
+on:
+  push:
+    branches: ['feat/int-andromeda-group-by-probe-20260909']
+    paths: ['.github/workflows/andromeda-group-by-probe.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-andromeda-first-access
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: php tests/andromeda-group-by.php
+      - run: php -l scripts/diagnostics/andromeda-group-by-probe.php
+  probe:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34365549508
+          artifact-ids: 10109677472
+          merge-multiple: true
+          path: ${{ runner.temp }}/baseline
+      - name: Reserve exactly one experiment before supplier access
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-group-by-probe.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 1
+          mkdir "$RUNNER_TEMP/grouped"
+          python3 - <<'PY'
+          import os,json,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'grouped'/'reservation.json'
+          with p.open('x') as f: json.dump({'source_sha':os.environ['GITHUB_SHA'],'max_login':1,'max_price':1,'GROUP_BY':32,'PAGE':1,'retry':False,'db_writes':0,'deploy':False},f)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-group-reservation
+          path: ${{ runner.temp }}/grouped/reservation.json
+          if-no-files-found: error
+      - name: Capture one grouped price page
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/andromeda-group-by-probe.php --execute "$RUNNER_TEMP/grouped" "$RUNNER_TEMP/baseline/price.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-group-evidence
+          path: ${{ runner.temp }}/grouped/*.json
+          if-no-files-found: error

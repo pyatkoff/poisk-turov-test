@@ -122,7 +122,8 @@ final class AnyTourAndromedaClient
     public static function validatePriceParams(array $params): void
     {
         $required=['TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TILL','ADULT','CHILD','CURRENCYINC','PACKETTYPE','PAGE'];
-        if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES','HOTELS']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES','HOTELS','GROUP_BY']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if (array_key_exists('GROUP_BY',$params) && $params['GROUP_BY'] !== 32) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         foreach(['TOWNFROMINC','STATEINC','NIGHTS_FROM','NIGHTS_TILL','ADULT','CURRENCYINC'] as $key)
             if(!is_int($params[$key]) || $params[$key]<1) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
         if(!is_int($params['PAGE']) || $params['PAGE']<1 || $params['PAGE']>1000 || $params['PACKETTYPE']!==0 || !is_int($params['CHILD']) || $params['CHILD']<0 || $params['CHILD']>3
