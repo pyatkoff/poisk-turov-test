@@ -8,6 +8,8 @@ on:
       - 'tests/andromeda-retained-mapping-smoke.php'
       - 'scripts/diagnostics/andromeda_package_evidence.php'
       - 'tests/andromeda-package-evidence-smoke.php'
+      - 'scripts/diagnostics/andromeda-package-probe.php'
+      - 'tests/andromeda-retained-cli-smoke.php'
       - '.github/workflows/andromeda-saved-package-runtime-check.yml'
 permissions:
   contents: read
@@ -48,6 +50,9 @@ jobs:
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
           php change/tests/andromeda-retained-mapping-smoke.php runtime
           php -d allow_url_fopen=0 change/tests/andromeda-package-evidence-smoke.php
+          php -l change/scripts/diagnostics/andromeda-package-probe.php
+          php -l change/tests/andromeda-retained-cli-smoke.php
+          php -d allow_url_fopen=0 change/tests/andromeda-retained-cli-smoke.php runtime --installed-runtime
       - name: Record exact source handoff without private runtime state
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
