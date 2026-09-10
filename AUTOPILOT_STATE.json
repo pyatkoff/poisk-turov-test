@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-10: use the supplied AnyTour desktop/mobile search mockup as the visual reference; improve the native search form and include the existing price calendar. This lane owns visual/UX, not technical search/API/data.",
-    "last_fully_checked_release_sha": "bbf682af0b2e1968155efd12e43f940852682e49",
-    "published_source_sha": "986f77ebec33ef7fc5fc5a339314fb54ea428640",
-    "acceptance_status": "REFERENCE_CALENDAR_NATIVE_NIGHTS_AND_ACCUMULATED_VISUAL_UX_PREVIEW_PUBLISHED_SELECTION_DISABLED",
-    "next_action": "Continue coherent form layout toward the approved visual reference: reduce excess hero/group visual weight and clarify primary versus additional parameters on desktop/mobile, then improve the card composition. Native nights and calendar are already published by exact run34468199645; do not repeat those implementations or deploys. Reuse current owners; technical search/API/data stay with their assigned lane. Preserve noindex, disabled leads, counter0 and production isolation; physical Safari and full reference-design acceptance remain deferred.",
+    "last_fully_checked_release_sha": "b92ff7af6d9e2a7785b4fb7e5c88bdd7c05e6d3e",
+    "published_source_sha": "4d884320917f1cfaac1c9418ea254b7f7880633d",
+    "acceptance_status": "REFERENCE_COMPACT_FORM_FLIGHT_TARGETS_CALENDAR_NATIVE_NIGHTS_PREVIEW_PUBLISHED_SELECTION_DISABLED",
+    "next_action": "Continue visual acceptance toward the supplied reference: first tidy the existing catalog-recovery message layout observed in blocked-network screenshots (heading/body currently run together), then compact desktop/mobile hotel-card composition and comparison actions. Coordinate any renderer/test changes with active PR #1861; do not fork technical search. The compact form, flight option targets, native nights and price calendar are published by exact run34471225946; do not repeat those implementations or deploys. Technical lane owns pre-bootstrap URL hydration/edit race reported in #996. Preserve noindex, disabled leads, counter0 and production isolation; physical Safari/iPhone and full reference-design acceptance remain deferred.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
