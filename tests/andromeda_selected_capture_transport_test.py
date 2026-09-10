@@ -1,10 +1,10 @@
 """Selected-capture relay contracts; no SSH/supplier or production data.
 
 The optional installed-runtime case runs the unchanged #1917 assertions with
-only its subprocess entry replaced by the exact generated PHP -r wire source.
+the exact PHP -r wire entry and its transport-level exit convention.
+Application-state, privacy, mapping and no-replay assertions stay intact.
 """
 import argparse
-import ast
 import base64
 import copy
 import hashlib
@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +135,21 @@ class CaptureTest(unittest.TestCase):
         self.assertEqual('project_invalid',json.loads(result.stdout)['reason'])
         self.assertEqual([],list(self.root.iterdir()))
 
+    def test_actual_runner_exits_nonzero_for_structured_refusal(self):
+        helper=self.root/'helper/scripts/diagnostics'; helper.mkdir(parents=True)
+        refused={k:v for k,v in BASE_REPLY.items() if k not in ('runtime_source','reused','package_sha256')}
+        refused.update(status='unconfirmed',reason='ANDROMEDA_PACKAGE_NOT_CAPTURED')
+        (helper/'anex_search3_owner_decisions.py').write_text('def ssh_php(source, request):\n    return '+repr(refused)+'\n')
+        request=self.root/'request.json'; request.write_text(json.dumps(REQUEST)); request.chmod(0o600)
+        env=dict(os.environ,RUNNER_TEMP=str(self.root))
+        result=subprocess.run([sys.executable,'-B',str(ROOT/'scripts/diagnostics/andromeda_detail_publish.py'),
+            '--capture-selected',str(request),str(args.caller.resolve()),str(self.root/'helper')],
+            capture_output=True,text=True,env=env,timeout=10)
+        self.assertEqual(1,result.returncode)
+        self.assertEqual(refused,json.loads(result.stdout)['receipt'])
+        self.assertIn('no retry',result.stderr)
+        self.assertEqual(refused,json.loads((self.root/'andromeda-selected-capture/result.json').read_text())['receipt'])
+
     @unittest.skipUnless(args.runtime, 'full installed-runtime fixture runs in hosted CI')
     def test_real_remote_entry_with_unchanged_selected_cli_assertions(self):
         fixture=(args.caller/'tests/andromeda-retained-cli-smoke.php').read_bytes()
@@ -145,6 +161,11 @@ class CaptureTest(unittest.TestCase):
         self.assertEqual(1,text.count(entry))
         replacement="'-r',base64_decode('"+base64.b64encode(wire.encode()).decode()+"')]"
         text=text.replace(entry,replacement)
+        # ssh_php requires successful transport for a readable JSON refusal.
+        # The remote wire returns 0 with a non-captured receipt; capture_main
+        # still exits nonzero for that application failure (separately tested).
+        self.assertEqual(3, text.count("$code===1 && $reply"))
+        text=text.replace("$code===1 && $reply", "$code===0 && $reply")
         script=self.root/'tests/andromeda-retained-cli-smoke.php';script.parent.mkdir()
         script.write_text(text)
         caller_path=self.root/publisher.CALLER_PATH;caller_path.parent.mkdir(parents=True)
