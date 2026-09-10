@@ -273,9 +273,18 @@ async function checkAndromedaExpansion(page, width, previous, control) {
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
   const andromeda = { enabled: false, failSecond: false, requests: [] };
+  const catalog = { recover: false, requests: [] };
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', route => {
     const request = route.request(), url = new URL(request.url());
+    if (catalog.recover && url.pathname.endsWith('/data/departures-v1.php')) {
+      catalog.requests.push('departures');
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: [{ id: 1, russianName: 'Москва' }] }) });
+    }
+    if (catalog.recover && /\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'countries') {
+      catalog.requests.push('countries');
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 4, russianName: 'Турция' }]) });
+    }
     if (andromeda.enabled && url.pathname.endsWith('/api-andromeda-search3-preview.php')) {
       const input = JSON.parse(request.postData() || '{}');
       andromeda.requests.push(input);
@@ -303,6 +312,19 @@ async function run(browser, width, previous) {
     // sibling can be inserted between raw/served snapshots (160px at 375px).
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     assert.equal(await page.locator('.catalog-recovery').isVisible(), true, 'blocked catalogs expose their canonical recovery before result measurement');
+    await page.locator('[name=dateFrom]').fill('2026-09-21');
+    await page.locator('[name=count_people]').selectOption('3');
+    catalog.recover = true;
+    const catalogRetry = page.locator('.catalog-retry');
+    await catalogRetry.focus();
+    await catalogRetry.press('Enter');
+    await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'anytour-departures' && !document.querySelector('.catalog-recovery'));
+    await page.waitForFunction(() => document.activeElement === document.querySelector('[name=from]'));
+    assert.deepEqual(catalog.requests, ['departures', 'countries'], 'catalog retry uses only the existing departures and countries requests');
+    assert.equal(await page.locator('[name=dateFrom]').inputValue(), '2026-09-21', 'catalog retry preserves the chosen departure date');
+    assert.equal(await page.locator('[name=count_people]').inputValue(), '3', 'catalog retry preserves the party size');
+    assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'successful keyboard retry returns focus to the populated departure control');
+    catalog.recover = false;
     assert.equal(await page.locator('#resultsSearchSummary').count(), 0, 'Search3 does not render the retired placeholder summary');
     const logo = page.locator('.at-global-header__logo img');
     assert.equal(await logo.isVisible(), true, 'canonical logo remains visible');
@@ -606,6 +628,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'service relaxation moves focus to the visible loading status');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch'), arrival = form.elements.arrival;
+      form.elements.country.value = '';
       arrival.innerHTML = '<option value="77" selected>Тестовый аэропорт</option>';
       arrival.addEventListener('change', () => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })), { once: true });
       document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label>';

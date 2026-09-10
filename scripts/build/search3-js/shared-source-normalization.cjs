@@ -15,7 +15,7 @@ const rules = {
     to: 'catch(_){}}try{'
   },
   'catalogs-v2.js': {
-    sourceSha256: 'd67567b54c5095e1a714a38329ffa854a509d0bd3e623987057354ce366cdcb1',
+    sourceSha256: 'cf2b7894aa0a120679c62e33d1205c3b8cead9736a8574aa2a9d06bde8615068',
     from: "({'2':'3','3':'3.5','4':'4','5':'4.5'})",
     to: "({2:'3',3:'3.5',4:'4',5:'4.5'})"
   }
