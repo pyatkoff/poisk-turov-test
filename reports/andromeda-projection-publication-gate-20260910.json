@@ -1,7 +1,7 @@
 {
   "issue": 1717,
   "date": "2026-09-10",
-  "status": "checked_awaiting_owner_approval",
+  "status": "published_desktop_saved_details_verified",
   "purpose": "Publish only the checked #1863 API via existing ssh_php helper; no supplier call or whole-site deployment.",
   "candidate_source": "ac9f16063deadb3b7b2e4fb665c7b51668fe4c6a",
   "candidate_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
@@ -22,9 +22,9 @@
     "launcher_yaml_permissions": "passed",
     "default_trigger_audit": "Only Security guard matches new workflow path on main; production deploy paths do not match; no workflow_run consumer for new workflow."
   },
-  "published": false,
-  "approval_required": "A separate manual-only default-branch launcher proposal must be approved before main merge; then one explicit manual dispatch. Drafting the proposal does not grant that approval.",
-  "next_action": "Owner approval required for #1867 main merge only; then authorized GitHub UI Run workflow with confirmation publish-andromeda-projection-1863. Current connector has no dispatch capability. Record runtime receipt/hash before common-preview acceptance. A3 broninit remains separate.",
+  "published": true,
+  "approval_required": null,
+  "next_action": "A1 saved variants/detail open/hide works on common preview. Diagnose source-specific error banner independently, preserve retained results; hand off visual photo issue to SEARCH. A2/A3 verified package/price and selected-tour form remain separate pending work. Never rerun completed publication.",
   "publisher": {
     "pr": 1866,
     "source": "c816582ab356a191a1c9ebc1cae313f57b3fb32b",
@@ -38,6 +38,51 @@
     "source": "8589d72672ee5832ec6029be5a7801fc737072ab",
     "security_ci": 34465241572,
     "trigger": "workflow_dispatch only",
-    "merged": false
+    "merged": true,
+    "merge_sha": "7384ffc36eea7e27509bf3d43690ad2ab350a40d"
+  },
+  "publication": {
+    "run": 34466239147,
+    "job": 102835389923,
+    "launcher_merge": "7384ffc36eea7e27509bf3d43690ad2ab350a40d",
+    "status": "published",
+    "readback_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
+    "backup_sha256": "07d8d9019833c36add09719014ebaa970e56cb85f292296d744f56ee2f36119d",
+    "artifact": 10147623229,
+    "artifact_digest": "b3b27777fbaff27d2348513faac8ce8dc6ca9caa64593719000914b779614a96",
+    "supplier_calls": 0,
+    "database_writes": 0
+  },
+  "browser_acceptance": {
+    "url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "criteria": {
+      "departure": "Moscow",
+      "country": "Turkey",
+      "date_from": "2026-09-21",
+      "date_to": "2026-09-21",
+      "nights": 7,
+      "adults": 2,
+      "children": 0
+    },
+    "search_launches": 1,
+    "visible_hotel_count": 713,
+    "pagination_completion": "unconfirmed",
+    "hotel": "PERA ROSE",
+    "operator": "Anex Tour",
+    "variants": 11,
+    "search_price": 103375,
+    "currency": "RUB",
+    "details": "saved detail opened inline; hide returned to11 retained variants",
+    "verified_quote": false,
+    "booking_calls": 0,
+    "lead_submissions": 0,
+    "matching": 0,
+    "desktop": "inspected screenshot",
+    "mobile": "deferred",
+    "physical_safari": "deferred",
+    "findings": [
+      "Global loading failure banner coexists with populated results; failing source not identified.",
+      "Selected hotel image did not load; no supplier content request made."
+    ]
   }
 }
