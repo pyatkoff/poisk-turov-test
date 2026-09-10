@@ -45,6 +45,14 @@ function syncContainers(shown){
   mobileSummary.setAttribute('aria-label','Подходит: '+shown+'; '+(selected?'активные фильтры: '+labels.join('; '):'активных фильтров нет'));
   resetButton.hidden=!selected;rail.hidden=!desktop.matches||!available;mobilePanel.hidden=desktop.matches||!available;
 }
+function syncEmptyState(list,shown){
+  let empty=results.querySelector('.search3-local-empty');
+  if(!list.length||shown||!active()){if(empty)empty.remove();return;}
+  if(empty)return;
+  empty=document.createElement('div');empty.className='empty empty-actionable search3-local-empty';empty.setAttribute('role','status');
+  empty.innerHTML='<strong>По выбранным фильтрам ничего не подошло</strong><span>Сбросьте фильтры, чтобы снова показать загруженные варианты.</span><div class="empty-actions"><button type="button" class="secondary search3-local-empty-reset">Сбросить фильтры</button></div>';
+  empty.querySelector('.search3-local-empty-reset').addEventListener('click',reset);results.prepend(empty);
+}
 function mount(){
   if(!field)return;
   if(desktop.matches){mobilePanel.open=false;fields().forEach(node=>rail.appendChild(node));rail.append(resetButton);}
@@ -137,15 +145,15 @@ function project(items){
 function apply(){
   ensure();const list=cards(),query=normalize(input.value),facets=syncHotelFacets(),visibleIds=new Set();let shown=0;
   list.forEach((card,index)=>{const title=card.querySelector('.hotel-title'),matchesName=!query||normalize(title&&title.textContent).includes(query),matchesCategory=!facets.category||facets.categories[index]===facets.category,matchesRating=!facets.rating||facets.ratings[index]>=facets.rating,matchesSea=!facets.sea||facets.seas[index]<=facets.sea;card.hidden=!(matchesName&&matchesCategory&&matchesRating&&matchesSea&&!unmatched.has(String(card.dataset.hotelId)));if(!card.hidden){shown++;visibleIds.add(String(card.dataset.hotelId||''));}});
-  field.hidden=list.length<2;status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';syncContainers(shown);
+  field.hidden=list.length<2;status.textContent=active()?'Показано '+shown+' из '+list.length+' загруженных отелей':'';syncContainers(shown);syncEmptyState(list,shown);
   const items=projectedItems.filter(item=>visibleIds.has(id(item)));window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items,shown,total:list.length,active:active()}}));
 }
 function reset(){ensure();input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;window.V2Results.rerender();}
 function clear(event){
-  ensure();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);return;}
+  ensure();const empty=results.querySelector('.search3-local-empty');if(empty)empty.remove();if(event&&event.detail&&event.detail.dirty){fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);return;}
   sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';operatorSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:7};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:8};
 })();
