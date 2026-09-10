@@ -1,0 +1,27 @@
+name: Andromeda package result offline
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda-package-probe.php'
+      - 'tests/andromeda_package_probe_result_test.py'
+      - '.github/workflows/andromeda-package-result-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: change
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1f628e4b172ce9706eabe875784ce2b226175a0d
+          path: previous
+          persist-credentials: false
+      - name: Verify capture lifecycle without network or secrets
+        run: |
+          php -l change/scripts/diagnostics/andromeda-package-probe.php
+          python3 -B change/tests/andromeda_package_probe_result_test.py previous

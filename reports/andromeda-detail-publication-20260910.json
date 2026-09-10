@@ -1,7 +1,7 @@
 {
   "issue": 1717,
   "date": "2026-09-10",
-  "status": "checked_awaiting_exact_main_approval",
+  "status": "published_saved_detail_accepted",
   "candidate_source": "eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7",
   "previous_publication_run": 34466239147,
   "previous_api_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
@@ -12,12 +12,12 @@
     "api-andromeda-search3-preview.php"
   ],
   "rollback": "Restore backed-up API first through existing approved private SSH mechanism. Preserve reservation and new module until outcome inspected; no automatic replay or deletion.",
-  "published": false,
-  "runtime_calls": 0,
+  "published": true,
+  "runtime_calls": 1,
   "supplier_calls": 0,
   "database_writes": 0,
-  "main_gate": "Separate exact manual-only launcher proposal; explicit approval required before main merge. Existing #1867 remains unchanged.",
-  "next_action": "Owner approval required for exact #1878 main merge; then one manual GitHub UI Run workflow with confirmation publish-andromeda-detail-1873. Save two-file receipt/readback before acceptance; no replay of completed #1867.",
+  "main_gate": "Owner approved exact #1878; merged26b1af10878bd0c8ee4fa6cd201a118b3852dbc1. No wider main/production approval.",
+  "next_action": "A3: obtain one approved private saved-offer package capture. The #1837 probe has a confirmed result-state bug fixed in this source, but its fresh-price selection and artifact handling still need review before any live execution. Shared selected-tour UI remains SEARCH-owned; real quote and mobile/Safari deferred.",
   "publisher": {
     "pr": 1876,
     "source": "be6c382aea670908145c4eb63f3549374a57a419",
@@ -28,6 +28,64 @@
     "pr": 1878,
     "source": "8d92f93c4acd78b58a84a51380067eee456589e7",
     "base": "7384ffc36eea7e27509bf3d43690ad2ab350a40d",
-    "merged": false
+    "merged": true,
+    "merge_sha": "26b1af10878bd0c8ee4fa6cd201a118b3852dbc1"
+  },
+  "publication": {
+    "run": 34469274568,
+    "job": 102845113422,
+    "at": "2026-09-10T11:03:38Z",
+    "status": "published",
+    "artifact": 10148826093,
+    "artifact_digest": "0102e98004f3a677c7bb8dcf29b54300cd5a8f0ab068d57512fcc17d5a46c01e",
+    "sha256": {
+      "app/integrations/andromeda-selected-offer.php": "06f5f608cb310fe0e3eafc11987ae1f70fa829aae70866c6f87ea1eb603fbc01",
+      "api-andromeda-search3-preview.php": "b7d245af694c41c319c6bcf5b92448a1bc6e0c80e0e57664c4adb6a5388c4587"
+    },
+    "supplier_calls": 0,
+    "database_writes": 0
+  },
+  "acceptance": {
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "date": "2026-09-10",
+    "old_context": "PERA ROSE Superior Room returned terminal unconfirmed message;713 hotels/11 variants remained. Exact server error not inspected; no replay.",
+    "fresh_search": {
+      "departure": "Moscow",
+      "country": "Turkey",
+      "checkin_beg": "2026-09-22",
+      "checkin_end": "2026-09-22",
+      "nights": 7,
+      "adults": 2,
+      "children": 0,
+      "operators": "all; original UI had no ANEX option",
+      "submissions": 1
+    },
+    "offer": {
+      "hotel": "CONSTANTINOPOLIS HOTEL",
+      "operator": "Anex Tour",
+      "provider": "andromeda",
+      "room": "Economy With French Bed",
+      "meal": "Без питания",
+      "price": 83080,
+      "currency": "RUB"
+    },
+    "saved_detail_open": true,
+    "return_preserves_card": true,
+    "quote_verified": false,
+    "package_captured": false,
+    "all_pages_complete": "not confirmed",
+    "mobile": "deferred",
+    "physical_safari": "deferred"
+  },
+  "probe_result_repair": {
+    "parent_pr": 1837,
+    "parent_source": "1f628e4b172ce9706eabe875784ce2b226175a0d",
+    "path": "scripts/diagnostics/andromeda-package-probe.php",
+    "defect": "PHP array union retains reserved state after successful capture; false nonzero exit.",
+    "change": "array_replace replaces state with captured; unknown and reservation replay guards unchanged.",
+    "checks": "One offline CLI lifecycle fixture reproduces baseline; success, unknown and replay checked by PR CI.",
+    "live_executed": false,
+    "runtime_published": false,
+    "remaining_gate": "Do not run historical #1837: review saved-offer selection/private evidence/runtime launcher first."
   }
 }
