@@ -243,9 +243,92 @@ async function run(browser, width) {
     assert.deepEqual(errors, [], 'calendar interaction has no page errors');
   } finally { await page.close(); }
 }
+// Existing homepage controls, offline catalogs, no real search/lead navigation.
+async function runHomeRanges(browser, width) {
+  const page = await browser.newPage({ viewport: { width, height: 1000 } });
+  const errors = [], handoffs = [], unexpected = [], catalogs = [];
+  const origin = new URL(base).origin, target = new URL(base + '/poisk-turov/').pathname;
+  page.on('pageerror', error => errors.push(String(error)));
+  await page.route('**/*', route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin !== origin) return route.abort();
+    if (request.method() !== 'GET') { unexpected.push(request.method() + ' ' + url.pathname); return route.abort(); }
+    if (url.pathname === '/api-v2.php') {
+      const action = url.searchParams.get('action');
+      const rows = action === 'departures' ? [{ id: 1, name: 'Москва' }] : action === 'countries' ? [{ id: 4, name: 'Турция' }] : null;
+      if (!rows) { unexpected.push(action); return route.abort(); }
+      catalogs.push(action);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(rows) });
+    }
+    if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) { unexpected.push(url.pathname); return route.abort(); }
+    if (request.isNavigationRequest() && url.pathname === target) {
+      handoffs.push([...url.searchParams]);
+      return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Captured handoff fixture</title>' });
+    }
+    return route.continue();
+  });
+  const initial = base + '/?from=1&country=4&dateFrom=2099-09-10&dateTo=2099-09-20&daysFrom=7&daysTill=10&count_people=3&child_age%5B%5D=8&child_age%5B%5D=6';
+  try {
+    assert.equal((await page.goto(initial, { waitUntil: 'domcontentloaded' })).status(), 200);
+    await page.waitForFunction(() => document.querySelector('[data-home-search]')?.dataset.countriesBusy === 'false');
+    const form = page.locator('[data-home-search]'), feedback = form.locator('[data-home-range-feedback]');
+    const dateFrom = form.locator('[name=dateFrom]'), dateTo = form.locator('[name=dateTo]');
+    const daysFrom = form.locator('[name=daysFrom]'), daysTill = form.locator('[name=daysTill]');
+    const submit = form.locator('[type=submit]'), more = form.locator('.at-home-search__more');
+    assert.deepEqual(catalogs, ['departures', 'countries']);
+    assert.equal(await feedback.isVisible(), false, 'valid initial form has no error');
+    await dateFrom.fill('2099-09-21');
+    assert.equal(await dateTo.inputValue(), '2099-09-20', 'end date is not silently rewritten');
+    assert.equal(await dateTo.getAttribute('min'), '2099-09-21');
+    assert.equal(await dateTo.getAttribute('aria-invalid'), 'true');
+    assert.equal(await dateTo.getAttribute('aria-describedby'), 'home-range-feedback');
+    assert.equal(await feedback.isVisible(), true);
+    await submit.click();
+    assert.equal(await dateTo.evaluate(node => node === document.activeElement), true, 'native invalid submit focuses the date to repair');
+    await more.click();
+    assert.equal(page.url(), initial, 'both invalid handoffs stay on the original page');
+    assert.equal(handoffs.length, 0);
+    await daysFrom.selectOption('11');
+    assert.equal(await daysTill.inputValue(), '10', 'night range is never silently rewritten');
+    assert.equal(await daysTill.getAttribute('aria-invalid'), 'true');
+    const text = await feedback.textContent();
+    assert.match(text, /Вылет до/); assert.match(text, /ночей/);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+    await form.screenshot({ path: path.join(output, `home-range-errors-${width}.png`) });
+    await dateFrom.fill('2099-09-10');
+    assert.equal(await dateTo.getAttribute('aria-invalid'), null);
+    assert.match(await feedback.textContent(), /ночей/, 'date repair retains the night warning');
+    await daysFrom.selectOption('7');
+    assert.equal(await feedback.isVisible(), false);
+    assert.equal(await daysTill.getAttribute('aria-invalid'), null);
+    assert.equal(await form.evaluate(node => node.checkValidity()), true);
+    for (const control of await form.locator('input,select,button[type=submit]').all()) {
+      assert.ok((await control.boundingBox()).height >= 44, 'home native controls retain full targets');
+    }
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+    const expected = await form.evaluate(node => [...new FormData(node)]);
+    assert.deepEqual(expected, [['from','1'],['country','4'],['dateFrom','2099-09-10'],['dateTo','2099-09-20'],['daysFrom','7'],['daysTill','10'],['count_people','3'],['child_age[]','8'],['child_age[]','6']]);
+    // Observe one valid native submit without leaving the fixture or sending a search.
+    await form.evaluate(node => {
+      window.__homeNative = null;
+      node.addEventListener('submit', event => { window.__homeNative = { blocked: event.defaultPrevented, fields: [...new FormData(node)] }; event.preventDefault(); }, { once: true });
+    });
+    await submit.click();
+    assert.deepEqual(await page.evaluate(() => window.__homeNative), { blocked: false, fields: expected });
+    await form.screenshot({ path: path.join(output, `home-range-repaired-${width}.png`) });
+    await more.click();
+    await page.waitForURL(url => url.pathname === target);
+    assert.deepEqual(handoffs, [expected], 'advanced GET retains exact original field mapping');
+    assert.deepEqual(catalogs, ['departures', 'countries'], 'range editing makes no new catalog request');
+    assert.deepEqual(unexpected, []); assert.deepEqual(errors, []);
+    fs.writeFileSync(path.join(output, `home-range-${width}.json`), JSON.stringify({ width, catalogs, handoffs, unexpected, errors, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
+  } finally { await page.close(); }
+}
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  try { for (const width of [375, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width); }
-  finally { await browser.close(); }
-  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1024,1025,1101,1199,1200,1440 lead_sent=0');
+  try {
+    for (const width of [375, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width);
+    for (const width of [375, 768, 1440]) await runHomeRanges(browser, width);
+  } finally { await browser.close(); }
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1024,1025,1101,1199,1200,1440 home_ranges=375,768,1440 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
