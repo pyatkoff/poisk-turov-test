@@ -1,0 +1,56 @@
+name: ANEX residual coordinate audit
+run-name: ANEX residual coordinate audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/hotel-anex-coordinate-residual-audit.yml']
+permissions: {contents: read}
+concurrency:
+  group: hotel-matching-readonly
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Rank all remaining core8 staged ANEX by nearest current coordinates
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          php=r'''
+          error_reporting(0);
+          function a7n($v){$v=mb_strtolower(trim((string)$v),'UTF-8');$v=strtr($v,['ё'=>'е','é'=>'e','è'=>'e','ê'=>'e','á'=>'a','à'=>'a','ä'=>'a','â'=>'a','ö'=>'o','ô'=>'o','ü'=>'u','ú'=>'u','ç'=>'c','ş'=>'s','ğ'=>'g','ı'=>'i']);preg_match_all('/[\p{L}\p{N}]+/u',$v,$m);return implode(' ',$m[0]);}
+          function a7t($v){$v=preg_replace('/\s*\(\s*(?:ex|ех)\s*\.?\s+[^()]+\)\s*$/ui',' ',(string)$v);$g=array_fill_keys(['hotel','hotels','resort','resorts','spa','the','and','club','apart','aparthotel','apartments','apartment','suite','suites','отель','отели','резорт','ресорт','спа','клуб','апартаменты'],1);return array_values(array_filter(explode(' ',a7n($v)),fn($x)=>$x!==''&&!isset($g[$x])));}
+          function a7sim($a,$b){$a=array_fill_keys(array_unique(a7t($a)),1);$b=array_fill_keys(array_unique(a7t($b)),1);$i=count(array_intersect_key($a,$b));$u=count($a+$b);return [$u?$i/$u:0,$i];}
+          function a7num($v){if($v===null||$v==='')return null;$x=(float)$v;return is_finite($x)&&$x!=0.0?$x:null;}
+          function a7dist($a,$b,$c,$d){$p=[a7num($a),a7num($b),a7num($c),a7num($d)];if(in_array(null,$p,true))return null;$p=array_map('deg2rad',$p);[$a,$b,$c,$d]=$p;$x=sin(($c-$a)/2)**2+cos($a)*cos($c)*sin(($d-$b)/2)**2;return 6371000*2*asin(min(1,sqrt($x)));}
+          function a7country($v){$n=a7n($v);$g=[1=>['egypt','египет'],2=>['thailand','таиланд','тайланд'],4=>['turkey','turkiye','türkiye','турция'],8=>['maldives','мальдивы'],9=>['united arab emirates','uae','оаэ','эмираты'],10=>['cuba','куба'],12=>['sri lanka','sri-lanka','шри ланка'],16=>['vietnam','viet nam','вьетнам']];foreach($g as $id=>$a)foreach($a as $x)if($n===a7n($x))return $id;return null;}
+          $root=realpath(getcwd());$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('START TRANSACTION READ ONLY');
+          $hotels=[];$names=[];$q=$db->query("SELECT h.id,h.country_id,h.name,h.region_name,h.subregion_name,COALESCE(d.latitude,h.latitude) lat,COALESCE(d.longitude,h.longitude) lon FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.is_active=1 AND h.country_id IN(1,2,4,8,9,10,12,16) ORDER BY h.country_id,h.id");while($h=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$h['id'];$hotels[$id]=$h;$names[$id]=[$h['name']];}
+          $q=$db->query("SELECT a.hotel_id,a.alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 AND h.country_id IN(1,2,4,8,9,10,12,16) ORDER BY a.hotel_id,a.id");while($a=$q->fetch(PDO::FETCH_ASSOC))if(isset($hotels[(int)$a['hotel_id']]))$names[(int)$a['hotel_id']][]=$a['alias'];
+          $out=['remaining_core8'=>0,'with_supplier_coords'=>0,'nearest_le_20m'=>0,'nearest_le_50m'=>0,'nearest_le_100m'=>0,'unique_coord_name_strong'=>0,'unique_coord_name_medium'=>0,'coord_collision'=>0,'name_weak'=>0,'distance_gt_100m'=>0,'tiers'=>[],'samples'=>[]];
+          $q=$db->query("SELECT s.* FROM anex_hotels s LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=s.anex_hotel_id LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=s.anex_hotel_id WHERE m.anex_hotel_id IS NULL AND d.anex_hotel_id IS NULL ORDER BY s.anex_hotel_id");while($s=$q->fetch(PDO::FETCH_ASSOC)){$c=a7country($s['api_country']??'');if(!$c)continue;$out['remaining_core8']++;if(a7num($s['latitude'])===null||a7num($s['longitude'])===null)continue;$out['with_supplier_coords']++;$near=[];foreach($hotels as $id=>$h){if((int)$h['country_id']!==$c)continue;$d=a7dist($s['latitude'],$s['longitude'],$h['lat'],$h['lon']);if($d!==null)$near[$id]=$d;}asort($near,SORT_NUMERIC);$ids=array_keys($near);if(!$ids)continue;$first=(int)$ids[0];$d1=$near[$first];$d2=isset($ids[1])?$near[(int)$ids[1]]:99999999;if($d1<=20)$out['nearest_le_20m']++;if($d1<=50)$out['nearest_le_50m']++;if($d1<=100)$out['nearest_le_100m']++;$src=array_values(array_filter([$s['api_name']??'',$s['xml_name']??'',$s['xml_alternate_name']??'']));$bestName=0;$shared=0;foreach($src as $a)foreach($names[$first]??[] as $b){[$score,$n]=a7sim($a,$b);if($score>$bestName){$bestName=$score;$shared=$n;}}$separation=$d2-$d1;$tier=null;if($d1<=25&&$separation>=100&&$bestName>=0.60&&$shared>=2){$tier='coord25_sep100_name60';$out['unique_coord_name_strong']++;}elseif($d1<=100&&$separation>=250&&$bestName>=0.72&&$shared>=2){$tier='coord100_sep250_name72';$out['unique_coord_name_medium']++;}elseif($d1<=100&&$separation<100)$out['coord_collision']++;elseif($d1<=100)$out['name_weak']++;else$out['distance_gt_100m']++;if($tier){$out['tiers'][$tier]=($out['tiers'][$tier]??0)+1;if(count($out['samples'])<80)$out['samples'][]=['anex_hotel_id'=>(int)$s['anex_hotel_id'],'api_name'=>$s['api_name'],'xml_name'=>$s['xml_name'],'target_id'=>$first,'target_name'=>$hotels[$first]['name'],'distance_m'=>round($d1,1),'second_distance_m'=>round($d2,1),'separation_m'=>round($separation,1),'name_score'=>$bestName,'shared_tokens'=>$shared,'country_id'=>$c];}}
+          $db->rollBack();$out['status']='ok';$out['supplier_calls']=0;$out['database_writes']=0;echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          '''
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          with tempfile.TemporaryDirectory(prefix='anex-coord-audit-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]].strip(),os.environ[req[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=300,env={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')})
+              try:value=json.loads(p.stdout)
+              except Exception:raise ValueError('coord_non_json '+p.stderr[-1000:])
+              if p.returncode or value.get('status')!='ok':raise ValueError('coord_audit_failed')
+              out=Path(os.environ['RUNNER_TEMP'])/'anex-coordinate-residual-audit.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps({k:v for k,v in value.items() if k not in ('samples',)},ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anex-coordinate-residual-audit
+          path: ${{ runner.temp }}/anex-coordinate-residual-audit.json
+          if-no-files-found: error
+          retention-days: 30
