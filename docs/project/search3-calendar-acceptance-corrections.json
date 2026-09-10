@@ -29,7 +29,7 @@
     "Full site/SEO acceptance beyond sampled homepage/country/month and selected/return route",
     "Production visual approval for the concrete release"
   ],
-  "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published840cd279: remaining live mobile/physical Safari and bounded site/SEO checks. First inspect the observed literal &#178; in the selected hotel's description; if reproduced in canonical display owner, correct text decoding without HTML injection or payload changes. Keep completed homepage/calendar/selected desktop checks; no repeat deploy for documents. Production migration remains owner-visual gated.",
+  "next_action": "Read the fresh release current_task and #996 with the actual PR/deployment receipts; this component audit is evidence, not another queue. Calendar readability PR1916 is published and must not be rebuilt or replayed. Continue the owner's desktop-first search/selection visual acceptance, then mobile, with one writer per shared component. Keep active PR1861 separate and do not retry the blocked results-status/filter-rail proposal or managed-browser denial. Physical Safari, live-provider/reference acceptance and production approval remain separate.",
   "public_calendar": {
     "css_js_delta": 0,
     "exact": [
@@ -121,5 +121,95 @@
     "php": "Mixed durations in both input orders and month-end clamp passed in required exact source contract.",
     "production_changed": false,
     "real_leads_submitted": 0
+  },
+  "next_action_20260909_history": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE against published840cd279: remaining live mobile/physical Safari and bounded site/SEO checks. First inspect the observed literal &#178; in the selected hotel's description; if reproduced in canonical display owner, correct text decoding without HTML injection or payload changes. Keep completed homepage/calendar/selected desktop checks; no repeat deploy for documents. Production migration remains owner-visual gated.",
+  "desktop_readability_20260910": {
+    "record_scope": "Dated PR1916 visual evidence. Earlier root bytes/publication/verification fields retain the complete1710/1713 history, not this deployment. Product queue remains AUTOPILOT_STATE.current_task and #996; this document does not synchronize that larger root state.",
+    "source_pr": 1916,
+    "baseline_release_sha": "4e06aa2efbce39e6a2c78aad1993f917603064d1",
+    "source_sha": "b43f3ce355b7022d94359ac1bb5a781730f9afa4",
+    "source_tree_sha": "8fafbb61148aaf0afd46247994aa055033e220d2",
+    "release_sha": "feafea3095291786d5cec310c51cafdc7520557a",
+    "implemented": true,
+    "checked": true,
+    "preview_published": true,
+    "production_approved": false,
+    "product_result": [
+      "Two or three available dates fill the desktop row instead of leaving empty fixed columns; up to seven dates fit in one wide row and twenty-one in three rows.",
+      "Desktop price labels increase from16px to18px; the existing lowest-price background and border survive generic Search3 button styles.",
+      "Keyboard focus is distinct from the minimum-price marker; native mobile horizontal scrolling keeps the final date and its full outline visible."
+    ],
+    "owned_paths": [
+      "v2/current-price-calendar-v1.css",
+      "tests/search3-entry-owner-browser.cjs",
+      "tests/search3-calendar-readability.cjs"
+    ],
+    "bytes": {
+      "css_before": 3647,
+      "css_after": 4234,
+      "css_delta": 587,
+      "gzip_delta": 62,
+      "runtime_js_delta": 0,
+      "php_delta": 0,
+      "inline_delta": 0,
+      "generated_search3_delta": 0,
+      "unchanged_payload_files_vs_1910": 717
+    },
+    "verification": {
+      "security_run": 34508892816,
+      "exact_build_run": 34508892848,
+      "widths": [375, 1024, 1025, 1101, 1199, 1200, 1440],
+      "date_counts": [2, 3, 7, 21],
+      "calendar_scenarios": 28,
+      "existing_entry_header_calendar_home_assertions_retained": true,
+      "exact_dates_prices_minimum_preserved": true,
+      "horizontal_overflow": false,
+      "minimum_target_px": 44,
+      "fixture_only": true,
+      "real_supplier_searches": 0,
+      "real_leads": 0,
+      "entry_artifact": 10164999231,
+      "entry_zip_sha256": "933963c050f88af6d11cd61da08c7cd4d0cee7c284703d257763ba18b49970bd",
+      "screenshots_inspected": [
+        "calendar-readable-1440-7.png",
+        "calendar-readable-1440-21.png",
+        "calendar-readable-375-focus.png"
+      ],
+      "follow_up": "First source ef824077 passed34508376369, but image inspection caught a clipped mobile focus outline. Same-rule padding/scroll-padding repair was separately checked on final source with stronger whole-outline assertions; no test was weakened."
+    },
+    "publication": {
+      "publisher_pr": 1902,
+      "control_sha": "efa403148ec2bcec065624be5efe149e8a1162de",
+      "owner_command_comment": 5622897306,
+      "deploy_run": 34509595713,
+      "deploy_job": 102980144405,
+      "source_artifact": 10164999759,
+      "source_zip_sha256": "db1e6ebb07724b3dbf79fb4b22bb77ce88a036909cae8facefc3e063d4e89a53",
+      "receipt_artifact": 10165249456,
+      "receipt_zip_sha256": "c932dce76b6c068f51bb25acb2a4653a44fb1be9d4b2b6bc07220050b70b5246",
+      "receipt_status": "published",
+      "completion_status": "published",
+      "route": "/_preview/search3-site-candidate/",
+      "file_count": 718,
+      "routes_200": 9,
+      "noindex": true,
+      "counter": 0,
+      "disabled_lead_http": 403,
+      "served_asset_hashes_checked": true,
+      "source_and_receipt_digests_independently_verified": true,
+      "all_payload_hashes_verified": true,
+      "production_unchanged": true,
+      "rollback_retained": true,
+      "rebuilt": false,
+      "replay_required": false
+    },
+    "deferred": [
+      "Physical iPhone/Safari",
+      "New post-publication browser journey; current readback is HTTP/hash/isolation evidence",
+      "Live-provider, full branded/reference and unassisted owner acceptance",
+      "Concrete production release approval"
+    ],
+    "protected": "Calendar JS, API URL-payload, price arithmetic, lead transport/field mapping, analytics/goals, SEO/indexation, catalog identities, INT and main/production product unchanged. PR1861 ownership and earlier tool denials were not bypassed.",
+    "rollback": "Revert PR1916 independently for source; use the ownership-checked predecessor/receipt retained by deploy34509595713 for preview. Documentation alone requires no build or deploy."
   }
 }
