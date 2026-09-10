@@ -1,21 +1,24 @@
 /* Native labels, fields and disclosures; values and lifecycle remain canonical. */
 .search3-candidate #tourSearch{
-padding:clamp(16px,2vw,22px);background:#fff;border:1px solid #dbe2ed;border-radius:18px;box-shadow:0 14px 36px #17233b0d;
-& .main-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;padding:clamp(16px,2vw,22px);background:#fff;border:1px solid #dbe2ed;border-radius:16px;box-shadow:0 8px 24px #17233b08;
+& :is(.search-section-title,.main-fields,.child-ages){grid-column:1/-1}
+& .main-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:0}
 & :is(.extra-grid,.child-ages){display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:16px 0}
-& .search-group{min-width:0;margin:0;padding:13px;border:1px solid #e1e7f0;border-radius:14px;background:#f8faff;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
-& .search-group legend{padding:0 8px 0 0;color:#17233b;font-size:15px;font-weight:700}
-& .search-group legend span{display:inline-grid;place-items:center;width:24px;height:24px;margin-right:6px;border-radius:50%;background:#e8edff;color:#2743cb;font-size:13px}
+& .search-group{min-width:0;margin:0;padding:0;border:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
+& .search-group legend{padding:0;margin-bottom:8px;color:#17233b;font-size:14px;font-weight:700}
 & .field>span{display:block;font-size:14px;color:#526078;margin-bottom:6px}
 & .field :is(input:not([type=checkbox]),select){display:block;width:100%;min-width:0;font-size:16px!important;min-height:44px!important}
-& .search-section-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;font-size:20px;font-weight:700}
+& .search-section-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;font-size:18px;font-weight:700}
 & :is(.search-section-title small,summary span){font-weight:400;font-size:14px;color:#526078}
-& .child-ages{padding:16px;border-radius:14px;background:#fff8f3;border:1px solid #ffd9c8}
-& .extras{margin:16px 0}
-& .search-submit{display:block;width:min(100%,280px);margin-left:auto;padding:12px 24px;background:#ff510c;font-weight:700}
+& .child-ages{margin:0;padding:14px;border-radius:10px;background:#f5f7fb}
+& .extras{margin:0;align-self:start}
+& .extras[open]{grid-column:1/-1}
+& .extras>summary{padding:12px;border-color:transparent;background:#f5f7fb;color:#2743cb;font-weight:600}
+& .extras>summary span{margin-left:6px}
+& .search-submit{grid-column:2;display:block;width:100%;min-height:48px;margin:0;align-self:start;padding:12px 24px;background:#ff510c;font-weight:700}
 & .search-submit small{display:block;font-size:12px;font-weight:400}
 @media(min-width:1200px){& .main-fields{grid-template-columns:minmax(230px,1.1fr) minmax(280px,1.25fr) repeat(2,minmax(200px,1fr))}}
-@media(max-width:700px){& .main-fields{grid-template-columns:1fr}& .search-submit{width:100%;margin-left:0}}
+@media(max-width:700px){grid-template-columns:minmax(0,1fr);& .main-fields{grid-template-columns:1fr}& .search-submit{grid-column:1;width:100%;margin-left:0}& .extras>summary span{display:block;margin:4px 0 0}}
 @media(max-width:430px){& .search-group--route{grid-template-columns:1fr}& .search-section-title small{flex-basis:100%}}
 @media(max-width:350px){& .search-group{grid-template-columns:1fr}}
 }

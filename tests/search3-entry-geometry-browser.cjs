@@ -27,33 +27,33 @@ const css = legacyNames.concat(searchNames)
 const field = (label, control, name) => `<label class="field search3-${name}"><span>${label}</span>${control}</label>`;
 const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{width:100%;max-width:1120px;margin:auto;padding:12px}</style>
 <body class="search3-candidate"><main class="v2-shell"><form id="tourSearch" class="search-card">
-  <div class="search-section-title"><span>Подберите тур</span><small>Четыре шага — направление, даты, ночи и туристы</small></div>
+  <div class="search-section-title"><span>Параметры поездки</span></div>
   <div class="main-fields">
-    <fieldset class="search-group search-group--route"><legend><span>1</span> Направление</legend>
+    <fieldset class="search-group search-group--route"><legend>Направление</legend>
       ${field('Вылет из', '<select><option>Калининград</option></select>', 'from')}
       ${field('Страна', '<select><option>Турция</option></select>', 'country')}
     </fieldset>
-    <fieldset class="search-group search-group--dates"><legend><span>2</span> Даты вылета</legend>
+    <fieldset class="search-group search-group--dates"><legend>Даты вылета</legend>
       ${field('С', '<input type="date" value="2026-09-12">', 'date-from')}
       ${field('По', '<input type="date" value="2026-09-19">', 'date-to')}
     </fieldset>
-    <fieldset class="search-group search-group--nights"><legend><span>3</span> Продолжительность</legend>
+    <fieldset class="search-group search-group--nights"><legend>Продолжительность</legend>
       ${field('Ночей от', '<select><option>7</option></select>', 'nights-from')}
       ${field('Ночей до', '<select><option>10</option></select>', 'nights-to')}
     </fieldset>
-    <fieldset class="search-group search-group--party"><legend><span>4</span> Туристы</legend>
+    <fieldset class="search-group search-group--party"><legend>Туристы</legend>
       ${field('Взрослых', '<select><option>2</option></select>', 'adults')}
       ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
     </fieldset>
   </div>
   <details class="extras"><summary>Фильтры отдыха <span>курорт, отель, питание и перелёт</span></summary></details>
-  <button class="primary search-submit" type="submit"><span>Найти туры</span><small>показать актуальные предложения</small></button>
+  <button class="primary search-submit" type="submit"><span>Найти туры</span></button>
 </form></main></body>`;
 
 const measure = node => {
   const box = node.getBoundingClientRect();
   const style = getComputedStyle(node);
-  return { width: box.width, height: box.height, fontSize: parseFloat(style.fontSize), display: style.display };
+  return { top: box.top, bottom: box.bottom, width: box.width, height: box.height, fontSize: parseFloat(style.fontSize), display: style.display };
 };
 
 (async () => {
@@ -65,7 +65,7 @@ const measure = node => {
   if (output) fs.mkdirSync(output, { recursive: true });
   let states = 0;
   try {
-    for (const width of [375, 760, 761, 1024, 1025, 1440]) {
+    for (const width of [375, 760, 761, 1024, 1025, 1199, 1200, 1440]) {
       const page = await browser.newPage({ viewport: { width, height: 1000 } });
       try {
         await page.setContent(html);
@@ -83,6 +83,7 @@ const measure = node => {
             controls: [...document.querySelectorAll('#tourSearch .field :is(input,select)')].map(measureNode),
             dateControls: [...document.querySelectorAll('.search-group--dates input')].map(measureNode),
             submit: measureNode(document.querySelector('.search-submit')),
+            extras: measureNode(document.querySelector('.extras')),
           };
         }, measure.toString());
         assert.ok(state.overflow <= 1, `${width}: form must not overflow horizontally`);
@@ -94,7 +95,8 @@ const measure = node => {
           assert.deepEqual(state.groupColumns, [1, 2, 2, 2], '375: route stacks while coupled date, night and tourist values stay paired');
           assert.ok(state.submit.width >= state.form.width - 45, '375: primary action spans the mobile form');
         }
-        if (width === 1440) {
+        if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
+        if (width >= 1200) {
           assert.equal(state.mainColumns, 4, '1440: four primary groups share one compact row');
           assert.equal(new Set(state.groupTops).size, 1, '1440: all primary groups align in one row');
           assert.ok(state.dateControls.every(item => item.width >= 125), '1440: date fields keep enough width for the complete native value');

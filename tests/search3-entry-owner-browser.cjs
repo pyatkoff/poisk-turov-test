@@ -35,7 +35,33 @@ async function run(browser, width) {
     assert.equal(await page.locator('.search3-composite,.search3-direct-control,.search3-primary-grid,.search3-quality,.search3-quick,.search3-tourists__pop,.search3-tourists__summary,.search3-mobile-search-filter-button,.search3-price-calendar').count(), 0,
       'retired entry projection is absent');
     assert.equal(await page.locator('#tourSearch > details.extras').count(), 1, 'canonical advanced filters remain');
+    assert.equal(await page.locator('#v2-search-title').textContent(), 'Поиск туров', 'candidate has the compact reference heading');
+    assert.equal(await page.locator('#tourSearch .search-group legend span').count(), 0, 'decorative numbered steps are removed');
+    const formGeometry = await page.evaluate(() => {
+      const box = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, width: r.width }; };
+      return { hero: box('.v2-product-hero'), form: box('#tourSearch'), ages: box('#childAges'), extras: box('#tourSearch > .extras'), submit: box('.search-submit') };
+    });
+    assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
+    assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'URL child ages take a full form row');
+    if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
+    await page.locator('#tourSearch > .extras > summary').click();
+    const openExtras = await page.locator('#tourSearch > .extras').boundingBox();
+    const openSubmit = await page.locator('.search-submit').boundingBox();
+    assert.ok(openExtras.width > formGeometry.form.width - 50, 'open advanced parameters take the full form width');
+    assert.ok(openSubmit.y >= openExtras.y + openExtras.height, 'primary action remains below expanded fields');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'expanded form has no horizontal overflow');
+    await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
+    await page.locator('#tourSearch > .extras > summary').click();
     await adults.selectOption('4');
+    const editingLayout = await page.evaluate(() => {
+      const results = document.querySelector('#results');
+      const probe = document.createElement('div'); results.append(probe);
+      document.body.classList.add('search3-editing-search');
+      const display = getComputedStyle(document.querySelector('#tourSearch')).display;
+      probe.remove(); document.body.classList.remove('search3-editing-search');
+      return display;
+    });
+    assert.equal(editingLayout, 'grid', 'editing an existing search retains the same form layout');
     await children.selectOption('2');
     await page.waitForFunction(() => document.querySelectorAll('#childAges select').length === 2);
     await page.locator('#childAges select').nth(0).selectOption('8');
