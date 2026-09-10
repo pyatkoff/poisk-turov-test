@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Search3 visual acceptance advanced through merged PR1885 and PR1886 on release3427fae2. Catalog recovery copy now has a clear heading/body hierarchy and a 44px retry action. Hotel and offer rows now read as one card surface instead of nested cards; prices use primary ink, the existing orange brand accent owns the selection CTA, and <=430px stacks a full-width action. Security34473224706 and exact PHP+Chromium34473224675 passed; 16 collapsed/expanded states at375/430/760/761/999/1000/1025/1440 were checked and actual375/1440 screenshots inspected. CSS grew by1529B across the two useful packages, JS0B. Exact source dbe2d1c2/tree2d319335 was published only to the isolated preview by run34473865312; 9 routes200, noindex, lead403, counter0, rollback retained and 13 production fingerprints unchanged. Technical search/API/data were untouched; physical Safari/iPhone remains deferred."
+    "last_execution_continuation": "PR1862 is the independent Search3 visual/usability package. Source c124ea98 merged as release 84e8d164: desktop primary controls now share one aligned row with a compact submit action; mobile keeps full-width submission while preserving paired date, nights and party controls at 375px, with a safe full stack below 350px. CI caught clipped desktop date years; the same PR widened the date group and added a >=125px geometry contract before the final green runs. Security 34463092761 and exact PHP+Chromium 34463092725 passed; geometry artifact 10146433174 and whole-site artifact 10146433851 were retained. Compiled entry CSS grew by 298B, without another renderer or handler owner. Technical search/API/data were intentionally untouched. The accumulated release remains checked but not published because workflow dispatch is unavailable and a trigger-only commit is forbidden."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-10: use the supplied AnyTour desktop/mobile search mockup as the visual reference; improve the native search form and include the existing price calendar. This lane owns visual/UX, not technical search/API/data.",
-    "last_fully_checked_release_sha": "3427fae296a951efbff9b95b29191969bf29ff0c",
-    "published_source_sha": "dbe2d1c28e739ed2bc1aa89d9822f1bb9122b6cf",
-    "acceptance_status": "REFERENCE_FORM_CALENDAR_RECOVERY_CARD_HIERARCHY_PREVIEW_PUBLISHED_SELECTION_DISABLED",
-    "next_action": "Use the newly published preview for side-by-side visual acceptance against the supplied reference. Next take one bounded visual package for first-view hotel summary density and comparison-action clarity, preferably CSS-only; if renderer or tests owned by active PR #1861 are required, coordinate and integrate sequentially after its fresh head instead of forking it. Do not change technical search/API/data or repeat the compact form, native nights, price calendar, recovery layout or flattened offer hierarchy. Preserve noindex, disabled leads, counter0 and production isolation; physical Safari/iPhone, unassisted user pilot and full reference-design acceptance remain deferred.",
+    "last_fully_checked_release_sha": "b92ff7af6d9e2a7785b4fb7e5c88bdd7c05e6d3e",
+    "published_source_sha": "4d884320917f1cfaac1c9418ea254b7f7880633d",
+    "acceptance_status": "REFERENCE_COMPACT_FORM_FLIGHT_TARGETS_CALENDAR_NATIVE_NIGHTS_PREVIEW_PUBLISHED_SELECTION_DISABLED",
+    "next_action": "Continue visual acceptance toward the supplied reference: first tidy the existing catalog-recovery message layout observed in blocked-network screenshots (heading/body currently run together), then compact desktop/mobile hotel-card composition and comparison actions. Coordinate any renderer/test changes with active PR #1861; do not fork technical search. The compact form, flight option targets, native nights and price calendar are published by exact run34471225946; do not repeat those implementations or deploys. Technical lane owns pre-bootstrap URL hydration/edit race reported in #996. Preserve noindex, disabled leads, counter0 and production isolation; physical Safari/iPhone and full reference-design acceptance remain deferred.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {

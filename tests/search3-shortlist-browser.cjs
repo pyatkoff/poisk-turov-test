@@ -149,6 +149,30 @@ async function checkJourney(browser, width) {
     }, items);
     assert.match((await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-standard"]').innerText()).replace(/\s/g, ''), /120000₽/, 'sort/progressive rerender cannot replace the saved representative');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'three-item comparison does not overflow');
+    const visual = await shortlist.locator('.search3-shortlist-item').first().evaluate(node => {
+      const actions = node.querySelector('.search3-shortlist-item__actions');
+      const select = node.querySelector('.search3-shortlist-select');
+      const remove = node.querySelector('.search3-shortlist-remove');
+      const price = node.querySelector('.search3-shortlist-item__price strong');
+      const box = element => { const rect = element.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; };
+      const selectStyle = getComputedStyle(select), removeStyle = getComputedStyle(remove), priceStyle = getComputedStyle(price);
+      return {
+        actions: box(actions), select: box(select), remove: box(remove),
+        selectBackground: selectStyle.backgroundColor, selectColor: selectStyle.color,
+        removeBackground: removeStyle.backgroundColor, priceColor: priceStyle.color
+      };
+    });
+    assert.equal(visual.selectBackground, 'rgb(216, 61, 0)', 'current offer verification is the orange primary comparison action');
+    assert.equal(visual.selectColor, 'rgb(255, 255, 255)', 'primary comparison action keeps readable white text');
+    assert.equal(visual.priceColor, 'rgb(21, 27, 36)', 'saved price uses the primary ink hierarchy rather than link blue');
+    assert.ok(visual.select.height >= 44 && visual.remove.height >= 44, 'comparison actions retain 44px targets');
+    assert.equal(visual.removeBackground, 'rgba(0, 0, 0, 0)', 'remove stays visually secondary');
+    if (width <= 430) {
+      assert.ok(Math.abs(visual.select.width - visual.actions.width) < 1, 'mobile primary action spans the comparison card');
+      assert.ok(visual.remove.y > visual.select.y, 'mobile remove action follows the primary action instead of competing beside it');
+    } else {
+      assert.ok(visual.remove.x > visual.select.x, 'desktop actions retain a compact primary/secondary row');
+    }
     await shortlist.screenshot({ path: path.join(output, `shortlist-${width}-three.png`), animations: 'disabled' });
 
     await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-third"] .search3-shortlist-remove').click();
@@ -160,6 +184,7 @@ async function checkJourney(browser, width) {
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
     assert.equal(await page.locator('.search3-shortlist-item').count(), 2, 'two exact snapshots survive reload');
     assert.equal(await page.locator('.search3-shortlist-select:enabled').count(), 0, 'persisted snapshots never grant selection authority before a current projection');
+    assert.equal(await page.locator('.search3-shortlist-select').first().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(238, 241, 246)', 'stale comparison action is visibly disabled rather than orange');
     assert.match(compact(await page.locator('.search3-shortlist').innerText()), /сохран|историч/i);
 
     const staleClear = page.locator('.search3-shortlist-clear');
