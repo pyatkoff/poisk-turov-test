@@ -440,17 +440,24 @@ async function run(browser, width, previous) {
     await localHotelInput.fill('  ВТОРОЙ  ');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'hotel name and category filters combine locally');
     assert.match(await localHotelFilter.locator('small').innerText(), /Показано 0 из 2 загруженных отелей/, 'combined filters report their truthful loaded-card count');
+    const localEmpty = page.locator('#results .search3-local-empty');
+    const localEmptyReset = localEmpty.locator('.search3-local-empty-reset');
+    assert.equal(await localEmpty.count(), 1, 'zero matching local filters expose one actionable empty state');
+    assert.equal(await localEmpty.isVisible(), true, 'local empty state is visible above the hidden loaded cards');
+    assert.match(await localEmpty.innerText(), /По выбранным фильтрам ничего не подошло[\s\S]*Сбросить фильтры/, 'local empty state explains the recoverable filter result');
+    assert.ok((await localEmptyReset.boundingBox()).height >= 44, 'local empty reset keeps a full touch target');
+    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `local-empty-${width}.png`), fullPage: true });
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');
     assert.equal(await localCategorySelect.inputValue(), '5', 'sorting preserves the local category');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 0, 'sorting reapplies both local filters to rerendered cards');
+    assert.equal(await localEmpty.count(), 1, 'sorting keeps exactly one local empty state');
     if (width < 1025) assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · 5★ · Отель: ВТОРОЙ/, 'sorting preserves the visible active-filter summary');
-    await localHotelInput.fill('');
-    assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'clearing the name keeps the active category');
-    await localReset.click();
+    await localEmptyReset.click();
     assert.equal(await localCategorySelect.inputValue(), '0', 'one reset clears the active category');
     assert.equal(await localHotelInput.inputValue(), '', 'one reset clears the hotel query');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'one reset restores every loaded card');
+    assert.equal(await localEmpty.count(), 0, 'one reset removes the local empty state');
     assert.equal(await localReset.isVisible(), false, 'reset action hides when no local filter remains active');
     assert.equal(await categoryFive.getAttribute('aria-pressed'), 'false', 'common reset clears the mirrored quick choice state');
     if (width < 1025) {
