@@ -61,6 +61,27 @@ async function run(browser, width) {
       await page.screenshot({ path: path.join(output, `header-menu-${width}.png`), fullPage: true });
       await page.keyboard.press('Space');
       assert.equal(await menu.evaluate(node => node.open), false, 'native menu closes without another handler');
+      // A short visual viewport must still expose the last contact destination.
+      await page.setViewportSize({ width, height: 320 });
+      await toggle.focus();
+      await page.keyboard.press('Space');
+      const links = menu.locator('.at-global-header__mobile-panel > a');
+      for (let i = 0; i < await links.count(); i++) await page.keyboard.press('Tab');
+      assert.equal(await links.last().evaluate(node => node === document.activeElement), true, 'keyboard reaches the last menu destination');
+      const shortMenu = await menu.locator('.at-global-header__mobile-panel').evaluate(node => {
+        const panel = node.getBoundingClientRect(), last = node.lastElementChild.getBoundingClientRect();
+        return { top: panel.top, bottom: panel.bottom, scrollTop: node.scrollTop, lastTop: last.top, lastBottom: last.bottom, viewport: innerHeight, pageScroll: scrollY };
+      });
+      assert.ok(shortMenu.bottom <= shortMenu.viewport && shortMenu.top >= 0, 'short-screen menu fits vertically');
+      assert.ok(shortMenu.scrollTop > 0, 'overflow scroll belongs to the existing menu');
+      assert.ok(shortMenu.lastTop >= shortMenu.top && shortMenu.lastBottom <= shortMenu.bottom, 'last focused destination is fully visible');
+      assert.equal(shortMenu.pageScroll, 0, 'menu keyboard navigation does not move the background page');
+      fs.writeFileSync(path.join(output, `header-short-${width}.json`), JSON.stringify(shortMenu, null, 2) + '\n');
+      await page.screenshot({ path: path.join(output, `header-short-${width}.png`), fullPage: false });
+      await toggle.focus();
+      await page.keyboard.press('Space');
+      assert.equal(await menu.evaluate(node => node.open), false, 'short-screen menu closes natively');
+      await page.setViewportSize({ width, height: 1000 });
     }
     fs.writeFileSync(path.join(output, `header-${width}.json`), JSON.stringify(headerGeometry, null, 2) + '\n');
     await page.screenshot({ path: path.join(output, `header-${width}.png`), fullPage: true });
