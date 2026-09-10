@@ -203,5 +203,39 @@
     ],
     "owner_scope": "#996 claims5620738750/5620814337/5620964825; exact four-file runtime/test diff. Current checkpoint edits only this report and one INT1717 row. No separate automated owner check claimed.",
     "history_note": "Original #1893 sections including then-current incident/live gates remain unchanged above; this dated continuation and the sole INT1717 row give current status."
+  },
+  "package_evidence_preparation_20260910": {
+    "pr": 1905,
+    "executable": "1be6d1cf6739c2626dad30df1a5af5b0da2e082a",
+    "scope": "Pure private diagnostic after existing PackageCapture::read. Fixed classifications/counts only, not a public projection or capture launcher.",
+    "source_blob": "5788fbb18fcd30b47b3f0cdc77612370f1a70e11",
+    "test_blob": "bb198794624c76816de09c69c72ea8ae19a2f501",
+    "checks": {
+      "local": "Both PHP files linted; 78 assertions passed with allow_url_fopen=0/full reporting; no PDO dependency.",
+      "offline": {"run": 34498038132, "job": 102941411578, "conclusion": "success", "logs_read": true},
+      "security": {"run": 34498038114, "conclusion": "success"},
+      "existing_regressions": "Saved-package/current-PDO-mapping/no-replay and retained-listing checks also passed in the hosted job.",
+      "whole_site_build": "Not triggered or required for this diagnostic-only packet."
+    },
+    "fixture_origin": "Explicitly synthetic adaptations of official claim_struct structure plus adversarial cases; NOT a real supplier capture.",
+    "privacy": "No claim values, IDs, personal/support/free text, currency labels or money amounts emitted. Agency money and variants never substitute for buyer amount or selected orders.",
+    "limits": "Digest equality is only an observation; price flag validates lexical shape only. Counts do not verify service identity, groups, currency semantics or final price. Known message presence is not exhaustive warning validation.",
+    "runtime_handoff": {
+      "six_file_hashes": "Hosted receipt equals all six #1901 source_handoff hashes above; inspector is not added to that artifact or runtime dependencies.",
+      "generated_artifact": 10160623255,
+      "zip_sha256_reported_by_workflow": "a495d0a8d4e487ed4f9c3bdb80c6ca7284af35d08236264135027bfb8f0cac46",
+      "independent_download_performed": false,
+      "published": false
+    },
+    "real_package_captured": false,
+    "public_projection_enabled": false,
+    "identity_verified": false,
+    "quote_verified": false,
+    "supplier_calls": 0,
+    "ssh": 0,
+    "live_db_operations": 0,
+    "browser_bytes_added": 0,
+    "next_action_reference": "Sole INT1717 row remains A3.1: authorized exact private invocation and one explicitly selected valid retained offer. #1902 SITE publisher does not install/capture INT backend; no new launcher or replay.",
+    "coordination": "#996 claim5621308085: three diagnostic/test paths, this additive audit and sole INT1717 row. Original sections preserved."
   }
 }
