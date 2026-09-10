@@ -56,7 +56,7 @@ function inside(inner, outer, message) {
   if (output) fs.mkdirSync(output, { recursive: true });
   let states = 0;
   try {
-    for (const width of [375, 760, 761, 999, 1000, 1440]) {
+    for (const width of [375, 430, 760, 761, 999, 1000, 1025, 1440]) {
       for (const expanded of [false, true]) {
         const page = await browser.newPage({ viewport: { width, height: 1000 } });
         try {
@@ -92,6 +92,20 @@ function inside(inner, outer, message) {
               action: pick('.search3-hotel-action'), disclosure: pick('.search3-show-tours'),
               tours: pick('.hotel-tours'), row: pick('.tour-row'), meta: pick('.tour-meta'),
               tourAction: pick('.tour-action'), direct: pick('.direct-tour'),
+              hierarchy: (() => {
+                const tours = getComputedStyle(q('.hotel-tours'));
+                const row = getComputedStyle(q('.tour-row'));
+                const direct = getComputedStyle(q('.direct-tour'));
+                const price = getComputedStyle(q('.tour-action .hotel-price'));
+                return {
+                  toursBackground: tours.backgroundColor,
+                  rowBorderTop: row.borderTopWidth,
+                  rowBorderRight: row.borderRightWidth,
+                  rowRadius: row.borderRadius,
+                  directBackground: direct.backgroundColor,
+                  priceColor: price.color,
+                };
+              })(),
               retired: document.querySelectorAll('.hotel-actions,.hotel-inline-detail,.hotel-compare-toggle,.result-decision-badges').length,
             };
           });
@@ -115,6 +129,14 @@ function inside(inner, outer, message) {
               inside(state.tourAction.box, state.row.box, `${width}: package action stays inside row`);
               inside(state.direct.box, state.row.box, `${width}: package CTA stays inside row`);
               assert.ok(state.direct.box.height >= 35.5, `${width}: package CTA remains actionable`);
+              assert.equal(state.hierarchy.toursBackground, 'rgb(255, 255, 255)', `${width}: package list shares the white card surface`);
+              assert.equal(state.hierarchy.rowBorderTop, '1px', `${width}: package row keeps one divider`);
+              assert.equal(state.hierarchy.rowBorderRight, '0px', `${width}: nested package-card border stays absent`);
+              assert.equal(state.hierarchy.rowRadius, '0px', `${width}: nested package-card radius stays absent`);
+              assert.equal(state.hierarchy.directBackground, 'rgb(216, 61, 0)', `${width}: package CTA uses the brand accent`);
+              assert.equal(state.hierarchy.priceColor, 'rgb(21, 27, 36)', `${width}: price keeps the primary ink hierarchy`);
+              if (width <= 430) assert.ok(Math.abs(state.direct.box.width - state.tourAction.box.width) <= 1,
+                `${width}: package CTA fills the narrow mobile action`);
             } else {
               assert.equal(state.tours.display, 'none', `${width}: collapsed packages stay hidden`);
             }
