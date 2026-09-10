@@ -131,6 +131,12 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-filter-rail input[type=range]{width:100%;min-height:32px}
 & .search3-filter-reset{width:100%;color:#2743cb;font-weight:600}
 & #results .hotel-main{grid-template-columns:minmax(200px,32%) minmax(0,1fr)}
+& #results .tour-row{grid-template-columns:minmax(0,1fr) minmax(224px,27%);align-items:start}
+& #results .tour-facts{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}
+& #results .tour-facts .tour-fact b{font-size:15px}
+& #results .tour-secondary-facts :is(small,b){font-size:13px}
+& #results .tour-action{padding:12px 14px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:12px;background:var(--at-soft,#f5f8ff)}
+& #results .tour-action>.hotel-price{font-size:26px}
 }
 @media(max-width:560px){
 & .catalog-recovery{padding:14px}
