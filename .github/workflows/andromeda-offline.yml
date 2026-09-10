@@ -6,11 +6,13 @@ on:
       - '.github/workflows/andromeda-offline.yml'
       - 'app/integrations/andromeda-client.php'
       - 'app/integrations/andromeda-package-capture.php'
+      - 'app/integrations/andromeda-selected-offer.php'
       - 'app/integrations/andromeda-offer-store.php'
       - 'app/integrations/andromeda-normalizer.php'
       - 'app/integrations/andromeda-hotel-resolver.php'
       - 'tests/andromeda-client-smoke.php'
       - 'tests/andromeda-package-capture-smoke.php'
+      - 'tests/andromeda-selected-offer-smoke.php'
       - 'tests/andromeda-offer-store-smoke.php'
 
 permissions:
@@ -32,7 +34,10 @@ jobs:
           php -l tests/andromeda-client-smoke.php
           php tests/andromeda-client-smoke.php
           php -l app/integrations/andromeda-package-capture.php
+          php -l app/integrations/andromeda-selected-offer.php
           php -l tests/andromeda-package-capture-smoke.php
+          php -l tests/andromeda-selected-offer-smoke.php
           php tests/andromeda-offer-store-smoke.php
+          php tests/andromeda-selected-offer-smoke.php
           php tests/andromeda-package-capture-smoke.php
           php tests/anex-normalizer-smoke.php
