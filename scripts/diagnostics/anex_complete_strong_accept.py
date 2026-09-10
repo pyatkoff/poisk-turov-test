@@ -5,11 +5,11 @@ import argparse, hashlib, json
 from pathlib import Path
 from zipfile import ZipFile
 
-OPERATION_ID = 'anex-1759-complete106-20260910-v1'
+OPERATION_ID = 'anex-1759-complete106-20260911-v2'
 ARTIFACT_SHA = '1c4ad8fd32f5dfef1b52526a7050fb72c781d76fc1d2e455c72e6d09eff788bd'
 REVIEW_SHA = '03a2ee906d503a967669b5e4f12a9aace4af36c1d522aec3182619e0cea32a24'
 SEED_SHA = 'ba9c9e068fb9240cef81a87129e4a31ee91f9ecd79d259e5d54f2e7c016a7cd8'
-REQUEST_SHA = 'a49b81d1d0727fdab79b5f89ef73cdd697f59251be5ad4f91a59b96b8837810e'
+REQUEST_SHA = 'cec6672929ccd3333c757be1dcc9ba1a0b0df3283d8cd529b1093a31d01e4433'
 COUNT = 106
 UNIQUE_TARGETS = 91
 
@@ -105,7 +105,9 @@ def apply(archive_path:Path, receipt:Path, transport=None):
         root=Path(__file__).resolve().parents[2]
         registry=(root/'app/integrations/anex-search-mapping-registry.php').read_text().removeprefix('<?php')
         php=Path(__file__).with_suffix('.php').read_text().removeprefix('<?php')
-        result=owner.ssh_php(registry+'\n'+php,payload,maximum_bytes=262144)
+        # The shared SSH helper deliberately permits only 64 KiB or 4 MiB responses.
+        # 106 post-COMMIT readback rows require the supported bounded 4 MiB envelope.
+        result=owner.ssh_php(registry+'\n'+php,payload,maximum_bytes=4000000)
     else:
         result=transport(payload)
     save(receipt.with_name(receipt.name+'.outcome.json'),result)
