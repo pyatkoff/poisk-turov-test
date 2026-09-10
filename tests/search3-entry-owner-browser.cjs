@@ -49,6 +49,13 @@ async function run(browser, width) {
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
     assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'URL child ages take a full form row');
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
+    if (width >= 1199) {
+      const rows = await page.locator('#tourSearch .search-group').evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size);
+      assert.equal(rows, width >= 1200 ? 1 : 2, 'served form changes group rows at the actual desktop boundary');
+      if (width >= 1200) for (const input of await page.locator('#tourSearch input[type=date]').all()) {
+        assert.ok((await input.boundingBox()).width >= 125, 'desktop dates retain readable native values');
+      }
+    }
     await page.locator('#tourSearch > .extras > summary').click();
     const openExtras = await page.locator('#tourSearch > .extras').boundingBox();
     const openSubmit = await page.locator('.search-submit').boundingBox();
@@ -167,7 +174,7 @@ async function run(browser, width) {
 }
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  try { for (const width of [375, 1440]) await run(browser, width); }
+  try { for (const width of [375, 1199, 1200, 1440]) await run(browser, width); }
   finally { await browser.close(); }
-  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1440 lead_sent=0');
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1199,1200,1440 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
