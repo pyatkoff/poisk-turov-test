@@ -117,5 +117,90 @@ class ReviewTests(unittest.TestCase):
         self.assertNotIn('accepted', result)
 
 
+
+class ScaleTests(unittest.TestCase):
+    def inputs(self, history=None):
+        identity, target, local, catalogue, _ = fixture()
+        identity['catalog_sha256'] = 'a' * 64
+        source = json.loads(identity['evidence_json'])['source']
+        prior = {'rows': [], 'sources': {}, 'catalogue_coverage': {}, 'limitations': []}
+        anex = [{'external_id': 8230, 'name': 'Arsi', 'alternate_name': '',
+                 'country': 'Турция', 'town': 'Аланья'}]
+        def read(key, member):
+            rows = (history or []) if member == 'anex-hotel-geo-enrichment.json' else []
+            return {'rows': rows}
+        return ({'46462': identity}, anex, {}, set(), {4: local}, {4: catalogue}, prior, read)
+
+    def test_full_inventory_does_not_require_a_name_bridge(self):
+        report = audit.scale_report(*self.inputs())
+        self.assertEqual(report['totals']['all_unresolved_examined'], 2)
+        self.assertEqual(report['totals']['additional_andromeda_proposals'], 1)
+        self.assertEqual(report['totals']['anex_unique_name_candidates'], 1)
+        row = next(r for r in report['rows'] if r['provider'] == 'andromeda')
+        self.assertEqual(row['detail']['anex_bridges'], [])
+        self.assertEqual(report['effect_if_all_validated_proposals_are_accepted']['triple_after'], 0)
+        self.assertEqual(report['new_accepted_mappings'], 0)
+        self.assertFalse(report['batches']['andromeda_validated'][0]['apply_allowed'])
+
+    def test_prior_proposals_are_not_new_progress(self):
+        args = list(self.inputs())
+        args[6]['rows'] = [{'andromeda_id': '46462', 'local_hotel_id': 3406,
+                           'status': 'validated_proposal_not_accepted'}]
+        report = audit.scale_report(*args)
+        self.assertEqual(report['totals']['additional_andromeda_proposals'], 0)
+        args[4][4]['hotels'].append(dict(args[4][4]['hotels'][0], id=9999))
+        with self.assertRaises(ValueError): audit.scale_report(*args)
+
+    def test_accepted_and_conflicting_records_are_not_reopened(self):
+        args = list(self.inputs())
+        for external, status in [('111', 'accepted'), ('222', 'conflict')]:
+            args[0][external] = dict(args[0]['46462'], external_hotel_id=external,
+                                    decision_status=status, local_hotel_id=3406 if status == 'accepted' else None)
+        args[2][8230] = 3406
+        report = audit.scale_report(*args)
+        self.assertEqual(report['totals']['all_unresolved_examined'], 1)
+        self.assertEqual(report['effect_if_all_validated_proposals_are_accepted']['new_unique_local_hotels'], 0)
+
+    def test_saved_truncated_candidates_are_not_coordinate_approval(self):
+        history = [{'external_id': 8230, 'api': {'id': 8230, 'country': 'Турция'},
+                    'api_xml_relation': 'same_record', 'reason': 'candidate_limit_reached',
+                    'candidates': [{'id': 3406, 'distance_m': 0.0}]}]
+        report = audit.scale_report(*self.inputs(history))
+        row = next(r for r in report['rows'] if r['provider'] == 'anex')
+        self.assertEqual(row['status'], 'review_candidate_set_truncated')
+        self.assertEqual(report['database_writes'], 0)
+
+    def test_coordinate_conflicts_never_enter_batch_queue(self):
+        history = [{'external_id': 8230, 'api': {'id': 8230, 'country': 'Турция'},
+                    'api_xml_relation': 'same_record', 'reason': 'coordinate_conflict',
+                    'candidates': [{'id': 3406, 'distance_m': 6000.0}]}]
+        report = audit.scale_report(*self.inputs(history))
+        self.assertEqual(report['counts']['anex']['blocked_saved_coordinate_conflict'], 1)
+        self.assertEqual(report['batches']['anex_candidates_requiring_review'], [])
+
+    def test_batches_stable_bounded_and_namespace_qualified(self):
+        rows = [{'provider': 'anex', 'external_id': str(i), 'local_hotel_id': i}
+                for i in range(1, 252)]
+        first = audit.planned_batches(rows)
+        self.assertEqual([b['count'] for b in first], [100, 100, 51])
+        self.assertEqual(first, audit.planned_batches(list(reversed(rows))))
+        with self.assertRaises(ValueError): audit.planned_batches(rows + rows[:1])
+        for size in (0, 501, True):
+            with self.assertRaises(ValueError): audit.planned_batches(rows, size)
+        rows.append({'provider': 'andromeda', 'external_id': '1', 'local_hotel_id': 1})
+        self.assertEqual(sum(b['count'] for b in audit.planned_batches(rows)), 252)
+
+    def test_no_empty_name_wildcard_and_no_fuzzy_matching(self):
+        index = {'': {1}, 'arsi': {2}, 'pasa bey': {3}}
+        self.assertEqual(audit.exact_candidates(index, ['HOTEL']), set())
+        self.assertEqual(audit.exact_candidates(index, ['Pasabey']), set())
+        self.assertEqual(audit.exact_candidates(index, ['ARSI HOTEL']), {2})
+
+    def test_scale_does_not_mutate_input_evidence(self):
+        args = self.inputs(); before = copy.deepcopy(args[:-1])
+        audit.scale_report(*args)
+        self.assertEqual(args[:-1], before)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
