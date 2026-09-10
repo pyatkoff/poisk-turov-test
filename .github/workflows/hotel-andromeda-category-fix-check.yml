@@ -1,0 +1,28 @@
+name: Andromeda category semantics fix check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_andromeda_category_fix_reconcile.php'
+      - 'tests/hotel-andromeda-category-fix-test.php'
+      - '.github/workflows/hotel-andromeda-category-fix-check.yml'
+permissions: {contents: read}
+jobs:
+  category-fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      mysql:
+        image: mysql:8.0
+        env: {MYSQL_ALLOW_EMPTY_PASSWORD: 'yes', MYSQL_DATABASE: anex_link_test}
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --protocol=TCP --host=127.0.0.1 --port=3306 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_andromeda_category_fix_reconcile.php
+      - name: Accept nonnumeric type labels but keep real star mismatches blocked
+        env:
+          ANEX_LINK_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4
+        run: php tests/hotel-andromeda-category-fix-test.php
