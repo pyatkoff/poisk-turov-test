@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1838 removes the silent Andromeda expansion action from cards without an actually accepted resolved provider offer. Source1cc0c0a9 merged as release83faf53e and exact-published by deploy34420494904; evidence10130700724 confirms nine noindex routes, disabled leads, counter0, rollback and unchanged production fingerprints. JS -1B; CSS/PHP/inline0B. The earlier no-deploy observation was stale and was corrected without a duplicate deploy. Shared provider selection remains blocked on a fresh quote/revalidation handoff; current acceptance continues independently."
+    "last_execution_continuation": "PR1841 adds saved-only Andromeda offer details in the existing provider/renderer owners, binds eligibility to exact context, and keeps selection/lead disabled. Source9e878d36 merged as releasedc3af6e1; Security34423720759 and exact34423720797 passed after correcting an NBSP-only test expectation. Exact artifact10131892774 published by deploy34424188192; evidence10132014666 confirms nine noindex routes, disabled leads, counter0, rollback and unchanged production fingerprints. Served CSS/JS +6725B. Current acceptance continues; provider selection waits for a fresh bounded quote/revalidation handoff."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: finish Search3 quickly without restarting completed work or layering patches",
-    "last_fully_checked_release_sha": "83faf53e7f76c6f955ee0e18c24d7b04c78f1d27",
-    "published_source_sha": "1cc0c0a9bff3a03e1045f28e6fe611f66966b43c",
-    "acceptance_status": "CURRENT_PROVIDER_CARD_EXPANSION_AND_ELIGIBILITY_FIX_PUBLISHED_SELECTION_DISABLED_CHROMIUM_ACCEPTANCE_GREEN",
-    "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE without another supplier replay: consolidate exact five-task/geometry/performance evidence for the published preview, then prepare the concrete owner-review checkpoint. Consume provider selection only from a fresh bounded quote handoff.",
+    "last_fully_checked_release_sha": "dc3af6e1701b14db483077f17c5b0a07a3e6d9e5",
+    "published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+    "acceptance_status": "CURRENT_PROVIDER_SAVED_DETAILS_PUBLISHED_SELECTION_DISABLED_EXACT_CHROMIUM_GREEN",
+    "next_action": "Continue accumulated current Search3 acceptance and prepare the owner-review checkpoint; consume Andromeda selection only from a fresh bounded quote/revalidation handoff.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "latest_search3_operator_and_active_summary_package": {
@@ -13746,5 +13746,99 @@
       "Owner approval for a concrete production release."
     ],
     "next_action": "Continue S3_PRODUCT_CURRENT_ACCEPTANCE without another supplier replay: consolidate exact five-task/geometry/performance evidence for the published preview, then prepare the concrete owner-review checkpoint. Consume provider selection only from a fresh bounded quote handoff."
+  },
+  "latest_andromeda_saved_offer_details_package": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
+    "source_pr": 1841,
+    "source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+    "source_tree": "8167095c742c474d033f02ea617a28f52f5e6f47",
+    "release_integration_sha": "dc3af6e1701b14db483077f17c5b0a07a3e6d9e5",
+    "product_result": [
+      "Saved Andromeda offers reveal exact hotel, operator, room, placement, date, tourists, meal and observed search price inside the current shared result renderer.",
+      "Eligibility and lookup require the full normalized offer context; same-ref/different-context and dormant provider-shaped rows receive no detail action.",
+      "One active request is aborted on competing detail/reset, successful details reopen from cache, terminal context errors cannot replay, and supplier strings remain escaped and length-bounded.",
+      "Andromeda selection, quote, flights and lead handoff remain disabled until the separate current-price selection contract is delivered."
+    ],
+    "ownership": {
+      "provider_runtime": "v2/andromeda-provider-v1.js",
+      "results_renderer": "v2/results-renderer-v5.js",
+      "results_presentation": "src/search3/styles/results-layout.css",
+      "duplicate_renderers_added": 0,
+      "duplicate_handlers_added": 0
+    },
+    "size": {
+      "provider_js_delta_raw_bytes": 4140,
+      "compact_shared_renderer_js_delta_raw_bytes": 2020,
+      "compiled_css_delta_raw_bytes": 565,
+      "served_css_js_delta_raw_bytes": 6725,
+      "inline_delta_raw_bytes": 0,
+      "accounting": "Useful functional growth in existing owners; no lazy-loading or transfer is claimed as deletion."
+    },
+    "verification": {
+      "initial_exact_run": 34423426989,
+      "initial_exact_conclusion": "failure on ordinary-space test expectation while Intl rendered NBSP; product detail content and escaping reached the browser",
+      "corrected_security_run": 34423720759,
+      "corrected_exact_run": 34423720797,
+      "exact_conclusion": "success",
+      "artifact_id": 10131892774,
+      "artifact_digest": "sha256:86e66e6e8810b5aaba069e2de86bf0d27a35024538964cac9b7a7bb2de8ab523",
+      "geometry_artifact_id": 10131892449,
+      "geometry_artifact_digest": "sha256:61f35e08bed6176ca72d353cf19e1ea7241a12738a3c66c95d3d7e9e467efbc2",
+      "browser_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "focused_contracts": [
+        "exact context identity and same-ref collision rejection",
+        "safe escaping and NBSP-aware localized price",
+        "close and cached reopen without replay",
+        "terminal error no-replay",
+        "Tourvisor remains the only selectable offer",
+        "no horizontal overflow"
+      ]
+    },
+    "publication": {
+      "published": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "deploy_control_pr": 1842,
+      "control_sha": "8ee0ee3f9cd155057ac2b330e7b5ae6da4265cbf",
+      "control_closed_without_merge": true,
+      "deploy_run": 34424188192,
+      "deployment_evidence_artifact": 10132014666,
+      "deployment_evidence_digest": "sha256:56da76a8cbba44e94ae55d88a411875ff9efb3dbce3d218c517832382dbfdac5",
+      "route_count": 9,
+      "robots": "noindex,follow",
+      "production_lead_delivery": false,
+      "preview_metrika_counter": 0,
+      "rollback_backup_retained": true,
+      "production_fingerprint_sha256": "f02285a4b938a21a221cc46979fdf56ad36e24fc40554e9f0c1d1a7bfab45702",
+      "production_fingerprint_unchanged": true,
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "visual_verification": {
+      "screenshots_inspected": [
+        375,
+        1440
+      ],
+      "result": "Detail disclosure is readable, actions fit the cards, Tourvisor selection remains visually distinct, and no overflow was detected.",
+      "physical_safari_iphone": false
+    },
+    "deferred": [
+      "fresh INT quote/revalidation and safe provider selection handoff",
+      "physical Safari/iPhone",
+      "owner visual approval and production migration"
+    ],
+    "rollback": "Revert release merge dc3af6e1701b14db483077f17c5b0a07a3e6d9e5 for code; preview deploy 34424188192 retained the prior rollback copy.",
+    "next_action": "Continue accumulated current Search3 acceptance and prepare the owner-review checkpoint; consume Andromeda selection only from a fresh bounded quote/revalidation handoff."
   }
 }
