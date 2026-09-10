@@ -154,7 +154,7 @@ jobs:
       - name: Read only still-live retained public selections
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           PYTHONPATH: helper/scripts/diagnostics:inspector/scripts/diagnostics
         run: python3 -B inspector/scripts/diagnostics/andromeda_retained_contexts.py --inspect-retained
