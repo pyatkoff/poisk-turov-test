@@ -60,14 +60,15 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <label class="at-home-field"><span>Вылет из</span><select name="from" data-home-departures required><option value="<?=home_e($homeForm['from'])?>">Загружаем города…</option></select></label>
       <label class="at-home-field"><span>Страна</span><select name="country" data-home-countries required disabled><option value="<?=home_e($homeForm['country'])?>">Загружаем страны…</option></select></label>
       <label class="at-home-field"><span>Вылет с</span><input type="date" name="dateFrom" value="<?=home_e($homeForm['date_from'])?>" required></label>
-      <label class="at-home-field"><span>Вылет до</span><input type="date" name="dateTo" value="<?=home_e($homeForm['date_till'])?>" required></label>
+      <label class="at-home-field"><span>Вылет до</span><input type="date" name="dateTo" aria-describedby="home-range-feedback" value="<?=home_e($homeForm['date_till'])?>" required></label>
       <label class="at-home-field"><span>Ночей от</span><select name="daysFrom" required><?php for($i=1;$i<=28;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['nights_from']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
-      <label class="at-home-field"><span>Ночей до</span><select name="daysTill" required><?php for($i=1;$i<=28;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['nights_till']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
+      <label class="at-home-field"><span>Ночей до</span><select name="daysTill" aria-describedby="home-range-feedback" required><?php for($i=1;$i<=28;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['nights_till']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
       <label class="at-home-field"><span>Взрослых</span><select name="count_people"><?php for($i=1;$i<=6;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['count_people']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
       <label class="at-home-field"><span>Детей</span><select data-home-children><?php for($i=0;$i<=3;$i++): ?><option value="<?=$i?>" <?=$i===count($homeForm['child_ages'])?'selected':''?>><?=$i===0?'Без детей':$i?></option><?php endfor; ?></select></label>
       <div class="at-home-child-ages" data-home-child-ages></div>
       <button type="submit" disabled>Найти туры</button>
     </div>
+    <p id="home-range-feedback" data-home-range-feedback role="status" aria-atomic="true" hidden></p>
     <p data-home-catalog-error role="alert" hidden></p>
     <button type="button" data-home-catalog-retry hidden>Повторить загрузку</button>
     <a class="at-home-search__more" href="<?=home_e(v2_site_href('/poisk-turov/'))?>" aria-disabled="true" tabindex="-1">Расширенный поиск и все фильтры →</a>
@@ -114,9 +115,25 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   function setCountriesBusy(busy){countriesBusy=busy;form.dataset.countriesBusy=busy?'true':'false';form.setAttribute('aria-busy',busy?'true':'false');country.disabled=busy;submit.disabled=busy;retry.disabled=busy;more.setAttribute('aria-disabled',busy?'true':'false');if(busy)more.setAttribute('tabindex','-1');else more.removeAttribute('tabindex');}
   function showCatalogError(kind){failedCatalog=kind;catalogError.hidden=!kind;catalogError.textContent=kind?'Не удалось загрузить '+(kind==='departures'?'города вылета':'страны')+'. Повторите загрузку — параметры поездки сохранятся.':'';retry.hidden=!kind;}
   const syncMore=()=>{more.href=form.action+'?'+new URLSearchParams(new FormData(form)).toString();};
-  form.addEventListener('input',syncMore);form.addEventListener('change',syncMore);form.addEventListener('submit',event=>{if(countriesBusy)event.preventDefault();});more.addEventListener('click',event=>{if(countriesBusy||!form.reportValidity()){event.preventDefault();return;}syncMore();});
-  const validateRange=()=>{form.elements.daysTill.setCustomValidity(Number(form.elements.daysTill.value)<Number(form.elements.daysFrom.value)?'Максимум ночей должен быть не меньше минимума':'');};
-  form.addEventListener('change',validateRange);
+  const rangeFeedback=form.querySelector('[data-home-range-feedback]');
+  const validateRange=()=>{
+    const {dateFrom,dateTo,daysFrom,daysTill}=form.elements;
+    dateTo.min=dateFrom.value;
+    const dateError=dateTo.valueAsNumber<dateFrom.valueAsNumber?'«Вылет до» не может быть раньше «Вылет с».':'';
+    const nightError=daysFrom.value&&daysTill.value&&Number(daysTill.value)<Number(daysFrom.value)?'Максимум ночей должен быть не меньше минимума.':'';
+    for(const [field,message] of [[dateTo,dateError],[daysTill,nightError]]){
+      field.setCustomValidity(message);
+      if(message)field.setAttribute('aria-invalid','true');else field.removeAttribute('aria-invalid');
+    }
+    const message=[dateError,nightError].filter(Boolean).join(' ');
+    if(rangeFeedback.textContent!==message)rangeFeedback.textContent=message;
+    rangeFeedback.hidden=!message;
+  };
+  const syncForm=()=>{validateRange();syncMore();};
+  form.addEventListener('input',syncForm);form.addEventListener('change',syncForm);
+  form.addEventListener('submit',event=>{validateRange();if(countriesBusy||!form.reportValidity())event.preventDefault();});
+  more.addEventListener('click',event=>{validateRange();if(countriesBusy||!form.reportValidity()){event.preventDefault();return;}syncMore();});
+  validateRange();
   if(!dep||!country)return;
   const initialDeparture=String(dep.value||'1'),initialCountry=String(country.value||'4');
   async function get(action,params){const u=new URL('/api-v2.php',location.origin);u.searchParams.set('action',action);Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));const r=await fetch(u,{credentials:'same-origin'});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}

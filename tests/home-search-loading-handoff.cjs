@@ -30,7 +30,14 @@ class BoxStub extends Target {
   replaceChildren() {}
   append() {}
 }
-async function run(failFirstDeparture = false) {
+class FieldStub extends Target {
+  constructor(values, name) { super(); this.values = values; this.name = name; this.validationMessage = ''; this.min = ''; }
+  get value() { return this.values[this.name]; }
+  set value(value) { this.values[this.name] = String(value); }
+  get valueAsNumber() { return this.value ? Date.parse(this.value + 'T00:00:00Z') : NaN; }
+  setCustomValidity(message) { this.validationMessage = message; }
+}
+async function run(failFirstDeparture = false, initialInvalid = false) {
 const departure = new SelectStub('from', '1');
 const country = new SelectStub('country', '4'); country.disabled = true; country.required = true;
 const childCount = new SelectStub('', '0');
@@ -38,14 +45,16 @@ const childBox = new BoxStub();
 const submit = new Target(); submit.disabled = true;
 const retry = new Target(); retry.hidden = true;
 const catalogError = new Target(); catalogError.hidden = true;
+const rangeFeedback = new Target(); rangeFeedback.hidden = true; rangeFeedback.textContent = '';
 const more = new Target(); more.href = '/poisk-turov/'; more.setAttribute('aria-disabled', 'true'); more.setAttribute('tabindex', '-1');
 const values = { dateFrom: '2099-09-10', dateTo: '2099-09-20', daysFrom: '7', daysTill: '10', count_people: '2' };
+if (initialInvalid) { values.dateFrom = '2099-09-21'; values.daysFrom = '11'; }
 const form = new Target();
 form.action = '/poisk-turov/';
 form.dataset = { countriesBusy: 'true' };
-form.elements = { daysFrom: { value: '7', setCustomValidity() {} }, daysTill: { value: '10', setCustomValidity() {} } };
-form.querySelector = selector => ({ '[data-home-children]': childCount, '[data-home-child-ages]': childBox, '.at-home-search__more': more, 'button[type="submit"]': submit, '[data-home-catalog-retry]': retry, '[data-home-catalog-error]': catalogError })[selector];
-form.reportValidity = () => !country.required || (!country.disabled && country.value !== '');
+form.elements = Object.fromEntries(['dateFrom', 'dateTo', 'daysFrom', 'daysTill'].map(name => [name, new FieldStub(values, name)]));
+form.querySelector = selector => ({ '[data-home-children]': childCount, '[data-home-child-ages]': childBox, '.at-home-search__more': more, 'button[type="submit"]': submit, '[data-home-catalog-retry]': retry, '[data-home-catalog-error]': catalogError, '[data-home-range-feedback]': rangeFeedback })[selector];
+form.reportValidity = () => (!country.required || (!country.disabled && country.value !== '')) && Object.values(form.elements).every(field => field.value !== '' && !field.validationMessage);
 
 class FormDataStub {
   constructor() { this.entries = [...(!departure.disabled ? [['from', departure.value]] : []), ...(!country.disabled ? [['country', country.value]] : []), ...Object.entries(values)]; }
@@ -68,11 +77,18 @@ vm.runInNewContext(script, context, { filename: 'home-v1.php:inline' });
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
   await tick(); await tick();
+  if (initialInvalid) {
+    assert.ok(form.elements.dateTo.validationMessage, 'initial reversed dates are invalid before any interaction');
+    assert.ok(form.elements.daysTill.validationMessage, 'initial reversed nights are invalid before any interaction');
+    assert.equal(rangeFeedback.hidden, false, 'initial inconsistent range has nearby feedback');
+    values.dateFrom = '2099-09-10'; values.daysFrom = '7'; form.dispatch('input');
+    assert.equal(rangeFeedback.hidden, true, 'repairing the starting values clears initial range feedback');
+  }
   if (failFirstDeparture) {
     assert.equal(retry.hidden, false, 'failed departures exposes explicit retry');
     assert.equal(catalogError.hidden, false, 'failure is announced');
     assert.equal(more.dispatch('click').defaultPrevented, true, 'failure cannot hand off an empty country');
-    values.dateFrom = '2099-10-01'; values.count_people = '3';
+    values.dateFrom = '2099-10-01'; values.dateTo = '2099-10-10'; values.count_people = '3';
     retry.dispatch('click'); retry.dispatch('click');
     await tick(); await tick();
     assert.equal(departureCalls, 2, 'double click starts only one retry');
@@ -119,9 +135,69 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(retry.hidden, true);
   assert.equal(new URL(more.href, 'https://anytoour.ru').searchParams.get('from'), '2');
   assert.equal(new URL(more.href, 'https://anytoour.ru').searchParams.get('dateFrom'), values.dateFrom);
+
+  const catalogCalls = departureCalls, originalParty = values.count_people;
+  values.dateFrom = '2099-12-31'; values.dateTo = '2099-12-30';
+  form.dispatch('input');
+  assert.ok(form.elements.dateTo.validationMessage, 'input immediately rejects reversed departure dates');
+  assert.equal(form.elements.dateTo.getAttribute('aria-invalid'), 'true');
+  assert.equal(form.elements.dateTo.min, '2099-12-31', 'native end picker uses the selected start date');
+  assert.equal(rangeFeedback.hidden, false);
+  assert.match(rangeFeedback.textContent, /Вылет до/);
+  assert.equal(values.dateTo, '2099-12-30', 'validation never silently rewrites the selected end date');
+  assert.equal(form.dispatch('submit').defaultPrevented, true, 'native handoff rejects an invalid range');
+  assert.equal(more.dispatch('click').defaultPrevented, true, 'advanced handoff rejects the same range');
+  values.dateTo = '2100-01-01'; form.dispatch('input');
+  assert.equal(form.elements.dateTo.validationMessage, '', 'cross-year forward range is valid');
+  assert.equal(form.elements.dateTo.getAttribute('aria-invalid'), null);
+  assert.equal(rangeFeedback.hidden, true);
+  values.dateFrom = '2100-01-01'; form.dispatch('change');
+  assert.equal(form.dispatch('submit').defaultPrevented, false, 'same-day departure is allowed');
+  assert.equal(more.dispatch('click').defaultPrevented, false);
+
+  values.daysFrom = '11'; values.daysTill = '7'; form.dispatch('input');
+  assert.ok(form.elements.daysTill.validationMessage, 'night range also validates on input');
+  assert.equal(form.elements.daysTill.getAttribute('aria-invalid'), 'true');
+  assert.equal(values.daysTill, '7', 'night values are never silently corrected');
+  assert.equal(more.dispatch('click').defaultPrevented, true);
+  assert.equal(form.dispatch('submit').defaultPrevented, true);
+  values.dateFrom = '2100-01-02'; form.dispatch('input');
+  assert.match(rangeFeedback.textContent, /Вылет до/);
+  assert.match(rangeFeedback.textContent, /ночей/, 'both active errors remain visible');
+  values.dateFrom = '2100-01-01'; form.dispatch('input');
+  assert.doesNotMatch(rangeFeedback.textContent, /Вылет до/);
+  assert.match(rangeFeedback.textContent, /ночей/, 'repairing dates does not hide the night error');
+  values.daysFrom = '7'; form.dispatch('change');
+  assert.equal(form.elements.daysTill.validationMessage, '');
+  assert.equal(form.elements.daysTill.getAttribute('aria-invalid'), null);
+  assert.equal(rangeFeedback.hidden, true);
+  assert.equal(more.dispatch('click').defaultPrevented, false, 'equal nights restore native advanced handoff');
+  const handoff = new URL(more.href, 'https://anytoour.ru').searchParams;
+  assert.deepEqual([...handoff], [['from', '2'], ['country', '9'], ...Object.entries(values)], 'all existing parameter names/order/values remain exact');
+  assert.equal(values.count_people, originalParty);
+
+  // Programmatic edits may arrive without input/change; both handoffs recheck.
+  values.dateTo = '2099-12-31';
+  assert.equal(more.dispatch('click').defaultPrevented, true);
+  values.dateTo = '2100-01-01';
+  assert.equal(more.dispatch('click').defaultPrevented, false);
+  values.daysTill = '6';
+  assert.equal(form.dispatch('submit').defaultPrevented, true);
+  values.daysTill = '7';
+  assert.equal(form.dispatch('submit').defaultPrevented, false);
+  values.dateFrom = ''; values.daysTill = ''; form.dispatch('input');
+  assert.equal(form.elements.dateTo.min, '', 'clearing the start removes its picker bound');
+  assert.equal(form.elements.dateTo.validationMessage, '', 'empty dates defer to native required validation');
+  assert.equal(form.elements.daysTill.validationMessage, '', 'empty nights do not get a misleading order error');
+  assert.equal(rangeFeedback.hidden, true);
+  assert.equal(more.dispatch('click').defaultPrevented, true, 'empty required values still block handoff');
+  values.dateFrom = '2104-02-29'; values.dateTo = '2104-03-01'; values.daysTill = '7'; form.dispatch('input');
+  assert.equal(form.dispatch('submit').defaultPrevented, false, 'valid leap-day range remains allowed');
+  assert.equal(departureCalls, catalogCalls, 'range edits make no new departure request');
+  assert.equal(pendingCountries.length, 0, 'range edits make no country or supplier request');
 }
 
 (async () => {
-  await run(); await run(true);
-  console.log('HOME_SEARCH_LOADING_HANDOFF_OK');
+  await run(); await run(true); await run(false, true);
+  console.log('HOME_SEARCH_LOADING_HANDOFF_OK range_feedback=initial,input,change,handoff supplier_requests=0');
 })().catch(error => { console.error(error); process.exit(1); });
