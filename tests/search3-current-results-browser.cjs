@@ -628,6 +628,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'service relaxation moves focus to the visible loading status');
     await page.evaluate(() => {
       const form = document.getElementById('tourSearch'), arrival = form.elements.arrival;
+      form.elements.country.value = '';
       arrival.innerHTML = '<option value="77" selected>Тестовый аэропорт</option>';
       arrival.addEventListener('change', () => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })), { once: true });
       document.getElementById('hotelServices').innerHTML = '<label><input type="checkbox" name="hotel_service[]" value="1" checked>Бассейн</label>';
