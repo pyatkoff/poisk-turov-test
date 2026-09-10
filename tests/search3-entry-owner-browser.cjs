@@ -240,6 +240,7 @@ async function run(browser, width) {
     assert.deepEqual(calendarAction, ['2026-09-13', '2026-09-13', 1], 'date action retains one canonical submit with exact dates');
     await page.evaluate(() => window.V2CurrentPriceCalendar.render([{ tours: [{ date: '2026-09-13', price: 118900 }] }]));
     assert.equal(await calendar.isVisible(), false, 'one date does not invent a price comparison');
+    await require('./search3-calendar-readability.cjs')(page, width, output);
     assert.deepEqual(errors, [], 'calendar interaction has no page errors');
   } finally { await page.close(); }
 }
