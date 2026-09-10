@@ -5,6 +5,7 @@ on:
       - 'app/integrations/andromeda-saved-package-runtime.php'
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-saved-package-runtime-smoke.php'
+      - 'tests/andromeda-retained-mapping-smoke.php'
       - '.github/workflows/andromeda-saved-package-runtime-check.yml'
 permissions:
   contents: read
@@ -43,6 +44,7 @@ jobs:
           php -l runtime/v2/api-andromeda-search3-preview.php
           php -l runtime/app/integrations/andromeda-saved-package-runtime.php
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
+          php change/tests/andromeda-retained-mapping-smoke.php runtime
       - name: Record exact source handoff without private runtime state
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}

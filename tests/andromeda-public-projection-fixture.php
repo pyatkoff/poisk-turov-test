@@ -22,6 +22,11 @@ $page=['offers'=>[$offer(447,'accepted'),$offer(null,'unresolved'),$offer(999,'i
     $offer(888,'country'),$offer(111,'category'),$offer(777,'missing')],
     'generation'=>7,'page'=>1,'pages_count'=>1,'search_ref'=>hash('sha256','fixture'),
     'status'=>'complete'];
+// Retained local IDs alone are not authority; model the current accepted registry too.
+$pdo->exec('CREATE TABLE andromeda_hotel_identities(supplier_namespace TEXT,external_hotel_id TEXT,local_hotel_id INTEGER,decision_status TEXT)');
+$identity=$pdo->prepare("INSERT INTO andromeda_hotel_identities VALUES (?,?,?,'accepted')");
+foreach($page['offers'] as $row)if($row['local_hotel_id']!==null)
+    $identity->execute([$row['supplier_namespace'],$row['external_hotel_id'],$row['local_hotel_id']]);
 $request=['generation'=>7,'params'=>['countryId'=>'1','dateFrom'=>'2027-01-02',
     'dateTo'=>'2027-01-02','hotelCategory'=>'4','meal'=>'7']];
 $data=anytour_andromeda_search3_project($request,$pdo,$page);
