@@ -506,8 +506,16 @@ async function run(browser, width, previous) {
     assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR'], ['Размещение', 'DBL']], 'source and operator remain distinct while secondary facts keep unambiguous labels');
     const photo = await card.locator('.hotel-photo').boundingBox();
     const body = await card.locator('.hotel-body').boundingBox();
+    const hotelMainLayout = await card.locator('.hotel-main').evaluate(node => {
+      const photoNode = node.querySelector('.hotel-photo'), bodyNode = node.querySelector('.hotel-body');
+      const pick = element => {
+        const style = getComputedStyle(element);
+        return { display: style.display, position: style.position, height: style.height, flex: style.flex, margin: style.margin, transform: style.transform, offsetTop: element.offsetTop, offsetHeight: element.offsetHeight };
+      };
+      return { main: pick(node), photo: pick(photoNode), body: pick(bodyNode) };
+    });
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
-    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap: '+JSON.stringify({width,previous,photo,body}));
+    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap: '+JSON.stringify({width,previous,photo,body,hotelMainLayout}));
     else assert.ok(body.x >= photo.x + photo.width - 1, 'desktop hotel content sits beside the photo without overlap');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), tour.id, 'selection identity retained');
     assert.equal(await card.locator('.direct-tour').innerText(), 'Выбрать тур', 'selection action identifies its target');
