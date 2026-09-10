@@ -39,7 +39,6 @@ check(report['aligned_three_source_examples'][0]['placement_compared_but_not_ide
 check(report['aligned_three_source_examples'][0]['fuel_inclusion_verified'] is False)
 check(report['source_minima_for_same_hotel']['tourvisor']['fuel_charge']=='2500')
 
-# Placement may be absent in the current Andromeda shared projection and must not invent package identity.
 changed_placement=result('andromeda','101000'); changed_placement['offers'][0]['placement_norm']=''
 report2=mod.compare({'anex':results['anex'],'andromeda':changed_placement,'tourvisor':results['tourvisor']})
 check(report2['aligned_three_source_tour_count']==1)
@@ -53,5 +52,25 @@ check(mod.validate_case(unknown,'anex') is unknown)
 bad=result('anex','100000'); bad['booking_calls']=1
 try: mod.validate_case(bad,'anex'); check(False)
 except ValueError: check(True)
+
+class SSHBatchError(Exception):
+    reason_code='ssh_connection_closed'
+    attempts=2
+    progress={'tcp_connected':True,'authenticated':False,'multiplexing_seen':False,'command_sent':False,'remote_exit_seen':False}
+
+failure=mod.transport_failure(SSHBatchError('SECRET HOST STDERR'))
+check(failure['status']=='transport_unconfirmed' and failure['reason_code']=='ssh_connection_closed')
+check(failure['ssh_attempts']==2 and failure['ssh_progress']['tcp_connected'] is True)
+check(failure['ssh_progress']['command_sent'] is False and failure['automatic_retry'] is False)
+check('SECRET' not in str(failure) and failure['supplier_replay_requested'] is False)
+
+class WeirdSSHBatchError(Exception):
+    reason_code='private-secret-code'
+    attempts=99
+    progress={'authenticated':'yes','command_sent':1,'extra':'secret'}
+
+failure2=mod.transport_failure(WeirdSSHBatchError())
+check(failure2['reason_code']=='other' and failure2['ssh_attempts'] is None)
+check(set(failure2['ssh_progress'])=={'tcp_connected','authenticated','multiplexing_seen','command_sent','remote_exit_seen'})
 
 print(f'Three-source ANEX price Python guards: {checks} checks passed; network=0')
