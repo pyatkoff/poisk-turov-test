@@ -77,11 +77,12 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist-item__facts dd{font-size:13px;font-weight:600;overflow-wrap:anywhere}
 & .search3-shortlist-item__price{display:grid;gap:2px;padding-top:10px;border-top:1px solid #dfe6f3}
 & .search3-shortlist-item__price small,& .search3-shortlist-item__price time{color:#526078;font-size:11px}
-& .search3-shortlist-item__price strong{color:#2743cb;font-size:22px;font-variant-numeric:tabular-nums}
+& .search3-shortlist-item__price strong{color:var(--at-ink,#151b24);font-size:22px;font-variant-numeric:tabular-nums}
 & .search3-shortlist-item__actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
-& .search3-shortlist-select{border-color:#2743cb!important;color:#2743cb!important;font-weight:700}
-& .search3-shortlist-select:disabled{border-color:#dbe2ed!important;color:#69758a!important;cursor:not-allowed}
-& .search3-shortlist-remove{color:#526078}
+& .search3-shortlist-select{border-color:var(--at-accent,#d83d00)!important;background:var(--at-accent,#d83d00)!important;color:#fff!important;font-weight:700;box-shadow:0 8px 18px #d83d0024}
+& .search3-shortlist-select:hover{background:var(--at-accent-dark,#a93000)!important}
+& .search3-shortlist-select:disabled{border-color:#dbe2ed!important;background:#eef1f6!important;color:#69758a!important;box-shadow:none;cursor:not-allowed}
+& .search3-shortlist-remove{border-color:#dbe2ed!important;background:transparent!important;color:#526078}
 & .search3-shortlist-status{min-height:0;margin:0;color:#526078;font-size:13px}
 & .search3-shortlist-status:empty{display:none}
 & .results-layout{display:grid;gap:22px}
@@ -104,6 +105,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist__head{display:grid}
 & .search3-shortlist-clear{justify-self:start}
 & .search3-shortlist__items{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+& .search3-shortlist-item__actions{grid-template-columns:1fr}
+& .search3-shortlist-item__actions :is(.search3-shortlist-select,.search3-shortlist-remove){width:100%}
 }
 @media(min-width:1025px){
 & .results-tools__actions>:not(label:has(#sortResults)):not(#resultsSearchEdit){display:none}
