@@ -1,0 +1,138 @@
+{
+  "date": "2026-09-09",
+  "state": "preview_published_and_database_updated",
+  "branch": "feat/int-andromeda-live-20260909",
+  "pr": 1781,
+  "runtime_source_sha": "544366a2008222bab0ba7b594026243326a9a112",
+  "deployment": {
+    "control_sha": "b36182f0efa4c66a71d5def4cddbcbdf43603eba",
+    "run_id": 34383446650,
+    "job_id": 102573683997,
+    "artifact_id": 10116774360,
+    "digest": "sha256:848a36885b98f3f88b979057a692d8b19210f75fc56677d798278b2d9328a710"
+  },
+  "saved_evidence": {
+    "run_id": 34382304260,
+    "artifact_id": 10116334310,
+    "digest": "sha256:344cfc87cd872217f836c00888563594118e0e0ee8ec8d6a8bad2d1691a9c58f",
+    "json_sha256": "4c9e1a1525946ded5111d5868b455e82fcbbf4fac68147492b2fca005094edee",
+    "pages_read": 52,
+    "anex_rows_in_saved_searches": 200,
+    "rows_are_not_unique_tour_count": true,
+    "hotel_groups": 33,
+    "known_anex_identity_agreements": 7,
+    "supplier_calls": 0
+  },
+  "identity_promotion": {
+    "source_sha": "f4c67586b3164b6858b0840bafc7ef704073fe93",
+    "control_sha": "805d0066d749acc1ed2c431670e9fec5beadb34b",
+    "run_id": 34382905510,
+    "job_id": 102571892533,
+    "reservation_artifact_id": 10116565571,
+    "result_artifact_id": 10116567184,
+    "result_digest": "sha256:0eb00c4935220fcebe5cfa4ab94d145844559dbe5dcfce9247554b005e1901ab",
+    "table": "andromeda_hotel_identities",
+    "updated": 2,
+    "pairs": [
+      {
+        "andromeda_id": "416247",
+        "anex_id": 5196,
+        "local_id": 9365,
+        "hotel": "Life Resorts Coral Hills",
+        "basis": "Unique Egypt name plus accepted ANEX registry ID"
+      },
+      {
+        "andromeda_id": "2000042763",
+        "anex_id": 655,
+        "local_id": 447,
+        "hotel": "Verginia Sharm Resort & Aqua Park",
+        "basis": "Unique Egypt current name after recognizing Cyrillic ЕХ. in catalog former-name marker"
+      }
+    ],
+    "counts": {
+      "accepted": 586,
+      "pending": 316,
+      "conflict": 3
+    },
+    "readback_verified": true,
+    "previous_evidence_preserved": true,
+    "other_identities_unchanged": true,
+    "supplier_calls": 0
+  },
+  "photo_fix": {
+    "late_supplier_content_preserved": true,
+    "later_page_missing_content_filled": true,
+    "failed_catalog_image_advances_to_available_supplier_image": true,
+    "failed_urls_not_retried_on_sort": true,
+    "new_css_layers": 0
+  },
+  "browser": {
+    "url": "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/?andromeda_operator=5",
+    "query": {
+      "departure": "Москва",
+      "country": "Египет",
+      "date": "2026-09-18",
+      "nights": 8,
+      "adults": 2,
+      "meal": "AI"
+    },
+    "andromeda_request_operators": [
+      "5"
+    ],
+    "pages_loaded": 2,
+    "pages_count": 2,
+    "hotels": 31,
+    "rendered_anex_offers_via_andromeda": 97,
+    "other_andromeda_operators": 0,
+    "remaining_unresolved": [
+      {
+        "namespace": "operator_5",
+        "id": "817",
+        "name": "Roulette 3* Sharm El Sheikh"
+      },
+      {
+        "namespace": "operator_5",
+        "id": "5173",
+        "name": "Roulette 4* Sharm El Sheikh"
+      },
+      {
+        "namespace": "andromeda_catalog",
+        "id": "2000073714",
+        "name": "Empire Hotel Aqua Park",
+        "reason": "Saved catalog identifies Empire Beach; preserve conflict"
+      }
+    ],
+    "loaded_photos": [
+      {
+        "local_id": 9365,
+        "source": "Tourvisor",
+        "url": "https://static.tourvisor.ru/hotel_pics/main400/9365.jpg",
+        "complete": true,
+        "natural_width": 400
+      },
+      {
+        "local_id": 447,
+        "source": "Tourvisor",
+        "url": "https://static.tourvisor.ru/hotel_pics/main400/447.jpg",
+        "complete": true,
+        "natural_width": 400
+      }
+    ],
+    "combined_life_card_verified": true,
+    "desktop_screenshot_inspected": true,
+    "physical_mobile_verified": false
+  },
+  "checks": {
+    "addon_tests": 50,
+    "catalog_tests": 4,
+    "protocol_run_id": 34383364941,
+    "security_run_id": 34383364954,
+    "whole_site_build_run_id": 34383364933
+  },
+  "limits": [
+    "Direct SAMO image availability is still unverified; the verified photos above come from the local Tourvisor catalog.",
+    "ANEX-only correlation link filters Andromeda before the supplier request; other search sources and the default multi-operator mode remain unchanged.",
+    "Only saved Egypt and existing supported form criteria are enabled.",
+    "Quote/selection/booking and production migration remain disabled."
+  ]
+}

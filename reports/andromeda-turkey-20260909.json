@@ -1,0 +1,124 @@
+{
+  "date": "2026-09-09",
+  "status": "published_with_database_readback_and_live_first_page",
+  "runtime_source": "871c1a2df84a617248c91edc675c636d0c9a9524",
+  "control_source": "d211c2f70f96b9d562415f891bdd24ceaecf08e7",
+  "deploy_run": 34387463458,
+  "deploy_job": 102587240945,
+  "artifacts": [
+    {
+      "id": 10118261005,
+      "digest": "sha256:c35b016aafd7291e4f4d0a72024cd75a747a8c56223e50181a3b7a59b278b0ec"
+    }
+  ],
+  "catalog_import_run": 34387274825,
+  "catalog_artifacts": [
+    {
+      "id": 10118184869,
+      "name": "andromeda-turkey-import-result",
+      "digest": "sha256:b03e15604fb3a3035efeab97a7099aaafca76ee6ae9a70513cbf176bc70dc49a"
+    },
+    {
+      "id": 10118182772,
+      "name": "andromeda-turkey-import-reservation",
+      "digest": "sha256:5249c89a1f4940c6b2c4745c37a36622a16a2362c00452976a70f2e1d5fcc90e"
+    }
+  ],
+  "result": {
+    "database_changed": false,
+    "database_readback_verified": true,
+    "owner_login_required": false,
+    "private_credentials_unchanged": true,
+    "production_changed": false,
+    "sha256": {
+      "api-andromeda-search3-preview.php": "0566e1e674450394c19417b5a58f270d31bd5f673fc317f4b3e9ec42acb7ebbb"
+    },
+    "source_sha": "871c1a2df84a617248c91edc675c636d0c9a9524",
+    "status": "deployed",
+    "turkey_import": {
+      "catalog_hotels": 3259,
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "country_id": 4,
+      "counts": {
+        "accepted": 2259,
+        "conflict": 4,
+        "pending": 995
+      },
+      "existing_id_collisions": [
+        "150867"
+      ],
+      "existing_preserved": 905,
+      "inserted": 3258,
+      "readback_verified": true,
+      "status": "imported",
+      "supplier_calls": 0,
+      "supplier_country_id": 5
+    },
+    "verification": {
+      "country": "Турция",
+      "criteria": {
+        "OPERATORS": "5",
+        "STATEINC": 5
+      },
+      "displayed_offers": 50,
+      "mapped_hotels": 29,
+      "operator_labels": [
+        "Anex Tour"
+      ],
+      "page": 1,
+      "pages_count": 2,
+      "received_offers": 50,
+      "resume_budget_unchanged": true,
+      "resume_equal": true,
+      "status": "checked",
+      "unresolved_hotels": 5
+    }
+  },
+  "scope": {
+    "local_country_id": 4,
+    "supplier_country_id": 5,
+    "source_catalog_hotels": 3259,
+    "local_catalog_hotels": 11150,
+    "matcher_unique_candidates": 2260,
+    "new_accepted": 2259,
+    "new_pending": 995,
+    "new_conflicts": 4,
+    "existing_rows_preserved": 905,
+    "existing_id_collision": "150867"
+  },
+  "checks": {
+    "protocol": 34387111168,
+    "security": 34387111162,
+    "country_test": "passed: translated supplier ID, country-isolated hotel IDs, unresolved country label",
+    "matcher_tests": 3,
+    "addon_tests": 50
+  },
+  "remaining": [
+    "Second page advertised but not fetched during bounded server verification; normal UI pagination remains enabled.",
+    "Five unresolved hotels on first ANEX page; do not force their identity.",
+    "Existing Andromeda catalog ID150867 preserved without overwrite.",
+    "Remaining form criteria and selected-offer handoff; direct supplier media still unverified."
+  ],
+  "execution_notes": [
+    {
+      "run": 34386934700,
+      "result": "SSH helper rejected unsupported local response budget before network; changed to existing 4MB allowance."
+    },
+    {
+      "run": 34386983858,
+      "result": "Stopped before supplier client creation because runtime catalog omits saved STATE dictionary; used pinned original artifact instead. Reservation preserved."
+    },
+    {
+      "run": 34387274825,
+      "result": "Capture and SQL completed; local result filename collided with downloaded older artifact result.json. No capture/SQL replay. Distinct filename fixed; private import-result and DB readback verified during34387463458."
+    }
+  ],
+  "supplier_requests": {
+    "turkey_catalog": 2,
+    "live_search_first_page": 2,
+    "cached_resume": 0
+  },
+  "production_changed": false,
+  "egypt_catalog_unchanged": true,
+  "browser_verification": "No new browser acceptance; real scoped server handler + HTTP validation verified."
+}

@@ -1,0 +1,30 @@
+name: Andromeda saved hotel content audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-content-audit.yml', 'scripts/diagnostics/andromeda_anex_saved_audit.*']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-anex-saved-evidence, cancel-in-progress: false}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate the read-only saved-evidence collector
+        run: |
+          php -l scripts/diagnostics/andromeda_anex_saved_audit.php
+          python3 -m py_compile scripts/diagnostics/andromeda_anex_saved_audit.py
+      - name: Correlate saved offers from ANEX only
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_anex_saved_audit.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-anex-saved-evidence
+          path: ${{ runner.temp }}/andromeda-anex-saved
+          if-no-files-found: error

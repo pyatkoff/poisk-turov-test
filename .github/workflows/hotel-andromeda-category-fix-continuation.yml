@@ -1,0 +1,107 @@
+name: Andromeda category fix 1759 v1 continuation
+run-name: Andromeda category fix 1759 v1 continuation
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/hotel-andromeda-category-fix-continuation.yml']
+permissions: {contents: read, actions: read}
+concurrency:
+  group: andromeda-identity-writes
+  cancel-in-progress: false
+env:
+  SOURCE_SHA: 8fbc474c0e842c52062539aaa876edfb0ddc2ba7
+  OPERATION_ID: hotel-andromeda-category-fix-1759-20260911-v1
+  PRIOR_RUN: '34543224545'
+  PRIOR_RESERVATION: '10178042469'
+  PRIOR_RESULT: '10178043718'
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: 8fbc474c0e842c52062539aaa876edfb0ddc2ba7, path: reviewed}
+      - name: Prove prior run failed before server operation and reserve continuation
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"; export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PRIOR_RUN" > "$STATE/prior-run.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PRIOR_RESERVATION/zip" > "$STATE/prior-reservation.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PRIOR_RESULT/zip" > "$STATE/prior-result.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-continuation-reservation&per_page=100" > "$STATE/prior-continuations.json"
+          python3 - <<'PYTHON'
+          import json, os, zipfile
+          from pathlib import Path
+          s=Path(os.environ['STATE']);run=json.loads((s/'prior-run.json').read_bytes())
+          if run.get('id')!=int(os.environ['PRIOR_RUN']) or run.get('conclusion')!='failure' or run.get('run_attempt')!=1: raise ValueError('prior_run_changed')
+          with zipfile.ZipFile(s/'prior-reservation.zip') as z:
+              r=json.loads(z.read('reservation.json'))
+          if r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('state')!='reserved_before_ssh': raise ValueError('prior_reservation_changed')
+          with zipfile.ZipFile(s/'prior-result.zip') as z:
+              names=set(z.namelist()); before=json.loads(z.read('server-before.json'))
+          if 'apply-response.json' in names or 'receipt.json' in names or before != {'status':'transport_unparseable'}: raise ValueError('prior_may_have_applied')
+          prior=json.loads((s/'prior-continuations.json').read_bytes())
+          if prior.get('total_count')!=0 or prior.get('artifacts')!=[]: raise ValueError('continuation_already_reserved')
+          (s/'continuation-reservation.json').write_text(json.dumps({'state':'continuation_reserved','operation_id':os.environ['OPERATION_ID'],'prior_run':int(os.environ['PRIOR_RUN']),'proof':'prior wrapper failed during receipt before apply-response/receipt files existed','run_id':int(os.environ['GITHUB_RUN_ID']),'apply_only_if_server_directory_absent':True,'supplier_calls':0},sort_keys=True)+'\n')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hotel-andromeda-category-fix-1759-20260911-v1-continuation-reservation
+          path: ${{ runner.temp }}/hotel-andromeda-category-fix-1759-20260911-v1/continuation-reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Probe server state, apply only if pristine, then read receipt
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          helper=Path('reviewed/scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text()
+          fix=Path('reviewed/scripts/diagnostics/hotel_andromeda_category_fix_reconcile.php').read_text()
+          def body(text):
+              if text.startswith('<?php'): text=text[len('<?php'):]
+              text=text.replace('declare(strict_types=1);','',1)
+              text=text.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__.'/hotel_full_catalog_reconcile.php';",'',1)
+              return text
+          code="define('FC_LIBRARY_ONLY',true);\n"+body(helper)+"\ndefine('ACF_LIBRARY_ONLY',true);\n"+body(fix)+"\ntry{$out=acf_main();}catch(Throwable $e){$out=['status'=>'failed','operation_id'=>ACF_OPERATION,'reason'=>$e->getMessage(),'supplier_calls'=>0];}echo fc_json($out),\"\\n\";"
+          probe=r'''$root=realpath(getcwd());$config=require $root.'/_preview/search3-anex-candidate/.andromeda-private.php';$private=realpath(dirname($config['catalog_path']));$dir=$private.'/hotel-andromeda-category-fix-1759-20260911-v1';if(is_file($dir.'/result.json')){$r=json_decode(file_get_contents($dir.'/result.json'),true);echo json_encode(['status'=>'completed','result'=>$r],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";}elseif(is_file($dir.'/reservation.json')||is_dir($dir)){echo json_encode(['status'=>'reserved_or_unknown'],JSON_UNESCAPED_UNICODE),"\n";}else{echo json_encode(['status'=>'not_started'],JSON_UNESCAPED_UNICODE),"\n";}'''
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip()
+          with tempfile.TemporaryDirectory(prefix='acf-cont-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              base=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')}
+              def run_php(src,stdin=None,t=120):
+                  cmd=base+['cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(src)]
+                  p=subprocess.run(cmd,input=stdin,text=True,capture_output=True,timeout=t,env=clean)
+                  try:v=json.loads(p.stdout)
+                  except Exception:v={'status':'transport_unparseable','stderr':p.stderr[-500:]}
+                  return p.returncode,v
+              _,pre=run_php(probe,t=60);(state/'server-preflight.json').write_text(json.dumps(pre,ensure_ascii=False,sort_keys=True)+'\n')
+              if pre.get('status')=='reserved_or_unknown': raise ValueError('server_reserved_unknown_do_not_replay')
+              if pre.get('status')=='completed': receipt=pre['result']
+              else:
+                  if pre.get('status')!='not_started': raise ValueError('server_preflight_unconfirmed')
+                  try:arc,apply=run_php(code,json.dumps({'operation_id':os.environ['OPERATION_ID'],'phase':'apply'}),180)
+                  except subprocess.TimeoutExpired:arc=124;apply={'status':'apply_reply_timeout'}
+                  (state/'apply-response.json').write_text(json.dumps({'exit_code':arc,'result':apply},ensure_ascii=False,sort_keys=True)+'\n')
+                  _,receipt=run_php(code,json.dumps({'operation_id':os.environ['OPERATION_ID'],'phase':'receipt'}),60)
+              (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+              if receipt.get('status') not in ('completed','empty') or receipt.get('supplier_calls')!=0 or (receipt.get('status')=='completed' and receipt.get('readback_verified') is not True): raise ValueError('receipt_unconfirmed')
+              print(json.dumps(receipt,ensure_ascii=False,sort_keys=True));(state/'summary.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve continuation outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-andromeda-category-fix-1759-20260911-v1-continuation-result
+          path: ${{ runner.temp }}/hotel-andromeda-category-fix-1759-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90

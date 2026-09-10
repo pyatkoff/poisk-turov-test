@@ -1,0 +1,66 @@
+name: Andromeda unresolved hotel observations
+on:
+  pull_request:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths:
+      - 'app/integrations/andromeda-hotel-observations.php'
+      - 'v2/api-andromeda-search3-preview.php'
+      - 'tests/andromeda-hotel-observations-smoke.php'
+      - 'tests/andromeda-live-search-smoke.php'
+      - 'scripts/diagnostics/andromeda-observations-install.php'
+      - 'scripts/diagnostics/andromeda_observations_install.py'
+      - '.github/workflows/andromeda-observations.yml'
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-observations.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-observations-20260909, cancel-in-progress: false}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify exact one-shot source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          php -l app/integrations/andromeda-hotel-observations.php
+          php -l v2/api-andromeda-search3-preview.php
+          php -l scripts/diagnostics/andromeda-observations-install.php
+          php tests/andromeda-hotel-observations-smoke.php
+          php tests/andromeda-live-search-smoke.php
+          python3 -m py_compile scripts/diagnostics/andromeda_observations_install.py
+  install:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify one-shot execution
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          # Two reviewed failures are known: the first stopped before SSH; the second
+          # installed the empty schema and rolled runtime files back during backfill.
+          # This version preflights all saved pages and resumes an idempotent table.
+          test "$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-observations.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count')" = 3
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34401548522" --jq '.conclusion')" = failure
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/34402146356" --jq '.conclusion')" = failure
+      - name: Install, publish and backfill saved pages
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_observations_install.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-unresolved-hotel-observations
+          path: ${{ runner.temp }}/andromeda-observations
+          if-no-files-found: error

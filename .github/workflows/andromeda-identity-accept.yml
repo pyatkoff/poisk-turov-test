@@ -1,0 +1,66 @@
+name: Hotel matching stage3 audit
+run-name: Hotel matching stage3 observation/fuzzy audit
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-identity-accept.yml']
+permissions: {contents: read}
+concurrency:
+  group: hotel-matching-readonly
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: dc7b438e4b395ebef564a6d52aa41418868811c5
+          path: reviewed
+      - name: Estimate strict observation-only and geo-fuzzy safe candidates
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php').read_text()[len('<?php'):]
+          audit=r'''
+          function h3_tokens($v){$v=preg_replace('/\s*\(\s*(?:ex|ех)\s*\.?\s+[^()]+\)\s*$/ui',' ',(string)$v);$generic=array_fill_keys(['hotel','hotels','отель','отели'],true);return array_values(array_filter(explode(' ',hb2_norm($v)),fn($x)=>$x!==''&&!isset($generic[$x])));}
+          function h3_key($v){return implode(' ',h3_tokens($v));}
+          function h3_set($v){return array_fill_keys(array_unique(hb2_tokens($v)),true);}
+          function h3_sim($a,$b){$a=h3_set($a);$b=h3_set($b);$inter=count(array_intersect_key($a,$b));$union=count($a+$b);return [$union?$inter/$union:0,$inter];}
+          $root=realpath(getcwd());$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$pdo->exec('START TRANSACTION READ ONLY');
+          $hotels=[];$strict=[];$names=[];$countryName=[];$q=$pdo->query("SELECT h.id,h.country_id,h.country_name,h.name,h.region_name,h.subregion_name,h.category,COALESCE(d.latitude,h.latitude) latitude,COALESCE(d.longitude,h.longitude) longitude FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.is_active=1 ORDER BY h.country_id,h.id");while($h=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$h['id'];$c=(int)$h['country_id'];$hotels[$id]=$h;$countryName[$c]=$h['country_name'];$names[$id]=[$h['name']];$k=h3_key($h['name']);if($k!=='')$strict[$c][$k][$id]=true;}
+          $q=$pdo->query("SELECT a.hotel_id,a.alias,h.country_id FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.is_active=1 ORDER BY a.hotel_id,a.id");while($a=$q->fetch(PDO::FETCH_ASSOC)){$id=(int)$a['hotel_id'];$c=(int)$a['country_id'];$names[$id][]=$a['alias'];$k=h3_key($a['alias']);if($k!=='')$strict[$c][$k][$id]=true;}
+          $excluded=[];foreach($pdo->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=true;
+          $andBridge=[];$q=$pdo->query("SELECT o.hotel_name,i.local_hotel_id,o.country_id FROM andromeda_search_hotel_observations o JOIN andromeda_hotel_identities i ON i.supplier_namespace='andromeda_catalog' AND i.external_hotel_id=o.external_hotel_id AND i.decision_status='accepted' AND i.local_hotel_id IS NOT NULL WHERE o.supplier_namespace='andromeda_catalog'");while($r=$q->fetch(PDO::FETCH_ASSOC)){$k=h3_key($r['hotel_name']);if($k!=='')$andBridge[(int)$r['country_id']][$k][(int)$r['local_hotel_id']]=true;}
+          $anex=['unresolved'=>0,'no_staging'=>0,'strict_observation_unique'=>0,'strict_bridge_backed'=>0,'strict_last_local_backed'=>0,'with_staging_fuzzy_geo'=>0,'blocked_country'=>0];
+          $q=$pdo->query("SELECT o.*,s.api_name,s.xml_name,s.xml_alternate_name,s.api_region,s.api_town,s.latitude s_lat,s.longitude s_lon FROM anex_search_hotel_observations o LEFT JOIN anex_hotels s ON s.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=o.anex_hotel_id WHERE m.anex_hotel_id IS NULL AND d.anex_hotel_id IS NULL ORDER BY o.search_count DESC,o.anex_hotel_id");
+          while($o=$q->fetch(PDO::FETCH_ASSOC)){$anex['unresolved']++;$c=(int)$o['country_id'];if(!hb2_country_allowed($countryName[$c]??'')){$anex['blocked_country']++;continue;}$has=$o['api_name']!==null||$o['xml_name']!==null;if(!$has){$anex['no_staging']++;$k=h3_key($o['hotel_name']);$ids=array_keys($strict[$c][$k]??[]);if(count($ids)===1&&count(h3_tokens($o['hotel_name']))>=2&&!isset($excluded[(int)$o['anex_hotel_id']][(int)$ids[0]])){$anex['strict_observation_unique']++;if(isset($andBridge[$c][$k][(int)$ids[0]]))$anex['strict_bridge_backed']++;if((int)($o['last_catalog_hotel_id']??0)===(int)$ids[0])$anex['strict_last_local_backed']++;}continue;}
+            $best=[0,0,null];$second=0;foreach($hotels as $id=>$h){if((int)$h['country_id']!==$c)continue;$place=hb2_place_match([$o['api_region'],$o['api_town']],[$h['region_name'],$h['subregion_name']]);$dist=hb2_distance($o['s_lat'],$o['s_lon'],$h['latitude'],$h['longitude']);if(!$place&&!($dist!==null&&$dist<=1000))continue;$score=0;$inter=0;foreach(array_filter([$o['hotel_name'],$o['api_name'],$o['xml_name'],$o['xml_alternate_name']]) as $sn)foreach($names[$id] as $ln){[$s,$i]=h3_sim($sn,$ln);if($s>$score){$score=$s;$inter=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$inter,$id];}elseif($score>$second)$second=$score;}
+            if($best[2]!==null&&$best[0]>=0.80&&$best[1]>=2&&$best[0]-$second>=0.15&&!isset($excluded[(int)$o['anex_hotel_id']][(int)$best[2]]))$anex['with_staging_fuzzy_geo']++;}
+          $latest=[];$q=$pdo->query("SELECT o.* FROM andromeda_search_hotel_observations o JOIN andromeda_hotel_identities i ON i.supplier_namespace='andromeda_catalog' AND i.external_hotel_id=o.external_hotel_id AND i.decision_status='pending' AND i.local_hotel_id IS NULL WHERE o.supplier_namespace='andromeda_catalog' ORDER BY o.observed_at_utc DESC");while($o=$q->fetch(PDO::FETCH_ASSOC)){if(!isset($latest[$o['external_hotel_id']]))$latest[$o['external_hotel_id']]=$o;}
+          $andr=['pending_observed'=>count($latest),'fuzzy_region_category'=>0,'category_conflict_best'=>0,'blocked_country'=>0];foreach($latest as $o){$c=(int)$o['country_id'];if(!hb2_country_allowed($countryName[$c]??'')){$andr['blocked_country']++;continue;}$best=[0,0,null];$second=0;$bestConflict=false;foreach($hotels as $id=>$h){if((int)$h['country_id']!==$c||!hb2_place_match([$o['region_name']],[$h['region_name'],$h['subregion_name']]))continue;$score=0;$inter=0;foreach($names[$id] as $ln){[$s,$i]=h3_sim($o['hotel_name'],$ln);if($s>$score){$score=$s;$inter=$i;}}if($score>$best[0]){$second=$best[0];$best=[$score,$inter,$id];$sc=$o['category']===null?null:(int)$o['category'];$tc=$h['category']===null?null:(int)$h['category'];$bestConflict=$sc&&$tc&&$sc!==$tc;}elseif($score>$second)$second=$score;}
+            if($best[2]!==null&&$best[0]>=0.80&&$best[1]>=2&&$best[0]-$second>=0.15){if($bestConflict)$andr['category_conflict_best']++;else $andr['fuzzy_region_category']++;}}
+          $pdo->rollBack();echo json_encode(['status'=>'ok','supplier_calls'=>0,'database_writes'=>0,'anex'=>$anex,'andromeda'=>$andr],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          '''
+          code="define('HB2_LIBRARY_ONLY',true);\n"+source+"\n"+audit
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          with tempfile.TemporaryDirectory(prefix='hotel-stage3-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]].strip(),os.environ[req[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=300,env={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')});value=json.loads(p.stdout)
+              if p.returncode or value.get('status')!='ok' or value.get('supplier_calls')!=0 or value.get('database_writes')!=0: raise ValueError('stage3_audit_failed')
+              out=Path(os.environ['RUNNER_TEMP'])/'hotel-matching-stage3-audit.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps(value,ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hotel-matching-stage3-audit
+          path: ${{ runner.temp }}/hotel-matching-stage3-audit.json
+          if-no-files-found: error
+          retention-days: 30

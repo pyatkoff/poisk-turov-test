@@ -1,0 +1,66 @@
+name: Andromeda scoped preview install
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/andromeda-preview-install.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: andromeda-preview-install-20260909, cancel-in-progress: false}
+env:
+  SOURCE_SHA: 825b865a20af40c9434f3c8ca14a9ca438fd717e
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, fetch-depth: 2}
+      - name: Verify checked source and refuse replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/andromeda-preview-install.yml/runs" -f branch="$GITHUB_REF_NAME" --jq '.total_count' > "$RUNNER_TEMP/run-count"
+          test "$(cat "$RUNNER_TEMP/run-count")" = 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34377107324" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/protocol-pin"
+          test "$(cat "$RUNNER_TEMP/protocol-pin")" = "$SOURCE_SHA:success"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/34377107365" --jq '.head_sha + ":" + .conclusion' > "$RUNNER_TEMP/security-pin"
+          test "$(cat "$RUNNER_TEMP/security-pin")" = "$SOURCE_SHA:success"
+          git diff --exit-code "$SOURCE_SHA" HEAD -- app/ v2/ tests/ scripts/diagnostics/andromeda_preview_install.py scripts/diagnostics/andromeda_preview_install.php
+          php -l scripts/diagnostics/andromeda_preview_install.php
+          python3 -m py_compile scripts/diagnostics/andromeda_preview_verify.py
+          mkdir "$RUNNER_TEMP/andromeda-install"
+          python3 -c 'import json,os,pathlib; pathlib.Path(os.environ["RUNNER_TEMP"]+"/andromeda-install/reservation.json").write_text(json.dumps({"state":"prepared","source_sha":os.environ["SOURCE_SHA"],"scope":"/_preview/search3-anex-candidate/"}))'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-preview-install-reservation
+          path: ${{ runner.temp }}/andromeda-install/reservation.json
+          if-no-files-found: error
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34362120510
+          artifact-ids: 10108261911
+          merge-multiple: true
+          path: ${{ runner.temp }}/saved-catalog
+      - name: Install checked overlay with private backup
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+          PREVIOUS_ADDON_SHA256: a5343ea7cc716e1319ba0bb93548a5f08162672e406c4718f909252537a6aa7e
+        run: python3 -B scripts/diagnostics/andromeda_preview_install.py
+      - name: Verify one real server search, saved resume and public owner boundary
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B scripts/diagnostics/andromeda_preview_verify.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andromeda-preview-install-result
+          path: ${{ runner.temp }}/andromeda-install
+          if-no-files-found: warn

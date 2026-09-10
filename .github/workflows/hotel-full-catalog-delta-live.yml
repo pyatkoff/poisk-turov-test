@@ -1,0 +1,117 @@
+name: Hotel full catalog delta 1759 v2 live
+run-name: Hotel full catalog delta 1759 v2 live
+on:
+  push:
+    branches: ['feat/int-andromeda-live-20260909']
+    paths: ['.github/workflows/hotel-full-catalog-delta-live.yml']
+permissions: {contents: read, actions: read}
+concurrency:
+  group: andromeda-identity-writes
+  cancel-in-progress: false
+env:
+  SOURCE_SHA: 22d9763bb06cfd547015abee2201c2ddf212b50f
+  MERGE_SHA: 049fbabef3a586516ea82e9858cd37be244e8c71
+  OPERATION_ID: hotel-full-catalog-delta-1759-20260911-v2
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: 22d9763bb06cfd547015abee2201c2ddf212b50f
+          path: reviewed
+      - name: Verify checked merge and reserve delta v2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/1967" > "$STATE/pr.json"
+          for id in 34542179145 34542179131; do gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"; done
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/prior.json"
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          s=Path(os.environ['STATE']);pr=json.loads((s/'pr.json').read_bytes())
+          if pr.get('merged_at') is None or pr.get('merge_commit_sha')!=os.environ['MERGE_SHA'] or pr.get('head',{}).get('sha')!=os.environ['SOURCE_SHA']:
+              raise ValueError('checked_source_not_merged')
+          for run_id in (34542179145,34542179131):
+              r=json.loads((s/f'check-{run_id}.json').read_bytes())
+              if r.get('head_sha')!=os.environ['SOURCE_SHA'] or r.get('conclusion')!='success': raise ValueError('checked_source_not_green')
+          prior=json.loads((s/'prior.json').read_bytes())
+          if prior.get('total_count')!=0 or prior.get('artifacts')!=[]: raise ValueError('operation_already_reserved')
+          src=Path('reviewed/scripts/diagnostics/hotel_full_catalog_delta_reconcile.php').read_text()
+          if "FD_OPERATION = 'hotel-full-catalog-delta-1759-20260911-v2'" not in src: raise ValueError('operation_source_changed')
+          for forbidden in ('ANEX_API_TOKEN','Hotels_DETAILS','PRICE','curl_','http://','https://'):
+              if forbidden in src: raise ValueError('supplier_surface')
+          (s/'reservation.json').write_text(json.dumps({'state':'reserved_before_ssh','operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'merge_sha':os.environ['MERGE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'scope':'core8-post-v1-delta','apply_exactly_once':True,'unknown_requires_receipt_only':True,'supplier_calls':0},sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before SSH
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-full-catalog-delta-1759-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-full-catalog-delta-1759-20260911-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply delta exactly once and verify receipt
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          helper=Path('reviewed/scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text()
+          delta=Path('reviewed/scripts/diagnostics/hotel_full_catalog_delta_reconcile.php').read_text()
+          def body(text):
+              if not text.startswith('<?php'): raise ValueError('php_source')
+              text=text[len('<?php'):]
+              text=text.replace("\ndeclare(strict_types=1);",'',1).replace("declare(strict_types=1);\n",'',1)
+              return text
+          code="define('FC_LIBRARY_ONLY',true);\n"+body(helper)+"\n"+body(delta)
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(k,'').strip() for k in req): raise ValueError('ssh_configuration')
+          host=os.environ[req[1]].strip();user=os.environ[req[2]].strip()
+          if host.startswith('-') or user.startswith('-') or any(c.isspace() for c in host+user): raise ValueError('ssh_target')
+          with tempfile.TemporaryDirectory(prefix='hotel-delta-v2-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')}
+              def call(phase,timeout):
+                  p=subprocess.run(cmd,input=json.dumps({'operation_id':os.environ['OPERATION_ID'],'phase':phase}),text=True,capture_output=True,timeout=timeout,env=clean)
+                  try:value=json.loads(p.stdout)
+                  except Exception:value={'status':'transport_unparseable'}
+                  return p.returncode,value
+              _,before=call('receipt',60);(state/'server-before.json').write_text(json.dumps(before,sort_keys=True)+'\n')
+              if before.get('status')!='not_started': raise ValueError('server_operation_not_pristine')
+              try:arc,apply=call('apply',300)
+              except subprocess.TimeoutExpired:arc=124;apply={'status':'apply_reply_timeout'}
+              (state/'apply-response.json').write_text(json.dumps({'exit_code':arc,'result':apply},ensure_ascii=False,sort_keys=True)+'\n')
+              rrc,receipt=call('receipt',60);(state/'receipt.json').write_text(json.dumps({'exit_code':rrc,'result':receipt},ensure_ascii=False,sort_keys=True)+'\n')
+              if receipt.get('status') not in ('completed','empty'): raise ValueError('operation_unknown_do_not_replay')
+              if receipt.get('operation_id')!=os.environ['OPERATION_ID'] or receipt.get('supplier_calls')!=0: raise ValueError('receipt_scope')
+              if receipt.get('status')=='completed' and receipt.get('readback_verified') is not True: raise ValueError('readback_unconfirmed')
+              summary={k:receipt.get(k) for k in ('status','operation_id','catalog_scope','anex_staging','anex_observed_no_staging','andromeda','accepted_total','database_writes','readback_verified','before','after','supplier_calls')}
+              (state/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - name: Preserve delta result; never auto-retry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-full-catalog-delta-1759-20260911-v2-result
+          path: |
+            ${{ runner.temp }}/hotel-full-catalog-delta-1759-20260911-v2/reservation.json
+            ${{ runner.temp }}/hotel-full-catalog-delta-1759-20260911-v2/server-before.json
+            ${{ runner.temp }}/hotel-full-catalog-delta-1759-20260911-v2/apply-response.json
+            ${{ runner.temp }}/hotel-full-catalog-delta-1759-20260911-v2/receipt.json
+            ${{ runner.temp }}/hotel-full-catalog-delta-1759-20260911-v2/summary.json
+          if-no-files-found: warn
+          retention-days: 90

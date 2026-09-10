@@ -53,6 +53,22 @@ final class AnyTourAndromedaClient
         $this->expires = $started + 3000; // Conservative local expiry; wiki says ~1h.
     }
 
+    /** Trusted private server storage only; never include this in public projections. */
+    public function privateSession(): array {
+        return $this->sid!==null && time()<$this->expires ? ['sid'=>$this->sid,'expires'=>$this->expires] : [];
+    }
+
+    public function restorePrivateSession(array $state): void {
+        if (!is_string($state['sid']??null) || !preg_match('/^[A-Za-z0-9_-]{1,256}$/D',$state['sid'])
+            || !is_int($state['expires']??null) || $state['expires']<=time() || $state['expires']>time()+3000)
+            throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
+        $this->sid=$state['sid'];$this->expires=$state['expires'];
+    }
+
+    public function ensureLogin(string $username,string $password): void {
+        if(!$this->privateSession())$this->login($username,$password);
+    }
+
     /** Read-only dictionaries only. Price/booking and arbitrary parameters are excluded. */
     public function catalog(string $action, array $params = []): array
     {
@@ -99,15 +115,39 @@ final class AnyTourAndromedaClient
 
     public function priceProbe(): array
     {
+        return $this->price(self::priceProbeParams());
+    }
+
+    /** One validated price page per server request; no automatic pagination/retry. */
+    public static function validatePriceParams(array $params): void
+    {
+        $required=['TOWNFROMINC','STATEINC','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TILL','ADULT','CHILD','CURRENCYINC','PACKETTYPE','PAGE'];
+        if (array_diff($required,array_keys($params)) || array_diff(array_keys($params),array_merge($required,['MEAL','OPERATORS','AGES','HOTELS']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['TOWNFROMINC','STATEINC','NIGHTS_FROM','NIGHTS_TILL','ADULT','CURRENCYINC'] as $key)
+            if(!is_int($params[$key]) || $params[$key]<1) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if(!is_int($params['PAGE']) || $params['PAGE']<1 || $params['PAGE']>1000 || $params['PACKETTYPE']!==0 || !is_int($params['CHILD']) || $params['CHILD']<0 || $params['CHILD']>3
+            || $params['ADULT']>6 || $params['NIGHTS_FROM']>$params['NIGHTS_TILL'] || $params['NIGHTS_TILL']>28) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['CHECKIN_BEG','CHECKIN_END'] as $key){
+            $date=is_string($params[$key])?DateTimeImmutable::createFromFormat('!Ymd',$params[$key]):false;
+            if(!$date || $date->format('Ymd')!==$params[$key]) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        }
+        if($params['CHECKIN_BEG']>$params['CHECKIN_END'] || (new DateTimeImmutable($params['CHECKIN_BEG']))->diff(new DateTimeImmutable($params['CHECKIN_END']))->days>21) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        foreach(['MEAL','OPERATORS','AGES','HOTELS'] as $key) if(isset($params[$key]) && (!is_string($params[$key]) || strlen($params[$key])>300 || !preg_match('/^[0-9]+(?:,[0-9]+)*$/D',$params[$key]))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+        if(isset($params['HOTELS']) && (count(explode(',',$params['HOTELS']))>30 || preg_match('/(?:^|,)0(?:,|$)/D',$params['HOTELS']))) throw new InvalidArgumentException('ANDROMEDA_INVALID_PARAMS');
+    }
+
+    public function price(array $params): array
+    {
+        self::validatePriceParams($params);
         if ($this->priceAttempted) throw new RuntimeException('ANDROMEDA_PRICE_REPLAY_REFUSED');
         if ($this->sid === null || time() >= $this->expires) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
         $this->priceAttempted = true; // Reserve before sending, including unknown failures.
         $sid = $this->sid;
-        $reply = $this->send('price', ['sid'=>$sid] + self::priceProbeParams());
+        $reply = $this->send('price', ['sid'=>$sid] + $params);
         $this->rejectSessionEcho($reply, $sid);
         if (!isset($reply['PAGE'], $reply['PAGES_COUNT'], $reply['PRICES'])
             || !is_array($reply['PRICES'])
-            || !is_int($reply['PAGE']) || $reply['PAGE'] !== 1
+            || !is_int($reply['PAGE']) || $reply['PAGE'] !== $params['PAGE']
             || !is_int($reply['PAGES_COUNT']) || $reply['PAGES_COUNT'] < 0) {
             throw new RuntimeException('ANDROMEDA_INVALID_PRICE_RESPONSE');
         }
