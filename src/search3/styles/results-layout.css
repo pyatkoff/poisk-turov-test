@@ -174,7 +174,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 }
 @media(max-width:760px){
 & .hotel-main{grid-template-columns:1fr}
-& .hotel-photo{min-height:0;aspect-ratio:16/9;max-height:300px}
+& .hotel-photo{width:100%;min-height:0;aspect-ratio:16/9;max-height:300px}
 & .photo-placeholder{min-height:0}
 & .hotel-body{padding:20px}
 & .hotel-title{font-size:22px}
