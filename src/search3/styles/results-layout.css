@@ -116,7 +116,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools>div:first-child{display:grid;gap:4px}
 & .results-tools__actions{align-items:end;flex-wrap:nowrap;gap:12px;padding-top:0;border-top:0}
 & .results-tools__actions>label:has(#sortResults){flex:0 1 240px;min-width:200px}
-& #resultsSearchEdit{margin-top:0}
+& #resultsSearchEdit{margin-top:0;flex:none}
 & .results-tools__actions>:not(label:has(#sortResults)):not(#resultsSearchEdit){display:none}
 & .results-layout:has(#results>*){grid-template-columns:230px minmax(0,1fr);align-items:start}
 & .results-filter-rail{position:sticky;top:18px;display:grid!important;gap:16px;padding:18px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
