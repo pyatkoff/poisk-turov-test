@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: finish Search3 quickly without restarting completed work or layering patches",
-    "last_fully_checked_release_sha": "cf31773c3edd2aae84e59953c52d15218076d0a0",
+    "last_fully_checked_release_sha": "2c727a5ab60f44f7262e0690a638ca75d697fe02",
     "published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
-    "acceptance_status": "URL_HOTEL_LOCAL_ZERO_SELECTION_LABEL_SHORTLIST_AND_FILTER_RESET_FOCUS_CHECKED_RELEASE_PREVIEW_PENDING_SELECTION_DISABLED",
-    "next_action": "Continue the next confirmed independent Search3 journey defect from the fresh checked release; publish the accumulated release only through an authorized exact dispatch, and consume Andromeda selection only from a fresh bounded quote/revalidation handoff.",
+    "acceptance_status": "URL_HOTEL_LOCAL_ZERO_SELECTION_LABEL_SHORTLIST_FILTER_RESET_RETRY_FOCUS_SERVICE_COUNT_AND_760_CARD_CHECKED_RELEASE_PREVIEW_PENDING_SELECTION_DISABLED",
+    "next_action": "Continue the next confirmed independent Search3 journey defect from fresh release 2c727a5a; publish the accumulated release only through an authorized exact dispatch, and consume Andromeda selection only from a fresh bounded quote/revalidation handoff.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
