@@ -588,7 +588,9 @@ async function run(browser, width, previous) {
       window.V2Results.render([]);
     });
     assert.equal(await page.locator('#serviceCount').innerText(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
-    await page.locator('.empty-relax[data-relax="hotel_service[]"]').click();
+    const serviceRelax = page.locator('.empty-relax[data-relax="hotel_service[]"]');
+    await serviceRelax.focus();
+    await serviceRelax.press('Enter');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'service relaxation clears every selected service');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'service relaxation immediately synchronizes its visible count');
     assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'service relaxation keeps focus on a stable recovery target through reset');
@@ -603,7 +605,9 @@ async function run(browser, width, previous) {
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
     });
-    await page.locator('.empty-relax[data-relax="arrival"]').click();
+    const arrivalRelax = page.locator('.empty-relax[data-relax="arrival"]');
+    await arrivalRelax.focus();
+    await arrivalRelax.press('Enter');
     assert.equal(await page.locator('input[name="hotel_service[]"]:checked').count(), 0, 'dependent arrival relaxation clears incompatible hotel services');
     assert.equal(await page.locator('#serviceCount').innerText(), 'не выбраны', 'dependent relaxation also synchronizes the service count');
     assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'dependent relaxation keeps focus on a stable recovery target through reset');
