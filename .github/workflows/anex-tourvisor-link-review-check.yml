@@ -10,6 +10,7 @@ on:
       - 'scripts/diagnostics/andromeda_identity_batch_accept.php'
       - 'tests/andromeda_bridge_review_test.py'
       - 'tests/andromeda_identity_batch_accept_test.py'
+      - 'tests/andromeda-identity-batch-writer-test.php'
       - 'reports/hotel-matching-scale-20260910.json'
       - 'tests/anex_tourvisor_link_*_test.py'
       - 'tests/anex-tourvisor-link-writer-test.php'
@@ -43,6 +44,7 @@ jobs:
           python3 -B tests/andromeda_bridge_review_test.py
           php -l scripts/diagnostics/anex_search_mapping_writer.php
           php -l scripts/diagnostics/andromeda_identity_batch_accept.php
+          php -l tests/andromeda-identity-batch-writer-test.php
       - name: Read exact completed artifact and saved proof blobs (no suppliers)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -75,7 +77,7 @@ jobs:
           assert actual == expected
           assert actual['previous_report_canonical_sha256'] == '97411f0e6fbd7400342456a5affab0082c39e24a51c28b94a6bdcd3ece890382'
           PYTHON
-      - name: Verify exact 92-row Andromeda batch request without DB or suppliers
+      - name: Verify exact 92-row Andromeda batch and no-replay receipt
         env:
           ANDROMEDA_SCALE_FULL_REPORT: ${{ runner.temp }}/link-review/scale-full.json
         run: |
@@ -90,6 +92,11 @@ jobs:
           ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
           ANEX_LINK_TEST_PROTOCOL: ${{ runner.temp }}/link-review/protocol.ndjson
         run: php tests/anex-tourvisor-link-writer-test.php
+      - name: Actual 92-identity transaction, rollback and current guards on disposable MySQL
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+          ANDROMEDA_BATCH_FIXTURE: ${{ runner.temp }}/link-review/andromeda-92-fixture.json
+        run: php tests/andromeda-identity-batch-writer-test.php
       - uses: actions/upload-artifact@v4
         with:
           name: anex-tourvisor-link-review
