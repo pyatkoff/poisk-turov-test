@@ -733,5 +733,85 @@
     ],
     "rollback": "Revert release merge 4ad8ce1d539fe824c66a851cebd0d724111299eb; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue accumulated current Search3 acceptance and owner-review preparation while exact publication and Andromeda selection remain independently gated."
+  },
+  "local_filter_zero_match_recovery_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1847,
+    "baseline_release_sha": "ae948df0051fd71199c8dc622e572f588e0267a3",
+    "source_sha": "467539d2e49dbfcb701ede97d49211a24813c288",
+    "source_tree": "0ee8b1a5df9b03017e257360bcb91ad5c58339db",
+    "release_integration_sha": "9c8d895a0013b442ec14dccffecedc1738b47d84",
+    "product_result": [
+      "Active local filters that hide every already loaded hotel now show one explicit recoverable state instead of a blank results column.",
+      "The recovery action uses the existing local-filter reset owner and restores all loaded cards while preserving source items, sorting and supplier identities.",
+      "New search, dirty form, restored matches and reset remove the local empty state; no supplier request, price arithmetic or lead path changed."
+    ],
+    "ownership": {
+      "runtime": "src/search3/behavior/results/local-hotel-filter.js",
+      "generated_output": "v2/search3-results-filters-v1.js",
+      "existing_styles_reused": [
+        ".empty-actionable",
+        ".empty-actions",
+        ".secondary"
+      ],
+      "new_css_rules": 0,
+      "new_renderer_or_filter_layer": 0
+    },
+    "size": {
+      "source_js_delta_raw_bytes": 916,
+      "served_js_delta_raw_bytes": 779,
+      "css_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0
+    },
+    "verification": {
+      "source_build_cases": 13,
+      "security_run": 34431286591,
+      "exact_artifact_run": 34431286583,
+      "exact_artifact_id": 10134610849,
+      "exact_artifact_digest": "sha256:e69cfe89072015313f7b8e17d0ca23d6bfe0c8c4505f01db4976608d6f67ad3d",
+      "geometry_artifact_id": 10134610356,
+      "geometry_artifact_digest": "sha256:0376a52f58a50538f910ea0654c595c0f93d364c70f6bbeab6aa8d28f65a2d3a",
+      "responsive_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1440
+      ],
+      "focused_contracts": [
+        "one visible local empty state for zero matches",
+        "44px or larger recovery target",
+        "sort preserves the zero-match filter state without duplicates",
+        "reset restores all loaded cards and removes the state",
+        "raw and served runtime parity",
+        "no external supplier or lead calls"
+      ],
+      "screenshots_inspected": [
+        375,
+        1440
+      ],
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge 9c8d895a0013b442ec14dccffecedc1738b47d84; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue current acceptance and owner-review preparation; publish the accumulated exact release when an authorized dispatch is available, while Andromeda selection remains independently gated."
   }
 }
