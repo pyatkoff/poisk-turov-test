@@ -5,7 +5,6 @@ The remote PHP owns durable case reservations. This coordinator never retries an
 case and only persists the sanitized result returned by the server runner.
 """
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -31,7 +30,6 @@ def source() -> str:
     new = (here / 'anex_search3_three_source_price.php').read_text()
     if not old.startswith('<?php') or not new.startswith('<?php'):
         raise ValueError('three_source_php_header')
-    # The established paired helper remains a library only; its historical v2 main/checkpoint never runs.
     return "define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n" + old[5:] + '\n' + new[5:]
 
 
@@ -66,9 +64,12 @@ def validate_case(value, case_id):
     return value
 
 
-def exact_key(row):
+def aligned_key(row):
+    # Placement is intentionally not an equality key yet: the current shared Andromeda
+    # projection does not expose it. We preserve each source's placement beside the price
+    # and never claim identical supplier package identity from this display-level match.
     return (row['local_hotel_id'], row['date'], row['nights'], row['adults'], row['children'],
-            row['meal_family'], row['room_norm'], row['placement_norm'])
+            row['meal_family'], row['room_norm'])
 
 
 def compare(results):
@@ -76,18 +77,18 @@ def compare(results):
     index = {case: {} for case in CASES}
     for case, value in completed.items():
         for row in value['offers']:
-            index[case].setdefault(exact_key(row), []).append(row)
+            index[case].setdefault(aligned_key(row), []).append(row)
     triple_keys = set(index['anex']) & set(index['andromeda']) & set(index['tourvisor'])
     triples = []
     for key in sorted(triple_keys, key=str):
-        # Multiple rows on an identical display tuple stay visible; never invent one-to-one supplier identity.
         rows = {case: index[case][key] for case in CASES}
         triples.append({
-            'basis': 'same_current_triple_mapped_hotel_and_exact_display_tuple',
+            'basis': 'same_current_triple_mapped_hotel_date_party_ai_and_exact_room',
+            'placement_compared_but_not_identity_key': True,
             'identical_supplier_package_verified': False,
             'fuel_inclusion_verified': False,
             'key': {'local_hotel_id': key[0], 'date': key[1], 'nights': key[2], 'adults': key[3],
-                    'children': key[4], 'meal_family': key[5], 'room_norm': key[6], 'placement_norm': key[7]},
+                    'children': key[4], 'meal_family': key[5], 'room_norm': key[6]},
             'offers': rows,
         })
     minima = {}
@@ -99,10 +100,10 @@ def compare(results):
     return {
         'same_subject_across_completed_cases': same_subject,
         'completed_cases': sorted(completed),
-        'exact_three_source_tuple_count': len(triples),
-        'exact_three_source_examples': triples[:20],
+        'aligned_three_source_tour_count': len(triples),
+        'aligned_three_source_examples': triples[:20],
         'source_minima_for_same_hotel': minima,
-        'interpretation': 'price differences are evidence only; never accept hotel identity or add fuel fields from this comparison',
+        'interpretation': 'aligned tours are comparison candidates only; price overlap never accepts hotel or supplier-package identity and fuel is never added automatically',
     }
 
 
