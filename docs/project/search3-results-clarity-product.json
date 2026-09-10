@@ -674,5 +674,64 @@
     ],
     "rollback": "Revert release merge dc3af6e1701b14db483077f17c5b0a07a3e6d9e5 for code; preview deploy 34424188192 retained the prior rollback copy.",
     "next_action": "Continue accumulated current Search3 acceptance and prepare the owner-review checkpoint; consume Andromeda selection only from a fresh bounded quote/revalidation handoff."
+  },
+  "url_hotel_passive_catalog_retention_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1844,
+    "donor_pr_closed_without_merge": 1822,
+    "baseline_release_sha": "56c6c1c1a9ebfef44f2fc235cf8de8ab2a6c5639",
+    "source_sha": "e5582db733eb89d194fd0d8b83518a0289e5ba87",
+    "source_tree": "01e26a937e2454ffe6fec4304b9ac2c15448191b",
+    "release_integration_sha": "4ad8ce1d539fe824c66a851cebd0d724111299eb",
+    "product_result": [
+      "Opening advanced filters no longer erases an existing hotel selected through a URL or hotel-page handoff.",
+      "A passive bounded catalog refresh retains the current hotel option when it is absent from the first 100 returned hotels, and a temporary catalog failure keeps the selection.",
+      "Explicit country, resort, district and hotel-filter changes retain the canonical incompatible-hotel reset."
+    ],
+    "ownership": {
+      "catalog_runtime": "v2/catalogs-v2.js",
+      "focused_test": "tests/catalogs-hydrated-hotel.test.js",
+      "shared_runtime_guard": "scripts/build/search3-js/shared-source-normalization.cjs",
+      "generated_output": "v2/search3-shared-runtime.json",
+      "old_anex_addon_or_workflow_imported": false,
+      "duplicate_handlers_added": 0
+    },
+    "size": {
+      "source_catalog_js_delta_raw_bytes": 283,
+      "served_shared_runtime_js_delta_raw_bytes": 195,
+      "css_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0
+    },
+    "verification": {
+      "focused_node_cases": 4,
+      "focused_result": "success",
+      "source_build_cases": 13,
+      "source_build_result": "success",
+      "security_run": 34426191492,
+      "exact_artifact_run": 34426191393,
+      "exact_artifact_id": 10132749250,
+      "exact_artifact_digest": "sha256:f5232b8abfc3f5210c4b968a405a1ee8835e08d36e50e79426b2dddb34c68412",
+      "exact_conclusion": "success",
+      "local_php": "unavailable; applicable PHP checks passed in exact CI"
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact source artifact is retained for an authorized dispatch.",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge 4ad8ce1d539fe824c66a851cebd0d724111299eb; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue accumulated current Search3 acceptance and owner-review preparation while exact publication and Andromeda selection remain independently gated."
   }
 }
