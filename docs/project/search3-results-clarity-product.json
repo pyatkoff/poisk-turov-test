@@ -1345,5 +1345,87 @@
       "production_changed": false
     },
     "next_action": "Continue native-form reference package; do not rebuild or republish this successful source for a docs-only checkpoint."
+  },
+  "native_nights_reference_form_20260910": {
+    "date": "2026-09-10",
+    "stage": "CHECKED_AND_PREVIEW_PUBLISHED",
+    "source_pr": 1872,
+    "baseline_release_sha": "78553dbd452a327d97e25cac3076eccf06591b6b",
+    "source_sha": "986f77ebec33ef7fc5fc5a339314fb54ea428640",
+    "release_integration_sha": "bbf682af0b2e1968155efd12e43f940852682e49",
+    "scope": "Native Search3 nights selectors1..28 instead of manual typing, preserving legacy number controls through the existing presentation flag.",
+    "preserved": [
+      "one rendered owner per field",
+      "canonical daysFrom/daysTill names and FormData",
+      "PHP defaults and URL aliases",
+      "unchanged invalid/reversed/over10-night range validation",
+      "no automatic correction or supplier submit on selection",
+      "legacy presentation"
+    ],
+    "verification": {
+      "security_run": 34467686542,
+      "navigation_run": 34467686521,
+      "exact_php_chromium_run": 34467686518,
+      "entry_artifact_id": 10148265889,
+      "geometry_artifact_id": 10148266618,
+      "entry_visual_widths": [
+        375,
+        1440
+      ],
+      "full_raw_served_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
+      "full_raw_served_states": 16,
+      "local": "Node syntax and source/generated parity passed using the same pinned dependencies; local PHP unavailable.",
+      "corrected_test_finding": "Broader calendar journey still clicked a date inside the mobile collapsed disclosure; updated it to open the real summary and assert intended responsive initial state. No force-click or check removal.",
+      "physical_safari_iphone": false
+    },
+    "size": {
+      "css_delta": 0,
+      "js_delta": 0
+    },
+    "publication": {
+      "artifact_id": 10148267236,
+      "artifact_run": 34467686518,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 718,
+      "production_fingerprint_sha256": "f02285a4b938a21a221cc46979fdf56ad36e24fc40554e9f0c1d1a7bfab45702",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "986f77ebec33ef7fc5fc5a339314fb54ea428640",
+      "source_tree": "89782f9e55201fe57d8fb9ae8a7dbf2650c39da0",
+      "published": true,
+      "deploy_run": 34468199645,
+      "deploy_control_pr": 1875,
+      "deploy_control_sha": "090acbcd6e22c5eda42dc60c633390264fe03116",
+      "evidence_artifact_id": 10148421752,
+      "control_closed_without_merge": true,
+      "live_native_nights_selects": 2,
+      "main_changed_by_this_package": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "physical Safari/iPhone native picker",
+      "unassisted user pilot",
+      "full reference-form and card visual composition",
+      "production migration requires separate approval"
+    ],
+    "next_action": "Follow the existing current_task toward coherent reference-form layout; no repeat calendar/nights work or docs-triggered publication."
   }
 }
