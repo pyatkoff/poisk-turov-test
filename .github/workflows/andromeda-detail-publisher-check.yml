@@ -34,5 +34,6 @@ jobs:
           run-id: '34494341744'
           github-token: ${{ github.token }}
           path: handoff
+          merge-multiple: true
       - name: Check actual remote PHP on disposable local files
         run: python3 -B change/tests/andromeda_detail_publish_test.py handoff --previous previous --details details
