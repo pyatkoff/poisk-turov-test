@@ -6,7 +6,11 @@ on:
       - 'scripts/diagnostics/anex_search_mapping_import.py'
       - 'scripts/diagnostics/anex_search_mapping_writer.php'
       - 'scripts/diagnostics/andromeda_bridge_review.py'
+      - 'scripts/diagnostics/andromeda_identity_batch_accept.py'
+      - 'scripts/diagnostics/andromeda_identity_batch_accept.php'
       - 'tests/andromeda_bridge_review_test.py'
+      - 'tests/andromeda_identity_batch_accept_test.py'
+      - 'tests/andromeda-identity-batch-writer-test.php'
       - 'reports/hotel-matching-scale-20260910.json'
       - 'tests/anex_tourvisor_link_*_test.py'
       - 'tests/anex-tourvisor-link-writer-test.php'
@@ -33,12 +37,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Test existing pure policy and former-name boundaries
+      - name: Test existing pure policy and writer syntax
         run: |
           python3 -B tests/anex_tourvisor_link_review_test.py
           python3 -B tests/anex_search_mapping_import_test.py
           python3 -B tests/andromeda_bridge_review_test.py
           php -l scripts/diagnostics/anex_search_mapping_writer.php
+          php -l scripts/diagnostics/andromeda_identity_batch_accept.php
+          php -l tests/andromeda-identity-batch-writer-test.php
       - name: Read exact completed artifact and saved proof blobs (no suppliers)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,6 +77,12 @@ jobs:
           assert actual == expected
           assert actual['previous_report_canonical_sha256'] == '97411f0e6fbd7400342456a5affab0082c39e24a51c28b94a6bdcd3ece890382'
           PYTHON
+      - name: Verify exact 92-row Andromeda batch and no-replay receipt
+        env:
+          ANDROMEDA_SCALE_FULL_REPORT: ${{ runner.temp }}/link-review/scale-full.json
+        run: |
+          python3 -B tests/andromeda_identity_batch_accept_test.py
+          python3 -B scripts/diagnostics/andromeda_identity_batch_accept.py --report "$ANDROMEDA_SCALE_FULL_REPORT" --output "$RUNNER_TEMP/link-review/andromeda-92-request.json"
       - name: Checked-report adapter and no-replay receipt (synthetic transport)
         env:
           ANEX_LINK_REVIEW_REPORT: ${{ runner.temp }}/link-review/review.json
@@ -80,6 +92,11 @@ jobs:
           ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
           ANEX_LINK_TEST_PROTOCOL: ${{ runner.temp }}/link-review/protocol.ndjson
         run: php tests/anex-tourvisor-link-writer-test.php
+      - name: Actual 92-identity transaction, rollback and current guards on disposable MySQL
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+          ANDROMEDA_BATCH_FIXTURE: ${{ runner.temp }}/link-review/andromeda-92-fixture.json
+        run: php tests/andromeda-identity-batch-writer-test.php
       - uses: actions/upload-artifact@v4
         with:
           name: anex-tourvisor-link-review
@@ -88,5 +105,6 @@ jobs:
             ${{ runner.temp }}/link-review/protocol.ndjson
             ${{ runner.temp }}/link-review/scale-full.json
             ${{ runner.temp }}/link-review/scale-summary.json
+            ${{ runner.temp }}/link-review/andromeda-92-request.json
           if-no-files-found: error
           retention-days: 90
