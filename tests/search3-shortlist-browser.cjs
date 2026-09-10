@@ -162,6 +162,17 @@ async function checkJourney(browser, width) {
     assert.equal(await page.locator('.search3-shortlist-select:enabled').count(), 0, 'persisted snapshots never grant selection authority before a current projection');
     assert.match(compact(await page.locator('.search3-shortlist').innerText()), /сохран|историч/i);
 
+    const staleClear = page.locator('.search3-shortlist-clear');
+    await staleClear.focus(); await staleClear.press('Enter');
+    await page.waitForFunction(() => document.activeElement?.id === 'tourSearch');
+    assert.equal(await page.locator('.search3-shortlist-item').count(), 0, 'keyboard clear removes stale snapshots before a current projection exists');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'tourSearch', 'stale clear moves focus to the visible search form instead of body');
+    assert.equal(await page.evaluate(() => localStorage.getItem(window.Search3Shortlist.storageKey)), null, 'stale clear removes persisted snapshots');
+    await page.evaluate(({ key, value }) => localStorage.setItem(key, value), persistedBefore);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.V2Results && window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+    assert.equal(await page.locator('.search3-shortlist-item').count(), 2, 'fixture restores persisted snapshots for the remaining selection checks');
+
     await render(page, 731);
     assert.equal(await page.locator('.search3-shortlist-select:enabled').count(), 2, 'unique current-generation matches restore explicit selection authority');
     const choose = page.locator('.search3-shortlist-item[data-offer-id="offer-standard"] .search3-shortlist-select');
@@ -191,7 +202,9 @@ async function checkJourney(browser, width) {
     await render(page, 731);
     await page.locator('.search3-shortlist-clear').focus();
     await page.locator('.search3-shortlist-clear').press('Enter');
+    await page.waitForFunction(() => document.activeElement?.matches('.search3-shortlist-toggle[data-offer-id="offer-standard"]'));
     assert.equal(await page.locator('.search3-shortlist-item').count(), 0, 'keyboard clear removes every snapshot');
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.offerId), 'offer-standard', 'current-projection clear returns focus to the exact source toggle');
     assert.equal(await page.evaluate(() => { const value = localStorage.getItem(window.Search3Shortlist.storageKey); return value === null || JSON.parse(value).length === 0 || JSON.parse(value).items?.length === 0; }), true, 'clear deletes or empties persisted records');
     assert.equal(await page.evaluate(() => JSON.stringify(window.__shortlistSource[0].tours.map(item => [item.id, item.price, item.roomType]))), JSON.stringify(items[0].tours.map(item => [item.id, item.price, item.roomType])), 'source projection remains immutable');
     assert.deepEqual(posts, [], 'shortlist never sends POST or a real lead');
