@@ -507,7 +507,7 @@ async function run(browser, width, previous) {
     const photo = await card.locator('.hotel-photo').boundingBox();
     const body = await card.locator('.hotel-body').boundingBox();
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
-    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap');
+    if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap: '+JSON.stringify({width,previous,photo,body}));
     else assert.ok(body.x >= photo.x + photo.width - 1, 'desktop hotel content sits beside the photo without overlap');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), tour.id, 'selection identity retained');
     assert.equal(await card.locator('.direct-tour').innerText(), 'Выбрать тур', 'selection action identifies its target');
