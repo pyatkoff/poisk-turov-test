@@ -1,0 +1,58 @@
+name: ANEX complete106 acceptance check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_complete_strong_accept.py'
+      - 'scripts/diagnostics/anex_complete_strong_accept.php'
+      - 'tests/anex_complete_strong_accept_test.py'
+      - 'tests/anex-complete-strong-writer-test.php'
+      - '.github/workflows/anex-complete106-check.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: anex_link_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --protocol=TCP --host=127.0.0.1 --port=3306 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download exact completed complete187 result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10171167462/zip" > "$RUNNER_TEMP/complete187.zip"
+          echo "1c4ad8fd32f5dfef1b52526a7050fb72c781d76fc1d2e455c72e6d09eff788bd  $RUNNER_TEMP/complete187.zip" | sha256sum -c -
+      - name: Exact 106 request and durable receipt checks
+        env:
+          ANEX_COMPLETE187_ARTIFACT: ${{ runner.temp }}/complete187.zip
+        run: |
+          python3 -m py_compile scripts/diagnostics/anex_complete_strong_accept.py tests/anex_complete_strong_accept_test.py
+          python3 -B tests/anex_complete_strong_accept_test.py
+          python3 -B scripts/diagnostics/anex_complete_strong_accept.py --archive "$ANEX_COMPLETE187_ARTIFACT" --output "$RUNNER_TEMP/complete106-request.json"
+      - name: Exact transaction source syntax
+        run: |
+          php -l scripts/diagnostics/anex_complete_strong_accept.php
+          php -l tests/anex-complete-strong-writer-test.php
+      - name: Current candidate digest, preservation and late rollback on isolated MySQL
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+        run: php tests/anex-complete-strong-writer-test.php
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anex-complete106-check
+          path: ${{ runner.temp }}/complete106-request.json
+          if-no-files-found: error
+          retention-days: 90
