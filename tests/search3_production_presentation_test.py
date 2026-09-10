@@ -1037,7 +1037,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             self.assertEqual(index.count(f'name="{name}"'), 1, name)
         self.assertIn('& .search-group{', native)
-        self.assertIn('@media(min-width:1200px){& .main-fields{grid-template-columns:minmax(250px,1.2fr) repeat(3,minmax(0,1fr))}', native)
+        self.assertIn('@media(min-width:1200px){& .main-fields{grid-template-columns:minmax(230px,1.1fr) minmax(280px,1.25fr) repeat(2,minmax(200px,1fr))}', native)
         self.assertIn('@media(max-width:700px){& .main-fields{grid-template-columns:1fr}& .search-submit{width:100%;margin-left:0}', native)
         self.assertIn('@media(max-width:430px){& .search-group--route{grid-template-columns:1fr}', native)
         self.assertIn('@media(max-width:350px){& .search-group{grid-template-columns:1fr}', native)

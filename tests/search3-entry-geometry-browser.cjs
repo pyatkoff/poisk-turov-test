@@ -81,6 +81,7 @@ const measure = node => {
             groupTops: [...document.querySelectorAll('.search-group')].map(node => Math.round(node.getBoundingClientRect().top)),
             labels: [...document.querySelectorAll('#tourSearch .field>span')].map(measureNode),
             controls: [...document.querySelectorAll('#tourSearch .field :is(input,select)')].map(measureNode),
+            dateControls: [...document.querySelectorAll('.search-group--dates input')].map(measureNode),
             submit: measureNode(document.querySelector('.search-submit')),
           };
         }, measure.toString());
@@ -96,6 +97,7 @@ const measure = node => {
         if (width === 1440) {
           assert.equal(state.mainColumns, 4, '1440: four primary groups share one compact row');
           assert.equal(new Set(state.groupTops).size, 1, '1440: all primary groups align in one row');
+          assert.ok(state.dateControls.every(item => item.width >= 125), '1440: date fields keep enough width for the complete native value');
           assert.ok(state.submit.width <= 281, '1440: primary action does not consume the entire form width');
         }
         if (output) await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
