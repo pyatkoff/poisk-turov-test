@@ -1147,6 +1147,15 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
                 source = source.replace(display, original, 1)
+                # Reviewed presentation-state fix: preserve the renderer's exact
+                # action label while the existing selection request is pending.
+                # Reversing both fragments recovers the protected controller.
+                label_capture = b"const buttonLabel=button?button.textContent:'';"
+                label_restore = b"button.textContent=buttonLabel;"
+                self.assertEqual(source.count(label_capture), 1, 'one selection action label capture')
+                self.assertEqual(source.count(label_restore), 1, 'one selection action label restore')
+                source = source.replace(label_capture, b'', 1).replace(
+                    label_restore, "button.textContent='Выбрать';".encode(), 1)
             digest = hashlib.sha256(source).hexdigest()
             self.assertEqual(digest, protected[name], name)
             for closure in closures:
