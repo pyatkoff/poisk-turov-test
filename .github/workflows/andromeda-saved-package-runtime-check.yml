@@ -18,11 +18,18 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 7c3c5bb55c88e376d97c998d0ba77a46960584d6
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
           path: runtime
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c3c5bb55c88e376d97c998d0ba77a46960584d6
+          path: package
           persist-credentials: false
       - name: Exercise existing private storage and client with local transport
         run: |
+          cp package/app/integrations/andromeda-client.php package/app/integrations/andromeda-package-capture.php package/app/integrations/andromeda-selected-offer.php runtime/app/integrations/
+          cp change/v2/api-andromeda-search3-preview.php runtime/v2/
           cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
           php -l runtime/app/integrations/andromeda-saved-package-runtime.php
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"

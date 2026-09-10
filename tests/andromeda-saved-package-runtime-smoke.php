@@ -53,6 +53,7 @@ foreach (['success','unknown'] as $case) {
         check($disk['record']['private_package']===$raw && (fileperms($path)&0777)===0600);
         check($run()['reused']===true && $calls===1);
         $now=1900; refuse($run); check($calls===1); $now=1002;
+        file_put_contents($path,'[]'); refuse($run); check($calls===1);
     } else {
         refuse($run); refuse($run);
         check($calls===2 && json_decode(file_get_contents($path),true)['record']['status']==='unknown');

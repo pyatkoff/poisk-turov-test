@@ -56,13 +56,15 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
         $store = new AnyTourAndromedaOfferStore($storeState, true);
         $path = $directory . '/' . $ref . '-' . $created . '-' . $page . '-' . $offerRef . '-package.json';
         $envelope = $read($path, true);
-        if ($envelope && (($envelope['source'] ?? null) !== $source || !is_array($envelope['record'] ?? null))) {
+        if (file_exists($path) && (($envelope['source'] ?? null) !== $source
+            || !is_array($envelope['record'] ?? null) || $envelope['record'] === [])) {
             throw new RuntimeException('ANDROMEDA_PACKAGE_CHECKPOINT_INVALID');
         }
         $record = $envelope['record'] ?? [];
         $persist = static function(array $next, array $expected) use ($read, $path, $source): array {
             $disk = $read($path, true);
-            if (($disk['record'] ?? []) !== $expected || ($disk && ($disk['source'] ?? null) !== $source)) {
+            if (($disk['record'] ?? []) !== $expected
+                || (file_exists($path) && (($disk['source'] ?? null) !== $source || ($disk['record'] ?? []) === []))) {
                 throw new RuntimeException('ANDROMEDA_PACKAGE_CHECKPOINT_CHANGED');
             }
             anytour_andromeda_search3_save($path, ['source' => $source, 'record' => $next]);
