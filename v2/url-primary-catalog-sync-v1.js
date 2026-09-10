@@ -3,9 +3,6 @@ const catalogs=window.V2Catalogs,form=document.getElementById('tourSearch');if(!
 const originalInit=catalogs.init.bind(catalogs);
 function hasOption(select,value){return !!select&&Array.from(select.options||[]).some(option=>String(option.value)===String(value));}
 function ensureTemporaryOption(select,value){if(!select||!value||hasOption(select,value))return;const option=document.createElement('option');option.value=String(value);option.textContent='ID '+String(value);select.appendChild(option);}
-function activeQuery(sp,key){const values=sp.getAll(key);return values.some(value=>String(value||'').trim()!=='');}
-function activeFlag(sp,keys){return keys.some(key=>sp.getAll(key).some(value=>['1','true','yes'].includes(String(value||'').trim().toLowerCase())));}
-function revealSecondaryOnDesktop(sp){const extras=form.querySelector('details.extras');if(!extras||typeof window.matchMedia!=='function'||!window.matchMedia('(min-width: 1025px)').matches)return;const secondary=['arrival','region','subregion','hotel','operator','hotel_type','rating','food','price_from','price_till'];const active=secondary.some(key=>activeQuery(sp,key))||activeFlag(sp,['onlyDirect','only_direct'])||activeFlag(sp,['onlyCharter','only_charter'])||activeQuery(sp,'hotel_service[]')||activeQuery(sp,'hotel_service');if(active)extras.open=true;}
 async function syncPrimary(desiredFrom,desiredCountry){
   const from=form.elements.from,country=form.elements.country;if(!from||!country)return;
   if(desiredFrom&&hasOption(from,desiredFrom)&&String(from.value)!==String(desiredFrom)){
@@ -37,7 +34,7 @@ catalogs.init=async function(){
   await originalInit();
   if(typeof URLSearchParams!=='function')return;
   const sp=new URLSearchParams(window.location.search||''),desiredFrom=sp.get('from'),desiredCountry=sp.get('country'),desiredRegion=sp.get('region'),desiredSubregion=sp.get('subregion'),desiredHotel=sp.get('hotel');
-  revealSecondaryOnDesktop(sp);
+  if(typeof window.matchMedia==='function'&&window.matchMedia('(min-width: 1025px)').matches&&(sp.get('arrival')||sp.get('region')||sp.get('subregion')||sp.get('hotel')||sp.get('operator')||sp.get('hotel_type')||sp.get('rating')||sp.get('food')||sp.get('price_from')||sp.get('price_till')||['1','true','yes'].includes(String(sp.get('onlyDirect')||sp.get('only_direct')||'').trim().toLowerCase())||['1','true','yes'].includes(String(sp.get('onlyCharter')||sp.get('only_charter')||'').trim().toLowerCase())||sp.get('hotel_service[]')||sp.get('hotel_service'))&&document.querySelector('#tourSearch > details.extras'))document.querySelector('#tourSearch > details.extras').open=true;
   await syncPrimary(desiredFrom,desiredCountry);
   await syncAdvanced(desiredRegion,desiredSubregion,desiredHotel);
 };
