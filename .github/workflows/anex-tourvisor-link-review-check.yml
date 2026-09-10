@@ -8,11 +8,9 @@ on:
       - 'scripts/diagnostics/anex_saved_strong_batch.py'
       - 'tests/anex_saved_strong_batch_test.py'
       - 'tests/anex-saved-strong-writer-test.php'
+      - 'scripts/diagnostics/anex_saved_complete_review.py'
+      - 'tests/anex_saved_complete_review_test.py'
       - 'scripts/diagnostics/andromeda_bridge_review.py'
-      - 'scripts/diagnostics/andromeda_country_pending.php'
-      - 'scripts/diagnostics/andromeda_country_pending.py'
-      - 'tests/andromeda-country-pending-test.php'
-      - 'tests/andromeda_country_pending_test.py'
       - 'scripts/diagnostics/andromeda_identity_batch_accept.py'
       - 'scripts/diagnostics/andromeda_identity_batch_accept.php'
       - 'scripts/diagnostics/andromeda_country_expansion.py'
@@ -58,8 +56,6 @@ jobs:
           python3 -B tests/anex_search_mapping_import_test.py
           python3 -B tests/andromeda_bridge_review_test.py
           python3 -B tests/andromeda_country_expansion_test.py
-          php -l scripts/diagnostics/andromeda_country_pending.php
-          php -l tests/andromeda-country-pending-test.php
           php -l scripts/diagnostics/anex_search_mapping_writer.php
           php -l scripts/diagnostics/andromeda_identity_batch_accept.php
           php -l tests/andromeda-identity-batch-writer-test.php
@@ -68,6 +64,7 @@ jobs:
           php -l scripts/diagnostics/andromeda_saved_bridge.php
           php -l tests/andromeda-saved-bridge-writer-test.php
           php -l tests/anex-saved-strong-writer-test.php
+          python3 -m py_compile scripts/diagnostics/anex_saved_complete_review.py tests/anex_saved_complete_review_test.py
       - name: Read exact completed artifact and saved proof blobs (no suppliers)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -78,6 +75,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10113498830/zip" > "$RUNNER_TEMP/link-review/egypt.zip"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10118184869/zip" > "$RUNNER_TEMP/link-review/turkey.zip"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10164620676/zip" > "$RUNNER_TEMP/link-review/pending.zip"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10165733820/zip" > "$RUNNER_TEMP/link-review/complete-catalogues.zip"
           gh api "repos/$GITHUB_REPOSITORY/git/blobs/4a0b0a9b4b8f02ea77c3a099639148ec69eac6d4" --jq .content | base64 --decode > "$RUNNER_TEMP/link-review/batch1.json"
           gh api "repos/$GITHUB_REPOSITORY/git/blobs/1e936d060bdbbba660450b69b28ee6338fc9919c" --jq .content | base64 --decode > "$RUNNER_TEMP/link-review/batch2.json"
       - name: Reproduce all ten links and six unknowns without database writes
@@ -139,10 +137,7 @@ jobs:
           BRIDGE_FIXTURE: ${{ runner.temp }}/link-review/bridge61-fixture.json
         run: php tests/andromeda-saved-bridge-writer-test.php
       - name: Reproduce complete 403-row pending delta with real PHP Unicode support
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10165733820/zip" > "$RUNNER_TEMP/link-review/complete-catalogues.zip"
           python3 -B scripts/diagnostics/andromeda_country_pending.py --archive "$RUNNER_TEMP/link-review/complete-catalogues.zip" --output "$RUNNER_TEMP/link-review/pending-request.json" --fixture "$RUNNER_TEMP/link-review/pending-bundle.json"
       - name: Durable pending receipt and exact manifest tests
         env:
@@ -163,6 +158,10 @@ jobs:
           ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
           ANEX_SAVED_DIR: ${{ runner.temp }}/link-review
         run: php tests/anex-saved-strong-writer-test.php
+      - name: Reproduce all 187 saved candidate-limit seeds and complete-review boundaries
+        env:
+          ANEX_SAVED_DIR: ${{ runner.temp }}/link-review
+        run: python3 -B tests/anex_saved_complete_review_test.py
       - uses: actions/upload-artifact@v4
         with:
           name: anex-tourvisor-link-review
@@ -172,8 +171,8 @@ jobs:
             ${{ runner.temp }}/link-review/scale-full.json
             ${{ runner.temp }}/link-review/scale-summary.json
             ${{ runner.temp }}/link-review/andromeda-92-request.json
-            ${{ runner.temp }}/link-review/pending-request.json
             ${{ runner.temp }}/link-review/bridge61-request.json
+            ${{ runner.temp }}/link-review/pending-request.json
             ${{ runner.temp }}/link-review/strong-report.json
             ${{ runner.temp }}/link-review/strong-protocol.ndjson
           if-no-files-found: error
