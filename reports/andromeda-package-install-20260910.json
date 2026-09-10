@@ -141,5 +141,27 @@
     "coordination": {"source_claim": 5623251091, "scope_refinement": 5623299601, "source_completion": 5623419094, "docs_claim": 5623520117},
     "queue": "Only the current INT1717 matrix row; do not turn this historical evidence section into a parallel next-action list",
     "preservation": "All previous installation receipts, backups, unknown/completed checkpoints and audit fields remain unchanged. No reinstallation, first-PRICE fallback, credential re-provisioning or ANEX queue action."
+  },
+  "capture_control_approval_20260910": {
+    "pr": 1927,
+    "owner_reply": "Одобряю и давай дальше",
+    "approval_comment": 5623779628,
+    "approved_source": "0a685c6e092bbb2004111aeabf16a4d2029eaec9",
+    "main_before": "ea190a98c4d2a72cc9d27357df539a5d47e95079",
+    "main_merge": "d285a76c95dab5e475fc674ff599812cfe45a076",
+    "path": ".github/workflows/andromeda-detail-publish.yml",
+    "workflow_blob_readback": "f964639f22d79fdba7f4f1b7483c1a15b801cc85",
+    "security_run": 34514553827,
+    "security_conclusion": "success",
+    "control_status": "approved and merged; permission gate closed",
+    "operation_permission": "ONE bounded capture of an actual valid explicitly selected retained offer, max1broninit through existing #1917/#1925. No repeated permission request for this operation.",
+    "capture_command_posted": false,
+    "capture_attempt_consumed": false,
+    "actual_current_selection_received": false,
+    "blocking_input": "Actual current publicSelection identity and local country after common-preview saved-details acceptance; not another approval or missing implementation",
+    "search_handoff": {"issue": 1646, "comment": 5623816616, "coordinator": 996},
+    "effects": {"main_control_files_changed": 1, "runtime_installations": 0, "supplier_calls": 0, "ssh_calls": 0, "live_db_operations": 0, "real_package_captured": false, "quote_verified": false},
+    "boundaries": "No install replay, new client/relay/launcher, substitute login/PRICE, fabricated or expired context, unknown replay, real booking/lead, production deployment or unrelated ANEX/SEARCH/SITE/SEO changes. Earlier public-access refusal not retried or bypassed.",
+    "history": "All earlier audit fields remain dated historical evidence. The old draft/approval-required strings describe the pre-approval execution; this record and the sole current INT1717 row supersede that permission status only. They do not establish live package, price or selection success."
   }
 }
