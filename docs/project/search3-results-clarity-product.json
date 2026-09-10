@@ -876,5 +876,76 @@
     ],
     "rollback": "Revert release merge 9f5953c80f8c559597002c70082f8922373060f8; the currently published isolated preview was not changed by this package.",
     "next_action": "Continue the next confirmed independent Search3 journey defect from the fresh checked release while publication and Andromeda selection remain separately gated."
+  },
+  "shortlist_clear_focus_recovery_20260910": {
+    "schema_version": 1,
+    "date": "2026-09-10",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1851,
+    "baseline_release_sha": "311fe62881bc5a13285c11c61e6d9d050f8ce3da",
+    "source_sha": "00564479553f6ba9e1a8f5be96561b353489c900",
+    "source_tree": "c4c2ec36429f9a899ba36a05248a0c2017d71f45",
+    "release_integration_sha": "09b191b37b5884d3c28187401fb69b1aff9e35f2",
+    "product_result": [
+      "Clearing persisted shortlist snapshots before a matching current projection exists no longer drops keyboard focus to the document body.",
+      "The owner focuses the exact current offer toggle when available; otherwise it focuses the visible search form with a temporary tabindex.",
+      "Shortlist storage, source/search/offer identity, stale and duplicate blocking, prices and the lead path remain unchanged."
+    ],
+    "ownership": {
+      "runtime": "src/search3/behavior/results/shortlist.js",
+      "generated_output": "v2/search3-results-filters-v1.js",
+      "focused_browser_test": "tests/search3-shortlist-browser.cjs",
+      "new_handler_or_renderer": 0
+    },
+    "size": {
+      "source_js_delta_raw_bytes": 442,
+      "served_js_delta_raw_bytes": 338,
+      "css_delta_raw_bytes": 0,
+      "php_delta_raw_bytes": 0,
+      "inline_delta_raw_bytes": 0
+    },
+    "verification": {
+      "source_build_cases": 13,
+      "security_run": 34434052484,
+      "exact_artifact_run": 34434052573,
+      "exact_artifact_id": 10135554933,
+      "exact_artifact_digest": "sha256:fa803d9c5d07682e23cc994b7f13f3d59601244fd3cb517d771dfeb841c8eb08",
+      "geometry_artifact_id": 10135554460,
+      "geometry_artifact_digest": "sha256:2cd751cec3d457c8765ccfb1c22f0abdfda2cabe47e8553bf23bc84328548000",
+      "responsive_widths": [
+        375,
+        1440
+      ],
+      "focused_contracts": [
+        "persisted shortlist survives reload",
+        "stale and duplicate offers stay blocked",
+        "stale clear focuses the visible search form",
+        "current clear focuses the exact offer toggle",
+        "blocked, quota and corrupt storage remain recoverable",
+        "POST requests and real leads remain zero"
+      ],
+      "corrected_failed_run": {
+        "run": 34433755511,
+        "reason": "The first fallback targeted the results region while its empty-state ancestor was hidden, so the browser correctly rejected focus. The same PR changed the fallback to the visible search form and reran the full browser contract."
+      },
+      "physical_safari_iphone": false
+    },
+    "publication": {
+      "published": false,
+      "currently_published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
+      "reason": "The connected GitHub surface cannot dispatch workflow_dispatch, and a trigger-only control commit is forbidden. The successful exact accumulated artifact is retained for an authorized dispatch.",
+      "main_observed_sha": "d7ff843deec9fc897cc1d7384ae02c94362ac614",
+      "main_changed": false,
+      "production_changed": false,
+      "real_leads_submitted": 0
+    },
+    "deferred": [
+      "Exact accumulated preview publication through an authorized non-trigger-only dispatch.",
+      "Fresh INT quote/revalidation and safe provider selection handoff.",
+      "Physical Safari/iPhone and unassisted user pilot.",
+      "Owner approval and production migration."
+    ],
+    "rollback": "Revert release merge 09b191b37b5884d3c28187401fb69b1aff9e35f2; the currently published isolated preview was not changed by this package.",
+    "next_action": "Continue the next confirmed independent Search3 journey defect while exact publication and provider selection remain separately gated."
   }
 }
