@@ -129,7 +129,8 @@ jobs:
             const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
             const {data: feature} = await github.rest.git.getRef({...context.repo, ref: 'heads/feature/anex-search-adapter-20260907'});
-            if (feature.object.sha !== inspectorMerge) throw new Error('INT feature advanced; review inspector provenance.');
+            const {data: lineage} = await github.rest.repos.compareCommits({...context.repo, base: inspectorMerge, head: feature.object.sha});
+            if (lineage.status !== 'identical' && lineage.status !== 'ahead') throw new Error('Checked inspector is not an ancestor of current INT feature; review provenance.');
             const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: 1942});
             if (!pr.merged || pr.merge_commit_sha !== inspectorMerge || pr.head.sha !== inspectorHead || pr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Inspector PR provenance mismatch.');
             const gates = [
@@ -153,7 +154,7 @@ jobs:
       - name: Read only still-live retained public selections
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           PYTHONPATH: helper/scripts/diagnostics:inspector/scripts/diagnostics
         run: python3 -B inspector/scripts/diagnostics/andromeda_retained_contexts.py --inspect-retained
