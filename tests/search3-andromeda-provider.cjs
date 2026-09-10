@@ -65,6 +65,14 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   assert.equal(final.items[0].tours.length,2,'runtime adds Andromeda to the current shared result renderer');
   assert.equal(final.options.empty,true,'terminal Tourvisor options are restored after Andromeda completes');
   assert.deepEqual(providerEvents.map(item=>item.status),['loading','progress','complete']);
+  const linkedButUnresolved=rawHotel(21477);linkedButUnresolved.mapping_status='observed';
+  runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[linkedButUnresolved]}})});
+  listeners.get('v2:search-reset')({detail:{generation:11}});await new Promise(resolve=>setImmediate(resolve));
+  runtimeWindow.V2Results.render([tv],{empty:true});
+  assert.equal(renders.at(-1).items[0].andromedaExpansion,undefined,'a local_id without an accepted provider offer cannot expose a dead expansion control');
+  runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[rawHotel(21477)]}})});
+  listeners.get('v2:search-reset')({detail:{generation:11}});await new Promise(resolve=>setImmediate(resolve));
+  runtimeWindow.V2Results.render([tv],{empty:true});
   runtimeWindow.setTimeout=setTimeout;runtimeWindow.clearTimeout=clearTimeout;
   const calls=[];let failSecond=false;
   runtimeWindow.fetch=async(url,options)=>{
