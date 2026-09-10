@@ -8,6 +8,10 @@ on:
       - 'scripts/diagnostics/andromeda_bridge_review.py'
       - 'scripts/diagnostics/andromeda_identity_batch_accept.py'
       - 'scripts/diagnostics/andromeda_identity_batch_accept.php'
+      - 'scripts/diagnostics/andromeda_country_expansion.py'
+      - 'scripts/diagnostics/andromeda_country_expansion.php'
+      - 'tests/andromeda_country_expansion_test.py'
+      - 'tests/andromeda-country-expansion-test.php'
       - 'tests/andromeda_bridge_review_test.py'
       - 'tests/andromeda_identity_batch_accept_test.py'
       - 'tests/andromeda-identity-batch-writer-test.php'
@@ -42,9 +46,12 @@ jobs:
           python3 -B tests/anex_tourvisor_link_review_test.py
           python3 -B tests/anex_search_mapping_import_test.py
           python3 -B tests/andromeda_bridge_review_test.py
+          python3 -B tests/andromeda_country_expansion_test.py
           php -l scripts/diagnostics/anex_search_mapping_writer.php
           php -l scripts/diagnostics/andromeda_identity_batch_accept.php
           php -l tests/andromeda-identity-batch-writer-test.php
+          php -l scripts/diagnostics/andromeda_country_expansion.php
+          php -l tests/andromeda-country-expansion-test.php
       - name: Read exact completed artifact and saved proof blobs (no suppliers)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -97,6 +104,10 @@ jobs:
           ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
           ANDROMEDA_BATCH_FIXTURE: ${{ runner.temp }}/link-review/andromeda-92-fixture.json
         run: php tests/andromeda-identity-batch-writer-test.php
+      - name: New-country import of 1000 identities and late rollback on disposable MySQL
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+        run: php tests/andromeda-country-expansion-test.php
       - uses: actions/upload-artifact@v4
         with:
           name: anex-tourvisor-link-review
