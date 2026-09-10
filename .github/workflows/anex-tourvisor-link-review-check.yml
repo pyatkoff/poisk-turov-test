@@ -1,0 +1,73 @@
+name: Saved Tourvisor ANEX link review (offline)
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_tourvisor_link_*.py'
+      - 'scripts/diagnostics/anex_search_mapping_import.py'
+      - 'scripts/diagnostics/anex_search_mapping_writer.php'
+      - 'tests/anex_tourvisor_link_*_test.py'
+      - 'tests/anex-tourvisor-link-writer-test.php'
+      - 'reports/anex-tourvisor-link-review-20260910.json'
+      - '.github/workflows/anex-tourvisor-link-review-check.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: anex_link_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping --protocol=TCP --host=127.0.0.1 --port=3306 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test existing pure policy and former-name boundaries
+        run: |
+          python3 -B tests/anex_tourvisor_link_review_test.py
+          python3 -B tests/anex_search_mapping_import_test.py
+          php -l scripts/diagnostics/anex_search_mapping_writer.php
+      - name: Read exact completed artifact and saved proof blobs (no suppliers)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/link-review"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10097668551/zip" > "$RUNNER_TEMP/link-review/archive.zip"
+          gh api "repos/$GITHUB_REPOSITORY/git/blobs/4a0b0a9b4b8f02ea77c3a099639148ec69eac6d4" --jq .content | base64 --decode > "$RUNNER_TEMP/link-review/batch1.json"
+          gh api "repos/$GITHUB_REPOSITORY/git/blobs/1e936d060bdbbba660450b69b28ee6338fc9919c" --jq .content | base64 --decode > "$RUNNER_TEMP/link-review/batch2.json"
+      - name: Reproduce all ten links and six unknowns without database writes
+        run: |
+          python3 -B scripts/diagnostics/anex_tourvisor_link_review.py --archive "$RUNNER_TEMP/link-review/archive.zip" --batch1 "$RUNNER_TEMP/link-review/batch1.json" --batch2 "$RUNNER_TEMP/link-review/batch2.json" --output "$RUNNER_TEMP/link-review/review.json"
+          python3 - <<'PYTHON'
+          import hashlib, json, os
+          from pathlib import Path
+          expected = json.loads(Path('reports/anex-tourvisor-link-review-20260910.json').read_text())
+          actual = (Path(os.environ['RUNNER_TEMP']) / 'link-review/review.json').read_bytes()
+          assert hashlib.sha256(actual).hexdigest() == expected['full_report_sha256']
+          PYTHON
+      - name: Checked-report adapter and no-replay receipt (synthetic transport)
+        env:
+          ANEX_LINK_REVIEW_REPORT: ${{ runner.temp }}/link-review/review.json
+        run: python3 -B tests/anex_tourvisor_link_import_test.py
+      - name: Existing SQL writer against isolated MySQL, no application credentials
+        env:
+          ANEX_LINK_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=anex_link_test;charset=utf8mb4'
+          ANEX_LINK_TEST_PROTOCOL: ${{ runner.temp }}/link-review/protocol.ndjson
+        run: php tests/anex-tourvisor-link-writer-test.php
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anex-tourvisor-link-review
+          path: |
+            ${{ runner.temp }}/link-review/review.json
+            ${{ runner.temp }}/link-review/protocol.ndjson
+          if-no-files-found: error
+          retention-days: 90

@@ -64,6 +64,8 @@ try {
         if (!is_int($meta['counts'][$field] ?? null) || $meta['counts'][$field] < 0) throw new RuntimeException();
     }
     if ($meta['counts']['total'] < 1 || $meta['counts']['total'] > 100000) throw new RuntimeException();
+    $linkReview = $appendOnly && ($meta['sources']['gap_sha256'] ?? '') ===
+        '324d25b3d08fd448a54fa2fd7dc2da6882f8858ea874b6820fc24f62b78cfa02';
 
     // Validate the complete protocol before opening the DB or creating a table.
     $rows = array();
@@ -102,6 +104,10 @@ try {
     $counts['unique_catalog_hotels'] = count($targets);
     if (!$committed || fgets(STDIN) !== false || !hash_equals($meta['rows_digest'], hash_final($rowHash))) throw new RuntimeException();
     foreach ($counts as $key => $value) if ($meta['counts'][$key] !== $value) throw new RuntimeException();
+    if ($linkReview && (array_map(static function ($row) { return $row['catalog_hotel_id']; }, $rows)
+            !== [8121=>6319,16275=>1326,23775=>17568,26688=>55648] || $counts['strong'] !== 4)) {
+        throw new RuntimeException('link_review_scope_changed');
+    }
 
     $root = realpath(getcwd());
     if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException();
@@ -120,8 +126,8 @@ try {
     if (!($pdo instanceof PDO)) throw new RuntimeException();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // MySQL DDL commits implicitly; only isolated schema setup occurs outside the single data transaction.
-    $pdo->exec("CREATE TABLE IF NOT EXISTS anex_hotel_search_mappings (
+    // MySQL DDL commits implicitly; the four-link path requires the existing schema.
+    if (!$linkReview) $pdo->exec("CREATE TABLE IF NOT EXISTS anex_hotel_search_mappings (
         anex_hotel_id INT UNSIGNED NOT NULL,
         catalog_hotel_id INT UNSIGNED NOT NULL,
         match_class VARCHAR(32) CHARACTER SET ascii NOT NULL,
@@ -140,6 +146,7 @@ try {
     $tables = $pdo->query("SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()"
         . " AND TABLE_NAME IN ('anex_review_pair_exclusions','anex_search_hotel_observations')")->fetchAll(PDO::FETCH_KEY_PAIR);
     $reviewEnabled = array_key_exists('anex_review_pair_exclusions', $tables);
+    if ($linkReview && !$reviewEnabled) throw new RuntimeException('link_review_schema_required');
     try {
         // information_schema can hide an inaccessible table. Probe permission
         // directly, without reading rows; only genuine absence is optional.
@@ -167,7 +174,8 @@ try {
     // Bound every ID list. Lock current catalog targets and overrides before any mapping writes.
     foreach (array_chunk(array_keys($targets), 250) as $ids) {
         $marks = implode(',', array_fill(0, count($ids), '?'));
-        $statement = $pdo->prepare('SELECT id FROM catalog_hotels WHERE id IN (' . $marks . ') FOR UPDATE');
+        $statement = $pdo->prepare('SELECT id FROM catalog_hotels WHERE id IN (' . $marks . ')'
+            . ($linkReview ? ' AND country_id=4 AND is_active=1' : '') . ' FOR UPDATE');
         $statement->execute($ids);
         $found = $statement->fetchAll(PDO::FETCH_COLUMN);
         if (count(array_unique(array_map('intval', $found))) !== count($ids)) throw new RuntimeException();
@@ -247,6 +255,23 @@ try {
     if ($appendOnly && $preservation !== anex_mapping_preservation($pdo, array_keys($rows))) throw new RuntimeException();
     $pdo->commit();
     $transaction = false;
+    $linkReadback = [];
+    if ($linkReview) {
+        // Post-COMMIT readback. A lost/changed result remains unknown, never replayed.
+        $readback = $pdo->prepare('SELECT catalog_hotel_id,source_row_digest,match_class,enabled FROM anex_hotel_search_mappings WHERE anex_hotel_id=? AND scope=? AND approval_policy=?');
+        foreach ($rows as $id => $row) {
+            $status = isset($exclusions[$id][$row['catalog_hotel_id']]) ? 'skipped_pair_excluded'
+                : (isset($manual[$id]) ? 'skipped_manual' : 'verified_policy_mapping');
+            if ($status === 'verified_policy_mapping') {
+                $readback->execute([$id, 'preview', $policy]);
+                $actual = $readback->fetch(PDO::FETCH_ASSOC);
+                if (!$actual || (int)$actual['catalog_hotel_id'] !== $row['catalog_hotel_id']
+                        || (int)$actual['enabled'] !== 1 || $actual['match_class'] !== 'strong_candidate'
+                        || $actual['source_row_digest'] !== $row['source_row_digest']) throw new RuntimeException();
+            }
+            $linkReadback[] = ['anex_hotel_id'=>$id, 'catalog_hotel_id'=>$row['catalog_hotel_id'], 'status'=>$status];
+        }
+    }
     $result = array_merge(array('status' => $stats['inserted'] + $stats['updated'] + $stats['inactivated_manual'] === 0 ? 'already_imported' : 'imported',
         'scope' => 'preview', 'approval_policy' => $policy, 'mapping_digest' => $meta['mapping_digest'],
         'append_only' => $appendOnly, 'preservation' => $preservation,
@@ -255,6 +280,7 @@ try {
         'enabled_strong' => (int)$enabled['strong'], 'enabled_unique_catalog_hotels' => (int)$enabled['unique_catalog_hotels'],
         'effective_manual_accepted' => (int)$manualAccepted,
         'effective_mapped_count' => (int)$enabled['total_enabled'] + (int)$manualAccepted), $stats);
+    if ($linkReview) $result += ['readback_verified'=>true, 'catalog_country_guard'=>4, 'link_readback'=>$linkReadback];
 } catch (Throwable $ignored) {
     if ($pdo instanceof PDO && $transaction) {
         try { $pdo->rollBack(); } catch (Throwable $rollbackIgnored) {}
