@@ -51,6 +51,46 @@ async function run(browser, width) {
     assert.deepEqual(errors, []);
     fs.writeFileSync(path.join(output, `entry-${width}.json`), JSON.stringify({ width, payload, blocked, lead_sent: 0 }, null, 2) + '\n');
     await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true });
+    const calendarItems = [{ tours: [
+      { date: '2026-09-12', price: 132500 },
+      { date: '2026-09-13', price: 118900 },
+      { date: '2026-09-14', price: 126000 },
+    ] }];
+    await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), calendarItems);
+    const calendar = page.locator('#currentPriceCalendar'), disclosure = calendar.locator('details'), summary = disclosure.locator('summary');
+    assert.equal(await calendar.count(), 1, 'one existing calendar owner');
+    assert.equal(await disclosure.evaluate(node => node.open), width > 700, 'desktop opens and mobile starts compact');
+    assert.ok((await summary.boundingBox()).height >= 44, 'calendar disclosure target >=44px');
+    assert.ok(await summary.evaluate(node => parseFloat(getComputedStyle(node).paddingRight) >= 32), 'disclosure reserves room for its indicator');
+    assert.equal(await page.evaluate(() => {
+      const form = document.getElementById('tourSearch'), calendar = document.getElementById('currentPriceCalendar'), tools = document.getElementById('resultsTools');
+      return !!(form.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(calendar.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }), true, 'calendar stays between the form and result toolbar');
+    await page.screenshot({ path: path.join(output, `calendar-initial-${width}.png`), fullPage: true });
+    await summary.focus();
+    await page.keyboard.press('Space');
+    assert.equal(await disclosure.evaluate(node => node.open), width <= 700, 'native keyboard toggle works');
+    await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), calendarItems);
+    assert.equal(await disclosure.evaluate(node => node.open), width <= 700, 'rerender preserves the user disclosure choice');
+    if (!(await disclosure.evaluate(node => node.open))) await summary.click();
+    assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'existing minimum-price selection is unchanged');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'open calendar does not overflow the page');
+    await page.screenshot({ path: path.join(output, `calendar-open-${width}.png`), fullPage: true });
+    await page.evaluate(() => {
+      window.__calendarSubmitCount = 0;
+      window.__calendarOriginalSubmit = window.V2SearchLifecycle.submit;
+      window.V2SearchLifecycle.submit = () => window.__calendarSubmitCount++;
+    });
+    await calendar.locator('[data-calendar-date="2026-09-13"]').click();
+    const calendarAction = await page.evaluate(() => {
+      const form = document.getElementById('tourSearch');
+      window.V2SearchLifecycle.submit = window.__calendarOriginalSubmit;
+      return [form.elements.dateFrom.value, form.elements.dateTo.value, window.__calendarSubmitCount];
+    });
+    assert.deepEqual(calendarAction, ['2026-09-13', '2026-09-13', 1], 'date action retains one canonical submit with exact dates');
+    await page.evaluate(() => window.V2CurrentPriceCalendar.render([{ tours: [{ date: '2026-09-13', price: 118900 }] }]));
+    assert.equal(await calendar.isVisible(), false, 'one date does not invent a price comparison');
+    assert.deepEqual(errors, [], 'calendar interaction has no page errors');
   } finally { await page.close(); }
 }
 (async () => {
