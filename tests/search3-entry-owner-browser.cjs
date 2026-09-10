@@ -275,6 +275,14 @@ async function runHomeRanges(browser, width) {
     const dateFrom = form.locator('[name=dateFrom]'), dateTo = form.locator('[name=dateTo]');
     const daysFrom = form.locator('[name=daysFrom]'), daysTill = form.locator('[name=daysTill]');
     const submit = form.locator('[type=submit]'), more = form.locator('.at-home-search__more');
+    const retry = form.locator('[data-home-catalog-retry]');
+    assert.equal(await retry.evaluate(node => node.hidden), true, 'successful catalog owner hides retry');
+    assert.equal(await retry.isVisible(), false, 'shared display rule must honor native hidden');
+    await retry.evaluate(node => { node.hidden = false; });
+    assert.equal(await retry.isVisible(), true, 'visible recovery action retains its normal styling');
+    assert.ok((await retry.boundingBox()).height >= 44, 'recovery action keeps its full target');
+    await retry.evaluate(node => { node.hidden = true; });
+    assert.equal(await retry.isVisible(), false, 'recovery can return to a truly hidden state');
     assert.deepEqual(catalogs, ['departures', 'countries']);
     assert.equal(await feedback.isVisible(), false, 'valid initial form has no error');
     await dateFrom.fill('2099-09-21');
