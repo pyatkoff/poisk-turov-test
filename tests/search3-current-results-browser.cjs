@@ -446,6 +446,7 @@ async function run(browser, width, previous) {
     assert.equal(await localEmpty.isVisible(), true, 'local empty state is visible above the hidden loaded cards');
     assert.match(await localEmpty.innerText(), /По выбранным фильтрам ничего не подошло[\s\S]*Сбросить фильтры/, 'local empty state explains the recoverable filter result');
     assert.ok((await localEmptyReset.boundingBox()).height >= 44, 'local empty reset keeps a full touch target');
+    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `local-empty-${width}.png`), fullPage: true });
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');
     assert.equal(await localCategorySelect.inputValue(), '5', 'sorting preserves the local category');
