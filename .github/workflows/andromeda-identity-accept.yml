@@ -1,41 +1,107 @@
-name: Hotel matching stage2 audit
-run-name: Hotel matching stage2 live schema audit
+name: Reviewed hotel identity acceptance
+run-name: Hotel observed bulk 1759 v2
 on:
   push:
     branches: ['feat/int-andromeda-live-20260909']
     paths: ['.github/workflows/andromeda-identity-accept.yml']
-permissions: {contents: read}
+permissions: {contents: read, actions: read}
 concurrency:
-  group: hotel-matching-readonly
+  group: andromeda-identity-writes
   cancel-in-progress: false
+env:
+  SOURCE_SHA: dc7b438e4b395ebef564a6d52aa41418868811c5
+  MERGE_SHA: 95ee3804056c2915f4201b8e0b4415ecaec53322
+  OPERATION_ID: hotel-observed-bulk-1759-20260911-v2
 jobs:
-  audit:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+  accept:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/int-andromeda-live-20260909' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
-      - name: Read current matching schemas and unresolved counts only
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: dc7b438e4b395ebef564a6d52aa41418868811c5
+          path: reviewed
+      - name: Verify checked merge and reserve v2 before SSH
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          test "$(git -C reviewed rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/1954" > "$STATE/pr.json"
+          for id in 34537851543 34537851417; do gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id" > "$STATE/check-$id.json"; done
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$OPERATION_ID-reservation&per_page=100" > "$STATE/prior.json"
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); pr=json.loads((s/'pr.json').read_bytes())
+          if pr.get('merged_at') is None or pr.get('merge_commit_sha')!=os.environ['MERGE_SHA'] or pr.get('head',{}).get('sha')!=os.environ['SOURCE_SHA']: raise ValueError('source_not_merged')
+          for run_id in (34537851543,34537851417):
+              r=json.loads((s/f'check-{run_id}.json').read_bytes())
+              if r.get('head_sha')!=os.environ['SOURCE_SHA'] or r.get('conclusion')!='success': raise ValueError('source_not_green')
+          prior=json.loads((s/'prior.json').read_bytes())
+          if prior.get('total_count')!=0 or prior.get('artifacts')!=[]: raise ValueError('operation_already_reserved')
+          source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php').read_text()
+          if "HB2_OPERATION = 'hotel-observed-bulk-1759-20260911-v2'" not in source or 'ANEX_API_TOKEN' in source: raise ValueError('source_scope')
+          (s/'reservation.json').write_text(json.dumps({'state':'reserved_before_ssh','operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'merge_sha':os.environ['MERGE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'apply_exactly_once':True,'supplier_calls':0},sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve v2 reservation
+        id: reserved
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-observed-bulk-1759-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply v2 exactly once and verify durable receipt
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
+          set -euo pipefail
           python3 - <<'PYTHON'
           import json, os, shlex, subprocess, tempfile
           from pathlib import Path
-          php=r'''$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException();$helper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $helper;$pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$pdo->exec('START TRANSACTION READ ONLY');$out=['status'=>'ok','supplier_calls'=>0,'database_writes'=>0,'tables'=>[]];foreach(['anex_hotels','catalog_hotels','catalog_hotel_details','anex_search_hotel_observations','andromeda_search_hotel_observations','andromeda_hotel_identities'] as $t){$q=$pdo->query('SHOW COLUMNS FROM '.$t);$out['tables'][$t]=array_map(fn($r)=>['field'=>$r['Field'],'type'=>$r['Type']],$q->fetchAll(PDO::FETCH_ASSOC));}$out['counts']['anex_unresolved_observed']=(int)$pdo->query("SELECT COUNT(*) FROM anex_search_hotel_observations o LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=o.anex_hotel_id LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=o.anex_hotel_id WHERE m.anex_hotel_id IS NULL AND d.anex_hotel_id IS NULL")->fetchColumn();$out['counts']['andromeda_pending_observed']=(int)$pdo->query("SELECT COUNT(DISTINCT o.external_hotel_id) FROM andromeda_search_hotel_observations o JOIN andromeda_hotel_identities i ON i.supplier_namespace='andromeda_catalog' AND i.external_hotel_id=o.external_hotel_id WHERE o.supplier_namespace='andromeda_catalog' AND i.decision_status='pending' AND i.local_hotel_id IS NULL")->fetchColumn();$out['anex_staging_count']=(int)$pdo->query('SELECT COUNT(*) FROM anex_hotels')->fetchColumn();$pdo->rollBack();echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";'''
-          required=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
-          with tempfile.TemporaryDirectory(prefix='match-stage2-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
-              key=Path(tmp)/'key';key.write_text(os.environ[required[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
-              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[required[2]].strip(),os.environ[required[1]].strip(),'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
-              p=subprocess.run(cmd,text=True,capture_output=True,timeout=60,env={k:v for k,v in os.environ.items() if k not in required and not k.startswith('ANEX_')})
-              value=json.loads(p.stdout)
-              if p.returncode or value.get('status')!='ok' or value.get('supplier_calls')!=0 or value.get('database_writes')!=0: raise ValueError('audit_failed')
-              out=Path(os.environ['RUNNER_TEMP'])/'hotel-matching-stage2-schema.json';out.write_text(json.dumps(value,ensure_ascii=False,indent=2,sort_keys=True)+'\n');print(json.dumps(value['counts'],sort_keys=True));print('anex_staging_count='+str(value['anex_staging_count']))
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; source=Path('reviewed/scripts/diagnostics/hotel_observed_bulk_reconcile_v2.php').read_text(); code=source[len('<?php'):]
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(k,'').strip() for k in req): raise ValueError('ssh_configuration')
+          host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
+          with tempfile.TemporaryDirectory(prefix='hotel-bulk-v2-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600); known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')}
+              def call(phase,timeout):
+                  p=subprocess.run(cmd,input=json.dumps({'operation_id':os.environ['OPERATION_ID'],'phase':phase}),text=True,capture_output=True,timeout=timeout,env=clean)
+                  try: out=json.loads(p.stdout)
+                  except Exception: out={'status':'transport_unparseable'}
+                  return p.returncode,out
+              _,before=call('receipt',60); (state/'server-before.json').write_text(json.dumps(before,sort_keys=True)+'\n')
+              if before.get('status')!='not_started': raise ValueError('server_operation_not_pristine')
+              try: arc,apply=call('apply',180)
+              except subprocess.TimeoutExpired: arc=124; apply={'status':'apply_reply_timeout'}
+              (state/'apply-response.json').write_text(json.dumps({'exit_code':arc,'result':apply},sort_keys=True)+'\n')
+              rrc,receipt=call('receipt',60); (state/'receipt.json').write_text(json.dumps({'exit_code':rrc,'result':receipt},sort_keys=True)+'\n')
+              if receipt.get('status') not in ('completed','empty'): raise ValueError('operation_unknown_do_not_replay')
+              if receipt.get('operation_id')!=os.environ['OPERATION_ID'] or receipt.get('supplier_calls')!=0: raise ValueError('receipt_scope')
+              if receipt.get('status')=='completed' and receipt.get('readback_verified') is not True: raise ValueError('readback_unconfirmed')
+              summary={k:receipt.get(k) for k in ('status','operation_id','rule','catalog_scope','anex','andromeda','accepted_total','database_writes','readback_verified','before','after','supplier_calls')}
+              (state/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,sort_keys=True)+'\n'); print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
           PYTHON
-      - uses: actions/upload-artifact@v4
+      - name: Preserve v2 outcome; never auto-retry
+        if: always() && steps.reserved.outcome == 'success'
+        uses: actions/upload-artifact@v4
         with:
-          name: hotel-matching-stage2-schema
-          path: ${{ runner.temp }}/hotel-matching-stage2-schema.json
-          if-no-files-found: error
-          retention-days: 30
+          name: hotel-observed-bulk-1759-20260911-v2-result
+          path: |
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/reservation.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/server-before.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/apply-response.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/receipt.json
+            ${{ runner.temp }}/hotel-observed-bulk-1759-20260911-v2/summary.json
+          if-no-files-found: warn
+          retention-days: 90
