@@ -38,8 +38,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('По', '<input type="date" value="2026-09-19">', 'date-to')}
     </fieldset>
     <fieldset class="search-group search-group--nights"><legend><span>3</span> Продолжительность</legend>
-      ${field('Ночей от', '<input type="number" value="7">', 'nights-from')}
-      ${field('Ночей до', '<input type="number" value="10">', 'nights-to')}
+      ${field('Ночей от', '<select><option>7</option></select>', 'nights-from')}
+      ${field('Ночей до', '<select><option>10</option></select>', 'nights-to')}
     </fieldset>
     <fieldset class="search-group search-group--party"><legend><span>4</span> Туристы</legend>
       ${field('Взрослых', '<select><option>2</option></select>', 'adults')}
