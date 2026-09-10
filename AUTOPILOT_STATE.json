@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "PR1841 adds saved-only Andromeda offer details in the existing provider/renderer owners, binds eligibility to exact context, and keeps selection/lead disabled. Source9e878d36 merged as releasedc3af6e1; Security34423720759 and exact34423720797 passed after correcting an NBSP-only test expectation. Exact artifact10131892774 published by deploy34424188192; evidence10132014666 confirms nine noindex routes, disabled leads, counter0, rollback and unchanged production fingerprints. Served CSS/JS +6725B. Current acceptance continues; provider selection waits for a fresh bounded quote/revalidation handoff."
+    "last_execution_continuation": "PR1844 ports the confirmed passive advanced-catalog URL-hotel retention fix from donor1822 into the fresh shared release without its old addon/workflow. Sourcee5582db7 merged as release4ad8ce1d; four focused cases, compaction/source guards, Security34426191492 and exact artifact build34426191393 passed. Exact artifact10132749250 is checked but not published because the available connector cannot dispatch the deploy workflow and a trigger-only commit is forbidden. Served shared JS +195B; CSS/PHP/inline0B. Current acceptance continues; provider selection still waits for a fresh bounded quote/revalidation handoff."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "2026-09-09: finish Search3 quickly without restarting completed work or layering patches",
-    "last_fully_checked_release_sha": "dc3af6e1701b14db483077f17c5b0a07a3e6d9e5",
+    "last_fully_checked_release_sha": "4ad8ce1d539fe824c66a851cebd0d724111299eb",
     "published_source_sha": "9e878d3692bd0ea48b7a9d7bb4ab9c859b5e04c2",
-    "acceptance_status": "CURRENT_PROVIDER_SAVED_DETAILS_PUBLISHED_SELECTION_DISABLED_EXACT_CHROMIUM_GREEN",
-    "next_action": "Continue accumulated current Search3 acceptance and prepare the owner-review checkpoint; consume Andromeda selection only from a fresh bounded quote/revalidation handoff.",
+    "acceptance_status": "URL_HOTEL_HANDOFF_CHECKED_RELEASE_PREVIEW_PENDING_SELECTION_DISABLED",
+    "next_action": "Continue accumulated current Search3 acceptance and owner-review preparation; publish the checked URL-hotel fix only through an authorized exact dispatch, and consume Andromeda selection only from a fresh bounded quote/revalidation handoff.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "latest_search3_operator_and_active_summary_package": {
