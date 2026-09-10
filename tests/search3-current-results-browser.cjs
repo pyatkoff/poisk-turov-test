@@ -655,16 +655,19 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
     assert.equal(await page.locator('.empty-actionable').evaluate(node => node.contains(document.activeElement)), true, 'terminal empty recovery moves status focus to an available action');
     await page.evaluate(() => {
-      const form = document.getElementById('tourSearch');
-      document.body.classList.add('search3-editing-search');
-      form.setAttribute('tabindex', '-1');
-      form.focus({ preventScroll: true });
+      const stable = document.createElement('button');
+      stable.id = 'ordinary-terminal-focus';
+      stable.type = 'button';
+      stable.textContent = 'Проверочный независимый элемент';
+      document.body.append(stable);
+      stable.focus({ preventScroll: true });
       window.V2Results.render([]);
       window.V2Results.showPlainStatus('Поиск завершён · предложения актуальны на сейчас');
       window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [] } }));
     });
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    assert.equal(await page.locator('#tourSearch').evaluate(node => node === document.activeElement), true, 'ordinary terminal empty result does not steal focus from the search form');
+    assert.equal(await page.locator('#ordinary-terminal-focus').evaluate(node => node === document.activeElement), true, 'ordinary terminal empty result does not steal unrelated user focus');
+    await page.locator('#ordinary-terminal-focus').evaluate(node => node.remove());
     assert.equal(await page.locator('#status').isVisible(), false, 'ordinary terminal empty result also keeps a single final state');
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
