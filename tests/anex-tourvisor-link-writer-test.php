@@ -37,6 +37,19 @@ function invoke_writer($root, $protocol, $expectSuccess=true) {
     ensure($code === ($expectSuccess ? 0 : 1), 'expected real writer exit');
     return json_decode($out, true, 512, JSON_THROW_ON_ERROR);
 }
+function invoke_local_cli($root, $receipt) {
+    $checkpoint = dirname(getenv('ANEX_LINK_TEST_PROTOCOL')) . '/review.json';
+    $pipes = [];
+    $process = proc_open(['python3', __DIR__ . '/../scripts/diagnostics/anex_tourvisor_link_import.py',
+        '--local-root', $root, '--checkpoint', $checkpoint, '--receipt', $receipt, '--apply'],
+        [['pipe','r'],['pipe','w'],['pipe','w']], $pipes);
+    if (!is_resource($process)) throw new RuntimeException('local_cli_child_failed');
+    fclose($pipes[0]);
+    $out = stream_get_contents($pipes[1]); $err = stream_get_contents($pipes[2]);
+    fclose($pipes[1]); fclose($pipes[2]); $code = proc_close($process);
+    ensure($code === 0 && $err === '', 'real local CLI succeeds without diagnostics');
+    return json_decode($out, true, 512, JSON_THROW_ON_ERROR);
+}
 function reset_case($db) {
     $db->exec('DELETE FROM anex_hotel_search_mappings WHERE anex_hotel_id<>70000');
     $db->exec('DELETE FROM anex_hotel_decisions WHERE anex_hotel_id<>7777');
@@ -78,6 +91,19 @@ try {
     ensure($report['inserted']===2 && $report['skipped_manual']===1 && $report['skipped_pair_excluded']===1, 'manual and pair guards retained');
     ensure($report['link_readback'][0]['status']==='skipped_manual' && $report['link_readback'][1]['status']==='skipped_pair_excluded', 'skips not claimed as new mappings');
 
+    reset_case($db);
+    $receipt = $directory . '/receipt.json';
+    $local = invoke_local_cli($root, $receipt);
+    ensure($local['inserted']===4 && $local['readback_verified']===true, 'full local CLI performs four synthetic inserts');
+    $saved = file_get_contents($receipt);
+    $receiptData = json_decode($saved, true, 512, JSON_THROW_ON_ERROR);
+    ensure($receiptData['state']==='finalized' && $receiptData['local_root']===$root, 'durable receipt binds this root');
+    $repeatLocal = invoke_local_cli($root, $receipt);
+    ensure($repeatLocal['status']==='already_finalized' && $repeatLocal['new_database_writes']===0, 'repeat reads finalized local receipt');
+    ensure(file_get_contents($receipt)===$saved, 'repeated invocation leaves receipt byte-identical');
+    ensure((int)$db->query('SELECT COUNT(*) FROM anex_hotel_search_mappings')->fetchColumn()===5, 'no duplicate rows after local invocation');
+    ensure($preserved===$db->query('SELECT * FROM anex_hotel_search_mappings WHERE anex_hotel_id=70000')->fetch(PDO::FETCH_ASSOC), 'local CLI preserves existing mapping');
+
     foreach (['is_active=0','country_id=1'] as $change) {
         reset_case($db);
         $db->exec('UPDATE catalog_hotels SET ' . $change . ' WHERE id=6319');
@@ -99,5 +125,6 @@ try {
 } finally {
     if ($db->inTransaction()) $db->rollBack();
     foreach ($tables as $table) $db->exec('DROP TABLE IF EXISTS ' . $table);
+    if (is_file($directory . '/receipt.json')) unlink($directory . '/receipt.json');
     unlink($root . '/data/db-v1.php'); rmdir($root . '/data'); rmdir($root); rmdir($directory);
 }
