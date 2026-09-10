@@ -1,0 +1,21 @@
+{
+  "issue": 1717,
+  "date": "2026-09-10",
+  "status": "publisher_prepared_pending_ci",
+  "candidate_source": "eaf16ed769185cc1cb3a4a198ae6c87ae56b2bf7",
+  "previous_publication_run": 34466239147,
+  "previous_api_sha256": "53ce2e6f14b0f4f88884f6b2a07d9a59bc5fa3d769e95a1fb42e8804b786ad29",
+  "new_module_precondition": "absent",
+  "helper_source": "95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa",
+  "installation_order": [
+    "app/integrations/andromeda-selected-offer.php",
+    "api-andromeda-search3-preview.php"
+  ],
+  "rollback": "Restore backed-up API first through existing approved private SSH mechanism. Preserve reservation and new module until outcome inspected; no automatic replay or deletion.",
+  "published": false,
+  "runtime_calls": 0,
+  "supplier_calls": 0,
+  "database_writes": 0,
+  "main_gate": "Separate exact manual-only launcher proposal; explicit approval required before main merge. Existing #1867 remains unchanged.",
+  "next_action": "Check publisher, pin manual launcher to successful immutable source/CI, present concrete owner approval gate."
+}

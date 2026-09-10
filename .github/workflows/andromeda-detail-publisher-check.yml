@@ -1,0 +1,25 @@
+name: Andromeda detail publisher offline
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda_detail_publish.py'
+      - 'tests/andromeda_detail_publish_test.py'
+      - '.github/workflows/andromeda-detail-publisher-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: change
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ac9f16063deadb3b7b2e4fb665c7b51668fe4c6a
+          path: previous
+          persist-credentials: false
+      - name: Check actual remote PHP on disposable local files
+        run: python3 -B change/tests/andromeda_detail_publish_test.py previous
