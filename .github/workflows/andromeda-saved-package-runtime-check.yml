@@ -5,6 +5,7 @@ on:
       - 'app/integrations/andromeda-saved-package-runtime.php'
       - 'app/integrations/andromeda-package-public.php'
       - 'app/integrations/andromeda-claiminc-contract.php'
+      - 'app/integrations/andromeda-network-transport-failure.php'
       - 'app/integrations/andromeda-package-retry-policy.php'
       - 'app/integrations/andromeda-package-attempt-state.php'
       - 'v2/api-andromeda-search3-preview.php'
@@ -68,10 +69,11 @@ jobs:
           # Only after the installed baseline is proven, assemble the candidate handoff.
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/
           cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
-          cp change/app/integrations/andromeda-claiminc-contract.php change/app/integrations/andromeda-package-retry-policy.php change/app/integrations/andromeda-package-attempt-state.php runtime/app/integrations/
+          cp change/app/integrations/andromeda-claiminc-contract.php change/app/integrations/andromeda-network-transport-failure.php change/app/integrations/andromeda-package-retry-policy.php change/app/integrations/andromeda-package-attempt-state.php runtime/app/integrations/
           php -l runtime/v2/api-andromeda-search3-preview.php
           php -l runtime/app/integrations/andromeda-saved-package-runtime.php
           php -l runtime/app/integrations/andromeda-claiminc-contract.php
+          php -l runtime/app/integrations/andromeda-network-transport-failure.php
           php -l runtime/app/integrations/andromeda-package-retry-policy.php
           php -l runtime/app/integrations/andromeda-package-attempt-state.php
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
@@ -97,8 +99,8 @@ jobs:
               'app/integrations/' + name + '.php' for name in [
                   'andromeda-client', 'andromeda-package-capture', 'andromeda-selected-offer',
                   'andromeda-transport', 'andromeda-saved-package-runtime',
-                  'andromeda-claiminc-contract', 'andromeda-package-retry-policy',
-                  'andromeda-package-attempt-state']]
+                  'andromeda-claiminc-contract', 'andromeda-network-transport-failure',
+                  'andromeda-package-retry-policy', 'andromeda-package-attempt-state']]
           files = {}
           for path in paths:
               data = (root / path).read_bytes()
