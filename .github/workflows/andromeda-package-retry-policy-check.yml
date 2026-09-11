@@ -1,0 +1,25 @@
+name: Andromeda package retry policy offline
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-package-retry-policy.php'
+      - 'tests/andromeda-package-retry-policy-smoke.php'
+      - '.github/workflows/andromeda-package-retry-policy-check.yml'
+permissions:
+  contents: read
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate network-only retry policy offline
+        run: |
+          php -l app/integrations/andromeda-package-retry-policy.php
+          php -l tests/andromeda-package-retry-policy-smoke.php
+          php -d allow_url_fopen=0 tests/andromeda-package-retry-policy-smoke.php
+          ! grep -R -n -E 'curl_|gateway\.samo|broninit|action=bron|ssh |PDO\(' \
+            app/integrations/andromeda-package-retry-policy.php \
+            tests/andromeda-package-retry-policy-smoke.php
