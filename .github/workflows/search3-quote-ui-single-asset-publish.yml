@@ -17,7 +17,7 @@ jobs:
       github.event.comment.user.login == 'pyatkoff' &&
       github.event.sender.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/publish-search3-verified-quote-ui-v1'
+      github.event.comment.body == '/publish-search3-verified-quote-ui-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -25,10 +25,10 @@ jobs:
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 996
-          test "${{ github.event.comment.body }}" = /publish-search3-verified-quote-ui-v1
+          test "${{ github.event.comment.body }}" = /publish-search3-verified-quote-ui-v2
       - uses: actions/checkout@v4
         with:
-          ref: 2a5d569972848b93ae5fb4a263224f180ad93739
+          ref: 30c61f0722e0563e5902a0da1214309d61e51fcb
           path: source
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
           persist-credentials: false
       - name: Recheck exact source and bounded publisher offline
         run: |
-          test "$(git -C source rev-parse HEAD)" = 2a5d569972848b93ae5fb4a263224f180ad93739
+          test "$(git -C source rev-parse HEAD)" = 30c61f0722e0563e5902a0da1214309d61e51fcb
           python3 source/tests/search3_quote_ui_single_asset_publish_test.py -v
           python3 -m py_compile source/scripts/diagnostics/search3_quote_ui_single_asset_publish.py
       - name: Publish exact verified quote UI asset to isolated site candidate
@@ -46,7 +46,7 @@ jobs:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          QUOTE_UI_SOURCE_SHA: 2a5d569972848b93ae5fb4a263224f180ad93739
+          QUOTE_UI_SOURCE_SHA: 30c61f0722e0563e5902a0da1214309d61e51fcb
           QUOTE_UI_HELPER_PATH: ${{ github.workspace }}/helper
         run: python3 -B source/scripts/diagnostics/search3_quote_ui_single_asset_publish.py source
       - name: Preserve publication receipt
