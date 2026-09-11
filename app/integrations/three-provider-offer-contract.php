@@ -30,7 +30,7 @@ final class AnyTourThreeProviderOfferContract
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_PROVIDER');
         }
 
-        $operator = self::text($input['operator'], 120, 'THREE_PROVIDER_OFFER_OPERATOR');
+        $operator = AnyTourThreeProviderOperator::fromSearch($provider, $input['operator']);
         $providerHotelRef = self::opaqueRef($input['provider_hotel_ref'], 'THREE_PROVIDER_OFFER_HOTEL_REF');
         $searchRef = self::opaqueRef($input['search_ref'], 'THREE_PROVIDER_OFFER_SEARCH_REF');
         $offerRef = self::opaqueRef($input['offer_ref'], 'THREE_PROVIDER_OFFER_REF');

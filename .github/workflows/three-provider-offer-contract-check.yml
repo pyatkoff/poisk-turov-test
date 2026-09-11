@@ -6,9 +6,11 @@ on:
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/three-provider-availability.php'
       - 'app/integrations/three-provider-flight-details.php'
+      - 'app/integrations/three-provider-operator.php'
       - 'tests/three-provider-offer-contract-test.php'
       - 'tests/three-provider-availability-test.php'
       - 'tests/three-provider-flight-details-test.php'
+      - 'tests/three-provider-operator-test.php'
       - '.github/workflows/three-provider-offer-contract-check.yml'
 permissions:
   contents: read
@@ -26,12 +28,15 @@ jobs:
           php -l app/integrations/three-provider-offer-contract.php
           php -l app/integrations/three-provider-availability.php
           php -l app/integrations/three-provider-flight-details.php
+          php -l app/integrations/three-provider-operator.php
           php -l tests/three-provider-offer-contract-test.php
           php -l tests/three-provider-availability-test.php
           php -l tests/three-provider-flight-details-test.php
+          php -l tests/three-provider-operator-test.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
           php -d allow_url_fopen=0 tests/three-provider-availability-test.php
           php -d allow_url_fopen=0 tests/three-provider-flight-details-test.php
+          php -d allow_url_fopen=0 tests/three-provider-operator-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-offer-contract.php').read_text()
