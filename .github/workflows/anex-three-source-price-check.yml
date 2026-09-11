@@ -9,9 +9,9 @@ on:
       - '.github/workflows/anex-three-source-price-check.yml'
   push:
     branches:
-      - 'ops/int-anex-three-source-price-php-fix-20260911'
+      - 'ops/int-anex-three-source-price-v2-20260911'
     paths:
-      - '.github/ops/anex-three-source-price-php-fix-20260911'
+      - '.github/ops/anex-three-source-price-v2-20260911'
 permissions:
   contents: read
 concurrency:
@@ -27,7 +27,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate source without network
+      - name: Validate v2 source without network
         run: |
           php -l scripts/diagnostics/anex_search3_three_source_price.php
           php -l tests/anex-search3-three-source-price-smoke.php
@@ -38,20 +38,21 @@ jobs:
           php=Path('scripts/diagnostics/anex_search3_three_source_price.php').read_text()
           py=Path('scripts/diagnostics/anex_search3_three_source_price.py').read_text()
           assert '->bron(' not in php and 'broninit(' not in php and '->calc(' not in php and 'get_flights(' not in php
-          assert "ANEX_THREE_PRICE_CASES = ['anex','andromeda','tourvisor']" in php
+          assert "ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_price_20260911_v2'" in php
+          assert "'date':'2026-09-27'" in py
           assert "'ControlMaster=no'" in py and "'ControlPath=none'" in py and 'ControlMaster=auto' not in py
-          assert "return \"declare(strict_types=1);" in py
+          assert 'array_replace($out' in php and "array_replace($result, ['reused'=>true])" in php
           workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
-          assert 'ops/int-anex-three-source-price-php-fix-20260911' in workflow
+          assert 'ops/int-anex-three-source-price-v2-20260911' in workflow
           assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
-          print('Three-source parity PHP assembly boundary: PASS')
+          print('Three-source parity v2 boundary: PASS')
           PY
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-price-php-fix-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-price-v2-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      SOURCE_SHA: 70f7b7c263ac36ec5b0e1439ac5c556fdc823c8b
+      SOURCE_SHA: 393305647af0b3a5eb3812c112d7985bd675d4e5
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -66,12 +67,12 @@ jobs:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - name: Bind exact continuation after PHP assembly fix
+      - name: Bind exact fresh v2 scenario
         run: |
-          test "$(cat control/.github/ops/anex-three-source-price-php-fix-20260911)" = "source=${SOURCE_SHA};operation=read-only-three-source-price-php-fix;prior=34541473592;owner=2026-09-11"
+          test "$(cat control/.github/ops/anex-three-source-price-v2-20260911)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-price-v2;scenario=Turkey-2026-09-27-7n-2a-AI;owner=2026-09-11"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
-      - name: Resume only through durable server case checkpoints
+      - name: Run fresh v2 provider cases through durable checkpoints
         id: parity
         continue-on-error: true
         run: |
@@ -81,10 +82,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-three-source-price-${{ github.run_id }}
+          name: anex-three-source-price-v2-${{ github.run_id }}
           path: ${{ runner.temp }}/three-source-price/
           if-no-files-found: error
           retention-days: 30
-      - name: Fail after evidence preservation when parity did not complete
+      - name: Fail after evidence preservation when v2 parity did not complete
         if: steps.parity.outcome != 'success'
         run: exit 1
