@@ -46,16 +46,16 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
     </fieldset>
     <div class="search-section-title search-section-title--preferences"><span>Отель и условия</span></div>
-    ${field('Курорт / регион', '<select><option>Анталья</option></select>', 'region', true)}
-    ${field('Район / субкурорт', '<select><option>Все районы</option></select>', 'subregion', true)}
-    ${field('Конкретный отель', '<select><option>Любой отель</option></select>', 'hotel', true)}
-    ${field('Категория отеля', '<select><option>4★ и выше</option></select>', 'stars', true)}
-    ${field('Питание', '<select><option>Всё включено</option></select>', 'food', true)}
-    ${field('Рейтинг отеля', '<select><option>от 4.0</option></select>', 'rating', true)}
-    ${field('Цена от', '<input type="number" value="80000">', 'price-from', true)}
-    ${field('Цена до', '<input type="number" value="180000">', 'price-to', true)}
+    <div class="search-preferences">
+      ${field('Курорт / регион', '<select><option>Анталья</option></select>', 'region', true)}
+      ${field('Конкретный отель', '<select><option>Любой отель</option></select>', 'hotel', true)}
+      ${field('Категория отеля', '<select><option>4★ и выше</option></select>', 'stars', true)}
+      ${field('Питание', '<select><option>Всё включено</option></select>', 'food', true)}
+      ${field('Цена от', '<input type="number" value="80000">', 'price-from', true)}
+      ${field('Цена до', '<input type="number" value="180000">', 'price-to', true)}
+    </div>
   </div>
-  <details class="extras"><summary>Ещё фильтры <span>аэропорт, туроператор, тип отеля, перелёт и услуги</span></summary></details>
+  <details class="extras"><summary>Ещё фильтры <span>район, рейтинг, аэропорт, туроператор, тип отеля, перелёт и услуги</span></summary></details>
   <button class="primary search-submit" type="submit"><span>Найти туры</span></button>
 </form></main></body>`;
 
@@ -82,11 +82,14 @@ const measure = node => {
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         const state = await page.evaluate(measureSource => {
           const measureNode = eval(`(${measureSource})`);
+          const preferences = document.querySelector('.search-preferences');
           return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             hero: measureNode(document.querySelector('.v2-product-hero')),
             form: measureNode(document.querySelector('#tourSearch')),
             mainColumns: getComputedStyle(document.querySelector('.main-fields')).gridTemplateColumns.split(' ').length,
+            preferenceColumns: getComputedStyle(preferences).gridTemplateColumns.split(' ').length,
+            preferenceWidth: measureNode(preferences).width,
             groupColumns: [...document.querySelectorAll('.search-group')].map(node => getComputedStyle(node).gridTemplateColumns.split(' ').length),
             groupTops: [...document.querySelectorAll('.search-group')].map(node => Math.round(node.getBoundingClientRect().top)),
             groupLegends: [...document.querySelectorAll('.search-group legend')].map(node => node.textContent.trim()),
@@ -107,20 +110,24 @@ const measure = node => {
         assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: native controls keep 44px/16px`);
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы'], `${width}: trip basics keep the existing four canonical groups`);
-        assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Район / субкурорт', 'Конкретный отель', 'Категория отеля', 'Питание', 'Рейтинг отеля', 'Цена от', 'Цена до'], `${width}: hotel preference fields stay visible in canonical order`);
+        assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до'], `${width}: primary hotel/price preferences stay visible in canonical order`);
         if (width === 375) {
           assert.equal(state.mainColumns, 1, '375: full search uses one readable outer column');
+          assert.equal(state.preferenceColumns, 1, '375: primary hotel preferences use one mobile column');
           assert.deepEqual(state.groupColumns, [1, 2, 2, 2], '375: route stacks while coupled trip pairs stay compact');
-          assert.equal(new Set(state.preferenceTops).size, 8, '375: preference controls stack without cramped pairs');
+          assert.equal(new Set(state.preferenceTops).size, 6, '375: six primary preference controls stack without cramped pairs');
           assert.ok(state.submit.width >= state.form.width - 45, '375: primary action spans the mobile form');
         }
+        if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2, `${width}: intermediate primary preferences use two balanced columns`);
         if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
         if (width >= 1200) {
           assert.equal(state.mainColumns, 4, 'wide desktop: canonical trip grid has four columns');
+          assert.equal(state.preferenceColumns, 3, 'wide desktop: hotel preferences use a dedicated three-column grid');
           assert.equal(new Set(state.groupTops).size, 1, 'wide desktop: trip basics stay in one row');
           const preferenceRows = new Map();
           for (const top of state.preferenceTops) preferenceRows.set(top, (preferenceRows.get(top) || 0) + 1);
-          assert.deepEqual([...preferenceRows.values()].sort((a,b)=>a-b), [4, 4], 'wide desktop: hotel preferences use two balanced rows of four full-width controls');
+          assert.deepEqual([...preferenceRows.values()].sort((a,b)=>a-b), [3, 3], 'wide desktop: six primary hotel/price preferences use two balanced rows of three');
+          assert.ok(state.preferenceWidth >= state.form.width - 50, 'wide desktop: dedicated preference grid uses the available form width');
           assert.ok(state.dateControls.every(item => item.width >= 125), 'wide desktop: date fields keep enough width for the complete native value');
           assert.ok(state.submit.width <= 281, 'wide desktop: primary action does not consume the entire form width');
         }
