@@ -33,7 +33,17 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
           const form = document.forms.tourSearch, preferences = form.querySelector('.search-preferences');
           // Closed details descendants may retain geometry without being painted.
           const visible = nodes => [...nodes].filter(node => !node.closest('details:not([open])') && node.checkVisibility({ visibilityProperty: true }) && node.getBoundingClientRect().height > 0);
-          const columns = node => getComputedStyle(node).gridTemplateColumns.split(' ').length;
+          // Fieldset may serialize repeat()/minmax() rather than resolved tracks.
+          // Count the actual visible cells in each row, never spaces in CSS text.
+          const columns = node => {
+            const rows = [];
+            for (const item of visible([...node.children].filter(child => child.tagName !== 'LEGEND'))) {
+              const top = box(item).top;
+              const row = rows.find(entry => Math.abs(entry.top - top) < 1);
+              if (row) row.count += 1; else rows.push({ top, count: 1 });
+            }
+            return Math.max(0, ...rows.map(row => row.count));
+          };
           return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             hero: box(document.querySelector('.v2-product-hero')), form: box(form),
