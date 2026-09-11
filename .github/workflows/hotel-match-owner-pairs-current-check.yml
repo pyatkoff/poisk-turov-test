@@ -1,0 +1,120 @@
+name: MATCH owner-confirmed pairs current check
+
+on:
+  push:
+    branches:
+      - ops/match-owner-pairs-current-check-1971-20260911-v1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-owner-pairs-current-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPERATION_ID: hotel-match-owner-pairs-current-check-1971-20260911-v1
+      EXPECTED_BASE_SHA: 4d8f53763806932cbf24160437cb93e33d04f419
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Verify exact one-shot source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'pyatkoff/poisk-turov-test'
+          test "$GITHUB_REF" = 'refs/heads/ops/match-owner-pairs-current-check-1971-20260911-v1'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_BASE_SHA"
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/hotel-match-owner-pairs-current-check.yml'
+          mkdir -p .owner-pairs
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          value={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved',
+            'source_sha':os.environ['GITHUB_SHA'],
+            'base_sha':os.environ['EXPECTED_BASE_SHA'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'pairs':[{'anex_hotel_id':16229,'catalog_hotel_id':9336},{'anex_hotel_id':20792,'catalog_hotel_id':42916}],
+            'database_writes':0,
+            'supplier_requests':0,
+          }
+          p=Path('.owner-pairs/reservation.json');raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation readback')
+          PY
+
+      - name: Preserve reservation before DB read
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-pairs-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: .owner-pairs/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Read current saved candidates and decision guards
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, tempfile
+          from pathlib import Path
+          names=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(n,'').strip() for n in names): raise SystemExit('missing ssh')
+          host=os.environ[names[1]].strip(); user=os.environ[names[2]].strip()
+          php=r'''<?php
+          declare(strict_types=1);
+          $home=realpath((string)getenv('HOME'));$root=realpath(getcwd());
+          if(!$home||!$root||$root!==$home.'/www/anytoour.ru')throw new RuntimeException('root');
+          $private=$home.'/.anytoour-anex/review-owner';$manifestPath=$private.'/manifest.json';
+          if(!is_file($manifestPath)||is_link($manifestPath)||filesize($manifestPath)>1000000)throw new RuntimeException('manifest');
+          $m=json_decode(file_get_contents($manifestPath),true,32,JSON_THROW_ON_ERROR);$source=$m['source_sha']??'';
+          if(!preg_match('/^[0-9a-f]{40}$/D',$source))throw new RuntimeException('source');
+          $runtime=$private.'/runtime-'.$source;$service=$runtime.'/app/admin/anex-review/service.php';$configPath=$private.'/config.php';
+          if(!is_file($service)||is_link($service)||!is_file($configPath)||is_link($configPath))throw new RuntimeException('runtime');
+          require $service;$config=require $configPath;if(!is_array($config)||!is_callable($config['pdo_factory']??null))throw new RuntimeException('config');
+          $db=$config['pdo_factory']();if(!$db instanceof PDO)throw new RuntimeException('db');$svc=new AnexReviewService($db);
+          $pairs=[[16229,9336],[20792,42916]];$rows=[];
+          foreach($pairs as [$id,$target]){
+            $d=$svc->detail($id);$c=[];
+            foreach($d['candidates'] as $x){$cid=(int)($x['catalog_hotel_id']??0);if($cid!==$target)continue;$cur=$x['current']??null;$c[]=['catalog_hotel_id'=>$cid,'candidate_rank'=>(int)($x['candidate_rank']??0),'candidate_score'=>$x['candidate_score']??null,'name'=>is_array($cur)?($cur['name']??null):null,'country_id'=>is_array($cur)?(int)($cur['country_id']??0):null,'region_name'=>is_array($cur)?($cur['region_name']??null):null,'subregion_name'=>is_array($cur)?($cur['subregion_name']??null):null];}
+            $excluded=false;foreach($d['exclusions'] as $x)if((int)$x['catalog_hotel_id']===$target)$excluded=true;
+            $rows[]=['anex_hotel_id'=>$id,'expected_target'=>$target,'hotel_name'=>$d['hotel_name'],'country_id'=>(int)$d['country_id'],'mapped_id'=>$d['mapped_id']===null?null:(int)$d['mapped_id'],'manual'=>$d['manual']===null?null:['decision_status'=>$d['manual']['decision_status'],'catalog_hotel_id'=>$d['manual']['catalog_hotel_id']===null?null:(int)$d['manual']['catalog_hotel_id']],'policy'=>$d['policy']===null?null:['catalog_hotel_id'=>(int)$d['policy']['catalog_hotel_id'],'enabled'=>(int)$d['policy']['enabled'],'match_class'=>$d['policy']['match_class'],'scope'=>$d['policy']['scope']],'target_saved_candidates'=>$c,'target_excluded'=>$excluded,'version'=>$d['version']];
+          }
+          echo json_encode(['status'=>'ok','runtime_source'=>$source,'write_enabled'=>$m['write_enabled']??null,'owner_activated'=>$m['owner_activated']??null,'pairs'=>$rows,'database_writes'=>0,'supplier_requests'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
+          ?>'''
+          with tempfile.TemporaryDirectory() as td:
+              key=Path(td)/'key';key.write_text(os.environ[names[0]].rstrip()+'\n');key.chmod(0o600)
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              result=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=60)
+          if result.returncode!=0: raise SystemExit('current check failed')
+          data=json.loads(result.stdout)
+          if data.get('status')!='ok' or data.get('database_writes')!=0 or data.get('supplier_requests')!=0 or len(data.get('pairs',[]))!=2: raise SystemExit('unsafe current check')
+          data.update(operation_id=os.environ['OPERATION_ID'],source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']))
+          p=Path('.owner-pairs/result.json');raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('result readback')
+          for row in data['pairs']:
+              print(json.dumps({'anex_hotel_id':row['anex_hotel_id'],'expected_target':row['expected_target'],'mapped_id':row['mapped_id'],'saved_candidate':bool(row['target_saved_candidates']),'excluded':row['target_excluded'],'manual':row['manual']},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve current result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-pairs-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            .owner-pairs/reservation.json
+            .owner-pairs/result.json
+          if-no-files-found: warn
+          retention-days: 90
