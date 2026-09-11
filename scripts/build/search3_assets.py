@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Build Search3's existing public assets from ordered, private source modules."""
 import argparse
+import base64
 import hashlib
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -145,6 +147,13 @@ def build(root=ROOT, write=False):
             stale.append(name + ' (review manifest)')
     if not write:
         if stale:
+            target = 'search3-results-filters-v1.css'
+            if any(item.startswith(target) for item in stale):
+                encoded = base64.b64encode(outputs[target]).decode('ascii')
+                print('SEARCH3_CANONICAL_CSS_B64_BEGIN', file=sys.stderr)
+                print(encoded, file=sys.stderr)
+                print('SEARCH3_CANONICAL_CSS_B64_END', file=sys.stderr)
+                print('SEARCH3_CANONICAL_CSS_SHA256=' + hashlib.sha256(outputs[target]).hexdigest(), file=sys.stderr)
             raise ValueError('Generated assets differ; run python3 scripts/build/search3_assets.py --write: '
                              + ', '.join(stale))
         return len(outputs)
