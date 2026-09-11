@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-11",
+  "scope": "INT P2/P4 source-only flight-detail capability",
+  "base": "b8649aee45e407a9cf0543b6f4a75fa979132ce8",
+  "status": "verified",
+  "providers": {
+    "tourvisor": {"capability_status": "verified", "source_method": "tourvisor_tours_flights"},
+    "anex": {"capability_status": "verified", "source_method": "freight_monitor_freights_by_packet"},
+    "andromeda": {"capability_status": "unknown", "source_method": "andromeda_get_flights"}
+  },
+  "search_offer_defaults": {
+    "details_state": "not_loaded",
+    "segments": [],
+    "baggage_state": "unknown",
+    "price_effect": "unknown",
+    "automatic_fetch_allowed": false,
+    "final_price_verified": false
+  },
+  "effects": {
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "booking_calls": 0,
+    "ui_runtime_changes": 0,
+    "production_changes": 0
+  },
+  "source_commit": "299c71af0e2ec38af532a1638be5a7d54cbdaca9",
+  "verification": {
+    "flight_checks": 16,
+    "offer_checks": 39,
+    "availability_checks": 20,
+    "context_checks": 29,
+    "offer_run": 34568533837,
+    "context_run": 34568533839,
+    "security_run": 34568533875,
+    "conclusion": "success"
+  },
+  "next_action": "Map loaded detail responses only from actual provider evidence; keep Andromeda get_flights gated."
+}

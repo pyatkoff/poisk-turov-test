@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/../app/integrations/three-provider-money-facts.php';
 require __DIR__ . '/../app/integrations/three-provider-availability.php';
+require __DIR__ . '/../app/integrations/three-provider-flight-details.php';
 require __DIR__ . '/../app/integrations/three-provider-offer-contract.php';
 require __DIR__ . '/../app/integrations/three-provider-offer-context.php';
 
@@ -41,7 +42,6 @@ function context_offer(?int $local = 3417): array
         'search_price' => ['amount' => '119114', 'currency' => 'RUB', 'source' => 'andromeda_search'],
         'fuel_charge_reported' => null,
         'additional_prices_reported' => [],
-        'flight_details_state' => 'not_loaded',
         'observed_at' => '2026-09-11T03:00:00Z',
     ]);
 }

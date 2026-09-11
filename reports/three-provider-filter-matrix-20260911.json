@@ -208,10 +208,10 @@
     {
       "field": "flight_details",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "protected gateway has /tours/{id}/flights action"},
-      "anex": {"status": "verified", "note": "separate FreightMonitor_FREIGHTSBYPACKET adapter exists for concrete offer"},
-      "andromeda": {"status": "unknown", "note": "get_flights is a separate method and is not authorized/executed by current package capture"},
-      "next_action": "P4/P5 optional detail DTO; do not trigger Andromeda get_flights automatically"
+      "tourvisor": {"status": "verified", "note": "separate /tours/{id}/flights capability; search offer details remain not_loaded"},
+      "anex": {"status": "verified", "note": "separate FreightMonitor_FREIGHTSBYPACKET capability; search offer details remain not_loaded"},
+      "andromeda": {"status": "unknown", "note": "get_flights method is known but remains separately gated and unexecuted"},
+      "next_action": "normalize only actual loaded responses; automatic detail fetch remains disabled"
     },
     {
       "field": "baggage",
@@ -247,6 +247,7 @@
     }
   ],
   "availability_contract": {"source": "app/integrations/three-provider-availability.php", "verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4", "status": "verified_raw_evidence_canonical_unknown"},
+  "flight_details_contract": {"source": "app/integrations/three-provider-flight-details.php", "verified_head": "299c71af0e2ec38af532a1638be5a7d54cbdaca9", "status": "verified_search_not_loaded"},
   "live_findings": {
     "broad_v2": {
       "scenario": "Moscow→Turkey, 2026-10-05, 7 nights, 2 adults, AI, ANEX-only",

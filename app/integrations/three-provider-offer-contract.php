@@ -11,7 +11,6 @@ declare(strict_types=1);
 final class AnyTourThreeProviderOfferContract
 {
     private const PROVIDERS = ['tourvisor', 'anex', 'andromeda'];
-    private const FLIGHT_STATE = ['not_loaded', 'available', 'unavailable', 'unknown'];
     private const MEAL_FAMILIES = ['ro', 'bb', 'hb', 'fb', 'ai', 'uai'];
 
     public static function fromSearch(array $input): array
@@ -20,7 +19,7 @@ final class AnyTourThreeProviderOfferContract
             'provider', 'operator', 'local_hotel_id', 'provider_hotel_ref', 'search_ref', 'offer_ref',
             'checkin', 'nights', 'adults', 'children', 'child_ages', 'meal', 'room', 'placement',
             'availability', 'search_price', 'fuel_charge_reported', 'additional_prices_reported',
-            'flight_details_state', 'observed_at',
+            'observed_at',
         ];
         if (!self::exactKeys($input, $expected)) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_KEYS');
@@ -74,10 +73,7 @@ final class AnyTourThreeProviderOfferContract
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_AVAILABILITY');
         }
         $availability = AnyTourThreeProviderAvailability::fromSearch($provider, $input['availability']);
-        $flight = $input['flight_details_state'];
-        if (!is_string($flight) || !in_array($flight, self::FLIGHT_STATE, true)) {
-            throw new InvalidArgumentException('THREE_PROVIDER_OFFER_FLIGHT_STATE');
-        }
+        $flight = AnyTourThreeProviderFlightDetails::forSearch($provider);
         $observedAt = $input['observed_at'];
         if (!is_string($observedAt)
             || !preg_match('/\A20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\z/D', $observedAt)) {
@@ -112,7 +108,7 @@ final class AnyTourThreeProviderOfferContract
             'room' => $room,
             'placement' => $placement,
             'availability' => $availability,
-            'flight_details_state' => $flight,
+            'flight_details' => $flight,
             'money' => $money,
             'observed_at' => $observedAt,
             'quote_state' => 'unknown',
