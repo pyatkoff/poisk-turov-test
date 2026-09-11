@@ -1,0 +1,37 @@
+name: Andromeda get_flights contract research
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-get-flights-contract-research.yml'
+permissions:
+  contents: read
+jobs:
+  official-doc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Read official SAMO Andromeda bron contract only
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://dokuwiki.samo.ru/doku.php?id=andromeda%3Abron'
+          curl --fail --silent --show-error --location --proto '=https' --max-time 20 "${base}&do=export_xhtmlbody" -o /tmp/bron.html
+          test -s /tmp/bron.html
+          python3 - <<'PY'
+          from pathlib import Path
+          import html, re
+          raw=Path('/tmp/bron.html').read_text(errors='replace')
+          text=html.unescape(re.sub(r'<[^>]+>', '\n', raw))
+          lines=[re.sub(r'\s+',' ',x).strip() for x in text.splitlines()]
+          lines=[x for x in lines if x]
+          hits=[i for i,x in enumerate(lines) if re.search(r'get_flights|freightExternal|\bcalc\b|1110|Рейсы',x,re.I)]
+          if not hits:
+              raise SystemExit('contract markers not found')
+          shown=set()
+          for i in hits:
+              for j in range(max(0,i-12),min(len(lines),i+18)):
+                  if j not in shown:
+                      print(f'{j+1}: {lines[j]}')
+                      shown.add(j)
+              print('---')
+          PY
