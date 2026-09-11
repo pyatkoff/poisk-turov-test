@@ -24,6 +24,7 @@ on:
       - 'tests/search3-lean-entry-browser.cjs'
       - 'tests/search3-header-geometry-browser.cjs'
       - 'tests/search3-entry-owner-browser.cjs'
+      - 'tests/search3-calendar-readability.cjs'
       - 'tests/search3-current-results-browser.cjs'
       - 'tests/search3-shortlist-browser.cjs'
       - 'scripts/build/search3_site_preview_isolation.py'
@@ -275,7 +276,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/behavior/selected-runtime.js tests/search3-lazy-selected-browser.cjs src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php tests/search3-lean-entry-browser.cjs src/search3/behavior/selected-flow-v2.js src/search3/behavior/selected-runtime.js tests/search3-lazy-selected-browser.cjs src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/selected-flow-v2.css src/search3/styles/final-sections.css tests/search3-selected-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -297,7 +298,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/behavior/search-form.js src/search3/behavior/search-form tests/search3-entry-owner-browser.cjs; then
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/behavior/search-form.js src/search3/behavior/search-form tests/search3-entry-owner-browser.cjs v2/current-price-calendar-v1.css v2/current-price-calendar-v1.js tests/search3-calendar-readability.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 

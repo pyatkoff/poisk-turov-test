@@ -14,7 +14,7 @@ module.exports = async function calendarReadability(page, width, output) {
     await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), [{ tours: tours.slice(0, count) }]);
     await calendar.locator('details').evaluate(node => { node.open = true; });
   };
-  for (const count of [2, 3, 7, 21]) {
+  for (const count of [2, 3, 6, 7, 8, 14, 21]) {
     await render(count);
     const geometry = await calendar.evaluate(node => {
       const box = item => { const r = item.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
@@ -40,16 +40,18 @@ module.exports = async function calendarReadability(page, width, output) {
     assert.ok(geometry.tiles.every(item => item.height >= 44), 'native day actions retain full targets');
     if (width >= 1180) {
       assert.ok(geometry.tiles.every(item => item.priceSize >= 18), 'desktop amounts remain readable');
+      const firstRow = geometry.tiles.filter(item => Math.abs(item.top - geometry.tiles[0].top) < 1);
+      assert.equal(firstRow.length, Math.min(count, 7), 'wide rows use available dates up to seven columns');
       if (count <= 7) {
         assert.equal(new Set(geometry.tiles.map(item => Math.round(item.top))).size, 1, 'up to a week fits in one wide desktop row');
         assert.ok(Math.abs(geometry.tiles.at(-1).right - geometry.list.right) < 2, 'available dates fill the row without empty columns');
       } else {
-        assert.equal(new Set(geometry.tiles.map(item => Math.round(item.top))).size, 3, 'three weeks use three balanced desktop rows');
+        assert.equal(new Set(geometry.tiles.map(item => Math.round(item.top))).size, Math.ceil(count / 7), 'full and partial weeks retain seven-column desktop rows');
       }
     }
     if (width > 640) assert.ok(geometry.listScrollWidth <= geometry.listClientWidth + 1, 'desktop calendar needs no horizontal scroll');
     records.push({ count, ...geometry });
-    if (width === 1440 && [3, 7, 21].includes(count)) await calendar.screenshot({ path: path.join(output, `calendar-readable-${width}-${count}.png`) });
+    if ([375, 1024, 1199, 1440].includes(width) && [2, 3, 7, 21].includes(count)) await calendar.screenshot({ path: path.join(output, `calendar-readable-${width}-${count}.png`) });
   }
   const last = calendar.locator('[data-calendar-date]').last();
   await page.keyboard.press('Tab');
