@@ -1,0 +1,222 @@
+name: MATCH ANEX Tourvisor mass future v9
+run-name: MATCH ANEX Tourvisor mass future #1971 v9
+
+on:
+  push:
+    branches: ['ops/match-anex-tourvisor-mass-future-1971-20260911-v9']
+    paths:
+      - '.github/match-anex-tourvisor-mass-future-1971-v9.arm'
+      - '.github/workflows/anex-tourvisor-mass-future-v9.yml'
+      - 'scripts/diagnostics/anex_tourvisor_mass_future_v9.php'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-anex-tourvisor-mass-future-1971-v9
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-anex-tourvisor-mass-future-1971-20260911-v9
+  EXPECTED_WRAPPER_SHA: 9ee040339cb7c77c0861597fd087c2d39dcba1ade8deb28df3ff7483558bfe8f
+
+jobs:
+  collect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify isolated read-only source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-tourvisor-mass-future-1971-v9.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/anex_tourvisor_mass_future_v9.php
+          php -l scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php
+          php -l scripts/diagnostics/anex_hotelcode_evidence.php
+          php -l scripts/diagnostics/hotel_match_current_bulk_review.php
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l v2/data/tourvisor-client-v1.php
+          got="$(sha256sum scripts/diagnostics/anex_tourvisor_mass_future_v9.php | awk '{print $1}')"
+          echo "wrapper_sha=$got"
+          test "$got" = "$EXPECTED_WRAPPER_SHA"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/anex_tourvisor_mass_future_v9.php
+          ! grep -Eiq "/continue['\"]|/book|bookTour|createOrder|sendLead" scripts/diagnostics/anex_tourvisor_mass_future_v9.php
+
+      - name: Prepare SSH key locally
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_v9_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Prepare immutable reservation before live access
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$STATE"
+          export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          value={
+              'operation_id':os.environ['OPERATION_ID'],
+              'state':'reserved_before_db_or_supplier_access',
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha':os.environ['GITHUB_SHA'],
+              'mode':'current_db_live_tourvisor_anex_mass_future_dates',
+              'database_writes':0,
+              'mapping_writes':0,
+              'search_continue_calls':0,
+              'booking_calls':0,
+              'historical_operations_replayed':False,
+              'lead_day_targets':[14,28,42],
+              'no_replay':True,
+          }
+          (state/'reservation.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Preserve reservation before live access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-mass-future-1971-20260911-v9-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260911-v9/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute isolated CURRENT-DB and Tourvisor evidence pass
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          key="$RUNNER_TEMP/anytoour_match_v9_key"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o LogLevel=ERROR)
+          remote="/tmp/anytour-match-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-v9"
+          cleanup(){ ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "umask 077; rm -rf '$remote'; mkdir '$remote'"
+          scp "${opts[@]}" scripts/diagnostics/hotel_full_catalog_reconcile.php "$USER_VALUE@$HOST_VALUE:$remote/hotel_full_catalog_reconcile.php"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_current_bulk_review.php "$USER_VALUE@$HOST_VALUE:$remote/hotel_match_current_bulk_review.php"
+          scp "${opts[@]}" scripts/diagnostics/anex_hotelcode_evidence.php "$USER_VALUE@$HOST_VALUE:$remote/anex_hotelcode_evidence.php"
+          scp "${opts[@]}" scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php "$USER_VALUE@$HOST_VALUE:$remote/anex_tourvisor_hotelcode_evidence_collect.php"
+          scp "${opts[@]}" v2/data/tourvisor-client-v1.php "$USER_VALUE@$HOST_VALUE:$remote/tourvisor-client-v1.php"
+          scp "${opts[@]}" scripts/diagnostics/anex_tourvisor_mass_future_v9.php "$USER_VALUE@$HOST_VALUE:$remote/anex_tourvisor_mass_future_v9.php"
+
+          set +e
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=0 '$remote/anex_tourvisor_mass_future_v9.php'" >"$STATE/live.stdout" 2>"$STATE/live.stderr"
+          rc=$?
+          set -e
+
+          export STATE RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          rc=int(os.environ['RC'])
+          stdout=(state/'live.stdout').read_text(encoding='utf-8',errors='replace')
+          stderr=(state/'live.stderr').read_text(encoding='utf-8',errors='replace')
+          lines=[x for x in stdout.splitlines() if x.strip()]
+          data=None
+          if lines:
+              try:data=json.loads(lines[-1])
+              except Exception:data=None
+          if not isinstance(data,dict):
+              result={
+                  'operation_id':os.environ['OPERATION_ID'],
+                  'status':'failed',
+                  'reason':'live_output_unparseable',
+                  'remote_exit':rc,
+                  'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),
+                  'stdout_bytes':len(stdout.encode()),
+                  'stderr_present':bool(stderr.strip()),
+                  'stderr_bytes':len(stderr.encode()),
+                  'database_writes':0,
+                  'mapping_writes':0,
+                  'no_replay':True,
+              }
+          else:
+              if data.get('operation_id') != os.environ['OPERATION_ID']:
+                  raise SystemExit('operation id mismatch')
+              for key in ('database_writes','mapping_writes','booking_calls','search_continue_calls'):
+                  if int(data.get(key,0)) != 0:
+                      raise SystemExit(f'write/action guard failed: {key}')
+              if data.get('token_value_recorded',False) is not False:
+                  raise SystemExit('token recording guard failed')
+              result=data
+              result.update({
+                  'source_sha':os.environ['GITHUB_SHA'],
+                  'run_id':int(os.environ['GITHUB_RUN_ID']),
+                  'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+                  'remote_exit':rc,
+                  'stderr_present':bool(stderr.strip()),
+                  'no_replay':True,
+              })
+          (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          summary={
+              'status':result.get('status'),
+              'coverage':result.get('coverage'),
+              'queue_count':result.get('queue_count'),
+              'queue_by_country':result.get('queue_by_country'),
+              'supplier':result.get('supplier'),
+              'search_count':len(result.get('searches') or []),
+              'raw_queue_matches':result.get('raw_queue_matches'),
+              'matched_unique':result.get('matched_unique'),
+              'ambiguous_count':len(result.get('ambiguous_seed_matches') or []),
+              'confirmed_full_path_count':len(result.get('confirmed_full_path') or []),
+              'strong_operator_link_count':len(result.get('strong_operator_link') or []),
+              'conflict_count':len(result.get('conflicts') or []),
+              'search_only_count':len(result.get('search_only') or []),
+              'remote_exit':rc,
+          }
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          safe=[]
+          for group in ('confirmed_full_path','strong_operator_link'):
+              for row in result.get(group) or []:
+                  safe.append({
+                      'class':row.get('evidence_class'),
+                      'anex_hotel_id':row.get('anex_hotel_id'),
+                      'tv_hotel_id':row.get('tv_hotel_id'),
+                      'tv_hotel_name':row.get('tv_hotel_name'),
+                      'match_rule':row.get('match_rule'),
+                      'distance_m':row.get('distance_m'),
+                      'search_count':row.get('search_count'),
+                      'operator_hotellist':row.get('operator_hotellist'),
+                      'hotel_code':row.get('hotel_code'),
+                  })
+          if safe:
+              print('SAFE_EVIDENCE:'+json.dumps(safe[:100],ensure_ascii=False,sort_keys=True))
+          if rc != 0 or result.get('status') != 'completed':
+              raise SystemExit(1)
+          PY
+
+      - name: Preserve sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-mass-future-1971-20260911-v9-result
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260911-v9/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260911-v9/result.json
+          if-no-files-found: warn
+          retention-days: 90
