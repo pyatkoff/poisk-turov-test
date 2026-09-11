@@ -57,7 +57,7 @@ final class AnyTourAndromedaClaimActions
 
         ($this->reserve)();
         $wait = 1.05 - (microtime(true) - $this->lastStarted);
-        if ($this->attempts > 0 && $wait > 0) usleep((int)ceil($wait * 1000000));
+        if ($this->request === null && $this->attempts > 0 && $wait > 0) usleep((int)ceil($wait * 1000000));
         ++$this->attempts;
         $this->lastStarted = microtime(true);
 
