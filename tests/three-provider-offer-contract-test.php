@@ -80,7 +80,6 @@ $children = offer_fixture();
 $children['children'] = 1;
 $children['child_ages'] = [7];
 $children['meal']['family'] = null;
-$children['availability'] = 'on_request';
 $children['flight_details_state'] = 'unknown';
 $childValue = AnyTourThreeProviderOfferContract::fromSearch($children);
 offer_check($childValue['party']['child_ages'] === [7]);
