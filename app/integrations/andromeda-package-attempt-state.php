@@ -49,6 +49,15 @@ final class AnyTourAndromedaPackageAttemptState
         return $next;
     }
 
+    /** Mark a reserved attempt complete without adding package/private data. */
+    public static function succeeded(array $reserved): array
+    {
+        self::assertReserved($reserved);
+        $next = $reserved;
+        $next['status'] = 'completed';
+        return $next;
+    }
+
     /**
      * Create the only permitted repeat reservation. The full claiminc is accepted only
      * to prove it hashes to the original private identity; it is never retained here.

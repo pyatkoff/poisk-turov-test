@@ -4,8 +4,12 @@ on:
     paths:
       - 'app/integrations/andromeda-saved-package-runtime.php'
       - 'app/integrations/andromeda-package-public.php'
+      - 'app/integrations/andromeda-claiminc-contract.php'
+      - 'app/integrations/andromeda-package-retry-policy.php'
+      - 'app/integrations/andromeda-package-attempt-state.php'
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-saved-package-runtime-smoke.php'
+      - 'tests/andromeda-saved-package-attempt-runtime-smoke.php'
       - 'tests/andromeda-retained-mapping-smoke.php'
       - 'tests/andromeda-package-public-smoke.php'
       - 'tests/andromeda-package-public-value-guards.php'
@@ -43,21 +47,38 @@ jobs:
           ref: 1f628e4b172ce9706eabe875784ce2b226175a0d
           path: transport
           persist-credentials: false
-      - name: Exercise existing private storage and client with local transport
+      - uses: actions/checkout@v4
+        with:
+          ref: 163ef9eed9993c08558b84b7a0295e8b4295d2e8
+          path: retained-base
+          persist-credentials: false
+      - name: Preserve exact retained/install regression, then exercise candidate runtime
         run: |
           cp package/app/integrations/andromeda-client.php package/app/integrations/andromeda-package-capture.php package/app/integrations/andromeda-selected-offer.php runtime/app/integrations/
           # Reuse only the prepared transport, never the superseded probe or its workflow.
           cp transport/app/integrations/andromeda-transport.php runtime/app/integrations/
+
+          # First exercise the exact six-file retained/install contract. Do not silently
+          # repin the diagnostic hashes to the candidate runtime under review.
+          cp retained-base/v2/api-andromeda-search3-preview.php runtime/v2/
+          cp retained-base/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
+          php -l change/tests/andromeda-retained-cli-smoke.php
+          php -d allow_url_fopen=0 change/tests/andromeda-retained-cli-smoke.php runtime --installed-runtime
+
+          # Only after the installed baseline is proven, assemble the candidate handoff.
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/
           cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
+          cp change/app/integrations/andromeda-claiminc-contract.php change/app/integrations/andromeda-package-retry-policy.php change/app/integrations/andromeda-package-attempt-state.php runtime/app/integrations/
           php -l runtime/v2/api-andromeda-search3-preview.php
           php -l runtime/app/integrations/andromeda-saved-package-runtime.php
+          php -l runtime/app/integrations/andromeda-claiminc-contract.php
+          php -l runtime/app/integrations/andromeda-package-retry-policy.php
+          php -l runtime/app/integrations/andromeda-package-attempt-state.php
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
+          php change/tests/andromeda-saved-package-attempt-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-attempt-fixture"
           php change/tests/andromeda-retained-mapping-smoke.php runtime
           php -d allow_url_fopen=0 change/tests/andromeda-package-evidence-smoke.php
           php -l change/scripts/diagnostics/andromeda-package-probe.php
-          php -l change/tests/andromeda-retained-cli-smoke.php
-          php -d allow_url_fopen=0 change/tests/andromeda-retained-cli-smoke.php runtime --installed-runtime
           php -l change/app/integrations/andromeda-package-public.php
           php -l change/tests/andromeda-package-public-smoke.php
           php -d allow_url_fopen=0 change/tests/andromeda-package-public-smoke.php runtime
@@ -75,7 +96,9 @@ jobs:
           paths = ['v2/api-andromeda-search3-preview.php'] + [
               'app/integrations/' + name + '.php' for name in [
                   'andromeda-client', 'andromeda-package-capture', 'andromeda-selected-offer',
-                  'andromeda-transport', 'andromeda-saved-package-runtime']]
+                  'andromeda-transport', 'andromeda-saved-package-runtime',
+                  'andromeda-claiminc-contract', 'andromeda-package-retry-policy',
+                  'andromeda-package-attempt-state']]
           files = {}
           for path in paths:
               data = (root / path).read_bytes()
@@ -87,9 +110,11 @@ jobs:
           receipt = {'source': os.environ['SOURCE_SHA'], 'files_sha256': files,
               'dependencies': {'runtime': '95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa',
                   'package': '7c3c5bb55c88e376d97c998d0ba77a46960584d6',
-                  'transport': '1f628e4b172ce9706eabe875784ce2b226175a0d'},
+                  'transport': '1f628e4b172ce9706eabe875784ce2b226175a0d',
+                  'retained_install_baseline': '163ef9eed9993c08558b84b7a0295e8b4295d2e8'},
               'scope': 'private-source-handoff-only', 'supplier_calls': 0,
-              'published': False, 'package_captured_live': False, 'quote_verified': False}
+              'published': False, 'package_captured_live': False, 'quote_verified': False,
+              'live_retry_enabled': False}
           manifest = out / 'receipt.json'
           manifest.write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
           assert json.loads(manifest.read_text()) == receipt

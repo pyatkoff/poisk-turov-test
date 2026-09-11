@@ -14,6 +14,7 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
 {
     if (!$enabled || PHP_SAPI !== 'cli') throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
     require_once __DIR__ . '/andromeda-package-capture.php';
+    require_once __DIR__ . '/andromeda-package-attempt-state.php';
     if (!function_exists('anytour_andromeda_search3_save') || !function_exists('anytour_andromeda_search3_budget')) {
         throw new RuntimeException('ANDROMEDA_PACKAGE_RUNTIME_MISSING');
     }
@@ -54,13 +55,21 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
         }
         $storeState = $state['store'] ?? [];
         $store = new AnyTourAndromedaOfferStore($storeState, true);
-        $path = $directory . '/' . $ref . '-' . $created . '-' . $page . '-' . $offerRef . '-package.json';
+        $stem = $directory . '/' . $ref . '-' . $created . '-' . $page . '-' . $offerRef;
+        $path = $stem . '-package.json';
+        $attemptPath = $stem . '-package-attempt-v2.json';
         $envelope = $read($path, true);
         if (file_exists($path) && (($envelope['source'] ?? null) !== $source
             || !is_array($envelope['record'] ?? null) || $envelope['record'] === [])) {
             throw new RuntimeException('ANDROMEDA_PACKAGE_CHECKPOINT_INVALID');
         }
+        $attemptEnvelope = $read($attemptPath, true);
+        if (file_exists($attemptPath) && (($attemptEnvelope['source'] ?? null) !== $source
+            || !is_array($attemptEnvelope['state'] ?? null) || $attemptEnvelope['state'] === [])) {
+            throw new RuntimeException('ANDROMEDA_PACKAGE_CHECKPOINT_INVALID');
+        }
         $record = $envelope['record'] ?? [];
+        $attemptState = $attemptEnvelope['state'] ?? [];
         $persist = static function(array $next, array $expected) use ($read, $path, $source): array {
             $disk = $read($path, true);
             if (($disk['record'] ?? []) !== $expected
@@ -74,27 +83,73 @@ function anytour_andromeda_capture_saved_package(string $directory, array $conte
             }
             return $written['record'];
         };
+        $persistAttempt = static function(array $next, array $expected) use ($read, $attemptPath, $source): array {
+            $disk = $read($attemptPath, true);
+            if (($disk['state'] ?? []) !== $expected
+                || (file_exists($attemptPath) && (($disk['source'] ?? null) !== $source || ($disk['state'] ?? []) === []))) {
+                throw new RuntimeException('ANDROMEDA_PACKAGE_ATTEMPT_CHECKPOINT_CHANGED');
+            }
+            anytour_andromeda_search3_save($attemptPath, ['source' => $source, 'state' => $next]);
+            $written = $read($attemptPath);
+            if (($written['source'] ?? null) !== $source || ($written['state'] ?? null) !== $next) {
+                throw new RuntimeException('ANDROMEDA_PACKAGE_ATTEMPT_CHECKPOINT_FAILED');
+            }
+            return $written['state'];
+        };
         $capture = new AnyTourAndromedaPackageCapture($record, $persist, $mappingAllows, true, $clock);
         $reused = $record !== [];
         if ($reused) {
             // Captured is read locally; reserved/unknown/stale never reissue a call.
             $result = $capture->read($store, $context);
         } else {
-            AnyTourAndromedaSelectedOffer::resolve($store, $context, $mappingAllows, $clock());
+            // This package only records v2 provenance for a first attempt. A pre-existing
+            // sidecar is never consumed as permission to repeat a supplier operation.
+            if ($attemptState !== []) throw new RuntimeException('ANDROMEDA_PACKAGE_REPLAY_REFUSED');
+            $resolved = AnyTourAndromedaSelectedOffer::resolve($store, $context, $mappingAllows, $clock());
             $auth = $read($directory . '/' . $ref . '-auth.json');
             if (($auth['created_at'] ?? null) !== $created) throw new RuntimeException('ANDROMEDA_PACKAGE_CONTEXT_MISMATCH');
+            $contextSha256 = hash('sha256', json_encode($resolved['context'], JSON_THROW_ON_ERROR));
+            $operationSha256 = hash('sha256', 'andromeda-package-refresh-v2|' . $source);
+            $attemptState = AnyTourAndromedaPackageAttemptState::reserveFirst(
+                $resolved['supplier_offer_id'], $contextSha256, $operationSha256);
+            $attemptState = $persistAttempt($attemptState, []);
             $attempted = false;
-            $client = new AnyTourAndromedaClient(static function($url, $options) use (&$attempted, $transport, $directory) {
+            $client = new AnyTourAndromedaClient(static function($url, $options) use (
+                &$attempted, $transport, $directory, &$attemptState, $persistAttempt
+            ) {
                 parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
                 if ($attempted || ($query['action'] ?? null) !== 'broninit') {
                     throw new RuntimeException('ANDROMEDA_PACKAGE_REPLAY_REFUSED');
                 }
                 $attempted = true;
                 anytour_andromeda_search3_budget(dirname($directory));
-                return $transport($url, $options);
+                try {
+                    return $transport($url, $options);
+                } catch (Throwable $error) {
+                    if (($attemptState['status'] ?? null) === 'reserved') {
+                        $next = AnyTourAndromedaPackageAttemptState::failed($attemptState, $error);
+                        $attemptState = $persistAttempt($next, $attemptState);
+                    }
+                    throw $error;
+                }
             }, true, true);
             $client->restorePrivateSession($auth['session'] ?? []);
-            $result = $capture->capture($store, $client, $context);
+            try {
+                $result = $capture->capture($store, $client, $context);
+            } catch (Throwable $error) {
+                // HTTP/supplier/schema/client failures occur after the transport wrapper.
+                // If no typed transport failure was recorded, seal them unclassified.
+                if (($attemptState['status'] ?? null) === 'reserved') {
+                    $next = AnyTourAndromedaPackageAttemptState::failed($attemptState, $error);
+                    $attemptState = $persistAttempt($next, $attemptState);
+                }
+                throw $error;
+            }
+            if (($attemptState['status'] ?? null) !== 'reserved') {
+                throw new RuntimeException('ANDROMEDA_PACKAGE_ATTEMPT_INVALID');
+            }
+            $attemptState = $persistAttempt(
+                AnyTourAndromedaPackageAttemptState::succeeded($attemptState), $attemptState);
         }
         // Raw claim stays in the private checkpoint. Only receipt metadata exits.
         return ['status' => 'captured', 'source' => $source, 'reused' => $reused,
