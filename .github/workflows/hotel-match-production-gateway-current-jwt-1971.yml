@@ -5,7 +5,7 @@ on:
     paths: ['.github/workflows/hotel-match-production-gateway-current-jwt-1971.yml']
 permissions: {contents: read}
 env:
-  OPERATION_ID: hotel-match-tv63-current-review-1971-20260912-v2
+  OPERATION_ID: hotel-match-tv63-current-review-1971-20260912-v3
   SEARCH_ID: '13591467617'
 jobs:
   review:
@@ -47,11 +47,15 @@ jobs:
           <?php
           declare(strict_types=1);
           $ids=[453,944,928,239,511,56104,81245,9377,425,210,208,198,350,162,322,1984,75395,56094,240,447,502,352,388,71147,501,124,206,9372,248,2904,512,380,1968,1983,77891,295,429,1972,70271,9365,427,407,4193,166,519,223,439,64291,26530,205,1981,224,26077,15692,417,74036,297,1959,244,155,288,462,74032];
-          require_once getcwd().'/v2/data/db-v1.php';
-          $db=v2_data_db();
-          $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
-          $db->exec('START TRANSACTION READ ONLY');
+          $root=getcwd();
+          $helper=null;
+          foreach([$root.'/data/db-v1.php',$root.'/v2/data/db-v1.php'] as $candidate){ if(is_file($candidate)){ $helper=$candidate; break; } }
+          if($helper===null){ echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v3','status'=>'failed','reason'=>'db_helper_missing','supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]).PHP_EOL; exit(2); }
+          require_once $helper;
           try {
+            $db=v2_data_db();
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $db->exec('START TRANSACTION READ ONLY');
             $ph=implode(',',array_fill(0,count($ids),'?'));
             $q=$db->prepare("SELECT id,name,is_active,country_id,region_name,subregion_name FROM catalog_hotels WHERE id IN ($ph)"); $q->execute($ids); $hotels=[]; foreach($q->fetchAll(PDO::FETCH_ASSOC) as $r)$hotels[(int)$r['id']]=$r;
             $q=$db->prepare("SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1 AND catalog_hotel_id IN ($ph)"); $q->execute($ids); $anex=[]; foreach($q->fetchAll(PDO::FETCH_ASSOC) as $r)$anex[(int)$r['catalog_hotel_id']][]=(int)$r['anex_hotel_id'];
@@ -65,25 +69,34 @@ jobs:
             }
             $db->rollBack();
             usort($rows,fn($x,$y)=>strcmp($x['status'],$y['status'])?:($x['tourvisor_hotel_id']<=>$y['tourvisor_hotel_id']));
-            echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v2','status'=>'completed','searchId'=>13591467617,'input_count'=>count($ids),'counts'=>$counts,'rows'=>$rows,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'lead_calls'=>0,'booking_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
-          } catch(Throwable $e){ if($db->inTransaction())$db->rollBack(); echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v2','status'=>'failed','reason'=>preg_replace('/[^A-Za-z0-9_.:-]/','_',substr($e->getMessage(),0,160)),'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]).PHP_EOL; exit(2); }
+            echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v3','status'=>'completed','searchId'=>13591467617,'input_count'=>count($ids),'counts'=>$counts,'rows'=>$rows,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'lead_calls'=>0,'booking_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+          } catch(Throwable $e){ if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->rollBack(); echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v3','status'=>'failed','reason'=>preg_replace('/[^A-Za-z0-9_.:-]/','_',substr($e->getMessage(),0,160)),'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]).PHP_EOL; exit(2); }
           PHP
           opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          ssh "${opts[@]}" "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$state/review.php" > "$state/raw.txt"
-          export STATE="$state"
+          set +e
+          ssh "${opts[@]}" "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$state/review.php" > "$state/raw.txt" 2> "$state/ssh.err"
+          rc=$?
+          set -e
+          export STATE="$state" RC="$rc"
           python3 - <<'PY'
-          import json,os
+          import json,os,re
           from pathlib import Path
-          s=Path(os.environ['STATE']); lines=(s/'raw.txt').read_text(errors='replace').splitlines(); marker='TV63:'
-          line=next((x[len(marker):] for x in reversed(lines) if x.startswith(marker)),None)
-          if not line: raise SystemExit('result marker missing')
-          d=json.loads(line); (s/'result.json').write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
-          print(json.dumps({'operation_id':d.get('operation_id'),'status':d.get('status'),'input_count':d.get('input_count'),'counts':d.get('counts'),'supplier_calls':d.get('supplier_calls'),'database_writes':d.get('database_writes'),'mapping_writes':d.get('mapping_writes')},ensure_ascii=False,sort_keys=True))
+          s=Path(os.environ['STATE']); raw=(s/'raw.txt').read_text(errors='replace'); marker='TV63:'
+          line=next((x[len(marker):] for x in reversed(raw.splitlines()) if x.startswith(marker)),None)
+          if line:
+              d=json.loads(line)
+          else:
+              err=(s/'ssh.err').read_text(errors='replace')[-500:]
+              err=re.sub(r'[^A-Za-z0-9_ .:/-]','_',err)
+              d={'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'remote_no_marker','remote_exit':int(os.environ['RC']),'stderr_tail':err,'supplier_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          (s/'result.json').write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'operation_id':d.get('operation_id'),'status':d.get('status'),'reason':d.get('reason'),'remote_exit':d.get('remote_exit'),'counts':d.get('counts'),'input_count':d.get('input_count'),'supplier_calls':d.get('supplier_calls'),'database_writes':d.get('database_writes'),'mapping_writes':d.get('mapping_writes'),'stderr_tail':d.get('stderr_tail')},ensure_ascii=False,sort_keys=True))
+          raise SystemExit(0 if d.get('status')=='completed' else 2)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-tv63-current-review-v2
+          name: match-tv63-current-review-v3
           path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
           if-no-files-found: error
           retention-days: 90
