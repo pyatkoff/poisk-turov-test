@@ -1,0 +1,204 @@
+name: MATCH direct ANEX sellability review v4
+run-name: MATCH direct ANEX sellability review #1971 v4
+on:
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-sellability-review-1971-v4.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-sellability-review-1971-v4
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-sellability-review-1971-20260911-v4
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify evidence-only MATCH source and exact runtime inputs
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-sellability-review-1971-v4.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_sellability_review.php
+          php -l app/integrations/anex-client.php
+          php -l app/integrations/anex-normalizer.php
+          php -l app/integrations/anex-search.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_sellability_review.php').read_text(encoding='utf-8')
+          assert 'hotel-match-anex-sellability-review-1971-20260911-v3' in s
+          assert 'function hmas_preflight' in s and 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'bookings'=>0" in s
+          assert 'array_chunk($hotelIds,30)' in s and "new AnyTourAnexSearch" in s and "'hotel_ids'=>$chunk" in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO'):
+              assert bad.lower() not in s.lower(), bad
+          print('sellability v4 source verified')
+          PYTHON
+      - name: Zero-supplier private-config/runtime/CURRENT queue preflight
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import json,os,shlex,subprocess,tempfile,time
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];state.mkdir(mode=0o700,parents=True,exist_ok=True)
+          OLD='hotel-match-anex-sellability-review-1971-20260911-v3'; NEW=os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          client=body('app/integrations/anex-client.php')
+          normalizer=body('app/integrations/anex-normalizer.php')
+          search=body('app/integrations/anex-search.php').replace("require_once __DIR__ . '/anex-client.php';\n",'',1).replace("require_once __DIR__ . '/anex-normalizer.php';\n",'',1)
+          source=body('scripts/diagnostics/hotel_match_anex_sellability_review.php').replace(OLD,NEW,1)
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());$home=(string)getenv('HOME');
+            if(!$root||basename($root)!=='anytoour.ru'||$home==='')throw new RuntimeException('HMAS_ROOT');
+            $private=realpath($home.'/.anytoour-anex/search3-preview.php');
+            if(!$private||!is_file($private))throw new RuntimeException('HMAS_PRIVATE_CONFIG_MISSING');
+            require $private;
+            if(!defined('ANYTOUR_ANEX_PREVIEW_ENABLED')||ANYTOUR_ANEX_PREVIEW_ENABLED!==true||!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('HMAS_PRIVATE_CONFIG_INVALID');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+            if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMAS_DB_HELPER');
+            require_once $dbHelper;
+            $result=hmas_preflight(v2_data_db(),HMAS_OPERATION);$result['private_config_ready']=true;echo json_encode($result,JSON_UNESCAPED_SLASHES),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMAS_PREFLIGHT_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMAS_OPERATION,'reason'=>$reason,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          '''
+          code=client+'\n'+normalizer+'\n'+search+'\n'+source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          def progress(stderr):
+              s=str(stderr);return {'tcp_connected':'Connection established.' in s,'authenticated':'Authenticated to ' in s or 'Authentication succeeded' in s,'command_sent':'Sending command:' in s,'remote_exit_seen':'Exit status ' in s}
+          def run_once():
+              host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+              if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+              with tempfile.TemporaryDirectory(prefix='match-anex-v4-preflight-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+                  key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+                  cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+                  clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+                  p=subprocess.run(cmd,text=True,capture_output=True,timeout=120,env=clean);return p,progress(p.stderr)
+          p=prog=None;attempts=0
+          for attempt in (1,2):
+              attempts=attempt;p,prog=run_once()
+              if p.returncode==0 or p.stdout:break
+              if not (p.returncode==255 and not prog['authenticated'] and not prog['command_sent']):break
+              time.sleep(2)
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'failed','operation_id':NEW,'reason':'preflight_output_unparseable','supplier_calls':0,'database_writes':0,'mapping_writes':0,'bookings':0}
+          out={'remote':r,'ssh':prog,'ssh_attempts':attempts,'exit_code':p.returncode}
+          (state/'preflight.json').write_text(json.dumps(out,sort_keys=True)+'\n')
+          if p.returncode!=0 or r.get('status')!='ready' or r.get('operation_id')!=NEW or r.get('private_config_ready') is not True or r.get('supplier_calls')!=0 or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('bookings')!=0 or not isinstance(r.get('queue'),int) or not (0<=r['queue']<=1000):
+              raise RuntimeError('zero_supplier_preflight_failed')
+          print(json.dumps({'queue':r['queue'],'live_queue':r['live_queue'],'countries':r['countries'],'private_config_ready':True,'supplier_calls':0},sort_keys=True))
+          PYTHON
+      - name: Reserve v4 supplier operation after zero-supplier preflight
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']);pre=(state/'preflight.json').read_bytes();p=json.loads(pre)['remote']
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_after_zero_supplier_preflight','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'preflight_sha256':hashlib.sha256(pre).hexdigest(),'preflight_queue':p['queue'],'preflight_live_queue':p['live_queue'],'database_writes':0,'mapping_writes':0,'bookings':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve v4 reservation before supplier access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-sellability-review-1971-20260911-v4-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-sellability-review-1971-20260911-v4/preflight.json
+            ${{ runner.temp }}/hotel-match-anex-sellability-review-1971-20260911-v4/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run bounded direct ANEX sellability evidence pass
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import hashlib,json,os,shlex,subprocess,tempfile,time
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          OLD='hotel-match-anex-sellability-review-1971-20260911-v3'; NEW=os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          client=body('app/integrations/anex-client.php')
+          normalizer=body('app/integrations/anex-normalizer.php')
+          search=body('app/integrations/anex-search.php').replace("require_once __DIR__ . '/anex-client.php';\n",'',1).replace("require_once __DIR__ . '/anex-normalizer.php';\n",'',1)
+          source=body('scripts/diagnostics/hotel_match_anex_sellability_review.php').replace(OLD,NEW,1)
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());$home=(string)getenv('HOME');
+            if(!$root||basename($root)!=='anytoour.ru'||$home==='')throw new RuntimeException('HMAS_ROOT');
+            $private=realpath($home.'/.anytoour-anex/search3-preview.php');
+            if(!$private||!is_file($private))throw new RuntimeException('HMAS_PRIVATE_CONFIG_MISSING');
+            require $private;
+            if(!defined('ANYTOUR_ANEX_PREVIEW_ENABLED')||ANYTOUR_ANEX_PREVIEW_ENABLED!==true||!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('HMAS_PRIVATE_CONFIG_INVALID');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+            if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMAS_DB_HELPER');
+            require_once $dbHelper;$db=v2_data_db();$result=hmas_review($db,ANEX_API_TOKEN,HMAS_OPERATION);echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMAS_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMAS_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          '''
+          code=client+'\n'+normalizer+'\n'+search+'\n'+source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          def progress(stderr):
+              s=str(stderr);return {'tcp_connected':'Connection established.' in s,'authenticated':'Authenticated to ' in s or 'Authentication succeeded' in s,'command_sent':'Sending command:' in s,'remote_exit_seen':'Exit status ' in s}
+          def run_once():
+              host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+              with tempfile.TemporaryDirectory(prefix='match-anex-v4-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+                  key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+                  cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+                  clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+                  p=subprocess.run(cmd,text=True,capture_output=True,timeout=1050,env=clean);return p,progress(p.stderr)
+          p=prog=None;attempts=0
+          for attempt in (1,2):
+              attempts=attempt;p,prog=run_once()
+              if p.returncode==0 or p.stdout:break
+              if not (p.returncode==255 and not prog['authenticated'] and not prog['command_sent']):break
+              time.sleep(2)
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':NEW,'reason':'live_output_unparseable','database_writes':0,'mapping_writes':0,'bookings':0}
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          (state/'ssh-result.json').write_text(json.dumps({'exit_code':p.returncode,'ssh':prog,'ssh_attempts':attempts},sort_keys=True)+'\n')
+          stats=r.get('stats') or {};calls=stats.get('supplier_calls')
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=NEW or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('bookings')!=0 or r.get('search_continuations')!=0 or r.get('historical_operations_replayed') is not False or not isinstance(calls,int) or not (0<=calls<=200):
+              (state/'blocker.json').write_text(json.dumps({'operation_id':NEW,'status':'unknown_no_replay' if prog and prog.get('command_sent') else 'failed_precommand','reason':r.get('reason','sellability_review_not_completed'),'exit_code':p.returncode,'ssh':prog,'ssh_attempts':attempts,'database_writes':r.get('database_writes',0),'mapping_writes':r.get('mapping_writes',0),'bookings':r.get('bookings',0)},sort_keys=True)+'\n');raise RuntimeError('sellability_review_not_completed')
+          receipt={'operation_id':NEW,'state':'completed_evidence_only','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'bookings':0,'supplier_calls':calls,'historical_operations_replayed':False,'no_replay':True,'stats':stats,'ssh':prog,'ssh_attempts':attempts}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          s=stats;summary=(f"MATCH #1971 direct ANEX sellability evidence `{NEW}` completed **evidence-only / NO-REPLAY**. CURRENT unresolved ANEX queue **{s['queue']}** (live **{s['live_queue']}**), countries **{s['countries']}**; supplier-advertised one-day slices **{s['date_slices']}**, HOTELS<=30 price batches **{s['price_batches']}**, supplier calls **{s['supplier_calls']}**. Seen with a real offer on probed dates **{s['sold_on_probe']}** (live **{s['sold_live_on_probe']}**); not seen on those bounded dates **{s['not_seen_on_probed_dates']}** and explicitly **not** classified as globally unsellable. Batch errors **{s['batch_errors']}**. DB/mapping writes **0**, bookings **0**, continuations **0**.")
+          (state/'summary.md').write_text(summary+'\n');print(json.dumps({'stats':s,'ssh_attempts':attempts},ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - name: Preserve v4 result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-sellability-review-1971-20260911-v4-result
+          path: ${{ runner.temp }}/hotel-match-anex-sellability-review-1971-20260911-v4/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH evidence result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
