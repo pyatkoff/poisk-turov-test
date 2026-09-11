@@ -119,19 +119,19 @@
     },
     {
       "field": "room",
-      "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "raw room text is present in tour results"},
-      "anex": {"status": "verified", "note": "raw room text is normalized and projected"},
-      "andromeda": {"status": "verified", "note": "raw room text is normalized and projected"},
-      "next_action": "define lossless raw+normalized room contract; do not merge semantically different room labels by fuzzy name"
+      "canonical_status": "verified",
+      "tourvisor": {"status": "verified", "note": "raw room text is preserved; canonical normalization is display-label-only"},
+      "anex": {"status": "verified", "note": "raw room text is preserved; canonical normalization is display-label-only"},
+      "andromeda": {"status": "verified", "note": "raw room text is preserved; canonical normalization is display-label-only"},
+      "next_action": "do not use normalized room labels as cross-provider or package-equivalence keys"
     },
     {
       "field": "placement",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "placement is present in tested Tourvisor offers"},
-      "anex": {"status": "verified", "note": "hotel_place/placement is present in direct ANEX offers"},
-      "andromeda": {"status": "unknown", "note": "current public Search3 projection drops placement; broad price evidence therefore records null"},
-      "next_action": "add an allowlisted Andromeda placement source field without inventing parity"
+      "tourvisor": {"status": "verified", "note": "raw placement is present in tested offers and remains separate from room"},
+      "anex": {"status": "verified", "note": "hotel_place/placement is preserved separately with display-only normalization"},
+      "andromeda": {"status": "unknown", "note": "current public Search3 projection drops placement; canonical contract preserves missing placement as null/unknown"},
+      "next_action": "expose an allowlisted Andromeda placement source field only from actual source evidence; do not infer it from room"
     },
     {
       "field": "operator_filter",
@@ -242,13 +242,22 @@
       "canonical_status": "unknown",
       "tourvisor": {"status": "unknown", "note": "search/display evidence is not the same as final package quote"},
       "anex": {"status": "unknown", "note": "requires verified additional/final-price contract"},
-      "andromeda": {"status": "unknown", "note": "requires safe package/quote flow after SAMO answers claiminc/broninit questions"},
-      "next_action": "P5"
+      "andromeda": {"status": "unknown", "note": "PRICES[].id to claiminc contract is confirmed, but guarded package/quote evidence remains separate from final verified customer price"},
+      "next_action": "P5 guarded package/quote verification only; bron, bron_ticket and real applications remain prohibited"
     }
   ],
   "availability_contract": {"source": "app/integrations/three-provider-availability.php", "verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4", "status": "verified_raw_evidence_canonical_unknown"},
   "flight_details_contract": {"source": "app/integrations/three-provider-flight-details.php", "verified_head": "299c71af0e2ec38af532a1638be5a7d54cbdaca9", "status": "verified_search_not_loaded"},
   "operator_contract": {"source": "app/integrations/three-provider-operator.php", "verified_head": "687174d77837cefe718bbe805b24e755126b60ac", "status": "verified_no_cross_provider_equivalence"},
+  "room_placement_contract": {
+    "source": "app/integrations/three-provider-room-placement.php",
+    "standalone_status": "verified_display_label_only_no_equivalence",
+    "offer_handoff_head": "81f32f0ac0ceba54908f44a345bee98da411e301",
+    "offer_run": 34640675646,
+    "context_run": 34640675513,
+    "security_run": 34640675585,
+    "status": "verified"
+  },
   "live_findings": {
     "broad_v2": {
       "scenario": "Moscow→Turkey, 2026-10-05, 7 nights, 2 adults, AI, ANEX-only",
