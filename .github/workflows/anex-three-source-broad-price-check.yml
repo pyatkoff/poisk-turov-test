@@ -43,7 +43,7 @@ jobs:
           assert "ANEX_BROAD_PRICE_DATE = '2026-10-05'" in php
           assert "require_once $preview.'/api-anex-search3-preview.php'" in php
           assert "function_exists('anytour_anex_search3_dictionary')" in php
-          assert 'BROAD_PRICE_'.$stage.'_UNCONFIRMED' in php
+          assert "BROAD_PRICE_'.$stage.'_UNCONFIRMED" in php
           assert 'p3_matching_external' in py
           workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
           assert 'ops/int-anex-three-source-broad-price-v2-20260911' in workflow
