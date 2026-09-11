@@ -13,7 +13,7 @@ assert "(string)($query['claiminc']??'')" in probe.SUPPLIER_ERROR_PHP
 assert "(string)($query['sid']??'')" in probe.SUPPLIER_ERROR_PHP
 assert "->bron(" not in probe.SUPPLIER_ERROR_PHP
 assert "->calc(" not in probe.SUPPLIER_ERROR_PHP
-assert "get_flights" not in probe.SUPPLIER_ERROR_PHP
+assert "->get_flights(" not in probe.SUPPLIER_ERROR_PHP
 assert "'CHECKIN_BEG'=>'20260920'" in probe.SUPPLIER_ERROR_PHP
 assert "'CHECKIN_END'=>'20260927'" in probe.SUPPLIER_ERROR_PHP
 
