@@ -20,8 +20,4 @@ check($filtered==='/poisk-turov/?country=4','Handoff allowlist changed');
 $form=v2_form_defaults(['daysFrom'=>'8','daysTill'=>'12','child_age'=>['0','17']]);
 check($form['child_ages']===[0,17]&&$form['nights_till']===12,'Family handoff lost');
 check(v2_form_defaults(['child_age'=>['18','bad',[]]])['child_ages']===[],'Invalid child age accepted');
-$root=realpath(__DIR__.'/..');
-$command='python3 -B '.escapeshellarg($root.'/scripts/build/search3_assets.py').' --write';
-exec($command,$output,$code);
-check($code===0,'Temporary exact-CI Search3 materialization failed');
 echo "SEARCH_HANDOFF_OK\n";
