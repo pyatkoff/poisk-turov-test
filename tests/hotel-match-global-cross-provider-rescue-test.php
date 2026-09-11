@@ -5,7 +5,8 @@ function hmgcr_t(bool $ok,string $m): void {if(!$ok)throw new RuntimeException($
 
 $p=hmgcr_pair('Кача Лагуна','Kacha Laguna',[],[]);
 hmgcr_t($p['exact_bag']===true && $p['shared']===2 && $p['cross_script']===true,'translit exact identity failed');
-hmgcr_t(hmgcr_route($p,null,false,1.0)==='cross_provider_translit_exact','translit exact route failed');
+hmgcr_t(hmgcr_route($p,500.0,false,1.0)==='cross_provider_translit_exact','translit exact direct-geo route failed');
+hmgcr_t(hmgcr_route($p,null,false,1.0)===null,'two-token translit exact without geo must block');
 
 $q=hmgcr_pair('Sunrise Garden Beach','Sunrise Garden',[],[]);
 hmgcr_t($q['critical_ok']===false,'BEACH qualifier loss not blocked');
