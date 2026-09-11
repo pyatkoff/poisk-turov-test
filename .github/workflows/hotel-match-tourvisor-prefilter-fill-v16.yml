@@ -1,0 +1,174 @@
+name: MATCH Tourvisor prefilter fill v16
+run-name: MATCH corrected Tourvisor fill after direct prefilter #1971 v16
+
+on:
+  push:
+    branches: [ops/match-tourvisor-prefilter-fill-1971-20260911-v16]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-tourvisor-prefilter-fill-v16
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tourvisor-prefilter-fill-1971-20260911-v16
+  EXPECTED_BASE_SHA: 451c6c4fc820bb0c03964a327e731ced90e0eeb9
+  ARTIFACT_DIR: /tmp/match-tourvisor-prefilter-fill-v16
+
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 8
+          persist-credentials: false
+
+      - name: Verify isolated source and frozen review
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-tourvisor-prefilter-fill-1971-20260911-v16'
+          test "$(cat .github/match-tourvisor-prefilter-fill-v16.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' \
+            '.github/match-tourvisor-prefilter-fill-v16.arm' \
+            '.github/workflows/hotel-match-tourvisor-prefilter-fill-v16.yml' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          php -l scripts/diagnostics/hotel_match_tourvisor_prefilter_fill_v15.php
+          grep -Fq "hotel-match-tourvisor-prefilter-fill-1971-20260911-v15" scripts/diagnostics/hotel_match_tourvisor_prefilter_fill_v15.php
+          ! grep -Eq 'INSERT INTO|UPDATE |DELETE FROM|REPLACE INTO' scripts/diagnostics/hotel_match_tourvisor_prefilter_fill_v15.php
+
+      - name: Establish zero-supplier SSH master
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          rm -rf "$ARTIFACT_DIR"; mkdir -m 700 -p "$ARTIFACT_DIR"
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); key=rt/'mtv16key'; sock=rt/'mtv16.sock'; known=rt/'mtv16known'
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
+          else:key.write_bytes(base64.b64decode(raw))
+          key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30)
+              if a.returncode==0:
+                  b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && test -f config.php && (test -f v2/data/tourvisor-client-v1.php || test -f data/tourvisor-client-v1.php)'],text=True,capture_output=True,timeout=30)
+                  if b.returncode==0:ok=True;break
+              if sock.exists():subprocess.run(['ssh','-S',str(sock),'-O','exit',os.environ['ANYTOOUR_DEPLOY_HOST']],text=True,capture_output=True,timeout=10)
+              time.sleep(2)
+          if not ok:raise SystemExit('zero-supplier control-master preflight failed')
+          PY
+
+      - name: Persist immutable reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_tourvisor_prefilter_fill_v15.php').read_bytes()
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'frozen_review_sha256':hashlib.sha256(src).hexdigest(),'criteria':{'departure':'Moscow','country':'Egypt','country_id':1,'date':'2026-10-16','nights':7,'operator_id':13},'tourvisor_scope':'one ANEX-only search start; no continue; server-current read-only reconciliation','database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'direct_anex_calls':0,'andromeda_calls':0,'no_replay':True}
+          p=Path(os.environ['ARTIFACT_DIR'],'reservation.json');raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw:raise SystemExit('reservation readback failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tourvisor-fill-v16-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute delayed Tourvisor fill and CURRENT reconciliation
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sleep 25
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          art=Path(os.environ['ARTIFACT_DIR']); sock=Path(os.environ['RUNNER_TEMP'])/'mtv16.sock'; out=art/'result.json'
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'):s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          review=body('scripts/diagnostics/hotel_match_tourvisor_prefilter_fill_v15.php')
+          old='hotel-match-tourvisor-prefilter-fill-1971-20260911-v15'; new=os.environ['OPERATION_ID']
+          if review.count(old)!=2: raise SystemExit('unexpected frozen operation literal count')
+          review=review.replace(old,new)
+          wrapper=r'''
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('server_root_invalid');
+          require_once $root.'/config.php';
+          $dbHelper=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbHelper;
+          $tvClient=is_file($root.'/data/tourvisor-client-v1.php')?$root.'/data/tourvisor-client-v1.php':$root.'/v2/data/tourvisor-client-v1.php';require_once $tvClient;
+          try{$db=v2_data_db();$r=v15_review($db);echo 'V16_JSON:'.json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;}
+          catch(Throwable $e){$m=v15_text($e->getMessage(),160);$status=str_contains($m,'429')||str_contains($m,'rate_limited')?'blocked':'failed';echo 'V16_JSON:'.json_encode(['status'=>$status,'operation_id'=>V15_OPERATION,'reason'=>$m,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'direct_anex_calls'=>0,'andromeda_calls'=>0,'tourvisor_continue_calls'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;exit($status==='blocked'?0:2);}
+          '''
+          code="<?php\n"+"define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+review+"\n"+wrapper
+          if not code.startswith('<?php\n'):raise SystemExit('php framing missing')
+          if subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['ANYTOOUR_DEPLOY_HOST']],text=True,capture_output=True,timeout=10).returncode!=0:
+              out.write_text(json.dumps({'status':'failed','operation_id':new,'reason':'ssh_master_unavailable','database_writes':0,'mapping_writes':0},sort_keys=True,indent=2)+'\n');raise SystemExit('master unavailable')
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          p=subprocess.run(cmd,input=code,text=True,capture_output=True,timeout=600)
+          marker='V16_JSON:'; line=next((z[len(marker):] for z in reversed(p.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None:
+              data={'status':'unknown','operation_id':new,'reason':'result_marker_missing','remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};out.write_text(json.dumps(data,sort_keys=True,indent=2)+'\n');raise SystemExit('result marker missing')
+          data=json.loads(line);data['remote_exit']=p.returncode;data['run_id']=int(os.environ['GITHUB_RUN_ID']);data['source_sha']=os.environ['GITHUB_SHA'];data['no_replay']=True;out.write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if data.get('status') not in ('completed','blocked'):raise SystemExit('remote operation failed')
+          if data.get('database_writes')!=0 or data.get('mapping_writes')!=0:raise SystemExit('write invariant failed')
+          PY
+
+      - name: Close SSH master
+        if: always()
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: ssh -S "$RUNNER_TEMP/mtv16.sock" -O exit "$ANYTOOUR_DEPLOY_HOST" >/dev/null 2>&1 || true
+
+      - name: Preserve final result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tourvisor-fill-v16-${{ github.run_id }}-final
+          path: ${{ env.ARTIFACT_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads(Path(os.environ['ARTIFACT_DIR'],'result.json').read_text())
+          if r.get('status')=='completed':
+              c=r['counts'];tv=r['tourvisor'];cov=r['coverage']
+              text=(f"MATCH #1971 corrected Tourvisor-after-prefilter v16 COMPLETED / NO-REPLAY. Single proven Egypt 2026-10-16/7n ANEX-only Tourvisor slice returned **{tv['hotel_count']} hotels** with no `/continue`; CURRENT exact/alias reconciliation prepared **{c['safe_total']} SAFE candidates** = ANEX **{c['safe_anex']}** + Andromeda **{c['safe_andromeda']}**. DB/mapping/direct-ANEX/Andromeda/booking/lead writes or calls 0. Coverage: triple {cov['all_three']}, exactly-two {cov['exactly_two']}, ANEX unique {cov['anex_unique_local']}, Andromeda unique {cov['andromeda_unique_local']}. Artifact `{os.environ['ARTIFACT_ID']}`. Next write, only if candidates exist, must be a NEW server-current guarded immutable allowlist with post-COMMIT readback.")
+          else:
+              text=(f"MATCH #1971 corrected Tourvisor-after-prefilter v16 BLOCKED / NO-REPLAY on the single proven Egypt 2026-10-16/7n candidate: `{r.get('reason')}`. Direct ANEX/Andromeda were not replayed; DB/mapping/booking/lead writes 0. Artifact `{os.environ['ARTIFACT_ID']}`. This is a precise Tourvisor throttle blocker, not negative hotel evidence.")
+          Path(os.environ['ARTIFACT_DIR'],'summary.md').write_text(text+'\n')
+          PY
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
