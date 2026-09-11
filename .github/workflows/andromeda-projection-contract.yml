@@ -5,6 +5,7 @@ on:
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-public-projection-*'
       - 'tests/andromeda-detail-selection-smoke.php'
+      - 'tests/andromeda-cached-hotel-offers-smoke.php'
       - 'app/integrations/andromeda-selected-offer.php'
       - '.github/workflows/andromeda-projection-contract.yml'
 permissions:
@@ -36,6 +37,7 @@ jobs:
           cp change/app/integrations/andromeda-selected-offer.php runtime/app/integrations/andromeda-selected-offer.php
           php -l runtime/v2/api-andromeda-search3-preview.php
           php change/tests/andromeda-detail-selection-smoke.php runtime
+          php change/tests/andromeda-cached-hotel-offers-smoke.php runtime "$RUNNER_TEMP/andromeda-cached-hotel-offers"
           node change/tests/andromeda-public-projection-contract.cjs runtime shared/v2/andromeda-provider-v1.js accepted
           php runtime/tests/andromeda-live-search-smoke.php
       - name: Preserve the checked API and selection module candidate
