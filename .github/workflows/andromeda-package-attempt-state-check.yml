@@ -1,0 +1,27 @@
+name: Andromeda package attempt state offline
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-package-attempt-state.php'
+      - 'app/integrations/andromeda-package-retry-policy.php'
+      - 'app/integrations/andromeda-claiminc-contract.php'
+      - 'tests/andromeda-package-attempt-state-smoke.php'
+      - '.github/workflows/andromeda-package-attempt-state-check.yml'
+permissions:
+  contents: read
+jobs:
+  attempt-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate package attempt state offline
+        run: |
+          php -l app/integrations/andromeda-package-attempt-state.php
+          php -l tests/andromeda-package-attempt-state-smoke.php
+          php -d allow_url_fopen=0 tests/andromeda-package-attempt-state-smoke.php
+          ! grep -R -n -E "curl_|gateway\\.samo|['\"]broninit['\"]|action=bron|ssh |PDO\\(|fopen\\(|file_put_contents\\(" \
+            app/integrations/andromeda-package-attempt-state.php \
+            tests/andromeda-package-attempt-state-smoke.php
