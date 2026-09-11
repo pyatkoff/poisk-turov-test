@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-11",
+  "scope": "INT source-only canonical offer contract",
+  "source": "app/integrations/three-provider-offer-contract.php",
+  "base": "480b8bc4c8dc94248c1f1b0dc8c4007b5c1f49be",
+  "statuses": {
+    "provider_operator_separation": "verified",
+    "local_identity": "nullable_no_inference",
+    "search_offer_identity": "digest_only",
+    "date_party_meal_room_placement": "verified",
+    "availability_flight_state": "verified",
+    "search_money": "delegated_to_three_provider_money_facts",
+    "quote_state": "unknown",
+    "final_price_verified": false,
+    "selection_state": "disabled"
+  },
+  "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
+  "tests": {"planned": "focused offline PHP + static boundary", "count": 0, "ci": "pending"},
+  "next_action": "Run focused CI; no runtime wiring until P4/P5 gates."
+}
