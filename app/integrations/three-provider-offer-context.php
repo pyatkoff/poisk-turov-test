@@ -16,6 +16,12 @@ final class AnyTourThreeProviderOfferContext
         'offer_ref_digest',
         'provider_hotel_ref_digest',
     ];
+    private const OFFER_KEYS = [
+        'schema_version', 'provider', 'operator', 'local_hotel_id', 'identity',
+        'checkin', 'nights', 'party', 'meal', 'room', 'placement', 'availability',
+        'flight_details', 'money', 'observed_at', 'quote_state',
+        'final_price_verified', 'selection_state',
+    ];
 
     public static function retain(array $offer, int $generation, int $page, int $now, int $ttl = 900): array
     {
@@ -26,7 +32,10 @@ final class AnyTourThreeProviderOfferContext
             throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_TTL');
         }
 
-        if (($offer['schema_version'] ?? null) !== 1
+        if (!self::exactKeys($offer, self::OFFER_KEYS)
+            || ($offer['schema_version'] ?? null) !== 1
+            || ($offer['quote_state'] ?? null) !== 'unknown'
+            || ($offer['final_price_verified'] ?? null) !== false
             || ($offer['selection_state'] ?? null) !== 'disabled') {
             throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_OFFER');
         }

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-11",
+  "scope": "INT source-only retained canonical offer envelope",
+  "base_commit": "2985fee294bfd85e8f4133ac5cd6bf499a21034d",
+  "source": "app/integrations/three-provider-offer-context.php",
+  "source_sha256": "edc867e453b6f252ad721056bcc01224cf3ff28f341d6ce316167fe7842bffd1",
+  "test": "tests/three-provider-offer-context-test.php",
+  "test_sha256": "8ac1efe4999b201a739d01b9d0a4d82bdeed40c699f54fb3d8082cc3aa370eb3",
+  "contract": {
+    "exact_canonical_offer_keys_required": true,
+    "partial_offer_rejected": true,
+    "extra_private_fields_rejected": true,
+    "quote_state_required": "unknown",
+    "final_price_verified_required": false,
+    "selection_state_required": "disabled"
+  },
+  "verification": {
+    "status": "pending_ci",
+    "head": null,
+    "retained_context_run": null,
+    "offer_contract_run": null,
+    "security_run": null,
+    "context_checks": 33
+  },
+  "effects": {
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "booking_calls": 0,
+    "ui_runtime_changes": 0,
+    "production_changes": 0
+  },
+  "next_action": "Run one new non-replayed parity scenario only through an approved workflow that creates a run; P5 remains blocked pending SAMO contract confirmation."
+}

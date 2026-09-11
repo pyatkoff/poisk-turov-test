@@ -121,6 +121,10 @@ $bad = [
         $changed['selection_state'] = 'enabled';
         AnyTourThreeProviderOfferContext::validate($changed, $current, 1100);
     },
+    function () { $offer = context_offer(); unset($offer['money']); AnyTourThreeProviderOfferContext::retain($offer, 1, 1, 1000); },
+    function () { $offer = context_offer(); $offer['supplier_offer_id'] = 'PRIVATE'; AnyTourThreeProviderOfferContext::retain($offer, 1, 1, 1000); },
+    function () { $offer = context_offer(); $offer['quote_state'] = 'verified'; AnyTourThreeProviderOfferContext::retain($offer, 1, 1, 1000); },
+    function () { $offer = context_offer(); $offer['final_price_verified'] = true; AnyTourThreeProviderOfferContext::retain($offer, 1, 1, 1000); },
 ];
 foreach ($bad as $case) {
     try {

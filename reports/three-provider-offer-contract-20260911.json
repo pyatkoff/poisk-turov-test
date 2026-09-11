@@ -13,6 +13,7 @@
     "availability": "raw_evidence_required_canonical_unknown",
     "flight_details": "provider_capability_explicit_search_state_not_loaded",
     "observed_at": "strict_utc_calendar_and_time_roundtrip_no_freshness_inference",
+    "retained_context_offer_envelope": "exact_canonical_keys_disabled_quote_final_and_selection_states",
     "search_money": "delegated_to_three_provider_money_facts_with_exact_provider_kind_provenance",
     "quote_state": "unknown",
     "final_price_verified": false,
@@ -32,6 +33,9 @@
   "money_provenance_verification": {"head": "9603834cda4af516793b1be44dc573bd225b3066", "money_facts_run": 34572575680, "offer_run": 34572575546, "context_run": 34572575619, "security_run": 34572575522, "checks": 33, "status": "success"},
   "timestamp_audit": "reports/three-provider-offer-timestamp-20260911.json",
   "timestamp_verification": {"head": "747eb08469a8ba79d60b7f9e8912f3eb5217cb50", "offer_run": 34577237765, "context_run": 34577237717, "security_run": 34577237785, "offer_checks": 41, "status": "success"},
+  "retained_context_source": "app/integrations/three-provider-offer-context.php",
+  "retained_context_audit": "reports/three-provider-retained-offer-envelope-20260911.json",
+  "retained_context_verification": {"head": null, "context_run": null, "offer_run": null, "security_run": null, "context_checks": 33, "status": "pending_ci"},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
   "tests": {"offer_checks": 41, "availability_checks": 20, "flight_checks": 16, "context_checks": 29, "security_run": 34577237785, "offer_run": 34577237765, "context_run": 34577237717, "status": "success"},
   "next_action": "Run one new non-replayed parity scenario when the approved workflow produces a run; P5 remains blocked on SAMO contract confirmation."
