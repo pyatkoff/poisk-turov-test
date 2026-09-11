@@ -6,7 +6,7 @@ require_once __DIR__ . '/../scripts/diagnostics/hotel_match_global_approx_name_r
 function t(bool $ok,string $m): void { if(!$ok) throw new RuntimeException($m); }
 $base=[
   'identity_anchors'=>['identity_aligned'=>2], 'place_match'=>true,
-  'source_places'=>['Паттайя'],'target_region'=>'Паттайя','target_subregion'=>null,
+  'source_places'=>['Pattaya'],'target_region'=>'Pattaya','target_subregion'=>null,
   'pair'=>['critical_ok'=>true,'source_tokens'=>['siam','platinum','pattaya'],'target_tokens'=>['siam','platinum','residence'],'pairs'=>[['source'=>'siam','target'=>'siam'],['source'=>'platinum','target'=>'platinum']]]
 ];
 $r=hmgan3_semantic_guard($base);t($r['ok']===true,'generic/place extras should pass');
