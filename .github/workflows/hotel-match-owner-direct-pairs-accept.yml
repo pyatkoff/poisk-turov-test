@@ -1,0 +1,159 @@
+name: MATCH owner-confirmed ANEX pair acceptance
+
+on:
+  push:
+    branches:
+      - ops/match-owner-direct-pairs-accept-1971-20260911-v1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-owner-direct-pairs-accept
+  cancel-in-progress: false
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPERATION_ID: hotel-match-owner-direct-pairs-accept-1971-20260911-v1
+      EXPECTED_BASE_SHA: 4d8f53763806932cbf24160437cb93e33d04f419
+      OWNER_EVIDENCE_COMMENT: '5636646077'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Verify exact one-shot source and reserve operation
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'pyatkoff/poisk-turov-test'
+          test "$GITHUB_REF" = 'refs/heads/ops/match-owner-direct-pairs-accept-1971-20260911-v1'
+          test "$GITHUB_ACTOR" = 'pyatkoff'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_BASE_SHA"
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/hotel-match-owner-direct-pairs-accept.yml'
+          mkdir -p .owner-pairs-accept
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          value={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved',
+            'source_sha':os.environ['GITHUB_SHA'],
+            'base_sha':os.environ['EXPECTED_BASE_SHA'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'owner_evidence_comment':int(os.environ['OWNER_EVIDENCE_COMMENT']),
+            'pairs':[
+              {'anex_hotel_id':16229,'catalog_hotel_id':9336,'evidence':'owner_name_alias_confirmation'},
+              {'anex_hotel_id':20792,'catalog_hotel_id':42916,'evidence':'owner_tourvisor_operator_hotellist_confirmation'}
+            ],
+            'supplier_requests':0,
+          }
+          p=Path('.owner-pairs-accept/reservation.json');raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation readback')
+          PY
+
+      - name: Preserve reservation before SSH
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-direct-pairs-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: .owner-pairs-accept/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Apply two owner-confirmed manual identities transactionally
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, tempfile
+          from pathlib import Path
+          names=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(n,'').strip() for n in names): raise SystemExit('missing ssh')
+          host=os.environ[names[1]].strip(); user=os.environ[names[2]].strip()
+          if host.startswith('-') or user.startswith('-') or any(c.isspace() for c in host+user): raise SystemExit('invalid ssh target')
+          payload={
+            'operation_id':os.environ['OPERATION_ID'],
+            'source_sha':os.environ['GITHUB_SHA'],
+            'owner_evidence_comment':int(os.environ['OWNER_EVIDENCE_COMMENT']),
+            'pairs':[
+              {'anex_hotel_id':16229,'catalog_hotel_id':9336,'evidence':'owner_name_alias_confirmation'},
+              {'anex_hotel_id':20792,'catalog_hotel_id':42916,'evidence':'owner_tourvisor_operator_hotellist_confirmation'}
+            ]
+          }
+          php=r'''<?php
+          declare(strict_types=1);
+          function rows(PDO $db,string $sql,array $args=[]): array {$q=$db->prepare($sql);$q->execute($args);return $q->fetchAll(PDO::FETCH_ASSOC);}
+          function j($v): string {return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+          $input=json_decode(stream_get_contents(STDIN,100000),true,32,JSON_THROW_ON_ERROR);
+          if(!is_array($input)||!preg_match('/^[0-9a-f]{40}$/D',$input['source_sha']??'')||($input['operation_id']??'')!=='hotel-match-owner-direct-pairs-accept-1971-20260911-v1'||($input['owner_evidence_comment']??0)!==5636646077)throw new RuntimeException('contract');
+          $expected=[[16229,9336,'owner_name_alias_confirmation'],[20792,42916,'owner_tourvisor_operator_hotellist_confirmation']];
+          if(count($input['pairs']??[])!==2)throw new RuntimeException('pair_count');
+          foreach($expected as $i=>$e){$p=$input['pairs'][$i]??[];if(($p['anex_hotel_id']??null)!==$e[0]||($p['catalog_hotel_id']??null)!==$e[1]||($p['evidence']??null)!==$e[2])throw new RuntimeException('pair_contract');}
+          $home=realpath((string)getenv('HOME'));$root=realpath(getcwd());if(!$home||!$root||$root!==$home.'/www/anytoour.ru')throw new RuntimeException('root');
+          $private=$home.'/.anytoour-anex/review-owner';$manifest=json_decode(file_get_contents($private.'/manifest.json'),true,32,JSON_THROW_ON_ERROR);$runtimeSource=$manifest['source_sha']??'';
+          if(!preg_match('/^[0-9a-f]{40}$/D',$runtimeSource))throw new RuntimeException('runtime_source');
+          $runtime=$private.'/runtime-'.$runtimeSource;$service=$runtime.'/app/admin/anex-review/service.php';$store=$runtime.'/app/admin/anex-review/dossier-store.php';$configPath=$private.'/config.php';
+          if(!is_file($service)||is_link($service)||!is_file($store)||is_link($store)||!is_file($configPath)||is_link($configPath))throw new RuntimeException('runtime');
+          require_once $store;require_once $service;$config=require $configPath;if(!is_array($config)||!is_callable($config['pdo_factory']??null))throw new RuntimeException('config');
+          $db=$config['pdo_factory']();if(!$db instanceof PDO)throw new RuntimeException('db');$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->setAttribute(PDO::ATTR_EMULATE_PREPARES,false);
+          $actor='owner_chat_direct_20260911';$beforeAccepted=(int)rows($db,"SELECT COUNT(*) n FROM anex_hotel_decisions WHERE decision_status='accepted'")[0]['n'];$written=[];
+          $db->beginTransaction();
+          try{
+            $dossier=new AnexReviewDossierStore($db);
+            foreach($expected as [$id,$target,$evidenceKind]){
+              $obs=rows($db,'SELECT anex_hotel_id,country_id,hotel_name FROM anex_search_hotel_observations WHERE anex_hotel_id=? FOR UPDATE',[$id])[0]??null;if(!$obs)throw new RuntimeException('hotel_not_observed');
+              $manual=rows($db,'SELECT decision_status,catalog_hotel_id FROM anex_hotel_decisions WHERE anex_hotel_id=? FOR UPDATE',[$id]);if($manual)throw new RuntimeException('existing_manual_decision');
+              $policy=rows($db,"SELECT anex_hotel_id,catalog_hotel_id,enabled,scope,approval_policy,match_class FROM anex_hotel_search_mappings WHERE anex_hotel_id=? FOR UPDATE",[$id]);
+              foreach($policy as $m)if((int)$m['enabled']===1&&$m['scope']==='preview'&&$m['approval_policy']==='owner_exact_and_strong_20260908'&&in_array($m['match_class'],['exact','strong_candidate'],true))throw new RuntimeException('existing_active_mapping');
+              if(rows($db,'SELECT 1 FROM anex_review_pair_exclusions WHERE anex_hotel_id=? AND catalog_hotel_id=? FOR UPDATE',[$id,$target]))throw new RuntimeException('pair_excluded');
+              $targetRow=rows($db,'SELECT id,name,country_id,region_name,subregion_name FROM catalog_hotels WHERE id=? FOR UPDATE',[$target])[0]??null;if(!$targetRow||(int)$targetRow['country_id']!==(int)$obs['country_id'])throw new RuntimeException('target_country_mismatch');
+              $occupied=rows($db,"SELECT anex_hotel_id FROM anex_hotel_decisions WHERE decision_status='accepted' AND catalog_hotel_id=? AND anex_hotel_id<>? FOR UPDATE",[$target,$id]);if($occupied)throw new RuntimeException('target_manual_occupied');
+              $occupiedPolicy=rows($db,"SELECT anex_hotel_id FROM anex_hotel_search_mappings WHERE catalog_hotel_id=? AND anex_hotel_id<>? AND enabled=1 AND scope='preview' AND approval_policy='owner_exact_and_strong_20260908' AND match_class IN ('exact','strong_candidate') FOR UPDATE",[$target,$id]);if($occupiedPolicy)throw new RuntimeException('target_policy_occupied');
+              $panel=$dossier->panel($id,(int)$obs['country_id'],true);if($panel===null)throw new RuntimeException('missing_current_dossier');$candidate=null;foreach($panel['candidates'] as $c)if((int)$c['catalog_hotel_id']===$target)$candidate=$c;if($candidate===null)throw new RuntimeException('target_not_current_candidate');
+              $prov=$panel['evidence']['dossier_provenance']??[];$evidence=['origin'=>'owner:chat_direct_confirmation','owner_evidence_comment'=>(int)$input['owner_evidence_comment'],'evidence_kind'=>$evidenceKind,'operation_id'=>$input['operation_id'],'dossier_artifact_id'=>$prov['artifact_id']??null,'dossier_row_digest'=>$prov['row_digest']??null,'candidate'=>['catalog_hotel_id'=>$target,'candidate_rank'=>$candidate['candidate_rank']??null,'score'=>$candidate['score']??null,'distance_m'=>$candidate['distance_m']??null],'target'=>['name'=>$targetRow['name'],'country_id'=>(int)$targetRow['country_id'],'region_name'=>$targetRow['region_name'],'subregion_name'=>$targetRow['subregion_name']]];
+              $evidenceDigest=hash('sha256',j($evidence));$requestId=substr(hash('sha256',$input['operation_id'].':'.$id.':'.$target),0,32);$requestDigest=hash('sha256',j([$id,$target,'accept',$evidenceDigest,$actor]));
+              if(rows($db,'SELECT request_id FROM anex_review_audit WHERE request_id=? FOR UPDATE',[$requestId]))throw new RuntimeException('operation_already_recorded');
+              $note=j(['origin'=>'owner:chat_direct_confirmation','operation_id'=>$input['operation_id'],'owner_evidence_comment'=>(int)$input['owner_evidence_comment'],'evidence_kind'=>$evidenceKind,'evidence_digest'=>$evidenceDigest]);
+              rows($db,"INSERT INTO anex_hotel_decisions (anex_hotel_id,decision_status,catalog_hotel_id,decided_by,decision_note,decided_at) VALUES (?,'accepted',?,?,?,UTC_TIMESTAMP())",[$id,$target,$actor,$note]);
+              rows($db,'INSERT INTO anex_review_state (anex_hotel_id,revision) VALUES (?,1) ON DUPLICATE KEY UPDATE revision=revision+1',[$id]);rows($db,'UPDATE anex_review_state SET deferred_at=NULL,deferred_by=NULL WHERE anex_hotel_id=?',[$id]);
+              $before=['anex_hotel_id'=>$id,'catalog_hotel_id'=>$target,'hotel_name'=>$obs['hotel_name'],'country_id'=>(int)$obs['country_id'],'evidence'=>$evidence];$result=['action'=>'accept','id'=>$id,'target'=>$target,'actor'=>$actor,'operation_id'=>$input['operation_id'],'evidence_digest'=>$evidenceDigest];
+              rows($db,'INSERT INTO anex_review_audit (request_id,request_digest,anex_hotel_id,catalog_hotel_id,action,actor,evidence_digest,before_json,result_json,decided_at) VALUES (?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())',[$requestId,$requestDigest,$id,$target,'accept',$actor,$evidenceDigest,j($before),j($result)]);
+              $written[]=$result;
+            }
+            $db->commit();
+          }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+          $svc=new AnexReviewService($db);$readback=[];foreach($expected as [$id,$target,$kind]){$d=$svc->detail($id);if($d['mapped_id']!==$target||!is_array($d['manual'])||$d['manual']['decision_status']!=='accepted'||(int)$d['manual']['catalog_hotel_id']!==$target)throw new RuntimeException('post_commit_readback');$readback[]=['anex_hotel_id'=>$id,'catalog_hotel_id'=>$target,'mapped_id'=>(int)$d['mapped_id'],'decision_status'=>$d['manual']['decision_status'],'version'=>$d['version']];}
+          $afterAccepted=(int)rows($db,"SELECT COUNT(*) n FROM anex_hotel_decisions WHERE decision_status='accepted'")[0]['n'];if($afterAccepted!==$beforeAccepted+2)throw new RuntimeException('accepted_count_readback');
+          echo j(['status'=>'completed','operation_id'=>$input['operation_id'],'source_sha'=>$input['source_sha'],'runtime_source'=>$runtimeSource,'owner_evidence_comment'=>(int)$input['owner_evidence_comment'],'written'=>$written,'readback'=>$readback,'manual_accepted_before'=>$beforeAccepted,'manual_accepted_after'=>$afterAccepted,'supplier_requests'=>0]).PHP_EOL;
+          ?>'''
+          wire=json.dumps(payload,separators=(',',':'),ensure_ascii=False)
+          with tempfile.TemporaryDirectory() as td:
+              key=Path(td)/'key';key.write_text(os.environ[names[0]].rstrip()+'\n');key.chmod(0o600)
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              result=subprocess.run(cmd,input=php.replace("$input=json_decode(stream_get_contents(STDIN,100000),true,32,JSON_THROW_ON_ERROR);","$input=json_decode(base64_decode('"+__import__('base64').b64encode(wire.encode()).decode()+"'),true,32,JSON_THROW_ON_ERROR);"),text=True,capture_output=True,timeout=60)
+          if result.returncode!=0: raise SystemExit('accept transport failed')
+          data=json.loads(result.stdout)
+          if data.get('status')!='completed' or data.get('operation_id')!=os.environ['OPERATION_ID'] or data.get('supplier_requests')!=0 or len(data.get('readback',[]))!=2: raise SystemExit('accept result invalid')
+          p=Path('.owner-pairs-accept/result.json');raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('result readback')
+          print(json.dumps({'status':data['status'],'operation_id':data['operation_id'],'manual_accepted_before':data['manual_accepted_before'],'manual_accepted_after':data['manual_accepted_after'],'readback':data['readback']},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve completed result or exact failure boundary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-direct-pairs-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            .owner-pairs-accept/reservation.json
+            .owner-pairs-accept/result.json
+          if-no-files-found: warn
+          retention-days: 90
