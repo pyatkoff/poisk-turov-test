@@ -12,7 +12,7 @@ const tour={provider:'andromeda',offerRef:offer,offerContext,providerDetail:{sta
 const listeners=new Map(),requests=[];
 const document={readyState:'complete',querySelectorAll(){return[];},addEventListener(){},createElement(){throw new Error('not needed in pure test');},getElementById(){return null;}};
 const window={
-  __ANYTOUR_SEARCH3_ENTRY__:'AnyTourSearch3',AnyTourSearch3:{modules:{}},
+  __ANYTOOUR_SEARCH3_ENTRY__:'AnyTourSearch3',AnyTourSearch3:{modules:{}},
   location:{href:'https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/',origin:'https://anytoour.ru'},
   V2_CONFIG:{andromedaApi:'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'},
   V2SearchLifecycle:{generation:7,dirty:false,snapshot},
