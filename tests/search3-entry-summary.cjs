@@ -32,7 +32,9 @@ assert.match(markup, /\['onlyDirect','only_direct'\],\['onlyCharter','only_chart
 assert.match(markup, /\['1','true','yes'\]/, 'false-ish flight flags stay inactive');
 assert.match(markup, /Активных фильтров: /, 'Search3 exposes a truthful active-filter count');
 assert.match(markup, /v2_search3_enabled\(\)\?e\(\$advancedFilterHint\):'курорт, отель, питание и перелёт'/, 'legacy V2 keeps its previous generic summary');
+assert.match(markup, /v2_search3_enabled\(\)\):\?><section class="v2-product-hero v2-visually-hidden"/, 'Search3 keeps one semantic hero without redundant first-view chrome');
+assert.match(markup, /<\?php else:\?><section class="v2-product-hero"/, 'legacy V2 keeps its visible product hero');
 assert.match(catalogs, /function renderChildAges\(\)/, 'canonical child-age owner remains');
 assert.match(lifecycle, /new FormData\(form\)/, 'canonical FormData owner remains');
 assert.match(lifecycle, /hydrateUrlState\(\)/, 'canonical URL hydration remains');
-console.log('PASS: native server form, active advanced-filter summary, catalog controls, URL hydration and FormData remain; client projection retired');
+console.log('PASS: native server form, compact Search3 hero, active advanced-filter summary, catalog controls, URL hydration and FormData remain; client projection retired');

@@ -25,8 +25,8 @@ const css = legacyNames.concat(searchNames)
   .join('\n');
 
 const field = (label, control, name) => `<label class="field search3-${name}"><span>${label}</span>${control}</label>`;
-const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{width:100%;max-width:1120px;margin:auto;padding:12px}</style>
-<body class="search3-candidate"><main class="v2-shell"><form id="tourSearch" class="search-card">
+const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{width:100%;max-width:1120px;margin:auto;padding:12px}.v2-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}</style>
+<body class="search3-candidate"><main class="v2-shell"><section class="v2-product-hero v2-visually-hidden" aria-labelledby="v2-search-title"><h1 id="v2-search-title">Поиск туров</h1><p>Выберите направление и даты — сравните подходящие предложения.</p></section><form id="tourSearch" class="search-card">
   <div class="search-section-title"><span>Параметры поездки</span></div>
   <div class="main-fields">
     <fieldset class="search-group search-group--route"><legend>Направление</legend>
@@ -53,7 +53,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
 const measure = node => {
   const box = node.getBoundingClientRect();
   const style = getComputedStyle(node);
-  return { top: box.top, bottom: box.bottom, width: box.width, height: box.height, fontSize: parseFloat(style.fontSize), display: style.display };
+  return { top: box.top, bottom: box.bottom, width: box.width, height: box.height, fontSize: parseFloat(style.fontSize), display: style.display, position: style.position };
 };
 
 (async () => {
@@ -75,6 +75,7 @@ const measure = node => {
           const measureNode = eval(`(${measureSource})`);
           return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            hero: measureNode(document.querySelector('.v2-product-hero')),
             form: measureNode(document.querySelector('#tourSearch')),
             mainColumns: getComputedStyle(document.querySelector('.main-fields')).gridTemplateColumns.split(' ').length,
             groupColumns: [...document.querySelectorAll('.search-group')].map(node => getComputedStyle(node).gridTemplateColumns.split(' ').length),
@@ -87,6 +88,9 @@ const measure = node => {
           };
         }, measure.toString());
         assert.ok(state.overflow <= 1, `${width}: form must not overflow horizontally`);
+        assert.equal(state.hero.position, 'absolute', `${width}: semantic Search3 hero stays out of visual flow`);
+        assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, `${width}: redundant hero consumes no first-view space`);
+        assert.ok(state.form.top <= 13, `${width}: search form starts at the shell top without a hero gap`);
         assert.ok(state.labels.every(item => item.fontSize >= 12), `${width}: labels remain readable`);
         assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: native controls keep 44px/16px`);
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
