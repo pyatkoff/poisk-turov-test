@@ -1,0 +1,127 @@
+name: MATCH global cross-provider rescue CURRENT v3
+run-name: MATCH global cross-provider rescue CURRENT v3
+
+on:
+  push:
+    branches:
+      - ops/match-global-cross-provider-rescue-current-1971-v2
+    paths:
+      - .github/match-global-cross-provider-rescue-current-1971-v3.arm
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  OPERATION_ID: hotel-match-global-cross-provider-rescue-1971-20260912-v3
+  OUT_DIR: /tmp/match-global-cross-provider-rescue-current-v3
+
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Verify immutable arm and prepare supplier-free package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-global-cross-provider-rescue-current-1971-v3.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l scripts/diagnostics/hotel_match_current_bulk_review.php
+          php -l scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          ! grep -Fq 'v2_data_tv_get' scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          ! grep -Fq 'AnyTourAnexClient' scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          mkdir -p "$OUT_DIR/package"
+          cp scripts/diagnostics/hotel_full_catalog_reconcile.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_current_bulk_review.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_global_cross_provider_rescue.php "$OUT_DIR/package/"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/match-global-cross-provider-rescue-current-v3/package/hotel_match_global_cross_provider_rescue.php')
+          s=p.read_text(); old="const HMGCR_OPERATION = 'hotel-match-global-cross-provider-rescue-1971-20260911-v1';"; new="const HMGCR_OPERATION = 'hotel-match-global-cross-provider-rescue-1971-20260912-v3';"
+          if s.count(old)!=1: raise SystemExit('operation_constant_not_unique')
+          p.write_text(s.replace(old,new))
+          PY
+
+      - name: Persist immutable reservation before CURRENT DB read
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); src=root/'package'/'hotel_match_global_cross_provider_rescue.php'
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'algorithm_source_sha256':hashlib.sha256(src.read_bytes()).hexdigest(),'mode':'entire_current_core8_cross_provider_residual_read_only','providers':['anex','andromeda'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (root/'reservation.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-global-cross-provider-rescue-current-v3-reservation
+          path: ${{ env.OUT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Prepare direct SSH credentials
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/hmgcr3-key"; known="$RUNNER_TEMP/hmgcr3-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -s config.php && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMGCR3_OK' | grep -qx HMGCR3_OK
+          printf '%s\n' "$key" > "$RUNNER_TEMP/hmgcr3-keypath"
+          printf '%s\n' "$known" > "$RUNNER_TEMP/hmgcr3-knownpath"
+
+      - name: Execute ENTIRE CURRENT residual review
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/hmgcr3-keypath")"; known="$(cat "$RUNNER_TEMP/hmgcr3-knownpath")"; remote="/tmp/hmgcr3-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ssh_opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2)
+          cleanup(){ ssh "${ssh_opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          tar -C "$OUT_DIR/package" -czf - . | ssh "${ssh_opts[@]}" "$USER_VALUE@$HOST_VALUE" "mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          set +e
+          ssh "${ssh_opts[@]}" "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -r 'define(\"FC_LIBRARY_ONLY\",true); \$root=realpath(getcwd()); require \$root.\"/config.php\"; require is_file(\$root.\"/data/db-v1.php\")?\$root.\"/data/db-v1.php\":\$root.\"/v2/data/db-v1.php\"; require \"$remote/hotel_match_global_cross_provider_rescue.php\"; \$db=v2_data_db(); echo \"HMGCR3_JSON:\".fc_json(hmgcr_review(\$db,\"hotel-match-global-cross-provider-rescue-1971-20260912-v3\")).PHP_EOL;'" > "$OUT_DIR/live.stdout" 2> "$OUT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); out=(root/'live.stdout').read_text(errors='replace'); err=(root/'live.stderr').read_text(errors='replace'); marker='HMGCR3_JSON:'
+          line=next((x[len(marker):] for x in reversed(out.splitlines()) if x.startswith(marker)),None)
+          if line is None:
+              result={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'stderr_tail':err[-4000:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          else: result=json.loads(line)
+          result['source_sha']=os.environ['GITHUB_SHA']; result['run_id']=int(os.environ['GITHUB_RUN_ID']); result['remote_exit']=int(os.environ['RC']); result['no_replay']=True
+          (root/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':result.get('status'),'counts':result.get('counts'),'coverage':result.get('coverage'),'reason_counts':result.get('reason_counts'),'country_counts':result.get('country_counts'),'provider_counts':result.get('provider_counts')},ensure_ascii=False,sort_keys=True))
+          if result.get('status')!='completed' or int(os.environ['RC'])!=0: raise SystemExit(2)
+          PY
+
+      - name: Preserve final receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-global-cross-provider-rescue-current-v3-final
+          path: |
+            ${{ env.OUT_DIR }}/reservation.json
+            ${{ env.OUT_DIR }}/result.json
+            ${{ env.OUT_DIR }}/live.stderr
+          if-no-files-found: error
+          retention-days: 90
