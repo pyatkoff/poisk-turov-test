@@ -21,10 +21,13 @@
     "arithmetic_applied": false
   },
   "verification": {
-    "status": "pending_ci",
-    "head": null,
-    "money_facts_run": null,
-    "security_run": null
+    "status": "success",
+    "head": "9603834cda4af516793b1be44dc573bd225b3066",
+    "money_facts_run": 34572575680,
+    "offer_contract_run": 34572575546,
+    "retained_context_run": 34572575619,
+    "security_run": 34572575522,
+    "checks": 33
   },
   "effects": {
     "supplier_calls": 0,
