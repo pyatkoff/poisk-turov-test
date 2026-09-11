@@ -43,21 +43,26 @@ def plain(raw):
 bron_raw=result['pages'].get('bron','')
 bron=plain(bron_raw)
 print('=== BRON CONTRACT ===')
-hits=[i for i,x in enumerate(bron) if re.search(r'get_flights|freightExternal|\bcalc\b|POST: claim|Пример заявки',x,re.I)]
+hits=[i for i,x in enumerate(bron) if re.search(r'get_flights|freightExternal|\bcalc\b|changeservice|POST: claim|Пример заявки',x,re.I)]
+shown=set()
 for i in hits:
-    print(f'{i+1}: {bron[i]}')
+    for j in range(max(0,i-5),min(len(bron),i+14)):
+        if j not in shown:
+            print(f'{j+1}: {bron[j]}')
+            shown.add(j)
+    print('---')
 print('=== BRON RELEVANT LINKS ===')
 for href,label in re.findall(r'<a\b[^>]*href="([^"]+)"[^>]*>(.*?)</a>',bron_raw,re.I|re.S):
     label=html.unescape(re.sub(r'<[^>]+>',' ',label));label=re.sub(r'\s+',' ',label).strip()
-    if re.search(r'структур|пример заявки|claim|flight',label+' '+href,re.I):
+    if re.search(r'структур|пример заявки|claim|flight|changeservice|услуг',label+' '+href,re.I):
         print(label,'=>',html.unescape(href))
 
 claim=plain(result['pages'].get('claim',''))
-print('=== CLAIM STRUCTURE MARKERS ===')
-hits=[i for i,x in enumerate(claim) if re.search(r'claimDocument|freightExternal|transport|freight|JSON|заявк|пример',x,re.I)]
+print('=== CLAIM SERVICE MARKERS ===')
+hits=[i for i,x in enumerate(claim) if re.search(r'Изменение услуги|changeservice|variants|transport|groupId|uid|selected|claimDocument',x,re.I)]
 shown=set()
-for i in hits[:80]:
-    for j in range(max(0,i-4),min(len(claim),i+9)):
+for i in hits[:100]:
+    for j in range(max(0,i-4),min(len(claim),i+10)):
         if j not in shown:
             print(f'{j+1}: {claim[j]}')
             shown.add(j)
