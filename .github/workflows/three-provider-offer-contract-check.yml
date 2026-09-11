@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/integrations/three-provider-offer-contract.php'
       - 'app/integrations/three-provider-room-placement.php'
+      - 'app/integrations/three-provider-meal-family.php'
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/three-provider-availability.php'
       - 'app/integrations/three-provider-flight-details.php'
@@ -11,6 +12,7 @@ on:
       - 'app/integrations/andromeda-selected-tour-readiness.php'
       - 'tests/three-provider-offer-contract-test.php'
       - 'tests/three-provider-room-placement-test.php'
+      - 'tests/three-provider-meal-family-test.php'
       - 'tests/three-provider-availability-test.php'
       - 'tests/three-provider-flight-details-test.php'
       - 'tests/three-provider-operator-test.php'
@@ -31,18 +33,21 @@ jobs:
         run: |
           php -l app/integrations/three-provider-offer-contract.php
           php -l app/integrations/three-provider-room-placement.php
+          php -l app/integrations/three-provider-meal-family.php
           php -l app/integrations/three-provider-availability.php
           php -l app/integrations/three-provider-flight-details.php
           php -l app/integrations/three-provider-operator.php
           php -l app/integrations/andromeda-selected-tour-readiness.php
           php -l tests/three-provider-offer-contract-test.php
           php -l tests/three-provider-room-placement-test.php
+          php -l tests/three-provider-meal-family-test.php
           php -l tests/three-provider-availability-test.php
           php -l tests/three-provider-flight-details-test.php
           php -l tests/three-provider-operator-test.php
           php -l tests/andromeda-selected-tour-readiness-test.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
           php -d allow_url_fopen=0 tests/three-provider-room-placement-test.php
+          php -d allow_url_fopen=0 tests/three-provider-meal-family-test.php
           php -d allow_url_fopen=0 tests/three-provider-availability-test.php
           php -d allow_url_fopen=0 tests/three-provider-flight-details-test.php
           php -d allow_url_fopen=0 tests/three-provider-operator-test.php
@@ -60,6 +65,7 @@ jobs:
           assert "AnyTourThreeProviderAvailability::fromSearch" in src
           assert "AnyTourThreeProviderFlightDetails::forSearch" in src
           assert "AnyTourThreeProviderRoomPlacement::normalize" in src
+          assert "AnyTourThreeProviderMealFamily::normalize" in src
           assert "['raw']" in src and "['normalized']" in src
           assert "DateTimeImmutable::createFromFormat" in src
           assert "->format('Y-m-d\\\\TH:i:s\\\\Z') !== $observedAt" in src
