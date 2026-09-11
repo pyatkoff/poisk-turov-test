@@ -1,2 +1,5 @@
 operation_id=hotel-match-former-name-accept-1971-20260911-v1
-state=armed
+state=completed-no-replay
+run_id=34581798840
+artifact_id=10191911838
+writes=72
