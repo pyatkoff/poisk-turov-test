@@ -3,10 +3,18 @@
   "date": "2026-09-11",
   "scope": "INT/P2 source-only",
   "base": "083d41d3523214774e2bc6547199656f8f75a41b",
-  "source_commit": "94979b8f05ba4c55130a16f247c3199ec31f2aa7",
-  "status": "consolidated_ci_pending",
+  "source_commit": "01b015780b4d393d1b9c7e87ffa59cccd95a3cd5",
+  "status": "consolidated_verified",
   "verification": {
-    "status": "pending"
+    "status": "success",
+    "canonical_meal_checks": 54,
+    "parity_checks": {
+      "php": 39,
+      "python": 19
+    },
+    "meal_run": 34564550345,
+    "parity_run": 34564550409,
+    "security_run": 34564550387
   },
   "classification": {
     "explicit_supported_labels": "verified",
