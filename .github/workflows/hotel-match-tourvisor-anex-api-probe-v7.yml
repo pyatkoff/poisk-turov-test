@@ -1,0 +1,167 @@
+name: MATCH Tourvisor ANEX API probe v7
+run-name: MATCH Tourvisor ANEX API probe v7 #1971
+
+on:
+  push:
+    branches: ['ops/match-tourvisor-anex-api-probe-1971-20260911-v7']
+    paths:
+      - '.github/match-tourvisor-anex-api-probe-1971-v7.arm'
+      - '.github/workflows/hotel-match-tourvisor-anex-api-probe-v7.yml'
+      - 'scripts/diagnostics/hotel_match_tourvisor_anex_catalog_probe_v7.php'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-tourvisor-anex-api-probe-1971-v7
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-tourvisor-anex-api-probe-1971-20260911-v7
+  EXPECTED_DIAGNOSTIC_SHA: d1063fefe63ebf63c40f7fc16cf5607f30f2c04a7536d83821ea72935cd4f215
+  EXPECTED_BASE_SHA: 2a230f5d9fb211e516735a38a625a943c0d4bb24
+
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 4
+
+      - name: Verify bounded source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-tourvisor-anex-api-probe-1971-v7.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          php -l scripts/diagnostics/hotel_match_tourvisor_anex_catalog_probe_v7.php
+          got="$(sha256sum scripts/diagnostics/hotel_match_tourvisor_anex_catalog_probe_v7.php | awk '{print $1}')"
+          echo "diagnostic_sha=$got"
+          test "$got" = "$EXPECTED_DIAGNOSTIC_SHA"
+          ! grep -Eiq 'insert[[:space:]]+into|update[[:space:]]|delete[[:space:]]+from|replace[[:space:]]+into' scripts/diagnostics/hotel_match_tourvisor_anex_catalog_probe_v7.php
+
+      - name: Prepare immutable reservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .probe
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          value={
+              'operation_id':os.environ['OPERATION_ID'],
+              'state':'reserved_before_supplier_call',
+              'source_sha':os.environ['GITHUB_SHA'],
+              'base_sha':os.environ['EXPECTED_BASE_SHA'],
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'credential_name':'TOURVISOR_ANEX_JWT',
+              'token_value_recorded':False,
+              'database_calls':0,
+              'database_writes':0,
+              'mapping_writes':0,
+              'continue_calls':0,
+              'tour_detail_calls':0,
+              'booking_calls':0,
+              'no_replay':True,
+          }
+          Path('.probe/reservation.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Preserve reservation before supplier call
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-tourvisor-anex-api-probe-1971-20260911-v7-reservation
+          path: .probe/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute derived read-only catalog search probe
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess,tempfile
+          from pathlib import Path
+
+          required=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          for name in required:
+              if not os.environ.get(name,'').strip():
+                  raise SystemExit('missing ssh config')
+
+          source=Path('scripts/diagnostics/hotel_match_tourvisor_anex_catalog_probe_v7.php').read_text()
+          with tempfile.TemporaryDirectory(prefix='tv-anex-v7-') as td:
+              key=Path(td)/'key'
+              key.write_text(os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].rstrip()+'\n')
+              key.chmod(0o600)
+              cmd=[
+                  'ssh','-T','-i',str(key),
+                  '-o','IdentitiesOnly=yes',
+                  '-o','BatchMode=yes',
+                  '-o','StrictHostKeyChecking=no',
+                  '-o','UserKnownHostsFile=/dev/null',
+                  '-o','LogLevel=ERROR',
+                  '-l',os.environ['ANYTOOUR_DEPLOY_USER'],
+                  os.environ['ANYTOOUR_DEPLOY_HOST'],
+                  'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0',
+              ]
+              process=subprocess.run(cmd,input=source,text=True,capture_output=True,timeout=220)
+
+          marker='MATCH_JSON:'
+          line=next((item[len(marker):] for item in reversed(process.stdout.splitlines()) if item.startswith(marker)),None)
+          try:
+              data=json.loads(line) if line else {'status':'failed','stage':'transport','reason':'marker_missing'}
+          except Exception:
+              data={'status':'failed','stage':'transport','reason':'marker_json_invalid'}
+
+          for key,value in {
+              'token_value_recorded':False,
+              'database_calls':0,
+              'database_writes':0,
+              'mapping_writes':0,
+              'continue_calls':0,
+              'tour_detail_calls':0,
+              'booking_calls':0,
+          }.items():
+              data.setdefault(key,value)
+
+          data.update(
+              operation_id=os.environ['OPERATION_ID'],
+              source_sha=os.environ['GITHUB_SHA'],
+              base_sha=os.environ['EXPECTED_BASE_SHA'],
+              run_id=int(os.environ['GITHUB_RUN_ID']),
+              run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),
+              remote_exit=process.returncode,
+              stderr_empty=(process.stderr.strip()==''),
+              no_replay=True,
+          )
+          Path('.probe/result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({key:data.get(key) for key in [
+              'status','stage','reason','message','departures_count','departure_id',
+              'countries_count','country_id','country_name','operator_count','operators',
+              'anex_operator_match_count','account_operator_scope_exact_anex','dates_count',
+              'first_dates','search_date','search_started','status_polls','result_row_count',
+              'anex_only_observed','remote_exit'
+          ]},ensure_ascii=False,sort_keys=True))
+          if process.returncode!=0 or data.get('status')!='completed':
+              raise SystemExit(1)
+          PY
+
+      - name: Preserve sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-tourvisor-anex-api-probe-1971-20260911-v7-result
+          path: |
+            .probe/reservation.json
+            .probe/result.json
+          if-no-files-found: warn
+          retention-days: 90
