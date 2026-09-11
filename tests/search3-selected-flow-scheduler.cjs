@@ -5,7 +5,7 @@ const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'src/search3/manifest.json'), 'utf8'));
-assert.deepEqual(manifest.assets['search3-selected-flow-v2.js'], [], 'public selected slot is retained but empty');
+assert.deepEqual(manifest.assets['search3-selected-flow-v2.js'], ['behavior/selected-quote-v2.js'], 'public selected slot owns the verified quote adapter');
 assert.equal(fs.existsSync(path.join(root, 'src/search3/behavior/selected-flow-v2.js')), false);
 assert.equal(fs.existsSync(path.join(root, 'src/search3/behavior/selected/flight-fallback.js')), false);
 
@@ -74,4 +74,4 @@ assert.ok(selectedClasses.has('search3-lead-entry'));
 assert.equal(focused, 1);
 assert.equal(window.Search3SummaryCta.version, 14);
 
-console.log('PASS: selected public adapter is retired; canonical recovery/price and native handoff remain');
+console.log('PASS: selected public quote adapter is registered; canonical recovery/price and native handoff remain');
