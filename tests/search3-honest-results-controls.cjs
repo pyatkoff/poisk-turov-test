@@ -42,13 +42,13 @@ assert.match(localFilters, /providerSelect\.addEventListener\('change',\(\)=>win
 
 assert.ok(localFilters.includes('Курорт / регион') && localFilters.includes('Все курорты'),
   'Search3 exposes a resort/region decision facet when loaded hotel geography is complete');
-assert.match(localFilters, /cardTextValues\('region'\)/,
+assert.ok(localFilters.includes("cardTextValues('region')"),
   'region choices come from canonical already-loaded hotel region data');
-assert.match(localFilters, /list\.length>1&&list\.every\(item=>item\.key\)&&labels\.size>1/,
+assert.ok(localFilters.includes('const available=list.length>1&&list.every(item=>item.key)&&labels.size>1;'),
   'region facet stays hidden when geography is incomplete or has no meaningful choice');
-assert.match(localFilters, /matchesRegion=!facets\.region\|\|facets\.regions\[index\]\.key===facets\.region/,
+assert.ok(localFilters.includes('matchesRegion=!facets.region||facets.regions[index].key===facets.region'),
   'region selection filters only the current loaded hotel set');
-assert.match(localFilters, /regionSelect\.addEventListener\('change',apply\)/,
+assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)"),
   'region changes stay inside the local result filter owner');
 
 for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'startSearch(']) {
