@@ -1,0 +1,33 @@
+name: Three-provider search window
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-search-window.php'
+      - 'tests/three-provider-search-window-test.php'
+      - '.github/workflows/three-provider-search-window-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate canonical search window without network
+        run: |
+          php -l app/integrations/three-provider-search-window.php
+          php -l tests/three-provider-search-window-test.php
+          php -d allow_url_fopen=0 tests/three-provider-search-window-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-search-window.php').read_text()
+          assert "'supplier_date_span_support' => 'unknown'" in src
+          assert "'supplier_night_span_support' => 'unknown'" in src
+          assert "'cross_provider_result_equivalence' => 'unknown'" in src
+          for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_id', 'provider_id'):
+              assert forbidden not in src
+          print('Three-provider search-window static boundary: PASS')
+          PY
