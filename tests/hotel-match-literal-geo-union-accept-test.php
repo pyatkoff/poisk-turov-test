@@ -8,5 +8,5 @@ for($i=1;$i<=92;$i++)$prepared[]=['provider'=>'andromeda','external_id'=>(string
 $review=['status'=>'completed','operation_id'=>HMLGUA_SOURCE_OPERATION,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'historical_operations_replayed'=>false,'stats'=>['prepared'=>99,'prepared_anex'=>7,'prepared_andromeda'=>92],'prepared'=>$prepared];
 $m=hmlgua_source_manifest($review);tassert(count($m)===99,'manifest_count');tassert(isset($m['anex:1001']),'anex_key');tassert(isset($m['andromeda:2000000001']),'andromeda_key');tassert($m['andromeda:2000000001']['routes']===['single_token_exact_place'],'route_preserved');
 $bad=$review;$bad['prepared'][0]['routes']=['unsafe_route'];$threw=false;try{hmlgua_source_manifest($bad);}catch(RuntimeException $e){$threw=true;}tassert($threw,'unsafe_route_not_blocked');
-$j=hmlgua_json(['z'=>1,'a'=>['y'=>2,'x'=>1]]);tassert($j==='{\"a\":{\"x\":1,\"y\":2},\"z\":1}','canonical_json');
+$j=hmlgua_json(['z'=>1,'a'=>['y'=>2,'x'=>1]]);tassert($j==='{"a":{"x":1,"y":2},"z":1}','canonical_json');
 echo "hotel-match-literal-geo-union-accept-test: OK\n";
