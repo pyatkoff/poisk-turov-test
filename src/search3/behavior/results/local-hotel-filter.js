@@ -182,5 +182,5 @@ function clear(event){
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:9};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:8};
 })();
