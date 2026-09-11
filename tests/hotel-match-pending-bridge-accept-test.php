@@ -9,5 +9,5 @@ pba_assert($e['promotion']['lane']==='MATCH','lane');
 pba_assert($e['promotion']['target']===2958,'target');
 pba_assert($e['promotion']['server_current']===true,'server_current');
 pba_assert($e['prior_evidence']['candidate_ids']===[2958],'prior preserved');
-pcbr_assert(pcbr_strict_pair(['Pickalbatros Aqua Park Resort Hurghada'],['GRAVITY HOTEL & AQUA PARK HURGHADA'],'Хургада')===null,'unsafe brand swap stays blocked');
+pba_assert(pcbr_strict_pair(['Pickalbatros Aqua Park Resort Hurghada'],['GRAVITY HOTEL & AQUA PARK HURGHADA'],'Хургада')===null,'unsafe brand swap stays blocked');
 echo "ok\n";
