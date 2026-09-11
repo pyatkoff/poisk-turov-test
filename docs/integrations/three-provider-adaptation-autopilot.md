@@ -1,6 +1,6 @@
 # AnyTour INT — автономная адаптация Tourvisor + direct ANEX + Andromeda
 
-Дата актуализации: 2026-09-11. Репозиторий: только `pyatkoff/poisk-turov-test`.
+Дата актуализации: 2026-09-12. Репозиторий: только `pyatkoff/poisk-turov-test`.
 INT-база: свежая `feature/anex-search-adapter-20260907`.
 Координация: #996. Рабочие issues: #1685, #1717, #1647. #1759 — только внешний identity dependency.
 
@@ -117,6 +117,23 @@ INT владеет только supplier/data/API частью:
 - реальные заявки, `bron`, `bron_ticket` запрещены.
 
 Новый live package/quote capture выполняется только по текущему exact owner-control/allowlist. Source-only SAFE/MEDIUM пакеты могут продолжаться независимо.
+
+## 2.4 Current P5/P6 execution evidence — не повторять и не обобщать
+
+На одном свежем явно выбранном Andromeda claim уже доказана полная read-only цепочка без booking:
+
+- `broninit`: run `34605764015`, исходная выбранная туристическая цена `124864 RUB`;
+- `get_flights`: run `34607247181` SUCCESS;
+- ровно требуемая outbound+return пара выбрана через 2× `changeservice`: run `34608731086` SUCCESS;
+- `calc`: run `34609344978` SUCCESS;
+- exact-claim tourist buyer price изменилась `124864 → 135643 RUB`;
+- для **этого конкретного claim** `final_price_verified=true`.
+
+Это доказывает рабочий порядок `broninit → get_flights → changeservice → calc` для данного external-flight case и доказывает, что search/package price может отличаться от итоговой calc price. Это **не** универсальная формула, не fuel arithmetic и не разрешение автоматически складывать сборы. Этот completed chain не replay.
+
+Direct ANEX P4/P6 common-session boundary также уже source-complete: PR #2081 merged в INT как `e92253bbcadfc5228f3fa233f64be5cd1983228f`. Существующий `ANYTOUR_ANEX_SEARCH3` хранит реальные random `search_ref`, opaque source-qualified `offer_ref`, исходные normalized facts, one-shot group expansion с durable unknown-before-transport checkpoint и supplier-free saved concrete-offer read. Current mapping/catalog/generation/search/fixed-expiry guards обязательны; group minima не становятся selected offer; private supplier IDs не публикуются. Source merge не означает preview publication или SEARCH acceptance.
+
+Следующий P6 шаг по direct ANEX — только bounded receiving handoff владельцу SEARCH с сохранением этих refs/expansion/details contract. INT не редактирует SEARCH renderer/controller/UI и не обходит отдельные SEARCH gates.
 
 ---
 
@@ -272,7 +289,7 @@ Core8 сначала: Turkey, Egypt, Thailand, Maldives, UAE, Cuba, Sri Lanka, V
 | adults/children/ages | verified | verified | verified | current closed family |
 | price/currency | verified/source | source + local post-filter | source + local post-filter | money provenance |
 | availability | verified/source | source/unknown | source/unknown | enum + raw evidence |
-| flights/baggage | details | separate details | separate methods | optional detail DTO |
+| flights/baggage | details | separate details | separate methods | optional detail DTO; Andromeda get_flights execution proven only for selected quote path |
 | fuel/additional | separate reported field | separate method/evidence | search unknown; package/quote separate | P0/P5 |
 
 Каждый PR — одно небольшое семейство полей. Не делать broad provider rewrite.
@@ -357,6 +374,8 @@ Price change contract должен уметь вернуть:
 - source/operator;
 - status `unchanged | changed | unavailable | unknown`.
 
+Exact selected-claim chain из §2.4 уже доказал изменение `124864 → 135643 RUB` после выбора обязательных рейсов и `calc`. Не запускать его повторно ради подтверждения. Следующая source задача — использовать уже существующий private verified-quote contract/handoff и сохранять exact-claim provenance; не превращать один sample в общую price arithmetic.
+
 Включение UI acceptance принадлежит SEARCH.
 
 Любой новый live package/quote capture — только по current exact owner-control. `bron`, `bron_ticket`, реальная заявка — стоп-гейт.
@@ -380,6 +399,8 @@ INT acceptance fixtures должны покрывать:
 - stale/expired context;
 - provider failure isolation;
 - sanitized payload без private supplier IDs.
+
+Direct ANEX INT-side common-session prerequisite закрыт #2081: SEARCH-получатель должен сохранить `search_ref`/`offer_ref`, явно вызывать expansion/concrete saved read и не подменять group minimum выбранным туром. Это handoff evidence, а не разрешение INT менять SEARCH-owned renderer/controller/UI.
 
 SEARCH #1646 принимает этот contract отдельно своим owner/writer.
 
