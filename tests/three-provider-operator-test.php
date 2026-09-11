@@ -16,4 +16,29 @@ foreach ([['other','ANEX'],['anex','Other'],['tourvisor',''],['tourvisor',"Bad\n
     try { AnyTourThreeProviderOperator::fromSearch($provider,$raw); operator_check(false); }
     catch (InvalidArgumentException $e) { operator_check(true); }
 }
+
+foreach (['tourvisor', 'anex', 'andromeda'] as $provider) {
+    $missing = AnyTourThreeProviderOperator::fromSearch($provider, null);
+    operator_check($missing === [
+        'raw' => null,
+        'canonical_name' => null,
+        'canonical_verified' => false,
+        'identity_source' => 'missing',
+        // Provider filter capability is separate from the missing offer fact.
+        'filter_status' => $provider === 'tourvisor' ? 'verified' : 'unsupported',
+        'cross_provider_equivalence_verified' => false,
+        'supplier_code_exposed' => false,
+    ]);
+    $known = AnyTourThreeProviderOperator::fromSearch($provider, 'ANEX');
+    operator_check($missing !== $known);
+    operator_check(array_keys($missing) === array_keys($known));
+    // Only explicit null is absence; malformed supplied values are not repaired.
+    foreach (['', '   ', 0, 7, false, [], "Bad\nName", str_repeat('A', 121)] as $bad) {
+        try { AnyTourThreeProviderOperator::fromSearch($provider, $bad); operator_check(false); }
+        catch (InvalidArgumentException $error) { operator_check($error->getMessage() === 'THREE_PROVIDER_OPERATOR'); }
+    }
+}
+try { AnyTourThreeProviderOperator::fromSearch('other', null); operator_check(false); }
+catch (InvalidArgumentException $error) { operator_check($error->getMessage() === 'THREE_PROVIDER_OPERATOR'); }
+operator_check(AnyTourThreeProviderOperator::fromSearch('anex', ' Anex Tour ') === $anex);
 echo 'Three-provider operator evidence: '.$checks." checks passed; mapping/supplier=0.\n";
