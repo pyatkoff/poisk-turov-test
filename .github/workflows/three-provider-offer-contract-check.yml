@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'app/integrations/three-provider-offer-contract.php'
+      - 'app/integrations/three-provider-anex-offer.php'
+      - 'app/integrations/anex-normalizer.php'
+      - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
       - 'app/integrations/three-provider-meal-family.php'
       - 'app/integrations/three-provider-money-facts.php'
@@ -11,6 +14,8 @@ on:
       - 'app/integrations/three-provider-operator.php'
       - 'app/integrations/andromeda-selected-tour-readiness.php'
       - 'tests/three-provider-offer-contract-test.php'
+      - 'tests/three-provider-anex-offer-test.php'
+      - 'tests/anex-normalizer-smoke.php'
       - 'tests/three-provider-room-placement-test.php'
       - 'tests/three-provider-meal-family-test.php'
       - 'tests/three-provider-availability-test.php'
@@ -32,6 +37,8 @@ jobs:
       - name: Validate offer contract without network
         run: |
           php -l app/integrations/three-provider-offer-contract.php
+          php -l app/integrations/three-provider-anex-offer.php
+          php -l tests/three-provider-anex-offer-test.php
           php -l app/integrations/three-provider-room-placement.php
           php -l app/integrations/three-provider-meal-family.php
           php -l app/integrations/three-provider-availability.php
@@ -45,6 +52,8 @@ jobs:
           php -l tests/three-provider-flight-details-test.php
           php -l tests/three-provider-operator-test.php
           php -l tests/andromeda-selected-tour-readiness-test.php
+          php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
+          php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
           php -d allow_url_fopen=0 tests/three-provider-room-placement-test.php
           php -d allow_url_fopen=0 tests/three-provider-meal-family-test.php
@@ -55,6 +64,12 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-offer-contract.php').read_text()
+          anex_bridge=Path('app/integrations/three-provider-anex-offer.php').read_text()
+          assert 'AnyTourThreeProviderOfferContract::fromSearch' in anex_bridge
+          assert 'THREE_PROVIDER_ANEX_CONCRETE_REQUIRED' in anex_bridge
+          assert "'local_hotel_id' => $currentIdentity['local_id']" in anex_bridge
+          for forbidden in ('curl_', 'PDO', 'supplier_offer_id', '->request(', '->bron(', 'file_get_contents', 'file_put_contents', '$_GET', '$_POST'):
+              assert forbidden not in anex_bridge
           room_placement=Path('app/integrations/three-provider-room-placement.php').read_text()
           availability=Path('app/integrations/three-provider-availability.php').read_text()
           flight=Path('app/integrations/three-provider-flight-details.php').read_text()
