@@ -1,0 +1,170 @@
+name: MATCH current missing-third strict review v1
+run-name: MATCH current missing-third strict review #1971 v1
+
+on:
+  push:
+    branches: ['ops/match-current-missing-third-strict-review-1971-20260911-v1']
+    paths:
+      - '.github/match-current-missing-third-strict-review-1971-v1.arm'
+      - '.github/workflows/hotel-match-current-missing-third-strict-review-v1.yml'
+      - 'scripts/diagnostics/hotel_match_current_missing_third_strict_review.php'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-current-missing-third-strict-review-1971-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-current-missing-third-strict-review-1971-20260911-v1
+  EXPECTED_SCRIPT_BLOB: d26c98b3e7d37522e58425dacb97a7b163b41fbd
+
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify isolated read-only source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-current-missing-third-strict-review-1971-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_current_missing_third_strict_review.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_missing_third_strict_review.php)" = "$EXPECTED_SCRIPT_BLOB"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_current_missing_third_strict_review.php
+          ! grep -Eiq 'https?://|/tours/|bookTour|createOrder|sendLead|curl_|file_get_contents[[:space:]]*\(' scripts/diagnostics/hotel_match_current_missing_third_strict_review.php
+
+      - name: Prepare key and immutable reservation
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_m3s_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$STATE"
+          export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          reservation={
+              'operation_id':os.environ['OPERATION_ID'],
+              'state':'reserved_before_current_db_read',
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha':os.environ['GITHUB_SHA'],
+              'script_blob':os.environ['EXPECTED_SCRIPT_BLOB'],
+              'database_writes':0,
+              'mapping_writes':0,
+              'supplier_calls':0,
+              'historical_operations_replayed':False,
+              'transport_connections_planned':1,
+              'no_replay':True,
+          }
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Preserve reservation before live DB read
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-missing-third-strict-review-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Cool down SSH admission
+        shell: bash
+        run: sleep 45
+
+      - name: Execute single-connection CURRENT-DB review
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          key="$RUNNER_TEMP/anytoour_match_m3s_key"
+          set +e
+          ssh -T -i "$key" \
+            -o IdentitiesOnly=yes -o BatchMode=yes \
+            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o ConnectTimeout=20 -o ConnectionAttempts=2 -o LogLevel=ERROR \
+            -l "$USER_VALUE" "$HOST_VALUE" \
+            'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' \
+            <scripts/diagnostics/hotel_match_current_missing_third_strict_review.php \
+            >"$STATE/live.stdout" 2>"$STATE/live.stderr"
+          rc=$?
+          set -e
+          export STATE RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); rc=int(os.environ['RC'])
+          stdout=(state/'live.stdout').read_text(encoding='utf-8',errors='replace')
+          stderr=(state/'live.stderr').read_text(encoding='utf-8',errors='replace')
+          lines=[x for x in stdout.splitlines() if x.strip()]
+          data=None
+          if lines:
+              try: data=json.loads(lines[-1])
+              except Exception: data=None
+          if not isinstance(data,dict):
+              low=stderr.lower()
+              transport='kex_exchange_identification_reset' if 'kex_exchange_identification' in low else ('connection_reset' if 'connection reset' in low else ('connect_timeout' if 'timed out' in low else 'ssh_exit_'+str(rc)))
+              result={
+                  'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'ssh_transport_failed','transport_class':transport,
+                  'remote_exit':rc,'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),'stdout_bytes':len(stdout.encode()),
+                  'stderr_present':bool(stderr.strip()),'stderr_bytes':len(stderr.encode()),
+                  'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True,
+              }
+          else:
+              if data.get('operation_id') != os.environ['OPERATION_ID']:
+                  raise SystemExit('operation id mismatch')
+              for key in ('database_writes','mapping_writes','supplier_calls'):
+                  if int(data.get(key,0)) != 0:
+                      raise SystemExit('read-only guard failed: '+key)
+              result=data
+              result.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=rc,stderr_present=bool(stderr.strip()),no_replay=True)
+          (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          summary={
+              'status':result.get('status'),'reason':result.get('reason'),'transport_class':result.get('transport_class'),
+              'coverage':result.get('coverage'),'missing_third_targets':result.get('missing_third_targets'),
+              'safe_count':result.get('safe_count'),'safe_by_provider':result.get('safe_by_provider'),'safe_by_rule':result.get('safe_by_rule'),
+              'safe_observed':result.get('safe_observed'),'safe_star_mismatch_annotated':result.get('safe_star_mismatch_annotated'),
+              'collision_demoted':result.get('collision_demoted'),'deferred_count':result.get('deferred_count'),'hard_conflict_count':result.get('hard_conflict_count'),
+              'remote_exit':rc,
+          }
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          safe=result.get('safe_candidates') or []
+          if safe:
+              print('SAFE_HEAD:'+json.dumps([{k:r.get(k) for k in ('provider','external_id','country_id','observed','frequency','reason','target','guard','star_mismatch')} for r in safe[:50]],ensure_ascii=False,sort_keys=True))
+          if rc != 0 or result.get('status') != 'completed':
+              raise SystemExit(1)
+          PY
+
+      - name: Preserve sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-missing-third-strict-review-1971-20260911-v1-result
+          path: |
+            ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v1/result.json
+          if-no-files-found: warn
+          retention-days: 90
