@@ -55,7 +55,7 @@ final class AnyTourThreeProviderOfferContract
             }
         }
         $ages = $input['child_ages'];
-        if (!is_array($ages) || array_keys($ages) !== range(0, count($ages) - 1)
+        if (!is_array($ages) || ($ages !== [] && array_keys($ages) !== range(0, count($ages) - 1))
             || count($ages) !== $input['children']) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_AGES');
         }
