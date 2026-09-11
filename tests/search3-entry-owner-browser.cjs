@@ -118,7 +118,12 @@ async function run(browser, width) {
       return { hero: box('.v2-product-hero'), form: box('#tourSearch'), ages: box('#childAges'), extras: box('#tourSearch > .extras'), submit: box('.search-submit') };
     });
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
-    assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'URL child ages take a full form row');
+    if (width >= 1200) {
+      assert.ok(formGeometry.ages.width >= 180, 'wide desktop child ages retain a readable native track');
+      assert.ok(formGeometry.ages.width < formGeometry.form.width / 2, 'wide desktop child ages no longer paint a full-width strip');
+    } else {
+      assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'child ages keep a full form row below wide desktop');
+    }
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
     if (width >= 1199) {
       const rows = await page.locator('#tourSearch .search-group').evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size);
