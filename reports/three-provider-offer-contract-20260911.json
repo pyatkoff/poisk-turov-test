@@ -10,13 +10,17 @@
     "local_identity": "nullable_no_inference",
     "search_offer_identity": "digest_only",
     "date_party_meal_room_placement": "verified",
-    "availability_flight_state": "verified",
+    "availability": "raw_evidence_required_canonical_unknown",
+    "flight_state": "verified",
     "search_money": "delegated_to_three_provider_money_facts",
     "quote_state": "unknown",
     "final_price_verified": false,
     "selection_state": "disabled"
   },
+  "availability_source": "app/integrations/three-provider-availability.php",
+  "availability_verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4",
+  "availability_verification": {"offer_run": 34565055868, "context_run": 34565055891, "security_run": 34565055892, "status": "success"},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
   "tests": {"offline_checks": 36, "security_run": 34549711806, "offline_run": 34549711816, "offline_job": 103109851821, "status": "success"},
-  "next_action": "Keep contract source-only; integrate only after P0/P2/P5 gates and shared SEARCH owner handoff."
+  "next_action": "Verify provider-specific availability semantics before any canonical available/on_request/unavailable state; selection remains disabled."
 }

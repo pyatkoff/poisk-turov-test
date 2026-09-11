@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-11",
+  "scope": "INT P2/P4 source-only availability evidence",
+  "base": "559b59c89581b5141492818dea30526a329fdf1c",
+  "status": "verified",
+  "providers": {
+    "tourvisor": {
+      "search_raw_evidence": "missing",
+      "canonical_state": "unknown"
+    },
+    "anex": {
+      "search_raw_evidence": "preserved_when_present",
+      "canonical_state": "unknown"
+    },
+    "andromeda": {
+      "search_raw_evidence": "missing",
+      "canonical_state": "unknown"
+    }
+  },
+  "guards": {
+    "offer_availability_verified": false,
+    "selection_eligible": false,
+    "booking_eligible": false,
+    "raw_numeric_supplier_ids_rejected": true,
+    "supplier_marker_meaning_inferred": false
+  },
+  "effects": {
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "booking_calls": 0,
+    "ui_runtime_changes": 0,
+    "production_changes": 0
+  },
+  "next_action": "Verify provider-specific availability dictionaries before promoting any raw marker to a canonical state.",
+  "source_commit": "285ca8b41ff246ca3ac42e87419e96c8ba41e405",
+  "verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4",
+  "verification": {
+    "availability_checks": 20,
+    "offer_contract_checks": 38,
+    "retained_context_checks": 29,
+    "offer_run": 34565055868,
+    "context_run": 34565055891,
+    "security_run": 34565055892,
+    "conclusion": "success"
+  }
+}

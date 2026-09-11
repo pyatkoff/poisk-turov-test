@@ -11,7 +11,6 @@ declare(strict_types=1);
 final class AnyTourThreeProviderOfferContract
 {
     private const PROVIDERS = ['tourvisor', 'anex', 'andromeda'];
-    private const AVAILABILITY = ['available', 'on_request', 'sold_out', 'unknown'];
     private const FLIGHT_STATE = ['not_loaded', 'available', 'unavailable', 'unknown'];
     private const MEAL_FAMILIES = ['ro', 'bb', 'hb', 'fb', 'ai', 'uai'];
 
@@ -71,10 +70,10 @@ final class AnyTourThreeProviderOfferContract
             ? null
             : self::labelPair($input['placement'], 'THREE_PROVIDER_OFFER_PLACEMENT');
 
-        $availability = $input['availability'];
-        if (!is_string($availability) || !in_array($availability, self::AVAILABILITY, true)) {
+        if (!is_array($input['availability'])) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_AVAILABILITY');
         }
+        $availability = AnyTourThreeProviderAvailability::fromSearch($provider, $input['availability']);
         $flight = $input['flight_details_state'];
         if (!is_string($flight) || !in_array($flight, self::FLIGHT_STATE, true)) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_FLIGHT_STATE');

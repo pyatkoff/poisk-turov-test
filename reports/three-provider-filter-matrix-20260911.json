@@ -200,10 +200,10 @@
     {
       "field": "availability",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "unknown", "note": "no canonical enum is currently asserted by this INT contract"},
-      "anex": {"status": "verified", "note": "direct ANEX normalizer retains supplier availability"},
-      "andromeda": {"status": "unknown", "note": "current Search3 public projection does not expose a canonical availability field"},
-      "next_action": "define raw+canonical availability enum and preserve unknown values"
+      "tourvisor": {"status": "unknown", "note": "current canonical offer carries missing raw search evidence; absence is not availability"},
+      "anex": {"status": "unknown", "note": "raw hotel/flight markers are bounded and preserved, but marker meaning is not promoted to a canonical state"},
+      "andromeda": {"status": "unknown", "note": "current public search projection has no offer-level availability evidence; search/page status is not tour availability"},
+      "next_action": "verify provider-specific marker dictionaries before canonicalization; selection and booking remain disabled"
     },
     {
       "field": "flight_details",
@@ -246,6 +246,7 @@
       "next_action": "P5"
     }
   ],
+  "availability_contract": {"source": "app/integrations/three-provider-availability.php", "verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4", "status": "verified_raw_evidence_canonical_unknown"},
   "live_findings": {
     "broad_v2": {
       "scenario": "Moscow→Turkey, 2026-10-05, 7 nights, 2 adults, AI, ANEX-only",
