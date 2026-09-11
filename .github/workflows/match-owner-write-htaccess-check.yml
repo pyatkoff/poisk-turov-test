@@ -1,0 +1,27 @@
+name: MATCH owner-write htaccess reconciliation
+
+on:
+  pull_request:
+    branches: ['feature/anex-search-adapter-20260907']
+    paths:
+      - 'scripts/diagnostics/anex_review_owner_publish_runner.php'
+      - 'tests/anex-review-owner-htaccess-drift-test.py'
+      - '.github/workflows/match-owner-write-htaccess-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify bounded publisher and current-preview drift guards
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/anex_review_owner_publish_runner.php
+          python3 -B tests/anex-review-owner-publish-test.py
+          python3 -B tests/anex-review-owner-htaccess-drift-test.py
