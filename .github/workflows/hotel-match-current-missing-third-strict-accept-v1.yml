@@ -1,0 +1,149 @@
+name: MATCH current missing-third strict accept v1
+run-name: MATCH strict missing-third accept #1971 v1
+on:
+  push:
+    branches: ['ops/match-current-missing-third-strict-accept-1971-20260911-v1']
+    paths:
+      - '.github/workflows/hotel-match-current-missing-third-strict-accept-v1.yml'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-current-missing-third-strict-accept-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-missing-third-strict-accept-1971-20260911-v1
+  EXPECTED_SCRIPT_BLOB: 4d802154f378dfde961eaed7124765890994ef0b
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.event.head_commit.message == 'MATCH #1971 run strict missing-third accept v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify immutable source and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-current-missing-third-strict-accept-1971-v1.arm)" = $'operation_id=hotel-match-current-missing-third-strict-accept-1971-20260911-v1\nstate=armed'
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_missing_third_strict_accept.php)" = "$EXPECTED_SCRIPT_BLOB"
+          php -l scripts/diagnostics/hotel_match_current_missing_third_strict_accept.php
+          php -l tests/hotel-match-current-missing-third-strict-accept-test.php
+          php tests/hotel-match-current-missing-third-strict-accept-test.php
+      - name: Reserve immutable operation before SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['STATE'])
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'script_blob':os.environ['EXPECTED_SCRIPT_BLOB'],'review_operation':'hotel-match-current-missing-third-strict-review-1971-20260911-v1','review_run':34622237191,'review_artifact':10272453259,'manifest_count':34,'database_writes':0,'supplier_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Preserve reservation before live write
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-missing-third-strict-accept-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-current-missing-third-strict-accept-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Prepare SSH key and composed source
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/m3a_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PY'
+          import hashlib,os
+          from pathlib import Path
+          def body(path):
+              x=Path(path).read_text(encoding='utf-8')
+              if x.startswith('<?php'): x=x[5:]
+              x=x.replace('declare(strict_types=1);','',1)
+              return x
+          h=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          p=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          a=body('scripts/diagnostics/hotel_match_current_bulk_accept.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          n=body('scripts/diagnostics/hotel_match_current_missing_third_strict_accept.php').replace("if(!defined('FC_LIBRARY_ONLY'))define('FC_LIBRARY_ONLY',true);\nrequire_once __DIR__.'/hotel_match_current_bulk_accept.php';\n",'',1)
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+h+'\n'+p+'\n'+a+'\n'+n
+          s=Path(os.environ['STATE']); (s/'live.php').write_text(code,encoding='utf-8'); (s/'composed_sha256.txt').write_text(hashlib.sha256(code.encode()).hexdigest()+'\n')
+          PY
+      - name: Cool down SSH admission
+        shell: bash
+        run: sleep 45
+      - name: Apply server-current immutable allowlist
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/m3a_key"; export STATE
+          printf '{"state":"ssh_started","operation_id":"%s"}\n' "$OPERATION_ID" > "$STATE/ssh_started.json"
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ConnectionAttempts=2 -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$STATE/live.php" > "$STATE/live.stdout" 2> "$STATE/live.stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); rc=int(os.environ['RC']); out=(s/'live.stdout').read_text(errors='replace'); err=(s/'live.stderr').read_text(errors='replace'); lines=[x for x in out.splitlines() if x.strip()]
+          data=None
+          if lines:
+              try:data=json.loads(lines[-1])
+              except Exception:pass
+          if not isinstance(data,dict):
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'live_output_unparseable_do_not_replay','remote_exit':rc,'database_writes':'unknown','supplier_calls':0,'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_present':bool(err.strip()),'no_replay':True};(s/'blocker.json').write_text(json.dumps(b,sort_keys=True)+'\n');raise SystemExit(1)
+          (s/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if data.get('operation_id')!=os.environ['OPERATION_ID'] or int(data.get('supplier_calls',-1))!=0:
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'operation_contract_mismatch_do_not_replay','database_writes':data.get('database_writes','unknown'),'supplier_calls':data.get('supplier_calls'),'no_replay':True};(s/'blocker.json').write_text(json.dumps(b,sort_keys=True)+'\n');raise SystemExit(1)
+          if data.get('status')!='completed' or data.get('committed') is not True or data.get('readback_verified') is not True:
+              committed=data.get('committed') is True;b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_committed' if committed else 'known_rolled_back','reason':data.get('reason','write_not_completed'),'database_writes':data.get('database_writes','unknown' if committed else 0),'planned':data.get('planned'),'skipped':data.get('skipped'),'supplier_calls':0,'no_replay':True};(s/'blocker.json').write_text(json.dumps(b,sort_keys=True)+'\n');raise SystemExit(1)
+          writes=int(data['database_writes']); planned=data['planned']
+          if writes!=int(planned['anex'])+int(planned['andromeda']) or writes>34: raise SystemExit('count_contract')
+          raw=(s/'result.json').read_bytes(); receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':writes,'planned':planned,'skipped':data.get('skipped'),'coverage_before':data.get('coverage_before'),'coverage_after':data.get('coverage_after'),'identity_before':data.get('identity_before'),'identity_after':data.get('identity_after'),'supplier_calls':0,'committed':True,'readback_verified':True,'no_replay':True};(s/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Preserve result or blocker
+        if: always()
+        id: result_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-missing-third-strict-accept-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-current-missing-third-strict-accept-1971-20260911-v1/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record MATCH result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result_artifact.outputs.artifact-id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE ARTIFACT_ID
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE'])
+          if (s/'receipt.json').exists():
+              r=json.loads((s/'result.json').read_text()); cb=r['coverage_before']; ca=r['coverage_after']; ib=r['identity_before']; ia=r['identity_after']; p=r['planned']
+              text=f"MATCH #1971 strict missing-third delta `{r['operation_id']}` **COMPLETED**: commit + per-row readback verified. Actual mappings **{r['database_writes']}** = ANEX **{p['anex']}** + Andromeda **{p['andromeda']}**; supplier calls 0. Triple {cb['all_three']}→{ca['all_three']}; exactly-two {cb['exactly_two']}→{ca['exactly_two']}; Andromeda accepted {ib['accepted']}→{ia['accepted']}, pending {ib['pending']}→{ia['pending']}. Skipped `{r.get('skipped')}`. Result artifact `{os.environ['ARTIFACT_ID']}`. Operation NO-REPLAY."
+          else:
+              b=json.loads((s/'blocker.json').read_text()) if (s/'blocker.json').exists() else {'operation_id':os.environ['OPERATION_ID'],'state':'workflow_failure','reason':'no_blocker_payload'}
+              text=f"MATCH #1971 strict missing-third delta `{b['operation_id']}` stopped: **{b['state']}**, reason `{b['reason']}`, DB writes **{b.get('database_writes','unknown')}**, supplier calls 0. Result artifact `{os.environ['ARTIFACT_ID']}`. **DO NOT REPLAY**."
+          (s/'comment.md').write_text(text+'\n')
+          PY
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
+          gh issue comment 996 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
