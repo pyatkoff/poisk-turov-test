@@ -4,15 +4,20 @@
   "scope": "INT source-only strict money provenance",
   "base_commit": "62cb0a5287065b6ed80006ff4d0201850a984e6d",
   "source": "app/integrations/three-provider-money-facts.php",
-  "source_sha256": "deb9d6a83f2a262c667680e2f2f18d10e6ff11840bad97370c9b61ef6901d984",
+  "source_sha256": "ab0188817f1f8ddb284fc54e32f2f94318557482acbb346c54b61cdb047df186",
   "test": "tests/three-provider-money-facts-test.php",
-  "test_sha256": "52de9d39b9c5a946a9a3e54268f152310cce9e5348db294d7e714e9488bfa44b",
+  "test_sha256": "3087f76c094f9facf3ed958c00d8da89129166620dd61a83413c968e1a5a7145",
   "accepted_source_tokens": {
     "search_price": ["tourvisor_search", "anex_search", "andromeda_search"],
-    "fuel_charge_reported": ["tourvisor_fuel", "anex_fuel", "andromeda_fuel"],
-    "additional_prices_reported": ["tourvisor_additional", "anex_additional", "andromeda_additional"]
+    "fuel_charge_reported": ["tourvisor_fuel"],
+    "additional_prices_reported": ["anex_additional"]
   },
-  "rejected_examples": ["anex_unverified_search", "anex_search_replayed", "anex_additional_estimated"],
+  "rejected_examples": ["anex_unverified_search", "anex_search_replayed", "anex_fuel", "andromeda_fuel", "tourvisor_additional", "andromeda_additional", "anex_additional_estimated"],
+  "search_capabilities": {
+    "tourvisor": {"fuel": "verified", "additional": "unsupported"},
+    "anex": {"fuel": "unsupported", "additional": "separately_reported_only"},
+    "andromeda": {"fuel": "unsupported", "additional": "unsupported"}
+  },
   "money_semantics": {
     "search_fuel_additional_are_independent_facts": true,
     "missing_fuel_is_unknown_not_zero": true,
@@ -28,6 +33,15 @@
     "retained_context_run": 34572575619,
     "security_run": 34572575522,
     "checks": 33
+  },
+  "capability_verification": {
+    "status": "pending_ci",
+    "head": null,
+    "money_facts_run": null,
+    "offer_contract_run": null,
+    "retained_context_run": null,
+    "security_run": null,
+    "checks": 37
   },
   "effects": {
     "supplier_calls": 0,
