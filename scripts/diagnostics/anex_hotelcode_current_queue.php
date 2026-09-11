@@ -8,7 +8,7 @@ const AHQ_OPERATION = 'hotel-match-anex-hotelcode-current-queue-1971-20260911-v1
 const AHQ_CORE8 = [1=>true,2=>true,4=>true,8=>true,9=>true,10=>true,12=>true,16=>true];
 
 function ahq_collect_urls($value, array &$out, int $depth = 0): void {
-    if ($depth > 6 || count($out) >= 64) return;
+    if ($depth > 6 || count($out) >= 40) return;
     if (is_array($value)) {
         foreach ($value as $child) ahq_collect_urls($child, $out, $depth + 1);
         return;
@@ -18,7 +18,7 @@ function ahq_collect_urls($value, array &$out, int $depth = 0): void {
         foreach ($m[0] as $url) {
             $url = rtrim($url, '.,);]');
             $out[$url] = true;
-            if (count($out) >= 64) return;
+            if (count($out) >= 40) return;
         }
     }
 }
@@ -28,18 +28,18 @@ function ahq_saved_evidence(array $rows): array {
     foreach ($rows as $row) ahq_collect_urls($row, $urls);
     $list = array_keys($urls);
     sort($list, SORT_STRING);
-    $parsed = anytour_anex_hotelcode_evidence($list);
-    return ['urls' => $list, 'parsed' => $parsed];
+    return ['urls' => $list, 'parsed' => anytour_anex_hotelcode_evidence($list)];
 }
 
 function ahq_seed_from_review(array $row, array $sourceRows): array {
     $id = (int)$row['external_id'];
     $saved = ahq_saved_evidence($sourceRows);
     $parsed = $saved['parsed'];
+    $status = (string)($parsed['status'] ?? 'invalid_evidence');
     $bucket = 'operator_link_required';
-    if (($parsed['status'] ?? '') === 'confirmed') $bucket = 'saved_hotelcode_evidence';
-    elseif (($parsed['status'] ?? '') === 'conflict') $bucket = 'saved_hotelcode_conflict';
-    elseif (($parsed['status'] ?? '') === 'invalid') $bucket = 'saved_hotelcode_invalid';
+    if ($status === 'confirmed') $bucket = 'saved_hotelcode_evidence';
+    elseif ($status === 'conflicting_codes') $bucket = 'saved_hotelcode_conflict';
+    elseif ($status !== 'insufficient_evidence') $bucket = 'saved_hotelcode_invalid';
     $seed = [
         'anex_hotel_id' => $id,
         'country_id' => (int)$row['country_id'],
@@ -48,7 +48,7 @@ function ahq_seed_from_review(array $row, array $sourceRows): array {
         'last_seen_utc' => $row['last_seen_utc'] ?? null,
         'review_reason' => (string)($row['reason'] ?? ''),
         'evidence_bucket' => $bucket,
-        'saved_hotelcode' => ($parsed['status'] ?? '') === 'confirmed' ? (int)$parsed['hotel_code'] : null,
+        'saved_hotelcode' => $status === 'confirmed' ? (int)$parsed['hotel_code'] : null,
         'saved_url_count' => count($saved['urls']),
         'source_names' => array_values($row['source_names'] ?? []),
         'source_places' => array_values($row['source_places'] ?? []),
@@ -58,9 +58,7 @@ function ahq_seed_from_review(array $row, array $sourceRows): array {
         'guard' => $row['guard'] ?? null,
         'next_evidence' => 'Tourvisor ANEX-only result -> visible operator/hotel link -> ANEX page/media files.anextour.ru hotelCode -> country/name/geo/coordinate verification',
     ];
-    if ($seed['saved_hotelcode'] !== null) {
-        $seed['saved_hotelcode_matches_current_anex_id'] = $seed['saved_hotelcode'] === $id;
-    }
+    if ($seed['saved_hotelcode'] !== null) $seed['saved_hotelcode_matches_current_anex_id'] = $seed['saved_hotelcode'] === $id;
     return $seed;
 }
 
@@ -88,17 +86,10 @@ function ahq_review(PDO $db, string $operation): array {
         $manual = array_fill_keys(array_map('intval', $db->query('SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN)), true);
         $existing = array_fill_keys(array_map('intval', $db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings')->fetchAll(PDO::FETCH_COLUMN)), true);
         $excluded = [];
-        foreach ($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $x) {
-            $excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']] = true;
-        }
+        foreach ($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $x) $excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']] = true;
         $staging = [];
         foreach ($db->query('SELECT * FROM anex_hotels ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC) as $s) $staging[(int)$s['anex_hotel_id']] = $s;
         $observations = $db->query('SELECT * FROM anex_search_hotel_observations ORDER BY search_count DESC,last_seen_utc DESC,anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC);
-        $latestObservation = [];
-        foreach ($observations as $o) {
-            $id = (int)$o['anex_hotel_id'];
-            if (!isset($latestObservation[$id])) $latestObservation[$id] = $o;
-        }
 
         $seeds = [];
         $examined = ['observed'=>0,'staging_only'=>0,'protected'=>0,'auto_accept_current_rule'=>0,'needs_external_evidence'=>0];
