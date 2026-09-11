@@ -3,9 +3,14 @@ from pathlib import Path
 p = Path('scripts/diagnostics/hotel_match_current_strict_review.php')
 s = p.read_text(encoding='utf-8')
 
-assert "hotel-match-current-strict-review-1971-20260911-v2" in s
+assert "hotel-match-current-strict-review-1971-20260911-v3" in s
 assert "START TRANSACTION READ ONLY" in s
 assert "cross_provider_anex_tourvisor_strict_name" in s
+assert "cross_provider_andromeda_tourvisor_strict_name" in s
+assert "cross_provider_andromeda_tourvisor" in s
+assert "andromeda_tourvisor_existing_local" in s
+assert "reverse_cross_provider_requires_existing_andromeda_tourvisor_local" in s
+assert "generic_hotel_resort_spa_removed_but_qualifiers_preserved" in s
 assert "fuzzy_without_direct_geo" in s
 assert "coordinate_conflict" in s
 assert "single_token_bridge_requires_direct_geo" in s
@@ -19,9 +24,15 @@ upper = s.upper()
 for forbidden in ("INSERT INTO ", "UPDATE ANDROMEDA_", "DELETE FROM ", "REPLACE INTO ", "ALTER TABLE ", "DROP TABLE "):
     assert forbidden not in upper, forbidden
 
-# A fuzzy candidate is only safe with direct geography, and >5 km stays blocked.
+# Fuzzy candidates require direct geography; provider bridges never override >5 km.
 assert "strong_fuzzy_geo_large_margin" in s
 assert "$distance !== null && (int)$distance <= 1000" in s
 assert "if ($guard['coordinate_conflict']) return null" in s
+assert "if ($maxTokens < 2 && !$directGeo) return null" in s
+
+# Reverse bridge is evaluated only for currently unprotected ANEX rows and re-checks pair exclusions.
+assert "isset($manual[$id]) || isset($existing[$id])" in s
+assert "reverse_bridge_pair_exclusion_blocked" in s
+assert "isset($excluded[$id][$target])" in s
 
 print('hotel_match_current_strict_review_source_test: ok')
