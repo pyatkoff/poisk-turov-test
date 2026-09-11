@@ -5,7 +5,7 @@ declare(strict_types=1);
  * Provider-neutral retained-offer guard for the future Search handoff.
  *
  * Pure source-only boundary: no supplier, database, mapping, pricing, UI, lead,
- * or booking side effects. Selection remains disabled until the owning runtime
+ * or reservation side effects. Selection remains disabled until the owning runtime
  * explicitly wires a verified current context.
  */
 final class AnyTourThreeProviderOfferContext
