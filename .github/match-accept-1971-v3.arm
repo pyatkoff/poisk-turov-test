@@ -1,2 +1,6 @@
 operation_id=hotel-match-current-bulk-accept-1971-20260911-v3
-state=armed
+state=known-rolled-back-no-replay
+reason=write_scope_limit
+artifact_id=10184857914
+planned_anex=22
+planned_andromeda=0
