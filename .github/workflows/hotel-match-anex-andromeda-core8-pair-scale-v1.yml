@@ -1,0 +1,138 @@
+name: MATCH ANEX Andromeda core8 pair scale v1
+
+on:
+  push:
+    branches:
+      - ops/match-anex-andromeda-core8-pair-scale-1971-20260911-v1
+    paths:
+      - .github/match-anex-andromeda-core8-pair-scale-v1.arm
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-anex-andromeda-core8-pair-scale-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-anex-andromeda-core8-pair-scale-1971-20260911-v1
+  OUT_DIR: /tmp/match-anex-andromeda-core8-pair-v1
+
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Verify isolated read-only source
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-andromeda-core8-pair-scale-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php
+          ! grep -Fq 'v2_data_tv_get' scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php
+          ! grep -Fq 'TOURVISOR_' scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php
+          test "$(grep -c "new AnyTourAnexClient(\$anexToken)" scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php)" = 1
+          mkdir -p "$OUT_DIR"
+
+      - name: Establish zero-supplier SSH master
+        env:
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, os, subprocess, time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); key=rt/'aap1key'; sock=rt/'aap1.sock'; known=rt/'aap1known'
+          raw=os.environ['DEPLOY_KEY'].strip()
+          if 'PRIVATE KEY' in raw: key.write_text(raw.rstrip()+'\n')
+          else: key.write_bytes(base64.b64decode(raw))
+          key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['DEPLOY_USER'],os.environ['DEPLOY_HOST']]
+          time.sleep(5)
+          a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=2400']+common,text=True,capture_output=True,timeout=30)
+          if a.returncode:
+              time.sleep(5)
+              a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=2400']+common,text=True,capture_output=True,timeout=30)
+          if a.returncode: raise SystemExit('ssh_master_failed')
+          b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['DEPLOY_USER'],os.environ['DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php'],text=True,capture_output=True,timeout=30)
+          if b.returncode: raise SystemExit('ssh_preflight_failed')
+          PY
+
+      - name: Persist immutable reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php').read_bytes()
+          matrix=[
+            [1,'Egypt','2026-11-27',8],[1,'Egypt','2027-01-08',9],
+            [4,'Turkey','2026-12-11',8],[4,'Turkey','2027-01-15',7],
+            [2,'Thailand','2026-11-27',7],[2,'Thailand','2027-01-08',8],
+            [9,'UAE','2026-11-27',7],[9,'UAE','2027-01-08',8],
+            [16,'Vietnam','2026-12-11',8],[16,'Vietnam','2027-01-15',7],
+            [12,'Sri Lanka','2026-12-11',8],[12,'Sri Lanka','2027-01-15',7],
+            [8,'Maldives','2026-11-27',7],[8,'Maldives','2027-01-08',8],
+          ]
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(src).hexdigest(),'criteria_matrix':matrix,'providers':['direct_anex','andromeda_anex_only_all_pages'],'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          p=Path(os.environ['OUT_DIR'])/'reservation.json'; raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode(); p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation_readback_failed')
+          PY
+
+      - name: Preserve reservation before supplier access
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-andromeda-core8-pair-v1-${{ github.run_id }}-reserved
+          path: /tmp/match-anex-andromeda-core8-pair-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute mass direct-provider evidence sweep
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); sock=rt/'aap1.sock'; out=Path(os.environ['OUT_DIR'])/'result.json'
+          program=Path('scripts/diagnostics/hotel_match_anex_andromeda_core8_pair_scale_v1.php').read_text()
+          chk=subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['DEPLOY_HOST']],text=True,capture_output=True,timeout=10)
+          if chk.returncode:
+              value={'status':'failed','stage':'pre_supplier_master_check','reason':'ssh_master_unavailable','operation_id':os.environ['OPERATION_ID'],'supplier_calls_proven':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+              out.write_text(json.dumps(value,sort_keys=True,indent=2)+'\n'); raise SystemExit('master_unavailable')
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['DEPLOY_USER'],os.environ['DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=1800)
+          marker='AAP1_JSON:'
+          line=next((row[len(marker):] for row in reversed(x.stdout.splitlines()) if row.startswith(marker)),None)
+          if line is None:
+              value={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'stdout_sha256':hashlib.sha256(x.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(x.stderr.encode()).hexdigest(),'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+              out.write_text(json.dumps(value,sort_keys=True,indent=2)+'\n'); raise SystemExit('unknown_no_replay')
+          value=json.loads(line)
+          value.update({'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'no_replay':True})
+          out.write_text(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          summary={'status':value.get('status'),'criteria_count':value.get('criteria_count'),'unique_pair_count':value.get('unique_pair_count'),'recurrent_pair_count':value.get('recurrent_pair_count'),'pairs_with_existing_anex_local_id':value.get('pairs_with_existing_anex_local_id'),'provider_calls':value.get('provider_calls'),'slice_states':[[r.get('key'),r.get('state'),r.get('anex_hotels'),r.get('andromeda_hotels'),r.get('unique_pairs'),r.get('safe_error')] for r in value.get('slices',[])]}
+          print(json.dumps(summary,ensure_ascii=False))
+          if x.returncode or value.get('status')!='completed': raise SystemExit('evidence_sweep_failed')
+          PY
+
+      - name: Preserve final result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-andromeda-core8-pair-v1-${{ github.run_id }}-final
+          path: |
+            /tmp/match-anex-andromeda-core8-pair-v1/reservation.json
+            /tmp/match-anex-andromeda-core8-pair-v1/result.json
+          if-no-files-found: warn
+          retention-days: 90
