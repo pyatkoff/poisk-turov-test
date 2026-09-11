@@ -18,11 +18,14 @@ def source():
     new=(here/'anex_three_source_broad_price.php').read_text()
     if not old.startswith('<?php') or not meal.startswith('<?php') or not new.startswith('<?php'):
         raise ValueError('broad_php_header')
-    strict='\ndeclare(strict_types=1);\n'
-    meal_body=meal[5:];new_body=new[5:]
-    if not meal_body.startswith(strict) or not new_body.startswith(strict):
-        raise ValueError('broad_php_strict_header')
-    return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+meal_body[len(strict):]+'\n'+new_body[len(strict):]
+    marker='declare(strict_types=1);'
+    def strict_body(value):
+        body=value[5:].lstrip()
+        if not body.startswith(marker):
+            raise ValueError('broad_php_strict_header')
+        return body[len(marker):].lstrip('\r\n')
+    meal_body=strict_body(meal);new_body=strict_body(new)
+    return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+meal_body+'\n'+new_body
 
 
 def validate_case(value,case_id):
