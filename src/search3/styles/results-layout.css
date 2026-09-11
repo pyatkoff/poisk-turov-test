@@ -112,6 +112,11 @@ margin:0;background:#f5f7fb;color:#17233b;
 }
 @media(min-width:1025px){
 &:not(.search3-selected-open) .v2-shell{max-width:1220px}
+&:has(#results>*) .status:has(.search-progress-done){margin:10px 0 14px;padding:10px 14px;box-shadow:none}
+&:has(#results>*) .search-progress-done{grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px 16px}
+&:has(#results>*) .search-progress-done .search-progress-head{grid-column:1;gap:0}
+&:has(#results>*) .search-progress-done .search-progress-head span{display:none}
+&:has(#results>*) .search-progress-done .search-progress-note{grid-column:2;text-align:right}
 & .results-tools:not([hidden]){grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px}
 & .results-tools>div:first-child{display:grid;gap:4px}
 & .results-tools__actions{align-items:end;flex-wrap:nowrap;gap:12px;padding-top:0;border-top:0}
