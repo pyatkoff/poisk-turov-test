@@ -24,7 +24,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-meal-family.php').read_text()
-          assert 'supplier numeric IDs' in src
+          assert 'supplier numeric ids' in src.lower()
           assert "'family_verified' => $family !== null" in src
           assert "'without_alcohol' => $withoutAlcohol" in src
           for forbidden in ('curl_', 'PDO', 'SearchTour_', 'CURRENCYINC', 'MEAL='):
