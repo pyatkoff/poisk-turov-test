@@ -4,47 +4,83 @@ on:
     branches: ['feat/match-current-bulk-review-20260911']
     paths: ['.github/workflows/hotel-match-production-gateway-current-jwt-1971.yml']
 permissions: {contents: read}
-env: {OPERATION_ID: hotel-match-production-gateway-current-jwt-1971-20260912-v3}
+env:
+  OPERATION_ID: hotel-match-production-gateway-current-jwt-operator13-full-1971-20260912-v4
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Reserve
         run: |
+          set -euo pipefail
           mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
           python3 - <<'PY'
           import json,os
           from pathlib import Path
           p=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','criteria':{'action':'search_start','departureId':1,'countryId':1,'dateFrom':'2026-10-17','dateTo':'2026-10-17','nightsFrom':7,'nightsTo':7,'adults':2,'currency':'RUB','onlyCharter':'false','onlyDirect':'false','operatorIds':[13]},'credential':'production_gateway_current_TOURVISOR_JWT','database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','criteria':{'departureId':1,'countryId':1,'dateFrom':'2026-10-17','dateTo':'2026-10-17','nightsFrom':7,'nightsTo':7,'adults':2,'currency':'RUB','operatorIds':[13]},'credential':'production_gateway_current_TOURVISOR_JWT','database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
           PY
-      - name: Call production gateway once
+      - name: Run full production search and collect hotels
         run: |
           set -euo pipefail
-          url='https://anytoour.ru/api-v2.php?action=search_start&departureId=1&countryId=1&dateFrom=2026-10-17&dateTo=2026-10-17&nightsFrom=7&nightsTo=7&adults=2&currency=RUB&onlyCharter=false&onlyDirect=false&operatorIds=13'
-          code=$(curl -sS -o "$RUNNER_TEMP/$OPERATION_ID/body.json" -w '%{http_code}' --connect-timeout 15 --max-time 70 "$url")
-          export CODE="$code"
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          base='https://anytoour.ru/api-v2.php'
+          start="$base?action=search_start&departureId=1&countryId=1&dateFrom=2026-10-17&dateTo=2026-10-17&nightsFrom=7&nightsTo=7&adults=2&currency=RUB&onlyCharter=false&onlyDirect=false&operatorIds=13"
+          code=$(curl -sS -o "$state/start.json" -w '%{http_code}' --connect-timeout 15 --max-time 70 "$start")
+          test "$code" = 200
+          search_id=$(python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'start.json'
+          d=json.loads(p.read_text()); print(int(d.get('searchId') or d.get('id') or 0))
+          PY
+          )
+          test "$search_id" -gt 0
+          complete=0
+          for i in $(seq 1 18); do
+            curl -sS --connect-timeout 15 --max-time 50 "$base?action=search_status&searchId=$search_id" -o "$state/status-$i.json"
+            if python3 - "$state/status-$i.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1])); s=str(d.get('status','')).lower(); p=int(d.get('progress') or 0)
+          raise SystemExit(0 if p>=100 or s in {'complete','completed','done','ready'} else 1)
+          PY
+            then complete=1; break; fi
+            curl -sS --connect-timeout 15 --max-time 50 "$base?action=search_continue&searchId=$search_id" -o "$state/continue-$i.json" || true
+            sleep 1
+          done
+          test "$complete" = 1
+          curl -sS --connect-timeout 15 --max-time 70 "$base?action=search_results&searchId=$search_id&limit=10000" -o "$state/results.json"
+          export SEARCH_ID="$search_id" STATE="$state"
           python3 - <<'PY'
           import json,os
           from pathlib import Path
-          p=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; raw=(p/'body.json').read_text(errors='replace')
-          try: data=json.loads(raw)
-          except: data={'raw_non_json':True}
-          out={'operation_id':os.environ['OPERATION_ID'],'http_status':int(os.environ['CODE']),'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True}
-          if isinstance(data,dict):
-              for k in ('searchId','id','ok','error','status','message'):
-                  if k in data: out[k]=data[k]
-              if 'data' in data and isinstance(data['data'],dict):
-                  for k in ('searchId','id','status'):
-                      if k in data['data']: out['data_'+k]=data['data'][k]
-          (p/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=Path(os.environ['STATE']); d=json.loads((s/'results.json').read_text())
+          hotels={}
+          def walk(x):
+              if isinstance(x,dict):
+                  # capture hotel-like objects and tour rows with hotel payloads
+                  for key in ('hotel','Hotel'):
+                      h=x.get(key)
+                      if isinstance(h,dict):
+                          hid=h.get('id') or h.get('hotelId') or h.get('hotel_id')
+                          name=h.get('name') or h.get('hotelName') or h.get('title')
+                          if hid and name: hotels[str(hid)]=str(name)
+                  hid=x.get('hotelId') or x.get('hotel_id')
+                  name=x.get('hotelName') or x.get('hotel_name')
+                  if hid and name: hotels[str(hid)]=str(name)
+                  for v in x.values(): walk(v)
+              elif isinstance(x,list):
+                  for v in x: walk(v)
+          walk(d)
+          out={'operation_id':os.environ['OPERATION_ID'],'status':'completed','searchId':int(os.environ['SEARCH_ID']),'unique_hotel_ids':len(hotels),'sample_hotels':[{'id':k,'name':v} for k,v in list(hotels.items())[:30]],'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True}
+          (s/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-production-gateway-current-jwt-v3
+          name: match-production-gateway-current-jwt-operator13-full-v4
           path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
           if-no-files-found: error
           retention-days: 90
