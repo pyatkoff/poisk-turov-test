@@ -650,8 +650,29 @@ async function run(browser, width, previous) {
     await page.evaluate(() => window.__releaseRetryStart());
     await page.waitForFunction(() => document.activeElement === document.getElementById('status'));
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'dependent relaxation also moves focus to the visible loading status');
-    await page.evaluate(() => window.V2Results.render([]));
+    await page.evaluate(() => {
+      window.V2Results.render([]);
+      window.V2Results.showPlainStatus('Поиск завершён · предложения актуальны на сейчас');
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [] } }));
+    });
+    await page.waitForFunction(() => document.activeElement && document.activeElement.closest && document.activeElement.closest('.empty-actionable'));
     assert.equal(await page.locator('#status').isVisible(), false, 'actionable empty result owns the empty state without duplicate status copy');
+    assert.equal(await page.locator('.empty-actionable').evaluate(node => node.contains(document.activeElement)), true, 'terminal empty recovery moves status focus to an available action');
+    await page.evaluate(() => {
+      const stable = document.createElement('button');
+      stable.id = 'ordinary-terminal-focus';
+      stable.type = 'button';
+      stable.textContent = 'Проверочный независимый элемент';
+      document.body.append(stable);
+      stable.focus({ preventScroll: true });
+      window.V2Results.render([]);
+      window.V2Results.showPlainStatus('Поиск завершён · предложения актуальны на сейчас');
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [] } }));
+    });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    assert.equal(await page.locator('#ordinary-terminal-focus').evaluate(node => node === document.activeElement), true, 'ordinary terminal empty result does not steal unrelated user focus');
+    await page.locator('#ordinary-terminal-focus').evaluate(node => node.remove());
+    assert.equal(await page.locator('#status').isVisible(), false, 'ordinary terminal empty result also keeps a single final state');
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     if ([375, 1440].includes(width)) {
