@@ -2,7 +2,7 @@
 """Owner-approved one-shot fresh Andromeda PRICE -> broninit diagnostic.
 
 Runs only when explicitly invoked by a gated control workflow. No booking, calc,
-get_flights, mapping write, lead, or retry is implemented here.
+get_flights, mapping write, lead, or automatic retry is implemented here.
 """
 import json
 import os
@@ -13,13 +13,13 @@ SAFE_KEYS = {
     'status','phase','supplier_calls','database_writes','booking_calls','calc_calls','get_flights_calls',
     'price_rows','price_pages','price_id_sha256','catalog_key_sha256','id_equals_catalog_key',
     'package_sha256','claim_fields','condition','requires_external_flights','buyer_price',
-    'hotels_count','transports_count','services_count','automatic_retry','finished_at'
+    'hotels_count','transports_count','services_count','automatic_retry','transport_error','finished_at'
 }
 
 PHP = r'''
 error_reporting(0); ini_set('display_errors','0'); ini_set('log_errors','0');
 umask(0077); ob_start();
-$supplierCalls=0; $phase='preflight';
+$supplierCalls=0; $phase='preflight'; $transportError=null;
 $safe=['status'=>'unknown','phase'=>$phase,'supplier_calls'=>0,'database_writes'=>0,
     'booking_calls'=>0,'calc_calls'=>0,'get_flights_calls'=>0,'automatic_retry'=>false];
 $private=null;
@@ -28,21 +28,53 @@ try {
     $root=realpath(getcwd());
     if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('WRONG_PROJECT');
     $target=$root.'/_preview/search3-anex-candidate';
-    $api=$target.'/api-andromeda-search3-preview.php';
+    $clientPath=$target.'/app/integrations/andromeda-client.php';
     $configPath=$target.'/.andromeda-private.php';
-    if(realpath($api)!==$api||!is_file($api)||realpath($configPath)!==$configPath||!is_file($configPath))
+    if(realpath($clientPath)!==$clientPath||!is_file($clientPath)||realpath($configPath)!==$configPath||!is_file($configPath))
         throw new RuntimeException('RUNTIME_MISSING');
-    require_once $api;
+    require_once $clientPath;
     $config=require $configPath;
     if(!is_array($config)||($config['enabled']??null)!==true
         ||!is_string($config['username']??null)||$config['username']===''
         ||!is_string($config['password']??null)||$config['password']==='')
         throw new RuntimeException('PRIVATE_CONFIG_MISSING');
-    $params=['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>'20260918','CHECKIN_END'=>'20260918',
-        'NIGHTS_FROM'=>8,'NIGHTS_TILL'=>8,'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,
+    // Previously proven broad parity scenario: Moscow -> Turkey, 2026-10-05, 7n, 2 adults, AI, ANEX only.
+    $params=['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>'20261005','CHECKIN_END'=>'20261005',
+        'NIGHTS_FROM'=>7,'NIGHTS_TILL'=>7,'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,
         'MEAL'=>'5','OPERATORS'=>'5','PACKETTYPE'=>0,'PAGE'=>1];
     AnyTourAndromedaClient::validatePriceParams($params);
-    $transport=new AnyTourAndromedaTransport(true,true);
+
+    // Dedicated bounded diagnostic transport so the legacy client cannot hide the
+    // underlying transport class from the outer operation receipt.
+    $attempts=0; $lastStarted=0.0;
+    $transport=static function(string $url,array $ignored=[])use(&$attempts,&$lastStarted,&$transportError):array{
+        if(strpos($url,'https://gateway.samo.ru/api/?')!==0||strlen($url)>16384||preg_match('/[\x00-\x20\x7f#]/',$url))
+            throw new RuntimeException('PROBE_ENDPOINT_REJECTED');
+        parse_str((string)parse_url($url,PHP_URL_QUERY),$query);
+        if(($query['version']??null)!=='1.01'||!in_array($query['action']??null,['login','price','broninit'],true))
+            throw new RuntimeException('PROBE_ACTION_REJECTED');
+        if($attempts>=3)throw new RuntimeException('PROBE_REQUEST_BUDGET');
+        if(!function_exists('curl_init')){$transportError='local_curl_missing';throw new RuntimeException('PROBE_CURL_REQUIRED');}
+        $wait=1.05-(microtime(true)-$lastStarted);if($wait>0)usleep((int)ceil($wait*1000000));
+        ++$attempts;$lastStarted=microtime(true);$handle=curl_init();
+        if($handle===false){$transportError='local_curl_init';throw new RuntimeException('PROBE_CURL_INIT_FAILED');}
+        $body='';$oversize=false;
+        try{
+            $ok=curl_setopt_array($handle,[CURLOPT_URL=>$url,CURLOPT_HTTPGET=>true,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,
+                CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+                CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>25,CURLOPT_VERBOSE=>false,CURLOPT_HEADER=>false,
+                CURLOPT_HTTPHEADER=>['Accept: application/json'],
+                CURLOPT_WRITEFUNCTION=>static function($curl,string $chunk)use(&$body,&$oversize):int{
+                    if(strlen($body)+strlen($chunk)>2097152){$oversize=true;return 0;}$body.=$chunk;return strlen($chunk);
+                }]);
+            if(!$ok){$transportError='local_curl_setup';throw new RuntimeException('PROBE_CURL_SETUP_FAILED');}
+            if(curl_exec($handle)===false){
+                $transportError=$oversize?'response_too_large':'network_transport';
+                throw new RuntimeException($oversize?'ANDROMEDA_RESPONSE_TOO_LARGE':'ANDROMEDA_NETWORK_TRANSPORT_FAILURE');
+            }
+            return ['status'=>(int)curl_getinfo($handle,CURLINFO_HTTP_CODE),'body'=>$body];
+        }finally{curl_close($handle);}
+    };
     $client=new AnyTourAndromedaClient($transport,true,true);
     $phase='login'; $supplierCalls=1; $client->login($config['username'],$config['password']);
     $phase='price'; $supplierCalls=2; $price=$client->price($params);
@@ -96,6 +128,7 @@ try {
     $token=preg_match('/^[A-Z0-9_]{1,80}$/D',$e->getMessage())?$e->getMessage():'FRESH_PACKAGE_PROBE_FAILED';
     $safe=['status'=>'unknown','phase'=>$phase,'error'=>$token,'supplier_calls'=>$supplierCalls,'database_writes'=>0,
         'booking_calls'=>0,'calc_calls'=>0,'get_flights_calls'=>0,'automatic_retry'=>false];
+    if(is_string($transportError)&&preg_match('/^[a-z0-9_]{1,80}$/D',$transportError))$safe['transport_error']=$transportError;
 }
 $safe['finished_at']=gmdate('c');
 while(ob_get_level())ob_end_clean();
@@ -139,9 +172,9 @@ def main():
     from anex_search3_owner_decisions import ssh_php
     out = Path(os.environ['RUNNER_TEMP'])/'andromeda-fresh-package'
     safe = execute(out, ssh_php)
-    print(json.dumps({k:safe.get(k) for k in ('status','phase','supplier_calls','requires_external_flights','buyer_price')}, ensure_ascii=False, sort_keys=True))
+    print(json.dumps({k:safe.get(k) for k in ('status','phase','supplier_calls','transport_error','requires_external_flights','buyer_price')}, ensure_ascii=False, sort_keys=True))
     if safe['status'] != 'captured':
-        raise SystemExit('fresh package outcome not captured; no retry')
+        raise SystemExit('fresh package outcome not captured; no automatic retry')
 
 
 if __name__ == '__main__':
