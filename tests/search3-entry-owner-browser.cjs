@@ -110,7 +110,22 @@ async function run(browser, width) {
     }
     assert.equal(await page.locator('.search3-composite,.search3-direct-control,.search3-primary-grid,.search3-quality,.search3-quick,.search3-tourists__pop,.search3-tourists__summary,.search3-mobile-search-filter-button,.search3-price-calendar').count(), 0,
       'retired entry projection is absent');
-    assert.equal(await page.locator('#tourSearch > details.extras').count(), 1, 'canonical advanced filters remain');
+    const extras = page.locator('#tourSearch > details.extras');
+    assert.equal(await extras.count(), 1, 'canonical advanced filters remain');
+    const preferences = page.locator('#tourSearch .search-preferences');
+    assert.equal(await preferences.locator('[name=stars]').count(), 1, 'category remains in the primary OTA preference grid');
+    assert.equal(await preferences.locator('[name=food]').count(), 1, 'meal remains in the primary OTA preference grid');
+    assert.equal(await preferences.locator('[name=price_from]').count(), 1, 'minimum price remains directly available in primary search flow');
+    assert.equal(await preferences.locator('[name=price_till]').count(), 1, 'maximum price remains directly available in primary search flow');
+    assert.equal(await extras.locator('[name=operator]').count(), 1, 'tour operator remains a secondary advanced search parameter');
+    assert.equal(await preferences.locator('[name=operator]').count(), 0, 'tour operator is not promoted into the primary search form');
+    assert.equal(await extras.evaluate(node => node.open), false, 'secondary supplier-search parameters stay collapsed initially');
+    assert.match((await extras.locator('summary').textContent()).trim(), /^Ещё фильтры\b/, 'secondary supplier-search disclosure keeps truthful search semantics');
+    for (const selector of ['[name=stars]', '[name=food]', '[name=price_from]', '[name=price_till]']) {
+      const control = preferences.locator(selector);
+      assert.equal(await control.isVisible(), true, selector + ' remains permanently visible in primary OTA search');
+      assert.ok((await control.boundingBox()).height >= 44, selector + ' primary target remains >=44px');
+    }
     assert.equal(await page.locator('#v2-search-title').textContent(), 'Поиск туров', 'candidate has the compact reference heading');
     assert.equal(await page.locator('#tourSearch .search-group legend span').count(), 0, 'decorative numbered steps are removed');
     const formGeometry = await page.evaluate(() => {
@@ -132,8 +147,8 @@ async function run(browser, width) {
         assert.ok((await input.boundingBox()).width >= 125, 'desktop dates retain readable native values');
       }
     }
-    await page.locator('#tourSearch > .extras > summary').click();
-    const openExtras = await page.locator('#tourSearch > .extras').boundingBox();
+    await extras.locator('summary').click();
+    const openExtras = await extras.boundingBox();
     const openSubmit = await page.locator('.search-submit').boundingBox();
     assert.ok(openExtras.width > formGeometry.form.width - 50, 'open advanced parameters take the full form width');
     assert.ok(openSubmit.y >= openExtras.y + openExtras.height, 'primary action remains below expanded fields');
@@ -152,7 +167,7 @@ async function run(browser, width) {
     await flightTargets.first().locator('span').click();
     await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
     await flightTargets.first().locator('span').click();
-    await page.locator('#tourSearch > .extras > summary').click();
+    await extras.locator('summary').click();
     await adults.selectOption('4');
     const editingLayout = await page.evaluate(() => {
       const results = document.querySelector('#results');
