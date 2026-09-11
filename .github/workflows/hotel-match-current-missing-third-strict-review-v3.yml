@@ -1,0 +1,177 @@
+name: MATCH current missing-third strict review v3
+run-name: MATCH current missing-third strict review v3
+on:
+  push:
+    branches:
+      - 'ops/match-current-missing-third-strict-review-1971-20260911-v3'
+    paths:
+      - '.github/workflows/hotel-match-current-missing-third-strict-review-v3.yml'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-current-missing-third-strict-review-1971-v3
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-missing-third-strict-review-1971-20260911-v3
+  SOURCE_OPERATION_ID: hotel-match-current-missing-third-strict-review-1971-20260911-v1
+  EXPECTED_SCRIPT_BLOB: d26c98b3e7d37522e58425dacb97a7b163b41fbd
+jobs:
+  review:
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'MATCH #1971 run current missing-third strict review v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify frozen read-only classifier and prepare payload
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-current-missing-third-strict-review-1971-v3.arm)" = "$OPERATION_ID"
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_missing_third_strict_review.php)" = "$EXPECTED_SCRIPT_BLOB"
+          php -l scripts/diagnostics/hotel_match_current_missing_third_strict_review.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_current_missing_third_strict_review.php
+          ! grep -Eiq 'https?://|/tours/|bookTour|createOrder|sendLead|curl_|file_get_contents[[:space:]]*\(' scripts/diagnostics/hotel_match_current_missing_third_strict_review.php
+          test -n "$KEY_VALUE"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          key="$STATE/key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          python3 - <<'PY'
+          import hashlib,os
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_current_missing_third_strict_review.php').read_text(encoding='utf-8')
+          old=os.environ['SOURCE_OPERATION_ID']; new=os.environ['OPERATION_ID']
+          if src.count(old)!=1: raise SystemExit('operation_shape_changed')
+          src=src.replace(old,new,1)
+          p=Path(os.environ['STATE'])
+          (p/'live.php').write_text(src,encoding='utf-8')
+          (p/'payload_sha256.txt').write_text(hashlib.sha256(src.encode()).hexdigest()+'\n')
+          PY
+          sleep 30
+
+      - name: Establish zero-DB SSH control master and preflight
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$STATE/key"; sock="$STATE/cm.sock"; kh="$STATE/known_hosts"
+          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$kh" -o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o ControlPersist=300 -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE"
+          out="$(ssh -S "$sock" -o BatchMode=yes -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && php -r '\''echo "MATCH_M3S_V3_PREFLIGHT_OK\\n";'\''')"
+          test "$out" = 'MATCH_M3S_V3_PREFLIGHT_OK'
+
+      - name: Reserve immutable v3 before CURRENT DB read
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['STATE'])
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_classifier_blob':os.environ['EXPECTED_SCRIPT_BLOB'],'source_operation':os.environ['SOURCE_OPERATION_ID'],'transport':'single_persistent_controlmaster_after_zero_db_preflight','database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          raw=json.dumps(r,sort_keys=True,indent=2)+'\n'
+          (p/'reservation.json').write_text(raw)
+          if (p/'reservation.json').read_text()!=raw: raise SystemExit('reservation_readback_failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-missing-third-strict-review-1971-20260911-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v3/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute CURRENT DB mass review over existing SSH master
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; sock="$STATE/cm.sock"; export STATE
+          set +e
+          ssh -T -S "$sock" -o BatchMode=yes -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$STATE/live.php" > "$STATE/live.stdout" 2> "$STATE/live.stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); rc=int(os.environ['RC'])
+          out=(s/'live.stdout').read_text(errors='replace'); err=(s/'live.stderr').read_text(errors='replace')
+          lines=[x for x in out.splitlines() if x.strip()]; data=None
+          if lines:
+              try: data=json.loads(lines[-1])
+              except Exception: pass
+          if not isinstance(data,dict):
+              result={'operation_id':os.environ['OPERATION_ID'],'status':'unknown','reason':'result_marker_missing','remote_exit':rc,'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          else:
+              if data.get('operation_id')!=os.environ['OPERATION_ID']: raise SystemExit('operation_mismatch')
+              for k in ('database_writes','mapping_writes','supplier_calls'):
+                  if int(data.get(k,0))!=0: raise SystemExit('readonly_guard_'+k)
+              result=data
+              result.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_sha=os.environ['GITHUB_SHA'],remote_exit=rc,no_replay=True)
+          (s/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if rc!=0 or result.get('status')!='completed': raise SystemExit(1)
+          print(json.dumps({'coverage':result.get('coverage'),'safe_count':result.get('safe_count'),'safe_by_provider':result.get('safe_by_provider'),'safe_observed':result.get('safe_observed'),'deferred_count':result.get('deferred_count'),'hard_conflict_count':result.get('hard_conflict_count')},ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Close SSH control master
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; sock="$STATE/cm.sock"
+          if test -S "$sock"; then ssh -S "$sock" -O exit -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" >/dev/null 2>&1 || true; fi
+
+      - name: Preserve v3 result
+        if: always()
+        id: result_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-missing-third-strict-review-1971-20260911-v3-result
+          path: |
+            ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v3/reservation.json
+            ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v3/result.json
+            ${{ runner.temp }}/hotel-match-current-missing-third-strict-review-1971-20260911-v3/payload_sha256.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record v3 package
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result_artifact.outputs.artifact-id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE ARTIFACT_ID
+          test -f "$STATE/result.json" || exit 0
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); r=json.loads((s/'result.json').read_text())
+          if r.get('status')=='completed':
+              c=r.get('coverage') or {}; p=r.get('safe_by_provider') or {}
+              text=f"MATCH #1971 CURRENT strict missing-third cascade `{r['operation_id']}` COMPLETED read-only / NO-REPLAY. Fresh coverage: triple {c.get('all_three')}, exactly-two {c.get('exactly_two')}, ANEX links {c.get('anex_links')}, ANEX unique {c.get('anex_unique_local')}, Andromeda unique {c.get('andromeda_unique_local')}. Prepared SAFE **{r.get('safe_count')}** = ANEX **{p.get('anex',0)}** + Andromeda **{p.get('andromeda',0)}**, live-observed **{r.get('safe_observed')}**; deferred **{r.get('deferred_count')}**, hard conflicts **{r.get('hard_conflict_count')}**. DB/mapping/supplier writes 0. Artifact `{os.environ.get('ARTIFACT_ID','')}`. Any write requires a NEW server-current guarded operation."
+          else:
+              text=f"MATCH #1971 CURRENT strict missing-third cascade `{r.get('operation_id')}` stopped `{r.get('status')}` / NO-REPLAY: `{r.get('reason')}`; DB/mapping/supplier writes 0. Artifact `{os.environ.get('ARTIFACT_ID','')}`."
+          (s/'comment.md').write_text(text+'\n')
+          PY
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
+          gh issue comment 996 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
