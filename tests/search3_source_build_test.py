@@ -59,8 +59,6 @@ class Search3SourceBuildTest(unittest.TestCase):
         expected = b'.x {\ncolor:red;\n--tokens: first\nsecond;\n}\n'
         self.assertEqual(builder.compact_css_comments(css, trim_indentation=True), expected)
         self.assertEqual(builder.compact_css_comments(expected, trim_indentation=True), expected)
-        # A hex escape consumes its newline terminator: following indentation is
-        # the only remaining separator and must not be removed.
         retained = b'.\\31\n  x{} .\\000031\r\n\tx{} .\\\n  y{}\n.x{content:"a\\\n  b"}\n/*! license\n  retained */'
         self.assertEqual(builder.compact_css_comments(retained, trim_indentation=True), retained)
 
@@ -72,8 +70,6 @@ class Search3SourceBuildTest(unittest.TestCase):
         (self.root / 'docs/project').mkdir(parents=True)
         shutil.copy(ROOT / 'docs/project/search3-production-import.json', self.root / 'docs/project')
         (self.root / 'v2').mkdir()
-        # The baseline/idempotence case verifies these committed outputs once.
-        # Other cases need an immutable baseline, not another identical build.
         self.reviewed = json.loads((self.root / 'docs/project/search3-production-import.json').read_text())
         self.outputs = {name: (ROOT / 'v2' / name).read_bytes() for name in self.reviewed['assets']}
         for name in self.outputs:
@@ -95,10 +91,11 @@ class Search3SourceBuildTest(unittest.TestCase):
 
     def test_current_outputs_match_and_build_is_idempotent(self):
         self.assertEqual(builder.build(self.root), 8)
-        self.assertEqual(
-            json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']['search3-selected-flow-v2.js'],
-            ['behavior/selected-quote-v2.js'])
-        self.assertGreater(len((self.root / 'v2/search3-selected-flow-v2.js').read_bytes()), 0)
+        assets = json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']
+        self.assertEqual(assets['search3-selected-flow-v2.js'], [])
+        self.assertEqual(assets['search3-results-cards-v2.js'], ['behavior/results-cards-v2.js'])
+        self.assertEqual(len((self.root / 'v2/search3-selected-flow-v2.js').read_bytes()), 0)
+        self.assertGreater(len((self.root / 'v2/search3-results-cards-v2.js').read_bytes()), 0)
         before = (self.root / 'docs/project/search3-production-import.json').read_bytes()
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)
