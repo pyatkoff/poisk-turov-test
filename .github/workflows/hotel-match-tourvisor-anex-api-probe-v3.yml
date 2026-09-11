@@ -1,0 +1,87 @@
+name: MATCH Tourvisor ANEX API probe v3
+
+on:
+  push:
+    branches: ['ops/match-tourvisor-anex-api-probe-1971-20260911-v3']
+    paths:
+      - '.github/match-tourvisor-anex-api-probe-1971-v3.arm'
+      - '.github/workflows/hotel-match-tourvisor-anex-api-probe-v3.yml'
+
+permissions:
+  contents: read
+
+env:
+  OPERATION_ID: hotel-match-tourvisor-anex-api-probe-1971-20260911-v3
+
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify and reserve
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-tourvisor-anex-api-probe-1971-v3.arm)" = "$OPERATION_ID"
+          mkdir -p .probe
+          printf '{"operation_id":"%s","state":"reserved_before_supplier_call","token_value_recorded":false,"database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" > .probe/reservation.json
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-tourvisor-anex-api-probe-1971-20260911-v3-reservation
+          path: .probe/reservation.json
+          retention-days: 90
+      - name: Check new credential with existing Tourvisor client
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          php=r'''
+          ini_set('display_errors','0');ini_set('log_errors','0');
+          function emitv(array $v,int $code=0):void{echo 'MATCH_JSON:'.json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";exit($code);}
+          $root=realpath(getcwd());$cfg=$root.'/config.php';ob_start();require $cfg;ob_end_clean();
+          if(!defined('TOURVISOR_ANEX_JWT')||trim((string)TOURVISOR_ANEX_JWT)==='')emitv(['status'=>'failed','stage'=>'config','reason'=>'anex_jwt_missing'],2);
+          $token=trim((string)TOURVISOR_ANEX_JWT);if(stripos($token,'Bearer ')===0)$token=trim(substr($token,7));putenv('TOURVISOR_JWT='.$token);
+          $client=is_file($root.'/data/tourvisor-client-v1.php')?$root.'/data/tourvisor-client-v1.php':$root.'/v2/data/tourvisor-client-v1.php';require_once $client;
+          try{$departures=v2_data_tv_get('/departures');}catch(Throwable $e){emitv(['status'=>'failed','stage'=>'departures','reason'=>'tourvisor_error','message'=>substr($e->getMessage(),0,120),'token_configured'=>true],2);}
+          $out=['status'=>'auth_ok','token_configured'=>true,'departures_count'=>count($departures),'token_value_recorded'=>false,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'continue_calls'=>0,'tour_detail_calls'=>0];
+          try{$start=v2_data_tv_get('/tours/search',['departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-09-18','dateTo'=>'2026-09-18','nightsFrom'=>8,'nightsTo'=>8,'adults'=>2,'currency'=>'RUB']);}catch(Throwable $e){emitv(array_merge($out,['status'=>'failed','stage'=>'search_start','reason'=>'tourvisor_error','message'=>substr($e->getMessage(),0,120)]),2);}
+          $sid=(int)($start['searchId']??$start['id']??0);if($sid<=0)emitv(array_merge($out,['status'=>'failed','stage'=>'search_start','reason'=>'search_id_missing']),2);
+          $done=false;$polls=0;for($i=0;$i<30;$i++){if($i)sleep(2);try{$s=v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]);}catch(Throwable $e){emitv(array_merge($out,['status'=>'failed','stage'=>'status','reason'=>'tourvisor_error','message'=>substr($e->getMessage(),0,120),'status_polls'=>$polls]),2);} $polls++;$raw=json_encode($s);if(strpos($raw,'"progress":100')!==false||strpos(strtolower($raw),'"status":"complete"')!==false){$done=true;break;}}
+          if(!$done)emitv(array_merge($out,['status'=>'failed','stage'=>'status','reason'=>'not_complete','status_polls'=>$polls]),2);
+          try{$results=v2_data_tv_get('/tours/search/'.$sid,['limit'=>100]);}catch(Throwable $e){emitv(array_merge($out,['status'=>'failed','stage'=>'results','reason'=>'tourvisor_error','message'=>substr($e->getMessage(),0,120)]),2);}
+          $rows=array_is_list($results)?$results:(is_array($results['items']??null)?$results['items']:(is_array($results['hotels']??null)?$results['hotels']:[]));
+          emitv(array_merge($out,['status'=>'completed','status_polls'=>$polls,'result_row_count'=>count($rows),'result_top_level_keys'=>array_slice(array_keys($results),0,20),'search_contract'=>['departureId'=>1,'countryId'=>4,'date'=>'2026-09-18','nights'=>8,'adults'=>2]]));
+          '''
+          enc=base64.b64encode(php.encode()).decode(); remote='eval(base64_decode("'+enc+'"));'
+          with tempfile.TemporaryDirectory() as td:
+              key=Path(td)/'k';key.write_text(os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].rstrip()+'\n');key.chmod(0o600)
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(remote)]
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=180)
+          line=next((x[11:] for x in reversed(p.stdout.splitlines()) if x.startswith('MATCH_JSON:')),None)
+          try:data=json.loads(line) if line else {'status':'failed','stage':'transport','reason':'marker_missing'}
+          except Exception:data={'status':'failed','stage':'transport','reason':'json_invalid'}
+          data.update(operation_id=os.environ['OPERATION_ID'],run_id=int(os.environ['GITHUB_RUN_ID']),source_sha=os.environ['GITHUB_SHA'],remote_exit=p.returncode,stderr_empty=(p.stderr.strip()==''))
+          for k,v in {'token_value_recorded':False,'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,'tour_detail_calls':0}.items():data.setdefault(k,v)
+          Path('.probe/result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({k:data.get(k) for k in ['status','stage','reason','message','departures_count','result_row_count','status_polls']},ensure_ascii=False,sort_keys=True))
+          if data.get('status')!='completed' or p.returncode!=0: raise SystemExit(1)
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-tourvisor-anex-api-probe-1971-20260911-v3-result
+          path: |
+            .probe/reservation.json
+            .probe/result.json
+          if-no-files-found: warn
+          retention-days: 90
