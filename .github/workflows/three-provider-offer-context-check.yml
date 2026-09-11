@@ -31,6 +31,8 @@ jobs:
           src = Path('app/integrations/three-provider-offer-context.php').read_text()
           assert "'selection_state' => 'disabled'" in src
           assert "'current_context_verified' => false" in src
+          assert 'private const OFFER_KEYS' in src
+          assert 'self::exactKeys($offer, self::OFFER_KEYS)' in src
           assert "return self::result('current', true)" in src
           for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
               assert forbidden not in src
