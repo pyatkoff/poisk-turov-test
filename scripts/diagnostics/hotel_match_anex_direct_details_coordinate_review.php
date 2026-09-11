@@ -33,7 +33,7 @@ function hmaddcr_candidate(array $detail,array $target,array $targetNames,bool $
     if($dist>HMADDCR_PHYSICAL_SCAN_M)return null;
     $place=fc_place([(string)($detail['region']??''),(string)($detail['town']??'')],[(string)($target['region_name']??''),(string)($target['subregion_name']??'')]);
     $shared=(int)($name['shared']??0);$exact=hmaddcr_exact_tokens($variants,$targetNames);$uniqueShared=hmaddcr_country_unique_shared($name,$tokenFrequency);$route=null;
-    if($exact&&$shared>=1&&$dist<=250.0&&($place||$dist<=80.0||$andromedaBridge))$route='exact_tokens_direct_coordinate';
+    if($exact&&$shared>=1&&$dist<=250.0&&($place||$dist<=80.0||$andromedaBridge)&&($shared>=2||$andromedaBridge||$physicalNearCount===1))$route='exact_tokens_direct_coordinate';
     elseif($shared>=2&&$dist<=180.0&&($place||$andromedaBridge||$dist<=50.0)&&((float)($name['jaccard']??0)>=0.42||(float)($name['character']??0)>=0.72||($name['ordered']??false)))$route='two_token_direct_coordinate';
     elseif($shared===1&&$dist<=100.0&&$place&&$andromedaBridge)$route='one_token_bridge_ultratight_coordinate';
     elseif($shared===1&&$dist<=60.0&&$place&&$uniqueShared&&$physicalNearCount===1)$route='one_token_country_unique_ultratight_coordinate';
