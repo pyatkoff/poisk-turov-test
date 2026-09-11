@@ -17,7 +17,10 @@ env:
   EXPECTED_SCRIPT_BLOB: 4d802154f378dfde961eaed7124765890994ef0b
 jobs:
   accept:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.event.head_commit.message == 'MATCH #1971 run strict missing-third accept v1'
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'MATCH #1971 run strict missing-third accept v1'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
