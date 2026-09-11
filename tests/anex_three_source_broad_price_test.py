@@ -11,10 +11,10 @@ def check(value):
     if not value:raise AssertionError(f'broad_price_py_{checks}')
 
 combined=mod.source();check(combined.startswith('declare(strict_types=1);\n'));check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
-check(mod.EXPERIMENT=='anex_three_source_broad_price_20260911_v2');check(mod.SPEC['date']=='2026-10-05')
+check(mod.EXPERIMENT=='anex_three_source_broad_price_20260911_v3');check(mod.SPEC['date']=='2026-10-19')
 
 def row(provider,local,room,price,fuel=None):
-    return {'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'hotel_name':'Hotel','date':mod.SPEC['date'],'nights':7,'adults':2,'children':0,
+    return {'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'hotel_name':'Hotel','date':mod.SPEC['date'],'nights':10,'adults':3,'children':0,
         'meal_family':'ai','meal_label':'AI','room':room,'room_norm':room.lower(),'placement':'DBL','placement_norm':'dbl','price':price,'currency':'RUB','fuel_charge':fuel,
         'fuel_inclusion_verified':False,'final_price_verified':False}
 def case(provider,rows):
