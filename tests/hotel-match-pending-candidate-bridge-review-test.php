@@ -15,9 +15,14 @@ pcbr_assert($x['broad']===false,'north south significant');
 pcbr_assert(pcbr_strict_pair(['Pickalbatros Palace Resort'],['PICKALBATROS PALACE RESORT HURGHADA'],'Хургада')!==null,'coarse region suffix accepted');
 pcbr_assert(pcbr_strict_pair(['Baramee Resortel Phuket'],['BARAMEE RESORTEL'],'Пхукет')!==null,'coarse region source suffix accepted');
 pcbr_assert(pcbr_strict_pair(['DoubleTree by Hilton Antalya City Center'],['DOUBLETREE BY HILTON ANTALYA CITY CENTRE'],'Анталья')!==null,'orthography accepted');
+pcbr_assert(pcbr_strict_pair(['DoubleTree by Hilton Sharks Bay Mountain Side'],['DOUBLE TREE BY HILTON SHARKS BAY MOUNTAIN SIDE'],'Шарм-эль-Шейх')!==null,'compact brand spelling accepted');
+pcbr_assert(pcbr_strict_pair(['Viva BLUE Resort & Diving Sports'],['VIVA BLUE RESORT AND DIVING SPORT'],'Хургада')!==null,'sport plural normalization accepted');
+pcbr_assert(pcbr_strict_pair(['Ecos Dubai Hotel at Al Furjan'],['ECOS DUBAI AL FURJAN HOTEL'],'Дубай')!==null,'at preposition normalization accepted');
+pcbr_assert(pcbr_identity_tokens('The Sol Hotel 4* (ex.An Vista Hotel)')===['sol'],'rating and compact former-name suffix normalized');
 pcbr_assert(pcbr_strict_pair(['Pickalbatros Aqua Park Resort Hurghada'],['GRAVITY HOTEL & AQUA PARK HURGHADA'],'Хургада')===null,'different brand blocked');
 pcbr_assert(pcbr_strict_pair(['Prince Palace Bangkok'],['BANGKOK PALACE HOTEL'],'Бангкок')===null,'token order identity blocked');
 pcbr_assert(pcbr_strict_pair(['Hilton Dubai Jumeirah'],['HILTON DUBAI PALM JUMEIRAH'],'Дубай')===null,'significant locality qualifier blocked');
 pcbr_assert(pcbr_strict_pair(['SUN BEACH HOTEL'],['SUN GARDEN HOTEL'],'Сиде')===null,'beach garden mismatch blocked');
+pcbr_assert(pcbr_strict_pair(['Sea Sun Sand Resort & SPA'],['SUN SEA SAND HOTEL'],'Пхукет')===null,'generic token reorder remains blocked');
 
 echo "ok\n";
