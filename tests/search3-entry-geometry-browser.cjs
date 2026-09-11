@@ -45,7 +45,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('Взрослых', '<select><option>2</option></select>', 'adults')}
       ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
     </fieldset>
-    <fieldset class="search-group search-group--route"><legend>Курорт и отель</legend>
+    <fieldset class="search-group"><legend>Курорт и отель</legend>
       ${field('Курорт / регион', '<select><option>Анталья</option></select>', 'region')}
       ${field('Конкретный отель', '<select><option>Любой отель</option></select>', 'hotel')}
     </fieldset>
@@ -114,7 +114,7 @@ const measure = node => {
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы', 'Курорт и отель', 'Уровень отеля', 'Питание и оператор', 'Бюджет'], `${width}: full OTA search groups stay visible in canonical order`);
         if (width === 375) {
           assert.equal(state.mainColumns, 1, '375: primary groups use one readable outer column');
-          assert.deepEqual(state.groupColumns, [1, 2, 2, 2, 1, 2, 2, 2], '375: route/hotel selectors stack while coupled ranges stay paired');
+          assert.deepEqual(state.groupColumns, [1, 2, 2, 2, 2, 2, 2, 2], '375: primary route stacks while coupled preference pairs stay compact');
           assert.ok(state.submit.width >= state.form.width - 45, '375: primary action spans the mobile form');
         }
         if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
