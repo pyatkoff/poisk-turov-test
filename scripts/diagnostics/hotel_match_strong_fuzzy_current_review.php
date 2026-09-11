@@ -7,14 +7,14 @@ const HFSR_OPERATION = 'hotel-match-strong-fuzzy-current-review-1971-20260911-v1
 
 function hfsr_pair(string $source,string $target,string $region,bool $anexBridge): array {
     $drop=array_values(array_unique(array_merge(pcbr_region_tokens($region),['hotel','resort','spa','ex','the','adult','adults','only','16'])));
-    $s=pcbr_without_tokens(pcbr_identity_tokens($source),$drop); $t=pcbr_without_tokens(pcbr_identity_tokens($target),$drop);
+    $s=array_values(array_unique(pcbr_without_tokens(pcbr_identity_tokens($source),$drop)));
+    $t=array_values(array_unique(pcbr_without_tokens(pcbr_identity_tokens($target),$drop)));
     $sharedTokens=array_values(array_unique(array_intersect($s,$t)));
     $sOnly=array_values(array_filter($s,static fn($v)=>!in_array($v,$t,true))); $tOnly=array_values(array_filter($t,static fn($v)=>!in_array($v,$s,true)));
-    [$score,$shared]=mbr_similarity($source,$target);
+    $den=count($s)+count($t); $score=$den>0?(2.0*count($sharedTokens)/$den):0.0; $shared=count($sharedTokens);
     $critical=mlp_critical_signature($source)===mlp_critical_signature($target);
     $anchor=isset($s[0],$t[0])&&$s[0]===$t[0];
-    $diff=count($sOnly)+count($tOnly);
-    $minTokens=min(count($s),count($t));
+    $diff=count($sOnly)+count($tOnly); $minTokens=min(count($s),count($t));
     $safe=$critical&&$anchor&&$diff<=2&&(
         ($anexBridge&&$minTokens>=2&&count($sharedTokens)>=2&&$score>=0.78) ||
         (!$anexBridge&&$minTokens>=3&&count($sharedTokens)>=3&&$score>=0.84)
