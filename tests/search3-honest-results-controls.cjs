@@ -7,6 +7,7 @@ const page = fs.readFileSync(path.join(root, 'v2/index.php'), 'utf8');
 const redesign = fs.readFileSync(path.join(root, 'v2/search-redesign-v2.js'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'v2/ds2-search.css'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'v2/results-renderer-v5.js'), 'utf8');
+const localFilters = fs.readFileSync(path.join(root, 'src/search3/behavior/results/local-hotel-filter.js'), 'utf8');
 
 const select = page.match(/<select id="sortResults">([\s\S]*?)<\/select>/);
 assert.ok(select, 'results sort remains available');
@@ -26,4 +27,21 @@ assert.match(
   'list/grid controls are emitted only for the legacy presentation'
 );
 
-console.log('PASS: Search3 exposes implemented sorting without a false view switch; legacy views remain');
+assert.ok(localFilters.includes('Источник предложения') && localFilters.includes('Все источники'),
+  'Search3 exposes provider/source as an already-loaded result facet');
+assert.ok(localFilters.includes('Туроператор') && localFilters.includes('Все туроператоры'),
+  'provider/source remains distinct from tour operator');
+assert.match(localFilters, /const key=api\.providerKey\(t\),label=api\.providerName\(t\)/,
+  'provider facet reuses canonical renderer identity and display semantics');
+assert.doesNotMatch(localFilters, /function providerKey\(/,
+  'Search3 does not duplicate or narrow provider identity semantics');
+assert.match(localFilters, /\.filter\(t=>\([^\n]+api\.providerKey\(t\)===provider[^\n]+operator[^\n]+price/,
+  'provider, operator and budget intersect on the same retained offer');
+assert.match(localFilters, /providerSelect\.addEventListener\('change',\(\)=>window\.V2Results\.rerender\(\)\)/,
+  'provider changes rerender already-loaded results locally');
+for (const forbidden of ['fetch(', 'XMLHttpRequest', 'startSearch(', 'search-started']) {
+  if (forbidden === 'search-started') continue; // lifecycle listener is expected; no supplier action is attached to the facet.
+  assert.ok(!localFilters.includes(forbidden), `local result facets do not start supplier transport: ${forbidden}`);
+}
+
+console.log('PASS: Search3 exposes honest sorting plus distinct local provider/operator result facets');
