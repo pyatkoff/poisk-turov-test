@@ -15,7 +15,7 @@ concurrency:
   group: match-current-db-strict-review-1971
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-current-strict-review-1971-20260911-v2
+  OPERATION_ID: hotel-match-current-strict-review-1971-20260911-v3
 jobs:
   review:
     if: github.actor == 'pyatkoff' && github.run_attempt == 1
@@ -56,8 +56,8 @@ jobs:
       - name: Preserve reservation before live read
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-current-strict-review-1971-20260911-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v2/reservation.json
+          name: hotel-match-current-strict-review-1971-20260911-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v3/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Read current DB and prepare guarded package
@@ -124,7 +124,7 @@ jobs:
           summary=(
               f"MATCH #1971 strict CURRENT-DB package `{os.environ['OPERATION_ID']}` completed read-only.\n\n"
               f"Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`. DB writes **0**, supplier calls **0**. "
-              f"Safe candidates **{c['safe_candidates']}** = strict/current **{c['strict_current_rule']}** + cross-provider ANEX+Tourvisor bridge **{c['cross_provider_anex_tourvisor']}**; "
+              f"Safe candidates **{c['safe_candidates']}** = strict/current **{c['strict_current_rule']}** + Andromeda pending -> existing ANEX+Tourvisor bridge **{c['cross_provider_anex_tourvisor']}** + ANEX unresolved -> existing Andromeda+Tourvisor bridge **{c['cross_provider_andromeda_tourvisor']}**; "
               f"provider split ANEX **{c['candidate_anex']}**, Andromeda **{c['candidate_andromeda']}**. "
               f"Unsafe fuzzy rows demoted **{c['unsafe_fuzzy_demoted']}**; blocked rows **{c['blocked']}**. "
               f"Examined Andromeda pending core8 **{ex['andromeda_pending_examined']}**, ANEX observed **{ex['anex_observed_examined']}**, staging-only **{ex['anex_staging_examined']}**. "
@@ -140,8 +140,8 @@ jobs:
         id: result
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-current-strict-review-1971-20260911-v2-result
-          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v2/
+          name: hotel-match-current-strict-review-1971-20260911-v3-result
+          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v3/
           if-no-files-found: warn
           retention-days: 90
       - name: Record substantive package in MATCH queue
