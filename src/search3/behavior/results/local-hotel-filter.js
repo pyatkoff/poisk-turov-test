@@ -30,7 +30,7 @@ function cardTextValues(key){
   return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||{key:'',label:''});
 }
 function money(value){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value||0));}
-function fields(){return[field,budgetField,mealField,providerField,operatorField,regionField,categoryField,ratingField,seaField];}
+function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,providerField,ratingField,seaField];}
 function active(){return!!(normalize(input.value)||Number(categorySelect.value)||mealSelect.value||providerSelect.value||operatorSelect.value||regionSelect.value||budgetActive||Number(ratingSelect.value)||Number(seaSelect.value));}
 function selectedLabel(select){const selected=select.selectedOptions&&select.selectedOptions[0];return selected?selected.textContent.trim():'';}
 function activeLabels(){
