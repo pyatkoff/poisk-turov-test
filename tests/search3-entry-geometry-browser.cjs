@@ -121,14 +121,17 @@ const measure = node => {
         if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2, `${width}: intermediate primary preferences use two balanced columns`);
         if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
         if (width >= 1200) {
-          assert.equal(state.mainColumns, 4, 'wide desktop: canonical trip grid has four columns');
+          assert.equal(state.mainColumns, 2, 'wide desktop: canonical trip grid keeps two readable columns');
           assert.equal(state.preferenceColumns, 3, 'wide desktop: hotel preferences use a dedicated three-column grid');
-          assert.equal(new Set(state.groupTops).size, 1, 'wide desktop: trip basics stay in one row');
+          const groupRows = new Map();
+          for (const top of state.groupTops) groupRows.set(top, (groupRows.get(top) || 0) + 1);
+          assert.deepEqual([...groupRows.values()].sort((a,b)=>a-b), [2, 2], 'wide desktop: trip basics use two balanced rows instead of four cramped quarters');
+          assert.ok(state.groupColumns.every(columns => columns === 2), 'wide desktop: each trip group keeps its paired native controls');
           const preferenceRows = new Map();
           for (const top of state.preferenceTops) preferenceRows.set(top, (preferenceRows.get(top) || 0) + 1);
           assert.deepEqual([...preferenceRows.values()].sort((a,b)=>a-b), [3, 3], 'wide desktop: six primary hotel/price preferences use two balanced rows of three');
           assert.ok(state.preferenceWidth >= state.form.width - 50, 'wide desktop: dedicated preference grid uses the available form width');
-          assert.ok(state.dateControls.every(item => item.width >= 125), 'wide desktop: date fields keep enough width for the complete native value');
+          assert.ok(state.dateControls.every(item => item.width >= 200), 'wide desktop: native date fields keep comfortable full-value width');
           assert.ok(state.submit.width <= 281, 'wide desktop: primary action does not consume the entire form width');
         }
         if (output) await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
