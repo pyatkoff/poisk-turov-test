@@ -1,0 +1,24 @@
+name: Search3 Andromeda selected quote UI
+on:
+  pull_request:
+    paths:
+      - 'v2/search3-selected-flow-v2.js'
+      - 'tests/search3-andromeda-selected-quote.cjs'
+      - '.github/workflows/search3-andromeda-selected-quote-check.yml'
+permissions:
+  contents: read
+jobs:
+  quote-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax and selected quote flow
+        run: |
+          node --check v2/search3-selected-flow-v2.js
+          node tests/search3-andromeda-selected-quote.cjs
+      - name: Enforce no booking or lead handoff
+        run: |
+          ! grep -RE "data-direct-tour|leadApi|action[[:space:]]*:[[:space:]]*['\"]bron['\"]|booking_enabled[[:space:]]*[:=][[:space:]]*true" v2/search3-selected-flow-v2.js
