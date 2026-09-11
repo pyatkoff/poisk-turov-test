@@ -1,0 +1,21 @@
+name: Andromeda quote preview publisher offline
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda_quote_preview_publish.py'
+      - 'tests/andromeda_quote_preview_publish_test.py'
+      - '.github/workflows/andromeda-quote-preview-publisher-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Publisher contract
+        run: |
+          python3 -m py_compile scripts/diagnostics/andromeda_quote_preview_publish.py
+          python3 tests/andromeda_quote_preview_publish_test.py -v
