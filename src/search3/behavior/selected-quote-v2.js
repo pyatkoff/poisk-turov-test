@@ -2,7 +2,7 @@
   'use strict';
 
   const root = window;
-  const entry = typeof root.__ANYTOUR_SEARCH3_ENTRY__ === 'string' ? root.__ANYTOUR_SEARCH3_ENTRY__ : '';
+  const entry = typeof root.__ANYTOOUR_SEARCH3_ENTRY__ === 'string' ? root.__ANYTOOUR_SEARCH3_ENTRY__ : '';
   if (!entry) return;
   const ns = root[entry] = root[entry] || {};
   ns.modules = ns.modules || {};
