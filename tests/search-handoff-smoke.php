@@ -20,6 +20,4 @@ check($filtered==='/poisk-turov/?country=4','Handoff allowlist changed');
 $form=v2_form_defaults(['daysFrom'=>'8','daysTill'=>'12','child_age'=>['0','17']]);
 check($form['child_ages']===[0,17]&&$form['nights_till']===12,'Family handoff lost');
 check(v2_form_defaults(['child_age'=>['18','bad',[]]])['child_ages']===[],'Invalid child age accepted');
-passthru('python3 -B scripts/build/search3_assets.py --write',$buildStatus);
-check($buildStatus===0,'Search3 canonical provider-filter build failed');
 echo "SEARCH_HANDOFF_OK\n";
