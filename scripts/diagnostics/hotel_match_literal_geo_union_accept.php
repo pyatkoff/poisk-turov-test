@@ -71,7 +71,9 @@ function hmlgua_accept(PDO $db,array $review,string $operation=HMLGUA_OPERATION,
             if($provider==='anex'){
                 $aid=(int)$external;if(isset($existingAn[$aid])){$stats['already_resolved']++;$skip[$key]='already_resolved';continue;}if(isset($manual[$aid])){$stats['manual_protected']++;$skip[$key]='manual_protected';continue;}$source=$an[$aid]??null;
             }else{
-                $identity=$andRows[$external]??null;if(!$identity){$stats['current_source_missing']++;$skip[$key]='andromeda_identity_missing';continue;}if(($identity['decision_status']??'')!=='pending'||$identity['local_hotel_id']!==null){$stats['andromeda_nonpending_protected']++;$skip[$key]='andromeda_nonpending_protected';continue;}$source=$and[$external]??null;
+                $identity=$andRows[$external]??null;if(!$identity){$stats['current_source_missing']++;$skip[$key]='andromeda_identity_missing';continue;}if(($identity['decision_status']??'')!=='pending'||$identity['local_hotel_id']!==null){$stats['andromeda_nonpending_protected']++;$skip[$key]='andromeda_nonpending_protected';continue;}
+                $oldHash=(string)($identity['evidence_sha256']??'');$oldJson=(string)($identity['evidence_json']??'');$catalogHash=(string)($identity['catalog_sha256']??'');if($oldHash===''||$catalogHash===''||!hash_equals($oldHash,hash('sha256',$oldJson))){$stats['andromeda_evidence_integrity_changed']++;$skip[$key]='andromeda_evidence_integrity_changed';continue;}
+                $source=$and[$external]??null;
             }
             if(!is_array($source)||!empty($source['local_ids'])){$stats['current_source_missing']++;$skip[$key]='current_unresolved_source_missing';continue;}
             $country=(int)($source['country_id']??0);if($country!==$expected['country_id']||!isset(HMLGUR_CORE8[$country])){$stats['country_changed']++;$skip[$key]='country_changed';continue;}
