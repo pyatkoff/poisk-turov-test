@@ -1,0 +1,157 @@
+name: MATCH live-priority bulk accept
+run-name: MATCH live-priority bulk accept #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - '.github/match-ops/hotel-match-live-priority-accept-1971-20260911-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-live-priority-accept-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-live-priority-accept-1971-20260911-v1
+  ARM_PATH: .github/match-ops/hotel-match-live-priority-accept-1971-20260911-v1.arm
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact one-shot arm and static guarded-write contract
+        run: |
+          set -euo pipefail
+          test -f "$ARM_PATH"
+          test "$(tr -d '\r\n' < "$ARM_PATH")" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_live_priority_accept.php
+          php -l tests/hotel-match-live-priority-accept-test.php
+          php tests/hotel-match-live-priority-accept-test.php
+          grep -Fq "decision_status='pending' AND local_hotel_id IS NULL" scripts/diagnostics/hotel_match_live_priority_accept.php
+          grep -Fq 'post_commit_readback_failed' scripts/diagnostics/hotel_match_live_priority_accept.php
+          grep -Fq 'historical_operations_replayed' scripts/diagnostics/hotel_match_live_priority_accept.php
+      - name: Reserve immutable write operation before SSH
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$STATE"
+          export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          reservation={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved_before_ssh',
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'source_sha':os.environ['GITHUB_SHA'],
+            'mode':'server_current_live_priority_bulk_write_once',
+            'write_scope':'andromeda_hotel_identities_only',
+            'supplier_calls':0,
+            'historical_operations_replayed':False,
+            'no_replay':True,
+          }
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n',encoding='utf-8')
+          PYTHON
+      - name: Preserve reservation before live access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-live-priority-accept-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-live-priority-accept-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Recompute CURRENT DB and commit guarded bulk mapping delta
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          bridge=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          accept=body('scripts/diagnostics/hotel_match_live_priority_accept.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          wrapper=r'''
+          $root=realpath(getcwd());
+          if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
+          $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+          if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');
+          require_once $dbHelper;
+          $db=v2_data_db();
+          echo fc_json(mlpa_accept($db,MLPA_OPERATION)),"\n";
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+bridge+"\n"+live+"\n"+accept+"\n"+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
+          if not host or not user or not os.environ[req[0]].strip(): raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-live-priority-accept-v1-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600)
+              known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=420,env=clean)
+          try: result=json.loads(p.stdout)
+          except Exception:
+              blocker={'operation_id':os.environ['OPERATION_ID'],'status':'unknown_or_failed','reason':'live_output_unparseable','exit_code':p.returncode,'stderr_tail':p.stderr[-1500:],'no_automatic_replay':True}
+              (state/'blocker.json').write_text(json.dumps(blocker,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
+              raise RuntimeError('live_output_unparseable_do_not_replay')
+          (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n',encoding='utf-8')
+          ok=(p.returncode==0 and result.get('status')=='committed_readback_verified' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('supplier_calls')==0 and result.get('historical_operations_replayed') is False)
+          if not ok:
+              blocker={'operation_id':os.environ['OPERATION_ID'],'status':'unknown_or_failed','reason':'guarded_write_not_verified','exit_code':p.returncode,'reported_status':result.get('status'),'database_writes':result.get('database_writes'),'no_automatic_replay':True}
+              (state/'blocker.json').write_text(json.dumps(blocker,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
+              raise RuntimeError('guarded_write_not_verified_do_not_replay')
+          raw=(state/'result.json').read_bytes()
+          receipt={
+            'operation_id':os.environ['OPERATION_ID'],'state':'committed_readback_verified_no_replay',
+            'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],
+            'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':result.get('database_writes',0),
+            'supplier_calls':0,'historical_operations_replayed':False,'planned_raw':result.get('planned_raw',0),
+            'planned_safe':result.get('planned_safe',0),'live_writes':result.get('live_writes',0),
+            'rules':result.get('rules',{}),'skipped':result.get('skipped',{}),'before':result.get('before',{}),'after':result.get('after',{}),
+          }
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
+          PYTHON
+      - name: Preserve result and durable receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-live-priority-accept-v1-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/hotel-match-live-priority-accept-1971-20260911-v1/result.json
+            ${{ runner.temp }}/hotel-match-live-priority-accept-1971-20260911-v1/receipt.json
+            ${{ runner.temp }}/hotel-match-live-priority-accept-1971-20260911-v1/blocker.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Publish verified MATCH commit receipt
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const r=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/${process.env.OPERATION_ID}/result.json`,'utf8'));
+            const b=r.before||{}, a=r.after||{}, bc=b.coverage||{}, ac=a.coverage||{}, bi=b.identity||{}, ai=a.identity||{};
+            const body=[
+              `MATCH #1971 guarded CURRENT-DB bulk write \`${r.operation_id}\` is **COMMITTED + per-row readback verified / NO-REPLAY**.`,
+              `Actual Andromeda mappings written **${r.database_writes||0}** from CURRENT recomputation (planner raw ${r.planned_raw||0}, guarded safe ${r.planned_safe||0}); live-observed writes **${r.live_writes||0}**. Supplier calls **0**.`,
+              `Identity: accepted ${bi.accepted||0}→${ai.accepted||0}, pending ${bi.pending||0}→${ai.pending||0}, conflict ${bi.conflict||0}→${ai.conflict||0}.`,
+              `Coverage: Andromeda unique local ${bc.andromeda_unique_local||0}→${ac.andromeda_unique_local||0}; triple ${bc.all_three||0}→${ac.all_three||0}; ANEX links ${bc.anex_links||0}→${ac.anex_links||0}.`,
+              `Rules: ${JSON.stringify(r.rules||{})}. Category mismatches kept as evidence annotations: ${r.category_mismatch_writes||0}. Skipped guards: ${JSON.stringify(r.skipped||{})}.`,
+              `Run \`${process.env.GITHUB_RUN_ID}\`, exact source \`${process.env.GITHUB_SHA}\`. This operation is permanently NO-REPLAY; writer must be disarmed before cleanup.`
+            ].join('\n\n');
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:1971,body});
