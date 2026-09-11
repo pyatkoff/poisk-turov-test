@@ -1,0 +1,288 @@
+name: MATCH ANEX sold-date Tourvisor + direct-details review
+run-name: MATCH ANEX sold-date Tourvisor evidence #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_tourvisor_sold_date_details_review.php'
+      - 'tests/hotel-match-anex-tourvisor-sold-date-details-review-test.php'
+      - '.github/workflows/hotel-match-anex-tourvisor-sold-date-details-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-tourvisor-sold-date-details-review-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-tourvisor-sold-date-details-review-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1
+  SELL_RUN_ID: '34582780463'
+  SELL_ARTIFACT_ID: '10192364780'
+  SELL_ARTIFACT_NAME: hotel-match-anex-sellability-review-1971-20260911-v4-result
+  SELL_RESULT_SHA256: 47a55cf4ba8cab0fb2fa175f0856e2eca2f144e64b1d7b7a48ddfb0335d85c61
+  DIRECT_RUN_ID: '34584484738'
+  DIRECT_ARTIFACT_ID: '10193131262'
+  DIRECT_ARTIFACT_NAME: hotel-match-anex-sold-details-review-1971-20260911-v2-result
+  DIRECT_RESULT_SHA256: 86f3cbe232a262fa6c6bcd5d87a56af8167ce52f1dc7b589c7d4605fd57cc7fa
+  DIRECT_PLAN_SHA256: 18ebd5b63c9a5043a9fd573390a0b06331cd099f1956e3d9eea7eb1c2bd9bad0
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate sold-date MATCH review guards
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_tourvisor_sold_date_details_review.php
+          php -l tests/hotel-match-anex-tourvisor-sold-date-details-review-test.php
+          php tests/hotel-match-anex-tourvisor-sold-date-details-review-test.php
+          php -l v2/data/tourvisor-client-v1.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_tourvisor_sold_date_details_review.php').read_text(encoding='utf-8')
+          assert 'hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1' in s
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'anex_supplier_calls'=>0" in s
+          assert 'matched_sold_dates' in s and 'critical_ok' in Path('scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php').read_text(encoding='utf-8')
+          assert '5000' in s and 'target_collision' in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO'):
+              assert bad.lower() not in s.lower(), bad
+          print('sold-date MATCH review source verified')
+          PYTHON
+
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify immutable arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-tourvisor-sold-date-details-review-1971-v1.arm)" = "$OPERATION_ID"
+      - name: Fetch and verify immutable sellability + direct-details inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SELL_ARTIFACT_ID" > "$STATE/sell-meta.json"
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$DIRECT_ARTIFACT_ID" > "$STATE/direct-meta.json"
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          checks=[('sell',os.environ['SELL_ARTIFACT_ID'],os.environ['SELL_ARTIFACT_NAME'],os.environ['SELL_RUN_ID']),('direct',os.environ['DIRECT_ARTIFACT_ID'],os.environ['DIRECT_ARTIFACT_NAME'],os.environ['DIRECT_RUN_ID'])]
+          ids={}
+          for prefix,aid,name,run in checks:
+              meta=json.loads((state/f'{prefix}-meta.json').read_text())
+              assert str(meta['id'])==aid and meta['name']==name and str(meta['workflow_run']['id'])==run and meta.get('expired') is False
+              ids[prefix]={'artifact_id':meta['id'],'name':meta['name'],'run_id':meta['workflow_run']['id'],'digest':meta.get('digest')}
+          (state/'input-identity.json').write_text(json.dumps(ids,sort_keys=True)+'\n')
+          PYTHON
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SELL_ARTIFACT_ID/zip" > "$STATE/sell.zip"
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$DIRECT_ARTIFACT_ID/zip" > "$STATE/direct.zip"
+          mkdir "$STATE/sell" "$STATE/direct"
+          unzip -q "$STATE/sell.zip" -d "$STATE/sell"
+          unzip -q "$STATE/direct.zip" -d "$STATE/direct"
+          test -f "$STATE/sell/result.json" && test -f "$STATE/direct/result.json" && test -f "$STATE/direct/plan.json"
+          echo "$SELL_RESULT_SHA256  $STATE/sell/result.json" | sha256sum -c -
+          echo "$DIRECT_RESULT_SHA256  $STATE/direct/result.json" | sha256sum -c -
+          echo "$DIRECT_PLAN_SHA256  $STATE/direct/plan.json" | sha256sum -c -
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); sell=json.loads((state/'sell/result.json').read_text()); direct=json.loads((state/'direct/result.json').read_text()); plan=json.loads((state/'direct/plan.json').read_text())
+          assert sell['status']=='completed' and sell['operation_id']=='hotel-match-anex-sellability-review-1971-20260911-v4' and len(sell['sold'])==254
+          assert direct['status']=='completed' and direct['operation_id']=='hotel-match-anex-sold-details-review-1971-20260911-v2' and direct['details']['ok']==208
+          assert plan['status']=='ready' and plan['operation_id']=='hotel-match-anex-sold-details-review-1971-20260911-v2' and plan['target_sha256']==direct['target_sha256']
+          assert plan['manifest']['source_artifact_id']==int(os.environ['SELL_ARTIFACT_ID']) and plan['manifest']['source_result_sha256']==os.environ['SELL_RESULT_SHA256']
+          print(json.dumps({'sold':254,'direct_details':208,'immutable_inputs_verified':True},sort_keys=True))
+          PYTHON
+      - name: Prepare normalized SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Zero-Tourvisor CURRENT plan before reservation
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PYTHON'
+          import base64,json,os,subprocess
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          strong=body('scripts/diagnostics/hotel_match_anex_sold_details_strong_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          old=body('scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_sold_details_strong_review.php';\n",'',1)
+          new=body('scripts/diagnostics/hotel_match_anex_tourvisor_sold_date_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_tourvisor_existing_results_details_review.php';\n",'',1)
+          tv=body('v2/data/tourvisor-client-v1.php')
+          enc=lambda p: base64.b64encode((state/p).read_bytes()).decode()
+          sell64,direct64,plan64=enc('sell/result.json'),enc('direct/result.json'),enc('direct/plan.json')
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMATSD_ROOT');$config=realpath($root.'/config.php');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$config||!$dbHelper)throw new RuntimeException('HMATSD_RUNTIME');require_once $config;require_once $dbHelper;
+            if(v2_data_tourvisor_token()==='')throw new RuntimeException('HMATSD_TV_TOKEN');
+            $sell=json_decode(base64_decode('''+repr(sell64)+r'''),true,64,JSON_THROW_ON_ERROR);$direct=json_decode(base64_decode('''+repr(direct64)+r'''),true,64,JSON_THROW_ON_ERROR);$plan=json_decode(base64_decode('''+repr(plan64)+r'''),true,64,JSON_THROW_ON_ERROR);
+            $input=hmatsd_validate_inputs($sell,$direct,$plan);$current=hmatsd_current_sources(v2_data_db(),$input);$slices=hmatsd_slices($current['sources']);$ids=array_map(static fn($x)=>(int)$x['anex_hotel_id'],$current['sources']);sort($ids,SORT_NUMERIC);
+            echo fc_json(['status'=>'ready','operation_id'=>HMATSD_OPERATION,'database_writes'=>0,'mapping_writes'=>0,'anex_supplier_calls'=>0,'tourvisor_calls'=>0,'source_count'=>count($current['sources']),'live_count'=>count(array_filter($current['sources'],static fn($x)=>$x['live'])),'source_ids'=>$ids,'slices'=>$slices,'plan_fingerprint'=>hmatsd_plan_fingerprint($current['sources'],$slices),'coverage'=>$current['coverage']]),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMATSD_PREFLIGHT';echo json_encode(['status'=>'failed','operation_id'=>HMATSD_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0,'anex_supplier_calls'=>0,'tourvisor_calls'=>0]),"\n";exit(2);}
+          '''
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+strong+'\n'+old+'\n'+new+'\n'+tv+'\n'+wrapper
+          host=os.environ['ANYTOOUR_DEPLOY_HOST'].strip();user=os.environ['ANYTOOUR_DEPLOY_USER'].strip();key=str(Path(os.environ['RUNNER_TEMP'])/'anytoour_match_key');known=str(state/'known_hosts')
+          cmd=['ssh','-T','-i',key,'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+known,'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          p=subprocess.run(cmd,input=code,text=True,capture_output=True,timeout=240)
+          try:r=json.loads(p.stdout)
+          except Exception: raise RuntimeError('preflight_output_unparseable')
+          if p.returncode!=0 or r.get('status')!='ready' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('tourvisor_calls')!=0 or r.get('database_writes')!=0 or r.get('mapping_writes')!=0: raise RuntimeError('preflight_not_ready')
+          (state/'plan.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps({'source_count':r['source_count'],'live_count':r['live_count'],'slices':len(r['slices']),'plan_fingerprint':r['plan_fingerprint']},sort_keys=True))
+          PYTHON
+      - name: Reserve immutable sold-date Tourvisor evidence operation
+        run: |
+          set -euo pipefail
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); raw=(state/'plan.json').read_bytes(); plan=json.loads(raw)
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_after_zero_tourvisor_current_plan','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'sell_artifact_id':int(os.environ['SELL_ARTIFACT_ID']),'sell_result_sha256':os.environ['SELL_RESULT_SHA256'],'direct_artifact_id':int(os.environ['DIRECT_ARTIFACT_ID']),'direct_result_sha256':os.environ['DIRECT_RESULT_SHA256'],'direct_plan_sha256':os.environ['DIRECT_PLAN_SHA256'],'plan_sha256':hashlib.sha256(raw).hexdigest(),'plan_fingerprint':plan['plan_fingerprint'],'source_count':plan['source_count'],'live_count':plan['live_count'],'slice_count':len(plan['slices']),'database_writes':0,'mapping_writes':0,'anex_supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before Tourvisor calls
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/input-identity.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/plan.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Build reviewed ephemeral payload
+        run: |
+          set -euo pipefail
+          export STATE="$RUNNER_TEMP/$OPERATION_ID" PAYLOAD="$RUNNER_TEMP/$OPERATION_ID/payload.php"
+          python3 - <<'PYTHON'
+          import base64,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          strong=body('scripts/diagnostics/hotel_match_anex_sold_details_strong_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          old=body('scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_sold_details_strong_review.php';\n",'',1)
+          new=body('scripts/diagnostics/hotel_match_anex_tourvisor_sold_date_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_tourvisor_existing_results_details_review.php';\n",'',1)
+          tv=body('v2/data/tourvisor-client-v1.php')
+          enc=lambda p: base64.b64encode((state/p).read_bytes()).decode()
+          sell64,direct64,plan64=enc('sell/result.json'),enc('direct/result.json'),enc('direct/plan.json')
+          expected=json.loads((state/'plan.json').read_text())['plan_fingerprint']
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMATSD_ROOT');$config=realpath($root.'/config.php');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$config||!$dbHelper)throw new RuntimeException('HMATSD_RUNTIME');require_once $config;require_once $dbHelper;if(v2_data_tourvisor_token()==='')throw new RuntimeException('HMATSD_TV_TOKEN');
+            $sell=json_decode(base64_decode('''+repr(sell64)+r'''),true,64,JSON_THROW_ON_ERROR);$direct=json_decode(base64_decode('''+repr(direct64)+r'''),true,64,JSON_THROW_ON_ERROR);$directPlan=json_decode(base64_decode('''+repr(plan64)+r'''),true,64,JSON_THROW_ON_ERROR);$input=hmatsd_validate_inputs($sell,$direct,$directPlan);$current=hmatsd_current_sources(v2_data_db(),$input);$slices=hmatsd_slices($current['sources']);if(hmatsd_plan_fingerprint($current['sources'],$slices)!==''' + repr(expected) + r''')throw new RuntimeException('HMATSD_CURRENT_CHANGED');
+            $departures=v2_data_tv_get('/departures',['departureCountryId'=>1]);$departure=hmatsd_departure_id(is_array($departures)?$departures:[]);if(!$departure)throw new RuntimeException('HMATSD_DEPARTURE');$catalogCalls=1;$searchStarts=0;$statusCalls=0;$resultCalls=0;$resultSets=[];$searchStats=[];
+            $byCountry=[];foreach($slices as $slice)$byCountry[(int)$slice['country_id']][]=$slice;
+            foreach($byCountry as $country=>$countrySlices){$ops=v2_data_tv_get('/operators',['departureId'=>$departure,'countryId'=>$country]);$catalogCalls++;$operator=hmatsd_operator_id(is_array($ops)?$ops:[]);$dates=v2_data_tv_get('/tours/dates',['departureId'=>$departure,'countryId'=>$country,'onlyCharter'=>false]);$catalogCalls++;$dateSet=hmatsd_date_set(is_array($dates)?$dates:[]);if(!$operator){foreach($countrySlices as $slice)$searchStats[]=['country_id'=>$country,'date'=>$slice['date'],'source_count'=>$slice['source_count'],'status'=>'anex_operator_missing'];continue;}
+              foreach($countrySlices as $slice){$date=(string)$slice['date'];$key=$country.'|'.$date;if(!isset($dateSet[$date])){$searchStats[]=['country_id'=>$country,'date'=>$date,'source_count'=>$slice['source_count'],'status'=>'date_not_currently_advertised'];continue;}$payload=['departureId'=>$departure,'countryId'=>$country,'dateFrom'=>$date,'dateTo'=>$date,'nightsFrom'=>7,'nightsTo'=>9,'adults'=>2,'operatorIds'=>[$operator],'currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false];$start=v2_data_tv_get('/tours/search',$payload);$searchStarts++;$sid=hmatsd_search_id($start);if(!$sid){$searchStats[]=['country_id'=>$country,'date'=>$date,'source_count'=>$slice['source_count'],'status'=>'search_id_missing'];continue;}$complete=false;$last=[];for($poll=0;$poll<12;$poll++){sleep(2);$last=v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]);$statusCalls++;if(hmatsd_search_complete($last)){$complete=true;break;}}$rows=[];$error=null;foreach([1000,500,100] as $limit){try{$rows=hmatv_tv_rows(v2_data_tv_get('/tours/search/'.$sid,['limit'=>$limit]));$resultCalls++;break;}catch(Throwable $e){$error='result_read_failed';}}$resultSets[$key]=['operator_id'=>$operator,'rows'=>$rows];$anexRows=0;foreach($rows as $row)if(hmatv_has_operator($row,$operator))$anexRows++;$searchStats[]=['country_id'=>$country,'date'=>$date,'source_count'=>$slice['source_count'],'status'=>'completed','search_complete'=>$complete,'progress'=>(int)($last['progress']??0),'result_hotels'=>count($rows),'anex_hotel_rows'=>$anexRows,'result_error'=>$error];}
+            }
+            $review=hmatsd_review(v2_data_db(),$sell,$direct,$directPlan,$resultSets,HMATSD_OPERATION);$review['tourvisor']=['departure_id'=>$departure,'catalog_calls'=>$catalogCalls,'search_starts'=>$searchStarts,'status_calls'=>$statusCalls,'result_calls'=>$resultCalls,'searches'=>$searchStats];echo fc_json($review),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMATSD_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMATSD_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0,'anex_supplier_calls'=>0,'tourvisor_search_continue_calls'=>0,'tourvisor_tour_detail_calls'=>0,'booking_calls'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          '''
+          Path(os.environ['PAYLOAD']).write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+strong+'\n'+old+'\n'+new+'\n'+tv+'\n'+wrapper,encoding='utf-8')
+          PYTHON
+      - name: Run bounded sold-date Tourvisor evidence pass
+        id: live
+        continue-on-error: true
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/anytoour_match_key"; host="$ANYTOOUR_DEPLOY_HOST"; user="$ANYTOOUR_DEPLOY_USER"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$STATE/known_hosts" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="/tmp/anytour-match-sold-date-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.php"; cleanup(){ ssh "${opts[@]}" "$user@$host" "rm -f '$remote'" >/dev/null 2>&1 || true; }; trap cleanup EXIT
+          scp "${opts[@]}" "$STATE/payload.php" "$user@$host:$remote"
+          set +e; ssh -vv "${opts[@]}" "$user@$host" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=0 -r 'include \"$remote\";'" >"$STATE/live.stdout" 2>"$STATE/live.stderr"; rc=$?; set -e
+          export STATE RC="$rc"
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); stdout=(state/'live.stdout').read_text(encoding='utf-8',errors='replace'); stderr=(state/'live.stderr').read_text(encoding='utf-8',errors='replace'); rc=int(os.environ['RC'])
+          progress={'authenticated':'Authenticated to ' in stderr or 'Authentication succeeded' in stderr,'command_sent':'Sending command:' in stderr,'remote_exit_seen':'Exit status ' in stderr}
+          try:r=json.loads(stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'live_output_unparseable','database_writes':0,'mapping_writes':0,'anex_supplier_calls':0,'booking_calls':0}
+          (state/'result.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n');(state/'ssh-result.json').write_text(json.dumps({'exit_code':rc,'ssh':progress},sort_keys=True)+'\n')
+          ok=rc==0 and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('anex_supplier_calls')==0 and r.get('tourvisor_search_continue_calls')==0 and r.get('tourvisor_tour_detail_calls')==0 and r.get('booking_calls')==0
+          (state/'outcome.json').write_text(json.dumps({'ok':ok,'no_replay':True,'command_sent':progress['command_sent'],'reason':None if ok else r.get('reason','runtime_failure')},sort_keys=True)+'\n')
+          if not ok: raise SystemExit(2)
+          PYTHON
+      - name: Build durable receipt and summary
+        if: always()
+        run: |
+          set -euo pipefail
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); result=json.loads((state/'result.json').read_text()) if (state/'result.json').exists() else {'status':'unknown','operation_id':os.environ['OPERATION_ID']}; outcome=json.loads((state/'outcome.json').read_text()) if (state/'outcome.json').exists() else {'ok':False,'no_replay':True,'reason':'missing_outcome'}
+          raw=(state/'result.json').read_bytes() if (state/'result.json').exists() else b''; stats=result.get('stats',{}); tv=result.get('tourvisor',{})
+          receipt={'operation_id':os.environ['OPERATION_ID'],'status':'completed' if outcome.get('ok') else 'unknown_no_replay','no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest() if raw else None,'database_writes':0,'mapping_writes':0,'anex_supplier_calls':0,'tourvisor_search_starts':tv.get('search_starts'),'prepared':stats.get('prepared'),'prepared_live':stats.get('prepared_live'),'current_direct_unresolved':stats.get('current_direct_unresolved'),'current_live':stats.get('current_live'),'reason':outcome.get('reason')};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if outcome.get('ok'):
+              text=f"MATCH #1971 sold-date Tourvisor + direct-details `{os.environ['OPERATION_ID']}` completed **read-only / NO-REPLAY**. CURRENT direct-detail unresolved **{stats.get('current_direct_unresolved',0)}** / live **{stats.get('current_live',0)}**; planned sold-date slices **{stats.get('search_slices',0)}**, successful result slices **{stats.get('successful_slices',0)}**. Tourvisor search starts **{tv.get('search_starts',0)}**, returned hotel rows **{stats.get('result_hotel_rows',0)}**, unique TV hotels **{stats.get('unique_tv_hotels',0)}**. Prepared same-sold-date identity candidates **{stats.get('prepared',0)}** / live **{stats.get('prepared_live',0)}**, Andromeda bridge **{stats.get('andromeda_bridge',0)}**, coordinate conflicts **{stats.get('coordinate_conflict',0)}**. ANEX calls **0**, Tourvisor continue/detail/booking **0**, DB/mapping writes **0**. Any acceptance requires a separate NEW server-current guarded operation."
+          else:
+              text=f"MATCH #1971 sold-date Tourvisor + direct-details `{os.environ['OPERATION_ID']}` is **UNKNOWN/FAILED and NO-REPLAY** after reservation. Reason `{outcome.get('reason')}`; DB/mapping writes 0, ANEX calls 0. Inspect durable result/receipt before any distinct follow-up; do not rerun this operation."
+          (state/'summary.md').write_text(text+'\n')
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1-result
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/input-identity.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/plan.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/result.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/ssh-result.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/outcome.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/receipt.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1/summary.md
+          if-no-files-found: error
+          retention-days: 90
+      - name: Post MATCH result to #1971
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/$OPERATION_ID/summary.md"
+      - name: Enforce completed result
+        if: always()
+        run: |
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          x=json.loads((Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'outcome.json').read_text())
+          assert x.get('ok') is True, x
+          PYTHON
