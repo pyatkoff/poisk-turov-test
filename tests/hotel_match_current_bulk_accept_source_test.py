@@ -3,7 +3,7 @@ from pathlib import Path
 src = Path('scripts/diagnostics/hotel_match_current_bulk_accept.php').read_text(encoding='utf-8')
 
 required = [
-    "hotel-match-current-bulk-accept-1971-20260911-v2",
+    "hotel-match-current-bulk-accept-1971-20260911-v3",
     "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ",
     "beginTransaction()",
     "FOR UPDATE",
@@ -38,6 +38,9 @@ required = [
     "reverse_cross_provider_requires_existing_andromeda_tv_local'=>true",
     "anex_reverse_bridge_pair_excluded",
     "planned_classes",
+    "write_scope_limit",
+    "db_lock_timeout",
+    "db_deadlock",
 ]
 for needle in required:
     assert needle in src, needle
@@ -52,18 +55,11 @@ assert "UPDATE andromeda_hotel_identities" in src
 assert "DELETE FROM" not in src.upper()
 assert "UPDATE catalog_hotels" not in src
 assert "INSERT INTO catalog_hotels" not in src
-
-# Both provider bridge directions require unique normalized-name evidence and block
-# hard coordinate conflicts; weak one-token names require direct geo evidence.
 assert "if (count($candidateIds) !== 1) return null" in src
 assert "if ($guard['coordinate_conflict']) return null" in src
 assert "if ($maxTokens < 2 && !$directGeo) return null" in src
 assert "$distance !== null && (int)$distance <= 1000" in src
-
-# Reverse ANEX bridge uses only already accepted Andromeda+Tourvisor locals from
-# before ANEX writes and rechecks explicit ANEX/local pair exclusions.
 assert "[, $andromedaLocalBefore] = mbr_local_sets($db)" in src
 assert "mba_bridge_index($andromedaLocalBefore,$hotels,$names)" in src
 assert "isset($excluded[$id][$target])" in src
-
 print('hotel_match_current_bulk_accept_source_test: ok')
