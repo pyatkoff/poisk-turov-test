@@ -8,11 +8,7 @@ on:
       - '.github/workflows/hotel-match-literal-geo-union-accept.yml'
   push:
     branches: ['ops/match-literal-geo-union-accept-1971-20260912-v1']
-    paths:
-      - 'scripts/diagnostics/hotel_match_literal_geo_union_accept.php'
-      - 'tests/hotel-match-literal-geo-union-accept-test.php'
-      - '.github/workflows/hotel-match-literal-geo-union-accept.yml'
-      - '.github/match-literal-geo-union-accept-1971-20260912-v1.arm'
+    paths: ['.github/match-literal-geo-union-accept-1971-20260912-v1.arm']
 permissions: {contents: read, actions: read, issues: write}
 concurrency:
   group: match-literal-geo-union-accept-v1-${{ github.event_name }}-${{ github.ref }}
@@ -33,24 +29,15 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/diagnostics/hotel_match_literal_geo_union_accept.php').read_text()
-          required=[
-            "const HMLGUA_OPERATION = 'hotel-match-literal-geo-union-accept-1971-20260912-v1'",
-            'hmlgua_plan_current_in_transaction', 'FOR UPDATE',
-            'source_cross_lane_target_conflict', 'same_provider_union_target_collision',
-            'literal_geo_union_coordinate_conflict_gt_5km',
-            'anex_review_pair_exclusions', "decision_status='pending' AND local_hotel_id IS NULL",
-            'anex_post_commit_readback_failed', 'andromeda_post_commit_readback_failed',
-            "'current_db_same_transaction'=>true", "'supplier_calls'=>0", "'tourvisor_calls'=>0"
-          ]
+          required=["const HMLGUA_OPERATION = 'hotel-match-literal-geo-union-accept-1971-20260912-v1'",'hmlgua_plan_current_in_transaction','FOR UPDATE','source_cross_lane_target_conflict','same_provider_union_target_collision','literal_geo_union_coordinate_conflict_gt_5km','anex_review_pair_exclusions',"decision_status='pending' AND local_hotel_id IS NULL",'anex_post_commit_readback_failed','andromeda_post_commit_readback_failed',"'current_db_same_transaction'=>true","'supplier_calls'=>0","'tourvisor_calls'=>0"]
           for x in required: assert x in s,x
-          for bad in ('curl_init','curl_exec','https://','http://','AnyTourAnexClient','v2_data_tv_get'):
-            assert bad not in s,bad
+          for bad in ('curl_init','curl_exec','https://','http://','AnyTourAnexClient','v2_data_tv_get'): assert bad not in s,bad
           print('MATCH_LITERAL_GEO_UNION_ACCEPT_STATIC_OK')
           PY
 
   apply:
     needs: validate
-    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1 && hashFiles('.github/match-literal-geo-union-accept-1971-20260912-v1.arm') != ''
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -90,8 +77,8 @@ jobs:
           parts=[]
           for name,parents in chain:
               s=body('scripts/diagnostics/'+name)
-              if "if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n" in s:
-                  s=s.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n",'',1)
+              header="if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n"
+              if header in s: s=s.replace(header,'',1)
               for parent in parents:
                   line="require_once __DIR__ . '/"+parent+"';\n"
                   if line not in s: raise RuntimeError('dependency_header_shape_changed:'+name+':'+parent)
@@ -137,7 +124,7 @@ jobs:
           path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v1/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Execute CURRENT recompute + one atomic guarded write exactly once
+      - name: Execute CURRENT recompute plus one atomic guarded write exactly once
         env:
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -154,18 +141,15 @@ jobs:
           if len(lines)==1:
               try:r=json.loads(lines[0])
               except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_json_invalid','database_writes':'unknown','mapping_writes':'unknown','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False}
-          else:
-              r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','database_writes':'unknown','mapping_writes':'unknown','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'remote_exit':p.returncode,'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest()}
+          else:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','database_writes':'unknown','mapping_writes':'unknown','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'remote_exit':p.returncode,'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest()}
           raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
           state_name='completed_verified' if r.get('status')=='completed' and r.get('readback_verified') is True and p.returncode==0 else ('failed_known' if r.get('status')=='failed' and isinstance(r.get('database_writes'),int) else 'unknown_no_replay')
           receipt={'operation_id':os.environ['OPERATION_ID'],'state':state_name,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'remote_exit':p.returncode,'database_writes':r.get('database_writes'),'mapping_writes':r.get('mapping_writes'),'supplier_calls':r.get('supplier_calls',0),'tourvisor_calls':r.get('tourvisor_calls',0),'historical_operations_replayed':False,'readback_verified':r.get('readback_verified',False),'no_replay':True}
           (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
           if state_name=='completed_verified':
-              planned=r['planned'];b=r['coverage_before'];a=r['coverage_after'];summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` **COMMITTED + post-COMMIT verified**. Recomputed in the same locked transaction: prepared **{planned['total']}** = ANEX **{planned['anex']}** + Andromeda **{planned['andromeda']}**, live **{planned['live']}**; actual DB/mapping writes **{r['database_writes']}**, readback **{r['post_commit_readback_count']}/{r['database_writes']}**. Triple coverage **{b['all_three']} → {a['all_three']}**; ANEX links **{b['anex_links']} → {a['anex_links']}**, Andromeda unique **{b['andromeda_unique_local']} → {a['andromeda_unique_local']}**. Supplier/Tourvisor calls 0; manual decisions, pair exclusions, existing mappings and >5km conflicts protected. NO-REPLAY."
-          elif state_name=='failed_known':
-              summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` stopped with exact blocker `{r.get('reason','failed')}`; committed={r.get('committed')}, DB writes={r.get('database_writes')}. Supplier/Tourvisor calls 0. NO-REPLAY."
-          else:
-              summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` has **UNKNOWN live result** (`{r.get('reason','unknown')}`); do not replay. Receipt/result artifacts must be reconciled before any successor write."
+              q=r['planned'];b=r['coverage_before'];a=r['coverage_after'];summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` **COMMITTED + post-COMMIT verified**. Recomputed in same locked transaction: prepared **{q['total']}** = ANEX **{q['anex']}** + Andromeda **{q['andromeda']}**, live **{q['live']}**; actual DB/mapping writes **{r['database_writes']}**, readback **{r['post_commit_readback_count']}/{r['database_writes']}**. Triple coverage **{b['all_three']} → {a['all_three']}**; ANEX links **{b['anex_links']} → {a['anex_links']}**, Andromeda unique **{b['andromeda_unique_local']} → {a['andromeda_unique_local']}**. Supplier/Tourvisor calls 0; manual decisions, pair exclusions, existing mappings and >5km conflicts protected. NO-REPLAY."
+          elif state_name=='failed_known':summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` stopped with exact blocker `{r.get('reason','failed')}`; committed={r.get('committed')}, DB writes={r.get('database_writes')}. Supplier/Tourvisor calls 0. NO-REPLAY."
+          else:summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` has **UNKNOWN live result** (`{r.get('reason','unknown')}`); do not replay. Reconcile receipt/result before any successor write."
           (state/'summary.md').write_text(summary+'\n');print(summary)
           if state_name!='completed_verified':raise SystemExit(2)
           PY
