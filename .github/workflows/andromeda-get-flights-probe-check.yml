@@ -1,0 +1,32 @@
+name: Andromeda get_flights probe offline
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda_get_flights_probe.py'
+      - 'tests/andromeda_get_flights_probe_test.py'
+      - '.github/workflows/andromeda-get-flights-probe-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify bounded get_flights source without network
+        run: |
+          python3 -m py_compile scripts/diagnostics/andromeda_get_flights_probe.py tests/andromeda_get_flights_probe_test.py
+          python3 tests/andromeda_get_flights_probe_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('scripts/diagnostics/andromeda_get_flights_probe.py').read_text()
+          assert "action'=>'get_flights'" in src
+          assert "CURLOPT_POST=>true" in src and "['claim'=>$claimJson]" in src
+          assert "action'=>'calc'" not in src and "action'=>'bron'" not in src
+          assert "->package(" not in src
+          assert "booking_calls'=>0" in src and "automatic_retry'=>false" in src
+          print('Andromeda get_flights static safety: PASS')
+          PY
