@@ -204,6 +204,23 @@ function anex_three_price_andromeda(PDO $pdo, array $local, array $subject): arr
         'source_price_semantics'=>'andromeda_search_price_unverified_until_package_or_calc','fuel_field_semantics'=>'documented action=price has no separate fuel field'];
 }
 
+function anex_three_price_completed_result(array $out, array $subject, array $result, bool $reused = false): array
+{
+    return array_replace($out, [
+        'status'=>'completed',
+        'subject'=>$subject,
+        'offers'=>$result['offers']??[],
+        'details'=>array_diff_key($result,['offers'=>true]),
+        'supplier_effect'=>'read_only_search_completed',
+        'reused'=>$reused,
+    ]);
+}
+
+function anex_three_price_reused_result(array $result): array
+{
+    return array_replace($result, ['reused'=>true]);
+}
+
 function anex_three_price_main(): array
 {
     $started=microtime(true);$pdo=null;$reserved=false;$lock=null;$secrets=[];$tvLog=[];
@@ -231,15 +248,14 @@ function anex_three_price_main(): array
         anex_three_price_current_subject($pdo,$subject,(int)$local['country_id'],$registry);
         $prior=$state['cases'][$case]??null;
         if(is_array($prior)){
-            if(($prior['status']??null)==='completed'&&is_array($prior['result']??null)){return $prior['result']+['reused'=>true];}
+            if(($prior['status']??null)==='completed'&&is_array($prior['result']??null)){return anex_three_price_reused_result($prior['result']);}
             throw new RuntimeException('THREE_PRICE_CASE_NOT_REPLAYABLE');
         }
         $state['cases'][$case]=['status'=>'reserved','reserved_at'=>gmdate('c')];anex_three_price_save($path,$state);$reserved=true;$out['supplier_effect']='unknown_after_reservation';
         if($case==='anex')$result=anex_three_price_anex($pdo,$local,$subject,$registry,$secrets);
         elseif($case==='andromeda')$result=anex_three_price_andromeda($pdo,$local,$subject);
         else $result=anex_three_price_tv($pdo,$local,$subject,$tvLog,$secrets);
-        $out += ['status'=>'completed','subject'=>$subject,'offers'=>$result['offers']??[],'details'=>array_diff_key($result,['offers'=>true]),
-            'supplier_effect'=>'read_only_search_completed','reused'=>false];
+        $out=anex_three_price_completed_result($out,$subject,$result,false);
         $state['cases'][$case]=['status'=>'completed','completed_at'=>gmdate('c'),'result'=>$out];anex_three_price_save($path,$state);$reserved=false;
     }catch(Throwable $e){$code=$e->getMessage();$safe=preg_match('/\A(?:THREE_PRICE|ANEX|ANDROMEDA)_[A-Z0-9_]{1,80}\z/D',$code)?$code:'THREE_PRICE_UNCONFIRMED';$out['reason']=$safe;
         if($reserved && isset($state,$case,$path)){$state['cases'][$case]=['status'=>'unknown','recorded_at'=>gmdate('c'),'reason'=>$safe];try{anex_three_price_save($path,$state);}catch(Throwable $ignored){}$out['status']='unknown';$out['supplier_effect']='unknown';}}
