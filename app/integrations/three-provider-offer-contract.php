@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/three-provider-room-placement.php';
+require_once __DIR__ . '/three-provider-meal-family.php';
 
 /**
  * Provider-neutral Search3 offer boundary.
@@ -150,6 +151,14 @@ final class AnyTourThreeProviderOfferContract
         }
         if (!is_array($value['qualifiers']) || !self::exactKeys($value['qualifiers'], ['plus', 'without_alcohol'])
             || !is_bool($value['qualifiers']['plus']) || !is_bool($value['qualifiers']['without_alcohol'])) {
+            throw new InvalidArgumentException('THREE_PROVIDER_OFFER_MEAL');
+        }
+        // A caller assertion is not label evidence. Reuse the P2 dictionary;
+        // preserve an explicitly unknown family rather than silently upgrading it.
+        $normalized = AnyTourThreeProviderMealFamily::normalize($raw);
+        if (($family !== null && $family !== $normalized['family'])
+            || $value['qualifiers']['plus'] !== $normalized['qualifiers']['plus']
+            || $value['qualifiers']['without_alcohol'] !== $normalized['qualifiers']['without_alcohol']) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_MEAL');
         }
         return [

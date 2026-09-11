@@ -98,6 +98,57 @@ offer_check($childValue['party']['child_ages'] === [7]);
 offer_check($childValue['meal']['family_verified'] === false);
 offer_check($childValue['availability']['hotel']['evidence_state'] === 'missing');
 
+// Classify labels, not supplier IDs; never erase plus/without-alcohol differences.
+$validMeals = [
+    ['Room only', 'ro', false, false],
+    ['BB', 'bb', false, false],
+    ['HB+', 'hb', true, false],
+    ['Full board plus', 'fb', true, false],
+    [' All Inclusive ', 'ai', false, false],
+    ['Ultra all inclusive', 'uai', false, false],
+    ['AI without alcohol', 'ai', false, true],
+    ['Supplier special plan', null, false, false],
+    ['AI', null, false, false], // Explicit unknown is not silently promoted.
+];
+$invalidMeals = [
+    ['BB', 'ai', false, false],
+    ['UAI', 'ai', false, false],
+    ['AI', 'uai', false, false],
+    ['Supplier special plan', 'ai', false, false],
+    ['7', 'ai', false, false],
+    ['AI without alcohol', 'ai', false, false],
+    ['AI without alcohol', null, false, false],
+    ['HB+', 'hb', false, false],
+    ['AI', 'ai', true, false],
+    ['AI', 'ai', false, true],
+    ['Supplier special plan', null, true, false],
+];
+foreach (['tourvisor', 'anex', 'andromeda'] as $provider) {
+    foreach ($validMeals as [$label, $family, $plus, $withoutAlcohol]) {
+        $fixture = offer_fixture($provider);
+        // Object member order is not part of meal semantics.
+        $fixture['meal'] = ['raw' => $label, 'family' => $family,
+            'qualifiers' => ['without_alcohol' => $withoutAlcohol, 'plus' => $plus]];
+        $before = $fixture;
+        $result = AnyTourThreeProviderOfferContract::fromSearch($fixture);
+        offer_check($result['meal']['raw'] === trim($label) && $result['meal']['family'] === $family);
+        offer_check($result['meal']['family_verified'] === ($family !== null));
+        offer_check($result['meal']['qualifiers'] === $fixture['meal']['qualifiers']);
+        offer_check($fixture === $before);
+    }
+    foreach ($invalidMeals as [$label, $family, $plus, $withoutAlcohol]) {
+        $fixture = offer_fixture($provider);
+        $fixture['meal'] = ['raw' => $label, 'family' => $family,
+            'qualifiers' => ['plus' => $plus, 'without_alcohol' => $withoutAlcohol]];
+        try {
+            AnyTourThreeProviderOfferContract::fromSearch($fixture);
+            offer_check(false);
+        } catch (InvalidArgumentException $error) {
+            offer_check($error->getMessage() === 'THREE_PROVIDER_OFFER_MEAL');
+        }
+    }
+}
+
 $bad = [
     function () { $x = offer_fixture('other'); AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['provider_hotel_ref'] = ''; AnyTourThreeProviderOfferContract::fromSearch($x); },
