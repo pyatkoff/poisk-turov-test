@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const HMAS_OPERATION = 'hotel-match-anex-sellability-review-1971-20260911-v1';
+const HMAS_OPERATION = 'hotel-match-anex-sellability-review-1971-20260911-v2';
 const HMAS_CORE8 = [1=>true,2=>true,4=>true,8=>true,9=>true,10=>true,12=>true,16=>true];
 
 function hmas_norm($value): string {
@@ -101,6 +101,23 @@ function hmas_current_queue(PDO $db): array {
     }
     if(count($rows)>1000)throw new RuntimeException('HMAS_QUEUE_LIMIT');
     return $rows;
+}
+
+function hmas_preflight(PDO $db,string $operation=HMAS_OPERATION): array {
+    if($operation!==HMAS_OPERATION)throw new RuntimeException('HMAS_OPERATION_SCOPE');
+    if(!class_exists('AnyTourAnexClient')||!class_exists('AnyTourAnexSearch'))throw new RuntimeException('HMAS_RUNTIME_MISSING');
+    $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+    $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    $db->exec('START TRANSACTION READ ONLY');
+    try {
+        $queue=hmas_current_queue($db);$live=0;$by=[];
+        foreach($queue as $row){$by[(int)$row['country_id']]=true;if($row['live'])$live++;}
+        $countries=(int)$db->query('SELECT COUNT(*) FROM catalog_countries WHERE id IN (1,2,4,8,9,10,12,16) AND is_active=1')->fetchColumn();
+        $departure=(int)$db->query('SELECT COUNT(*) FROM catalog_departures WHERE id=1 AND is_active=1')->fetchColumn();
+        if($countries!==8||$departure!==1)throw new RuntimeException('HMAS_LOCAL_SCOPE_CHANGED');
+        $db->commit();
+        return ['status'=>'ready','operation_id'=>$operation,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0,'queue'=>count($queue),'live_queue'=>$live,'countries'=>count($by)];
+    } catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 
 function hmas_review(PDO $db,string $token,string $operation=HMAS_OPERATION): array {
