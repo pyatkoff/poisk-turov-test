@@ -1,0 +1,33 @@
+name: Andromeda fresh package probe offline
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda_fresh_package_probe.py'
+      - 'tests/andromeda_fresh_package_probe_test.py'
+      - '.github/workflows/andromeda-fresh-package-probe-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify one-shot live diagnostic source without network
+        run: |
+          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py tests/andromeda_fresh_package_probe_test.py
+          python3 tests/andromeda_fresh_package_probe_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('scripts/diagnostics/andromeda_fresh_package_probe.py').read_text()
+          assert "'OPERATORS'=>'5'" in src
+          assert "'PAGE'=>1" in src
+          assert "$supplierCalls=3; $package=$client->package($offer)" in src
+          assert "automatic_retry'=>false" in src
+          assert "booking_calls'=>0" in src and "calc_calls'=>0" in src and "get_flights_calls'=>0" in src
+          assert "->bron(" not in src and 'bron_ticket' not in src and "->calc(" not in src
+          print('Fresh package static safety: PASS')
+          PY
