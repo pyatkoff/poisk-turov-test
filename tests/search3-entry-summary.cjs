@@ -27,20 +27,18 @@ for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTi
 }
 assert.match(markup, /search-section-title--preferences"><span>Отель и условия<\/span>/, 'full search separates hotel preferences from trip basics without another form owner');
 assert.match(markup, /<div class="search-preferences">[\s\S]*?<\/div><\/div><div id="childAges"/, 'primary hotel preferences use one dedicated responsive grid inside the canonical form');
+const primaryStart = markup.indexOf('<div class="search-preferences">');
+const primaryEnd = markup.indexOf('</div></div><div id="childAges"');
+assert.ok(primaryStart > 0 && primaryEnd > primaryStart, 'primary preference grid remains bounded');
+const primaryMarkup = markup.slice(primaryStart, primaryEnd);
 for (const name of ['region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
-  assert.match(markup, new RegExp(`class="field search-preference"[\\s\\S]*?name="${name}"`), `primary preference remains directly visible: ${name}`);
+  assert.ok(primaryMarkup.includes(`name="${name}"`), `primary preference remains directly visible: ${name}`);
 }
-for (const name of ['subregion', 'rating']) {
-  assert.ok(!new RegExp(`class="field search-preference"[\\s\\S]*?name="${name}"`).test(markup), `secondary preference is not promoted into the primary grid: ${name}`);
-  assert.match(markup, new RegExp(`<details class="extras">[\\s\\S]*?name="${name}"`), `secondary preference remains available under extras: ${name}`);
+for (const name of ['subregion', 'rating', 'operator']) {
+  assert.ok(!primaryMarkup.includes(`name="${name}"`), `secondary field is not promoted into the primary grid: ${name}`);
+  assert.match(markup, new RegExp(`<details class="extras">[\\s\\S]*?name="${name}"`), `secondary field remains available under extras: ${name}`);
 }
 assert.match(markup, /<details class="extras">[\s\S]*?<select name="operator">[\s\S]*?<\/details>/, 'tour operator stays secondary inside the existing extras owner');
-const primaryEnd = markup.indexOf('</div></div><div id="childAges"');
-assert.ok(primaryEnd > 0, 'primary form block remains bounded');
-const primaryMarkup = markup.slice(markup.indexOf('<div class="main-fields">'), primaryEnd);
-assert.ok(!primaryMarkup.includes('name="operator"'), 'tour operator is not promoted into the primary search block');
-assert.ok(!primaryMarkup.includes('name="subregion"'), 'subregion stays secondary instead of stretching the primary form');
-assert.ok(!primaryMarkup.includes('name="rating"'), 'rating stays secondary instead of stretching the primary form');
 assert.match(markup, /\$advancedFilterCount=0;/, 'server entry owns the secondary-filter count');
 for (const name of ['subregion', 'rating', 'arrival', 'operator', 'hotel_type', 'hotel_service']) {
   assert.ok(markup.includes(`'${name}'`), `secondary summary includes ${name}`);
