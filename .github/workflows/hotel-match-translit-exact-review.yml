@@ -1,20 +1,20 @@
-name: MATCH translit exact review
-run-name: MATCH translit exact CURRENT-DB review #1971
+name: MATCH translit strong review
+run-name: MATCH translit strong CURRENT-DB review #1971
 on:
   push:
     branches: ['feat/match-current-bulk-review-20260911']
     paths:
-      - 'scripts/diagnostics/hotel_match_translit_exact_review.php'
+      - 'scripts/diagnostics/hotel_match_translit_strong_review.php'
       - '.github/workflows/hotel-match-translit-exact-review.yml'
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: match-translit-exact-review-1971-v1
+  group: match-translit-strong-review-1971-v1
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-translit-exact-review-1971-20260911-v1
+  OPERATION_ID: hotel-match-translit-strong-review-1971-20260911-v1
 jobs:
   review:
     if: github.actor == 'pyatkoff' && github.run_attempt == 1
@@ -27,16 +27,16 @@ jobs:
       - name: Verify read-only MATCH source
         run: |
           set -euo pipefail
-          php -l scripts/diagnostics/hotel_match_translit_exact_review.php
+          php -l scripts/diagnostics/hotel_match_translit_strong_review.php
           python3 - <<'PYTHON'
           from pathlib import Path
-          s=Path('scripts/diagnostics/hotel_match_translit_exact_review.php').read_text(encoding='utf-8')
-          assert "hotel-match-translit-exact-review-1971-20260911-v1" in s
+          s=Path('scripts/diagnostics/hotel_match_translit_strong_review.php').read_text(encoding='utf-8')
+          assert "hotel-match-translit-strong-review-1971-20260911-v1" in s
           assert 'START TRANSACTION READ ONLY' in s
           assert "'database_writes'=>0" in s and "'supplier_calls'=>0" in s
           for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl','http://','https://'):
               assert bad.lower() not in s.lower(), bad
-          print('read-only translit scope verified')
+          print('read-only translit strong scope verified')
           PYTHON
       - name: Reserve immutable read operation
         run: |
@@ -52,7 +52,7 @@ jobs:
             'run_id':int(os.environ['GITHUB_RUN_ID']),
             'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
             'source_sha':os.environ['GITHUB_SHA'],
-            'mode':'current_db_translit_exact_read_only',
+            'mode':'current_db_translit_strong_read_only',
             'database_writes':0,
             'supplier_calls':0,
             'historical_operations_replayed':False,
@@ -63,11 +63,11 @@ jobs:
       - name: Preserve reservation before live read
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-translit-exact-review-1971-20260911-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-translit-exact-review-1971-20260911-v1/reservation.json
+          name: hotel-match-translit-strong-review-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-translit-strong-review-1971-20260911-v1/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Run CURRENT DB translit exact review
+      - name: Run CURRENT DB translit strong review
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -87,16 +87,17 @@ jobs:
           pcbr=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
           live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
           translit=body('scripts/diagnostics/hotel_match_translit_exact_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          strong=body('scripts/diagnostics/hotel_match_translit_strong_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_translit_exact_review.php';\n",'',1)
           wrapper=r'''
           $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
           $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php')); if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');
-          require_once $dbHelper; $db=v2_data_db(); echo fc_json(htxr_review($db,HTXR_OPERATION)),"\n";
+          require_once $dbHelper; $db=v2_data_db(); echo fc_json(htsr_review($db,HTSR_OPERATION)),"\n";
           '''
-          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+bulk+"\n"+pcbr+"\n"+live+"\n"+translit+"\n"+wrapper
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+bulk+"\n"+pcbr+"\n"+live+"\n"+translit+"\n"+strong+"\n"+wrapper
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
           host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
           if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
-          with tempfile.TemporaryDirectory(prefix='match-translit-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+          with tempfile.TemporaryDirectory(prefix='match-translit-strong-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
               key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
               cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
               clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
@@ -116,9 +117,9 @@ jobs:
           receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'consistent_snapshot':True,'no_replay':True,'stats':r['stats'],'coverage':r['coverage']}
           (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
           s=r['stats'];c=r['coverage']
-          summary=(f"MATCH #1971 transliteration exact CURRENT-DB review `{r['operation_id']}` completed **read-only / NO-REPLAY**. "
-                   f"Examined Andromeda **{s['andromeda_examined']}**, ANEX **{s['anex_examined']}**; prepared **{s['prepared']}** cross-script exact-translit + direct-geo unique candidates: Andromeda **{s['prepared_andromeda']}**, ANEX **{s['prepared_anex']}**, live-observed **{s['live_prepared']}**. "
-                   f"Ambiguous/none **{s['ambiguous_or_none']}**. Coverage snapshot: ANEX links {c['anex_links']}, ANEX unique local {c['anex_unique_local']}, Andromeda unique local {c['andromeda_unique_local']}, triple {c['all_three']}. DB writes **0**, supplier calls **0**, historical operations replayed **0**. Any write requires a distinct NEW server-current guarded operation.")
+          summary=(f"MATCH #1971 transliteration strong CURRENT-DB review `{r['operation_id']}` completed **read-only / NO-REPLAY**. "
+                   f"Examined Andromeda **{s['andromeda_examined']}**, ANEX **{s['anex_examined']}**, live unresolved **{s['live_examined']}**; prepared **{s['prepared']}** cross-script one-sided ordered-containment + direct-geo candidates: Andromeda **{s['prepared_andromeda']}**, ANEX **{s['prepared_anex']}**, live **{s['live_prepared']}**, opposite-provider bridge **{s['bridge_prepared']}**, Tourvisor-only **{s['tourvisor_only_prepared']}**. "
+                   f"Blocked ambiguous margin **{s['ambiguous_margin']}**, coordinate conflicts **{s['coordinate_conflict']}**; category mismatches among prepared **{s['category_mismatch_prepared']}** remain annotation only. Coverage snapshot: ANEX links {c['anex_links']}, ANEX unique local {c['anex_unique_local']}, Andromeda unique local {c['andromeda_unique_local']}, triple {c['all_three']}. DB writes **0**, supplier calls **0**. Any acceptance requires a distinct NEW server-current guarded write with post-COMMIT readback.")
           (state/'summary.md').write_text(summary+'\n',encoding='utf-8')
           print(json.dumps({'stats':s,'coverage':c},ensure_ascii=False,sort_keys=True))
           PYTHON
@@ -127,8 +128,8 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-translit-exact-review-1971-20260911-v1-result
-          path: ${{ runner.temp }}/hotel-match-translit-exact-review-1971-20260911-v1/
+          name: hotel-match-translit-strong-review-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-translit-strong-review-1971-20260911-v1/
           if-no-files-found: warn
           retention-days: 90
       - name: Record MATCH result
