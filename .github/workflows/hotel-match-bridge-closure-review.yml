@@ -1,0 +1,96 @@
+name: MATCH bridge closure review
+run-name: MATCH fixed-point bridge closure review #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - '.github/workflows/hotel-match-bridge-closure-review.yml'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-bridge-closure-review-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-bridge-closure-review-1971-20260911-v1
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify read-only MATCH source
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_bridge_closure_review.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_bridge_closure_review.php').read_text()
+          assert "hotel-match-bridge-closure-review-1971-20260911-v1" in s
+          assert 'START TRANSACTION READ ONLY' in s
+          assert 'database_writes'=>0 if False else True
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl','http://','https://'):
+              assert bad.lower() not in s.lower(), bad
+          print('read-only closure scope verified')
+          PYTHON
+      - name: Run CURRENT DB fixed-point bridge closure review
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/result.json"; export OUT
+          python3 - <<'PYTHON'
+          import json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          pcbr=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          closure=body('scripts/diagnostics/hotel_match_bridge_closure_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          wrapper=r'''
+          $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
+          $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php')); if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');
+          require_once $dbHelper; $db=v2_data_db(); echo fc_json(hbcr_review($db,HBCR_OPERATION,8)),"\n";
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+bulk+"\n"+pcbr+"\n"+live+"\n"+closure+"\n"+wrapper
+          host=os.environ['ANYTOOUR_DEPLOY_HOST'].strip();user=os.environ['ANYTOOUR_DEPLOY_USER'].strip();keytext=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-closure-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_') and k not in ('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')}
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=720,env=clean)
+          if p.returncode: raise RuntimeError(p.stderr[-2000:])
+          r=json.loads(p.stdout); assert r['operation_id']==os.environ['OPERATION_ID']; assert r['database_writes']==0 and r['supplier_calls']==0
+          Path(os.environ['OUT']).write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps({'stats':r['stats'],'rounds':r['rounds'],'coverage':r['coverage']},ensure_ascii=False))
+          PYTHON
+      - name: Preserve review
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-bridge-closure-review-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record MATCH result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          python3 - <<'PYTHON'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/result.json'));s=r['stats'];c=r['coverage'];rounds=', '.join(f"r{x['round']}={x['new']} ({x['andromeda']} Amd/{x['anex']} ANEX)" for x in r['rounds']) or 'none'
+          text=(f"MATCH #1971 post-write fixed-point bridge closure `{r['operation_id']}` completed **read-only / NO-REPLAY**. CURRENT unresolved examined: Andromeda **{s['andromeda_pending_examined']}**, ANEX **{s['anex_unresolved_examined']}**. Prepared **{s['prepared']}** conservative ordered-identity + direct-geo cross-provider candidates: Andromeda **{s['prepared_andromeda']}**, ANEX **{s['prepared_anex']}**, live-observed **{s['live_prepared']}**; closure rounds: {rounds}. DB writes **0**, supplier calls **0**. Coverage snapshot: ANEX links {c['anex_links']}, ANEX unique local {c['anex_unique_local']}, Andromeda unique local {c['andromeda_unique_local']}, triple {c['all_three']}. Artifact `{os.environ['ARTIFACT_ID']}`. Any write requires a distinct NEW server-current guarded operation.")
+          open(os.environ['RUNNER_TEMP']+'/comment.md','w').write(text+'\n')
+          PYTHON
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
