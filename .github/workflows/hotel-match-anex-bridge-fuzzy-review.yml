@@ -1,0 +1,132 @@
+name: MATCH ANEX bridge fuzzy review
+run-name: MATCH ANEX bridge fuzzy review #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_bridge_fuzzy_review.php'
+      - 'tests/hotel-match-anex-bridge-fuzzy-review-test.php'
+      - '.github/workflows/hotel-match-anex-bridge-fuzzy-review.yml'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-bridge-fuzzy-review-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-bridge-fuzzy-review-1971-20260911-v1
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Static read-only contract
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_bridge_fuzzy_review.php
+          php -l tests/hotel-match-anex-bridge-fuzzy-review-test.php
+          php tests/hotel-match-anex-bridge-fuzzy-review-test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_anex_bridge_fuzzy_review.php
+      - name: Reserve immutable read operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$STATE"
+          export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_anex_bridge_fuzzy_read_only','database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n',encoding='utf-8')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-bridge-fuzzy-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-bridge-fuzzy-review-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read CURRENT DB and build ANEX-bridge evidence package
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          bridge=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          review=body('scripts/diagnostics/hotel_match_anex_bridge_fuzzy_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          wrapper=r'''
+          $root=realpath(getcwd());
+          if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
+          $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+          if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');
+          require_once $dbHelper;
+          $db=v2_data_db();
+          echo fc_json(habfr_review($db,HABFR_OPERATION)),"\n";
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+bridge+"\n"+live+"\n"+review+"\n"+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
+          if not host or not user or not os.environ[req[0]].strip(): raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-anex-bridge-fuzzy-v1-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600)
+              known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=420,env=clean)
+          try: result=json.loads(p.stdout)
+          except Exception:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'live_output_unparseable','exit_code':p.returncode,'stderr_tail':p.stderr[-1500:]},ensure_ascii=False,sort_keys=True)+'\n')
+              raise RuntimeError('live_output_unparseable')
+          (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n',encoding='utf-8')
+          if p.returncode!=0 or result.get('status')!='completed' or result.get('operation_id')!=os.environ['OPERATION_ID'] or result.get('database_writes')!=0 or result.get('supplier_calls')!=0 or result.get('historical_operations_replayed') is not False:
+              raise RuntimeError('anex_bridge_fuzzy_not_completed')
+          raw=(state/'result.json').read_bytes()
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'safe_prepared_count':result.get('safe_prepared_count',0),'evidence_only_count':result.get('evidence_only_count',0),'stats':result.get('stats',{}),'coverage':result.get('coverage',{})}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-bridge-fuzzy-v1-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-bridge-fuzzy-review-1971-20260911-v1/result.json
+            ${{ runner.temp }}/hotel-match-anex-bridge-fuzzy-review-1971-20260911-v1/receipt.json
+            ${{ runner.temp }}/hotel-match-anex-bridge-fuzzy-review-1971-20260911-v1/blocker.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Publish MATCH evidence result
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const r=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/${process.env.OPERATION_ID}/result.json`,'utf8'));
+            const s=r.stats||{}, c=r.coverage||{};
+            const body=[
+              `MATCH #1971 CURRENT-DB ANEX-bridge fuzzy review \`${r.operation_id}\` completed read-only / NO-REPLAY.`,
+              `Pending examined **${s.pending_examined||0}**: live **${s.live_pending||0}** across **${s.observation_rows||0}** observations. Prior-candidate rows **${s.prior_candidate_rows||0}**, direct-place rows **${s.direct_place_rows||0}**, ANEX-bridge pools **${s.anex_bridge_pool_rows||0}**.`,
+              `Prepared safe one-sided identity+direct-geo candidates **${r.safe_prepared_count||0}** (live **${s.safe_live||0}**); high-fuzzy evidence-only **${r.evidence_only_count||0}**. Ambiguous safe sets **${s.ambiguous_safe||0}**, coordinate conflicts **${s.coordinate_conflict||0}**.`,
+              `Safe category mismatches **${s.category_mismatch_safe||0}** remain annotation only. DB writes **0**, supplier calls **0**.`,
+              `Coverage snapshot: ANEX links ${c.anex_links||0}, ANEX unique local ${c.anex_unique_local||0}, Andromeda unique local ${c.andromeda_unique_local||0}, triple ${c.all_three||0}.`,
+              `Run \`${process.env.GITHUB_RUN_ID}\`, source \`${process.env.GITHUB_SHA}\`. Any write requires a separate NEW server-current guarded operation.`
+            ].join('\n\n');
+            await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:1971,body});
