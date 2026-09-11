@@ -31,7 +31,7 @@ final class AnyTourThreeProviderOfferContext
             throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_OFFER');
         }
         $provider = self::provider($offer['provider'] ?? null);
-        $operator = self::operator($offer['operator'] ?? null);
+        $operator = self::operator($provider, $offer['operator'] ?? null);
         $localHotelId = $offer['local_hotel_id'] ?? null;
         self::validatePositive($localHotelId, 999999999, 'THREE_PROVIDER_CONTEXT_LOCAL_ID');
         $identity = self::identity($offer['identity'] ?? null);
@@ -88,8 +88,8 @@ final class AnyTourThreeProviderOfferContext
             || $value['selection_state'] !== 'disabled') {
             throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_RETAINED');
         }
-        self::provider($value['provider']);
-        self::operator($value['operator']);
+        $provider = self::provider($value['provider']);
+        self::operator($provider, $value['operator']);
         self::validatePositive($value['local_hotel_id'], 999999999, 'THREE_PROVIDER_CONTEXT_LOCAL_ID');
         self::identity($value['identity']);
         self::validatePositive($value['generation'], 2147483647, 'THREE_PROVIDER_CONTEXT_GENERATION');
@@ -108,8 +108,8 @@ final class AnyTourThreeProviderOfferContext
         if (!self::exactKeys($value, $keys)) {
             throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_CURRENT');
         }
-        self::provider($value['provider']);
-        self::operator($value['operator']);
+        $provider = self::provider($value['provider']);
+        self::operator($provider, $value['operator']);
         self::validatePositive($value['local_hotel_id'], 999999999, 'THREE_PROVIDER_CONTEXT_LOCAL_ID');
         self::identity($value['identity']);
         self::validatePositive($value['generation'], 2147483647, 'THREE_PROVIDER_CONTEXT_GENERATION');
@@ -124,12 +124,14 @@ final class AnyTourThreeProviderOfferContext
         return $value;
     }
 
-    private static function operator($value): string
+    private static function operator(string $provider, $value): array
     {
-        if (!is_string($value) || trim($value) === '' || strlen($value) > 120) {
+        if (!is_array($value)) {
             throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_OPERATOR');
         }
-        return trim($value);
+        $checked = AnyTourThreeProviderOperator::fromSearch($provider, $value['raw'] ?? null);
+        if ($checked !== $value) throw new InvalidArgumentException('THREE_PROVIDER_CONTEXT_OPERATOR');
+        return $checked;
     }
 
     private static function identity($value): array

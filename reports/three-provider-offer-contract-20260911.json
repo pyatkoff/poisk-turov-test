@@ -6,7 +6,7 @@
   "source_commit": "9c5ab52a06a3a87e761c767548f223a692ba6314",
   "base": "480b8bc4c8dc94248c1f1b0dc8c4007b5c1f49be",
   "statuses": {
-    "provider_operator_separation": "verified",
+    "provider_operator_separation": "operator_evidence_object_no_cross_provider_equivalence",
     "local_identity": "nullable_no_inference",
     "search_offer_identity": "digest_only",
     "date_party_meal_room_placement": "verified",
@@ -23,7 +23,8 @@
   "flight_details_source": "app/integrations/three-provider-flight-details.php",
   "flight_details_verified_head": "299c71af0e2ec38af532a1638be5a7d54cbdaca9",
   "flight_details_verification": {"offer_run": 34568533837, "context_run": 34568533839, "security_run": 34568533875, "status": "success"},
+  "operator_source": "app/integrations/three-provider-operator.php",
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
   "tests": {"offer_checks": 39, "availability_checks": 20, "flight_checks": 16, "context_checks": 29, "security_run": 34568533875, "offer_run": 34568533837, "context_run": 34568533839, "status": "success"},
-  "next_action": "Map loaded flight and baggage evidence without automatic detail fetch; Andromeda get_flights remains gated."
+  "next_action": "Verify supplier-specific operator dictionaries before cross-provider canonical equivalence."
 }

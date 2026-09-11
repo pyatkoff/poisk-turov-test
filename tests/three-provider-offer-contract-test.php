@@ -3,6 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/../app/integrations/three-provider-money-facts.php';
 require __DIR__ . '/../app/integrations/three-provider-availability.php';
 require __DIR__ . '/../app/integrations/three-provider-flight-details.php';
+require __DIR__ . '/../app/integrations/three-provider-operator.php';
 require __DIR__ . '/../app/integrations/three-provider-offer-contract.php';
 
 $checks = 0;
@@ -42,7 +43,7 @@ function offer_fixture(string $provider = 'tourvisor', ?int $local = 1239): arra
 
 $value = AnyTourThreeProviderOfferContract::fromSearch(offer_fixture());
 offer_check($value['provider'] === 'tourvisor');
-offer_check($value['operator'] === 'ANEX');
+offer_check($value['operator']['raw'] === 'ANEX' && $value['operator']['canonical_verified'] === false);
 offer_check($value['local_hotel_id'] === 1239);
 offer_check(isset($value['identity']['offer_ref_digest']) && strlen($value['identity']['offer_ref_digest']) === 64);
 offer_check(!isset($value['identity']['offer_ref']) && !isset($value['supplier_offer_id']));

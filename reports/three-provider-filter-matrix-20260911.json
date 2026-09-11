@@ -136,10 +136,10 @@
     {
       "field": "operator_filter",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "operatorIds are accepted in the protected Tourvisor search"},
-      "anex": {"status": "unsupported", "note": "direct ANEX preview explicitly rejects operatorIds; provider itself is ANEX"},
-      "andromeda": {"status": "unsupported", "note": "public preview rejects operatorIds; internal diagnostic-only gate supports exact ANEX operator id 5"},
-      "next_action": "build provider-specific operator dictionary and keep operator separate from provider"
+      "tourvisor": {"status": "verified", "note": "operatorIds are accepted upstream; result operator remains a raw provider label"},
+      "anex": {"status": "unsupported", "note": "provider-fixed ANEX identity is verified; operatorIds remain rejected"},
+      "andromeda": {"status": "unsupported", "note": "public preview rejects operatorIds; result operator remains a raw label"},
+      "next_action": "verify provider dictionaries before cross-provider operator equivalence"
     },
     {
       "field": "hotel_types",
@@ -248,6 +248,7 @@
   ],
   "availability_contract": {"source": "app/integrations/three-provider-availability.php", "verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4", "status": "verified_raw_evidence_canonical_unknown"},
   "flight_details_contract": {"source": "app/integrations/three-provider-flight-details.php", "verified_head": "299c71af0e2ec38af532a1638be5a7d54cbdaca9", "status": "verified_search_not_loaded"},
+  "operator_contract": {"source": "app/integrations/three-provider-operator.php", "status": "pending_ci_no_cross_provider_equivalence"},
   "live_findings": {
     "broad_v2": {
       "scenario": "Moscow→Turkey, 2026-10-05, 7 nights, 2 adults, AI, ANEX-only",

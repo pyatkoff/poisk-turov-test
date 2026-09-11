@@ -3,6 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/../app/integrations/three-provider-money-facts.php';
 require __DIR__ . '/../app/integrations/three-provider-availability.php';
 require __DIR__ . '/../app/integrations/three-provider-flight-details.php';
+require __DIR__ . '/../app/integrations/three-provider-operator.php';
 require __DIR__ . '/../app/integrations/three-provider-offer-contract.php';
 require __DIR__ . '/../app/integrations/three-provider-offer-context.php';
 
@@ -60,7 +61,7 @@ function current_context(array $retained): array
 
 $retained = AnyTourThreeProviderOfferContext::retain(context_offer(), 7, 3, 1000, 300);
 context_check($retained['provider'] === 'andromeda');
-context_check($retained['operator'] === 'ANEX');
+context_check($retained['operator']['raw'] === 'ANEX' && $retained['operator']['canonical_verified'] === false);
 context_check($retained['local_hotel_id'] === 3417);
 context_check($retained['generation'] === 7 && $retained['page'] === 3);
 context_check($retained['issued_at'] === 1000 && $retained['expires_at'] === 1300);
@@ -81,7 +82,7 @@ foreach (['provider', 'operator', 'local_hotel_id', 'generation', 'page'] as $ke
     $changed = $current;
     $changed[$key] = match ($key) {
         'provider' => 'anex',
-        'operator' => 'Other operator',
+        'operator' => array_replace($current['operator'], ['raw' => 'Other operator']),
         'local_hotel_id' => 6929,
         'generation' => 8,
         'page' => 4,
