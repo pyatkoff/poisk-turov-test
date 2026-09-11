@@ -7,6 +7,7 @@ $quoteApp = is_file(__DIR__.'/app/integrations/andromeda-selected-quote.php')
 require_once $quoteApp . '/andromeda-selected-offer.php';
 require_once $quoteApp . '/andromeda-claim-actions.php';
 require_once $quoteApp . '/andromeda-selected-quote.php';
+require_once $quoteApp . '/andromeda-quote-attempt-state.php';
 
 /** Resolve a retained offer privately, under the same search/session authority as offer_detail. */
 function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved, array $config, string $session): array
@@ -44,21 +45,114 @@ function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved,
 
 function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, array $config, string $session): array
 {
+    // Re-resolve current retained context before looking at a prior completed quote.
+    // Therefore a stale/reassigned mapping cannot reuse an older result.
     $resolved = anytour_andromeda_quote_resolve($request, $pdo, $saved, $config, $session);
-    $budgetDirectory = dirname($config['catalog_path']);
-    $transport = new AnyTourAndromedaTransport(false, true);
-    $client = new AnyTourAndromedaClient(
-        static function (string $url, array $options) use ($transport, $budgetDirectory): array {
-            anytour_andromeda_search3_budget($budgetDirectory);
-            return $transport($url, $options);
-        }, true, true
-    );
-    $client->login($config['username'], $config['password']);
-    $sid = $client->privateSession()['sid'] ?? null;
-    if (!is_string($sid)) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
-    $actions = new AnyTourAndromedaClaimActions($sid,
-        static fn() => anytour_andromeda_search3_budget($budgetDirectory));
-    return AnyTourAndromedaSelectedQuote::run($resolved, $client, $actions);
+    $context = $resolved['context'] ?? [];
+    $ref = $context['search_ref'] ?? null;
+    $generation = $context['generation'] ?? null;
+    $page = $context['page'] ?? null;
+    $offerRef = $context['offer_ref'] ?? null;
+    if (!is_string($ref) || preg_match('/^[a-f0-9]{64}$/D', $ref) !== 1
+        || !is_int($generation) || $generation < 1 || !is_int($page) || $page < 1
+        || !is_string($offerRef) || preg_match('/^offer_[a-f0-9]{64}$/D', $offerRef) !== 1
+        || !is_string($resolved['criteria_sha256'] ?? null)
+        || !is_string($resolved['supplier_offer_sha256'] ?? null)) {
+        throw new RuntimeException('ANDROMEDA_QUOTE_CONTEXT_MISMATCH');
+    }
+
+    $directory = dirname($config['catalog_path']) . '/searches';
+    if (!is_dir($directory) || is_link($directory)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+    $checkpoint = $directory . '/' . $ref . '-g' . $generation . '-p' . $page . '-' . $offerRef . '-quote-v1.json';
+    $lockPath = $directory . '/' . $ref . '.lock';
+    if (is_link($checkpoint) || is_link($lockPath)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+    $contextSha256 = hash('sha256', json_encode([
+        'context' => $context,
+        'criteria_sha256' => $resolved['criteria_sha256'],
+        'supplier_offer_sha256' => $resolved['supplier_offer_sha256'],
+    ], JSON_THROW_ON_ERROR));
+    $operationSha256 = hash('sha256', 'andromeda-selected-quote-v1');
+
+    $read = static function(string $path, bool $optional = false): array {
+        if (is_link($path)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        if (!file_exists($path) && $optional) return [];
+        if (!is_file($path) || filesize($path) > 131072) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        $data = json_decode(file_get_contents($path), true, 32, JSON_THROW_ON_ERROR);
+        if (!is_array($data)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        return $data;
+    };
+    $persist = static function(array $next, array $expected) use ($read, $checkpoint): array {
+        $disk = $read($checkpoint, true);
+        if (($disk['state'] ?? []) !== $expected
+            || (file_exists($checkpoint) && array_keys($disk) !== ['state'])) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_CHANGED');
+        }
+        anytour_andromeda_search3_save($checkpoint, ['state' => $next]);
+        $written = $read($checkpoint);
+        if (array_keys($written) !== ['state'] || ($written['state'] ?? null) !== $next) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_FAILED');
+        }
+        return $written['state'];
+    };
+
+    $lock = fopen($lockPath, 'c');
+    if (!$lock || !flock($lock, LOCK_EX)) throw new RuntimeException('ANDROMEDA_QUOTE_LOCK_FAILED');
+    try {
+        $envelope = $read($checkpoint, true);
+        if ($envelope !== [] && array_keys($envelope) !== ['state']) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        }
+        $attempt = $envelope['state'] ?? [];
+        if ($attempt !== []) {
+            // Completed is a local read. Reserved/unknown never authorize a retry.
+            return AnyTourAndromedaQuoteAttemptState::replay($attempt, $contextSha256, $operationSha256);
+        }
+        $attempt = $persist(
+            AnyTourAndromedaQuoteAttemptState::reserve($contextSha256, $operationSha256), []);
+    } finally { flock($lock, LOCK_UN); fclose($lock); }
+
+    try {
+        $budgetDirectory = dirname($config['catalog_path']);
+        $transport = new AnyTourAndromedaTransport(false, true);
+        $client = new AnyTourAndromedaClient(
+            static function (string $url, array $options) use ($transport, $budgetDirectory): array {
+                anytour_andromeda_search3_budget($budgetDirectory);
+                return $transport($url, $options);
+            }, true, true
+        );
+        $client->login($config['username'], $config['password']);
+        $sid = $client->privateSession()['sid'] ?? null;
+        if (!is_string($sid)) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
+        $actions = new AnyTourAndromedaClaimActions($sid,
+            static fn() => anytour_andromeda_search3_budget($budgetDirectory));
+        $result = AnyTourAndromedaSelectedQuote::run($resolved, $client, $actions);
+
+        $lock = fopen($lockPath, 'c');
+        if (!$lock || !flock($lock, LOCK_EX)) throw new RuntimeException('ANDROMEDA_QUOTE_LOCK_FAILED');
+        try {
+            $completed = AnyTourAndromedaQuoteAttemptState::completed($attempt, $result);
+            $attempt = $persist($completed, $attempt);
+        } finally { flock($lock, LOCK_UN); fclose($lock); }
+        return $result;
+    } catch (Throwable $error) {
+        // Once the durable reservation exists, any incomplete supplier path is unknown.
+        // Persist best-effort evidence; even a persistence failure leaves `reserved` on disk,
+        // which also refuses semantic replay on the next request.
+        try {
+            $lock = fopen($lockPath, 'c');
+            if ($lock && flock($lock, LOCK_EX)) {
+                try {
+                    $disk = $read($checkpoint);
+                    if (($disk['state'] ?? null) === $attempt && ($attempt['status'] ?? null) === 'reserved') {
+                        $attempt = $persist(AnyTourAndromedaQuoteAttemptState::unknown($attempt), $attempt);
+                    }
+                } finally { flock($lock, LOCK_UN); fclose($lock); }
+            }
+        } catch (Throwable $ignored) {
+            // Preserve original supplier/checkpoint error. A surviving reserved checkpoint is sealed.
+        }
+        throw $error;
+    }
 }
 
 function anytour_andromeda_quote_http(): void
