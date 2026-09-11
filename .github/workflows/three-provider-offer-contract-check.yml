@@ -77,7 +77,6 @@ jobs:
           # Preserve source-isolation guards; behavior belongs to the PHP suites,
           # not assertions about class member names or exact return statements.
           strict = ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id')
-          evidence = ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id')
           evidence = ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id')
           boundaries = {
               'three-provider-offer-contract.php': strict,
