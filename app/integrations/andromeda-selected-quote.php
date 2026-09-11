@@ -43,7 +43,7 @@ final class AnyTourAndromedaSelectedQuote
                 $claim = $actions->changeService($claim, $item['uid']);
             }
             $selectedFlights = self::selectedFlights($claim);
-            if (array_keys($selectedFlights) !== ['0', '1']) {
+            if (array_keys($selectedFlights) !== [0, 1]) {
                 throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
             }
         } else {
