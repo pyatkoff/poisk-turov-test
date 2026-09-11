@@ -50,9 +50,11 @@ assert.ok(localFilters.includes('matchesRegion=!facets.region||facets.regions[in
   'region selection filters only the current loaded hotel set');
 assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)"),
   'region changes stay inside the local result filter owner');
+assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,providerField,ratingField,seaField];}'),
+  'desktop and mobile share decision-first filter order: hotel, resort, stars, meal, budget, operator, source, rating, sea');
 
 for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'startSearch(']) {
   assert.ok(!localFilters.includes(forbidden), `local result facets do not start supplier transport: ${forbidden}`);
 }
 
-console.log('PASS: Search3 exposes honest sorting plus distinct local provider/operator/region result facets');
+console.log('PASS: Search3 exposes honest sorting plus decision-first local provider/operator/region result facets');
