@@ -127,7 +127,7 @@ async function run(browser, width) {
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
     if (width >= 1199) {
       const rows = await page.locator('#tourSearch .search-group').evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size);
-      assert.equal(rows, width >= 1200 ? 1 : 2, 'served form changes group rows at the actual desktop boundary');
+      assert.equal(rows, 2, 'served form keeps two balanced trip rows across the 1199/1200 desktop boundary');
       if (width >= 1200) for (const input of await page.locator('#tourSearch input[type=date]').all()) {
         assert.ok((await input.boundingBox()).width >= 125, 'desktop dates retain readable native values');
       }
