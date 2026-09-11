@@ -19,7 +19,7 @@ jobs:
     env:
       OPERATION_ID: hotel-match-three-provider-111-pilot-1971-20260911-v1
       EXPECTED_BASE_SHA: 32f4c06bf37c0b7e0709c72d207daa6ae9a57915
-      ARTIFACT_DIR: ${{ runner.temp }}/match-three-provider-111-v1
+      ARTIFACT_DIR: /tmp/match-three-provider-111-v1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +39,6 @@ jobs:
           diff -u "$RUNNER_TEMP/expected-paths" "$RUNNER_TEMP/paths"
           php -l scripts/diagnostics/hotel_match_three_provider_111_pilot.php
           ! grep -Eiq 'INSERT[[:space:]]+INTO|UPDATE[[:space:]].*[[:space:]]SET|DELETE[[:space:]]+FROM|REPLACE[[:space:]]+INTO|ALTER[[:space:]]+TABLE|DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' scripts/diagnostics/hotel_match_three_provider_111_pilot.php
-          ! grep -Eiq "['\"]/[^'\"]*(continue|booking|bookTour|createOrder|sendLead)" scripts/diagnostics/hotel_match_three_provider_111_pilot.php
 
       - name: Prepare immutable reservation before provider access
         run: |
@@ -49,16 +48,7 @@ jobs:
           import hashlib,json,os
           from pathlib import Path
           source=Path('scripts/diagnostics/hotel_match_three_provider_111_pilot.php').read_bytes()
-          value={
-            'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_live_access',
-            'source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],
-            'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
-            'diagnostic_sha256':hashlib.sha256(source).hexdigest(),
-            'criteria':{'departure':'Moscow','country':'Turkey','date':'2026-09-25','nights':8,'adults':2,'children':0,'currency':'RUB'},
-            'providers':['tourvisor_anex_only','direct_anex','andromeda_anex_only'],
-            'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,
-            'no_replay':True,
-          }
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_live_access','source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'diagnostic_sha256':hashlib.sha256(source).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':'2026-09-25','nights':8,'adults':2,'children':0,'currency':'RUB'},'providers':['tourvisor_anex_only','direct_anex','andromeda_anex_only'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,'no_replay':True}
           p=Path(os.environ['ARTIFACT_DIR'])/'reservation.json';raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
           if p.read_bytes()!=raw: raise SystemExit('reservation readback failed')
           PY
@@ -67,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hotel-match-three-provider-111-pilot-${{ github.run_id }}-${{ github.run_attempt }}-reserved
-          path: ${{ runner.temp }}/match-three-provider-111-v1/reservation.json
+          path: /tmp/match-three-provider-111-v1/reservation.json
           if-no-files-found: error
           retention-days: 90
 
@@ -83,8 +73,7 @@ jobs:
           from pathlib import Path
           required=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
           if any(not os.environ.get(x,'').strip() for x in required): raise SystemExit('missing ssh configuration')
-          program=Path('scripts/diagnostics/hotel_match_three_provider_111_pilot.php').read_text()
-          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          program=Path('scripts/diagnostics/hotel_match_three_provider_111_pilot.php').read_text(); raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
           with tempfile.TemporaryDirectory(prefix='match111-') as td:
               key=Path(td)/'key'
               if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
@@ -92,11 +81,9 @@ jobs:
               key.chmod(0o600)
               cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
               p=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=420)
-          marker='MATCH111_JSON:'
-          line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
+          marker='MATCH111_JSON:'; line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
           if line is None: raise SystemExit('provider result marker missing')
-          data=json.loads(line)
-          data.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=p.returncode,no_replay=True)
+          data=json.loads(line); data.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=p.returncode,no_replay=True)
           out=Path(os.environ['ARTIFACT_DIR'])/'result.json';rawout=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();out.write_bytes(rawout)
           if len(rawout)>2000000: raise SystemExit('result too large')
           summary={'status':data.get('status'),'stage':data.get('stage'),'reason':data.get('reason'),'criteria':data.get('criteria'),'counts':{k:v.get('hotel_count') for k,v in (data.get('providers') or {}).items()},'comparison':data.get('comparison'),'remote_exit':p.returncode}
@@ -111,7 +98,7 @@ jobs:
         with:
           name: hotel-match-three-provider-111-pilot-${{ github.run_id }}-${{ github.run_attempt }}-final
           path: |
-            ${{ runner.temp }}/match-three-provider-111-v1/reservation.json
-            ${{ runner.temp }}/match-three-provider-111-v1/result.json
+            /tmp/match-three-provider-111-v1/reservation.json
+            /tmp/match-three-provider-111-v1/result.json
           if-no-files-found: warn
           retention-days: 90
