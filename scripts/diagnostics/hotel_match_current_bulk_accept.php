@@ -36,6 +36,24 @@ function mba_identity_counts(PDO $db): array {
     return $out;
 }
 
+function mba_fuzzy_has_direct_geo(array $row): bool {
+    $distance = $row['guard']['distance_m'] ?? null;
+    if ($distance !== null && (int)$distance <= 1000) return true;
+    $target = $row['target'] ?? [];
+    return fc_place(
+        array_map('strval',$row['source_places'] ?? []),
+        [(string)($target['region'] ?? ''),(string)($target['subregion'] ?? '')]
+    );
+}
+
+function mba_row_is_safe_auto_accept(array $row): bool {
+    if (($row['bucket'] ?? '') !== 'auto_accept') return false;
+    if (($row['reason'] ?? '') === 'strong_fuzzy_geo_large_margin') {
+        return mba_fuzzy_has_direct_geo($row);
+    }
+    return true;
+}
+
 function mba_anex_evidence(string $operation, array $row): array {
     return [
         'operation_id' => $operation,
@@ -162,7 +180,7 @@ function mba_accept(PDO $db, string $operation): array {
                 $skipped['anex_pair_excluded']++;
                 continue;
             }
-            if (($row['bucket'] ?? '') !== 'auto_accept') {
+            if (!mba_row_is_safe_auto_accept($row)) {
                 $skipped['anex_not_auto']++;
                 continue;
             }
@@ -188,7 +206,7 @@ function mba_accept(PDO $db, string $operation): array {
                 $skipped['anex_pair_excluded']++;
                 continue;
             }
-            if (($row['bucket'] ?? '') !== 'auto_accept') {
+            if (!mba_row_is_safe_auto_accept($row)) {
                 $skipped['anex_not_auto']++;
                 continue;
             }
@@ -232,7 +250,7 @@ function mba_accept(PDO $db, string $operation): array {
                 continue;
             }
             $row = mbr_review_andromeda($r,$obs,$country,$hotels,$names,$strict,$places);
-            if (($row['bucket'] ?? '') !== 'auto_accept') {
+            if (!mba_row_is_safe_auto_accept($row)) {
                 $skipped['andromeda_not_auto']++;
                 continue;
             }
@@ -319,6 +337,7 @@ function mba_accept(PDO $db, string $operation): array {
                 'existing_mappings_overwritten'=>false,
                 'coordinate_conflict_auto_block_m'=>5000,
                 'numeric_star_is_guard_not_identity'=>true,
+                'fuzzy_requires_direct_geo'=>true,
                 'supplier_calls'=>0,
             ],
         ];
