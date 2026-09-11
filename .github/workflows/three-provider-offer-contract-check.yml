@@ -16,6 +16,7 @@ on:
       - 'tests/three-provider-offer-contract-test.php'
       - 'tests/three-provider-anex-offer-test.php'
       - 'tests/anex-normalizer-smoke.php'
+      - 'tests/three-provider-offer-context-test.php'
       - 'tests/three-provider-room-placement-test.php'
       - 'tests/three-provider-meal-family-test.php'
       - 'tests/three-provider-availability-test.php'
@@ -23,8 +24,13 @@ on:
       - 'tests/three-provider-operator-test.php'
       - 'tests/andromeda-selected-tour-readiness-test.php'
       - '.github/workflows/three-provider-offer-contract-check.yml'
+      - '.github/workflows/three-provider-offer-context-check.yml'
 permissions:
   contents: read
+# Only offline checks: a newer head supersedes this PR's earlier check run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   offline:
     runs-on: ubuntu-latest
@@ -34,27 +40,22 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate offer contract without network
+      - name: Validate offers and retained context without network
         run: |
           php -l app/integrations/three-provider-offer-contract.php
           php -l app/integrations/three-provider-anex-offer.php
-          php -l tests/three-provider-anex-offer-test.php
+          php -l app/integrations/three-provider-offer-context.php
           php -l app/integrations/three-provider-room-placement.php
           php -l app/integrations/three-provider-meal-family.php
           php -l app/integrations/three-provider-availability.php
           php -l app/integrations/three-provider-flight-details.php
           php -l app/integrations/three-provider-operator.php
           php -l app/integrations/andromeda-selected-tour-readiness.php
-          php -l tests/three-provider-offer-contract-test.php
-          php -l tests/three-provider-room-placement-test.php
-          php -l tests/three-provider-meal-family-test.php
-          php -l tests/three-provider-availability-test.php
-          php -l tests/three-provider-flight-details-test.php
-          php -l tests/three-provider-operator-test.php
-          php -l tests/andromeda-selected-tour-readiness-test.php
+          # Explicit offline suites; execution also checks each test file's syntax.
           php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
           php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
+          php -d allow_url_fopen=0 tests/three-provider-offer-context-test.php
           php -d allow_url_fopen=0 tests/three-provider-room-placement-test.php
           php -d allow_url_fopen=0 tests/three-provider-meal-family-test.php
           php -d allow_url_fopen=0 tests/three-provider-availability-test.php
@@ -63,49 +64,27 @@ jobs:
           php -d allow_url_fopen=0 tests/andromeda-selected-tour-readiness-test.php
           python3 - <<'PY'
           from pathlib import Path
-          src=Path('app/integrations/three-provider-offer-contract.php').read_text()
-          anex_bridge=Path('app/integrations/three-provider-anex-offer.php').read_text()
-          assert 'AnyTourThreeProviderOfferContract::fromSearch' in anex_bridge
-          assert 'THREE_PROVIDER_ANEX_CONCRETE_REQUIRED' in anex_bridge
-          assert "'local_hotel_id' => $currentIdentity['local_id']" in anex_bridge
-          for forbidden in ('curl_', 'PDO', 'supplier_offer_id', '->request(', '->bron(', 'file_get_contents', 'file_put_contents', '$_GET', '$_POST'):
-              assert forbidden not in anex_bridge
-          room_placement=Path('app/integrations/three-provider-room-placement.php').read_text()
-          availability=Path('app/integrations/three-provider-availability.php').read_text()
-          flight=Path('app/integrations/three-provider-flight-details.php').read_text()
-          readiness=Path('app/integrations/andromeda-selected-tour-readiness.php').read_text()
-          assert "'quote_state' => 'unknown'" in src
-          assert "'selection_state' => 'disabled'" in src
-          assert "hash('sha256', $offerRef)" in src
-          assert "AnyTourThreeProviderAvailability::fromSearch" in src
-          assert "AnyTourThreeProviderFlightDetails::forSearch" in src
-          assert "AnyTourThreeProviderRoomPlacement::normalize" in src
-          assert "AnyTourThreeProviderMealFamily::normalize" in src
-          assert "['raw']" in src and "['normalized']" in src
-          assert "DateTimeImmutable::createFromFormat" in src
-          assert "->format('Y-m-d\\\\TH:i:s\\\\Z') !== $observedAt" in src
-          assert "flight_details_state" not in src
-          assert "'comparison_scope' => 'display_label_only'" in room_placement
-          assert "'cross_provider_equivalence_verified' => false" in room_placement
-          assert "'package_identity_verified' => false" in room_placement
-          assert "'canonical_state' => 'unknown'" in availability
-          assert "'selection_eligible' => false" in availability
-          assert "'booking_eligible' => false" in availability
-          assert "'Y' => 'available'" not in availability
-          for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
-              assert forbidden not in src
-          for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
-              assert forbidden not in room_placement
-          for forbidden in ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id'):
-              assert forbidden not in availability
-          assert "'details_state' => 'not_loaded'" in flight
-          assert "'automatic_fetch_allowed' => false" in flight
-          for forbidden in ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id'):
-              assert forbidden not in flight
-          assert "'next_supplier_step' => null" in readiness
-          assert "'get_flights'" in readiness and "'calc'" in readiness
-          assert "'final_price_verified' => false" in readiness
-          for forbidden in ('curl_', 'PDO', 'AnyTourAndromedaClient', '->package(', '->bron('):
-              assert forbidden not in readiness
-          print('Three-provider offer static boundary: PASS')
+          # Preserve source-isolation guards; behavior belongs to the PHP suites,
+          # not assertions about class member names or exact return statements.
+          strict = ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id')
+          evidence = ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id')
+          boundaries = {
+              'three-provider-offer-contract.php': strict,
+              'three-provider-offer-context.php': strict,
+              'three-provider-room-placement.php': strict,
+              'three-provider-availability.php': evidence,
+              'three-provider-flight-details.php': evidence,
+              'andromeda-selected-tour-readiness.php': (
+                  'curl_', 'PDO', 'AnyTourAndromedaClient', '->package(', '->bron(',
+              ),
+              'three-provider-anex-offer.php': (
+                  'curl_', 'PDO', 'supplier_offer_id', '->request(', '->bron(',
+                  'file_get_contents', 'file_put_contents', '$_GET', '$_POST',
+              ),
+          }
+          for filename, forbidden in boundaries.items():
+              source = (Path('app/integrations') / filename).read_text()
+              for token in forbidden:
+                  assert token not in source, f'{filename}: forbidden boundary token {token}'
+          print('Three-provider offer/context source isolation: PASS')
           PY
