@@ -4,6 +4,7 @@
   "scope": "INT P2 source-only room/placement semantics",
   "base": "fffd2ebce756717f307e7753a6eb6527051fb14c",
   "source": "app/integrations/three-provider-room-placement.php",
+  "source_commit": "3d960f73becb91498532e5707e550368d46e9b62",
   "semantics": {
     "room_raw_preserved": true,
     "placement_raw_preserved": true,
@@ -15,6 +16,6 @@
     "package_identity_verified": false
   },
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "runtime_wiring": 0},
-  "tests": {"status": "pending"},
-  "next_action": "Focused CI, then keep source-only until provider fixtures are wired under the P4 handoff."
+  "tests": {"offline_checks": 26, "security_run": 34553202482, "offline_run": 34553202510, "offline_job": 103120206908, "status": "success"},
+  "next_action": "Keep source-only until provider fixtures are wired under the P4 handoff."
 }
