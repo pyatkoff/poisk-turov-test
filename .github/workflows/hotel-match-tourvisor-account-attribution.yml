@@ -1,0 +1,132 @@
+name: MATCH Tourvisor account attribution
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_tourvisor_account_attribution.php'
+      - '.github/workflows/hotel-match-tourvisor-account-attribution.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths: ['.github/match-tourvisor-account-attribution-1971-20260912-v1.arm']
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-tourvisor-account-attribution-1971-20260912-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-tourvisor-account-attribution-1971-20260912-v1
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Check isolated attribution and output contract
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_tourvisor_account_attribution.php
+          php scripts/diagnostics/hotel_match_tourvisor_account_attribution.php --self-test
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_tourvisor_account_attribution.php').read_text()
+          s=re.sub(r'//[^\n]*','',s)
+          for pattern in [r'\bcurl_\w+\s*\(',r'\bnew\s+PDO\b',r'\bv2_data_db\s*\(',r'\bfile_put_contents\s*\(',r'\bputenv\s*\(',r'\bgetMessage\s*\(']:
+              assert not re.search(pattern,s),pattern
+          assert 'v2_data_db_config();' in s
+          assert "'scope' => 'current_config_selection_only'" in s
+          print('MATCH_ACCOUNT_ZERO_SUPPLIER_ZERO_DB_CHECK_OK')
+          PY
+  attribute:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm and reserve before server access
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-tourvisor-account-attribution-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_server_config_read','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'diagnostic_sha256':hashlib.sha256(Path('scripts/diagnostics/hotel_match_tourvisor_account_attribution.php').read_bytes()).hexdigest(),'supplier_http_calls_budget':0,'database_connections_budget':0,'database_writes':0,'mapping_writes':0,'config_writes':0,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Preserve durable reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-tourvisor-account-attribution-1971-20260912-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-tourvisor-account-attribution-1971-20260912-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read only selected credential source on server
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,re,subprocess
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          r={'operation_id':os.environ['OPERATION_ID'],'status':'unknown','reason':'remote_output_unverified','no_replay':True}
+          key=Path(os.environ['RUNNER_TEMP'])/'match_account_key'
+          try:
+              value=os.environ['KEY_VALUE'].strip()
+              raw=value.replace('\r','').encode() if 'PRIVATE KEY' in value else base64.b64decode(value,validate=True)
+              key.write_bytes(raw+b'\n');key.chmod(0o600)
+              host=os.environ['HOST_VALUE'].strip();user=os.environ['USER_VALUE'].strip()
+              if not re.fullmatch(r'[A-Za-z0-9.-]+',host) or not re.fullmatch(r'[A-Za-z0-9_.-]+',user):raise ValueError('server_identity')
+              code=Path('scripts/diagnostics/hotel_match_tourvisor_account_attribution.php').read_text()
+              command='cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d allow_url_fopen=0 -d disable_functions=curl_init,curl_exec,fsockopen,pfsockopen,stream_socket_client -- --live'
+              p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',user+'@'+host,command],input=code,text=True,capture_output=True,timeout=90)
+              lines=[x[len('HMTVA_RESULT:'):] for x in p.stdout.splitlines() if x.startswith('HMTVA_RESULT:')]
+              if len(lines)!=1:raise ValueError('missing_result')
+              candidate=json.loads(lines[0])
+              keys={'operation_id','historical_source_sha','status','historical_runtime_account_recorded','scope','supplier_http_calls','tv_search_slices','database_connections','database_queries','database_writes','mapping_writes','config_writes','no_replay','selection'}
+              boolkeys={'ordinary_env_present','ordinary_constant_present','separate_constant_present','legacy_selected_nonempty','legacy_equals_ordinary','legacy_equals_separate','ordinary_and_separate_distinct','ordinary_constant_skipped'}
+              s=candidate.get('selection',{})
+              if p.returncode!=0 or set(candidate)!=keys or set(s)!=(boolkeys|{'legacy_selected_source'}):raise ValueError('result_schema')
+              if not all(type(s[k]) is bool for k in boolkeys):raise ValueError('result_bool')
+              if s['legacy_selected_source'] not in {'missing','env:TOURVISOR_JWT','constant:TOURVISOR_ANEX_JWT'}:raise ValueError('source_label')
+              if candidate['operation_id']!=os.environ['OPERATION_ID'] or candidate['status']!='completed' or candidate['historical_source_sha']!='e9cec95fae4a91d76241de08ad8d2a02f0f61baa' or candidate['scope']!='current_config_selection_only' or candidate['historical_runtime_account_recorded'] is not False or candidate['no_replay'] is not True:raise ValueError('binding')
+              for k in ['supplier_http_calls','tv_search_slices','database_connections','database_queries','database_writes','mapping_writes','config_writes']:
+                  if type(candidate[k]) is not int or candidate[k]!=0:raise ValueError('zero_budget')
+              r=candidate
+          except Exception:
+              pass
+          finally:
+              key.unlink(missing_ok=True)
+          raw=(json.dumps(r,sort_keys=True,separators=(',',':'))+'\n').encode()
+          (state/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':r['status'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          summary=f"MATCH #1971 account attribution `{r['operation_id']}`: **{r['status']}**, run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`. NO-REPLAY."
+          if r['status']=='completed':
+              s=r['selection'];summary+=f" CURRENT config reproduces historical selector as `{s['legacy_selected_source']}`; equals ordinary={s['legacy_equals_ordinary']}, equals separate={s['legacy_equals_separate']}, credentials distinct={s['ordinary_and_separate_distinct']}, ordinary constant skipped={s['ordinary_constant_skipped']}. Supplier HTTP/DB connections/queries/writes/mappings/config writes all 0. This is CURRENT source attribution, not a replay or new 429 probe; old receipt lacked an account label. No token/hash/claims/config values retained."
+          (state/'summary.md').write_text(summary+'\n')
+          print(summary)
+          if r['status']!='completed':raise SystemExit(2)
+          PY
+      - name: Preserve immutable result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-tourvisor-account-attribution-1971-20260912-v1-result
+          path: ${{ runner.temp }}/hotel-match-tourvisor-account-attribution-1971-20260912-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record sanitized MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
