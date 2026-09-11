@@ -248,7 +248,7 @@
   ],
   "availability_contract": {"source": "app/integrations/three-provider-availability.php", "verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4", "status": "verified_raw_evidence_canonical_unknown"},
   "flight_details_contract": {"source": "app/integrations/three-provider-flight-details.php", "verified_head": "299c71af0e2ec38af532a1638be5a7d54cbdaca9", "status": "verified_search_not_loaded"},
-  "operator_contract": {"source": "app/integrations/three-provider-operator.php", "status": "pending_ci_no_cross_provider_equivalence"},
+  "operator_contract": {"source": "app/integrations/three-provider-operator.php", "verified_head": "687174d77837cefe718bbe805b24e755126b60ac", "status": "verified_no_cross_provider_equivalence"},
   "live_findings": {
     "broad_v2": {
       "scenario": "Moscow→Turkey, 2026-10-05, 7 nights, 2 adults, AI, ANEX-only",
