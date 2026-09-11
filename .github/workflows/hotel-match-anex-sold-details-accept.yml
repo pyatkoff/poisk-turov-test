@@ -1,0 +1,183 @@
+name: MATCH sold ANEX details guarded acceptance
+run-name: MATCH sold ANEX details guarded acceptance #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_sold_details_accept.php'
+      - 'tests/hotel-match-anex-sold-details-accept-test.php'
+      - '.github/workflows/hotel-match-anex-sold-details-accept.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-sold-details-accept-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-sold-details-accept-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-sold-details-accept-1971-20260911-v1
+  SOURCE_RUN_ID: '34585199014'
+  SOURCE_ARTIFACT_ID: '10193275420'
+  SOURCE_ARTIFACT_NAME: hotel-match-anex-sold-details-strong-review-1971-20260911-v1-result
+  SOURCE_RESULT_SHA256: 6ca31304fbb40fad165add17f50175555a3eb50837c8a3a3340e2265fc9b1cb9
+  DIRECT_RESULT_SHA256: 86f3cbe232a262fa6c6bcd5d87a56af8167ce52f1dc7b589c7d4605fd57cc7fa
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate guarded MATCH writer
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_sold_details_accept.php
+          php -l tests/hotel-match-anex-sold-details-accept-test.php
+          php tests/hotel-match-anex-sold-details-accept-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_sold_details_accept.php').read_text(encoding='utf-8')
+          assert 'hotel-match-anex-sold-details-accept-1971-20260911-v1' in s
+          assert 'INSERT INTO anex_hotel_search_mappings' in s
+          assert 'UPDATE andromeda' not in s and 'DELETE FROM' not in s and 'REPLACE INTO' not in s
+          assert 'post_commit_readback_failed' in s
+          assert 'write_scope_limit' in s and 'maxWrites=100' in s
+          assert "distance_m']<=250.0" in s
+          assert "name']['score']??0)>=0.75" in s
+          assert "andromeda_bridge']??false" in s
+          assert "place_match']??false" in s
+          assert 'Hotels_DETAILS' not in s and 'Hotels_PHOTOS' not in s
+          print('guarded sold-details acceptance scope verified')
+          PYTHON
+  apply:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify one-shot arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-sold-details-accept-1971-v1.arm)" = "$OPERATION_ID"
+      - name: Fetch and verify immutable strong-details evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID" > "$STATE/artifact-meta.json"
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); meta=json.loads((state/'artifact-meta.json').read_text())
+          assert str(meta['id'])==os.environ['SOURCE_ARTIFACT_ID']
+          assert meta['name']==os.environ['SOURCE_ARTIFACT_NAME']
+          assert str(meta['workflow_run']['id'])==os.environ['SOURCE_RUN_ID']
+          assert meta.get('expired') is False
+          (state/'source-identity.json').write_text(json.dumps({'artifact_id':meta['id'],'name':meta['name'],'run_id':meta['workflow_run']['id'],'digest':meta.get('digest')},sort_keys=True)+'\n')
+          PYTHON
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > "$STATE/source.zip"
+          mkdir "$STATE/source"; unzip -q "$STATE/source.zip" -d "$STATE/source"
+          test -f "$STATE/source/result.json" -a -f "$STATE/source/source/result.json" -a -f "$STATE/source/source/plan.json"
+          echo "$SOURCE_RESULT_SHA256  $STATE/source/result.json" | sha256sum -c -
+          echo "$DIRECT_RESULT_SHA256  $STATE/source/source/result.json" | sha256sum -c -
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); strong=json.loads((state/'source/result.json').read_text()); direct=json.loads((state/'source/source/result.json').read_text()); plan=json.loads((state/'source/source/plan.json').read_text())
+          assert strong['operation_id']=='hotel-match-anex-sold-details-strong-review-1971-20260911-v1' and strong['status']=='completed'
+          assert strong['database_writes']==0 and strong['mapping_writes']==0 and strong['supplier_calls']==0
+          assert strong['source_result_sha256']==os.environ['DIRECT_RESULT_SHA256'] and strong['stats']['prepared']==106 and strong['stats']['prepared_live']==106
+          assert direct['operation_id']=='hotel-match-anex-sold-details-review-1971-20260911-v2' and direct['status']=='completed' and direct['database_writes']==0 and direct['mapping_writes']==0
+          assert plan['operation_id']=='hotel-match-anex-sold-details-review-1971-20260911-v2'
+          print(json.dumps({'strong_prepared':106,'direct_rows':len(direct['details']['rows'])},sort_keys=True))
+          PYTHON
+      - name: Reserve immutable write operation before DB access
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'direct_result_sha256':os.environ['DIRECT_RESULT_SHA256'],'writer_sha256':hashlib.sha256(Path('scripts/diagnostics/hotel_match_anex_sold_details_accept.php').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before DB access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-sold-details-accept-1971-20260911-v1-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-sold-details-accept-1971-20260911-v1/source-identity.json
+            ${{ runner.temp }}/hotel-match-anex-sold-details-accept-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply one server-current guarded transaction
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import base64,hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          full=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          strong=body('scripts/diagnostics/hotel_match_anex_sold_details_strong_review.php').replace("require_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          writer=body('scripts/diagnostics/hotel_match_anex_sold_details_accept.php').replace("require_once __DIR__ . '/hotel_match_anex_sold_details_strong_review.php';\n",'',1)
+          direct64=base64.b64encode((state/'source/source/result.json').read_bytes()).decode(); plan64=base64.b64encode((state/'source/source/plan.json').read_bytes()).decode(); strong64=base64.b64encode((state/'source/result.json').read_bytes()).decode()
+          wrapper="""
+          try{
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMASDA_ROOT');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMASDA_DB_HELPER');require_once $dbHelper;
+            $direct=json_decode(base64_decode('DIRECT64'),true,64,JSON_THROW_ON_ERROR);$plan=json_decode(base64_decode('PLAN64'),true,64,JSON_THROW_ON_ERROR);$strong=json_decode(base64_decode('STRONG64'),true,64,JSON_THROW_ON_ERROR);
+            echo fc_json(hmasda_accept(v2_data_db(),$direct,$plan,$strong,HMASDA_OPERATION,100)),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Za-z0-9_:\-]{1,120}\z/D',$m)?$m:'HMASDA_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMASDA_OPERATION,'reason'=>$reason,'supplier_calls'=>0]),"\n";exit(2);}
+          """.replace('DIRECT64',direct64).replace('PLAN64',plan64).replace('STRONG64',strong64)
+          code="<?php\nif (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY',true);\n"+full+'\n'+strong+'\n'+writer+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-sold-details-accept-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,input=code,text=True,capture_output=True,timeout=840,env=clean)
+          progress={'authenticated':'Authenticated to ' in p.stderr or 'Authentication succeeded' in p.stderr,'command_sent':'Sending command:' in p.stderr,'remote_exit_seen':'Exit status ' in p.stderr}
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'output_unparseable'}
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw);(state/'ssh-result.json').write_text(json.dumps({'exit_code':p.returncode,'ssh':progress},sort_keys=True)+'\n')
+          valid=p.returncode==0 and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('supplier_calls')==0 and r.get('historical_operations_replayed') is False and isinstance(r.get('database_writes'),int) and 0<=r['database_writes']<=100 and r.get('mapping_writes')==r.get('database_writes') and r.get('post_commit_readback_verified') is True and len(r.get('rows') or [])==r.get('database_writes')
+          if not valid:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'status':'unknown_no_replay' if progress.get('command_sent') else 'failed_precommand','reason':r.get('reason','acceptance_not_completed'),'exit_code':p.returncode,'ssh':progress},sort_keys=True)+'\n');raise RuntimeError('guarded_acceptance_not_completed')
+          s=r['stats'];b=r['coverage_before'];a=r['coverage_after'];receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'direct_result_sha256':os.environ['DIRECT_RESULT_SHA256'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':r['database_writes'],'mapping_writes':r['mapping_writes'],'supplier_calls':0,'post_commit_readback_verified':True,'historical_operations_replayed':False,'no_replay':True,'stats':s,'coverage_before':b,'coverage_after':a,'ssh':progress}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          summary=(f"MATCH #1971 sold-details guarded acceptance `{r['operation_id']}` committed **{r['database_writes']} ANEX mappings**, post-COMMIT readback **{len(r['rows'])}/{r['database_writes']} verified**. All written are live **{s['live_written']}**; direct <=250m **{s['direct_250_written']}**, Andromeda-bridge+direct-geo **{s['bridge_geo_written']}** (bridge total **{s['bridge_written']}**). Server-current source 106; protected **{s['protected']}**, conservative-gate deferred **{s['conservative_gate']}**, coordinate conflicts **{s['coordinate_conflict']}**. Coverage ANEX links **{b['anex_links']}→{a['anex_links']}**, ANEX unique local **{b['anex_unique_local']}→{a['anex_unique_local']}**, triple **{b['all_three']}→{a['all_three']}**. Supplier calls **0**. Operation completed/NO-REPLAY.")
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result and durable receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-sold-details-accept-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-sold-details-accept-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH write result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
