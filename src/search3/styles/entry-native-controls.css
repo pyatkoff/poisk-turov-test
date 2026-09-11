@@ -2,7 +2,7 @@
 .search3-candidate #tourSearch{
 display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;padding:clamp(16px,2vw,22px);background:#fff;border:1px solid #dbe2ed;border-radius:16px;box-shadow:0 8px 24px #17233b08;
 & :is(.search-section-title,.main-fields,.child-ages,.search-preferences){grid-column:1/-1}
-& :is(.main-fields,.search-preferences){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+& :is(.main-fields,.search-preferences){grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;display:grid}
 & .main-fields{margin:0}
 & :is(.extra-grid,.child-ages){display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:16px 0}
 & .search-group{min-width:0;margin:0;padding:0;border:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
