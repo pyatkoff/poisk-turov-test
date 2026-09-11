@@ -1,0 +1,78 @@
+name: Search3 desktop results usability one-shot
+
+on:
+  push:
+    branches:
+      - ux/search3-desktop-results-usability-20260911
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: ${{ !contains(github.event.head_commit.message, 'SEARCH3_DESKTOP_RESULTS_MATERIALIZED') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: ux/search3-desktop-results-usability-20260911
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+
+      - name: Apply bounded desktop results changes and materialize assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          css = Path('src/search3/styles/results-layout.css')
+          text = css.read_text()
+          old = "& .results-filter-rail{position:sticky;top:18px;display:grid!important;gap:16px;padding:18px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}"
+          new = "& .results-filter-rail{position:sticky;top:18px;display:grid!important;gap:16px;max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain;padding:18px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}"
+          if text.count(old) != 1:
+              raise SystemExit('desktop filter rail rule did not match exactly once')
+          css.write_text(text.replace(old, new))
+
+          renderer = Path('v2/results-renderer-v5.js')
+          text = renderer.read_text()
+          old = "function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length?tourCountLabel(tours.length)+' для сравнения':'';}"
+          new = "function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length===1?'1 вариант тура':tours.length?tourCountLabel(tours.length)+' для сравнения':'';}"
+          if text.count(old) != 1:
+              raise SystemExit('choiceHint did not match exactly once')
+          renderer.write_text(text.replace(old, new))
+
+          test = Path('tests/search3-honest-results-controls.cjs')
+          text = test.read_text()
+          old = "const localFilters = fs.readFileSync(path.join(root, 'src/search3/behavior/results/local-hotel-filter.js'), 'utf8');"
+          new = old + "\nconst resultsStyles = fs.readFileSync(path.join(root, 'src/search3/styles/results-layout.css'), 'utf8');"
+          if text.count(old) != 1:
+              raise SystemExit('test localFilters declaration did not match exactly once')
+          text = text.replace(old, new)
+          anchor = "assert.match(renderer, /if\\(m==='stars'\\)/);"
+          insert = anchor + "\nassert.ok(renderer.includes(\"tours.length===1?'1 вариант тура'\"),\n  'single-offer hotels are not misleadingly described as a comparison set');\nassert.ok(resultsStyles.includes('max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain'),\n  'desktop filter rail remains reachable when the truthful facet set exceeds a short viewport');"
+          if text.count(anchor) != 1:
+              raise SystemExit('test renderer anchor did not match exactly once')
+          test.write_text(text.replace(anchor, insert))
+          PY
+
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node tests/search3-honest-results-controls.cjs
+          git diff --check
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/search3/styles/results-layout.css v2/search3-results-filters-v1.css docs/project/search3-production-import.json v2/results-renderer-v5.js tests/search3-honest-results-controls.cjs
+          staged="$(git diff --cached --name-only | sort)"
+          expected="$(printf '%s\n' docs/project/search3-production-import.json src/search3/styles/results-layout.css tests/search3-honest-results-controls.cjs v2/results-renderer-v5.js v2/search3-results-filters-v1.css | sort)"
+          test "$staged" = "$expected"
+          git commit -m 'SEARCH3_DESKTOP_RESULTS_MATERIALIZED rail and card copy'
+          git push origin HEAD:ux/search3-desktop-results-usability-20260911
