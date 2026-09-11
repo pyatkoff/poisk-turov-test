@@ -34,9 +34,23 @@ try {
         if(realpath($private)!==$private||(fileperms($private)&0777)!==0700)throw new RuntimeException('repair_private_invalid');
         $manifestPath=$private.'/manifest.json';owner_publish_file($manifestPath);
         $old=json_decode(file_get_contents($manifestPath),true,32,JSON_THROW_ON_ERROR);
-        $oldSource=$old['source_sha']??'';
+        $oldSource=$old['source_sha']??'';$oldAfter=$old['after']??null;
         if(($old['status']??'')!=='published'||!preg_match('/\A[0-9a-f]{40}\z/D',$oldSource)||$oldSource!==($input['expected_source']??null)
-            ||($old['runtime_files']??null)!=($input['expected_runtime']??null)||($old['after']??null)!=$before||($old['write_enabled']??null)!==false)throw new RuntimeException('repair_manifest_drift');
+            ||($old['runtime_files']??null)!=($input['expected_runtime']??null)||($old['write_enabled']??null)!==false)throw new RuntimeException('repair_manifest_drift');
+        $afterExact=$oldAfter===$before;
+        if(!$afterExact){
+            $stubsExact=is_array($oldAfter)
+                &&($oldAfter['anex-owner-login.php']??null)===($before['anex-owner-login.php']??null)
+                &&($oldAfter['anex-hotel-review.php']??null)===($before['anex-hotel-review.php']??null);
+            if(!$ownerWrite||!$stubsExact)throw new RuntimeException('repair_manifest_drift');
+            $publicPath=$target.'/anex-owner-panel-manifest.json';
+            $publicCurrent=json_decode(file_get_contents($publicPath),true,16,JSON_THROW_ON_ERROR);
+            if(($publicCurrent['source_sha']??null)!==$oldSource||($publicCurrent['write_enabled']??null)!==false||($publicCurrent['files']??null)!==$oldAfter)throw new RuntimeException('owner_write_public_manifest_drift');
+            foreach(['anex-owner-login.php','anex-hotel-review.php'] as $entryName){
+                $pattern='/<Files\s+"'.preg_quote($entryName,'/').'"\s*>\s*Require\s+all\s+granted\s*<\/Files>/i';
+                if(preg_match_all($pattern,$htRaw,$matches)!==1)throw new RuntimeException('owner_write_htaccess_drift');
+            }
+        }
         $receipt=json_decode(file_get_contents($private.'/publication-state.json'),true,16,JSON_THROW_ON_ERROR);
         if(($receipt['state']??'')!=='completed'||($receipt['manifest_sha256']??'')!==hash_file('sha256',$manifestPath))throw new RuntimeException('repair_publication_incomplete');
         $oldRuntime=$private.'/runtime-'.$oldSource;$runtime=$private.'/runtime-'.$input['source_sha'];
@@ -86,7 +100,7 @@ try {
             }
             $report=$old;$report['source_sha']=$input['source_sha'];$report['previous_source_sha']=$oldSource;
             if($links)$report['upgrade_action']='panel_links';
-            if($ownerWrite){$report['upgrade_action']='owner_write';$report['write_enabled']=true;}
+            if($ownerWrite){$report['upgrade_action']='owner_write';$report['write_enabled']=true;if(!$afterExact){$report['after']=$before;$report['htaccess_reconciled']=true;}}
             $report['runtime_files']=array_map(static fn($f)=>$f['sha256'],$input['files']);
             $report['owner_activated']=is_string($account['password_hash']??null);$report['activation_expires_at']=$account['setup_expires_at']??0;
             $report['account_preserved']=owner_publish_file($private.'/owner.json')===$accountHash;
