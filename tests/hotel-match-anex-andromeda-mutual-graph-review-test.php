@@ -11,10 +11,10 @@ ok(hmamgr_validation([],[11])==='andromeda_only','andromeda only');
 ok(hmamgr_validation([],[])==='neither_side','neither');
 
 $targets=[
- 'A1'=>['id'=>'A1','country_id'=>4,'names'=>['Kacha Resort & SPA Koh Chang'],'places'=>['Koh Chang'],'latitude'=>12.05,'longitude'=>102.30,'local_ids'=>[]],
+ 'A1'=>['id'=>'A1','country_id'=>4,'names'=>['Kacha Emerald Resort Koh Chang'],'places'=>['Koh Chang'],'latitude'=>12.05,'longitude'=>102.30,'local_ids'=>[]],
  'A2'=>['id'=>'A2','country_id'=>4,'names'=>['Kacha Bay Garden'],'places'=>['Koh Chang'],'latitude'=>12.5,'longitude'=>102.8,'local_ids'=>[]],
 ];
-$source=['id'=>'101','country_id'=>4,'names'=>['Kacha Resort & Spa, Koh Chang'],'places'=>['Koh Chang'],'latitude'=>12.0501,'longitude'=>102.3001,'local_ids'=>[]];
+$source=['id'=>'101','country_id'=>4,'names'=>['Kacha Emerald Resort & Spa, Koh Chang'],'places'=>['Koh Chang'],'latitude'=>12.0501,'longitude'=>102.3001,'local_ids'=>[]];
 $idx=hmamgr_index($targets);$loc=hmadcrh_locality_common($targets);$d=hmamgr_choose($source,$targets,$idx,$loc);
 ok(($d['bucket']??'')==='candidate','exact candidate');
 ok(($d['target_id']??'')==='A1','correct target');
