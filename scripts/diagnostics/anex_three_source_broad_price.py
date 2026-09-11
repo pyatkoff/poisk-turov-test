@@ -14,7 +14,7 @@ SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-10-19','nights':
 def source():
     here=Path(__file__).resolve().parent
     old=(here/'anex_search3_paired_runner.php').read_text()
-    meal=(here.parents[1]/'app/integrations/three-provider-meal.php').read_text()
+    meal=(here.parents[1]/'app/integrations/three-provider-meal-family.php').read_text()
     new=(here/'anex_three_source_broad_price.php').read_text()
     if not old.startswith('<?php') or not meal.startswith('<?php') or not new.startswith('<?php'):
         raise ValueError('broad_php_header')
