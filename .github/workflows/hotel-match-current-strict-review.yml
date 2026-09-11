@@ -1,0 +1,156 @@
+name: MATCH current DB strict review
+run-name: MATCH strict current DB review #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - 'scripts/diagnostics/hotel_match_current_strict_review.php'
+      - 'tests/hotel_match_current_strict_review_source_test.py'
+      - '.github/workflows/hotel-match-current-strict-review.yml'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-current-db-strict-review-1971
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-strict-review-1971-20260911-v2
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Static read-only scope and syntax
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_strict_review.php
+          python3 -B tests/hotel_match_current_strict_review_source_test.py
+      - name: Reserve immutable read operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$STATE"
+          export STATE
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          reservation={
+              'operation_id':os.environ['OPERATION_ID'],
+              'state':'reserved_before_ssh',
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'source_sha':os.environ['GITHUB_SHA'],
+              'mode':'current_db_consistent_snapshot_strict_read_only',
+              'database_writes':0,
+              'supplier_calls':0,
+              'no_replay':True,
+          }
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n',encoding='utf-8')
+          PYTHON
+      - name: Preserve reservation before live read
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-strict-review-1971-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read current DB and prepare guarded package
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import hashlib, json, os, shlex, subprocess, tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          helper=Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text(encoding='utf-8')
+          planner=Path('scripts/diagnostics/hotel_match_current_bulk_review.php').read_text(encoding='utf-8')
+          strict=Path('scripts/diagnostics/hotel_match_current_strict_review.php').read_text(encoding='utf-8')
+          def body(text):
+              if text.startswith('<?php'): text=text[len('<?php'):]
+              text=text.replace('declare(strict_types=1);','',1)
+              return text
+          helper_body=body(helper)
+          planner_body=body(planner).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strict_body=body(strict).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          wrapper=r'''
+          $root=realpath(getcwd());
+          if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
+          $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+          if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');
+          require_once $dbHelper;
+          $db=v2_data_db();
+          $out=msr_review($db,MSR_OPERATION);
+          echo fc_json($out),"\n";
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper_body+"\n"+planner_body+"\n"+strict_body+"\n"+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
+          if not host or not user or not os.environ[req[0]].strip(): raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-strict-review-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600)
+              known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              try:
+                  p=subprocess.run(cmd,text=True,capture_output=True,timeout=420,env=clean)
+              except subprocess.TimeoutExpired:
+                  blocker={'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'ssh_read_timeout','database_writes':0,'supplier_calls':0}
+                  (state/'blocker.json').write_text(json.dumps(blocker,sort_keys=True)+'\n')
+                  raise
+          try:
+              result=json.loads(p.stdout)
+          except Exception:
+              blocker={'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'live_output_unparseable','exit_code':p.returncode,'stderr_tail':p.stderr[-1000:],'database_writes':0,'supplier_calls':0}
+              (state/'blocker.json').write_text(json.dumps(blocker,ensure_ascii=False,sort_keys=True)+'\n')
+              raise RuntimeError('live_output_unparseable')
+          (state/'review.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n',encoding='utf-8')
+          if p.returncode!=0 or result.get('status')!='completed' or result.get('operation_id')!=os.environ['OPERATION_ID'] or result.get('database_writes')!=0 or result.get('supplier_calls')!=0:
+              blocker={'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'strict_review_not_completed','exit_code':p.returncode,'result_status':result.get('status'),'result_reason':result.get('reason'),'database_writes':result.get('database_writes'),'supplier_calls':result.get('supplier_calls')}
+              (state/'blocker.json').write_text(json.dumps(blocker,ensure_ascii=False,sort_keys=True)+'\n')
+              raise RuntimeError('strict_review_not_completed')
+          raw=(state/'review.json').read_bytes()
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'review_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'consistent_snapshot':True,'readback_verified':True,'counts':result['counts'],'coverage':result['coverage'],'examined':result['examined']}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
+          c=result['counts']; cov=result['coverage']; ex=result['examined']
+          summary=(
+              f"MATCH #1971 strict CURRENT-DB package `{os.environ['OPERATION_ID']}` completed read-only.\n\n"
+              f"Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`. DB writes **0**, supplier calls **0**. "
+              f"Safe candidates **{c['safe_candidates']}** = strict/current **{c['strict_current_rule']}** + cross-provider ANEX+Tourvisor bridge **{c['cross_provider_anex_tourvisor']}**; "
+              f"provider split ANEX **{c['candidate_anex']}**, Andromeda **{c['candidate_andromeda']}**. "
+              f"Unsafe fuzzy rows demoted **{c['unsafe_fuzzy_demoted']}**; blocked rows **{c['blocked']}**. "
+              f"Examined Andromeda pending core8 **{ex['andromeda_pending_examined']}**, ANEX observed **{ex['anex_observed_examined']}**, staging-only **{ex['anex_staging_examined']}**. "
+              f"Remaining missing-third core8 inventory: ANEX+TV only **{c['anex_tv_only_core8']}**, Andromeda+TV only **{c['andromeda_tv_only_core8']}**.\n\n"
+              f"Coverage snapshot: ANEX links {cov['anex_links']}, ANEX unique local {cov['anex_unique_local']}, Andromeda unique local {cov['andromeda_unique_local']}, triple {cov['all_three']}. "
+              "No mappings were written. This package is ready for a separate new guarded write operation with server-current recomputation and post-COMMIT per-row readback."
+          )
+          (state/'summary.md').write_text(summary+'\n',encoding='utf-8')
+          print(json.dumps({'counts':c,'coverage':cov,'examined':ex},ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - name: Preserve strict review package and receipt
+        if: always()
+        id: result
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-strict-review-1971-20260911-v2-result
+          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v2/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record substantive package in MATCH queue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          printf '\nResult artifact `%s`; immutable reservation artifact was created before SSH.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
