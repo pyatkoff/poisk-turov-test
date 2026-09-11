@@ -1,0 +1,265 @@
+name: MATCH ANEX Andromeda full pages scale v13
+
+on:
+  push:
+    branches: [ops/match-anex-andromeda-full-pages-scale-1971-20260911-v13]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-anex-andromeda-full-pages-scale-v13
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - sid: s01
+            country_id: '4'
+            country_name: Turkey
+            date: '2026-12-11'
+            nights: '8'
+          - sid: s02
+            country_id: '4'
+            country_name: Turkey
+            date: '2027-01-15'
+            nights: '7'
+          - sid: s03
+            country_id: '4'
+            country_name: Turkey
+            date: '2027-02-12'
+            nights: '9'
+          - sid: s04
+            country_id: '1'
+            country_name: Egypt
+            date: '2026-11-20'
+            nights: '7'
+          - sid: s05
+            country_id: '1'
+            country_name: Egypt
+            date: '2026-12-18'
+            nights: '8'
+          - sid: s06
+            country_id: '1'
+            country_name: Egypt
+            date: '2027-01-29'
+            nights: '9'
+          - sid: s07
+            country_id: '8'
+            country_name: Maldives
+            date: '2026-11-27'
+            nights: '7'
+          - sid: s08
+            country_id: '8'
+            country_name: Maldives
+            date: '2027-01-08'
+            nights: '8'
+          - sid: s09
+            country_id: '8'
+            country_name: Maldives
+            date: '2027-02-05'
+            nights: '9'
+    env:
+      FAMILY_ID: hotel-match-anex-andromeda-full-pages-scale-1971-20260911-v13
+      OPERATION_ID: hotel-match-anex-andromeda-full-pages-scale-1971-20260911-v13-${{ matrix.sid }}
+      SLICE_ID: ${{ matrix.sid }}
+      COUNTRY_ID: ${{ matrix.country_id }}
+      COUNTRY_NAME: ${{ matrix.country_name }}
+      SEARCH_DATE: ${{ matrix.date }}
+      SEARCH_NIGHTS: ${{ matrix.nights }}
+      EXPECTED_BASE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+      ARTIFACT_DIR: /tmp/match-anex-andromeda-full-pages-scale-v13-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 6
+          persist-credentials: false
+
+      - name: Verify isolated source and derive ANEX Andromeda program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-anex-andromeda-full-pages-scale-1971-20260911-v13'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-anex-andromeda-full-pages-scale-v13.arm)" = "$FAMILY_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' '.github/match-anex-andromeda-full-pages-scale-v13.arm' '.github/workflows/hotel-match-anex-andromeda-full-pages-scale-v13.yml' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          mkdir -p "$ARTIFACT_DIR"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php').read_text()
+          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
+          olddate="const M6_DATE = '2026-11-06';"
+          oldnights='const M6_NIGHTS = 7;'
+          if p.count(oldop)!=1 or p.count(olddate)!=1 or p.count(oldnights)!=1:
+              raise SystemExit('frozen diagnostic changed')
+          p=p.replace(oldop,os.environ['OPERATION_ID'])
+          p=p.replace(olddate,"const M6_DATE = '"+os.environ['SEARCH_DATE']+"';")
+          p=p.replace(oldnights,'const M6_NIGHTS = '+os.environ['SEARCH_NIGHTS']+';')
+          p=p.replace("'countryId'=>4","'countryId'=>"+os.environ['COUNTRY_ID'])
+          p=p.replace("$lookup->execute([1,4]);","$lookup->execute([1,"+os.environ['COUNTRY_ID']+"]);")
+          p=p.replace("'country'=>'Turkey'","'country'=>'"+os.environ['COUNTRY_NAME']+"'")
+          p=p.replace("'tourvisor_operator_id'=>M6_TV_OPERATOR,",'')
+
+          tv_start='    // Tourvisor: high-limit cached result read + bounded explicit continue rounds until the hotel set stops growing.\n'
+          anex_start='    // Direct ANEX anchor on the exact same day/night/party. Existing API returns one bounded SearchTour payload.\n'
+          if p.count(tv_start)!=1 or p.count(anex_start)!=1:
+              raise SystemExit('provider section markers changed')
+          a=p.index(tv_start); b=p.index(anex_start)
+          p=p[:a]+p[b:]
+
+          needle='try {\n'
+          pair_fn=r'''function m13_common_pairs(array $anex,array $andr): array {
+    $providers=['anex'=>$anex,'andromeda'=>$andr];$indexes=[];
+    foreach($providers as $provider=>$hotels){
+        foreach($hotels as $key=>$hotel)foreach($hotel['aliases']??[] as $alias)$indexes[$provider][$alias][]=$key;
+    }
+    $keys=array_intersect(array_keys($indexes['anex']??[]),array_keys($indexes['andromeda']??[]));
+    sort($keys,SORT_STRING);$seen=[];$rows=[];
+    foreach($keys as $alias){
+        $a=array_values(array_unique($indexes['anex'][$alias]??[]));
+        $d=array_values(array_unique($indexes['andromeda'][$alias]??[]));
+        if(count($a)!==1||count($d)!==1)continue;
+        $ak=$a[0];$dk=$d[0];$dedupe=$ak.'|'.$dk;if(isset($seen[$dedupe]))continue;$seen[$dedupe]=true;
+        $rows[]=['alias_key'=>$alias,
+            'anex'=>['id'=>$providers['anex'][$ak]['id'],'name'=>$providers['anex'][$ak]['name'],'local_id'=>$providers['anex'][$ak]['local_id']??null],
+            'andromeda'=>['id'=>$providers['andromeda'][$dk]['id'],'namespace'=>$providers['andromeda'][$dk]['namespace'],'name'=>$providers['andromeda'][$dk]['name']]];
+        if(count($rows)>=2000)break;
+    }
+    return $rows;
+}
+
+'''
+          if p.count(needle)!=1: raise SystemExit('try marker changed')
+          p=p.replace(needle,pair_fn+needle,1)
+
+          comp_start='    $triples=m6_common_triples($tv,$anex,$andr);'
+          echo_start="    echo 'MATCH111FULL_JSON:'"
+          if p.count(comp_start)!=1 or p.count(echo_start)!=1:
+              raise SystemExit('comparison markers changed')
+          c=p.index(comp_start); d=p.index(echo_start,c)
+          replacement="""    $pairs=m13_common_pairs($anex,$andr);$result['comparison']=['unique_alias_pairs'=>['count'=>count($pairs),'rows'=>$pairs],'interpretation'=>'diagnostic identity evidence only; no mapping is created from availability or price'];
+    $result['provider_calls']=['andromeda_login'=>1,'andromeda_price_pages'=>count($pageStats),'direct_anex_searchtour'=>'one bounded normalized price response plus dictionaries'];
+"""
+          p=p[:c]+replacement+p[d:]
+
+          strict="declare(strict_types=1);\n"
+          op=os.environ['OPERATION_ID']
+          fatal=("register_shutdown_function(static function(): void {\n"
+                 "    $e=error_get_last();\n"
+                 "    if(!is_array($e) || !in_array((int)($e['type']??0),[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR,E_USER_ERROR],true)) return;\n"
+                 "    echo 'MATCH111FULL_JSON:'.json_encode(['status'=>'failed','stage'=>'fatal','reason'=>'php_fatal','operation_id'=>'"+op+"','database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'token_values_recorded'=>false,'raw_provider_bodies_recorded'=>false],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;\n"
+                 "});\n")
+          if p.count(strict)!=1: raise SystemExit('strict marker changed')
+          p=p.replace(strict,strict+fatal,1)
+          Path(os.environ['ARTIFACT_DIR'],'program.php').write_text(p)
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+          ! grep -Fq "TOURVISOR_ANEX_JWT" "$ARTIFACT_DIR/program.php"
+          ! grep -Fq "'/tours/search'" "$ARTIFACT_DIR/program.php"
+
+      - name: Establish zero-supplier SSH control master and preflight
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); sid=os.environ['SLICE_ID']
+          key=rt/('matchaa-v13-key-'+sid); sock=rt/('matchaa-v13-'+sid+'.sock'); known=rt/('matchaa-v13-known-'+sid)
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
+          else:key.write_bytes(base64.b64decode(raw))
+          key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30)
+              if a.returncode==0:
+                  b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],"cd \"$HOME/www/anytoour.ru\" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php && php -r 'echo \"MATCHAA_PREFLIGHT_OK\\n\";'"],text=True,capture_output=True,timeout=30)
+                  if b.returncode==0 and 'MATCHAA_PREFLIGHT_OK' in b.stdout:ok=True;break
+              if sock.exists():subprocess.run(['ssh','-S',str(sock),'-O','exit',os.environ['ANYTOOUR_DEPLOY_HOST']],text=True,capture_output=True,timeout=10)
+              time.sleep(2)
+          if not ok:raise SystemExit('zero-supplier control-master preflight failed')
+          print('MATCHAA_PREFLIGHT_OK')
+          PY
+
+      - name: Persist immutable slice reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          source=Path(os.environ['ARTIFACT_DIR'],'program.php').read_bytes()
+          value={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_live_access','source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'program_sha256':hashlib.sha256(source).hexdigest(),'criteria':{'departure':'Moscow','country_id':int(os.environ['COUNTRY_ID']),'country':os.environ['COUNTRY_NAME'],'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'adults':2,'children':0,'currency':'RUB'},'providers':['direct_anex_anchor','andromeda_anex_only_all_pages'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'tourvisor_calls':0,'no_replay':True}
+          p=Path(os.environ['ARTIFACT_DIR'],'reservation.json');raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw:raise SystemExit('reservation readback failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchaa-v13-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute ANEX Andromeda full-page slice
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sleep 4
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          sock=Path(os.environ['RUNNER_TEMP'])/('matchaa-v13-'+os.environ['SLICE_ID']+'.sock');out=Path(os.environ['ARTIFACT_DIR'],'result.json')
+          if subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['ANYTOOUR_DEPLOY_HOST']],text=True,capture_output=True,timeout=10).returncode!=0:
+              data={'status':'failed','stage':'pre_supplier_master_check','reason':'ssh_master_unavailable','operation_id':os.environ['OPERATION_ID'],'supplier_calls_proven':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'tourvisor_calls':0,'no_replay':True};out.write_text(json.dumps(data,sort_keys=True,indent=2)+'\n');raise SystemExit('master unavailable')
+          program=Path(os.environ['ARTIFACT_DIR'],'program.php').read_text()
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=600)
+          marker='MATCH111FULL_JSON:';line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None:
+              data={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'country_id':int(os.environ['COUNTRY_ID']),'country':os.environ['COUNTRY_NAME'],'search_date':os.environ['SEARCH_DATE'],'search_nights':int(os.environ['SEARCH_NIGHTS']),'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'stdout_sha256':hashlib.sha256(x.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(x.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'tourvisor_calls':0,'no_replay':True};out.write_text(json.dumps(data,sort_keys=True,indent=2)+'\n');raise SystemExit('slice unknown; no replay')
+          data=json.loads(line);data.update(family_id=os.environ['FAMILY_ID'],slice_id=os.environ['SLICE_ID'],country_id=int(os.environ['COUNTRY_ID']),country=os.environ['COUNTRY_NAME'],search_date=os.environ['SEARCH_DATE'],search_nights=int(os.environ['SEARCH_NIGHTS']),source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=x.returncode,tourvisor_calls=0,no_replay=True)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();out.write_bytes(raw)
+          if len(raw)>3000000:raise SystemExit('result too large')
+          p=data.get('providers') or {};print(json.dumps({'slice':os.environ['SLICE_ID'],'country':os.environ['COUNTRY_NAME'],'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'status':data.get('status'),'stage':data.get('stage'),'reason':data.get('reason'),'anex_hotels':(p.get('anex') or {}).get('hotel_count'),'andromeda':{k:(p.get('andromeda') or {}).get(k) for k in ('hotel_count','offer_count','pages_consumed','final_pages_count')},'pairs':(((data.get('comparison') or {}).get('unique_alias_pairs') or {}).get('count'))},ensure_ascii=False,sort_keys=True))
+          if x.returncode!=0 or data.get('status')!='completed':raise SystemExit('slice failed')
+          if any(int(data.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','booking_calls','lead_calls')) or int(data.get('tourvisor_calls') or 0)!=0:raise SystemExit('unsafe side effect')
+          PY
+
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchaa-v13-${{ matrix.sid }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Close SSH control master
+        if: always()
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: |
+          SOCK="$RUNNER_TEMP/matchaa-v13-${SLICE_ID}.sock"
+          if [ -S "$SOCK" ]; then ssh -S "$SOCK" -O exit "$ANYTOOUR_DEPLOY_HOST" >/dev/null 2>&1 || true; fi
+          rm -f "$RUNNER_TEMP/matchaa-v13-key-${SLICE_ID}" "$SOCK"
