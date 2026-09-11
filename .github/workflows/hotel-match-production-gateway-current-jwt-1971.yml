@@ -5,11 +5,11 @@ on:
     paths: ['.github/workflows/hotel-match-production-gateway-current-jwt-1971.yml']
 permissions: {contents: read}
 env:
-  OPERATION_ID: hotel-match-tv63-current-review-1971-20260912-v1
+  OPERATION_ID: hotel-match-tv63-current-review-1971-20260912-v2
   SEARCH_ID: '13591467617'
 jobs:
   review:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 10
     steps:
       - name: Reserve
@@ -65,8 +65,8 @@ jobs:
             }
             $db->rollBack();
             usort($rows,fn($x,$y)=>strcmp($x['status'],$y['status'])?:($x['tourvisor_hotel_id']<=>$y['tourvisor_hotel_id']));
-            echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v1','status'=>'completed','searchId'=>13591467617,'input_count'=>count($ids),'counts'=>$counts,'rows'=>$rows,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'lead_calls'=>0,'booking_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
-          } catch(Throwable $e){ if($db->inTransaction())$db->rollBack(); echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v1','status'=>'failed','reason'=>preg_replace('/[^A-Za-z0-9_.:-]/','_',substr($e->getMessage(),0,160)),'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]).PHP_EOL; exit(2); }
+            echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v2','status'=>'completed','searchId'=>13591467617,'input_count'=>count($ids),'counts'=>$counts,'rows'=>$rows,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'lead_calls'=>0,'booking_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+          } catch(Throwable $e){ if($db->inTransaction())$db->rollBack(); echo 'TV63:'.json_encode(['operation_id'=>'hotel-match-tv63-current-review-1971-20260912-v2','status'=>'failed','reason'=>preg_replace('/[^A-Za-z0-9_.:-]/','_',substr($e->getMessage(),0,160)),'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]).PHP_EOL; exit(2); }
           PHP
           opts=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ssh "${opts[@]}" "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$state/review.php" > "$state/raw.txt"
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-tv63-current-review-v1
+          name: match-tv63-current-review-v2
           path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
           if-no-files-found: error
           retention-days: 90
