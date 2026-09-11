@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 // MATCH-only provenance diagnostic. No supplier client and no DB connection.
-const HMTVA_OPERATION = 'hotel-match-tourvisor-account-attribution-1971-20260912-v1';
+const HMTVA_OPERATION = 'hotel-match-tourvisor-account-attribution-1971-20260912-v2';
 const HMTVA_HISTORICAL_SOURCE = 'e9cec95fae4a91d76241de08ad8d2a02f0f61baa';
 
 function hmtva_token(string $value): string
