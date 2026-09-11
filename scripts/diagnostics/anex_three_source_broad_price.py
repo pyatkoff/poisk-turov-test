@@ -6,9 +6,9 @@ import sys
 
 from anex_search3_three_source_price import ssh_php_no_mux, transport_failure
 
-EXPERIMENT='anex_three_source_broad_price_20260911_v1'
+EXPERIMENT='anex_three_source_broad_price_20260911_v2'
 CASES=('anex','andromeda','tourvisor')
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-04','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-05','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def source():
