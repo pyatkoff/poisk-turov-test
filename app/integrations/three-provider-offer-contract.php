@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/three-provider-room-placement.php';
+
 /**
  * Provider-neutral Search3 offer boundary.
  *
@@ -64,10 +66,24 @@ final class AnyTourThreeProviderOfferContract
         }
 
         $meal = self::meal($input['meal']);
-        $room = self::labelPair($input['room'], 'THREE_PROVIDER_OFFER_ROOM');
-        $placement = $input['placement'] === null
+        $roomInput = self::labelPair($input['room'], 'THREE_PROVIDER_OFFER_ROOM');
+        $placementInput = $input['placement'] === null
             ? null
             : self::labelPair($input['placement'], 'THREE_PROVIDER_OFFER_PLACEMENT');
+        $roomPlacement = AnyTourThreeProviderRoomPlacement::normalize(
+            $provider,
+            $roomInput['raw'],
+            $placementInput === null ? null : $placementInput['raw']
+        );
+        if ($roomInput['normalized'] !== $roomPlacement['room']['normalized']) {
+            throw new InvalidArgumentException('THREE_PROVIDER_OFFER_ROOM');
+        }
+        if ($placementInput !== null
+            && $placementInput['normalized'] !== $roomPlacement['placement']['normalized']) {
+            throw new InvalidArgumentException('THREE_PROVIDER_OFFER_PLACEMENT');
+        }
+        $room = $roomPlacement['room'];
+        $placement = $roomPlacement['placement'];
 
         if (!is_array($input['availability'])) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_AVAILABILITY');
@@ -152,9 +168,6 @@ final class AnyTourThreeProviderOfferContract
         }
         $raw = self::text($value['raw'], 180, $error);
         $normalized = self::text($value['normalized'], 180, $error);
-        if ($normalized === '') {
-            throw new InvalidArgumentException($error);
-        }
         return ['raw' => $raw, 'normalized' => $normalized];
     }
 
