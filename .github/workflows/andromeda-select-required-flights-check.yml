@@ -1,0 +1,31 @@
+name: Andromeda required flight selection offline
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/andromeda_select_required_flights_probe.py'
+      - 'tests/andromeda_select_required_flights_probe_test.py'
+      - '.github/workflows/andromeda-select-required-flights-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify exact single-choice changeservice path offline
+        run: |
+          python3 -m py_compile scripts/diagnostics/andromeda_select_required_flights_probe.py tests/andromeda_select_required_flights_probe_test.py
+          python3 tests/andromeda_select_required_flights_probe_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/andromeda_select_required_flights_probe.py').read_text()
+          assert "action'=>'changeservice'" in s and "'NEW_UID'=>$item['uid']" in s
+          assert "count($options['0']??[])!==1" in s and "count($options['1']??[])!==1" in s
+          assert "action'=>'calc'" not in s and "action'=>'bron'" not in s and "action'=>'get_flights'" not in s
+          assert "booking_calls'=>0" in s and "automatic_retry'=>false" in s
+          print('Required flight selection static safety: PASS')
+          PY
