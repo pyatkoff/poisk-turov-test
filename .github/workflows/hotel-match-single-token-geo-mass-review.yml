@@ -1,0 +1,118 @@
+name: MATCH single token geo mass review
+run-name: MATCH single token geo mass review #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_single_token_geo_mass_review.php'
+      - 'tests/hotel-match-single-token-geo-mass-review-test.php'
+      - '.github/workflows/hotel-match-single-token-geo-mass-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-single-token-geo-mass-review-1971-v1.arm'
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: match-single-token-geo-mass-review-1971-v1, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-single-token-geo-mass-review-1971-20260911-v1}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate single token geo scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_single_token_geo_mass_review.php
+          php tests/hotel-match-single-token-geo-mass-review-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_single_token_geo_mass_review.php').read_text()
+          assert 'START TRANSACTION READ ONLY' in s and 'HMSTG_COORD_ACCEPT_M=1000.0' in s and 'HMSTG_COORD_BLOCK_M=5000.0' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'supplier_calls'=>0" in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','https://','http://'): assert bad.lower() not in s.lower(),bad
+          PYTHON
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify arm
+        run: test "$(cat .github/match-single-token-geo-mass-review-1971-v1.arm)" = "$OPERATION_ID"
+      - name: Build and lint payload before reservation
+        run: |
+          set -euo pipefail
+          export PAYLOAD="$RUNNER_TEMP/single-token-geo-v1.php"
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text()
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          chain=[
+          ('hotel_full_catalog_reconcile.php',None),
+          ('hotel_match_current_bulk_review.php','hotel_full_catalog_reconcile.php'),
+          ('hotel_match_global_cross_provider_rescue.php','hotel_match_current_bulk_review.php'),
+          ('hotel_match_global_tourvisor_rescue.php','hotel_match_global_cross_provider_rescue.php'),
+          ('hotel_match_global_approx_name_rescue.php','hotel_match_global_tourvisor_rescue.php'),
+          ('hotel_match_anex_andromeda_direct_catalog_review.php','hotel_match_global_approx_name_rescue.php'),
+          ('hotel_match_anex_andromeda_direct_catalog_hardened.php','hotel_match_anex_andromeda_direct_catalog_review.php'),
+          ('hotel_match_anex_andromeda_mutual_graph_review.php','hotel_match_anex_andromeda_direct_catalog_hardened.php'),
+          ('hotel_match_anex_andromeda_cluster_local_review.php','hotel_match_anex_andromeda_mutual_graph_review.php'),
+          ('hotel_match_mass_identity_graph_review.php','hotel_match_anex_andromeda_cluster_local_review.php'),
+          ('hotel_match_exact_unique_mass_review.php','hotel_match_mass_identity_graph_review.php'),
+          ('hotel_match_exact_ordered_mass_review.php','hotel_match_exact_unique_mass_review.php'),
+          ('hotel_match_exact_ordered_literal_mass_review.php','hotel_match_exact_ordered_mass_review.php'),
+          ('hotel_match_single_token_geo_mass_review.php','hotel_match_exact_ordered_literal_mass_review.php')]
+          parts=[]
+          for name,parent in chain:
+              s=body('scripts/diagnostics/'+name)
+              if parent:
+                  header="if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/"+parent+"';\n"
+                  if header not in s: raise RuntimeError('dependency_header_shape_changed:'+name)
+                  s=s.replace(header,'',1)
+              parts.append(s)
+          wrapper=r'''try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMSTG_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $dbHelper;echo fc_json(hmstg_review(v2_data_db(),HMSTG_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>HMSTG_OPERATION,'reason'=>'HMSTG_REMOTE_ERROR','message'=>$e->getMessage(),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}'''
+          Path(os.environ['PAYLOAD']).write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+'\n'.join(parts)+'\n'+wrapper)
+          PYTHON
+          php -l "$PAYLOAD"
+      - name: Prepare SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail; key="$RUNNER_TEMP/key"; if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi; chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: SSH preflight
+        env: {H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; o=(-i "$RUNNER_TEMP/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15); test "$(ssh "${o[@]}" "$U@$H" 'cd "$HOME/www/anytoour.ru"; printf MATCH_OK')" = MATCH_OK
+      - name: Reserve
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE; python3 - <<'PYTHON'
+          import json,os; from pathlib import Path
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with: {name: hotel-match-single-token-geo-mass-review-1971-v1-reservation, path: '${{ runner.temp }}/hotel-match-single-token-geo-mass-review-1971-20260911-v1/reservation.json', retention-days: 90}
+      - name: Run CURRENT review
+        env: {H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os,subprocess; from pathlib import Path
+          p=subprocess.run(['ssh','-T','-i',os.environ['RUNNER_TEMP']+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',os.environ['U']+'@'+os.environ['H'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=3072M'],input=(Path(os.environ['RUNNER_TEMP'])/'single-token-geo-v1.php').read_text(),text=True,capture_output=True,timeout=2880)
+          r=json.loads(p.stdout); state=Path(os.environ['STATE']); raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          if p.returncode or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0: raise RuntimeError('single_token_geo_not_completed')
+          (state/'receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','result_sha256':hashlib.sha256(raw).hexdigest(),'stats':r['stats'],'coverage':r['coverage'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          s=r['stats'];c=r['coverage']; summary=f"MATCH #1971 single-token+geo `{r['operation_id']}` completed read-only / NO-REPLAY. Examined **{s['examined']}**, single-token **{s['single_token_rows']}**, unique raw **{s['unique_token_raw']}**, geo missing **{s['geo_missing']}**, >5km conflicts **{s['coordinate_conflict_gt_5km']}**. Prepared **{s['prepared']}** = ANEX **{s['prepared_anex']}** + Andromeda **{s['prepared_andromeda']}**, live **{s['prepared_live']}**; coordinate confirmed **{s['coordinate_confirmed']}**, place confirmed **{s['place_confirmed']}**. Needs extra **{s['needs_extra']}**, hard conflict **{s['hard_conflict']}**. Coverage triple {c['all_three']}. Supplier/DB/mapping writes 0."; (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with: {name: hotel-match-single-token-geo-mass-review-1971-v1-result, path: '${{ runner.temp }}/hotel-match-single-token-geo-mass-review-1971-20260911-v1/', retention-days: 90}
+      - name: Record result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', A: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$A" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
