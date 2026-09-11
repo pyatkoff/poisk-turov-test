@@ -1,0 +1,48 @@
+name: Owner fresh Andromeda package probe
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-andromeda-fresh-package-live
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: >-
+      github.event.issue.number == 996 &&
+      github.event.comment.user.login == 'pyatkoff' &&
+      github.event.comment.body == '/probe-andromeda-fresh-package-1717'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require exact owner command and first run attempt
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "${{ github.event.issue.number }}" = 996
+          test "${{ github.event.comment.user.login }}" = pyatkoff
+          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717
+      - uses: actions/checkout@v4
+        with:
+          ref: 0cc26c013aab5da717dde2f1bc7d520e1da43ed5
+          persist-credentials: false
+      - name: Verify exact checked diagnostic source
+        run: |
+          test "$(git rev-parse HEAD)" = 0cc26c013aab5da717dde2f1bc7d520e1da43ed5
+          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py
+          python3 tests/andromeda_fresh_package_probe_test.py
+      - name: Capture one fresh ANEX package without booking
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 scripts/diagnostics/andromeda_fresh_package_probe.py --execute
+      - name: Preserve private package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-fresh-package-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-fresh-package/*.json
+          if-no-files-found: error
+          retention-days: 2
