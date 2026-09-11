@@ -21,7 +21,7 @@ for forbidden in ("INSERT INTO ", "UPDATE ANDROMEDA_", "DELETE FROM ", "REPLACE 
 
 # A fuzzy candidate is only safe with direct geography, and >5 km stays blocked.
 assert "strong_fuzzy_geo_large_margin" in s
-assert "distance_m'] !== null && (int)$distance <= 1000" in s
+assert "$distance !== null && (int)$distance <= 1000" in s
 assert "if ($guard['coordinate_conflict']) return null" in s
 
 print('hotel_match_current_strict_review_source_test: ok')
