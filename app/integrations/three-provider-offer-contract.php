@@ -75,8 +75,13 @@ final class AnyTourThreeProviderOfferContract
         $availability = AnyTourThreeProviderAvailability::fromSearch($provider, $input['availability']);
         $flight = AnyTourThreeProviderFlightDetails::forSearch($provider);
         $observedAt = $input['observed_at'];
+        $observedAtValue = is_string($observedAt)
+            ? DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i:s\\Z', $observedAt, new DateTimeZone('UTC'))
+            : false;
         if (!is_string($observedAt)
-            || !preg_match('/\A20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\z/D', $observedAt)) {
+            || !preg_match('/\A20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\z/D', $observedAt)
+            || !$observedAtValue
+            || $observedAtValue->format('Y-m-d\\TH:i:s\\Z') !== $observedAt) {
             throw new InvalidArgumentException('THREE_PROVIDER_OFFER_TIMESTAMP');
         }
 

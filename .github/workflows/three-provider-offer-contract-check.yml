@@ -47,6 +47,8 @@ jobs:
           assert "hash('sha256', $offerRef)" in src
           assert "AnyTourThreeProviderAvailability::fromSearch" in src
           assert "AnyTourThreeProviderFlightDetails::forSearch" in src
+          assert "DateTimeImmutable::createFromFormat" in src
+          assert "->format('Y-m-d\\\\TH:i:s\\\\Z') !== $observedAt" in src
           assert "flight_details_state" not in src
           assert "'canonical_state' => 'unknown'" in availability
           assert "'selection_eligible' => false" in availability
