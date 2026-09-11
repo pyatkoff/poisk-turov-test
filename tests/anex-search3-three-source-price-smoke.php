@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-define('ANYTOOUR_ANEX_THREE_PRICE_LIBRARY_ONLY', true);
+define('ANYTOUR_ANEX_THREE_PRICE_LIBRARY_ONLY', true);
 require __DIR__ . '/../scripts/diagnostics/anex_search3_three_source_price.php';
 
 $checks=0;
