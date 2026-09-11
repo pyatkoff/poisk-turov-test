@@ -1,0 +1,148 @@
+name: MATCH Tourvisor ANEX hotelCode evidence v8
+run-name: MATCH Tourvisor ANEX hotelCode evidence #1971 v8
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/anex-tourvisor-hotelcode-evidence-collect-v8.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-tourvisor-hotelcode-evidence-v8.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-tourvisor-hotelcode-evidence-1971-v8
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate evidence-only exact-night scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php
+          php tests/anex-tourvisor-hotelcode-evidence-collect-test.php
+          php -l v2/data/tourvisor-client-v1.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('.github/workflows/anex-tourvisor-hotelcode-evidence-collect-v8.yml').read_text()
+          assert 'leadTargets=[14,28,42,56]' in s
+          assert 'nightTargets=[7,8,9]' in s
+          assert "'nightsFrom'=>$night,'nightsTo'=>$night" in s
+          assert "'/tours/search'" in s and "'/operators'" in s and "'/tours/dates'" in s
+          assert '/continue' not in s
+          assert "'database_writes'=>0" in s and "'booking_calls'=>0" in s and "'search_continue_calls'=>0" in s
+          print('v8 exact-night evidence scope verified')
+          PYTHON
+  collect:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-tourvisor-hotelcode-evidence-v8.arm)" = "$OPERATION_ID"
+      - name: Prepare normalized SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail; test -n "$KEY_VALUE"; key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: SSH/runtime preflight before reservation
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_match_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'root="$HOME/www/anytoour.ru"; cd "$root"; test -s config.php; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_SSH_OK')"
+          test "$out" = MATCH_SSH_OK
+      - name: Reserve immutable supplier evidence operation
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_after_ssh_preflight_before_supplier_calls','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_live_tourvisor_anex_evidence_exact_nights_multi_dates','database_writes':0,'mapping_writes':0,'search_continue_calls':0,'booking_calls':0,'historical_operations_replayed':False,'no_replay':True,'lead_day_targets':[14,28,42,56],'night_targets':[7,8,9]}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(x,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before supplier calls
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Build reviewed exact-night payload
+        run: |
+          export PAYLOAD="$RUNNER_TEMP/$OPERATION_ID/payload.php"
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'):s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          parser=body('scripts/diagnostics/anex_hotelcode_evidence.php')
+          tvclient=body('v2/data/tourvisor-client-v1.php')
+          collector=body('scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\nrequire_once __DIR__ . '/anex_hotelcode_evidence.php';\n",'',1).replace('hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v1','hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8')
+          wrapper=r'''
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('ATEV8_ROOT');$config=realpath($root.'/config.php');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$config||!$dbHelper)throw new RuntimeException('ATEV8_RUNTIME');require_once $config;require_once $dbHelper;
+          $current=ate_current_seeds(v2_data_db());$seeds=$current['seeds'];$coverage=$current['coverage'];$countryCounts=[];foreach($seeds as $s)$countryCounts[(int)$s['country_id']]=($countryCounts[(int)$s['country_id']]??0)+1;arsort($countryCounts);
+          $departures=v2_data_tv_get('/departures',['departureCountryId'=>1]);$departure=ate_departure_id(is_array($departures)?$departures:[]);if(!$departure)throw new RuntimeException('ATEV8_DEPARTURE');
+          $today=new DateTimeImmutable('today');$leadTargets=[14,28,42,56];$nightTargets=[7,8,9];$catalogCalls=1;$searchStarts=0;$statusCalls=0;$resultCalls=0;$plans=[];$searches=[];$rawMatches=[];
+          foreach(array_keys($countryCounts) as $country){$ops=v2_data_tv_get('/operators',['departureId'=>$departure,'countryId'=>$country]);$catalogCalls++;$op=ate_operator_id(is_array($ops)?$ops:[]);$dates=v2_data_tv_get('/tours/dates',['departureId'=>$departure,'countryId'=>$country,'onlyCharter'=>false]);$catalogCalls++;$dateRows=is_array($dates)?$dates:[];$selected=[];foreach($leadTargets as $lead){$d=ate_pick_date($dateRows,$today->modify('+'.$lead.' days'));if($d!==null)$selected[$d]=true;}if(!$selected){$d=ate_pick_date($dateRows,$today);if($d!==null)$selected[$d]=true;}if(!$op||!$selected){$searches[]=['country_id'=>$country,'status'=>!$op?'anex_operator_missing':'date_missing','seed_count'=>$countryCounts[$country]];continue;}foreach(array_keys($selected) as $date)foreach($nightTargets as $night)$plans[]=['country_id'=>$country,'seed_count'=>$countryCounts[$country],'operator_id'=>$op,'date'=>$date,'night'=>$night];}
+          $active=[];foreach($plans as $i=>$plan){$payload=['departureId'=>$departure,'countryId'=>$plan['country_id'],'dateFrom'=>$plan['date'],'dateTo'=>$plan['date'],'nightsFrom'=>$plan['night'],'nightsTo'=>$plan['night'],'adults'=>2,'operatorIds'=>[$plan['operator_id']],'currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false];try{$start=v2_data_tv_get('/tours/search',$payload);$searchStarts++;$sid=ate_search_id($start);}catch(Throwable $e){$sid=null;}$plan['search_id']=$sid;$plan['status']=$sid?'started':'search_id_missing';$plans[$i]=$plan;if($sid)$active[$i]=true;usleep(250000);}
+          for($round=0;$round<12&&$active;$round++){foreach(array_keys($active) as $i){$sid=(int)$plans[$i]['search_id'];try{$st=v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]);$statusCalls++;$plans[$i]['progress']=(int)($st['progress']??0);if(ate_search_complete($st)){unset($active[$i]);$plans[$i]['status']='complete';}}catch(Throwable $e){$plans[$i]['status']='status_error';unset($active[$i]);}usleep(120000);}if($active)sleep(2);}
+          foreach($plans as $plan){$sid=(int)($plan['search_id']??0);$rows=[];$error=null;if($sid>0){foreach([1000,500,100] as $limit){try{$rows=ate_tv_rows(v2_data_tv_get('/tours/search/'.$sid,['limit'=>$limit]));$resultCalls++;break;}catch(Throwable $e){$error=$e->getMessage();}}}$matched=0;foreach($rows as $hotel){$m=ate_match_tv_hotel($hotel,$seeds);if(!$m)continue;$tourId=ate_first_anex_tour_id($hotel,(int)$plan['operator_id']);if(!$tourId)continue;$m['tour_id']=$tourId;$m['operator_id']=(int)$plan['operator_id'];$m['search_date']=$plan['date'];$m['search_nights']=(int)$plan['night'];$rawMatches[]=$m;$matched++;}$searches[]=['country_id'=>$plan['country_id'],'seed_count'=>$plan['seed_count'],'date'=>$plan['date'],'night'=>$plan['night'],'operator_id'=>$plan['operator_id'],'search_id'=>$sid,'status'=>$plan['status'],'progress'=>(int)($plan['progress']??0),'result_hotels'=>count($rows),'matched_queue_rows'=>$matched,'result_error'=>$error];}
+          $bySeed=[];foreach($rawMatches as $m)$bySeed[(int)$m['anex_hotel_id']][]=$m;$candidates=[];$ambiguous=0;foreach($bySeed as $aid=>$list){$tv=[];foreach($list as $m)$tv[(int)$m['tv_hotel_id']]=$m;if(count($tv)!==1){$ambiguous++;continue;}$x=array_values($tv)[0];$x['matched_slices']=count($list);$candidates[]=$x;}usort($candidates,static fn($a,$b)=>(($a['observed']?0:1)<=>($b['observed']?0:1))?:(((int)$b['search_count'])<=>((int)$a['search_count']))?:(((int)$b['matched_slices'])<=>((int)$a['matched_slices'])));
+          $detailCalls=0;$pageFetches=0;$evidence=[];$confirmed=[];$strong=[];$conflicts=[];foreach(array_slice($candidates,0,260) as $m){usleep(220000);$detail=v2_data_tv_get('/tours/'.rawurlencode((string)$m['tour_id']),['currency'=>'RUB']);$detailCalls++;$link=trim((string)($detail['operatorLink']??''));$hotellist=$link!==''?ate_operator_hotellist($link):null;$page=['status'=>'not_fetched','http_status'=>0,'body'=>''];$hotelcode=['status'=>'insufficient_evidence','hotel_code'=>null,'confirmed_urls'=>0];if($link!==''&&ate_allowed_anex_page($link)&&$pageFetches<180){usleep(300000);$page=ate_fetch_anex_page($link);$pageFetches++;if(($page['status']??'')==='ok')$hotelcode=ate_page_hotelcode_evidence((string)$page['body']);}$m['operator_link_host']=$link!==''?(string)(parse_url($link,PHP_URL_HOST)??''):'';$m['operator_hotellist']=$hotellist;$m['operator_hotellist_matches_seed']=$hotellist!==null&&$hotellist===(int)$m['anex_hotel_id'];$m['page_status']=$page['status']??'unknown';$m['page_http_status']=(int)($page['http_status']??0);$m['hotelcode_status']=$hotelcode['status']??'invalid_evidence';$m['hotel_code']=($hotelcode['status']??'')==='confirmed'?(int)$hotelcode['hotel_code']:null;if($hotellist!==null&&$hotellist!==(int)$m['anex_hotel_id']){$m['evidence_class']='operator_hotellist_conflict';$conflicts[]=$m;}elseif($m['operator_hotellist_matches_seed']&&($hotelcode['status']??'')==='confirmed'){$m['evidence_class']='full_operator_link_plus_hotelcode';$confirmed[]=$m;}elseif($m['operator_hotellist_matches_seed']){$m['evidence_class']='strong_operator_link_no_hotelcode';$strong[]=$m;}else{$m['evidence_class']='tourvisor_match_without_direct_anex_id';}unset($page['body']);$evidence[]=$m;}
+          $out=['status'=>'completed','operation_id'=>ATE_OPERATION,'mode'=>'current_db_live_tourvisor_anex_evidence_exact_nights_multi_dates','database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'search_continue_calls'=>0,'coverage'=>$coverage,'queue_count'=>count($seeds),'queue_by_country'=>$countryCounts,'supplier'=>['departure_id'=>$departure,'planned_slices'=>count($plans),'search_starts'=>$searchStarts,'status_calls'=>$statusCalls,'result_calls'=>$resultCalls,'catalog_calls'=>$catalogCalls,'tour_detail_calls'=>$detailCalls,'anex_page_gets'=>$pageFetches],'searches'=>$searches,'matched_unique'=>count($candidates),'ambiguous_seed_matches'=>$ambiguous,'evidence_rows'=>$evidence,'confirmed_full_path'=>$confirmed,'strong_operator_link'=>$strong,'conflicts'=>$conflicts,'guards'=>['one_day_search'=>true,'exact_night_search'=>true,'lead_day_targets'=>$leadTargets,'night_targets'=>$nightTargets,'anex_operator_only'=>true,'search_continue_calls'=>0,'database_writes'=>0,'booking_calls'=>0,'protected_app_files_changed'=>false,'historical_operations_replayed'=>false,'coordinate_conflict_auto_block_m'=>5000]];echo fc_json($out),"\n";
+          '''
+          Path(os.environ['PAYLOAD']).write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+planner+'\n'+parser+'\n'+tvclient+'\n'+collector+'\n'+wrapper,encoding='utf-8')
+          PYTHON
+      - name: Run exact-night evidence payload
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/anytoour_match_key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15); remote="/tmp/anytour-match-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.php"; cleanup(){ ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -f '$remote'" >/dev/null 2>&1 || true; }; trap cleanup EXIT; scp "${opts[@]}" "$STATE/payload.php" "$USER_VALUE@$HOST_VALUE:$remote"; set +e; ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=0 -r 'include \"$remote\";'" >"$STATE/live.stdout" 2>"$STATE/live.stderr"; rc=$?; set -e; export RC="$rc" STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']);stdout=(state/'live.stdout').read_text(errors='replace');stderr=(state/'live.stderr').read_text(errors='replace')
+          try:r=json.loads(stdout)
+          except Exception:raise RuntimeError('v8_output_unparseable:'+stderr[-300:])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          if int(os.environ['RC'])!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('booking_calls')!=0 or r.get('search_continue_calls')!=0:raise RuntimeError('v8_not_completed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_evidence_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'search_continue_calls':0,'historical_operations_replayed':False,'no_replay':True,'queue_count':r['queue_count'],'matched_unique':r['matched_unique'],'confirmed_full_path':len(r['confirmed_full_path']),'strong_operator_link':len(r['strong_operator_link']),'conflicts':len(r['conflicts']),'supplier':r['supplier'],'coverage':r['coverage']};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n');s=r['supplier'];c=r['coverage'];summary=f"MATCH #1971 M3 v8 exact-night evidence `{r['operation_id']}` completed evidence-only / NO-REPLAY. CURRENT queue **{r['queue_count']}**. Planned/started slices **{s['planned_slices']}/{s['search_starts']}**, result hotel rows **{sum(int(x.get('result_hotels',0)) for x in r['searches'])}**, unique unresolved matches **{r['matched_unique']}**, ambiguous **{r['ambiguous_seed_matches']}**. Tour details/pages **{s['tour_detail_calls']}/{s['anex_page_gets']}**; full operator+media hotelCode **{len(r['confirmed_full_path'])}**, HOTELLIST-only strong **{len(r['strong_operator_link'])}**, conflicts **{len(r['conflicts'])}**. Coverage ANEX links {c['anex_links']}, ANEX unique {c['anex_unique_local']}, Andromeda unique {c['andromeda_unique_local']}, triple {c['all_three']}. DB/mapping writes 0; `/continue` 0; booking 0."
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve v8 evidence result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8-result
+          path: ${{ runner.temp }}/hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH v8 result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
