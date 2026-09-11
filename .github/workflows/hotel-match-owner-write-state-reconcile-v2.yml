@@ -1,0 +1,91 @@
+name: MATCH owner write state reconcile v2
+
+on:
+  push:
+    branches:
+      - ops/match-owner-write-state-reconcile-1971-20260911-v2
+    paths:
+      - '.github/workflows/hotel-match-owner-write-state-reconcile-v2.yml'
+
+permissions:
+  contents: read
+
+env:
+  OPERATION_ID: hotel-match-owner-write-state-reconcile-1971-20260911-v2
+  EXPECTED_BASE_SHA: 2a230f5d9fb211e516735a38a625a943c0d4bb24
+  EXPECTED_SOURCE_SHA: 628ce80b543a37be71df5fb312c28851c7c9d91a
+
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify exact source and reserve
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-owner-write-state-reconcile-1971-20260911-v2'
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_BASE_SHA"
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/hotel-match-owner-write-state-reconcile-v2.yml'
+          mkdir -p .owner-state
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          v={'operation_id':os.environ['OPERATION_ID'],'state':'reserved','expected_source_sha':os.environ['EXPECTED_SOURCE_SHA'],'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'scope':'owner_write_live_readback','database_calls':0,'supplier_requests':0,'data_writes':0,'no_replay':True}
+          Path('.owner-state/reservation.json').write_text(json.dumps(v,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-write-state-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: .owner-state/reservation.json
+          retention-days: 90
+      - name: Read current live owner runtime
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,subprocess,tempfile
+          from pathlib import Path
+          php=r'''<?php
+          function j($p){if(!is_file($p)||is_link($p)||filesize($p)>1000000)return null;$x=json_decode(file_get_contents($p),true,32);return is_array($x)?$x:null;}
+          function h($p){return is_file($p)&&!is_link($p)&&filesize($p)<=1000000?hash_file('sha256',$p):null;}
+          $root=realpath(getcwd());$home=realpath((string)getenv('HOME'));$private=$home.'/.anytoour-anex/review-owner';$target=$root.'/_preview/search3-anex-candidate';
+          $m=j($private.'/manifest.json');$p=j($target.'/anex-owner-panel-manifest.json');$w=j($private.'/write-state.json');$acct=j($private.'/owner.json');
+          $entry=(string)@file_get_contents($private.'/entry-panel.php');$login=(string)@file_get_contents($private.'/entry-login.php');$source=$m['source_sha']??'';
+          $runtime=$private.'/runtime-'.$source;$all=true;$checks=[];if(is_array($m['runtime_files']??null)){foreach($m['runtime_files'] as $name=>$expected){$actual=h($runtime.'/'.$name);$checks[$name]=($actual===$expected);if($actual!==$expected)$all=false;}}
+          echo json_encode(['status'=>'ok','manifest_source'=>$source,'previous_source'=>$m['previous_source_sha']??null,'upgrade_action'=>$m['upgrade_action']??null,'manifest_write'=>$m['write_enabled']??null,'public_source'=>$p['source_sha']??null,'public_write'=>$p['write_enabled']??null,'write_state'=>$w['state']??null,'write_state_source'=>$w['source_sha']??null,'owner_activated'=>is_string($acct['password_hash']??null)&&($acct['password_hash']??'')!=='','account_preserved'=>$m['account_preserved']??null,'config_preserved'=>$m['config_preserved']??null,'htaccess_reconciled'=>$m['htaccess_reconciled']??null,'panel_entry_current'=>strpos($entry,'runtime-'.$source)!==false,'login_entry_current'=>strpos($login,'runtime-'.$source)!==false,'runtime_all_match'=>$all,'runtime_checks'=>$checks,'database_calls'=>0,'supplier_requests'=>0,'data_writes'=>0],JSON_UNESCAPED_SLASHES);
+          ?>'''
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory() as td:
+              key=Path(td)/'key'
+              if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
+              else:key.write_bytes(base64.b64decode(raw))
+              key.chmod(0o600)
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=60)
+          if p.returncode!=0: raise SystemExit('ssh readback failed')
+          data=json.loads(p.stdout); expected=os.environ['EXPECTED_SOURCE_SHA']
+          ok=(data.get('status')=='ok' and data.get('manifest_source')==expected and data.get('public_source')==expected and data.get('write_state_source')==expected and data.get('manifest_write') is True and data.get('public_write') is True and data.get('write_state')=='completed' and data.get('owner_activated') is True and data.get('account_preserved') is True and data.get('config_preserved') is True and data.get('panel_entry_current') is True and data.get('login_entry_current') is True and data.get('runtime_all_match') is True)
+          data.update(operation_id=os.environ['OPERATION_ID'],run_id=int(os.environ['GITHUB_RUN_ID']),source_sha=os.environ['GITHUB_SHA'],reconciliation_outcome='completed' if ok else 'mismatch')
+          Path('.owner-state/result.json').write_text(json.dumps(data,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'outcome':data['reconciliation_outcome'],'manifest_source':data.get('manifest_source'),'write_enabled':data.get('manifest_write'),'write_state':data.get('write_state'),'runtime_all_match':data.get('runtime_all_match')},sort_keys=True))
+          if not ok: raise SystemExit('live state mismatch')
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-write-state-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            .owner-state/reservation.json
+            .owner-state/result.json
+          if-no-files-found: warn
+          retention-days: 90
