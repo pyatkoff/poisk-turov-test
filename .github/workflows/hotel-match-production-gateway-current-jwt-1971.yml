@@ -5,7 +5,7 @@ on:
     paths: ['.github/workflows/hotel-match-production-gateway-current-jwt-1971.yml']
 permissions: {contents: read}
 env:
-  OPERATION_ID: hotel-match-tv-operator13-continue-13591467617-1971-v8
+  OPERATION_ID: hotel-match-tv-operator13-continue-13591467617-1971-v9
   SEARCH_ID: '13591467617'
 jobs:
   probe:
@@ -14,20 +14,17 @@ jobs:
     steps:
       - name: Reserve
         run: |
-          set -euo pipefail
-          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          set -euo pipefail; mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
           python3 - <<'PY'
           import json,os
           from pathlib import Path
           p=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','searchId':int(os.environ['SEARCH_ID']),'action':'single_continue_then_results','baseline_unique_hotels':51,'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','searchId':int(os.environ['SEARCH_ID']),'action':'single_continue_then_results','baseline_unique_hotels':63,'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
           PY
       - name: Continue existing search and read results
         run: |
-          set -euo pipefail
-          state="$RUNNER_TEMP/$OPERATION_ID"; base='https://anytoour.ru/api-v2.php'
-          curl -sS --connect-timeout 15 --max-time 70 "$base?action=search_continue&searchId=$SEARCH_ID" -o "$state/continue.json"
-          sleep 2
+          set -euo pipefail; state="$RUNNER_TEMP/$OPERATION_ID"; base='https://anytoour.ru/api-v2.php'
+          curl -sS --connect-timeout 15 --max-time 70 "$base?action=search_continue&searchId=$SEARCH_ID" -o "$state/continue.json"; sleep 2
           curl -sS --connect-timeout 15 --max-time 50 "$base?action=search_status&searchId=$SEARCH_ID" -o "$state/status.json"
           curl -sS --connect-timeout 15 --max-time 70 "$base?action=search_results&searchId=$SEARCH_ID&limit=100" -o "$state/results.json"
           export STATE="$state"
@@ -43,13 +40,13 @@ jobs:
           status={}
           try: status=json.loads((s/'status.json').read_text())
           except Exception: pass
-          out={'operation_id':os.environ['OPERATION_ID'],'searchId':int(os.environ['SEARCH_ID']),'status':status.get('status'),'progress':status.get('progress'),'baseline_unique_hotels':51,'unique_hotel_ids_after_continue':len(hotels),'delta_unique_hotels':len(hotels)-51,'sample_hotels':[{'id':k,'name':v} for k,v in list(hotels.items())[-45:]],'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True}
+          out={'operation_id':os.environ['OPERATION_ID'],'searchId':int(os.environ['SEARCH_ID']),'status':status.get('status'),'progress':status.get('progress'),'baseline_unique_hotels':63,'unique_hotel_ids_after_continue':len(hotels),'delta_unique_hotels':len(hotels)-63,'sample_hotels':[{'id':k,'name':v} for k,v in list(hotels.items())[-50:]],'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True}
           (s/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(out,ensure_ascii=False,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-tv-operator13-continue-13591467617-v8
+          name: match-tv-operator13-continue-13591467617-v9
           path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
           if-no-files-found: error
           retention-days: 90
