@@ -31,7 +31,8 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
         const state = await page.evaluate(() => {
           const box = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height, fontSize: parseFloat(s.fontSize), position: s.position }; };
           const form = document.forms.tourSearch, preferences = form.querySelector('.search-preferences');
-          const visible = nodes => [...nodes].filter(node => node.getBoundingClientRect().height > 0);
+          // Closed details descendants may retain geometry without being painted.
+          const visible = nodes => [...nodes].filter(node => !node.closest('details:not([open])') && node.checkVisibility({ visibilityProperty: true }) && node.getBoundingClientRect().height > 0);
           const columns = node => getComputedStyle(node).gridTemplateColumns.split(' ').length;
           return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -44,7 +45,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
             preferenceLabels: [...preferences.querySelectorAll('.search-preference>span')].map(node => node.textContent.trim()),
             preferenceWidths: [...preferences.children].map(node => box(node).width),
             labels: visible(form.querySelectorAll('.field>span')).map(box),
-            controls: visible(form.querySelectorAll('.field :is(input,select)')).map(box),
+            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name })),
             dateControls: [...form.querySelectorAll('.search-group--dates input')].map(box),
             submit: box(form.querySelector('.search-submit')), extras: box(form.querySelector('.extras')),
             operatorSecondary: !!form.querySelector('.extras select[name=operator]'),
@@ -56,6 +57,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
         assert.equal(state.hero.position, 'absolute', 'semantic hero stays outside visual flow');
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
         assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
+        assert.equal(state.controls.length, 15, 'all fourteen primary native controls plus the hydrated child age are visible');
         assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), 'native controls retain 44px/16px');
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, 'primary action remains readable');
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы']);
