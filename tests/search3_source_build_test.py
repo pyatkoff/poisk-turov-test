@@ -38,7 +38,7 @@ process.stdout.write(JSON.stringify(values));
 '''
     result = subprocess.run(
         ['node', '-e', script, str(ROOT / 'scripts/build/search3-js/node_modules/acorn')],
-        input=source, capture_output=True, check=True, timeout=10)
+        input=source, text=True, capture_output=True, check=True, timeout=10)
     return json.loads(result.stdout)
 
 
@@ -195,7 +195,7 @@ class Search3SourceBuildTest(unittest.TestCase):
 
     def test_invalid_private_include_fails_before_writing_any_output(self):
         source = self.root / 'src/search3/behavior/results-cards-v2.js'
-        source.write_text('/* @include ../outside.js */')
+        source.write_text('/* @include ../outside.js */\n')
         with self.assertRaises(ValueError):
             builder.build(self.root, write=True)
         for name, original in self.outputs.items():
