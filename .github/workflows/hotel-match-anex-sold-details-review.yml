@@ -4,16 +4,16 @@ on:
   push:
     branches: ['feat/match-anex-sellability-20260911']
     paths:
-      - '.github/match-anex-sold-details-review-1971-v1.arm'
+      - '.github/match-anex-sold-details-review-1971-v2.arm'
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: match-anex-sold-details-review-1971-v1
+  group: match-anex-sold-details-review-1971-v2
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-anex-sold-details-review-1971-20260911-v1
+  OPERATION_ID: hotel-match-anex-sold-details-review-1971-20260911-v2
   SOURCE_RUN_ID: '34582780463'
   SOURCE_ARTIFACT_ID: '10192364780'
   SOURCE_ARTIFACT_NAME: hotel-match-anex-sellability-review-1971-20260911-v4-result
@@ -30,7 +30,7 @@ jobs:
       - name: Verify MATCH source only
         run: |
           set -euo pipefail
-          test "$(cat .github/match-anex-sold-details-review-1971-v1.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-anex-sold-details-review-1971-v2.arm)" = "$OPERATION_ID"
           php -l scripts/diagnostics/hotel_match_anex_sold_details_review.php
           php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
           php -l app/integrations/anex-client.php
@@ -91,7 +91,7 @@ jobs:
               if s.startswith('<?php'): s=s[len('<?php'):]
               return s.replace('declare(strict_types=1);','',1)
           helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
-          source=body('scripts/diagnostics/hotel_match_anex_sold_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          source=body('scripts/diagnostics/hotel_match_anex_sold_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1).replace('hotel-match-anex-sold-details-review-1971-20260911-v1',os.environ['OPERATION_ID'],1)
           manifest=base64.b64encode((state/'source/result.json').read_bytes()).decode()
           wrapper=r'''
           try{
@@ -106,9 +106,9 @@ jobs:
           if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
           with tempfile.TemporaryDirectory(prefix='match-sold-details-plan-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
               key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
-              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
               clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
-              p=subprocess.run(cmd,text=True,capture_output=True,timeout=180,env=clean)
+              p=subprocess.run(cmd,input='<?php\n'+code,text=True,capture_output=True,timeout=180,env=clean)
           try:r=json.loads(p.stdout)
           except Exception: raise RuntimeError('preflight_output_unparseable')
           if p.returncode!=0 or r.get('status')!='ready' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('supplier_calls')!=0 or r.get('database_writes')!=0 or r.get('mapping_writes')!=0: raise RuntimeError('preflight_not_ready')
@@ -129,11 +129,11 @@ jobs:
       - name: Preserve reservation before supplier calls
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-anex-sold-details-review-1971-20260911-v1-reservation
+          name: hotel-match-anex-sold-details-review-1971-20260911-v2-reservation
           path: |
-            ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v1/source-identity.json
-            ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v1/plan.json
-            ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v2/source-identity.json
+            ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v2/plan.json
+            ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Collect bounded ANEX details and recompute CURRENT candidates
@@ -153,7 +153,7 @@ jobs:
               return s.replace('declare(strict_types=1);','',1)
           helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
           client=body('app/integrations/anex-client.php')
-          source=body('scripts/diagnostics/hotel_match_anex_sold_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          source=body('scripts/diagnostics/hotel_match_anex_sold_details_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1).replace('hotel-match-anex-sold-details-review-1971-20260911-v1',os.environ['OPERATION_ID'],1)
           plan64=base64.b64encode((state/'plan.json').read_bytes()).decode()
           wrapper=r'''
           try{
@@ -170,9 +170,9 @@ jobs:
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
           with tempfile.TemporaryDirectory(prefix='match-sold-details-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
               key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
-              cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
               clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
-              p=subprocess.run(cmd,text=True,capture_output=True,timeout=1050,env=clean)
+              p=subprocess.run(cmd,input='<?php\n'+code,text=True,capture_output=True,timeout=1050,env=clean)
           progress={'authenticated':'Authenticated to ' in p.stderr or 'Authentication succeeded' in p.stderr,'command_sent':'Sending command:' in p.stderr,'remote_exit_seen':'Exit status ' in p.stderr}
           try:r=json.loads(p.stdout)
           except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'output_unparseable','database_writes':0,'mapping_writes':0}
@@ -189,8 +189,8 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-anex-sold-details-review-1971-20260911-v1-result
-          path: ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v1/
+          name: hotel-match-anex-sold-details-review-1971-20260911-v2-result
+          path: ${{ runner.temp }}/hotel-match-anex-sold-details-review-1971-20260911-v2/
           if-no-files-found: warn
           retention-days: 90
       - name: Record MATCH evidence result
