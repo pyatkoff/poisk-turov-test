@@ -1,13 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Explicit marker for a proven network/transport failure.
- * Runtime integration must throw this type only when the HTTP request outcome is
- * unavailable because of a network/transport failure. Generic supplier/client
- * RuntimeException messages are deliberately insufficient for retry eligibility.
- */
-final class AnyTourAndromedaNetworkTransportFailure extends RuntimeException {}
+require_once __DIR__ . '/andromeda-network-transport-failure.php';
 
 /**
  * Source-only fail-closed retry policy for one selected Andromeda broninit.
