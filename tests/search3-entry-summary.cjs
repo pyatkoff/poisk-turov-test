@@ -21,22 +21,24 @@ for (const marker of ['search3-price-calendar', 'search3-entry-summary-detail', 
 }
 assert.match(formOwner, /dataset\.search3Ready='1'/, 'compatibility ready marker remains');
 for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
-  'count_people', 'child_count', 'child_age[]', 'region', 'hotel', 'stars', 'rating', 'food',
+  'count_people', 'child_count', 'child_age[]', 'region', 'subregion', 'hotel', 'stars', 'rating', 'food',
   'operator', 'price_from', 'price_till']) {
   assert.ok(markup.includes(`name="${name}"`), `canonical server field remains: ${name}`);
 }
-assert.match(markup, /<fieldset class="search-group search-group--route"><legend>Курорт и отель<\/legend>[\s\S]*?name="region"[\s\S]*?name="hotel"[\s\S]*?<\/fieldset>/, 'resort and concrete hotel stay always visible in the canonical main grid');
-assert.match(markup, /<fieldset class="search-group"><legend>Уровень отеля<\/legend>[\s\S]*?name="stars"[\s\S]*?name="rating"[\s\S]*?<\/fieldset>/, 'category and rating stay always visible in the canonical main grid');
-assert.match(markup, /<fieldset class="search-group"><legend>Питание и оператор<\/legend>[\s\S]*?name="food"[\s\S]*?name="operator"[\s\S]*?<\/fieldset>/, 'meal and operator stay always visible in the canonical main grid');
+assert.match(markup, /<fieldset class="search-group"><legend>Курорт<\/legend>[\s\S]*?name="region"[\s\S]*?name="subregion"[\s\S]*?<\/fieldset>/, 'resort and subregion stay always visible in the canonical main grid');
+assert.match(markup, /<fieldset class="search-group"><legend>Отель<\/legend>[\s\S]*?name="hotel"[\s\S]*?name="stars"[\s\S]*?<\/fieldset>/, 'concrete hotel and category stay always visible in the canonical main grid');
+assert.match(markup, /<fieldset class="search-group"><legend>Питание и рейтинг<\/legend>[\s\S]*?name="food"[\s\S]*?name="rating"[\s\S]*?<\/fieldset>/, 'meal and rating stay always visible in the canonical main grid');
 assert.match(markup, /<fieldset class="search-group"><legend>Бюджет<\/legend>[\s\S]*?name="price_from"[\s\S]*?name="price_till"[\s\S]*?<\/fieldset>/, 'budget range stays always visible in the canonical main grid');
+assert.match(markup, /<details class="extras">[\s\S]*?<select name="operator">[\s\S]*?<\/details>/, 'tour operator stays secondary inside the existing extras owner');
+assert.doesNotMatch(markup, /<div class="main-fields">[\s\S]*?<legend>[^<]*оператор[^<]*<\/legend>/i, 'tour operator is not promoted as a primary search group');
 assert.match(markup, /\$advancedFilterCount=0;/, 'server entry owns the secondary-filter count');
-for (const name of ['arrival', 'subregion', 'hotel_type', 'hotel_service']) {
+for (const name of ['arrival', 'operator', 'hotel_type', 'hotel_service']) {
   assert.ok(markup.includes(`'${name}'`), `secondary summary includes ${name}`);
 }
 assert.match(markup, /\['onlyDirect','only_direct'\],\['onlyCharter','only_charter'\]/, 'direct and charter aliases count once');
 assert.match(markup, /\['1','true','yes'\]/, 'false-ish flight flags stay inactive');
 assert.match(markup, /Активных дополнительных: /, 'Search3 exposes a truthful secondary-filter count');
-assert.match(markup, /аэропорт, район, тип отеля, перелёт и услуги/, 'Search3 default hint advertises only the remaining secondary controls');
+assert.match(markup, /аэропорт, туроператор, тип отеля, перелёт и услуги/, 'Search3 default hint advertises only the remaining secondary controls');
 assert.match(markup, /v2_search3_enabled\(\)\?'Ещё фильтры':'Фильтры отдыха'/, 'Search3 labels the disclosure as secondary rather than hiding core search parameters');
 assert.match(markup, /v2_search3_enabled\(\)\?'Вылет с':'С'/, 'Search3 start-date label is explicit while legacy stays unchanged');
 assert.match(markup, /v2_search3_enabled\(\)\?'Вылет до':'По'/, 'Search3 end-date label is explicit while legacy stays unchanged');
@@ -45,4 +47,4 @@ assert.match(markup, /<\?php else:\?><section class="v2-product-hero"/, 'legacy 
 assert.match(catalogs, /function renderChildAges\(\)/, 'canonical child-age owner remains');
 assert.match(lifecycle, /new FormData\(form\)/, 'canonical FormData owner remains');
 assert.match(lifecycle, /hydrateUrlState\(\)/, 'canonical URL hydration remains');
-console.log('PASS: native server form exposes full OTA search parameters, keeps only secondary controls in disclosure, and preserves catalog controls, URL hydration and canonical FormData');
+console.log('PASS: native server form exposes full OTA search parameters, keeps tour operator secondary, and preserves catalog controls, URL hydration and canonical FormData');
