@@ -5,9 +5,11 @@ on:
       - 'scripts/diagnostics/andromeda_fresh_package_probe.py'
       - 'scripts/diagnostics/andromeda_fresh_package_probe_wide.py'
       - 'scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py'
+      - 'scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py'
       - 'tests/andromeda_fresh_package_probe_test.py'
       - 'tests/andromeda_fresh_package_probe_wide_test.py'
       - 'tests/andromeda_fresh_package_supplier_error_probe_test.py'
+      - 'tests/andromeda_fresh_package_probe_known_hotel_test.py'
       - '.github/workflows/andromeda-fresh-package-probe-check.yml'
 permissions:
   contents: read
@@ -22,15 +24,17 @@ jobs:
           persist-credentials: false
       - name: Verify one-shot live diagnostic source without network
         run: |
-          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py tests/andromeda_fresh_package_probe_test.py tests/andromeda_fresh_package_probe_wide_test.py tests/andromeda_fresh_package_supplier_error_probe_test.py
+          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py tests/andromeda_fresh_package_probe_test.py tests/andromeda_fresh_package_probe_wide_test.py tests/andromeda_fresh_package_supplier_error_probe_test.py tests/andromeda_fresh_package_probe_known_hotel_test.py
           python3 tests/andromeda_fresh_package_probe_test.py
           python3 tests/andromeda_fresh_package_probe_wide_test.py
           python3 tests/andromeda_fresh_package_supplier_error_probe_test.py
+          python3 tests/andromeda_fresh_package_probe_known_hotel_test.py
           python3 - <<'PY'
           from pathlib import Path
           src=Path('scripts/diagnostics/andromeda_fresh_package_probe.py').read_text()
           wide=Path('scripts/diagnostics/andromeda_fresh_package_probe_wide.py').read_text()
           supplier=Path('scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py').read_text()
+          known=Path('scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py').read_text()
           assert "'OPERATORS'=>'5'" in src
           assert "'PAGE'=>1" in src
           assert "$supplierCalls=3; $package=$client->package($offer)" in src
@@ -41,5 +45,7 @@ jobs:
           assert "'NIGHTS_FROM'=>7,'NIGHTS_TILL'=>8" in wide and "'OPERATORS'=>'5'" in wide
           assert 'supplier_error' in supplier and "query['claiminc']" in supplier and "query['sid']" in supplier
           assert "->bron(" not in supplier and "->calc(" not in supplier and 'bron_ticket' not in supplier
+          assert "'HOTELS'=>'416247'" in known and "'STATEINC'=>3" in known and "'CHECKIN_BEG'=>'20260918'" in known
+          assert "->get_flights(" not in known and "->calc(" not in known and "->bron(" not in known
           print('Fresh package static safety: PASS')
           PY
