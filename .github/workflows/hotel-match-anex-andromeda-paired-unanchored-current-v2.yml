@@ -1,0 +1,109 @@
+name: MATCH ANEX Andromeda paired-unanchored current v2
+run-name: MATCH paired-unanchored CURRENT #1971 v2
+on:
+  push:
+    branches: ['ops/match-anex-andromeda-paired-unanchored-current-1971-v1']
+    paths: ['.github/match-anex-andromeda-paired-unanchored-current-1971-v2.arm']
+permissions: {contents: read}
+concurrency:
+  group: match-aa-paired-unanchored-current-1971-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-andromeda-paired-unanchored-current-1971-v2
+  OUT_DIR: /tmp/match-aa-paired-unanchored-current-v2
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 3, persist-credentials: false}
+      - name: Verify arm
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-andromeda-paired-unanchored-current-1971-v2.arm)" = "$OPERATION_ID"
+          mkdir -p "$OUT_DIR"
+      - name: Establish SSH control master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/aapu2-key"; sock="$RUNNER_TEMP/aapu2.sock"; known="$RUNNER_TEMP/aapu2-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then
+              if ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -s config.php && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf AAPU2_OK' | grep -qx AAPU2_OK; then ok=1; break; fi
+            fi
+            ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true
+            sleep $((attempt*2))
+          done
+          test "$ok" = 1
+          printf '%s\n' "$sock" > "$RUNNER_TEMP/aapu2-sock"
+      - name: Persist immutable reservation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          pairs=[[16232,'325764',1,'The Three Corners Happy Life'],[28396,'2000098768',1,'Pickalbatros Laguna Vista Resort'],[37012,'2000081107',1,'Pickalbatros Villaggio Resort - Portofino'],[18186,'261673',9,'Ramee Rose Hotel'],[34680,'2000121312',4,'Amon Hotels Only Gentleman'],[44573,'2000091587',4,'Hotel The Rose Bouquetes'],[37048,'2000083734',1,'Amarina Jannah Resort & Aqua Park'],[1286,'84963',1,'Sentido Mamlouk Palace Resort'],[30600,'2000065684',1,"Cook's Club (+16 Adult Only)"],[30599,'2000061029',1,'Casa Cook (+16 Adult Only)'],[15072,'2000032277',4,'Sunis Hotel Su']]
+          root=Path(os.environ['OUT_DIR']); root.mkdir(parents=True,exist_ok=True)
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','source_artifact_id':10263767920,'source_operation':'hotel-match-anex-andromeda-direct-catalog-review-1971-20260911-v1','pair_count':11,'pairs':pairs,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (root/'reservation.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: match-aa-paired-unanchored-current-v2-reservation, path: '${{ env.OUT_DIR }}/reservation.json', if-no-files-found: error, retention-days: 90}
+      - name: Read CURRENT mapping state
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sock="$(cat "$RUNNER_TEMP/aapu2-sock")"; remote="/tmp/aapu2-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.php"
+          cat > "$RUNNER_TEMP/aapu2.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $pairs=[[16232,'325764',1,'The Three Corners Happy Life'],[28396,'2000098768',1,'Pickalbatros Laguna Vista Resort'],[37012,'2000081107',1,'Pickalbatros Villaggio Resort - Portofino'],[18186,'261673',9,'Ramee Rose Hotel'],[34680,'2000121312',4,'Amon Hotels Only Gentleman'],[44573,'2000091587',4,'Hotel The Rose Bouquetes'],[37048,'2000083734',1,'Amarina Jannah Resort & Aqua Park'],[1286,'84963',1,'Sentido Mamlouk Palace Resort'],[30600,'2000065684',1,"Cook's Club (+16 Adult Only)"],[30599,'2000061029',1,'Casa Cook (+16 Adult Only)'],[15072,'2000032277',4,'Sunis Hotel Su']];
+          $root=realpath(getcwd()); require $root.'/config.php'; require is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php'; $db=v2_data_db(); $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $counts=array_fill_keys(['still_both_unlinked','now_anex_only','now_andromeda_only','now_same_local','now_conflict','protected'],0); $out=[];
+          foreach($pairs as [$aid,$did,$cid,$name]){
+            $a=[];$protected=false;
+            $q=$db->prepare('SELECT catalog_hotel_id,decision_status FROM anex_hotel_decisions WHERE anex_hotel_id=?');$q->execute([$aid]);foreach($q->fetchAll(PDO::FETCH_ASSOC) as $r){if($r['decision_status']==='accepted'&&(int)$r['catalog_hotel_id']>0)$a[(int)$r['catalog_hotel_id']]=true;else $protected=true;}
+            $q=$db->prepare("SELECT catalog_hotel_id,enabled,scope,approval_policy FROM anex_hotel_search_mappings WHERE anex_hotel_id=?");$q->execute([$aid]);$am=$q->fetchAll(PDO::FETCH_ASSOC);foreach($am as $r){if((int)$r['enabled']===1&&$r['scope']==='preview'&&(int)$r['catalog_hotel_id']>0)$a[(int)$r['catalog_hotel_id']]=true;}
+            $d=[];$q=$db->prepare("SELECT local_hotel_id,decision_status FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=?");$q->execute([$did]);foreach($q->fetchAll(PDO::FETCH_ASSOC) as $r){if($r['decision_status']==='accepted'&&(int)$r['local_hotel_id']>0)$d[(int)$r['local_hotel_id']]=true;elseif(!($r['decision_status']==='pending'&&$r['local_hotel_id']===null))$protected=true;}
+            $ak=array_keys($a);$dk=array_keys($d);$bucket='still_both_unlinked'; if($protected)$bucket='protected'; elseif($ak&&$dk)$bucket=(count($ak)===1&&count($dk)===1&&$ak[0]===$dk[0])?'now_same_local':'now_conflict'; elseif($ak)$bucket='now_anex_only'; elseif($dk)$bucket='now_andromeda_only'; $counts[$bucket]++;
+            $out[]=['anex_hotel_id'=>$aid,'andromeda_external_id'=>$did,'country_id'=>$cid,'name'=>$name,'anex_local_ids'=>$ak,'andromeda_local_ids'=>$dk,'bucket'=>$bucket];
+          }
+          echo 'AAPU2_JSON:'.json_encode(['status'=>'completed','operation_id'=>'hotel-match-anex-andromeda-paired-unanchored-current-1971-v2','counts'=>$counts,'rows'=>$out,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+          PHP
+          scp -q -o ControlMaster=no -o ControlPath="$sock" "$RUNNER_TEMP/aapu2.php" "$USER_VALUE@$HOST_VALUE:$remote"
+          set +e
+          ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=0 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc" > "$OUT_DIR/live.stdout" 2> "$OUT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); out=(root/'live.stdout').read_text(errors='replace'); err=(root/'live.stderr').read_text(errors='replace'); p='AAPU2_JSON:'; line=next((x[len(p):] for x in reversed(out.splitlines()) if x.startswith(p)),None)
+          result=json.loads(line) if line else {'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (root/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps({'status':result.get('status'),'counts':result.get('counts'),'rows':result.get('rows')},ensure_ascii=False))
+          if result.get('status')!='completed': raise SystemExit(2)
+          PY
+      - name: Preserve final receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-aa-paired-unanchored-current-v2-final
+          path: |
+            ${{ env.OUT_DIR }}/reservation.json
+            ${{ env.OUT_DIR }}/result.json
+            ${{ env.OUT_DIR }}/live.stderr
+          if-no-files-found: error
+          retention-days: 90
