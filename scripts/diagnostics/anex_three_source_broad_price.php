@@ -6,9 +6,9 @@ if (!function_exists('anex_paired_text')) {
     require __DIR__ . '/anex_search3_paired_runner.php';
 }
 
-const ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260911_v2';
+const ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260911_v3';
 const ANEX_BROAD_PRICE_CASES = ['anex','andromeda','tourvisor'];
-const ANEX_BROAD_PRICE_DATE = '2026-10-05';
+const ANEX_BROAD_PRICE_DATE = '2026-10-19';
 
 function anex_broad_price_input($value): array
 {
@@ -16,8 +16,8 @@ function anex_broad_price_input($value): array
     if(!is_array($value)||count($value)!==count($keys)||array_diff($keys,array_keys($value))||array_diff(array_keys($value),$keys)
         ||($value['experiment_id']??null)!==ANEX_BROAD_PRICE_EXPERIMENT
         ||!in_array($value['case_id']??null,ANEX_BROAD_PRICE_CASES,true)
-        ||($value['country']??null)!=='Turkey'||($value['date']??null)!==ANEX_BROAD_PRICE_DATE
-        ||($value['nights']??null)!==7||($value['adults']??null)!==2||($value['child_ages']??null)!==[]
+        ||($value['country']??null)!=='Egypt'||($value['date']??null)!==ANEX_BROAD_PRICE_DATE
+        ||($value['nights']??null)!==10||($value['adults']??null)!==3||($value['child_ages']??null)!==[]
         ||($value['meal_family']??null)!=='ai'||($value['currency']??null)!=='RUB') throw new RuntimeException('BROAD_PRICE_INVALID_INPUT');
     return $value;
 }
@@ -47,11 +47,11 @@ function anex_broad_price_money($value,bool $positive=true): ?string
 function anex_broad_price_offer(string $provider,int $local,$external,$hotelName,$date,$nights,$adults,$children,$meal,$room,$placement,$price,$currency,$fuel=null): ?array
 {
     $date=anex_paired_date($date);$amount=anex_broad_price_money($price,true);$mealFamily=anex_broad_price_meal($meal);
-    if($local<1||$date!==ANEX_BROAD_PRICE_DATE||$amount===null||$mealFamily!=='ai'||(int)$nights!==7||(int)$adults!==2||(int)$children!==0)return null;
+    if($local<1||$date!==ANEX_BROAD_PRICE_DATE||$amount===null||$mealFamily!=='ai'||(int)$nights!==10||(int)$adults!==3||(int)$children!==0)return null;
     $currency=strtoupper((string)(anex_paired_text($currency,[],8)??''));if($currency!=='RUB')return null;
     $fuelValue=null;if($fuel!==null){if(is_array($fuel))$fuel=$fuel['value']??$fuel['amount']??null;$fuelValue=anex_broad_price_money($fuel,false);}
     return ['provider'=>$provider,'local_hotel_id'=>$local,'external_hotel_id'=>(string)$external,
-        'hotel_name'=>anex_paired_text($hotelName,[],240),'date'=>$date,'nights'=>7,'adults'=>2,'children'=>0,
+        'hotel_name'=>anex_paired_text($hotelName,[],240),'date'=>$date,'nights'=>10,'adults'=>3,'children'=>0,
         'meal_family'=>'ai','meal_label'=>anex_paired_text($meal,[],100),'room'=>anex_paired_text($room,[],180),
         'room_norm'=>anex_broad_price_norm($room,180),'placement'=>anex_paired_text($placement,[],120),
         'placement_norm'=>anex_broad_price_norm($placement,120),'price'=>$amount,'currency'=>'RUB','fuel_charge'=>$fuelValue,
@@ -70,7 +70,7 @@ function anex_broad_price_save(string $path,array $value): void
 
 function anex_broad_price_local(PDO $pdo): array
 {
-    $q=$pdo->prepare("SELECT d.id departure_id,d.name departure_name,c.id country_id,c.name country_name FROM catalog_departures d CROSS JOIN catalog_countries c WHERE d.is_active=1 AND c.is_active=1 AND d.name IN ('Москва','Moscow') AND c.name IN ('Турция','Turkey') LIMIT 2");
+    $q=$pdo->prepare("SELECT d.id departure_id,d.name departure_name,c.id country_id,c.name country_name FROM catalog_departures d CROSS JOIN catalog_countries c WHERE d.is_active=1 AND c.is_active=1 AND d.name IN ('Москва','Moscow') AND c.name IN ('Египет','Egypt') LIMIT 2");
     $q->execute();$rows=$q->fetchAll(PDO::FETCH_ASSOC);if(count($rows)!==1)throw new RuntimeException('BROAD_PRICE_LOCAL_IDENTITY');return $rows[0];
 }
 
@@ -80,11 +80,11 @@ function anex_broad_price_anex(PDO $pdo,array $local,AnyTourAnexSearchMappingReg
     if(!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('BROAD_PRICE_ANEX_TOKEN_REQUIRED');
     $secrets[]=ANEX_API_TOKEN;$client=new AnyTourAnexClient(ANEX_API_TOKEN);$cache=[];
     $departure=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_TOWNFROMS',[],$cache),[$local['departure_name'],'Москва','Moscow']);
-    $country=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_STATES',['TOWNFROMINC'=>$departure],$cache),[$local['country_name'],'Турция','Turkey']);
-    $dated=['TOWNFROMINC'=>$departure,'STATEINC'=>$country,'CHECKIN_BEG'=>'20261005','CHECKIN_END'=>'20261005','ADULT'=>2,'CHILD'=>0];
+    $country=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_STATES',['TOWNFROMINC'=>$departure],$cache),[$local['country_name'],'Египет','Egypt']);
+    $dated=['TOWNFROMINC'=>$departure,'STATEINC'=>$country,'CHECKIN_BEG'=>'20261019','CHECKIN_END'=>'20261019','ADULT'=>3,'CHILD'=>0];
     $currency=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_CURRENCIES',$dated,$cache),['RUB','RUR','Рубль','Рубли','Руб']);
     $criteria=['supplier_namespace'=>'anex_online','departure_id'=>$departure,'destination_id'=>$country,'currency_id'=>$currency,
-        'checkin_begin'=>ANEX_BROAD_PRICE_DATE,'checkin_end'=>ANEX_BROAD_PRICE_DATE,'nights_from'=>7,'nights_till'=>7,'adults'=>2,'children'=>0,'child_ages'=>[]];
+        'checkin_begin'=>ANEX_BROAD_PRICE_DATE,'checkin_end'=>ANEX_BROAD_PRICE_DATE,'nights_from'=>10,'nights_till'=>10,'adults'=>3,'children'=>0,'child_ages'=>[]];
     $search=new AnyTourAnexSearch($client,$registry->previewResolver(),$secrets);$result=$search->search($criteria);$offers=[];$mapped=0;$unmapped=0;
     foreach($result['offers'] as $offer){$localId=$offer['hotel']['local_id']??null;if(!is_int($localId)||$localId<1){++$unmapped;continue;}++$mapped;
         $price=($offer['price']['currency']??'')==='RUB'?$offer['price']:($offer['converted_price']??$offer['price']);
@@ -103,11 +103,11 @@ function anex_broad_price_andromeda(PDO $pdo,array $local): array
     $_SERVER['SCRIPT_FILENAME']='';require_once $preview.'/api-andromeda-search3-preview.php';$configPath=$preview.'/.andromeda-private.php';
     if(!is_file($configPath)||is_link($configPath))throw new RuntimeException('BROAD_PRICE_ANDROMEDA_CONFIG');$config=require $configPath;
     if(!is_array($config)||($config['enabled']??null)!==true)throw new RuntimeException('BROAD_PRICE_ANDROMEDA_CONFIG');
-    $request=['generation'=>26091105,'page'=>1,'params'=>['departureId'=>(int)$local['departure_id'],'countryId'=>(int)$local['country_id'],
-        'dateFrom'=>ANEX_BROAD_PRICE_DATE,'dateTo'=>ANEX_BROAD_PRICE_DATE,'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'childs'=>[],
+    $request=['generation'=>26091119,'page'=>1,'params'=>['departureId'=>(int)$local['departure_id'],'countryId'=>(int)$local['country_id'],
+        'dateFrom'=>ANEX_BROAD_PRICE_DATE,'dateTo'=>ANEX_BROAD_PRICE_DATE,'nightsFrom'=>10,'nightsTo'=>10,'adults'=>3,'childs'=>[],
         'currency'=>'RUB','meal'=>7,'onlyCharter'=>false,'onlyDirect'=>false,'hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],
         'arrivalId'=>null,'operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[]],'andromeda_operator_ids'=>['5']];
-    $saved=anytour_andromeda_search3_catalog($config,$request);$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,'three-broad-price-20260911-v2');$offers=[];
+    $saved=anytour_andromeda_search3_catalog($config,$request);$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,'three-broad-price-20260911-v3');$offers=[];
     foreach($result['hotels']??[] as $hotel){$localId=(int)($hotel['local_id']??0);if($localId<1)continue;
         foreach($hotel['tours']??[] as $tour){$price=$tour['price']??[];$row=anex_broad_price_offer('andromeda',$localId,$localId,$hotel['name']??null,$tour['checkin']??null,$tour['nights']??null,
             $tour['adults']??null,$tour['children']??null,$tour['meal']??null,$tour['room']??null,$tour['placement']??null,$price['amount']??null,$price['currency']??null,null);
@@ -122,7 +122,7 @@ function anex_broad_price_tv(PDO $pdo,array $local,array &$requests,array &$secr
     $root=realpath((string)getenv('HOME').'/www/anytoour.ru');$helper=is_file($root.'/data/tourvisor-client-v1.php')?$root.'/data/tourvisor-client-v1.php':$root.'/v2/data/tourvisor-client-v1.php';
     require_once $helper;$token=v2_data_tourvisor_token();if($token==='')throw new RuntimeException('BROAD_PRICE_TV_TOKEN_REQUIRED');$secrets[]=$token;$deadline=microtime(true)+160;
     $criteria=['departureId'=>(int)$local['departure_id'],'countryId'=>(int)$local['country_id'],'dateFrom'=>ANEX_BROAD_PRICE_DATE,'dateTo'=>ANEX_BROAD_PRICE_DATE,
-        'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'childs'=>[],'currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false];
+        'nightsFrom'=>10,'nightsTo'=>10,'adults'=>3,'childs'=>[],'currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false];
     $operator=anex_paired_operator(anex_paired_tv_get('/operators',['departureId'=>$criteria['departureId'],'countryId'=>$criteria['countryId']],$token,$deadline,$requests));
     $criteria['operatorIds']=[$operator['id']];usleep(1050000);$start=anex_paired_tv_get('/tours/search',$criteria,$token,$deadline,$requests);$searchId=$start['searchId']??null;
     if(!(is_int($searchId)||is_string($searchId))||!preg_match('/\A[1-9][0-9]{0,17}\z/D',(string)$searchId))throw new RuntimeException('BROAD_PRICE_TV_SEARCH_ID');

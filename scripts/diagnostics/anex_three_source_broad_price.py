@@ -6,9 +6,9 @@ import sys
 
 from anex_search3_three_source_price import ssh_php_no_mux, transport_failure
 
-EXPERIMENT='anex_three_source_broad_price_20260911_v2'
+EXPERIMENT='anex_three_source_broad_price_20260911_v3'
 CASES=('anex','andromeda','tourvisor')
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-05','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-10-19','nights':10,'adults':3,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def source():
@@ -37,7 +37,7 @@ def validate_case(value,case_id):
         raise ValueError('broad_case_invalid')
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or not isinstance(row.get('local_hotel_id'),int) or row['local_hotel_id']<1 \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=7 or row.get('adults')!=2 or row.get('children')!=0 \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=10 or row.get('adults')!=3 or row.get('children')!=0 \
                 or row.get('meal_family')!='ai' or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str) \
                 or row.get('fuel_inclusion_verified') is not False or row.get('final_price_verified') is not False:
