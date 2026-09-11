@@ -5,6 +5,7 @@ const desktop=window.matchMedia('(min-width:1025px)');
 let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,providerField=null,providerSelect=null,operatorField=null,operatorSelect=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
+function providerKey(t){const value=String(t&&t.provider||'tourvisor').trim().toLowerCase();return value==='andromeda'?'andromeda':value==='anex'?'anex':'tourvisor';}
 function mealKey(value){
   const label=normalize(value),code=(label.match(/^(uai|ai|bb|hb|fb|ro|sc)(?=$|[+\s-])/)||[])[1]||'';
   if(code==='ai'||code==='uai'||/(?:ultra\s+)?all[ -]?inclusive|вс[её] включено/.test(label))return'meal:all-inclusive';
@@ -134,7 +135,7 @@ function syncMeal(items){
 }
 function syncProvider(items){
   const labels=new Map(),api=window.V2Results;
-  items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const key=api.providerKey(t),label=api.providerName(t).replace(/\s+/g,' ').trim();if(key&&!labels.has(key))labels.set(key,label||key);}));
+  items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const key=providerKey(t),label=api.providerName(t).replace(/\s+/g,' ').trim();if(key&&!labels.has(key))labels.set(key,label||key);}));
   const previous=providerSelect.value,available=labels.size>1;providerSelect.replaceChildren(option('','Все источники'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>providerSelect.appendChild(option(value,label)));
   providerSelect.value=available&&labels.has(previous)?previous:'';providerField.hidden=!available;return providerSelect.value;
@@ -149,7 +150,7 @@ function syncOperator(items){
 function project(items){
   ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),provider=syncProvider(items),operator=syncOperator(items),budget=syncBudget(items);
   if(!meal&&!provider&&!operator&&!budget){projectedItems=items;mount();return projectedItems;}
-  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||mealKey(api.mealLabel(t))===meal)&&(!provider||api.providerKey(t)===provider)&&(!operator||normalize(api.textValue(t&&t.operator))===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
+  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||mealKey(api.mealLabel(t))===meal)&&(!provider||providerKey(t)===provider)&&(!operator||normalize(api.textValue(t&&t.operator))===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
   mount();return projectedItems;
 }
 function apply(){
@@ -168,5 +169,5 @@ function clear(event){
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:9};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:8};
 })();
