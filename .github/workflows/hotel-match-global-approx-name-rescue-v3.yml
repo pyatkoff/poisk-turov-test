@@ -15,7 +15,7 @@ permissions:
   actions: read
   issues: write
 concurrency:
-  group: match-global-approx-name-rescue-1971-v3
+  group: ${{ github.event_name == 'push' && 'match-global-approx-name-rescue-1971-v3-live' || format('match-global-approx-name-rescue-1971-v3-offline-{0}', github.run_id) }}
   cancel-in-progress: false
 env:
   OPERATION_ID: hotel-match-global-approx-name-rescue-1971-20260911-v3
