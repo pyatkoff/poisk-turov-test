@@ -16,11 +16,12 @@
     "selection_state_required": "disabled"
   },
   "verification": {
-    "status": "pending_ci",
-    "head": null,
-    "retained_context_run": null,
+    "status": "success",
+    "head": "83e37cd26e82b68416e4596dd71fcab58e76134a",
+    "retained_context_run": 34577651965,
     "offer_contract_run": null,
-    "security_run": null,
+    "offer_contract_run_status": "not_triggered_for_context_only_path",
+    "security_run": 34577651914,
     "context_checks": 33
   },
   "effects": {
