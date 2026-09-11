@@ -27,6 +27,9 @@ jobs:
           assert 'supplier numeric ids' in src.lower()
           assert "'family_verified' => $family !== null" in src
           assert "'without_alcohol' => $withoutAlcohol" in src
+          assert "'canonical_key' => $canonicalKey" in src
+          assert "'cross_provider_equivalence_verified' => false" in src
+          assert "'package_equivalence_verified' => false" in src
           for forbidden in ('curl_', 'PDO', 'SearchTour_', 'CURRENCYINC', 'MEAL='):
               assert forbidden not in src
           print('Meal-family static boundary: PASS')
