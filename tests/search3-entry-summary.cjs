@@ -26,11 +26,15 @@ for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTi
   assert.ok(markup.includes(`name="${name}"`), `canonical server field remains: ${name}`);
 }
 assert.match(markup, /search-section-title--preferences"><span>Отель и условия<\/span>/, 'full search separates hotel preferences from trip basics without another form owner');
-assert.match(markup, /<div class="search-preferences">[\s\S]*?<\/div><\/div><div id="childAges"/, 'primary hotel preferences use one dedicated responsive grid inside the canonical form');
+const partyStart = markup.indexOf('<fieldset class="search-group search-group--party">');
+const partyEnd = markup.indexOf('</fieldset>', partyStart);
+const childAgesStart = markup.indexOf('<div id="childAges"', partyStart);
+assert.ok(partyStart > 0 && partyEnd > partyStart && childAgesStart > partyStart && childAgesStart < partyEnd,
+  'child ages stay inside the canonical tourist group');
 const primaryStart = markup.indexOf('<div class="search-preferences">');
-const primaryEnd = markup.indexOf('</div></div><div id="childAges"');
-assert.ok(primaryStart > 0 && primaryEnd > primaryStart, 'primary preference grid remains bounded');
-const primaryMarkup = markup.slice(primaryStart, primaryEnd);
+const extrasStart = markup.indexOf('<details class="extras">', primaryStart);
+assert.ok(primaryStart > 0 && extrasStart > primaryStart, 'primary preference grid remains bounded before extras');
+const primaryMarkup = markup.slice(primaryStart, extrasStart);
 for (const name of ['region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
   assert.ok(primaryMarkup.includes(`name="${name}"`), `primary preference remains directly visible: ${name}`);
 }
@@ -55,4 +59,4 @@ assert.match(markup, /<\?php else:\?><section class="v2-product-hero"/, 'legacy 
 assert.match(catalogs, /function renderChildAges\(\)/, 'canonical child-age owner remains');
 assert.match(lifecycle, /new FormData\(form\)/, 'canonical FormData owner remains');
 assert.match(lifecycle, /hydrateUrlState\(\)/, 'canonical URL hydration remains');
-console.log('PASS: native server form keeps the six primary OTA hotel/price preferences visible, keeps secondary controls and tour operator under extras, and preserves URL hydration/FormData');
+console.log('PASS: native server form keeps six primary OTA hotel/price preferences visible, groups child ages with tourists, keeps tour operator under extras, and preserves URL hydration/FormData');
