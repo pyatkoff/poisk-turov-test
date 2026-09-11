@@ -16,10 +16,11 @@ def check(value):
 
 combined=mod.source(); check(combined.startswith('declare(strict_types=1);\n'))
 check(combined.count('declare(strict_types=1);')==1); check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
+check(mod.EXPERIMENT=='anex_three_source_price_20260911_v2'); check(mod.SPEC['date']=='2026-09-27')
 
 subject={'local_hotel_id':6319,'anex_hotel_id':8121,'andromeda_hotel_id':'9001','hotel_name':'APERION BEACH','selection_basis':'current_unique_triple_mapping','anex_observation_count':9}
 def row(provider,price,room='standard',placement='dbl',fuel=None):
-    return {'provider':provider,'local_hotel_id':6319,'external_hotel_id':'1','date':'2026-09-20','nights':7,'adults':2,'children':0,'meal_family':'ai','meal_label':'AI','room':'Standard','room_norm':room,'placement':'DBL','placement_norm':placement,'price':price,'currency':'RUB','fuel_charge':fuel,'fuel_inclusion_verified':False,'final_price_verified':False}
+    return {'provider':provider,'local_hotel_id':6319,'external_hotel_id':'1','date':mod.SPEC['date'],'nights':7,'adults':2,'children':0,'meal_family':'ai','meal_label':'AI','room':'Standard','room_norm':room,'placement':'DBL','placement_norm':placement,'price':price,'currency':'RUB','fuel_charge':fuel,'fuel_inclusion_verified':False,'final_price_verified':False}
 def result(provider,price,fuel=None):
     return {'schema_version':1,'experiment_id':mod.EXPERIMENT,'case_id':provider,'status':'completed','subject':subject,'offers':[row(provider,price,fuel=fuel)],'details':{},'supplier_effect':'read_only_search_completed','reused':False,'automatic_retry':False,'booking_calls':0,'broninit_calls':0,'mapping_writes':0}
 
