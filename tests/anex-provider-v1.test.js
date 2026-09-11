@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const code=fs.readFileSync(require('path').join(__dirname,'../v2/anex-provider-v1.js'),'utf8');
+const sandbox={URL,console,location:{origin:'https://anytoour.ru',href:'https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/',pathname:'/_preview/search3-site-candidate/poisk-turov/'}};
+sandbox.globalThis=sandbox;vm.createContext(sandbox);vm.runInContext(code,sandbox);
+const api=sandbox.AnyTourAnexProvider;assert(api&&api.version===1);
+const fallback=api.endpoint('');assert(fallback&&fallback.href==='https://anytoour.ru/_preview/search3-anex-candidate/api-anex-search3-preview.php');
+assert.strictEqual(api.endpoint('https://evil.invalid/api-anex-search3-preview.php'),null);
+assert.strictEqual(api.endpoint('/_preview/search3-anex-candidate/not-anex.php'),null);
+const hotel={local_id:245,name:'Fixture Hotel',category:5,rating:4.7,country:'Египет',region:'Шарм-эль-Шейх',catalog:{image_url:'https://img.example.com/hotel.jpg',description:'Описание',address:'Адрес',subregion:'Hadaba'},tours:[{price:{amount:'100123.45',currency:'RUB'},checkin:'2026-09-20',nights:7,meal:'AI',room:'Standard',kind:'group_minimum',final_price_verified:false},{price:{amount:'110000',currency:'RUB'},checkin:'2026-09-21',nights:8,meal:'UAI',room:'Sea View',kind:'concrete',final_price_verified:false}]};
+const normalized=api.normalizeHotel(hotel);assert(normalized);assert.strictEqual(normalized.id,'245');assert.strictEqual(normalized.provider,'anex');assert.strictEqual(normalized.tours.length,2);assert.strictEqual(normalized.tours[0].selectionEnabled,false);assert.strictEqual(normalized.tours[0].quoteRequired,true);assert.strictEqual(normalized.tours[0].groupMinimum,true);assert.strictEqual(normalized.tours[0].operator.name,'ANEX');assert.strictEqual(normalized.picturelink,'https://img.example.com/hotel.jpg');
+const base=[{id:'245',name:'Fixture Hotel',provider:'tourvisor',price:120000,picturelink:'https://tv.example.com/a.jpg',tours:[{id:'tv1',provider:'tourvisor',price:120000,date:'20.09.2026',nights:7,meal:{name:'AI'},roomType:'Standard'}]}];
+const merged=api.merge(base,[hotel]);assert.strictEqual(merged.length,1);assert.deepStrictEqual(Array.from(merged[0].providers),['tourvisor','anex']);assert.strictEqual(merged[0].tours.length,3);assert.strictEqual(merged[0].price,100123.45);assert.strictEqual(merged[0].picturelink,'https://tv.example.com/a.jpg');
+const bad=JSON.parse(JSON.stringify(hotel));bad.tours[0].price.currency='EUR';assert(api.normalizeHotel(bad));bad.tours=[bad.tours[0]];assert.strictEqual(api.normalizeHotel(bad),null);
+const unmapped=Object.assign({},hotel,{local_id:null});assert.strictEqual(api.normalizeHotel(unmapped),null);
+console.log('ANEX provider common-results boundary: PASS');
