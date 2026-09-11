@@ -1,0 +1,85 @@
+name: MATCH resort-star adaptive v2
+on:
+  push:
+    branches: [ops/match-resort-star-adaptive-1971-20260911-v2]
+    paths: [.github/match-resort-star-adaptive-v2.arm]
+permissions:
+  contents: read
+concurrency:
+  group: anytour-match-resort-star-adaptive-v2
+  cancel-in-progress: false
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-resort-star-adaptive-1971-20260911-v2
+      OUT: /tmp/match-rs-v2
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 3, persist-credentials: false}
+      - name: Verify and cooldown
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-resort-star-adaptive-v2.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_resort_star_availability_v2.php
+          mkdir -p "$OUT"
+          sleep 30
+      - name: Zero-supplier SSH preflight
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,tempfile
+          from pathlib import Path
+          raw=os.environ['KEY'].strip()
+          with tempfile.TemporaryDirectory() as td:
+            k=Path(td)/'k'; k.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else k.write_bytes(base64.b64decode(raw)); k.chmod(0o600)
+            cmd=['ssh','-T','-i',str(k),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'kh'),'-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['USER'],os.environ['HOST'],"cd \"$HOME/www/anytoour.ru\" && test -f config.php && php -r 'echo \"RSV2_OK\\n\";' "]
+            p=subprocess.run(cmd,text=True,capture_output=True,timeout=45)
+          if p.returncode or 'RSV2_OK' not in p.stdout: raise SystemExit('ssh_preflight_failed')
+          PY
+      - name: Reserve before supplier access
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_resort_star_availability_v2.php').read_bytes();v={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(src).hexdigest(),'country':'Turkey','resorts':['Antalya','Alanya','Kemer','Belek','Side','Bodrum','Marmaris'],'stars':[3,4,5],'dates':['2026-09-25','2026-10-02','2026-10-16','2026-11-06','2026-11-20'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};Path(os.environ['OUT'],'reservation.json').write_text(json.dumps(v,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: hotel-match-resort-star-adaptive-v2-${{ github.run_id }}-reserved, path: /tmp/match-rs-v2/reservation.json, retention-days: 90}
+      - name: Execute adaptive availability discovery
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_resort_star_availability_v2.php').read_text();raw=os.environ['KEY'].strip();out=Path(os.environ['OUT'])/'result.json'
+          with tempfile.TemporaryDirectory() as td:
+            k=Path(td)/'k'; k.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else k.write_bytes(base64.b64decode(raw)); k.chmod(0o600)
+            cmd=['ssh','-T','-i',str(k),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'kh'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER'],os.environ['HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+            p=subprocess.run(cmd,input=src,text=True,capture_output=True,timeout=900)
+          marker='MATCH_RS_JSON:';line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
+          if line is None:
+            v={'status':'unknown','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n');raise SystemExit('unknown/no-replay')
+          v=json.loads(line);v.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=p.returncode,no_replay=True);out.write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'searches_started':v['searches_started'],'active_slices':sum(1 for r in v['rows'] if r.get('active_date')),'rows':v['rows']},ensure_ascii=False));
+          if p.returncode or v.get('status')!='completed':raise SystemExit('failed')
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-resort-star-adaptive-v2-${{ github.run_id }}-final
+          path: |
+            /tmp/match-rs-v2/reservation.json
+            /tmp/match-rs-v2/result.json
+          if-no-files-found: warn
+          retention-days: 90
