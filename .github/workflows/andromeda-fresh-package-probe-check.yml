@@ -4,8 +4,10 @@ on:
     paths:
       - 'scripts/diagnostics/andromeda_fresh_package_probe.py'
       - 'scripts/diagnostics/andromeda_fresh_package_probe_wide.py'
+      - 'scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py'
       - 'tests/andromeda_fresh_package_probe_test.py'
       - 'tests/andromeda_fresh_package_probe_wide_test.py'
+      - 'tests/andromeda_fresh_package_supplier_error_probe_test.py'
       - '.github/workflows/andromeda-fresh-package-probe-check.yml'
 permissions:
   contents: read
@@ -20,13 +22,15 @@ jobs:
           persist-credentials: false
       - name: Verify one-shot live diagnostic source without network
         run: |
-          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py tests/andromeda_fresh_package_probe_test.py tests/andromeda_fresh_package_probe_wide_test.py
+          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py tests/andromeda_fresh_package_probe_test.py tests/andromeda_fresh_package_probe_wide_test.py tests/andromeda_fresh_package_supplier_error_probe_test.py
           python3 tests/andromeda_fresh_package_probe_test.py
           python3 tests/andromeda_fresh_package_probe_wide_test.py
+          python3 tests/andromeda_fresh_package_supplier_error_probe_test.py
           python3 - <<'PY'
           from pathlib import Path
           src=Path('scripts/diagnostics/andromeda_fresh_package_probe.py').read_text()
           wide=Path('scripts/diagnostics/andromeda_fresh_package_probe_wide.py').read_text()
+          supplier=Path('scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py').read_text()
           assert "'OPERATORS'=>'5'" in src
           assert "'PAGE'=>1" in src
           assert "$supplierCalls=3; $package=$client->package($offer)" in src
@@ -35,5 +39,7 @@ jobs:
           assert "->bron(" not in src and 'bron_ticket' not in src and "->calc(" not in src
           assert "'CHECKIN_BEG'=>'20260920'" in wide and "'CHECKIN_END'=>'20260927'" in wide
           assert "'NIGHTS_FROM'=>7,'NIGHTS_TILL'=>8" in wide and "'OPERATORS'=>'5'" in wide
+          assert 'supplier_error' in supplier and "query['claiminc']" in supplier and "query['sid']" in supplier
+          assert "->bron(" not in supplier and "->calc(" not in supplier and 'bron_ticket' not in supplier
           print('Fresh package static safety: PASS')
           PY
