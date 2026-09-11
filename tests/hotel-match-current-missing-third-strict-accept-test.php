@@ -1,0 +1,8 @@
+<?php
+declare(strict_types=1);
+define('M3A_LIBRARY_ONLY',true);
+require __DIR__.'/../scripts/diagnostics/hotel_match_current_missing_third_strict_accept.php';
+function m3at($ok,$msg){if(!$ok){fwrite(STDERR,"FAIL $msg\n");exit(1);}}
+$rows=m3a_manifest();m3at(count($rows)===34,'manifest');$p=array_count_values(array_column($rows,'provider'));m3at(($p['anex']??0)===8,'anex');m3at(($p['andromeda']??0)===26,'andromeda');$seen=[];foreach($rows as $r){$k=$r['provider'].':'.$r['external_id'];m3at(!isset($seen[$k]),'duplicate '.$k);$seen[$k]=1;m3at(in_array((int)$r['country_id'],[1,2,4,8,9,10,12,16],true),'core8');m3at((int)$r['target']>0,'target');m3at(strlen($r['review_sha'])===64,'review sha');m3at(m3a_key($r['target_match'])===$r['key'],'frozen strict key '.$k);}
+m3at(m3a_key('Empire Beach Aqua Park Resort Hotel SPA')==='empire beach aqua park','generic words');m3at(m3a_key('Foo Beach Hotel')!==m3a_key('Foo Garden Hotel'),'significant qualifier');m3at(M3A_OPERATION==='hotel-match-current-missing-third-strict-accept-1971-20260911-v1','operation');m3at(M3A_REVIEW_OPERATION==='hotel-match-current-missing-third-strict-review-1971-20260911-v1','review operation');
+$src=file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_current_missing_third_strict_accept.php');m3at(substr_count($src,'INSERT INTO anex_hotel_search_mappings')===1,'single insert');m3at(substr_count($src,'UPDATE andromeda_hotel_identities')===1,'single update');m3at(stripos($src,'DELETE FROM')===false,'no delete');m3at(stripos($src,'TRUNCATE')===false,'no truncate');m3at(stripos($src,'curl_')===false&&stripos($src,'http://')===false&&stripos($src,'https://')===false,'no network');echo "OK\n";
