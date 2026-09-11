@@ -4,7 +4,7 @@ on:
     branches: ['feat/match-current-bulk-review-20260911']
     paths: ['.github/workflows/hotel-match-production-gateway-current-jwt-1971.yml']
 permissions: {contents: read}
-env: {OPERATION_ID: hotel-match-production-gateway-current-jwt-1971-20260912-v1}
+env: {OPERATION_ID: hotel-match-production-gateway-current-jwt-1971-20260912-v2}
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -22,7 +22,7 @@ jobs:
       - name: Call production gateway once
         run: |
           set -euo pipefail
-          url='https://anytoour.ru/v2/api.php?action=search_start&departureId=1&countryId=1&dateFrom=2026-10-17&dateTo=2026-10-17&nightsFrom=7&nightsTo=7&adults=2&currency=RUB&onlyCharter=false&onlyDirect=false'
+          url='https://anytoour.ru/api-v2.php?action=search_start&departureId=1&countryId=1&dateFrom=2026-10-17&dateTo=2026-10-17&nightsFrom=7&nightsTo=7&adults=2&currency=RUB&onlyCharter=false&onlyDirect=false'
           code=$(curl -sS -o "$RUNNER_TEMP/$OPERATION_ID/body.json" -w '%{http_code}' --connect-timeout 15 --max-time 70 "$url")
           export CODE="$code"
           python3 - <<'PY'
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-production-gateway-current-jwt-v1
+          name: match-production-gateway-current-jwt-v2
           path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
           if-no-files-found: error
           retention-days: 90
