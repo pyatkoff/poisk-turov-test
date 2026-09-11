@@ -1,0 +1,179 @@
+name: MATCH strict coordinate anchor accept
+run-name: MATCH guarded coordinate anchor accept #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - 'scripts/diagnostics/hotel_match_coordinate_anchor_accept.php'
+      - 'tests/hotel-match-coordinate-anchor-accept-test.php'
+      - '.github/workflows/hotel-match-coordinate-anchor-accept.yml'
+      - '.github/match-coordinate-anchor-accept-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-coordinate-anchor-accept-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-coordinate-anchor-accept-1971-20260911-v1
+  MAX_WRITES: '100'
+jobs:
+  source-check:
+    if: github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify strict source-only MATCH scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_coordinate_anchor_accept.php
+          php -l tests/hotel-match-coordinate-anchor-accept-test.php
+          php tests/hotel-match-coordinate-anchor-accept-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_coordinate_anchor_accept.php').read_text(encoding='utf-8')
+          assert "const HCAA_OPERATION = 'hotel-match-coordinate-anchor-accept-1971-20260911-v1';" in src
+          assert src.count('$db->commit();') == 1
+          assert src.count('INSERT INTO anex_hotel_search_mappings') == 1
+          assert 'UPDATE anex_' not in src and 'DELETE FROM' not in src.upper()
+          assert 'curl' not in src.lower() and 'http://' not in src and 'https://' not in src
+          assert 'anex_review_pair_exclusions' in src and 'anex_hotel_decisions' in src
+          assert 'anex_post_commit_readback_failed' in src and 'write_scope_limit' in src
+          assert "identity_shared" in src and "strong_identity_ambiguous" in src
+          assert "250.0 : 100.0" in src
+          assert "count($strong) !== 1" in src
+          print('strict coordinate anchor MATCH source scope verified')
+          PYTHON
+  accept:
+    needs: source-check
+    if: >-
+      github.actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'MATCH #1971 arm coordinate anchor accept v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-coordinate-anchor-accept-1971-v1.arm)" = $'operation_id=hotel-match-coordinate-anchor-accept-1971-20260911-v1\nstate=armed'
+      - name: Reserve immutable write operation before SSH
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          reservation={
+            'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh',
+            'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'source_sha':os.environ['GITHUB_SHA'],'mode':'server_current_strict_coordinate_anchor_anex_write',
+            'prepared_from_read_only_operation':'hotel-match-coordinate-anchor-review-1971-20260911-v1',
+            'prepared_read_only_count_before_safety_tightening':45,'runtime_write_cap':100,
+            'safety_correction':'bridge_no_longer_waives_name_identity_or_ambiguity',
+            'supplier_calls':0,'no_replay':True
+          }
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n',encoding='utf-8')
+          PYTHON
+      - name: Preserve reservation before live write
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-coordinate-anchor-accept-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-coordinate-anchor-accept-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply server-current strict coordinate MATCH delta
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          bridge=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          translit=body('scripts/diagnostics/hotel_match_translit_exact_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          coord=body('scripts/diagnostics/hotel_match_coordinate_anchor_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_translit_exact_review.php';\n",'',1)
+          accept=body('scripts/diagnostics/hotel_match_coordinate_anchor_accept.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_coordinate_anchor_review.php';\n",'',1)
+          wrapper=r'''
+          $root=realpath(getcwd());
+          if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
+          $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+          if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');
+          require_once $dbHelper;
+          $db=v2_data_db();
+          echo fc_json(hcaa_accept($db,HCAA_OPERATION,100)),"\n";
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+bridge+"\n"+live+"\n"+translit+"\n"+coord+"\n"+accept+"\n"+wrapper
+          code_sha=hashlib.sha256(code.encode()).hexdigest(); (state/'composed_code_sha256.txt').write_text(code_sha+'\n')
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER'); host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
+          if not host or not user or not os.environ[req[0]].strip():
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'known_no_ssh','reason':'ssh_secret_missing','database_writes':0,'supplier_calls':0,'no_replay':True}; (state/'blocker.json').write_text(json.dumps(b)+'\n'); raise RuntimeError('ssh_secret_missing')
+          (state/'ssh_started.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'ssh_started','source_sha':os.environ['GITHUB_SHA'],'composed_code_sha256':code_sha})+'\n')
+          with tempfile.TemporaryDirectory(prefix='match-coordinate-anchor-accept-v1-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600); known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              try: proc=subprocess.run(cmd,text=True,capture_output=True,timeout=720,env=clean)
+              except subprocess.TimeoutExpired:
+                  b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'ssh_write_timeout_do_not_replay','database_writes':'unknown','supplier_calls':0,'no_replay':True}; (state/'blocker.json').write_text(json.dumps(b)+'\n'); raise
+          try: result=json.loads(proc.stdout)
+          except Exception:
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'live_output_unparseable_do_not_replay','database_writes':'unknown','supplier_calls':0,'stderr_tail':proc.stderr[-1200:],'no_replay':True}; (state/'blocker.json').write_text(json.dumps(b,ensure_ascii=False)+'\n'); raise RuntimeError('unparseable')
+          (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if result.get('operation_id')!=os.environ['OPERATION_ID'] or result.get('supplier_calls')!=0:
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'operation_or_supplier_contract_mismatch_do_not_replay','database_writes':result.get('database_writes','unknown'),'supplier_calls':result.get('supplier_calls'),'no_replay':True}; (state/'blocker.json').write_text(json.dumps(b)+'\n'); raise RuntimeError('contract')
+          writes=int(result.get('database_writes',-1)); rows=result.get('anex_rows') or {}
+          readback_ok=(len(rows)==writes and all((r or {}).get('readback')=='verified' for r in rows.values()))
+          if result.get('status')!='committed_readback_verified' or writes<0 or writes>100 or not readback_ok:
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'commit_or_readback_contract_failed_do_not_replay','database_writes':result.get('database_writes','unknown'),'supplier_calls':0,'no_replay':True}; (state/'blocker.json').write_text(json.dumps(b)+'\n'); raise RuntimeError('not_verified')
+          raw=(state/'result.json').read_bytes(); receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':writes,'anex_writes':len(rows),'planned':result.get('planned'),'skipped':result.get('skipped'),'supplier_calls':0,'live_writes':result.get('live_writes'),'bridge_writes':result.get('bridge_writes'),'coverage_before':(result.get('before') or {}).get('coverage'),'coverage_after':(result.get('after') or {}).get('coverage'),'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n'); print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - name: Preserve result or blocker
+        if: always()
+        id: result_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-coordinate-anchor-accept-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-coordinate-anchor-accept-1971-20260911-v1/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record result in MATCH queue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result_artifact.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE ARTIFACT_ID
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE'])
+          if (s/'receipt.json').exists():
+              r=json.loads((s/'result.json').read_text()); cb=r['before']['coverage']; ca=r['after']['coverage']
+              text=(f"MATCH #1971 strict coordinate-anchor delta `{r['operation_id']}` **COMMITTED + per-row readback verified / NO-REPLAY**. After safety tightening, CURRENT recomputation planned **{r['planned']}** and wrote **{r['database_writes']} ANEX mappings**; live-observed writes **{r['live_writes']}**, Andromeda+Tourvisor bridge-assisted writes **{r['bridge_writes']}**. Skipped/rejected {r['skipped']}. Supplier calls **0**. Coverage: ANEX links {cb['anex_links']}→{ca['anex_links']}; ANEX unique local {cb['anex_unique_local']}→{ca['anex_unique_local']}; Andromeda unique local {cb['andromeda_unique_local']}→{ca['andromeda_unique_local']}; triple {cb['all_three']}→{ca['all_three']}. Artifact `{os.environ['ARTIFACT_ID']}`. This operation is permanently NO-REPLAY.")
+          else:
+              b=json.loads((s/'blocker.json').read_text()) if (s/'blocker.json').exists() else {'operation_id':os.environ['OPERATION_ID'],'state':'workflow_failure','reason':'no_blocker_payload'}
+              text=(f"MATCH #1971 strict coordinate-anchor delta `{b['operation_id']}` stopped with state **{b['state']}**; reason `{b['reason']}`. DB writes **{b.get('database_writes','unknown')}**, supplier calls **{b.get('supplier_calls',0)}**. Artifact `{os.environ['ARTIFACT_ID']}`. **DO NOT REPLAY**; reconcile receipt/readback first if state is unknown.")
+          (s/'comment.md').write_text(text+'\n')
+          PYTHON
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
