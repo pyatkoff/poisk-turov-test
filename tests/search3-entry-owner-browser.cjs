@@ -127,7 +127,7 @@ async function run(browser, width) {
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
     if (width >= 1199) {
       const rows = await page.locator('#tourSearch .search-group').evaluateAll(nodes => new Set(nodes.map(node => Math.round(node.getBoundingClientRect().top))).size);
-      assert.equal(rows, width >= 1200 ? 1 : 2, 'served form changes group rows at the actual desktop boundary');
+      assert.equal(rows, 2, 'served form keeps two balanced trip rows across the 1199/1200 desktop boundary');
       if (width >= 1200) for (const input of await page.locator('#tourSearch input[type=date]').all()) {
         assert.ok((await input.boundingBox()).width >= 125, 'desktop dates retain readable native values');
       }
@@ -214,7 +214,7 @@ async function run(browser, width) {
     await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), calendarItems);
     const calendar = page.locator('#currentPriceCalendar'), disclosure = calendar.locator('details'), summary = disclosure.locator('summary');
     assert.equal(await calendar.count(), 1, 'one existing calendar owner');
-    assert.equal(await disclosure.evaluate(node => node.open), width > 700, 'desktop opens and mobile starts compact');
+    assert.equal(await disclosure.evaluate(node => node.open), true, 'Search3 calendar starts open at every width');
     assert.ok((await summary.boundingBox()).height >= 44, 'calendar disclosure target >=44px');
     assert.ok(await summary.evaluate(node => parseFloat(getComputedStyle(node).paddingRight) >= 32), 'disclosure reserves room for its indicator');
     assert.equal(await page.evaluate(() => {
@@ -224,9 +224,9 @@ async function run(browser, width) {
     await page.screenshot({ path: path.join(output, `calendar-initial-${width}.png`), fullPage: true });
     await summary.focus();
     await page.keyboard.press('Space');
-    assert.equal(await disclosure.evaluate(node => node.open), width <= 700, 'native keyboard toggle works');
+    assert.equal(await disclosure.evaluate(node => node.open), false, 'native keyboard toggle closes the initially open calendar');
     await page.evaluate(items => window.V2CurrentPriceCalendar.render(items), calendarItems);
-    assert.equal(await disclosure.evaluate(node => node.open), width <= 700, 'rerender preserves the user disclosure choice');
+    assert.equal(await disclosure.evaluate(node => node.open), false, 'rerender preserves the user disclosure choice');
     if (!(await disclosure.evaluate(node => node.open))) await summary.click();
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'existing minimum-price selection is unchanged');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'open calendar does not overflow the page');
