@@ -1,8 +1,8 @@
 {
-  "action": "panel_links",
-  "published_report_sha256": "94106c603c73f2e851d0b899577e6cd50f67123da3a1a402fb6820a4e41e788e",
-  "allowed_delta": {
-    "app/admin/anex-review/view.php": "7b9a6373506bb3a01bdf25407cccf053db21c85391238c6e31cc9516e212ce93",
-    "v2/anex-hotel-review.php": "ab39063ffbb148230c52cc217d98a407d255c3fc2c16899b62a7b4093ad9e62c"
-  }
+  "action": "owner_write",
+  "published_report_sha256": "1e06632b8fd323b736a9e26b5139d4ffebcd5504d0d98ac6d937daed4abd4a37",
+  "expected_previous_source": "1d2c3592aa2c18d2b3ab434505e4a4cbdf8bfdd9",
+  "allowed_delta_paths": [
+    "v2/anex-hotel-review.php"
+  ]
 }
