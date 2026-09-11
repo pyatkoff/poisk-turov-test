@@ -12,7 +12,7 @@
     "date_party_meal_room_placement": "verified",
     "availability": "raw_evidence_required_canonical_unknown",
     "flight_details": "provider_capability_explicit_search_state_not_loaded",
-    "search_money": "delegated_to_three_provider_money_facts",
+    "search_money": "delegated_to_three_provider_money_facts_with_exact_provider_kind_provenance",
     "quote_state": "unknown",
     "final_price_verified": false,
     "selection_state": "disabled"
@@ -26,7 +26,10 @@
   "operator_source": "app/integrations/three-provider-operator.php",
   "operator_verified_head": "687174d77837cefe718bbe805b24e755126b60ac",
   "operator_verification": {"offer_run": 34569053194, "context_run": 34569053204, "security_run": 34569053182, "status": "success"},
+  "money_provenance_source": "app/integrations/three-provider-money-facts.php",
+  "money_provenance_audit": "reports/three-provider-money-provenance-20260911.json",
+  "money_provenance_verification": {"head": "9603834cda4af516793b1be44dc573bd225b3066", "money_facts_run": 34572575680, "offer_run": 34572575546, "context_run": 34572575619, "security_run": 34572575522, "checks": 33, "status": "success"},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
   "tests": {"offer_checks": 39, "availability_checks": 20, "flight_checks": 16, "context_checks": 29, "security_run": 34568533875, "offer_run": 34568533837, "context_run": 34568533839, "status": "success"},
-  "next_action": "Verify supplier-specific operator dictionaries before cross-provider canonical equivalence."
+  "next_action": "Run one new non-replayed parity scenario when the approved workflow produces a run; P5 remains blocked on SAMO contract confirmation."
 }

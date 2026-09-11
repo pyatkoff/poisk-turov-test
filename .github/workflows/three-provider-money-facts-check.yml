@@ -28,6 +28,8 @@ jobs:
           assert "'quote_price' => null" in src
           assert "'final_price_verified' => false" in src
           assert "'arithmetic_applied' => false" in src
+          assert "$source !== $provider . '_' . $expectedKind" in src
+          assert "strpos($source" not in src
           for forbidden in ('+ $fuel', '+$fuel', 'agency_cost', 'buyerClaimMoney', 'broninit', 'curl_', 'PDO'):
               assert forbidden not in src
           print('Three-provider money static boundary: PASS')
