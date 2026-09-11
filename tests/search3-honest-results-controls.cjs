@@ -8,6 +8,7 @@ const redesign = fs.readFileSync(path.join(root, 'v2/search-redesign-v2.js'), 'u
 const styles = fs.readFileSync(path.join(root, 'v2/ds2-search.css'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'v2/results-renderer-v5.js'), 'utf8');
 const localFilters = fs.readFileSync(path.join(root, 'src/search3/behavior/results/local-hotel-filter.js'), 'utf8');
+const priceCalendar = fs.readFileSync(path.join(root, 'v2/current-price-calendar-v1.js'), 'utf8');
 
 const select = page.match(/<select id="sortResults">([\s\S]*?)<\/select>/);
 assert.ok(select, 'results sort remains available');
@@ -53,8 +54,15 @@ assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)")
 assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,providerField,ratingField,seaField];}'),
   'desktop and mobile share decision-first filter order: hotel, resort, stars, meal, budget, operator, source, rating, sea');
 
+assert.ok(priceCalendar.includes("expanded=previous?previous.open:(compact||window.matchMedia('(min-width:701px)').matches)"),
+  'Search3 price calendar is immediately visible on first mobile render while later rerenders preserve the customer disclosure state');
+assert.ok(priceCalendar.includes("head=compact?'summary':'div'"),
+  'Search3 keeps one native disclosure owner instead of creating a second mobile calendar UI');
+assert.ok(priceCalendar.includes('window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:3}'),
+  'price calendar public presentation contract is versioned with the Search3 visibility change');
+
 for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'startSearch(']) {
   assert.ok(!localFilters.includes(forbidden), `local result facets do not start supplier transport: ${forbidden}`);
 }
 
-console.log('PASS: Search3 exposes honest sorting plus decision-first local provider/operator/region result facets');
+console.log('PASS: Search3 exposes honest result controls and an immediately visible current-price calendar');
