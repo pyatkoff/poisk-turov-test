@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require $argv[1] . '/v2/api-andromeda-search3-preview.php';
 require $argv[1] . '/app/integrations/andromeda-saved-package-runtime.php';
+require_once $argv[1] . '/app/integrations/andromeda-selected-offer.php';
 
 $checks = 0;
 function attempt_runtime_check(bool $ok): void {
