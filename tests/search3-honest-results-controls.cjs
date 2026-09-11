@@ -8,6 +8,7 @@ const redesign = fs.readFileSync(path.join(root, 'v2/search-redesign-v2.js'), 'u
 const styles = fs.readFileSync(path.join(root, 'v2/ds2-search.css'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'v2/results-renderer-v5.js'), 'utf8');
 const localFilters = fs.readFileSync(path.join(root, 'src/search3/behavior/results/local-hotel-filter.js'), 'utf8');
+const resultsStyles = fs.readFileSync(path.join(root, 'src/search3/styles/results-layout.css'), 'utf8');
 
 const select = page.match(/<select id="sortResults">([\s\S]*?)<\/select>/);
 assert.ok(select, 'results sort remains available');
@@ -21,6 +22,10 @@ assert.doesNotMatch(redesign, /results-map-requested|data-results-map/);
 assert.doesNotMatch(styles, /results-map-button/);
 assert.match(renderer, /if\(m==='rating'\)/);
 assert.match(renderer, /if\(m==='stars'\)/);
+assert.ok(renderer.includes("tours.length===1?'1 вариант тура'"),
+  'single-offer hotels are not misleadingly described as a comparison set');
+assert.ok(resultsStyles.includes('max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain'),
+  'desktop filter rail remains reachable when the truthful facet set exceeds a short viewport');
 assert.match(
   page,
   /<\?php if\(!v2_search3_enabled\(\)\):\?><div class="results-view-switch"[\s\S]*?<\?php endif;\?>/,
