@@ -5,7 +5,7 @@ if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_full_catalog_reconcile.php';
 require_once __DIR__ . '/hotel_match_current_bulk_review.php';
 
-const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v1';
+const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v2';
 
 function mba_require_transactional(PDO $db): void {
     $tables = [
@@ -54,9 +54,9 @@ function mba_row_is_safe_auto_accept(array $row): bool {
     return true;
 }
 
-function mba_bridge_index(array $anexLocal, array $hotels, array $names): array {
+function mba_bridge_index(array $localSet, array $hotels, array $names): array {
     $index = [];
-    foreach (array_keys($anexLocal) as $id) {
+    foreach (array_keys($localSet) as $id) {
         $id = (int)$id;
         if (!isset($hotels[$id])) continue;
         $country = (int)$hotels[$id]['country_id'];
@@ -68,7 +68,14 @@ function mba_bridge_index(array $anexLocal, array $hotels, array $names): array 
     return $index;
 }
 
-function mba_cross_provider_bridge(array $review, array $coordSource, array $bridgeIndex, array $hotels): ?array {
+function mba_provider_bridge(
+    array $review,
+    array $coordSource,
+    array $bridgeIndex,
+    array $hotels,
+    string $reason,
+    string $bridgeKey
+): ?array {
     $country = (int)($review['country_id'] ?? 0);
     $candidateIds = [];
     $maxTokens = 0;
@@ -92,11 +99,25 @@ function mba_cross_provider_bridge(array $review, array $coordSource, array $bri
     $directGeo = ($guard['distance_m'] !== null && $guard['distance_m'] <= 1000) || $place;
     if ($maxTokens < 2 && !$directGeo) return null;
     $review['bucket'] = 'auto_accept';
-    $review['reason'] = 'cross_provider_anex_tourvisor_strict_name';
+    $review['reason'] = $reason;
     $review['guard'] = $guard;
     $review['target'] = mbr_row_target($target);
-    $review['bridge'] = ['anex_tourvisor_existing_local'=>true,'significant_tokens'=>$maxTokens,'direct_geo'=>$directGeo];
+    $review['bridge'] = [$bridgeKey=>true,'significant_tokens'=>$maxTokens,'direct_geo'=>$directGeo];
     return $review;
+}
+
+function mba_cross_provider_bridge(array $review, array $coordSource, array $bridgeIndex, array $hotels): ?array {
+    return mba_provider_bridge(
+        $review,$coordSource,$bridgeIndex,$hotels,
+        'cross_provider_anex_tourvisor_strict_name','anex_tourvisor_existing_local'
+    );
+}
+
+function mba_reverse_anex_bridge(array $review, array $coordSource, array $bridgeIndex, array $hotels): ?array {
+    return mba_provider_bridge(
+        $review,$coordSource,$bridgeIndex,$hotels,
+        'cross_provider_andromeda_tourvisor_strict_name','andromeda_tourvisor_existing_local'
+    );
 }
 
 function mba_anex_evidence(string $operation, array $row): array {
@@ -112,6 +133,7 @@ function mba_anex_evidence(string $operation, array $row): array {
         'search_count' => (int)($row['search_count'] ?? 0),
         'last_seen_utc' => $row['last_seen_utc'] ?? null,
         'guard' => $row['guard'] ?? null,
+        'bridge' => $row['bridge'] ?? null,
         'target' => $row['target'] ?? null,
         'server_current' => true,
     ];
@@ -127,6 +149,7 @@ function mba_andromeda_evidence(string $operation, array $prior, array $row): ar
             'country_id' => (int)$row['country_id'],
             'target' => (int)$row['target']['local_hotel_id'],
             'guard' => $row['guard'] ?? null,
+            'bridge' => $row['bridge'] ?? null,
             'source_category' => $row['source_category'] ?? null,
             'server_current' => true,
         ],
@@ -146,8 +169,14 @@ function mba_accept(PDO $db, string $operation): array {
     $anRows = [];
     $andRows = [];
     $planned = ['anex'=>0,'andromeda'=>0];
+    $plannedClasses = [
+        'strict_current_rule'=>0,
+        'cross_provider_anex_tourvisor'=>0,
+        'cross_provider_andromeda_tourvisor'=>0,
+    ];
     $skipped = [
         'anex_protected'=>0,'anex_not_auto'=>0,'anex_pair_excluded'=>0,
+        'anex_reverse_bridge_pair_excluded'=>0,
         'andromeda_not_auto'=>0,'andromeda_country_unknown'=>0
     ];
     $writes = 0;
@@ -172,6 +201,11 @@ function mba_accept(PDO $db, string $operation): array {
             $excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']] = true;
         }
 
+        // Snapshot the already accepted Andromeda+Tourvisor identities before adding ANEX rows.
+        // Reverse bridging never depends on a mapping created by this same operation.
+        [, $andromedaLocalBefore] = mbr_local_sets($db);
+        $reverseBridgeIndex = mba_bridge_index($andromedaLocalBefore,$hotels,$names);
+
         $staging = [];
         foreach ($db->query('SELECT * FROM anex_hotels ORDER BY anex_hotel_id FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC) as $s) {
             $staging[(int)$s['anex_hotel_id']] = $s;
@@ -185,19 +219,32 @@ function mba_accept(PDO $db, string $operation): array {
              (anex_hotel_id,catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled)
              VALUES(?,?,'strong_candidate','preview',?,?,?,1)"
         );
-        $mappingDigest = fc_hash([$operation,'current_db_bulk_accept_v1']);
+        $mappingDigest = fc_hash([$operation,'current_db_bulk_accept_v2']);
         $seenAnex = [];
 
-        $acceptAnex = static function(array $row) use (&$anRows,&$planned,&$writes,$insert,$mappingDigest,$operation): void {
+        $acceptAnex = static function(array $row, string $class) use (&$anRows,&$planned,&$plannedClasses,&$writes,$insert,$mappingDigest,$operation): void {
             $id = (int)$row['external_id'];
             $target = (int)$row['target']['local_hotel_id'];
             $evidence = mba_anex_evidence($operation,$row);
             $digest = fc_hash($evidence);
             $insert->execute([$id,$target,MBR_POLICY,$digest,$mappingDigest]);
             if ($insert->rowCount() !== 1) throw new RuntimeException('anex_insert_not_one');
-            $anRows[$id] = ['target'=>$target,'source_row_digest'=>$digest,'reason'=>(string)$row['reason']];
+            $anRows[$id] = ['target'=>$target,'source_row_digest'=>$digest,'reason'=>(string)$row['reason'],'candidate_class'=>$class];
             $planned['anex']++;
+            $plannedClasses[$class]++;
             $writes++;
+        };
+
+        $resolveAnex = static function(array $row, array $source, int $id) use ($reverseBridgeIndex,$hotels,$excluded,&$skipped): ?array {
+            if (mba_row_is_safe_auto_accept($row)) return ['row'=>$row,'class'=>'strict_current_rule'];
+            $bridge = mba_reverse_anex_bridge($row,$source,$reverseBridgeIndex,$hotels);
+            if ($bridge === null) return null;
+            $target = (int)($bridge['target']['local_hotel_id'] ?? 0);
+            if ($target && isset($excluded[$id][$target])) {
+                $skipped['anex_reverse_bridge_pair_excluded']++;
+                return null;
+            }
+            return ['row'=>$bridge,'class'=>'cross_provider_andromeda_tourvisor'];
         };
 
         foreach ($observations as $o) {
@@ -225,11 +272,12 @@ function mba_accept(PDO $db, string $operation): array {
                 $skipped['anex_pair_excluded']++;
                 continue;
             }
-            if (!mba_row_is_safe_auto_accept($row)) {
+            $resolved = $resolveAnex($row,$source,$id);
+            if ($resolved === null) {
                 $skipped['anex_not_auto']++;
                 continue;
             }
-            $acceptAnex($row);
+            $acceptAnex($resolved['row'],$resolved['class']);
             $existing[$id] = true;
         }
 
@@ -251,14 +299,17 @@ function mba_accept(PDO $db, string $operation): array {
                 $skipped['anex_pair_excluded']++;
                 continue;
             }
-            if (!mba_row_is_safe_auto_accept($row)) {
+            $resolved = $resolveAnex($row,$source,(int)$id);
+            if ($resolved === null) {
                 $skipped['anex_not_auto']++;
                 continue;
             }
-            $acceptAnex($row);
+            $acceptAnex($resolved['row'],$resolved['class']);
             $existing[(int)$id] = true;
         }
 
+        // Re-read local provider sets inside the same transaction after ANEX inserts so
+        // the forward bridge can use every server-current ANEX+Tourvisor identity.
         [$anexLocal] = mbr_local_sets($db);
         $bridgeIndex = mba_bridge_index($anexLocal,$hotels,$names);
 
@@ -298,13 +349,17 @@ function mba_accept(PDO $db, string $operation): array {
                 continue;
             }
             $row = mbr_review_andromeda($r,$obs,$country,$hotels,$names,$strict,$places);
+            $class = 'strict_current_rule';
             if (!mba_row_is_safe_auto_accept($row)) {
                 $priorForBridge = fc_evidence($r['evidence_json'] ?? '');
                 $coordSource = $priorForBridge['source'] ?? [];
                 if (!is_array($coordSource)) $coordSource = [];
                 if ($obs) $coordSource += $obs;
                 $bridge = mba_cross_provider_bridge($row,$coordSource,$bridgeIndex,$hotels);
-                if ($bridge !== null) $row = $bridge;
+                if ($bridge !== null) {
+                    $row = $bridge;
+                    $class = 'cross_provider_anex_tourvisor';
+                }
             }
             if (!mba_row_is_safe_auto_accept($row)) {
                 $skipped['andromeda_not_auto']++;
@@ -317,8 +372,9 @@ function mba_accept(PDO $db, string $operation): array {
             $target = (int)$row['target']['local_hotel_id'];
             $update->execute([$target,$hash,$json,$external,$r['evidence_sha256']]);
             if ($update->rowCount() !== 1) throw new RuntimeException('andromeda_concurrent_change');
-            $andRows[$external] = ['target'=>$target,'evidence_sha256'=>$hash,'reason'=>(string)$row['reason']];
+            $andRows[$external] = ['target'=>$target,'evidence_sha256'=>$hash,'reason'=>(string)$row['reason'],'candidate_class'=>$class];
             $planned['andromeda']++;
+            $plannedClasses[$class]++;
             $writes++;
         }
 
@@ -368,6 +424,7 @@ function mba_accept(PDO $db, string $operation): array {
             'committed'=>true,
             'supplier_calls'=>0,
             'planned'=>$planned,
+            'planned_classes'=>$plannedClasses,
             'skipped'=>$skipped,
             'catalog_scope'=>$catalogScope,
             'coverage_before'=>$before,
@@ -395,6 +452,7 @@ function mba_accept(PDO $db, string $operation): array {
                 'numeric_star_is_guard_not_identity'=>true,
                 'fuzzy_requires_direct_geo'=>true,
                 'cross_provider_bridge_requires_existing_anex_tv_local'=>true,
+                'reverse_cross_provider_requires_existing_andromeda_tv_local'=>true,
                 'cross_provider_single_token_requires_direct_geo'=>true,
                 'supplier_calls'=>0,
             ],
