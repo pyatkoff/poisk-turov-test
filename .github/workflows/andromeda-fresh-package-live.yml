@@ -13,7 +13,7 @@ jobs:
     if: >-
       github.event.issue.number == 996 &&
       github.event.comment.user.login == 'pyatkoff' &&
-      github.event.comment.body == '/probe-andromeda-fresh-package-1717-v2'
+      github.event.comment.body == '/probe-andromeda-fresh-package-1717-v3'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,22 +22,23 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 996
           test "${{ github.event.comment.user.login }}" = pyatkoff
-          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717-v2
+          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717-v3
       - uses: actions/checkout@v4
         with:
-          ref: f98f2ad125ee9e69e0279564d5888f2ee1e2bccb
+          ref: 907ba8510611f43cb0cdbd422992ba94e9c6c345
           persist-credentials: false
       - name: Verify exact checked diagnostic source
         run: |
-          test "$(git rev-parse HEAD)" = f98f2ad125ee9e69e0279564d5888f2ee1e2bccb
-          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py
+          test "$(git rev-parse HEAD)" = 907ba8510611f43cb0cdbd422992ba94e9c6c345
+          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py
           python3 tests/andromeda_fresh_package_probe_test.py
+          python3 tests/andromeda_fresh_package_probe_wide_test.py
       - name: Capture one fresh ANEX package without booking
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 scripts/diagnostics/andromeda_fresh_package_probe.py --execute
+        run: python3 scripts/diagnostics/andromeda_fresh_package_probe_wide.py --execute
       - name: Preserve private package evidence
         if: always()
         uses: actions/upload-artifact@v4
