@@ -1,0 +1,144 @@
+name: MATCH Andromeda star bridge review
+run-name: MATCH Andromeda star bridge mass review #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_andromeda_star_bridge_review.php'
+      - 'tests/hotel-match-andromeda-star-bridge-review-test.php'
+      - '.github/workflows/hotel-match-andromeda-star-bridge-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-andromeda-star-bridge-review-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-andromeda-star-bridge-review-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-andromeda-star-bridge-review-1971-20260911-v1
+  SOURCE_RUN_ID: '34592204006'
+  SOURCE_ARTIFACT_ID: '10196105435'
+  SOURCE_ARTIFACT_NAME: hotel-match-residual-ensemble-review-1971-20260911-v1-result
+  SOURCE_RESULT_SHA256: 94e4416d5e27d4454828288118beb2b89f52cdfcb570846b2cfed749132aec74
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate star bridge review
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_andromeda_star_bridge_review.php
+          php -l tests/hotel-match-andromeda-star-bridge-review-test.php
+          php tests/hotel-match-andromeda-star-bridge-review-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_andromeda_star_bridge_review.php').read_text()
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'supplier_calls'=>0" in s
+          assert 'numeric_star_is_guard_not_identity' in s
+          assert "['HOTEL','RESORT','SPA']" in s and "['ANNEX','BEACH','GARDEN','NORTH','SOUTH']" in s
+          assert 'HMASBR_COORD_BLOCK_M = 5000.0' in s and 'same_provider_target_claim_blocks' in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','https://','http://'):
+              assert bad.lower() not in s.lower(), bad
+          print('read-only star bridge scope verified')
+          PYTHON
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm and source
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-andromeda-star-bridge-review-1971-v1.arm)" = "$OPERATION_ID"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID" > "$STATE/source-meta.json"
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          m=json.loads((Path(os.environ['STATE'])/'source-meta.json').read_text())
+          assert str(m['id'])==os.environ['SOURCE_ARTIFACT_ID'] and m['name']==os.environ['SOURCE_ARTIFACT_NAME'] and str(m['workflow_run']['id'])==os.environ['SOURCE_RUN_ID'] and m.get('expired') is False
+          PYTHON
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > "$STATE/source.zip"
+          mkdir "$STATE/source"; unzip -q "$STATE/source.zip" -d "$STATE/source"; test -f "$STATE/source/result.json"
+          echo "$SOURCE_RESULT_SHA256  $STATE/source/result.json" | sha256sum -c -
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ['STATE'])/'source/result.json').read_text())
+          assert r['operation_id']=='hotel-match-residual-ensemble-review-1971-20260911-v1' and r['status']=='completed'
+          assert r['database_writes']==0 and r['mapping_writes']==0 and r['supplier_calls']==0 and r['counts']['classified_total']==2384
+          PYTHON
+      - name: Prepare SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail; test -n "$KEY_VALUE"; key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Reserve before CURRENT DB access
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-andromeda-star-bridge-review-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-bridge-review-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run CURRENT read-only mass review
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text();
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          review=body('scripts/diagnostics/hotel_match_andromeda_star_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          wrapper=r'''
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMASBR_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMASBR_DB_HELPER');require_once $dbHelper;echo fc_json(hmasbr_review(v2_data_db(),HMASBR_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>HMASBR_OPERATION,'reason'=>'HMASBR_REMOTE_ERROR','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}
+          '''
+          code='<?php\ndefine(\'FC_LIBRARY_ONLY\',true);\n'+helper+'\n'+bulk+'\n'+review+'\n'+wrapper
+          p=subprocess.run(['ssh','-T','-i',os.path.join(os.environ['RUNNER_TEMP'],'anytoour_match_key'),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',f"{os.environ['ANYTOOUR_DEPLOY_USER'].strip()}@{os.environ['ANYTOOUR_DEPLOY_HOST'].strip()}",'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=code,text=True,capture_output=True,timeout=840)
+          r=json.loads(p.stdout);state=Path(os.environ['STATE']);raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0 or r.get('historical_operations_replayed') is not False: raise RuntimeError('star_bridge_review_not_completed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True,'stats':r['stats'],'coverage':r['coverage']};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          s=r['stats'];c=r['coverage'];summary=f"MATCH #1971 Andromeda star/bridge mass review `{r['operation_id']}` completed read-only / NO-REPLAY. CURRENT pending examined **{s['pending_examined']}**; generic-free exact unique **{s['generic_free_exact_unique']}**; prepared **{s['prepared']}** (live {s['prepared_live']}, star-mismatch {s['prepared_star_mismatch']}, existing ANEX+Tourvisor bridge {s['prepared_anex_bridge']}). Routes coord/single-ultratight/place/bridge/single-place+bridge **{s['route_coordinate']}/{s['route_single_ultratight']}/{s['route_place']}/{s['route_bridge']}/{s['route_single_place_bridge']}**. Blocked >5km **{s['coordinate_conflict']}**, same-provider target claimed **{s['same_provider_target_claimed']}**, insufficient independent evidence **{s['low_independent_evidence']}**. Coverage ANEX links {c['anex_links']}, ANEX unique {c['anex_unique_local']}, Andromeda unique {c['andromeda_unique_local']}, triple {c['all_three']}. Supplier calls 0; DB/mapping writes 0."
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-andromeda-star-bridge-review-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-bridge-review-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
