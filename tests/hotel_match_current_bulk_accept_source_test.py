@@ -25,6 +25,12 @@ required = [
     "mba_row_is_safe_auto_accept",
     "mba_fuzzy_has_direct_geo",
     "fuzzy_requires_direct_geo'=>true",
+    "mba_cross_provider_bridge",
+    "mba_bridge_index",
+    "cross_provider_anex_tourvisor_strict_name",
+    "mbr_local_sets",
+    "fc_key($name,true,false)",
+    "cross_provider_single_token_requires_direct_geo'=>true",
 ]
 for needle in required:
     assert needle in src, needle
