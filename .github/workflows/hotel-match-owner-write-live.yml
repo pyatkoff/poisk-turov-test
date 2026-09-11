@@ -1,0 +1,204 @@
+name: MATCH owner review write publication
+
+on:
+  push:
+    branches:
+      - ops/match-owner-write-publish-1971-20260911-v3
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: anytour-match-owner-write-publication
+  cancel-in-progress: false
+
+jobs:
+  publish-owner-write:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-owner-write-publish-1971-20260911-v3
+      EXPECTED_BASE_SHA: 4d8f53763806932cbf24160437cb93e33d04f419
+      OWNER_FIX_MERGE_SHA: 38142b88a0f6f52b08e7187145cc23db6e16f86f
+      OWNER_FIX_PR_RUN: '34610899103'
+      OWNER_FIX_POSTMERGE_RUN: '34611168518'
+      PREDECESSOR_ARTIFACT_ID: '10105375379'
+      PREDECESSOR_SOURCE_SHA: 1d2c3592aa2c18d2b3ab434505e4a4cbdf8bfdd9
+      PREDECESSOR_REPORT_SHA256: 1e06632b8fd323b736a9e26b5139d4ffebcd5504d0d98ac6d937daed4abd4a37
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact one-shot source and checked fix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'pyatkoff/poisk-turov-test'
+          test "$GITHUB_REF" = 'refs/heads/ops/match-owner-write-publish-1971-20260911-v3'
+          test "$GITHUB_ACTOR" = 'pyatkoff'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(git rev-parse HEAD^)" = "$EXPECTED_BASE_SHA"
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/hotel-match-owner-write-live.yml'
+          git merge-base --is-ancestor "$OWNER_FIX_MERGE_SHA" HEAD
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OWNER_FIX_PR_RUN" --jq .conclusion)" = 'success'
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$OWNER_FIX_POSTMERGE_RUN" --jq .conclusion)" = 'success'
+          test "$(jq -r .action scripts/diagnostics/anex_review_owner_publish_plan.json)" = 'owner_write'
+          test "$(jq -r .expected_previous_source scripts/diagnostics/anex_review_owner_publish_plan.json)" = "$PREDECESSOR_SOURCE_SHA"
+          test "$(jq -r .published_report_sha256 scripts/diagnostics/anex_review_owner_publish_plan.json)" = "$PREDECESSOR_REPORT_SHA256"
+          test "$(jq -r '.allowed_delta_paths | join(",")' scripts/diagnostics/anex_review_owner_publish_plan.json)" = 'v2/anex-hotel-review.php'
+          php -l scripts/diagnostics/anex_review_owner_publish_runner.php
+          python3 -B tests/anex-review-owner-publish-test.py
+          php tests/anex-review-owner-write-gate-test.php
+
+      - name: Restore exact completed owner runtime lineage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          export ANEX_CATALOG_ARTIFACT_DIR="$GITHUB_WORKSPACE/.owner-write-artifacts"
+          mkdir -p "$ANEX_CATALOG_ARTIFACT_DIR"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$PREDECESSOR_ARTIFACT_ID/zip" > "$RUNNER_TEMP/predecessor.zip"
+          unzip -q "$RUNNER_TEMP/predecessor.zip" -d "$ANEX_CATALOG_ARTIFACT_DIR"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
+          for name in ('anex-checkpoint-source.json','anex-owner-links-checkpoint.json','anex-owner-links-report.json'):
+              p=root/name
+              if not p.is_file() or p.is_symlink(): raise SystemExit('missing predecessor '+name)
+          cp=json.loads((root/'anex-owner-links-checkpoint.json').read_text())
+          report=cp.get('report')
+          if cp.get('state')!='completed' or not isinstance(report,dict): raise SystemExit('predecessor incomplete')
+          digest=hashlib.sha256(json.dumps(report,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          if digest!=os.environ['PREDECESSOR_REPORT_SHA256'] or cp.get('report_sha256')!=digest: raise SystemExit('predecessor report digest')
+          if report.get('source_sha')!=os.environ['PREDECESSOR_SOURCE_SHA']: raise SystemExit('predecessor source')
+          if report.get('owner_activated') is not True or report.get('write_enabled') is not False: raise SystemExit('predecessor owner gate')
+          if report.get('database_calls')!=0 or report.get('supplier_requests')!=0: raise SystemExit('predecessor side effects')
+          PY
+
+      - name: Prepare immutable owner-write reservation
+        run: |
+          set -euo pipefail
+          export ANEX_CATALOG_ARTIFACT_DIR="$GITHUB_WORKSPACE/.owner-write-artifacts"
+          python3 -B scripts/diagnostics/anex_review_owner_publish.py --prepare
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
+          cp=json.loads((root/'anex-owner-write-checkpoint.json').read_text())
+          if cp.get('state')!='reserved': raise SystemExit('owner-write not reserved')
+          execution=cp.get('execution',{})
+          if execution.get('run_id')!=os.environ['GITHUB_RUN_ID'] or execution.get('attempt')!=os.environ['GITHUB_RUN_ATTEMPT'] or execution.get('source_sha')!=os.environ['GITHUB_SHA']:
+              raise SystemExit('reservation execution mismatch')
+          reservation={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved',
+            'source_sha':os.environ['GITHUB_SHA'],
+            'base_sha':os.environ['EXPECTED_BASE_SHA'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'predecessor_artifact_id':int(os.environ['PREDECESSOR_ARTIFACT_ID']),
+            'predecessor_source_sha':os.environ['PREDECESSOR_SOURCE_SHA'],
+            'predecessor_report_sha256':os.environ['PREDECESSOR_REPORT_SHA256'],
+            'publisher_plan_sha256':cp['plan_sha256'],
+            'publisher_payload_sha256':cp['payload_sha256'],
+            'database_calls':0,
+            'supplier_requests':0,
+          }
+          p=root/'owner-write-operation-reservation.json'
+          raw=(json.dumps(reservation,sort_keys=True,indent=2)+'\n').encode()
+          p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation readback')
+          PY
+
+      - name: Preserve reservation before SSH
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-write-publish-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: |
+            .owner-write-artifacts/owner-write-operation-reservation.json
+            .owner-write-artifacts/anex-owner-write-checkpoint.json
+            .owner-write-artifacts/anex-owner-publish-reservation.json
+            .owner-write-artifacts/anex-owner-links-checkpoint.json
+            .owner-write-artifacts/anex-checkpoint-source.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish guarded owner-write runtime once
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          export ANEX_CATALOG_ARTIFACT_DIR="$GITHUB_WORKSPACE/.owner-write-artifacts"
+          python3 -B scripts/diagnostics/anex_review_owner_publish.py
+
+      - name: Verify completed owner-write receipt and readback
+        run: |
+          set -euo pipefail
+          export ANEX_CATALOG_ARTIFACT_DIR="$GITHUB_WORKSPACE/.owner-write-artifacts"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
+          cp=json.loads((root/'anex-owner-write-checkpoint.json').read_text())
+          report=json.loads((root/'anex-owner-write-report.json').read_text())
+          if cp.get('state')!='completed' or cp.get('report')!=report: raise SystemExit('owner-write completion missing')
+          digest=hashlib.sha256(json.dumps(report,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          if cp.get('report_sha256')!=digest: raise SystemExit('owner-write receipt digest')
+          required={
+            'status':'published',
+            'source_sha':os.environ['GITHUB_SHA'],
+            'previous_source_sha':os.environ['PREDECESSOR_SOURCE_SHA'],
+            'upgrade_action':'owner_write',
+            'write_enabled':True,
+            'owner_activated':True,
+            'account_preserved':True,
+            'config_preserved':True,
+            'database_calls':0,
+            'supplier_requests':0,
+          }
+          for key,value in required.items():
+              if report.get(key)!=value: raise SystemExit('owner-write readback '+key)
+          receipt={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'completed',
+            'source_sha':os.environ['GITHUB_SHA'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'report_sha256':digest,
+            'write_enabled':True,
+            'owner_activated':True,
+            'account_preserved':True,
+            'config_preserved':True,
+            'database_calls':0,
+            'supplier_requests':0,
+            'ssh_attempts':report.get('ssh_attempts'),
+          }
+          p=root/'owner-write-operation-receipt.json'
+          raw=(json.dumps(receipt,sort_keys=True,indent=2)+'\n').encode()
+          p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('receipt readback')
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+
+      - name: Preserve final receipt or unknown state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-owner-write-publish-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            .owner-write-artifacts/owner-write-operation-reservation.json
+            .owner-write-artifacts/owner-write-operation-receipt.json
+            .owner-write-artifacts/anex-owner-write-checkpoint.json
+            .owner-write-artifacts/anex-owner-write-report.json
+            .owner-write-artifacts/anex-owner-publish-reservation.json
+            .owner-write-artifacts/anex-owner-publish-failure.json
+          if-no-files-found: warn
+          retention-days: 90
