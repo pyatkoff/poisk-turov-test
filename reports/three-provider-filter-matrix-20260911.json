@@ -2,9 +2,20 @@
   "schema_version": 1,
   "generated_at": "2026-09-11",
   "scope": "INT canonical filter/property semantics for Tourvisor + direct ANEX + Andromeda",
-  "status_enum": ["verified", "local_only", "unsupported", "unknown"],
+  "status_enum": [
+    "verified",
+    "local_only",
+    "unsupported",
+    "unknown"
+  ],
   "ownership": {
-    "this_lane": ["P0_price_fuel", "P1_search_observations", "P2_filter_semantics", "P4_offer_contract", "P5_price_quote_preparation"],
+    "this_lane": [
+      "P0_price_fuel",
+      "P1_search_observations",
+      "P2_filter_semantics",
+      "P4_offer_contract",
+      "P5_price_quote_preparation"
+    ],
     "external": {
       "P3_hotel_identity_matching": "issue #1759 / separate dialog",
       "SEARCH_ui_selection": "issue #1646",
@@ -24,237 +35,510 @@
     {
       "field": "departure",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "departureId is sent upstream"},
-      "anex": {"status": "verified", "note": "local departure name maps through supplier TOWNFROMS dictionary"},
-      "andromeda": {"status": "verified", "note": "local departure name maps through saved SAMO townfrom dictionary"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "departureId is sent upstream"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "local departure name maps through supplier TOWNFROMS dictionary"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "local departure name maps through saved SAMO townfrom dictionary"
+      },
       "next_action": null
     },
     {
       "field": "country",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "countryId is sent upstream"},
-      "anex": {"status": "verified", "note": "local country name maps through supplier STATES dictionary"},
-      "andromeda": {"status": "verified", "note": "request country must equal loaded saved catalog country"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "countryId is sent upstream"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "local country name maps through supplier STATES dictionary"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "request country must equal loaded saved catalog country"
+      },
       "next_action": null
     },
     {
       "field": "dates",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "dateFrom/dateTo are sent upstream; gateway caps range at 21 days"},
-      "anex": {"status": "verified", "note": "dates are supplier search criteria; preview caps ANEX to first seven departure dates"},
-      "andromeda": {"status": "verified", "note": "CHECKIN_BEG/CHECKIN_END are sent to SAMO price"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "dateFrom/dateTo are sent upstream; gateway caps range at 21 days"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "dates are supplier search criteria; preview caps ANEX to first seven departure dates"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "CHECKIN_BEG/CHECKIN_END are sent to SAMO price"
+      },
       "next_action": null
     },
     {
       "field": "nights",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "nightsFrom/nightsTo are sent upstream"},
-      "anex": {"status": "verified", "note": "NIGHTS_FROM/NIGHTS_TILL search criteria"},
-      "andromeda": {"status": "verified", "note": "NIGHTS_FROM/NIGHTS_TILL search criteria"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "nightsFrom/nightsTo are sent upstream"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "NIGHTS_FROM/NIGHTS_TILL search criteria"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "NIGHTS_FROM/NIGHTS_TILL search criteria"
+      },
       "next_action": null
     },
     {
       "field": "adults_children_ages",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "adults and child ages are sent upstream"},
-      "anex": {"status": "verified", "note": "ADULT/CHILD/AGES normalized and sent upstream"},
-      "andromeda": {"status": "verified", "note": "ADULT/CHILD/AGES sent to SAMO price"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "adults and child ages are sent upstream"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "ADULT/CHILD/AGES normalized and sent upstream"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "ADULT/CHILD/AGES sent to SAMO price"
+      },
       "next_action": null
     },
     {
       "field": "hotel_identity",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "Tourvisor/local hotel id is canonical local card identity"},
-      "anex": {"status": "verified", "note": "accepted ANEX mapping required for customer projection; unmapped IDs stay observations"},
-      "andromeda": {"status": "verified", "note": "accepted Andromeda identity required for customer projection; current mapping rechecked"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "Tourvisor/local hotel id is canonical local card identity"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "accepted ANEX mapping required for customer projection; unmapped IDs stay observations"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "accepted Andromeda identity required for customer projection; current mapping rechecked"
+      },
       "next_action": "P3 matching is external; this lane only emits observation evidence"
     },
     {
       "field": "region_resort",
       "canonical_status": "local_only",
-      "tourvisor": {"status": "verified", "note": "regionIds are accepted by Tourvisor search"},
-      "anex": {"status": "local_only", "note": "regionIds are validated but current ANEX supplier search does not translate them upstream; local catalog projection filters results"},
-      "andromeda": {"status": "local_only", "note": "regionIds are validated; current SAMO price params do not send a mapped region filter; local catalog projection filters results"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "regionIds are accepted by Tourvisor search"
+      },
+      "anex": {
+        "status": "local_only",
+        "note": "regionIds are validated but current ANEX supplier search does not translate them upstream; local catalog projection filters results"
+      },
+      "andromeda": {
+        "status": "local_only",
+        "note": "regionIds are validated; current SAMO price params do not send a mapped region filter; local catalog projection filters results"
+      },
       "next_action": "build provider region dictionary before claiming upstream parity"
     },
     {
       "field": "subregion",
       "canonical_status": "local_only",
-      "tourvisor": {"status": "verified", "note": "subregionIds are accepted by Tourvisor search"},
-      "anex": {"status": "local_only", "note": "local catalog projection only"},
-      "andromeda": {"status": "local_only", "note": "local catalog projection only"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "subregionIds are accepted by Tourvisor search"
+      },
+      "anex": {
+        "status": "local_only",
+        "note": "local catalog projection only"
+      },
+      "andromeda": {
+        "status": "local_only",
+        "note": "local catalog projection only"
+      },
       "next_action": "provider dictionary mapping"
     },
     {
       "field": "hotel_category_stars",
       "canonical_status": "local_only",
-      "tourvisor": {"status": "verified", "note": "hotelCategory is sent upstream"},
-      "anex": {"status": "local_only", "note": "current preview validates numeric category then filters local catalog metadata"},
-      "andromeda": {"status": "local_only", "note": "shared local projection filters local catalog category; supplier star-key semantics are not canonicalized"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "hotelCategory is sent upstream"
+      },
+      "anex": {
+        "status": "local_only",
+        "note": "current preview validates numeric category then filters local catalog metadata"
+      },
+      "andromeda": {
+        "status": "local_only",
+        "note": "shared local projection filters local catalog category; supplier star-key semantics are not canonicalized"
+      },
       "next_action": "verify supplier star/category dictionary semantics; do not equate raw numeric star keys"
     },
     {
       "field": "hotel_rating",
       "canonical_status": "local_only",
-      "tourvisor": {"status": "verified", "note": "hotelRating is sent upstream"},
-      "anex": {"status": "local_only", "note": "current adapter uses local catalog rating threshold"},
-      "andromeda": {"status": "local_only", "note": "shared local projection uses local catalog rating threshold"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "hotelRating is sent upstream"
+      },
+      "anex": {
+        "status": "local_only",
+        "note": "current adapter uses local catalog rating threshold"
+      },
+      "andromeda": {
+        "status": "local_only",
+        "note": "shared local projection uses local catalog rating threshold"
+      },
       "next_action": null
     },
     {
       "field": "meal_ai",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "current Search3 meal=7 is passed to Tourvisor"},
-      "anex": {"status": "local_only", "note": "AI family is verified in projection/live price evidence, but direct supplier request is not currently constrained by a translated meal dictionary"},
-      "andromeda": {"status": "verified", "note": "Search3 meal=7 maps to SAMO MEAL=5; broad live sample returned AI"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "current Search3 meal=7 is passed to Tourvisor"
+      },
+      "anex": {
+        "status": "local_only",
+        "note": "AI family is verified in projection/live price evidence, but direct supplier request is not currently constrained by a translated meal dictionary"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "Search3 meal=7 maps to SAMO MEAL=5; broad live sample returned AI"
+      },
       "next_action": "retain raw meal label beside normalized family"
     },
     {
       "field": "meal_other_families",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "Tourvisor accepts meal value/dictionary"},
-      "anex": {"status": "unsupported", "note": "preview explicitly accepts only empty or Search3 AI id 7"},
-      "andromeda": {"status": "unsupported", "note": "preview explicitly accepts only empty or Search3 AI id 7"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "Tourvisor accepts meal value/dictionary"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "preview explicitly accepts only empty or Search3 AI id 7"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "preview explicitly accepts only empty or Search3 AI id 7"
+      },
       "next_action": "create verified RO/BB/HB/FB/AI/UAI family mapping from supplier dictionaries before enabling"
     },
     {
       "field": "room",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "raw room text is present in tour results"},
-      "anex": {"status": "verified", "note": "raw room text is normalized and projected"},
-      "andromeda": {"status": "verified", "note": "raw room text is normalized and projected"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "raw room text is present in tour results"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "raw room text is normalized and projected"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "raw room text is normalized and projected"
+      },
       "next_action": "define lossless raw+normalized room contract; do not merge semantically different room labels by fuzzy name"
     },
     {
       "field": "placement",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "placement is present in tested Tourvisor offers"},
-      "anex": {"status": "verified", "note": "hotel_place/placement is present in direct ANEX offers"},
-      "andromeda": {"status": "unknown", "note": "current public Search3 projection drops placement; broad price evidence therefore records null"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "placement is present in tested Tourvisor offers"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "hotel_place/placement is present in direct ANEX offers"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "current public Search3 projection drops placement; broad price evidence therefore records null"
+      },
       "next_action": "add an allowlisted Andromeda placement source field without inventing parity"
     },
     {
       "field": "operator_filter",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "operatorIds are accepted in the protected Tourvisor search"},
-      "anex": {"status": "unsupported", "note": "direct ANEX preview explicitly rejects operatorIds; provider itself is ANEX"},
-      "andromeda": {"status": "unsupported", "note": "public preview rejects operatorIds; internal diagnostic-only gate supports exact ANEX operator id 5"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "operatorIds are accepted in the protected Tourvisor search"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "direct ANEX preview explicitly rejects operatorIds; provider itself is ANEX"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "public preview rejects operatorIds; internal diagnostic-only gate supports exact ANEX operator id 5"
+      },
       "next_action": "build provider-specific operator dictionary and keep operator separate from provider"
     },
     {
       "field": "hotel_types",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "hotelTypes are sent upstream"},
-      "anex": {"status": "unsupported", "note": "preview explicitly rejects non-empty hotelTypes"},
-      "andromeda": {"status": "unsupported", "note": "preview explicitly rejects non-empty hotelTypes"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "hotelTypes are sent upstream"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "preview explicitly rejects non-empty hotelTypes"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "preview explicitly rejects non-empty hotelTypes"
+      },
       "next_action": "supplier dictionary mapping or honest local-only fallback"
     },
     {
       "field": "hotel_services",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "hotelServices are sent upstream"},
-      "anex": {"status": "unsupported", "note": "preview explicitly rejects non-empty hotelServices"},
-      "andromeda": {"status": "unsupported", "note": "preview explicitly rejects non-empty hotelServices"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "hotelServices are sent upstream"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "preview explicitly rejects non-empty hotelServices"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "preview explicitly rejects non-empty hotelServices"
+      },
       "next_action": "supplier dictionary mapping or honest local-only fallback"
     },
     {
       "field": "arrival_airport",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "arrivalId is sent upstream"},
-      "anex": {"status": "unsupported", "note": "preview explicitly rejects arrivalId"},
-      "andromeda": {"status": "unsupported", "note": "preview explicitly rejects arrivalId"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "arrivalId is sent upstream"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "preview explicitly rejects arrivalId"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "preview explicitly rejects arrivalId"
+      },
       "next_action": "airport/destination mapping"
     },
     {
       "field": "only_direct",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "onlyDirect is sent upstream"},
-      "anex": {"status": "unsupported", "note": "true is explicitly rejected"},
-      "andromeda": {"status": "unsupported", "note": "true is explicitly rejected"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "onlyDirect is sent upstream"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "true is explicitly rejected"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "true is explicitly rejected"
+      },
       "next_action": "flight semantics must be verified before enabling"
     },
     {
       "field": "only_charter",
       "canonical_status": "unsupported",
-      "tourvisor": {"status": "verified", "note": "onlyCharter is sent upstream"},
-      "anex": {"status": "unsupported", "note": "true is explicitly rejected"},
-      "andromeda": {"status": "unsupported", "note": "true is explicitly rejected"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "onlyCharter is sent upstream"
+      },
+      "anex": {
+        "status": "unsupported",
+        "note": "true is explicitly rejected"
+      },
+      "andromeda": {
+        "status": "unsupported",
+        "note": "true is explicitly rejected"
+      },
       "next_action": "flight semantics must be verified before enabling"
     },
     {
       "field": "price_range",
       "canonical_status": "local_only",
-      "tourvisor": {"status": "verified", "note": "priceFrom/priceTo are sent upstream"},
-      "anex": {"status": "local_only", "note": "current projection applies range after received offer price normalization"},
-      "andromeda": {"status": "local_only", "note": "shared local projection applies range after received offer price normalization"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "priceFrom/priceTo are sent upstream"
+      },
+      "anex": {
+        "status": "local_only",
+        "note": "current projection applies range after received offer price normalization"
+      },
+      "andromeda": {
+        "status": "local_only",
+        "note": "shared local projection applies range after received offer price normalization"
+      },
       "next_action": "do not treat local filtering as supplier coverage"
     },
     {
       "field": "currency_rub",
       "canonical_status": "verified",
-      "tourvisor": {"status": "verified", "note": "RUB is current Search3 baseline; gateway accepts currency parameter"},
-      "anex": {"status": "verified", "note": "supplier currency dictionary is resolved; Search3 output is RUB/converted RUB"},
-      "andromeda": {"status": "verified", "note": "current adapter only accepts RUB and sends CURRENCYINC=643"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "RUB is current Search3 baseline; gateway accepts currency parameter"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "supplier currency dictionary is resolved; Search3 output is RUB/converted RUB"
+      },
+      "andromeda": {
+        "status": "verified",
+        "note": "current adapter only accepts RUB and sends CURRENCYINC=643"
+      },
       "next_action": null
     },
     {
       "field": "availability",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "unknown", "note": "no canonical enum is currently asserted by this INT contract"},
-      "anex": {"status": "verified", "note": "direct ANEX normalizer retains supplier availability"},
-      "andromeda": {"status": "unknown", "note": "current Search3 public projection does not expose a canonical availability field"},
-      "next_action": "define raw+canonical availability enum and preserve unknown values"
+      "tourvisor": {
+        "status": "unknown",
+        "note": "current canonical offer carries missing raw search evidence; absence is not availability"
+      },
+      "anex": {
+        "status": "unknown",
+        "note": "raw hotel/flight markers are bounded and preserved, but marker meaning is not promoted to a canonical state"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "current public search projection has no offer-level availability evidence; search/page status is not tour availability"
+      },
+      "next_action": "verify provider-specific marker dictionaries before canonicalization; selection and booking remain disabled"
     },
     {
       "field": "flight_details",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "protected gateway has /tours/{id}/flights action"},
-      "anex": {"status": "verified", "note": "separate FreightMonitor_FREIGHTSBYPACKET adapter exists for concrete offer"},
-      "andromeda": {"status": "unknown", "note": "get_flights is a separate method and is not authorized/executed by current package capture"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "protected gateway has /tours/{id}/flights action"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "separate FreightMonitor_FREIGHTSBYPACKET adapter exists for concrete offer"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "get_flights is a separate method and is not authorized/executed by current package capture"
+      },
       "next_action": "P4/P5 optional detail DTO; do not trigger Andromeda get_flights automatically"
     },
     {
       "field": "baggage",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "unknown", "note": "flight endpoint exists but canonical baggage mapping is not established here"},
-      "anex": {"status": "verified", "note": "ANEX flight adapter preserves baggage/hand-baggage/infant-baggage labels without inventing units"},
-      "andromeda": {"status": "unknown", "note": "depends on separate flight detail response"},
+      "tourvisor": {
+        "status": "unknown",
+        "note": "flight endpoint exists but canonical baggage mapping is not established here"
+      },
+      "anex": {
+        "status": "verified",
+        "note": "ANEX flight adapter preserves baggage/hand-baggage/infant-baggage labels without inventing units"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "depends on separate flight detail response"
+      },
       "next_action": "normalize only when source unit/meaning is explicit"
     },
     {
       "field": "fuel_additional",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "fuelCharge is exposed separately; broad-v2 had 10/10 normalized TV offers with non-null fuelCharge"},
-      "anex": {"status": "unknown", "note": "SearchTour price has no fuel field; AdditionalPricesDaily is a separate method not yet live-verified in this lane"},
-      "andromeda": {"status": "unknown", "note": "action=price has no separate documented fuel field; package/quote methods are separate"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "fuelCharge is exposed separately; broad-v2 had 10/10 normalized TV offers with non-null fuelCharge"
+      },
+      "anex": {
+        "status": "unknown",
+        "note": "SearchTour price has no fuel field; AdditionalPricesDaily is a separate method not yet live-verified in this lane"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "action=price has no separate documented fuel field; package/quote methods are separate"
+      },
       "next_action": "P0 evidence first; never default missing fuel to zero"
     },
     {
       "field": "search_price_semantics",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "in broad-v2, TV display price equaled ANEX/Andromeda search price + TV fuelCharge in all 6 triple-aligned samples"},
-      "anex": {"status": "unknown", "note": "broad-v2 direct ANEX search price equaled Andromeda price in all 6 triple-aligned samples; final/additional semantics not universally confirmed"},
-      "andromeda": {"status": "unknown", "note": "broad-v2 Andromeda price equaled direct ANEX search price in all 6 triple-aligned samples; final quote not confirmed"},
+      "tourvisor": {
+        "status": "verified",
+        "note": "in broad-v2, TV display price equaled ANEX/Andromeda search price + TV fuelCharge in all 6 triple-aligned samples"
+      },
+      "anex": {
+        "status": "unknown",
+        "note": "broad-v2 direct ANEX search price equaled Andromeda price in all 6 triple-aligned samples; final/additional semantics not universally confirmed"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "broad-v2 Andromeda price equaled direct ANEX search price in all 6 triple-aligned samples; final quote not confirmed"
+      },
       "next_action": "collect more cohorts and supplier contract evidence before changing arithmetic"
     },
     {
       "field": "final_price",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "unknown", "note": "search/display evidence is not the same as final package quote"},
-      "anex": {"status": "unknown", "note": "requires verified additional/final-price contract"},
-      "andromeda": {"status": "unknown", "note": "requires safe package/quote flow after SAMO answers claiminc/broninit questions"},
+      "tourvisor": {
+        "status": "unknown",
+        "note": "search/display evidence is not the same as final package quote"
+      },
+      "anex": {
+        "status": "unknown",
+        "note": "requires verified additional/final-price contract"
+      },
+      "andromeda": {
+        "status": "unknown",
+        "note": "requires safe package/quote flow after SAMO answers claiminc/broninit questions"
+      },
       "next_action": "P5"
     }
   ],
   "live_findings": {
     "broad_v2": {
       "scenario": "Moscow→Turkey, 2026-10-05, 7 nights, 2 adults, AI, ANEX-only",
-      "anex": {"received_offers": 300, "mapped_received": 209, "unmapped_received": 91, "normalized_ai_offers": 27},
-      "andromeda": {"received_offers": 50, "mapped_offers": 44, "normalized_ai_offers": 44, "pages_count": 2, "page_observed": 1},
-      "tourvisor": {"groups_received": 19, "normalized_ai_offers": 10, "fuel_reported_offers": 10},
-      "pair_tuple_counts": {"anex_andromeda": 24, "anex_tourvisor": 6, "andromeda_tourvisor": 7},
+      "anex": {
+        "received_offers": 300,
+        "mapped_received": 209,
+        "unmapped_received": 91,
+        "normalized_ai_offers": 27
+      },
+      "andromeda": {
+        "received_offers": 50,
+        "mapped_offers": 44,
+        "normalized_ai_offers": 44,
+        "pages_count": 2,
+        "page_observed": 1
+      },
+      "tourvisor": {
+        "groups_received": 19,
+        "normalized_ai_offers": 10,
+        "fuel_reported_offers": 10
+      },
+      "pair_tuple_counts": {
+        "anex_andromeda": 24,
+        "anex_tourvisor": 6,
+        "andromeda_tourvisor": 7
+      },
       "triple_tuple_count": 6,
       "fuel_relation": "In all 6 triple-aligned samples, direct ANEX search price == Andromeda search price and Tourvisor price - that price == Tourvisor fuelCharge exactly. This is cohort evidence, not yet a universal price contract."
     }
-  }
+  },
+  "availability_contract": "app/integrations/three-provider-availability.php",
+  "availability_contract_status": "implemented_ci_pending"
 }
