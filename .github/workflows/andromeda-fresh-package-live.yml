@@ -1,4 +1,4 @@
-name: Owner fresh Andromeda package probe
+name: Owner Andromeda get_flights probe
 on:
   issue_comment:
     types: [created]
@@ -6,14 +6,14 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-andromeda-fresh-package-live
+  group: anytour-andromeda-get-flights-live
   cancel-in-progress: false
 jobs:
   probe:
     if: >-
       github.event.issue.number == 996 &&
       github.event.comment.user.login == 'pyatkoff' &&
-      github.event.comment.body == '/probe-andromeda-fresh-package-1717-v5'
+      github.event.comment.body == '/probe-andromeda-get-flights-1717-v6'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,30 +22,41 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 996
           test "${{ github.event.comment.user.login }}" = pyatkoff
-          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717-v5
+          test "${{ github.event.comment.body }}" = /probe-andromeda-get-flights-1717-v6
       - uses: actions/checkout@v4
         with:
-          ref: 424a80db461269cae5567bcecda7e8041de34436
+          ref: 210647998608cd5f0b1af537d3eb60c4be9734de
           persist-credentials: false
-      - name: Verify exact checked diagnostic source
+      - name: Verify exact checked get_flights source
         run: |
-          test "$(git rev-parse HEAD)" = 424a80db461269cae5567bcecda7e8041de34436
-          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py
-          python3 tests/andromeda_fresh_package_probe_test.py
-          python3 tests/andromeda_fresh_package_probe_wide_test.py
-          python3 tests/andromeda_fresh_package_supplier_error_probe_test.py
-          python3 tests/andromeda_fresh_package_probe_known_hotel_test.py
-      - name: Capture one known-hotel ANEX package without booking
+          test "$(git rev-parse HEAD)" = 210647998608cd5f0b1af537d3eb60c4be9734de
+          python3 -m py_compile scripts/diagnostics/andromeda_get_flights_probe.py tests/andromeda_get_flights_probe_test.py
+          python3 tests/andromeda_get_flights_probe_test.py
+      - name: Fetch exact successful v5 private package artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v5-package"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10266585794/zip' \
+            -o "$RUNNER_TEMP/v5-package.zip"
+          unzip -q "$RUNNER_TEMP/v5-package.zip" -d "$RUNNER_TEMP/v5-package"
+          test -f "$RUNNER_TEMP/v5-package/result.json"
+          test -f "$RUNNER_TEMP/v5-package/private-package.json"
+      - name: Get flights for exact successful v5 claim
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py --execute
-      - name: Preserve private package evidence
+        run: python3 scripts/diagnostics/andromeda_get_flights_probe.py --execute "$RUNNER_TEMP/v5-package"
+      - name: Preserve private flight evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: andromeda-fresh-package-${{ github.run_id }}
-          path: ${{ runner.temp }}/andromeda-fresh-package/*.json
+          name: andromeda-get-flights-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-get-flights/*.json
           if-no-files-found: error
           retention-days: 2
