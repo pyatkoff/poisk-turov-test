@@ -45,8 +45,24 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('Взрослых', '<select><option>2</option></select>', 'adults')}
       ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
     </fieldset>
+    <fieldset class="search-group search-group--route"><legend>Курорт и отель</legend>
+      ${field('Курорт / регион', '<select><option>Анталья</option></select>', 'region')}
+      ${field('Конкретный отель', '<select><option>Любой отель</option></select>', 'hotel')}
+    </fieldset>
+    <fieldset class="search-group"><legend>Уровень отеля</legend>
+      ${field('Категория отеля', '<select><option>4★ и выше</option></select>', 'stars')}
+      ${field('Рейтинг отеля', '<select><option>от 4.0</option></select>', 'rating')}
+    </fieldset>
+    <fieldset class="search-group"><legend>Питание и оператор</legend>
+      ${field('Питание', '<select><option>Всё включено</option></select>', 'food')}
+      ${field('Туроператор', '<select><option>Все операторы</option></select>', 'operator')}
+    </fieldset>
+    <fieldset class="search-group"><legend>Бюджет</legend>
+      ${field('Цена от', '<input type="number" value="80000">', 'price-from')}
+      ${field('Цена до', '<input type="number" value="180000">', 'price-to')}
+    </fieldset>
   </div>
-  <details class="extras"><summary>Фильтры отдыха <span>курорт, отель, питание, цена и перелёт</span></summary></details>
+  <details class="extras"><summary>Ещё фильтры <span>аэропорт, район, тип отеля, перелёт и услуги</span></summary></details>
   <button class="primary search-submit" type="submit"><span>Найти туры</span></button>
 </form></main></body>`;
 
@@ -66,7 +82,7 @@ const measure = node => {
   let states = 0;
   try {
     for (const width of [375, 760, 761, 1024, 1025, 1199, 1200, 1440]) {
-      const page = await browser.newPage({ viewport: { width, height: 1000 } });
+      const page = await browser.newPage({ viewport: { width, height: 1300 } });
       try {
         await page.setContent(html);
         await page.addStyleTag({ content: css });
@@ -80,6 +96,7 @@ const measure = node => {
             mainColumns: getComputedStyle(document.querySelector('.main-fields')).gridTemplateColumns.split(' ').length,
             groupColumns: [...document.querySelectorAll('.search-group')].map(node => getComputedStyle(node).gridTemplateColumns.split(' ').length),
             groupTops: [...document.querySelectorAll('.search-group')].map(node => Math.round(node.getBoundingClientRect().top)),
+            groupLegends: [...document.querySelectorAll('.search-group legend')].map(node => node.textContent.trim()),
             labels: [...document.querySelectorAll('#tourSearch .field>span')].map(measureNode),
             controls: [...document.querySelectorAll('#tourSearch .field :is(input,select)')].map(measureNode),
             dateControls: [...document.querySelectorAll('.search-group--dates input')].map(measureNode),
@@ -94,17 +111,20 @@ const measure = node => {
         assert.ok(state.labels.every(item => item.fontSize >= 12), `${width}: labels remain readable`);
         assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: native controls keep 44px/16px`);
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
+        assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы', 'Курорт и отель', 'Уровень отеля', 'Питание и оператор', 'Бюджет'], `${width}: full OTA search groups stay visible in canonical order`);
         if (width === 375) {
-          assert.equal(state.mainColumns, 1, '375: primary groups use one readable column');
-          assert.deepEqual(state.groupColumns, [1, 2, 2, 2], '375: route stacks while coupled date, night and tourist values stay paired');
+          assert.equal(state.mainColumns, 1, '375: primary groups use one readable outer column');
+          assert.deepEqual(state.groupColumns, [1, 2, 2, 2, 1, 2, 2, 2], '375: route/hotel selectors stack while coupled ranges stay paired');
           assert.ok(state.submit.width >= state.form.width - 45, '375: primary action spans the mobile form');
         }
         if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
         if (width >= 1200) {
-          assert.equal(state.mainColumns, 4, '1440: four primary groups share one compact row');
-          assert.equal(new Set(state.groupTops).size, 1, '1440: all primary groups align in one row');
-          assert.ok(state.dateControls.every(item => item.width >= 125), '1440: date fields keep enough width for the complete native value');
-          assert.ok(state.submit.width <= 281, '1440: primary action does not consume the entire form width');
+          assert.equal(state.mainColumns, 4, 'wide desktop: four primary groups per row');
+          const rowCounts = new Map();
+          for (const top of state.groupTops) rowCounts.set(top, (rowCounts.get(top) || 0) + 1);
+          assert.deepEqual([...rowCounts.values()].sort((a,b)=>a-b), [4, 4], 'wide desktop: full form uses two balanced rows of four groups');
+          assert.ok(state.dateControls.every(item => item.width >= 125), 'wide desktop: date fields keep enough width for the complete native value');
+          assert.ok(state.submit.width <= 281, 'wide desktop: primary action does not consume the entire form width');
         }
         if (output) await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
         states += 1;
