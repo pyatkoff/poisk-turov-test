@@ -1,2 +1,5 @@
 operation_id=hotel-match-coordinate-anchor-accept-1971-20260911-v1
-state=armed
+state=completed-no-replay
+run_id=34581155863
+artifact_id=10191656567
+writes=17
