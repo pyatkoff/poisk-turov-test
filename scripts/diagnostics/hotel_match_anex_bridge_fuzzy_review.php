@@ -15,9 +15,9 @@ function habfr_is_subsequence(array $small, array $large): bool {
 }
 
 function habfr_pair_policy(string $source, string $target, string $region): array {
-    $drop = array_values(array_unique(array_merge(pcbr_region_tokens($region), ['adult','adults','only','16'])));
-    $s = pcbr_without_tokens(pcbr_identity_tokens($source), $drop);
-    $t = pcbr_without_tokens(pcbr_identity_tokens($target), $drop);
+    $ignoredTokens = array_values(array_unique(array_merge(pcbr_region_tokens($region), ['adult','adults','only','16'])));
+    $s = pcbr_without_tokens(pcbr_identity_tokens($source), $ignoredTokens);
+    $t = pcbr_without_tokens(pcbr_identity_tokens($target), $ignoredTokens);
     $criticalOk = mlp_critical_signature($source) === mlp_critical_signature($target);
     $anchorOk = isset($s[0], $t[0]) && $s[0] === $t[0];
     $shared = array_values(array_unique(array_intersect($s, $t)));
