@@ -1,5 +1,5 @@
 name: MATCH live-observed priority review
-run-name: MATCH live-observed priority review #1971
+run-name: MATCH live/core8 priority review #1971
 on:
   push:
     branches: ['feat/match-current-bulk-review-20260911']
@@ -12,10 +12,10 @@ permissions:
   actions: read
   issues: write
 concurrency:
-  group: match-live-priority-review-1971-v1
+  group: match-live-priority-review-1971-v2
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-live-priority-review-1971-20260911-v1
+  OPERATION_ID: hotel-match-live-priority-review-1971-20260911-v2
 jobs:
   review:
     if: github.actor == 'pyatkoff' && github.run_attempt == 1
@@ -42,17 +42,17 @@ jobs:
           import json,os
           from pathlib import Path
           state=Path(os.environ['STATE'])
-          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_live_observed_priority_read_only','database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_live_first_full_core8_unique_strict_read_only','database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
           (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n',encoding='utf-8')
           PYTHON
       - name: Preserve reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-live-priority-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v1/reservation.json
+          name: hotel-match-live-priority-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Read CURRENT DB and rank live-observed pending identities
+      - name: Read CURRENT DB and build live-first bulk identity package
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -84,7 +84,7 @@ jobs:
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
           host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
           if not host or not user or not os.environ[req[0]].strip(): raise RuntimeError('ssh_secret_missing')
-          with tempfile.TemporaryDirectory(prefix='match-live-priority-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+          with tempfile.TemporaryDirectory(prefix='match-live-priority-v2-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
               key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600)
               known=Path(tmp)/'known_hosts'
               cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
@@ -96,7 +96,7 @@ jobs:
               raise RuntimeError('live_output_unparseable')
           (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n',encoding='utf-8')
           if p.returncode!=0 or result.get('status')!='completed' or result.get('operation_id')!=os.environ['OPERATION_ID'] or result.get('database_writes')!=0 or result.get('supplier_calls')!=0 or result.get('historical_operations_replayed') is not False:
-              raise RuntimeError('live_priority_review_not_completed')
+              raise RuntimeError('live_priority_v2_not_completed')
           raw=(state/'result.json').read_bytes()
           receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'safe_prepared_count':result.get('safe_prepared_count',0),'strong_evidence_count':result.get('strong_evidence_count',0),'stats':result.get('stats',{}),'coverage':result.get('coverage',{})}
           (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
@@ -105,14 +105,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-live-priority-v1-${{ github.run_id }}
+          name: hotel-match-live-priority-v2-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v1/result.json
-            ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v1/receipt.json
-            ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v1/blocker.json
+            ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v2/result.json
+            ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v2/receipt.json
+            ${{ runner.temp }}/hotel-match-live-priority-review-1971-20260911-v2/blocker.json
           if-no-files-found: warn
           retention-days: 90
-      - name: Publish MATCH live-priority result
+      - name: Publish MATCH bulk-package result
         if: success()
         uses: actions/github-script@v7
         with:
@@ -121,9 +121,10 @@ jobs:
             const r=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/${process.env.OPERATION_ID}/result.json`,'utf8'));
             const s=r.stats||{}, c=r.coverage||{};
             const body=[
-              `MATCH #1971 live-observed CURRENT-DB audit \`${r.operation_id}\` completed read-only / NO-REPLAY.`,
-              `Actually live pending **${s.live_pending||0}** across **${s.observation_rows||0}** saved observations. Safe evidence prepared **${r.safe_prepared_count||0}** (unique exact+geo ${s.exact_safe||0}, unique generic+geo ${s.generic_exact_safe||0}, ordered identity+geo ${s.ordered_safe||0}); conservative strong-fuzzy evidence-only **${r.strong_evidence_count||0}**.`,
-              `Safe rows already carrying an ANEX link **${s.existing_anex_safe||0}**; safe category mismatches **${s.category_mismatch_safe||0}** remain annotations, not automatic rejection. Coordinate conflicts seen **${s.coordinate_conflict||0}**.`,
+              `MATCH #1971 CURRENT-DB live-first/full-core8 audit \`${r.operation_id}\` completed read-only / NO-REPLAY.`,
+              `Pending examined **${s.pending_examined||0}**: live **${s.live_pending||0}** across **${s.observation_rows||0}** saved observations, cold **${s.cold_pending||0}**. Unique-target safe evidence **${r.safe_prepared_count||0}** = live **${s.live_safe||0}** + cold **${s.cold_safe||0}**.`,
+              `Safe rule split: exact+geo **${s.exact_safe||0}**, generic exact+geo **${s.generic_exact_safe||0}**, unique ordered identity+direct geo **${s.ordered_safe||0}**. Ambiguous strict target sets **${s.ambiguous_strict||0}** were blocked. Conservative strong-fuzzy evidence-only **${r.strong_evidence_count||0}**.`,
+              `Safe rows already carrying ANEX link **${s.existing_anex_safe||0}**; safe category mismatches **${s.category_mismatch_safe||0}** remain annotations. Coordinate conflicts **${s.coordinate_conflict||0}**.`,
               `Coverage snapshot: ANEX links ${c.anex_links||0}, ANEX unique local ${c.anex_unique_local||0}, Andromeda unique local ${c.andromeda_unique_local||0}, triple ${c.all_three||0}. DB writes **0**, supplier calls **0**.`,
               `Run \`${process.env.GITHUB_RUN_ID}\`, source \`${process.env.GITHUB_SHA}\`. Any future write must use a NEW operation and recompute CURRENT DB.`
             ].join('\n\n');

@@ -3,7 +3,7 @@ declare(strict_types=1);
 if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';
 
-const MLP_OPERATION = 'hotel-match-live-priority-review-1971-20260911-v1';
+const MLP_OPERATION = 'hotel-match-live-priority-review-1971-20260911-v2';
 
 function mlp_observations(PDO $db): array {
     $latest=[]; $counts=[]; $lastSeen=[];
@@ -47,6 +47,12 @@ function mlp_best_pair(array $sourceNames,array $targetNames,string $region): ar
     return $best;
 }
 
+function mlp_unique_strict_candidate(array $rank): ?array {
+    $strict=[];
+    foreach($rank as $candidate) if(($candidate['pair']['strict_ordered']??null)!==null) $strict[]=$candidate;
+    return count($strict)===1 ? $strict[0] : null;
+}
+
 function mlp_source_context(array $row,?array $obs): array {
     $prior=fc_evidence($row['evidence_json']??''); $source=$prior['source']??[]; if(!is_array($source))$source=[]; $geo=$prior['geography']??[]; if(!is_array($geo))$geo=[];
     $names=array_values(array_unique(array_filter([(string)($source['name']??''),(string)($source['lName']??''),(string)($obs['hotel_name']??'')],static fn($v)=>trim($v)!=='')));
@@ -69,14 +75,15 @@ function mlp_review(PDO $db,string $operation=MLP_OPERATION): array {
     if($operation!==MLP_OPERATION)throw new RuntimeException('operation_scope');
     $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
     [$hotels,$names,$strict,$broad,$places,$scope]=mbr_catalog($db);[$anexLocal,$andromedaLocal]=mbr_local_sets($db);$shaCountry=fc_sha_countries($db);[$latest,$counts,$lastSeen]=mlp_observations($db);
-    $stats=['live_pending'=>0,'observation_rows'=>0,'exact_safe'=>0,'generic_exact_safe'=>0,'ordered_safe'=>0,'strong_evidence'=>0,'ambiguous'=>0,'coordinate_conflict'=>0,'no_direct_geo'=>0,'no_candidate'=>0,'category_mismatch_safe'=>0,'existing_anex_safe'=>0];
-    $safe=[];$strong=[];$tail=[];
+    $stats=['pending_examined'=>0,'live_pending'=>0,'cold_pending'=>0,'observation_rows'=>0,'exact_safe'=>0,'generic_exact_safe'=>0,'ordered_safe'=>0,'live_safe'=>0,'cold_safe'=>0,'strong_evidence'=>0,'ambiguous_strict'=>0,'ambiguous_fuzzy'=>0,'coordinate_conflict'=>0,'no_direct_geo'=>0,'no_candidate'=>0,'category_mismatch_safe'=>0,'existing_anex_safe'=>0];
+    $safe=[];$strong=[];$liveTail=[];
     $sql="SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY external_hotel_id";
     foreach($db->query($sql)->fetchAll(PDO::FETCH_ASSOC) as $row){
-        $external=(string)$row['external_hotel_id'];$obs=$latest[$external]??null;$obsCount=(int)($counts[$external]??0);if(!$obs||$obsCount<1)continue;
+        $external=(string)$row['external_hotel_id'];$obs=$latest[$external]??null;$obsCount=(int)($counts[$external]??0);$isLive=$obsCount>0;
         $country=(int)($obs['country_id']??0);if(!isset(MBR_CORE8[$country]))$country=(int)($shaCountry[$row['catalog_sha256']]??0);if(!isset(MBR_CORE8[$country]))continue;
-        $stats['live_pending']++;$stats['observation_rows']+=$obsCount;[$prior,$source,$sourceNames,$sourcePlaces,$sourceCategory,$coordSource]=mlp_source_context($row,$obs);
-        $base=['provider'=>'andromeda','external_id'=>$external,'country_id'=>$country,'observation_count'=>$obsCount,'last_seen_utc'=>$lastSeen[$external]??null,'source_names'=>$sourceNames,'source_places'=>$sourcePlaces,'catalog_sha256'=>$row['catalog_sha256']??null];
+        $stats['pending_examined']++;if($isLive){$stats['live_pending']++;$stats['observation_rows']+=$obsCount;}else{$stats['cold_pending']++;}
+        [$prior,$source,$sourceNames,$sourcePlaces,$sourceCategory,$coordSource]=mlp_source_context($row,$obs);
+        $base=['provider'=>'andromeda','external_id'=>$external,'country_id'=>$country,'live_observed'=>$isLive,'observation_count'=>$obsCount,'last_seen_utc'=>$lastSeen[$external]??null,'source_names'=>$sourceNames,'source_places'=>$sourcePlaces,'catalog_sha256'=>$row['catalog_sha256']??null];
         $strictIds=mbr_ids_for_names($strict,$country,$sourceNames,false);$broadIds=mbr_ids_for_names($broad,$country,$sourceNames,true);$placeIds=mbr_place_pool($places,$country,$sourcePlaces);
         $picked=null;$rule='';
         if(count($strictIds)===1){
@@ -94,17 +101,20 @@ function mlp_review(PDO $db,string $operation=MLP_OPERATION): array {
             $rank=[];
             foreach($placeIds as $id){$hotel=$hotels[$id];$pair=mlp_best_pair($sourceNames,$names[$id]??[$hotel['name']],(string)$hotel['region_name']);if(($pair['shared']??0)<2)continue;$guard=mbr_target_guard($coordSource,$hotel);if($guard['coordinate_conflict'])continue;$rank[]=['id'=>$id,'pair'=>$pair,'guard'=>$guard];}
             usort($rank,static fn($a,$b)=>(int)($b['pair']['strict_ordered']!==null)<=>(int)($a['pair']['strict_ordered']!==null) ?: $b['pair']['score']<=>$a['pair']['score'] ?: $b['pair']['shared']<=>$a['pair']['shared'] ?: $a['id']<=>$b['id']);
-            $best=$rank[0]??null;$second=$rank[1]??null;$margin=$best?($best['pair']['score']-($second['pair']['score']??0.0)):0.0;
-            if($best&&$best['pair']['strict_ordered']!==null){$id=$best['id'];$picked=mlp_target_row($hotels[$id],$best['pair'],$best['guard'],$sourceCategory,isset($anexLocal[$id]),'ordered_identity_plus_direct_geo');$picked['score_margin']=round($margin,6);$rule='ordered';}
-            elseif($best){
-                $g=$best['pair']['guard'];$strongOk=($best['pair']['score']??0)>=0.82&&($best['pair']['shared']??0)>=3&&$margin>=0.15&&($g['critical_ok']??false)&&($g['anchor_ok']??false)&&!($g['dangerous_swap']??true);
-                if($strongOk){$id=$best['id'];$candidate=$base+mlp_target_row($hotels[$id],$best['pair'],$best['guard'],$sourceCategory,isset($anexLocal[$id]),'strong_fuzzy_direct_geo_anchor_guard');$candidate['score_margin']=round($margin,6);$strong[]=$candidate;$stats['strong_evidence']++;}
-                elseif($second&&abs($margin)<0.15)$stats['ambiguous']++;
+            $strictMatches=[];foreach($rank as $candidate)if(($candidate['pair']['strict_ordered']??null)!==null)$strictMatches[]=$candidate;
+            if(count($strictMatches)===1){$best=$strictMatches[0];$id=$best['id'];$picked=mlp_target_row($hotels[$id],$best['pair'],$best['guard'],$sourceCategory,isset($anexLocal[$id]),'unique_ordered_identity_plus_direct_geo');$rule='ordered';}
+            elseif(count($strictMatches)>1){$stats['ambiguous_strict']++;}
+            else{
+                $best=$rank[0]??null;$second=$rank[1]??null;$margin=$best?($best['pair']['score']-($second['pair']['score']??0.0)):0.0;
+                if($best){$g=$best['pair']['guard'];$strongOk=($best['pair']['score']??0)>=0.82&&($best['pair']['shared']??0)>=3&&$margin>=0.15&&($g['critical_ok']??false)&&($g['anchor_ok']??false)&&!($g['dangerous_swap']??true);
+                    if($strongOk){$id=$best['id'];$candidate=$base+mlp_target_row($hotels[$id],$best['pair'],$best['guard'],$sourceCategory,isset($anexLocal[$id]),'strong_fuzzy_direct_geo_anchor_guard');$candidate['score_margin']=round($margin,6);$strong[]=$candidate;$stats['strong_evidence']++;}
+                    elseif($second&&abs($margin)<0.15)$stats['ambiguous_fuzzy']++;
+                }
             }
         }
-        if($picked!==null){$candidate=$base+$picked;$safe[]=$candidate;if($rule==='exact')$stats['exact_safe']++;elseif($rule==='generic')$stats['generic_exact_safe']++;else$stats['ordered_safe']++;if($candidate['category_mismatch'])$stats['category_mismatch_safe']++;if($candidate['existing_anex_link'])$stats['existing_anex_safe']++;}
-        else{$stats['no_candidate']++;$tail[]=$base+['prior_candidate_ids'=>array_values(array_unique(array_map('intval',$prior['candidate_ids']??[]))),'strict_ids'=>$strictIds,'broad_ids'=>array_slice($broadIds,0,10),'place_pool_size'=>count($placeIds)];}
+        if($picked!==null){$candidate=$base+$picked;$safe[]=$candidate;if($rule==='exact')$stats['exact_safe']++;elseif($rule==='generic')$stats['generic_exact_safe']++;else$stats['ordered_safe']++;if($isLive)$stats['live_safe']++;else$stats['cold_safe']++;if($candidate['category_mismatch'])$stats['category_mismatch_safe']++;if($candidate['existing_anex_link'])$stats['existing_anex_safe']++;}
+        else{$stats['no_candidate']++;if($isLive)$liveTail[]=$base+['prior_candidate_ids'=>array_values(array_unique(array_map('intval',$prior['candidate_ids']??[]))),'strict_ids'=>$strictIds,'broad_ids'=>array_slice($broadIds,0,10),'place_pool_size'=>count($placeIds)];}
     }
-    $sort=static fn($a,$b)=>(int)($b['observation_count']??0)<=>(int)($a['observation_count']??0) ?: strcmp((string)$a['external_id'],(string)$b['external_id']);usort($safe,$sort);usort($strong,$sort);usort($tail,$sort);
-    return ['status'=>'completed','operation_id'=>$operation,'database_writes'=>0,'supplier_calls'=>0,'historical_operations_replayed'=>false,'coverage'=>fc_coverage($db),'catalog_scope'=>$scope,'stats'=>$stats,'safe_prepared_count'=>count($safe),'strong_evidence_count'=>count($strong),'safe_prepared'=>$safe,'strong_evidence'=>$strong,'live_tail'=>$tail];
+    $sort=static fn($a,$b)=>(int)($b['live_observed']??false)<=>(int)($a['live_observed']??false) ?: (int)($b['observation_count']??0)<=>(int)($a['observation_count']??0) ?: strcmp((string)$a['external_id'],(string)$b['external_id']);usort($safe,$sort);usort($strong,$sort);usort($liveTail,$sort);
+    return ['status'=>'completed','operation_id'=>$operation,'database_writes'=>0,'supplier_calls'=>0,'historical_operations_replayed'=>false,'coverage'=>fc_coverage($db),'catalog_scope'=>$scope,'stats'=>$stats,'safe_prepared_count'=>count($safe),'strong_evidence_count'=>count($strong),'safe_prepared'=>$safe,'strong_evidence'=>$strong,'live_tail'=>$liveTail];
 }

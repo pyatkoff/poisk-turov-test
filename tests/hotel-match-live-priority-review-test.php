@@ -25,4 +25,9 @@ mlp_assert($p['strict_ordered']===null,'token reorder not promoted to strict');
 $p=mlp_best_pair(['Hilton Dubai Jumeirah'],['HILTON DUBAI PALM JUMEIRAH'],'Дубай');
 mlp_assert($p['strict_ordered']===null,'significant extra locality not strict');
 
+$one=['id'=>1,'pair'=>['strict_ordered'=>['ok'=>true]]];$none=['id'=>2,'pair'=>['strict_ordered'=>null]];$two=['id'=>3,'pair'=>['strict_ordered'=>['ok'=>true]]];
+mlp_assert(mlp_unique_strict_candidate([$one,$none])['id']===1,'single strict target selected');
+mlp_assert(mlp_unique_strict_candidate([$one,$two])===null,'multiple strict targets remain ambiguous');
+mlp_assert(mlp_unique_strict_candidate([$none])===null,'no strict target stays unresolved');
+
 echo "ok\n";
