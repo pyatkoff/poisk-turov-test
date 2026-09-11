@@ -1,0 +1,34 @@
+name: TEMP generate Search3 selected quote asset
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Generate checked public asset and reviewed hash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node tests/search3-andromeda-selected-quote.cjs
+      - name: Preserve exact generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-selected-quote-generated-${{ github.run_id }}
+          path: |
+            v2/search3-selected-flow-v2.js
+            docs/project/search3-production-import.json
+          if-no-files-found: error
+          retention-days: 2
