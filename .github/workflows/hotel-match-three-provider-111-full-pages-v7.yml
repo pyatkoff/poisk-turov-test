@@ -45,18 +45,18 @@ jobs:
           if p.count(oldop)!=1 or p.count(olddate)!=1: raise SystemExit('frozen v6 diagnostic changed')
           p=p.replace(oldop,os.environ['OPERATION_ID']).replace(olddate,"const M6_DATE = '2026-11-13';")
           needle="declare(strict_types=1);\n"
-          fatal="""
-register_shutdown_function(static function(): void {
-    $e=error_get_last();
-    if(!is_array($e) || !in_array((int)($e['type']??0),[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR,E_USER_ERROR],true)) return;
-    echo 'MATCH111FULL_JSON:'.json_encode([
-        'status'=>'failed','stage'=>'fatal','reason'=>'php_fatal',
-        'operation_id'=>'hotel-match-three-provider-111-full-pages-1971-20260911-v7',
-        'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,
-        'token_values_recorded'=>false,'raw_provider_bodies_recorded'=>false,
-    ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
-});
-"""
+          fatal=(
+              "register_shutdown_function(static function(): void {\n"
+              "    $e=error_get_last();\n"
+              "    if(!is_array($e) || !in_array((int)($e['type']??0),[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR,E_USER_ERROR],true)) return;\n"
+              "    echo 'MATCH111FULL_JSON:'.json_encode([\n"
+              "        'status'=>'failed','stage'=>'fatal','reason'=>'php_fatal',\n"
+              "        'operation_id'=>'hotel-match-three-provider-111-full-pages-1971-20260911-v7',\n"
+              "        'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,\n"
+              "        'token_values_recorded'=>false,'raw_provider_bodies_recorded'=>false,\n"
+              "    ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;\n"
+              "});\n"
+          )
           if p.count(needle)!=1: raise SystemExit('strict-types insertion point changed')
           p=p.replace(needle,needle+fatal,1)
           Path(os.environ['ARTIFACT_DIR'],'program.php').write_text(p)
@@ -110,7 +110,7 @@ register_shutdown_function(static function(): void {
         uses: actions/upload-artifact@v4
         with:
           name: hotel-match-three-provider-111-full-pages-v7-${{ github.run_id }}-${{ github.run_attempt }}-reserved
-          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          path: /tmp/match-three-provider-111-full-pages-v7/reservation.json
           if-no-files-found: error
           retention-days: 90
 
@@ -130,7 +130,7 @@ register_shutdown_function(static function(): void {
               if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
               else:key.write_bytes(base64.b64decode(raw))
               key.chmod(0o600)
-              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOUR_DEPLOY_USER'],os.environ['ANYTOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
               p=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=600)
           marker='MATCH111FULL_JSON:';line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
           out=Path(os.environ['ARTIFACT_DIR'],'result.json')
@@ -157,7 +157,7 @@ register_shutdown_function(static function(): void {
         with:
           name: hotel-match-three-provider-111-full-pages-v7-${{ github.run_id }}-${{ github.run_attempt }}-final
           path: |
-            ${{ env.ARTIFACT_DIR }}/reservation.json
-            ${{ env.ARTIFACT_DIR }}/result.json
+            /tmp/match-three-provider-111-full-pages-v7/reservation.json
+            /tmp/match-three-provider-111-full-pages-v7/result.json
           if-no-files-found: warn
           retention-days: 90
