@@ -1,0 +1,35 @@
+name: Three-provider offer context
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-offer-context.php'
+      - 'app/integrations/three-provider-offer-contract.php'
+      - 'app/integrations/three-provider-money-facts.php'
+      - 'tests/three-provider-offer-context-test.php'
+      - '.github/workflows/three-provider-offer-context-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate retained-offer guard without network
+        run: |
+          php -l app/integrations/three-provider-offer-context.php
+          php -l tests/three-provider-offer-context-test.php
+          php -d allow_url_fopen=0 tests/three-provider-offer-context-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-offer-context.php').read_text()
+          assert "'selection_state' => 'disabled'" in src
+          assert "'current_context_verified' => false" in src
+          assert "return self::result('current', true)" in src
+          for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
+              assert forbidden not in src
+          print('Three-provider offer context static boundary: PASS')
+          PY
