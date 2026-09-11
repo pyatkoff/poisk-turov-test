@@ -5,7 +5,7 @@ import base64, hashlib, json, os, re, subprocess, sys
 from pathlib import Path
 
 SOURCE_FILE = 'v2/search3-results-cards-v2.js'
-TARGET_FILE = 'poisk-turov/v2/search3-results-cards-v2.js'
+TARGET_FILE = 'search3-results-cards-v2.js'
 PHP = r'''
 error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');ob_start();
 $lock=null;$result=['status'=>'blocked'];$installed=false;
@@ -16,7 +16,7 @@ try{
  if(!is_array($in)||array_keys($in)!==['source','content','sha256']||!is_string($in['source'])||!preg_match('/^[0-9a-f]{40}$/D',$in['source'])||!is_string($in['content'])||!is_string($in['sha256'])||!preg_match('/^[0-9a-f]{64}$/D',$in['sha256']))throw new RuntimeException('input');
  $bytes=base64_decode($in['content'],true);if($bytes===false||strlen($bytes)<100||strlen($bytes)>524288||hash('sha256',$bytes)!==$in['sha256'])throw new RuntimeException('content');
  $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('wrong_project');
- $preview=$root.'/_preview/search3-site-candidate';$target=$preview.'/poisk-turov/v2/search3-results-cards-v2.js';
+ $preview=$root.'/_preview/search3-site-candidate';$target=$preview.'/search3-results-cards-v2.js';
  if(!is_dir($preview)||is_link($preview)||!is_file($target)||is_link($target))throw new RuntimeException('target');
  $private=dirname($root,2).'/.anytoour-andromeda';if(!is_dir($private)||is_link($private))throw new RuntimeException('private');
  $lock=fopen($private.'/search3-quote-ui-publication.lock','c');if(!$lock||!flock($lock,LOCK_EX))throw new RuntimeException('lock');
@@ -31,7 +31,7 @@ try{
    $backup=file_get_contents($target);durable($release.'/backup.js',$backup);durable($release.'/stage/asset.js',$bytes);
    try{if(!rename($release.'/stage/asset.js',$target))throw new RuntimeException('rename_failed');$installed=true;if(hash_file('sha256',$target)!==$in['sha256'])throw new RuntimeException('target_readback');}
    catch(Throwable $e){if($installed){@unlink($target);@rename($release.'/backup.js',$target);}throw $e;}
-   $result=['status'=>'published','source'=>$in['source'],'sha256'=>$in['sha256'],'target'=>'/_preview/search3-site-candidate/poisk-turov/v2/search3-results-cards-v2.js','files'=>1,'supplier_calls'=>0,'booking_calls'=>0,'database_writes'=>0];
+   $result=['status'=>'published','source'=>$in['source'],'sha256'=>$in['sha256'],'target'=>'/_preview/search3-site-candidate/search3-results-cards-v2.js','files'=>1,'supplier_calls'=>0,'booking_calls'=>0,'database_writes'=>0];
    durable($manifest,json_encode($result,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
  }
 }catch(Throwable $e){$result=['status'=>'blocked','reason'=>$e->getMessage(),'installed'=>$installed,'supplier_calls'=>0,'booking_calls'=>0,'database_writes'=>0];}
