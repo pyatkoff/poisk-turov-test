@@ -7,7 +7,7 @@ $checks = 0;
 $context = hash('sha256', 'context-a');
 $operation = hash('sha256', 'andromeda-selected-quote-v1');
 $reserved = AnyTourAndromedaQuoteAttemptState::reserve($context, $operation);
-if (($reserved['status'] ?? null) !== 'reserved' || ($reserved['result'] ?? false) !== null) throw new RuntimeException('reserve');
+if (($reserved['status'] ?? null) !== 'reserved' || !array_key_exists('result', $reserved) || $reserved['result'] !== null) throw new RuntimeException('reserve');
 ++$checks;
 
 try {
