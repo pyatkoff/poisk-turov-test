@@ -155,9 +155,14 @@ $now = 1789156800;
 $retained = AnyTourThreeProviderOfferContext::retain($dto, 7, 1, $now);
 $current = array_intersect_key($retained, array_flip(['provider', 'operator', 'local_hotel_id', 'identity', 'generation', 'page']));
 bridge_check(AnyTourThreeProviderOfferContext::validate($retained, $current, $now)['status'] === 'current');
-foreach ([['identity' => $b['identity']], ['local_hotel_id' => 50505], ['generation' => 8], ['page' => 2]] as $change) {
+foreach ([['identity' => $b['identity']], ['local_hotel_id' => 50505], ['generation' => 8], ['page' => 2],
+    ['operator' => AnyTourThreeProviderOperator::fromSearch('anex', 'ANEX')]] as $change) {
     bridge_check(AnyTourThreeProviderOfferContext::validate($retained, array_replace($current, $change), $now)['status'] === 'mismatch');
 }
+$forgedOperator = $current;
+$forgedOperator['operator']['canonical_verified'] = true;
+bridge_reject(static fn () => AnyTourThreeProviderOfferContext::validate($retained, $forgedOperator, $now),
+    'THREE_PROVIDER_CONTEXT_OPERATOR');
 $fresh = AnyTourThreeProviderAnexOffer::fromPage($page, 0, bridge_identity(), 'new-search', '2026-09-11T20:00:00Z');
 bridge_check(AnyTourThreeProviderOfferContext::validate($retained, array_replace($current, ['identity' => $fresh['identity']]), $now)['status'] === 'mismatch');
 bridge_check(AnyTourThreeProviderOfferContext::validate($retained, $current, $now + 900)['status'] === 'expired');
