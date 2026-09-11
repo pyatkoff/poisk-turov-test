@@ -3,13 +3,15 @@
   "generated_at": "2026-09-11",
   "scope": "INT source-only canonical offer contract",
   "source": "app/integrations/three-provider-offer-contract.php",
-  "source_commit": "747eb08469a8ba79d60b7f9e8912f3eb5217cb50",
-  "base": "b18fde6b25730edf46aecd5137f5565f9722e206",
+  "source_commit": "f4d20b6f4fb8966e42bac780972c9634ed719435",
+  "verified_pr_head": "81f32f0ac0ceba54908f44a345bee98da411e301",
+  "base": "8f749815941e7b2849a651762f1b914146b84eea",
   "statuses": {
     "provider_operator_separation": "operator_evidence_object_no_cross_provider_equivalence",
     "local_identity": "nullable_no_inference",
     "search_offer_identity": "digest_only",
-    "date_party_meal_room_placement": "verified",
+    "date_party_meal": "verified",
+    "room_placement": "verified_lossless_source_labels_with_display_only_normalization_no_equivalence",
     "availability": "raw_evidence_required_canonical_unknown",
     "flight_details": "provider_capability_explicit_search_state_not_loaded",
     "observed_at": "strict_utc_calendar_and_time_roundtrip_no_freshness_inference",
@@ -18,6 +20,24 @@
     "quote_state": "unknown",
     "final_price_verified": false,
     "selection_state": "disabled"
+  },
+  "room_placement_source": "app/integrations/three-provider-room-placement.php",
+  "room_placement_contract": {
+    "room_raw_preserved": true,
+    "placement_raw_preserved": true,
+    "room_placement_separate": true,
+    "missing_placement": "unknown_null",
+    "comparison_scope": "display_label_only",
+    "caller_normalized_must_match_source_contract": true,
+    "cross_provider_equivalence_verified": false,
+    "package_identity_verified": false
+  },
+  "room_placement_handoff_verification": {
+    "head": "81f32f0ac0ceba54908f44a345bee98da411e301",
+    "offer_run": 34640675646,
+    "context_run": 34640675513,
+    "security_run": 34640675585,
+    "status": "success"
   },
   "availability_source": "app/integrations/three-provider-availability.php",
   "availability_verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4",
@@ -37,6 +57,5 @@
   "retained_context_audit": "reports/three-provider-retained-offer-envelope-20260911.json",
   "retained_context_verification": {"head": "83e37cd26e82b68416e4596dd71fcab58e76134a", "context_run": 34577651965, "offer_run": null, "offer_run_status": "not_triggered_for_context_only_path", "security_run": 34577651914, "context_checks": 33, "status": "success"},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
-  "tests": {"offer_checks": 41, "availability_checks": 20, "flight_checks": 16, "context_checks": 33, "security_run": 34577651914, "offer_run": 34577237765, "context_run": 34577651965, "status": "success"},
-  "next_action": "Run one new non-replayed parity scenario when the approved workflow produces a run; P5 remains blocked on SAMO contract confirmation."
+  "next_action": "Keep Andromeda placement unknown until actual source evidence is exposed; continue P0/P1 or independent P2/P4 while the separate guarded P5 writer owns package-public paths."
 }

@@ -3,12 +3,14 @@ on:
   pull_request:
     paths:
       - 'app/integrations/three-provider-offer-contract.php'
+      - 'app/integrations/three-provider-room-placement.php'
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/three-provider-availability.php'
       - 'app/integrations/three-provider-flight-details.php'
       - 'app/integrations/three-provider-operator.php'
       - 'app/integrations/andromeda-selected-tour-readiness.php'
       - 'tests/three-provider-offer-contract-test.php'
+      - 'tests/three-provider-room-placement-test.php'
       - 'tests/three-provider-availability-test.php'
       - 'tests/three-provider-flight-details-test.php'
       - 'tests/three-provider-operator-test.php'
@@ -28,16 +30,19 @@ jobs:
       - name: Validate offer contract without network
         run: |
           php -l app/integrations/three-provider-offer-contract.php
+          php -l app/integrations/three-provider-room-placement.php
           php -l app/integrations/three-provider-availability.php
           php -l app/integrations/three-provider-flight-details.php
           php -l app/integrations/three-provider-operator.php
           php -l app/integrations/andromeda-selected-tour-readiness.php
           php -l tests/three-provider-offer-contract-test.php
+          php -l tests/three-provider-room-placement-test.php
           php -l tests/three-provider-availability-test.php
           php -l tests/three-provider-flight-details-test.php
           php -l tests/three-provider-operator-test.php
           php -l tests/andromeda-selected-tour-readiness-test.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
+          php -d allow_url_fopen=0 tests/three-provider-room-placement-test.php
           php -d allow_url_fopen=0 tests/three-provider-availability-test.php
           php -d allow_url_fopen=0 tests/three-provider-flight-details-test.php
           php -d allow_url_fopen=0 tests/three-provider-operator-test.php
@@ -45,6 +50,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-offer-contract.php').read_text()
+          room_placement=Path('app/integrations/three-provider-room-placement.php').read_text()
           availability=Path('app/integrations/three-provider-availability.php').read_text()
           flight=Path('app/integrations/three-provider-flight-details.php').read_text()
           readiness=Path('app/integrations/andromeda-selected-tour-readiness.php').read_text()
@@ -53,15 +59,22 @@ jobs:
           assert "hash('sha256', $offerRef)" in src
           assert "AnyTourThreeProviderAvailability::fromSearch" in src
           assert "AnyTourThreeProviderFlightDetails::forSearch" in src
+          assert "AnyTourThreeProviderRoomPlacement::normalize" in src
+          assert "['raw']" in src and "['normalized']" in src
           assert "DateTimeImmutable::createFromFormat" in src
           assert "->format('Y-m-d\\\\TH:i:s\\\\Z') !== $observedAt" in src
           assert "flight_details_state" not in src
+          assert "'comparison_scope' => 'display_label_only'" in room_placement
+          assert "'cross_provider_equivalence_verified' => false" in room_placement
+          assert "'package_identity_verified' => false" in room_placement
           assert "'canonical_state' => 'unknown'" in availability
           assert "'selection_eligible' => false" in availability
           assert "'booking_eligible' => false" in availability
           assert "'Y' => 'available'" not in availability
           for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
               assert forbidden not in src
+          for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
+              assert forbidden not in room_placement
           for forbidden in ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id'):
               assert forbidden not in availability
           assert "'details_state' => 'not_loaded'" in flight

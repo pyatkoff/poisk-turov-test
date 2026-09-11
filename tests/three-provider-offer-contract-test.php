@@ -25,8 +25,8 @@ function offer_fixture(string $provider = 'tourvisor', ?int $local = 1239): arra
         'child_ages' => [],
         'meal' => ['raw' => 'AI-WITHOUT ALCOHOL', 'family' => 'ai',
             'qualifiers' => ['plus' => false, 'without_alcohol' => true]],
-        'room' => ['raw' => 'Standard Room', 'normalized' => 'standard room'],
-        'placement' => ['raw' => 'DBL', 'normalized' => 'dbl'],
+        'room' => ['raw' => 'Standard-Room', 'normalized' => 'standard room'],
+        'placement' => ['raw' => 'DBL / 2 ADL', 'normalized' => 'dbl 2 adl'],
         'availability' => [
             'hotel' => null,
             'flight_outbound_economy' => null,
@@ -51,7 +51,10 @@ offer_check($value['checkin'] === '2026-10-05' && $value['nights'] === 7);
 offer_check($value['party'] === ['adults' => 2, 'children' => 0, 'child_ages' => []]);
 offer_check($value['meal']['family'] === 'ai' && $value['meal']['family_verified'] === true);
 offer_check($value['meal']['qualifiers']['without_alcohol'] === true);
-offer_check($value['room']['normalized'] === 'standard room' && $value['placement']['normalized'] === 'dbl');
+offer_check($value['room']['raw'] === 'Standard-Room' && $value['room']['normalized'] === 'standard room');
+offer_check($value['placement']['raw'] === 'DBL / 2 ADL' && $value['placement']['normalized'] === 'dbl 2 adl');
+offer_check($value['room']['comparison_scope'] === 'display_label_only'
+    && $value['placement']['comparison_scope'] === 'display_label_only');
 offer_check($value['availability']['hotel']['canonical_state'] === 'unknown'
     && $value['flight_details']['details_state'] === 'not_loaded');
 offer_check($value['flight_details']['source_method'] === 'tourvisor_tours_flights'
@@ -80,6 +83,12 @@ offer_check($unmapped['availability']['hotel']['raw'] === 'YYYY'
 offer_check($unmapped['money']['fuel_charge_reported'] === null);
 offer_check($unmapped['meal']['family_verified'] === true);
 
+$andromedaFixture = offer_fixture('andromeda');
+$andromedaFixture['placement'] = null;
+$andromeda = AnyTourThreeProviderOfferContract::fromSearch($andromedaFixture);
+offer_check($andromeda['placement'] === null);
+offer_check($andromeda['room']['comparison_scope'] === 'display_label_only');
+
 $children = offer_fixture();
 $children['children'] = 1;
 $children['child_ages'] = [7];
@@ -98,6 +107,9 @@ $bad = [
     function () { $x = offer_fixture(); $x['meal']['family'] = '7'; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['availability'] = 'booked'; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['placement'] = ['raw' => 'DBL']; AnyTourThreeProviderOfferContract::fromSearch($x); },
+    function () { $x = offer_fixture(); $x['room']['normalized'] = 'caller invented room'; AnyTourThreeProviderOfferContract::fromSearch($x); },
+    function () { $x = offer_fixture(); $x['placement']['normalized'] = 'caller invented placement'; AnyTourThreeProviderOfferContract::fromSearch($x); },
+    function () { $x = offer_fixture(); $x['room'] = ['raw' => '123', 'normalized' => '123']; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['supplier_offer_id'] = 'PRIVATE'; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['search_price']['amount'] = '0'; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['flight_details_state'] = 'available'; AnyTourThreeProviderOfferContract::fromSearch($x); },
