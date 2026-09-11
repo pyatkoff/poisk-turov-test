@@ -6,16 +6,16 @@ on:
       - '.github/workflows/hotel-match-tourvisor-account-attribution.yml'
   push:
     branches: ['feat/match-anex-sellability-20260911']
-    paths: ['.github/match-tourvisor-account-attribution-1971-20260912-v1.arm']
+    paths: ['.github/match-tourvisor-account-attribution-1971-20260912-v2.arm']
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: hotel-match-tourvisor-account-attribution-1971-20260912-v1
+  group: hotel-match-tourvisor-account-attribution-1971-20260912-v2-${{ github.event_name }}
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-tourvisor-account-attribution-1971-20260912-v1
+  OPERATION_ID: hotel-match-tourvisor-account-attribution-1971-20260912-v2
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -49,7 +49,7 @@ jobs:
       - name: Verify immutable arm and reserve before server access
         run: |
           set -euo pipefail
-          test "$(cat .github/match-tourvisor-account-attribution-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-tourvisor-account-attribution-1971-20260912-v2.arm)" = "$OPERATION_ID"
           STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
           python3 - <<'PY'
           import hashlib,json,os
@@ -60,8 +60,8 @@ jobs:
       - name: Preserve durable reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-tourvisor-account-attribution-1971-20260912-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-tourvisor-account-attribution-1971-20260912-v1/reservation.json
+          name: hotel-match-tourvisor-account-attribution-1971-20260912-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-tourvisor-account-attribution-1971-20260912-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Read only selected credential source on server
@@ -119,8 +119,8 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-tourvisor-account-attribution-1971-20260912-v1-result
-          path: ${{ runner.temp }}/hotel-match-tourvisor-account-attribution-1971-20260912-v1/
+          name: hotel-match-tourvisor-account-attribution-1971-20260912-v2-result
+          path: ${{ runner.temp }}/hotel-match-tourvisor-account-attribution-1971-20260912-v2/
           if-no-files-found: warn
           retention-days: 90
       - name: Record sanitized MATCH result
