@@ -48,7 +48,7 @@ jobs:
           workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
           assert 'ops/int-anex-three-source-broad-price-v3-20260911' in workflow
           assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
-          print('Broad three-source v2 static boundary: PASS')
+          print('Broad three-source v3 static boundary: PASS')
           PY
   live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-broad-price-v3-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
