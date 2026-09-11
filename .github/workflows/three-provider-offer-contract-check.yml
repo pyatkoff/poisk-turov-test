@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: \${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Validate offer contract without network
         run: |
@@ -29,6 +29,6 @@ jobs:
           assert "'selection_state' => 'disabled'" in src
           assert "hash('sha256', $offerRef)" in src
           for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
-              assert forbidden not in src
+          assert forbidden not in src
           print('Three-provider offer static boundary: PASS')
           PY
