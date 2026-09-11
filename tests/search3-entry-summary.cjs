@@ -25,12 +25,14 @@ for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTi
   'operator', 'price_from', 'price_till']) {
   assert.ok(markup.includes(`name="${name}"`), `canonical server field remains: ${name}`);
 }
-assert.match(markup, /<fieldset class="search-group"><legend>Курорт<\/legend>[\s\S]*?name="region"[\s\S]*?name="subregion"[\s\S]*?<\/fieldset>/, 'resort and subregion stay always visible in the canonical main grid');
-assert.match(markup, /<fieldset class="search-group"><legend>Отель<\/legend>[\s\S]*?name="hotel"[\s\S]*?name="stars"[\s\S]*?<\/fieldset>/, 'concrete hotel and category stay always visible in the canonical main grid');
-assert.match(markup, /<fieldset class="search-group"><legend>Питание и рейтинг<\/legend>[\s\S]*?name="food"[\s\S]*?name="rating"[\s\S]*?<\/fieldset>/, 'meal and rating stay always visible in the canonical main grid');
-assert.match(markup, /<fieldset class="search-group"><legend>Бюджет<\/legend>[\s\S]*?name="price_from"[\s\S]*?name="price_till"[\s\S]*?<\/fieldset>/, 'budget range stays always visible in the canonical main grid');
+assert.match(markup, /search-section-title--preferences"><span>Отель и условия<\/span>/, 'full search separates hotel preferences from trip basics without another form owner');
+for (const name of ['region', 'subregion', 'hotel', 'stars', 'food', 'rating', 'price_from', 'price_till']) {
+  assert.match(markup, new RegExp(`class="field search-preference"[\\s\\S]*?name="${name}"`), `primary preference remains directly visible: ${name}`);
+}
 assert.match(markup, /<details class="extras">[\s\S]*?<select name="operator">[\s\S]*?<\/details>/, 'tour operator stays secondary inside the existing extras owner');
-assert.doesNotMatch(markup, /<div class="main-fields">[\s\S]*?<legend>[^<]*оператор[^<]*<\/legend>/i, 'tour operator is not promoted as a primary search group');
+const primaryEnd = markup.indexOf('</div><div id="childAges"');
+assert.ok(primaryEnd > 0, 'primary form block remains bounded');
+assert.ok(!markup.slice(markup.indexOf('<div class="main-fields">'), primaryEnd).includes('name="operator"'), 'tour operator is not promoted into the primary search block');
 assert.match(markup, /\$advancedFilterCount=0;/, 'server entry owns the secondary-filter count');
 for (const name of ['arrival', 'operator', 'hotel_type', 'hotel_service']) {
   assert.ok(markup.includes(`'${name}'`), `secondary summary includes ${name}`);
