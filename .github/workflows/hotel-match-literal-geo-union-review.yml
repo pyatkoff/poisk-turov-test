@@ -7,7 +7,7 @@ on:
       - 'tests/hotel-match-literal-geo-union-review-test.php'
       - '.github/workflows/hotel-match-literal-geo-union-review.yml'
   push:
-    branches: ['feat/match-anex-sellability-20260911']
+    branches: ['ops/match-literal-geo-union-review-1971-v1']
     paths:
       - '.github/match-literal-geo-union-review-1971-v1.arm'
 permissions: {contents: read, actions: read, issues: write}
