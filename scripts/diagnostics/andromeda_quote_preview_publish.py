@@ -120,7 +120,7 @@ def main() -> None:
         raise SystemExit('helper path missing')
     sys.path.insert(0, str(Path(helper).resolve() / 'scripts' / 'diagnostics'))
     from anex_search3_owner_decisions import ssh_php
-    result = ssh_php(PHP, data, maximum_bytes=200000)
+    result = ssh_php(PHP, data, maximum_bytes=65536)
     out = Path(os.environ['RUNNER_TEMP']) / 'andromeda-quote-publication'
     out.mkdir(mode=0o700)
     receipt = out / 'result.json'
