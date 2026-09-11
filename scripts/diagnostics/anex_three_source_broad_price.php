@@ -5,8 +5,8 @@ if (!function_exists('anex_paired_text')) {
     if (!defined('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY')) define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);
     require __DIR__ . '/anex_search3_paired_runner.php';
 }
-if (!class_exists('AnyTourThreeProviderMeal')) {
-    require __DIR__ . '/../../app/integrations/three-provider-meal.php';
+if (!class_exists('AnyTourThreeProviderMealFamily')) {
+    require __DIR__ . '/../../app/integrations/three-provider-meal-family.php';
 }
 
 const ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260911_v3';
@@ -35,7 +35,7 @@ function anex_broad_price_norm($value,int $limit=240): string
 function anex_broad_price_meal($value): ?array
 {
     try {
-        return AnyTourThreeProviderMeal::fromLabel($value);
+        return AnyTourThreeProviderMealFamily::normalize($value);
     } catch (InvalidArgumentException) {
         return null;
     }

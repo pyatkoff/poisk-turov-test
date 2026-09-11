@@ -3,18 +3,18 @@
   "date": "2026-09-11",
   "scope": "INT/P2 source-only",
   "base": "083d41d3523214774e2bc6547199656f8f75a41b",
-  "source_commit": "94979b8f05ba4c55130a16f247c3199ec31f2aa7",
-  "status": "verified",
+  "source_commit": "01b015780b4d393d1b9c7e87ffa59cccd95a3cd5",
+  "status": "consolidated_verified",
   "verification": {
-    "focused_checks": 55,
-    "contract_run": {
-      "id": 34560785207,
-      "conclusion": "success"
+    "status": "success",
+    "canonical_meal_checks": 54,
+    "parity_checks": {
+      "php": 39,
+      "python": 19
     },
-    "security_run": {
-      "id": 34560785106,
-      "conclusion": "success"
-    }
+    "meal_run": 34564550345,
+    "parity_run": 34564550409,
+    "security_run": 34564550387
   },
   "classification": {
     "explicit_supported_labels": "verified",
@@ -36,5 +36,12 @@
     "booking_calls": 0,
     "production_changes": 0
   },
-  "next_action": "Use the canonical meal key in a new parity scenario; do not reinterpret completed price observations as identical packages."
+  "next_action": "Keep one canonical meal-family owner; future parity uses its canonical_key without asserting package equivalence.",
+  "canonical_source": "app/integrations/three-provider-meal-family.php",
+  "removed_duplicates": [
+    "app/integrations/three-provider-meal.php",
+    "tests/three-provider-meal-test.php",
+    ".github/workflows/three-provider-meal-check.yml"
+  ],
+  "consolidation_base": "360e511a3e00b945bfae57d1f36e7ecbd205f905"
 }

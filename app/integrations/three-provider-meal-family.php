@@ -62,6 +62,14 @@ final class AnyTourThreeProviderMealFamily
             $family = 'uai'; $withoutAlcohol = true;
         }
 
+        $canonicalKey = $family;
+        if ($canonicalKey !== null && $withoutAlcohol) {
+            $canonicalKey .= ':without_alcohol';
+        }
+        if ($canonicalKey !== null && $plus) {
+            $canonicalKey .= ':plus';
+        }
+
         return [
             'raw' => $raw,
             'normalized_label' => $label,
@@ -70,7 +78,11 @@ final class AnyTourThreeProviderMealFamily
                 'plus' => $plus,
                 'without_alcohol' => $withoutAlcohol,
             ],
+            'canonical_key' => $canonicalKey,
+            'classification_status' => $family === null ? 'unknown' : 'verified',
             'family_verified' => $family !== null,
+            'cross_provider_equivalence_verified' => false,
+            'package_equivalence_verified' => false,
         ];
     }
 
