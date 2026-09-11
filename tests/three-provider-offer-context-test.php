@@ -87,6 +87,9 @@ foreach (['provider', 'operator', 'local_hotel_id', 'generation', 'page'] as $ke
         'generation' => 8,
         'page' => 4,
     };
+    if ($key === 'provider') {
+        $changed['operator'] = AnyTourThreeProviderOperator::fromSearch('anex', 'ANEX');
+    }
     $mismatch = AnyTourThreeProviderOfferContext::validate($retained, $changed, 1100);
     context_check($mismatch['status'] === 'mismatch' && $mismatch['current_context_verified'] === false);
 }
