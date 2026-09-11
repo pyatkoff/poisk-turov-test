@@ -18,6 +18,8 @@
     "selection_state": "disabled"
   },
   "availability_source": "app/integrations/three-provider-availability.php",
+  "availability_verified_head": "ffccaead69aa6a49749ec3d6adf47be2ceb1fdc4",
+  "availability_verification": {"offer_run": 34565055868, "context_run": 34565055891, "security_run": 34565055892, "status": "success"},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
   "tests": {"offline_checks": 36, "security_run": 34549711806, "offline_run": 34549711816, "offline_job": 103109851821, "status": "success"},
   "next_action": "Verify provider-specific availability semantics before any canonical available/on_request/unavailable state; selection remains disabled."
