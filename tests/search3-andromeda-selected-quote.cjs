@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 
-const source=fs.readFileSync(path.join(__dirname,'../v2/search3-selected-flow-v2.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../v2/search3-results-cards-v2.js'),'utf8');
 const hex='a'.repeat(64),offer='offer_'+hex;
 const offerContext={provider:'andromeda',search_ref:hex,generation:7,page:1,offer_ref:offer};
 const snapshot={departureId:'1',countryId:'1',dateFrom:'2026-09-20',dateTo:'2026-09-20',nightsFrom:'7',nightsTo:'7',adults:'2',childs:[],currency:'RUB'};
