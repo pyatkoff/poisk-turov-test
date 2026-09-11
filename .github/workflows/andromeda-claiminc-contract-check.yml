@@ -1,0 +1,29 @@
+name: Andromeda claiminc contract
+
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/andromeda-claiminc-contract.php'
+      - 'tests/andromeda-claiminc-contract-smoke.php'
+      - '.github/workflows/andromeda-claiminc-contract-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: andromeda-claiminc-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate confirmed claiminc semantics offline
+        run: |
+          php -l app/integrations/andromeda-claiminc-contract.php
+          php -l tests/andromeda-claiminc-contract-smoke.php
+          php tests/andromeda-claiminc-contract-smoke.php
