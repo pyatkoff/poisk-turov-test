@@ -1,0 +1,122 @@
+name: MATCH ANEX current hotelCode queue v2
+run-name: MATCH ANEX current hotelCode queue #1971 v2
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/anex-hotelcode-current-queue-v2.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-hotelcode-current-queue-v2.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-hotelcode-current-queue-1971-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-hotelcode-current-queue-1971-20260911-v2
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate unchanged current queue source
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/anex_hotelcode_current_queue.php
+          php -l tests/anex-hotelcode-current-queue-test.php
+          php tests/anex-hotelcode-current-queue-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/anex_hotelcode_current_queue.php').read_text(encoding='utf-8')
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'supplier_calls'=>0" in s
+          assert 'anytour_anex_hotelcode_evidence' in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO'):
+              assert bad.lower() not in s.lower(), bad
+          print('M3 current queue source remains read-only')
+          PYTHON
+  current-queue:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-hotelcode-current-queue-v2.arm)" = "$OPERATION_ID"
+      - name: Reserve immutable CURRENT queue operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_anex_hotelcode_queue_read_only','database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(x,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before CURRENT DB access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-hotelcode-current-queue-1971-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-hotelcode-current-queue-1971-20260911-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Prepare normalized SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail; test -n "$KEY_VALUE"; key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Read CURRENT DB and build fresh ANEX M3 queue
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os,shlex,subprocess
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          parser=body('scripts/diagnostics/anex_hotelcode_evidence.php')
+          queue=body('scripts/diagnostics/anex_hotelcode_current_queue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\nrequire_once __DIR__ . '/anex_hotelcode_evidence.php';\n",'',1).replace('hotel-match-anex-hotelcode-current-queue-1971-20260911-v1','hotel-match-anex-hotelcode-current-queue-1971-20260911-v2')
+          wrapper=r'''
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('AHQV2_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('AHQV2_DB_HELPER');require_once $dbHelper;echo fc_json(ahq_review(v2_data_db(),AHQ_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>AHQ_OPERATION,'reason'=>'AHQV2_REMOTE_ERROR','database_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}
+          '''
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+planner+'\n'+parser+'\n'+queue+'\n'+wrapper
+          cmd=['ssh','-T','-i',os.path.join(os.environ['RUNNER_TEMP'],'anytoour_match_key'),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',f"{os.environ['ANYTOOUR_DEPLOY_USER'].strip()}@{os.environ['ANYTOOUR_DEPLOY_HOST'].strip()}",'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          p=subprocess.run(cmd,input=code,text=True,capture_output=True,timeout=600)
+          try:r=json.loads(p.stdout)
+          except Exception:raise RuntimeError('current_queue_output_unparseable')
+          state=Path(os.environ['STATE']);raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'queue.json').write_bytes(raw)
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('supplier_calls')!=0: raise RuntimeError('current_queue_not_completed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'queue_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True,'counts':r['counts'],'coverage':r['coverage'],'examined':r['examined']};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          c=r['counts'];x=r['coverage'];e=r['examined'];summary=f"MATCH #1971 CURRENT M3 queue `{r['operation_id']}` completed read-only / NO-REPLAY. Seeds **{c['tourvisor_anex_seeds']}** = observed **{c['observed_seeds']}** + staging-only **{c['staging_only_seeds']}**. Saved strict media hotelCode **{c['saved_hotelcode_evidence']}**, conflicts **{c['saved_hotelcode_conflict']}**, invalid **{c['saved_hotelcode_invalid']}**, operator/page evidence still needed **{c['operator_link_required']}**. Examined observed/staging **{e['observed']}/{e['staging_only']}**, protected **{e['protected']}**, current-local-auto skipped **{e['auto_accept_current_rule']}**. Coverage ANEX links {x['anex_links']}, ANEX unique {x['anex_unique_local']}, Andromeda unique {x['andromeda_unique_local']}, triple {x['all_three']}. Supplier calls 0; DB/mapping writes 0."
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve current queue result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-hotelcode-current-queue-1971-20260911-v2-result
+          path: ${{ runner.temp }}/hotel-match-anex-hotelcode-current-queue-1971-20260911-v2/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH queue result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
