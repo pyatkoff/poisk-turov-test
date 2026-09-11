@@ -41,6 +41,7 @@ jobs:
           assert "'Y' => 'available'" not in availability
           for forbidden in ('curl_', 'PDO', 'bron', 'booking', 'supplier_offer_id', 'provider_hotel_id'):
               assert forbidden not in src
+          for forbidden in ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id'):
               assert forbidden not in availability
           print('Three-provider offer static boundary: PASS')
           PY
