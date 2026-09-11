@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-11",
+  "scope": "INT P2/P4 source-only availability evidence",
+  "base": "559b59c89581b5141492818dea30526a329fdf1c",
+  "status": "implemented_ci_pending",
+  "providers": {
+    "tourvisor": {"search_raw_evidence": "missing", "canonical_state": "unknown"},
+    "anex": {"search_raw_evidence": "preserved_when_present", "canonical_state": "unknown"},
+    "andromeda": {"search_raw_evidence": "missing", "canonical_state": "unknown"}
+  },
+  "guards": {
+    "offer_availability_verified": false,
+    "selection_eligible": false,
+    "booking_eligible": false,
+    "raw_numeric_supplier_ids_rejected": true,
+    "supplier_marker_meaning_inferred": false
+  },
+  "effects": {
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "booking_calls": 0,
+    "ui_runtime_changes": 0,
+    "production_changes": 0
+  },
+  "next_action": "Verify provider-specific availability dictionaries before promoting any raw marker to a canonical state."
+}
