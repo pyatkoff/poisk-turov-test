@@ -1,0 +1,218 @@
+name: MATCH three-provider 1-1-1 current reconcile v4
+
+on:
+  push:
+    branches: [ops/match-three-provider-111-current-reconcile-1971-20260911-v4]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-three-provider-111-current-reconcile-v4
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPERATION_ID: hotel-match-three-provider-111-current-reconcile-1971-20260911-v4
+      EXPECTED_BASE_SHA: 93beddd94fb19b42937c815ee30d4ca8426903e3
+      CANDIDATES: .github/match-three-provider-111-mass-turkey-v3-candidates.json
+      ARTIFACT_DIR: /tmp/match-three-provider-111-reconcile-v4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 8
+          persist-credentials: false
+
+      - name: Verify source and prepare read-only CURRENT program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-three-provider-111-current-reconcile-1971-20260911-v4'
+          test "$(cat .github/match-three-provider-111-current-reconcile-v4.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' \
+            '.github/match-three-provider-111-current-reconcile-v4.arm' \
+            '.github/match-three-provider-111-mass-turkey-v3-candidates.json' \
+            '.github/workflows/hotel-match-three-provider-111-current-reconcile-v4.yml' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          mkdir -p "$ARTIFACT_DIR"
+          python3 - <<'PY'
+          import base64,hashlib,json,os
+          from pathlib import Path
+
+          candidate_path=Path(os.environ['CANDIDATES'])
+          raw=candidate_path.read_bytes()
+          data=json.loads(raw)
+          if data.get('candidate_count') != 42 or len(data.get('rows',[])) != 42:
+              raise SystemExit('candidate manifest count changed')
+          if data.get('source_run_id') != 34623973480 or data.get('source_final_artifact_id') != 10274360025:
+              raise SystemExit('candidate provenance changed')
+          unknown=data.get('unknown_no_replay_slices') or []
+          if len(unknown)!=1 or unknown[0].get('slice_id')!='s01' or unknown[0].get('state')!='unknown_no_replay':
+              raise SystemExit('unknown/no-replay provenance missing')
+          digest=hashlib.sha256(raw).hexdigest()
+          reservation={
+              'operation_id':os.environ['OPERATION_ID'],
+              'state':'reserved_before_current_db_access',
+              'source_sha':os.environ['GITHUB_SHA'],
+              'base_sha':os.environ['EXPECTED_BASE_SHA'],
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'candidate_manifest_sha256':digest,
+              'candidate_count':42,
+              'source_evidence_run_id':34623973480,
+              'source_evidence_artifact_id':10274360025,
+              'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+              'booking_calls':0,'continue_calls':0,'lead_calls':0,
+              'no_replay':True,
+          }
+          root=Path(os.environ['ARTIFACT_DIR'])
+          (root/'reservation.json').write_text(json.dumps(reservation,sort_keys=True,indent=2)+'\n')
+
+          encoded=base64.b64encode(raw).decode()
+          op=os.environ['OPERATION_ID']
+          php=r'''<?php
+          declare(strict_types=1);
+          const R111_POLICY='owner_exact_and_strong_20260908';
+
+          function r111_out(array $v): void { echo 'MATCH111R_JSON:'.json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE|JSON_THROW_ON_ERROR).PHP_EOL; }
+          function r111_norm(string $v): string {
+              $v=str_replace(['Ё','ё'],['Е','е'],$v);
+              $v=function_exists('mb_strtolower')?mb_strtolower($v,'UTF-8'):strtolower($v);
+              $v=strtr($v,['é'=>'e','è'=>'e','ê'=>'e','á'=>'a','à'=>'a','ä'=>'a','â'=>'a','ã'=>'a','å'=>'a','ö'=>'o','ô'=>'o','ó'=>'o','ò'=>'o','ü'=>'u','ú'=>'u','ù'=>'u','ç'=>'c','ş'=>'s','ğ'=>'g','ı'=>'i','ñ'=>'n']);
+              $v=preg_replace('/[^\\p{L}\\p{N}]+/u',' ',$v)??$v;
+              return trim(preg_replace('/\\s+/u',' ',$v)??$v);
+          }
+          function r111_tokens(string $v): array {
+              $generic=array_fill_keys(['hotel','hotels','otel','отель','отели','resort','resorts','резорт','ресорт','spa','спа'],true);
+              $out=[];foreach(preg_split('/\\s+/u',r111_norm($v))?:[] as $x)if($x!==''&&!isset($generic[$x]))$out[]=$x;
+              sort($out,SORT_STRING);return array_values(array_unique($out));
+          }
+          function r111_key(string $v): string { return implode(' ',r111_tokens($v)); }
+          function r111_variants(string $v): array {
+              $v=trim($v);if($v==='')return [];$raw=[$v];
+              if(preg_match_all('/\\((?:ex|ех|former(?:ly)?)\\.?\\s*[:\\-]?\\s*([^()]*)\\)/iu',$v,$m)){
+                  foreach($m[1] as $x)if(trim($x)!=='')$raw[]=trim($x);
+                  $raw[]=preg_replace('/\\s*\\((?:ex|ех|former(?:ly)?)\\.?\\s*[:\\-]?\\s*[^()]*\\)\\s*/iu',' ',$v)??$v;
+              }
+              if(preg_match('/^(.+?)\\s+(?:ex|ех|former(?:ly)?)\\.?\\s*[:\\-]\\s*(.+)$/iu',$v,$m)){$raw[]=trim($m[1]);$raw[]=trim($m[2]);}
+              $out=[];foreach($raw as $x){$k=r111_key($x);if($k!=='')$out[$k]=trim($x);}return $out;
+          }
+          function r111_keys(array $names): array { $out=[];foreach($names as $n)if(is_scalar($n))foreach(r111_variants((string)$n) as $k=>$v)$out[$k]=$v;return $out; }
+          function r111_num($v): ?float { if($v===null||$v==='')return null;$x=(float)$v;return is_finite($x)&&$x!=0.0?$x:null; }
+          function r111_coord(array $v): array {
+              foreach([['latitude','longitude'],['lat','lng'],['lat','lon'],['hotelLatitude','hotelLongitude']] as $k){
+                  if(!array_key_exists($k[0],$v)||!array_key_exists($k[1],$v))continue;
+                  $a=r111_num($v[$k[0]]);$b=r111_num($v[$k[1]]);if($a!==null&&$b!==null&&abs($a)<=90&&abs($b)<=180)return[$a,$b];
+              }return[null,null];
+          }
+          function r111_source_coord(array $ev): array {
+              foreach(['source','geography','hotel','location'] as $k)if(isset($ev[$k])&&is_array($ev[$k])){[$a,$b]=r111_coord($ev[$k]);if($a!==null)return[$a,$b];}
+              return r111_coord($ev);
+          }
+          function r111_dist($a,$b,$c,$d): ?float {
+              $p=[r111_num($a),r111_num($b),r111_num($c),r111_num($d)];if(in_array(null,$p,true))return null;
+              $p=array_map('deg2rad',$p);[$a,$b,$c,$d]=$p;$x=sin(($c-$a)/2)**2+cos($a)*cos($c)*sin(($d-$b)/2)**2;return 6371000*2*asin(min(1,sqrt($x)));
+          }
+          function r111_evidence_names(array $ev): array {
+              $out=[];$push=static function($v)use(&$out){if(is_scalar($v)&&trim((string)$v)!=='')$out[]=(string)$v;};
+              foreach(['source','hotel'] as $container){$x=$ev[$container]??null;if(is_array($x))foreach(['name','lName','hotel_name','hotelName','title'] as $k)if(array_key_exists($k,$x))$push($x[$k]);}
+              foreach(['name','lName','hotel_name','hotelName'] as $k)if(array_key_exists($k,$ev))$push($ev[$k]);
+              return array_values(array_unique($out));
+          }
+          function r111_anex_bridge(PDO $db,int $anex,int $target): array {
+              $q=$db->prepare('SELECT decision_status,catalog_hotel_id FROM anex_hotel_decisions WHERE anex_hotel_id=? LIMIT 2');$q->execute([$anex]);$d=$q->fetchAll(PDO::FETCH_ASSOC);
+              if($d){$r=$d[0];$status=(string)$r['decision_status'];$local=$r['catalog_hotel_id']===null?null:(int)$r['catalog_hotel_id'];if($status==='accepted'&&$local===$target)return['ok'=>true,'kind'=>'manual_accepted_exact'];return['ok'=>false,'hard'=>true,'reason'=>'manual_decision_protected','status'=>$status,'local_id'=>$local];}
+              $ex=$db->prepare('SELECT 1 FROM anex_review_pair_exclusions WHERE anex_hotel_id=? AND catalog_hotel_id=? LIMIT 1');$ex->execute([$anex,$target]);if($ex->fetchColumn())return['ok'=>false,'hard'=>true,'reason'=>'pair_exclusion_protected'];
+              $q=$db->prepare('SELECT catalog_hotel_id,enabled,scope,approval_policy FROM anex_hotel_search_mappings WHERE anex_hotel_id=? ORDER BY catalog_hotel_id');$q->execute([$anex]);$rows=$q->fetchAll(PDO::FETCH_ASSOC);$exact=[];$other=[];
+              foreach($rows as $r){$local=(int)$r['catalog_hotel_id'];$active=(int)$r['enabled']===1&&(string)$r['scope']==='preview'&&(string)$r['approval_policy']===R111_POLICY;if($active&&$local===$target)$exact[]=$r;elseif($active)$other[]=$r;}
+              if(count($exact)===1&&!$other)return['ok'=>true,'kind'=>'policy_mapping_exact'];
+              if($other)return['ok'=>false,'hard'=>true,'reason'=>'existing_anex_mapping_different_target','targets'=>array_map(static fn($r)=>(int)$r['catalog_hotel_id'],$other)];
+              return['ok'=>false,'hard'=>false,'reason'=>'current_anex_exact_bridge_missing','mapping_rows'=>count($rows)];
+          }
+          function r111_coverage(PDO $db): array {
+              $an=[];$sql="SELECT m.catalog_hotel_id FROM anex_hotel_search_mappings m LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=m.anex_hotel_id WHERE m.enabled=1 AND m.scope='preview' AND m.approval_policy='".R111_POLICY."' AND d.anex_hotel_id IS NULL AND NOT EXISTS(SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=m.anex_hotel_id AND x.catalog_hotel_id=m.catalog_hotel_id)";foreach($db->query($sql)->fetchAll(PDO::FETCH_COLUMN) as $id)$an[(int)$id]=true;
+              foreach($db->query("SELECT d.catalog_hotel_id FROM anex_hotel_decisions d WHERE d.decision_status='accepted' AND d.catalog_hotel_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=d.anex_hotel_id AND x.catalog_hotel_id=d.catalog_hotel_id)")->fetchAll(PDO::FETCH_COLUMN) as $id)$an[(int)$id]=true;
+              $andr=[];foreach($db->query("SELECT DISTINCT local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN) as $id)$andr[(int)$id]=true;
+              $tr=count(array_intersect_key($an,$andr));
+              return['anex_unique_local'=>count($an),'andromeda_unique_local'=>count($andr),'all_three'=>$tr,'anex_tv_only'=>count($an)-$tr,'andromeda_tv_only'=>count($andr)-$tr,'exactly_two'=>count($an)+count($andr)-2*$tr,
+                  'andromeda_pending'=>(int)$db->query("SELECT COUNT(*) FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending'")->fetchColumn(),
+                  'andromeda_conflict'=>(int)$db->query("SELECT COUNT(*) FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='conflict'")->fetchColumn()];
+          }
+
+          try {
+              ini_set('display_errors','0');ini_set('log_errors','0');$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('server_root_invalid');
+              require_once $root.'/config.php';$helper=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $helper;$db=v2_data_db();
+              $manifest=json_decode(base64_decode('__CANDIDATES__',true)?:'',true,64,JSON_THROW_ON_ERROR);$rows=$manifest['rows']??[];
+              $groups=[];foreach($rows as $r){$k=(string)$r['andromeda_id'].':'.(string)$r['tv_id'];$groups[$k]??=['andromeda_id'=>(string)$r['andromeda_id'],'tv_id'=>(int)$r['tv_id'],'andromeda_name'=>(string)$r['andromeda_name'],'tv_name'=>(string)$r['tv_name'],'anex'=>[],'frequency'=>0,'slices'=>[]];$groups[$k]['anex'][]=['id'=>(int)$r['anex_id'],'name'=>(string)$r['anex_name'],'live_local_id'=>$r['anex_local_id']===null?null:(int)$r['anex_local_id']];$groups[$k]['frequency']=max($groups[$k]['frequency'],(int)$r['frequency']);foreach($r['slices']??[] as $s)$groups[$k]['slices'][json_encode($s)]=$s;}
+              $targetOwners=[];foreach($groups as $g)$targetOwners[$g['tv_id']][(string)$g['andromeda_id']]=true;
+              $result=['status'=>'completed','operation_id'=>'__OP__','source_evidence_run_id'=>(int)$manifest['source_run_id'],'source_evidence_artifact_id'=>(int)$manifest['source_final_artifact_id'],'candidate_rows'=>count($rows),'unique_andromeda_target_groups'=>count($groups),'coverage_before'=>r111_coverage($db),'buckets'=>['already_same'=>[],'safe_pending_missing_side'=>[],'deferred'=>[],'hard_conflict'=>[]],'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'continue_calls'=>0,'lead_calls'=>0,'no_replay'=>true];
+              foreach($groups as $g){$base=['andromeda_id'=>$g['andromeda_id'],'target_local_id'=>$g['tv_id'],'andromeda_name'=>$g['andromeda_name'],'tv_name'=>$g['tv_name'],'anex'=>$g['anex'],'frequency'=>$g['frequency'],'slices'=>array_values($g['slices'])];$targetOwnersCount=count($targetOwners[$g['tv_id']]??[]);if($targetOwnersCount>1){$base['reason']='manifest_same_provider_target_collision';$result['buckets']['deferred'][]=$base;continue;}
+                  $q=$db->prepare('SELECT id,name,country_id,region_name,subregion_name,latitude,longitude,category FROM catalog_hotels WHERE id=? LIMIT 1');$q->execute([$g['tv_id']]);$target=$q->fetch(PDO::FETCH_ASSOC);if(!$target){$base['reason']='catalog_target_missing';$result['buckets']['hard_conflict'][]=$base;continue;}if((int)$target['country_id']!==4){$base['reason']='catalog_target_not_turkey';$base['catalog_country_id']=(int)$target['country_id'];$result['buckets']['hard_conflict'][]=$base;continue;}
+                  $bridge=[];$hardBridge=null;foreach($g['anex'] as $a){$b=r111_anex_bridge($db,(int)$a['id'],$g['tv_id']);$bridge[]=['anex_id'=>(int)$a['id']]+$b;if(($b['hard']??false)&&$hardBridge===null)$hardBridge=$b;}
+                  $base['current_anex_bridges']=$bridge;if($hardBridge!==null){$base['reason']=$hardBridge['reason'];$result['buckets']['hard_conflict'][]=$base;continue;}$okBridges=array_values(array_filter($bridge,static fn($x)=>($x['ok']??false)===true));if(!$okBridges){$base['reason']='current_anex_exact_bridge_missing';$result['buckets']['deferred'][]=$base;continue;}
+                  $q=$db->prepare("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=?");$q->execute([$g['andromeda_id']]);$ids=$q->fetchAll(PDO::FETCH_ASSOC);if(count($ids)!==1){$base['reason']=count($ids)===0?'andromeda_identity_missing':'andromeda_identity_duplicate_rows';$result['buckets']['deferred'][]=$base;continue;}$id=$ids[0];$status=(string)$id['decision_status'];$local=$id['local_hotel_id']===null?null:(int)$id['local_hotel_id'];$base['current_andromeda_status']=$status;$base['current_andromeda_local_id']=$local;
+                  if($status==='accepted'){if($local===$g['tv_id']){$base['reason']='already_accepted_same_target';$result['buckets']['already_same'][]=$base;}else{$base['reason']='accepted_andromeda_different_target';$result['buckets']['hard_conflict'][]=$base;}continue;}if($status==='conflict'){$base['reason']='andromeda_conflict_protected';$result['buckets']['hard_conflict'][]=$base;continue;}if($status!=='pending'||$local!==null){$base['reason']='andromeda_state_not_writable_pending_null';$result['buckets']['deferred'][]=$base;continue;}
+                  $q=$db->prepare("SELECT external_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id=? AND external_hotel_id<>? LIMIT 1");$q->execute([$g['tv_id'],$g['andromeda_id']]);$other=$q->fetchColumn();if($other!==false){$base['reason']='same_provider_target_already_accepted';$base['existing_andromeda_id']=(string)$other;$result['buckets']['hard_conflict'][]=$base;continue;}
+                  $ev=[];try{$tmp=json_decode((string)($id['evidence_json']??''),true,64,JSON_THROW_ON_ERROR);if(is_array($tmp))$ev=$tmp;}catch(Throwable $e){}$currentNames=r111_evidence_names($ev);$base['current_evidence_names']=$currentNames;
+                  $liveKeys=r111_keys([$g['andromeda_name']]);$targetKeys=r111_keys([$g['tv_name'],(string)$target['name']]);$liveTarget=array_intersect_key($liveKeys,$targetKeys);if(!$liveTarget){$base['reason']='live_triple_name_no_longer_exact_under_guard';$result['buckets']['deferred'][]=$base;continue;}
+                  $currentKeys=r111_keys($currentNames);if(!$currentKeys||!array_intersect_key($currentKeys,$liveKeys)){$base['reason']=$currentKeys?'current_andromeda_name_differs_from_live_evidence':'current_andromeda_name_missing';$result['buckets']['deferred'][]=$base;continue;}
+                  [$slat,$slon]=r111_source_coord($ev);$distance=r111_dist($slat,$slon,$target['latitude']??null,$target['longitude']??null);$base['distance_m']=$distance===null?null:(int)round($distance);if($distance!==null&&$distance>5000){$base['reason']='coordinate_conflict_gt_5km';$result['buckets']['hard_conflict'][]=$base;continue;}
+                  $key=(string)array_key_first($liveTarget);$base['identity_key']=$key;$base['significant_token_count']=count($key===''?[]:explode(' ',$key));$base['reason']='synchronized_three_provider_exact_plus_current_anex_bridge';$result['buckets']['safe_pending_missing_side'][]=$base;
+              }
+              foreach($result['buckets'] as $k=>$v)$result['counts'][$k]=count($v);r111_out($result);
+          } catch(Throwable $e){r111_out(['status'=>'failed','operation_id'=>'__OP__','stage'=>'current_db_reconcile','exception_class'=>get_class($e),'safe_message'=>substr($e->getMessage(),0,180),'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'continue_calls'=>0,'lead_calls'=>0,'no_replay'=>true]);exit(2);}
+          ?>'''
+          php=php.replace('__CANDIDATES__',encoded).replace('__OP__',op)
+          (root/'program.php').write_text(php)
+          reservation['program_sha256']=hashlib.sha256(php.encode()).hexdigest()
+          (root/'reservation.json').write_text(json.dumps(reservation,sort_keys=True,indent=2)+'\n')
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Preserve reservation before CURRENT DB access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-reconcile-v4-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: /tmp/match-three-provider-111-reconcile-v4/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute one read-only CURRENT DB reconciliation
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,subprocess,tempfile
+          from pathlib import Path
+          root=Path(os.environ['ARTIFACT_DIR']);program=(root/'program.php').read_text();raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory() as td:
+            key=Path(td)/'key';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+            x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=240)
+          marker='MATCH111R_JSON:';line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None:
+            d={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':x.returncode,'supplier_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          else:
+            d=json.loads(line);d.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=x.returncode,no_replay=True)
+          (root/'result.json').write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':d.get('status'),'counts':d.get('counts'),'coverage_before':d.get('coverage_before'),'remote_exit':x.returncode},ensure_ascii=False,sort_keys=True))
+          if x.returncode or d.get('status')!='completed' or any(int(d.get(k) or 0)!=0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','continue_calls','lead_calls')): raise SystemExit('read-only reconciliation failed or unknown; inspect receipt before any next operation')
+          PY
+
+      - name: Preserve reconciliation result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-reconcile-v4-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            /tmp/match-three-provider-111-reconcile-v4/reservation.json
+            /tmp/match-three-provider-111-reconcile-v4/result.json
+          if-no-files-found: warn
+          retention-days: 90
