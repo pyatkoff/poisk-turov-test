@@ -3,7 +3,7 @@ declare(strict_types=1);
 if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_match_live_priority_review.php';
 
-const HABFR_OPERATION = 'hotel-match-anex-bridge-fuzzy-review-1971-20260911-v1';
+const HABFR_OPERATION = 'hotel-match-tourvisor-containment-review-1971-20260911-v2';
 
 function habfr_is_subsequence(array $small, array $large): bool {
     if (!$small || count($small) > count($large)) return false;
@@ -62,8 +62,8 @@ function habfr_review(PDO $db, string $operation=HABFR_OPERATION): array {
     [$latest,$counts,$lastSeen] = mlp_observations($db);
     $stats = [
         'pending_examined'=>0,'live_pending'=>0,'observation_rows'=>0,'prior_candidate_rows'=>0,'direct_place_rows'=>0,
-        'anex_bridge_pool_rows'=>0,'direct_geo_candidates'=>0,'safe_containment_rows'=>0,'safe_live'=>0,
-        'evidence_fuzzy_rows'=>0,'ambiguous_safe'=>0,'coordinate_conflict'=>0,'category_mismatch_safe'=>0,'no_bridge_candidate'=>0,
+        'candidate_pool_rows'=>0,'direct_geo_candidates'=>0,'safe_containment_rows'=>0,'safe_live'=>0,'existing_anex_safe'=>0,
+        'evidence_fuzzy_rows'=>0,'ambiguous_safe'=>0,'coordinate_conflict'=>0,'category_mismatch_safe'=>0,'no_candidate_pool'=>0,
     ];
     $safe=[]; $evidence=[];
     $sql = "SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY external_hotel_id";
@@ -75,9 +75,9 @@ function habfr_review(PDO $db, string $operation=HABFR_OPERATION): array {
         $priorIds=array_values(array_unique(array_map('intval',$prior['candidate_ids']??[]))); if($priorIds)$stats['prior_candidate_rows']++;
         $placeIds=mbr_place_pool($places,$country,$sourcePlaces); if($placeIds)$stats['direct_place_rows']++;
         $pool=[];
-        foreach($priorIds as $id) if(isset($hotels[$id]) && (int)$hotels[$id]['country_id']===$country && isset($anexLocal[$id])) $pool[$id]='prior';
-        foreach($placeIds as $id) if(isset($anexLocal[$id])) $pool[$id]=isset($pool[$id])?'prior+place':'place';
-        if(!$pool){$stats['no_bridge_candidate']++;continue;} $stats['anex_bridge_pool_rows']++;
+        foreach($priorIds as $id) if(isset($hotels[$id]) && (int)$hotels[$id]['country_id']===$country) $pool[$id]='prior';
+        foreach($placeIds as $id) $pool[$id]=isset($pool[$id])?'prior+place':'place';
+        if(!$pool){$stats['no_candidate_pool']++;continue;} $stats['candidate_pool_rows']++;
         $rank=[];
         foreach($pool as $id=>$origin){
             $hotel=$hotels[$id];
@@ -86,24 +86,24 @@ function habfr_review(PDO $db, string $operation=HABFR_OPERATION): array {
             if(($pair['safe_rank']??0)===0)continue;
             $guard=mbr_target_guard($coordSource,$hotel); if($guard['coordinate_conflict']){$stats['coordinate_conflict']++;continue;}
             $stats['direct_geo_candidates']++;
-            $rank[]=['id'=>(int)$id,'origin'=>$origin,'pair'=>$pair,'guard'=>$guard];
+            $rank[]=['id'=>(int)$id,'origin'=>$origin,'pair'=>$pair,'guard'=>$guard,'existing_anex_link'=>isset($anexLocal[(int)$id])];
         }
         if(!$rank)continue;
-        usort($rank,static fn($a,$b)=>$b['pair']['safe_rank']<=>$a['pair']['safe_rank'] ?: $b['pair']['score']<=>$a['pair']['score'] ?: $b['pair']['shared']<=>$a['pair']['shared'] ?: $a['id']<=>$b['id']);
+        usort($rank,static fn($a,$b)=>$b['pair']['safe_rank']<=>$a['pair']['safe_rank'] ?: (int)$b['existing_anex_link']<=>(int)$a['existing_anex_link'] ?: $b['pair']['score']<=>$a['pair']['score'] ?: $b['pair']['shared']<=>$a['pair']['shared'] ?: $a['id']<=>$b['id']);
         $best=$rank[0]; $second=$rank[1]??null; $margin=$second?($best['pair']['score']-$second['pair']['score']):1.0;
-        $base=['provider'=>'andromeda','external_id'=>$external,'country_id'=>$country,'live_observed'=>$obsCount>0,'observation_count'=>$obsCount,'last_seen_utc'=>$lastSeen[$external]??null,'source_names'=>$sourceNames,'source_places'=>$sourcePlaces,'target_local_hotel_id'=>$best['id'],'target_name'=>$hotels[$best['id']]['name'],'target_region'=>$hotels[$best['id']]['region_name'],'target_subregion'=>$hotels[$best['id']]['subregion_name'],'origin'=>$best['origin'],'pair'=>$best['pair'],'score_margin'=>round($margin,6),'distance_m'=>$best['guard']['distance_m']??null,'existing_anex_link'=>true];
+        $base=['provider'=>'andromeda','external_id'=>$external,'country_id'=>$country,'live_observed'=>$obsCount>0,'observation_count'=>$obsCount,'last_seen_utc'=>$lastSeen[$external]??null,'source_names'=>$sourceNames,'source_places'=>$sourcePlaces,'target_local_hotel_id'=>$best['id'],'target_name'=>$hotels[$best['id']]['name'],'target_region'=>$hotels[$best['id']]['region_name'],'target_subregion'=>$hotels[$best['id']]['subregion_name'],'origin'=>$best['origin'],'pair'=>$best['pair'],'score_margin'=>round($margin,6),'distance_m'=>$best['guard']['distance_m']??null,'existing_anex_link'=>(bool)$best['existing_anex_link']];
         $targetCategory=$hotels[$best['id']]['category']===null?null:(int)$hotels[$best['id']]['category'];
         $base['source_category']=$sourceCategory; $base['target_category']=$targetCategory; $base['category_mismatch']=$sourceCategory!==null&&$targetCategory!==null&&$sourceCategory!==$targetCategory;
         $safeCandidates=array_values(array_filter($rank,static fn($c)=>($c['pair']['safe_rank']??0)===2));
         if(count($safeCandidates)===1 && ($best['pair']['safe_rank']??0)===2 && $margin>=0.15){
-            $base['rule']='anex_bridge_one_sided_identity_plus_direct_geo'; $safe[]=$base; $stats['safe_containment_rows']++; if($obsCount>0)$stats['safe_live']++; if($base['category_mismatch'])$stats['category_mismatch_safe']++;
+            $base['rule']='tourvisor_one_sided_identity_plus_direct_geo'; $safe[]=$base; $stats['safe_containment_rows']++; if($obsCount>0)$stats['safe_live']++; if($base['existing_anex_link'])$stats['existing_anex_safe']++; if($base['category_mismatch'])$stats['category_mismatch_safe']++;
         } elseif(count($safeCandidates)>1) {
             $stats['ambiguous_safe']++;
         } else {
-            $base['rule']='anex_bridge_high_fuzzy_evidence_only'; $evidence[]=$base; $stats['evidence_fuzzy_rows']++;
+            $base['rule']='tourvisor_high_fuzzy_evidence_only'; $evidence[]=$base; $stats['evidence_fuzzy_rows']++;
         }
     }
-    $sort=static fn($a,$b)=>(int)($b['live_observed']??false)<=>(int)($a['live_observed']??false) ?: (int)($b['observation_count']??0)<=>(int)($a['observation_count']??0) ?: strcmp((string)$a['external_id'],(string)$b['external_id']);
+    $sort=static fn($a,$b)=>(int)($b['live_observed']??false)<=>(int)($a['live_observed']??false) ?: (int)($b['existing_anex_link']??false)<=>(int)($a['existing_anex_link']??false) ?: (int)($b['observation_count']??0)<=>(int)($a['observation_count']??0) ?: strcmp((string)$a['external_id'],(string)$b['external_id']);
     usort($safe,$sort); usort($evidence,$sort);
     return ['status'=>'completed','operation_id'=>$operation,'database_writes'=>0,'supplier_calls'=>0,'historical_operations_replayed'=>false,'coverage'=>fc_coverage($db),'catalog_scope'=>$scope,'stats'=>$stats,'safe_prepared_count'=>count($safe),'evidence_only_count'=>count($evidence),'safe_prepared'=>$safe,'evidence_only'=>$evidence];
 }
