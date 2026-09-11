@@ -13,7 +13,7 @@ jobs:
     if: >-
       github.event.issue.number == 996 &&
       github.event.comment.user.login == 'pyatkoff' &&
-      github.event.comment.body == '/probe-andromeda-select-flights-1717-v7'
+      github.event.comment.body == '/probe-andromeda-select-flights-1717-v8'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,14 +22,14 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 996
           test "${{ github.event.comment.user.login }}" = pyatkoff
-          test "${{ github.event.comment.body }}" = /probe-andromeda-select-flights-1717-v7
+          test "${{ github.event.comment.body }}" = /probe-andromeda-select-flights-1717-v8
       - uses: actions/checkout@v4
         with:
-          ref: f5c885bc0c9412ea8fd47e7fc0f3d699246844d1
+          ref: d115ded260be5ef6681de933ec4b79db2244748a
           persist-credentials: false
-      - name: Verify exact checked flight-selection source
+      - name: Verify exact corrected flight-selection source
         run: |
-          test "$(git rev-parse HEAD)" = f5c885bc0c9412ea8fd47e7fc0f3d699246844d1
+          test "$(git rev-parse HEAD)" = d115ded260be5ef6681de933ec4b79db2244748a
           python3 -m py_compile scripts/diagnostics/andromeda_select_required_flights_probe.py tests/andromeda_select_required_flights_probe_test.py
           python3 tests/andromeda_select_required_flights_probe_test.py
       - name: Fetch exact successful get_flights artifact
