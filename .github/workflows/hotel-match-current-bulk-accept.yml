@@ -4,16 +4,16 @@ on:
   push:
     branches: ['feat/match-current-bulk-review-20260911']
     paths:
-      - '.github/match-accept-1971-v2.arm'
+      - '.github/match-accept-1971-v3.arm'
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: match-current-db-bulk-accept-1971-v2
+  group: match-current-db-bulk-accept-1971-v3
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-current-bulk-accept-1971-20260911-v2
+  OPERATION_ID: hotel-match-current-bulk-accept-1971-20260911-v3
   MAX_WRITES: '40'
   MAX_ANEX_WRITES: '20'
   MAX_ANDROMEDA_WRITES: '30'
@@ -22,7 +22,7 @@ jobs:
     if: >-
       github.actor == 'pyatkoff' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'MATCH #1971 arm guarded bulk accept v2'
+      github.event.head_commit.message == 'MATCH #1971 arm guarded bulk accept v3'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -32,13 +32,13 @@ jobs:
       - name: Verify exact arm and static write scope
         run: |
           set -euo pipefail
-          test "$(cat .github/match-accept-1971-v2.arm)" = $'operation_id=hotel-match-current-bulk-accept-1971-20260911-v2\nstate=armed'
+          test "$(cat .github/match-accept-1971-v3.arm)" = $'operation_id=hotel-match-current-bulk-accept-1971-20260911-v3\nstate=armed'
           php -l scripts/diagnostics/hotel_match_current_bulk_accept.php
           python3 -B tests/hotel_match_current_bulk_accept_source_test.py
           python3 - <<'PYTHON'
           from pathlib import Path
           src = Path('scripts/diagnostics/hotel_match_current_bulk_accept.php').read_text(encoding='utf-8')
-          assert "const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v2';" in src
+          assert "const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v3';" in src
           assert src.count('$db->commit();') == 1
           assert 'curl' not in src.lower()
           assert 'http://' not in src and 'https://' not in src
@@ -67,7 +67,6 @@ jobs:
               'prepared_from_read_only_operation':'hotel-match-current-strict-review-1971-20260911-v3',
               'prepared_safe_candidates':22,
               'prepared_provider_split':{'anex':8,'andromeda':14},
-              'prepared_classes':{'strict_current_rule':9,'cross_provider_anex_tourvisor':9,'cross_provider_andromeda_tourvisor':4},
               'runtime_write_caps':{
                   'total':int(os.environ['MAX_WRITES']),
                   'anex':int(os.environ['MAX_ANEX_WRITES']),
@@ -81,8 +80,8 @@ jobs:
       - name: Preserve reservation before live write
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-current-bulk-accept-1971-20260911-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v2/reservation.json
+          name: hotel-match-current-bulk-accept-1971-20260911-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v3/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Apply server-current guarded MATCH delta
@@ -112,9 +111,6 @@ jobs:
           accept_body=body(accept).replace(
               "if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
 
-          # Runtime guard is injected immediately before the only commit. All target
-          # tables are required to be InnoDB, so exceeding the reviewed envelope rolls
-          # the whole server-current transaction back before COMMIT.
           needle='$db->commit();'
           if accept_body.count(needle) != 1:
               raise RuntimeError('commit_shape_changed')
@@ -175,7 +171,7 @@ jobs:
 
           if result.get('status') != 'completed' or result.get('committed') is not True or result.get('readback_verified') is not True:
               committed=result.get('committed') is True
-              blocker={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_committed' if committed else 'known_rolled_back','reason':result.get('reason','write_not_completed'),'committed':result.get('committed'),'database_writes':result.get('database_writes',0 if not committed else 'unknown'),'supplier_calls':0,'no_replay':True}
+              blocker={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_committed' if committed else 'known_rolled_back','reason':result.get('reason','write_not_completed'),'committed':result.get('committed'),'database_writes':result.get('database_writes',0 if not committed else 'unknown'),'planned':result.get('planned'),'planned_classes':result.get('planned_classes'),'supplier_calls':0,'no_replay':True}
               (state/'blocker.json').write_text(json.dumps(blocker,ensure_ascii=False,sort_keys=True)+'\n')
               raise RuntimeError('guarded_write_not_completed')
 
@@ -219,8 +215,8 @@ jobs:
         id: result_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-current-bulk-accept-1971-20260911-v2-result
-          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v2/
+          name: hotel-match-current-bulk-accept-1971-20260911-v3-result
+          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v3/
           if-no-files-found: error
           retention-days: 90
       - name: Record completed delta in MATCH queue
@@ -245,8 +241,7 @@ jobs:
               f"Andromeda identity: accepted {ib['accepted']}→{ia['accepted']}, pending {ib['pending']}→{ia['pending']}, conflict {ib['conflict']}→{ia['conflict']}. "
               f"Coverage: ANEX links {cb['anex_links']}→{ca['anex_links']}, ANEX unique local {cb['anex_unique_local']}→{ca['anex_unique_local']}, "
               f"Andromeda unique local {cb['andromeda_unique_local']}→{ca['andromeda_unique_local']}, triple {cb['all_three']}→{ca['all_three']}.\n\n"
-              f"Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`, result artifact `{os.environ['ARTIFACT_ID']}`. "
-              "Immutable reservation artifact was uploaded before SSH. Operation is now NO-REPLAY."
+              f"Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`, result artifact `{os.environ['ARTIFACT_ID']}`. Operation is NO-REPLAY."
           )
           (state/'success-comment.md').write_text(text+'\n',encoding='utf-8')
           PYTHON
@@ -268,7 +263,7 @@ jobs:
           b=json.loads((state/'blocker.json').read_text())
           text=(
               f"MATCH #1971 guarded delta `{b['operation_id']}` stopped with state **{b['state']}**; reason `{b['reason']}`. "
-              f"Reported DB writes: **{b.get('database_writes','unknown')}**, supplier calls **{b.get('supplier_calls',0)}**. "
+              f"Reported DB writes: **{b.get('database_writes','unknown')}**, planned `{b.get('planned')}`, classes `{b.get('planned_classes')}`, supplier calls **{b.get('supplier_calls',0)}**. "
               f"Result/blocker artifact `{os.environ.get('ARTIFACT_ID','')}`. **DO NOT REPLAY** this operation; inspect receipt/current DB first."
           )
           (state/'blocker-comment.md').write_text(text+'\n',encoding='utf-8')
