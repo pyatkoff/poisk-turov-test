@@ -5,6 +5,9 @@ on:
       - 'app/integrations/three-provider-offer-contract.php'
       - 'app/integrations/three-provider-anex-offer.php'
       - 'app/integrations/anex-normalizer.php'
+      - 'app/integrations/anex-preview-gateway.php'
+      - 'app/integrations/anex-search.php'
+      - 'app/integrations/anex-client.php'
       - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
       - 'app/integrations/three-provider-meal-family.php'
@@ -16,6 +19,7 @@ on:
       - 'tests/three-provider-offer-contract-test.php'
       - 'tests/three-provider-anex-offer-test.php'
       - 'tests/anex-normalizer-smoke.php'
+      - 'tests/anex-search-smoke.php'
       - 'tests/three-provider-offer-context-test.php'
       - 'tests/three-provider-room-placement-test.php'
       - 'tests/three-provider-meal-family-test.php'
@@ -42,6 +46,7 @@ jobs:
           persist-credentials: false
       - name: Validate offers and retained context without network
         run: |
+          php -l app/integrations/anex-preview-gateway.php
           php -l app/integrations/three-provider-offer-contract.php
           php -l app/integrations/three-provider-anex-offer.php
           php -l app/integrations/three-provider-offer-context.php
@@ -52,6 +57,7 @@ jobs:
           php -l app/integrations/three-provider-operator.php
           php -l app/integrations/andromeda-selected-tour-readiness.php
           # Explicit offline suites; execution also checks each test file's syntax.
+          php -d allow_url_fopen=0 tests/anex-search-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
           php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php

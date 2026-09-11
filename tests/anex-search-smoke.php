@@ -179,3 +179,94 @@ $rateGateway->handle(['action' => 'search', 'criteria' => $criteria], $rateSessi
 search_check($rateCalls === 11, 'burst window did not reopen');
 
 echo "ANEX_SEARCH_SMOKE_OK search/expand/flights/stale-state/source-identity/30-hotels/rate-limit\n";
+
+// Existing gateway -> saved response -> canonical offer, across request instances.
+// Synthetic supplier transport only. The reader factory throws on construction.
+$savedClock = 1789160400;
+$savedStart = $savedClock;
+$savedLocal = 245;
+$savedCalls = 0;
+$savedFactoryCalls = 0;
+$savedRow = array_replace($baseRow, ['meal' => 'AI WITHOUT ALCOHOL',
+    'room' => 'Standard-Room', 'htPlace' => 'DBL / 2 ADL']);
+$savedFactory = static function () use (&$savedCalls, $savedRow): AnyTourAnexClient {
+    return new AnyTourAnexClient('saved-secret', static function (string $url) use (&$savedCalls, $savedRow): array {
+        ++$savedCalls;
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $params);
+        $rows = [$savedRow];
+        if (isset($params['CATCLAIM'])) {
+            $rows = [array_replace($savedRow, ['id' => 'saved-private-a', 'grouped' => 0]),
+                array_replace($savedRow, ['id' => 'saved-private-b', 'grouped' => 0, 'price' => '1500.00'])];
+        }
+        return ['status' => 200, 'body' => json_encode([$params['action'] => ['prices' => $rows]])];
+    });
+};
+$savedResolver = static function (string $namespace, string $id) use (&$savedLocal): ?int {
+    search_check($namespace === 'anex_online' && $id === '469', 'saved reader queried wrong identity');
+    return $savedLocal;
+};
+$savedTime = static function () use (&$savedClock): int { return $savedClock; };
+$savedGateway = new AnyTourAnexPreviewGateway($savedFactory, $savedResolver, ['saved-secret'], $savedTime);
+$savedSession = [];
+$savedGroups = $savedGateway->handle(['action' => 'search', 'criteria' => $criteria], $savedSession);
+$savedRef = $savedGroups['search_ref'];
+search_check(preg_match('/\A[a-f0-9]{32}\z/D', $savedRef) === 1, 'search reference missing');
+$readGateway = new AnyTourAnexPreviewGateway(static function () use (&$savedFactoryCalls): AnyTourAnexClient {
+    ++$savedFactoryCalls;
+    throw new RuntimeException('SAVED_READ_MUST_NOT_CREATE_CLIENT');
+}, $savedResolver, [], $savedTime);
+$readRequest = ['action' => 'offer', 'search_ref' => $savedRef,
+    'offer_key' => $savedGroups['offers'][0]['offer_key'], 'local_hotel_id' => 245];
+search_check($readGateway->handle($readRequest, $savedSession)['status'] === 'group_minimum', 'minimum became a concrete tour');
+$savedClock += 2;
+$savedExpanded = $savedGateway->handle(['action' => 'expand', 'offer_key' => $readRequest['offer_key']], $savedSession);
+search_check($savedExpanded['search_ref'] === $savedRef && $savedCalls === 2, 'expand changed search or added supplier work');
+$readRequest['offer_key'] = $savedExpanded['offers'][0]['offer_key'];
+$readA = $readGateway->handle($readRequest, $savedSession);
+$readB = $readGateway->handle(array_replace($readRequest, ['offer_key' => $savedExpanded['offers'][1]['offer_key']]), $savedSession);
+search_check($readA['status'] === 'current' && $readA['context']['current_context_verified'] === true, 'saved offer not current');
+search_check($readA['offer']['money']['search_price'] === ['amount' => '1234.50', 'currency' => 'EUR', 'source' => 'anex_search'], 'native money replaced');
+search_check($readA['offer']['money']['fuel_charge_reported'] === null
+    && $readA['offer']['money']['quote_price'] === null && !$readA['offer']['final_price_verified'], 'invented fuel or final quote');
+search_check($readA['offer']['meal']['qualifiers']['without_alcohol'] === true
+    && $readA['offer']['room']['raw'] === 'Standard-Room' && $readA['offer']['placement']['raw'] === 'DBL / 2 ADL', 'offer conditions lost');
+search_check($readA['offer']['money']['search_price']['amount'] !== $readB['offer']['money']['search_price']['amount']
+    && $readA['offer_key'] !== $readB['offer_key'], 'A/B offer identity conflated');
+search_check($readA['selection_state'] === 'disabled' && $readA['offer']['selection_state'] === 'disabled', 'saved read enabled selection');
+foreach (['saved-private-a', 'saved-secret', 'supplier_offer_id', 'claiminc'] as $secret) {
+    search_check(strpos(json_encode($readA), $secret) === false, 'private value leaked from saved read');
+}
+$observedAt = $readA['offer']['observed_at'];
+search_check($observedAt === gmdate('Y-m-d\TH:i:s\Z', $savedClock), 'wrong original offer observation time');
+$savedClock += 2;
+search_check($readGateway->handle($readRequest, $savedSession)['offer']['observed_at'] === $observedAt, 'read refreshed observation time');
+$savedLocal = null;
+search_check($readGateway->handle($readRequest, $savedSession)['status'] === 'identity_unresolved', 'revoked mapping reused');
+$savedLocal = 246;
+search_check($readGateway->handle($readRequest, $savedSession)['status'] === 'identity_changed', 'remapped hotel silently substituted');
+$savedLocal = 245;
+$savedClock += 2;
+search_check($readGateway->handle(array_replace($readRequest, ['local_hotel_id' => 246]), $savedSession)['status'] === 'identity_changed', 'caller hotel ignored');
+$otherSession = [];
+search_check($readGateway->handle($readRequest, $otherSession)['status'] === 'expired', 'cross-session read accepted');
+search_reject(static function () use ($readGateway, &$savedSession, $readRequest): void {
+    $readGateway->handle($readRequest + ['price' => '1'], $savedSession);
+});
+// Reads do not prolong the original search validity, even inside an active session.
+$savedCopy = $savedSession;
+$savedClock = $savedStart + 899;
+search_check($readGateway->handle($readRequest, $savedCopy)['status'] === 'current', 'premature saved expiry');
+$savedClock = $savedStart + 900;
+search_check($readGateway->handle($readRequest, $savedCopy)['status'] === 'expired', 'saved reads renewed expiry');
+search_check($savedCopy['saved_offers']['expires_at'] === $savedStart + 900, 'stored expiry mutated');
+// A successful replacement with even the same supplier offer key gets a new scope.
+$savedClock = $savedStart + 10;
+$newGroups = $savedGateway->handle(['action' => 'search', 'criteria' => $criteria], $savedSession);
+search_check($newGroups['search_ref'] !== $savedRef
+    && $readGateway->handle($readRequest, $savedSession)['status'] === 'mismatch', 'old search survived replacement');
+search_reject(static function () use ($savedGateway, &$savedSession, $criteria): void {
+    $savedGateway->handle(['action' => 'search', 'criteria' => $criteria + ['unsupported' => 1]], $savedSession);
+});
+search_check(!isset($savedSession['saved_offers']) && !isset($savedSession['search']), 'failed replacement retained facts');
+search_check($savedCalls === 3 && $savedFactoryCalls === 0, 'saved read reached supplier or client factory');
+echo "ANEX_SAVED_OFFER_OK original-facts/current-identity/no-client/no-quote\n";
