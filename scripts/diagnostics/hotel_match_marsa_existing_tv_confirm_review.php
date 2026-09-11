@@ -20,6 +20,14 @@ function hmetv_rows(array $data):array{
 function hmetv_tv_hotels(array $payload):array{
     $out=[];foreach(hmetv_rows($payload)as$r){$id=filter_var($r['id']??null,FILTER_VALIDATE_INT);$name=trim((string)($r['name']??''));if($id===false||(int)$id<=0||$name==='')continue;$out[(int)$id]=['id'=>(int)$id,'name'=>$name];}return$out;
 }
+function hmetv_identity_key(string $name):string{
+    $drop=array_fill_keys(['hotel','hotels','отель','отели','resort','resorts','резорт','ресорт','spa','спа'],true);$tokens=[];
+    foreach(explode(' ',fc_norm($name))as$t)if($t!==''&&!isset($drop[$t]))$tokens[]=$t;
+    sort($tokens,SORT_STRING);return implode(' ',$tokens);
+}
+function hmetv_exact_generic_names(array $a,array $b):bool{
+    $ak=[];$bk=[];foreach($a as$n){$k=hmetv_identity_key((string)$n);if($k!==''&&count(explode(' ',$k))>=2)$ak[$k]=true;}foreach($b as$n){$k=hmetv_identity_key((string)$n);if($k!==''&&count(explode(' ',$k))>=2)$bk[$k]=true;}return(bool)array_intersect_key($ak,$bk);
+}
 function hmetv_candidates(PDO $db):array{
     $an=hmamgr_anex_rows($db);$and=hmamgr_andromeda_rows($db);$ai=hmamgr_index($an);$di=hmamgr_index($and);$al=hmadcrh_locality_common($an);$dl=hmadcrh_locality_common($and);$out=[];
     foreach($an as$aid=>$a){if((int)$a['country_id']!==HMETV_COUNTRY_ID||!hmetv_marsa($a['places']))continue;$f=hmamgr_choose($a,$and,$di,$dl);if(($f['bucket']??'')!=='candidate')continue;$bid=(string)$f['target_id'];$b=$and[$bid]??null;if(!$b||!hmetv_marsa($b['places']))continue;$rev=hmamgr_choose($b,$an,$ai,$al);if(($rev['bucket']??'')!=='candidate'||(string)($rev['target_id']??'')!==(string)$aid)continue;$v=hmamgr_validation($a['local_ids'],$b['local_ids']);if(!in_array($v,['anex_only','andromeda_only','neither_side'],true))continue;$out[]=['anex_hotel_id'=>(int)$aid,'andromeda_external_id'=>$bid,'validation'=>$v,'route'=>(string)$f['reason'],'anex_names'=>$a['names'],'andromeda_names'=>$b['names'],'anex_places'=>$a['places'],'andromeda_places'=>$b['places'],'anex_latitude'=>$a['latitude'],'anex_longitude'=>$a['longitude'],'andromeda_latitude'=>$b['latitude'],'andromeda_longitude'=>$b['longitude'],'anex_live'=>(bool)$a['live'],'andromeda_live'=>(bool)$b['live'],'anex_observation_count'=>(int)$a['observation_count'],'andromeda_observation_count'=>(int)$b['observation_count'],'known_local_ids'=>array_values(array_unique(array_merge($a['local_ids'],$b['local_ids'])))];}
@@ -34,7 +42,8 @@ function hmetv_local(PDO $db,array $ids):array{
 function hmetv_pair_local_ok(array $p,array $local):array{
     if(!hmetv_marsa($local['places']))return['ok'=>false,'reason'=>'local_not_marsa'];
     $a=hmadcr_best_pair($p['anex_names'],$local['names'],$p['anex_places'],$local['places']);$b=hmadcr_best_pair($p['andromeda_names'],$local['names'],$p['andromeda_places'],$local['places']);
-    foreach([$a,$b]as$x)if(!($x['critical_ok']??false)||!($x['exact_bag']??false)||(int)($x['shared']??0)<2)return['ok'=>false,'reason'=>'supplier_local_name_not_exact'];
+    if(!($a['critical_ok']??false)||!($b['critical_ok']??false))return['ok'=>false,'reason'=>'critical_qualifier_mismatch'];
+    if(!hmetv_exact_generic_names($p['anex_names'],$local['names'])||!hmetv_exact_generic_names($p['andromeda_names'],$local['names']))return['ok'=>false,'reason'=>'supplier_local_generic_exact_missing'];
     $da=fc_dist($p['anex_latitude'],$p['anex_longitude'],$local['latitude'],$local['longitude']);$db=fc_dist($p['andromeda_latitude'],$p['andromeda_longitude'],$local['latitude'],$local['longitude']);if(($da!==null&&$da>HMETV_COORD_BLOCK_M)||($db!==null&&$db>HMETV_COORD_BLOCK_M))return['ok'=>false,'reason'=>'coordinate_conflict','anex_distance_m'=>$da,'andromeda_distance_m'=>$db];
     return['ok'=>true,'anex_distance_m'=>$da===null?null:round($da,2),'andromeda_distance_m'=>$db===null?null:round($db,2),'anex_pair'=>$a,'andromeda_pair'=>$b];
 }
@@ -47,6 +56,6 @@ function hmetv_review(PDO $db,string $operation=HMETV_OPERATION):array{
     $tv=hmetv_tv_hotels($payload);$ids=array_keys($tv);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');try{$locals=hmetv_local($db,$ids);$db->commit();}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}
     $raw=[];$blocked=[];foreach($pairs as$i=>$p){$matches=[];foreach($locals as$id=>$local){$x=hmetv_pair_local_ok($p,$local);if($x['ok'])$matches[(int)$id]=$x;}if(count($matches)===1){$id=(int)array_key_first($matches);$raw[]=['pair_index'=>$i,'local_hotel_id'=>$id,'tourvisor_name'=>$tv[$id]['name']??'','pair'=>$p,'proof'=>$matches[$id]];}elseif(count($matches)>1)$blocked[]=['pair_index'=>$i,'reason'=>'multiple_tourvisor_targets','target_ids'=>array_keys($matches),'pair'=>$p];}
     $byLocal=[];foreach($raw as$i=>$r)$byLocal[$r['local_hotel_id']][]=$i;$prepared=[];foreach($raw as$i=>$r){if(count($byLocal[$r['local_hotel_id']])!==1){$blocked[]=['pair_index'=>$r['pair_index'],'reason'=>'one_to_one_local_collision','local_hotel_id'=>$r['local_hotel_id'],'pair'=>$r['pair']];continue;}$prepared[]=$r;}
-    return$base+['status'=>'completed','tv_http_calls'=>1,'tourvisor_cached_hotels'=>count($tv),'tourvisor_catalog_hotels'=>count($locals),'prepared'=>count($prepared),'prepared_rows'=>$prepared,'blocked'=>$blocked,'guards'=>['no_new_tourvisor_search'=>true,'no_continue'=>true,'mutual_unique_supplier_pair'=>true,'supplier_to_local_exact_bag_min_shared'=>2,'marsa_locality_required'=>true,'coordinate_conflict_block_m'=>HMETV_COORD_BLOCK_M,'one_to_one_local_required'=>true,'critical_qualifiers_preserved'=>['ANNEX','BEACH','GARDEN','NORTH','SOUTH'],'generic_hotel_resort_spa_non_identity'=>true,'stars_not_identity'=>true]];
+    return$base+['status'=>'completed','tv_http_calls'=>1,'tourvisor_cached_hotels'=>count($tv),'tourvisor_catalog_hotels'=>count($locals),'prepared'=>count($prepared),'prepared_rows'=>$prepared,'blocked'=>$blocked,'guards'=>['no_new_tourvisor_search'=>true,'no_continue'=>true,'mutual_unique_supplier_pair'=>true,'supplier_to_local_exact_after_only_hotel_resort_spa_drop'=>true,'marsa_locality_required'=>true,'coordinate_conflict_block_m'=>HMETV_COORD_BLOCK_M,'one_to_one_local_required'=>true,'critical_qualifiers_preserved'=>['ANNEX','BEACH','GARDEN','NORTH','SOUTH'],'generic_hotel_resort_spa_non_identity'=>true,'stars_not_identity'=>true]];
 }
 if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){fwrite(STDERR,"library_only: use guarded cached-TV workflow\n");exit(64);}
