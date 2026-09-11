@@ -22,6 +22,9 @@ required = [
     "mba_identity_counts",
     "identity_before",
     "identity_after",
+    "mba_row_is_safe_auto_accept",
+    "mba_fuzzy_has_direct_geo",
+    "fuzzy_requires_direct_geo'=>true",
 ]
 for needle in required:
     assert needle in src, needle
