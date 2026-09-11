@@ -47,6 +47,8 @@
     "search3-selected-flow-v2.css": [
       "styles/selected-tour.css"
     ],
-    "search3-selected-flow-v2.js": []
+    "search3-selected-flow-v2.js": [
+      "behavior/selected-quote-v2.js"
+    ]
   }
 }
