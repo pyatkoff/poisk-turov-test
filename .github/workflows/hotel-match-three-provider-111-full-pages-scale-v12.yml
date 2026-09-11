@@ -1,0 +1,192 @@
+name: MATCH three-provider 1-1-1 full pages scale v12
+
+on:
+  push:
+    branches: [ops/match-three-provider-111-full-pages-scale-1971-20260911-v12]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-three-provider-111-full-pages-scale-v12
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - sid: s01
+            date: '2026-11-27'
+            nights: '8'
+          - sid: s02
+            date: '2026-12-04'
+            nights: '9'
+          - sid: s03
+            date: '2026-12-25'
+            nights: '9'
+          - sid: s04
+            date: '2027-01-08'
+            nights: '8'
+          - sid: s05
+            date: '2027-01-22'
+            nights: '8'
+          - sid: s06
+            date: '2027-02-05'
+            nights: '8'
+          - sid: s07
+            date: '2027-02-19'
+            nights: '9'
+          - sid: s08
+            date: '2027-03-05'
+            nights: '10'
+    env:
+      FAMILY_ID: hotel-match-three-provider-111-full-pages-scale-1971-20260911-v12
+      OPERATION_ID: hotel-match-three-provider-111-full-pages-scale-1971-20260911-v12-${{ matrix.sid }}
+      SLICE_ID: ${{ matrix.sid }}
+      SEARCH_DATE: ${{ matrix.date }}
+      SEARCH_NIGHTS: ${{ matrix.nights }}
+      EXPECTED_BASE_SHA: 4889dba4139b182db1207c965b4a0b957ad21536
+      ARTIFACT_DIR: /tmp/match-three-provider-111-full-pages-scale-v12-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 6
+          persist-credentials: false
+
+      - name: Verify isolated source and derive fresh full-page slice
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-three-provider-111-full-pages-scale-1971-20260911-v12'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-three-provider-111-full-pages-scale-v12.arm)" = "$FAMILY_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' '.github/match-three-provider-111-full-pages-scale-v12.arm' '.github/workflows/hotel-match-three-provider-111-full-pages-scale-v12.yml' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          mkdir -p "$ARTIFACT_DIR"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php').read_text()
+          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
+          olddate="const M6_DATE = '2026-11-06';"
+          oldnights='const M6_NIGHTS = 7;'
+          if p.count(oldop)!=1 or p.count(olddate)!=1 or p.count(oldnights)!=1:
+              raise SystemExit('frozen diagnostic changed')
+          p=p.replace(oldop,os.environ['OPERATION_ID'])
+          p=p.replace(olddate,"const M6_DATE = '"+os.environ['SEARCH_DATE']+"';")
+          p=p.replace(oldnights,'const M6_NIGHTS = '+os.environ['SEARCH_NIGHTS']+';')
+          needle="declare(strict_types=1);\n"
+          op=os.environ['OPERATION_ID']
+          fatal=("register_shutdown_function(static function(): void {\n"
+                 "    $e=error_get_last();\n"
+                 "    if(!is_array($e) || !in_array((int)($e['type']??0),[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR,E_USER_ERROR],true)) return;\n"
+                 "    echo 'MATCH111FULL_JSON:'.json_encode(['status'=>'failed','stage'=>'fatal','reason'=>'php_fatal','operation_id'=>'"+op+"','database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'token_values_recorded'=>false,'raw_provider_bodies_recorded'=>false],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;\n"
+                 "});\n")
+          if p.count(needle)!=1: raise SystemExit('strict insertion changed')
+          p=p.replace(needle,needle+fatal,1)
+          Path(os.environ['ARTIFACT_DIR'],'program.php').write_text(p)
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Establish zero-supplier SSH control master and preflight
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); sid=os.environ['SLICE_ID']
+          key=rt/('match111-v12-key-'+sid); sock=rt/('match111-v12-'+sid+'.sock'); known=rt/('match111-v12-known-'+sid)
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
+          else:key.write_bytes(base64.b64decode(raw))
+          key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30)
+              if a.returncode==0:
+                  b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],"cd \"$HOME/www/anytoour.ru\" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php && php -r 'echo \"MATCH111FULL_PREFLIGHT_OK\\n\";'"],text=True,capture_output=True,timeout=30)
+                  if b.returncode==0 and 'MATCH111FULL_PREFLIGHT_OK' in b.stdout:ok=True;break
+              if sock.exists():subprocess.run(['ssh','-S',str(sock),'-O','exit',os.environ['ANYTOOUR_DEPLOY_HOST']],text=True,capture_output=True,timeout=10)
+              time.sleep(2)
+          if not ok:raise SystemExit('zero-supplier control-master preflight failed')
+          print('MATCH111FULL_PREFLIGHT_OK')
+          PY
+
+      - name: Persist immutable slice reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          source=Path(os.environ['ARTIFACT_DIR'],'program.php').read_bytes()
+          value={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_live_access','source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'program_sha256':hashlib.sha256(source).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'adults':2,'children':0,'currency':'RUB'},'providers':['tourvisor_anex_only_full','direct_anex_anchor','andromeda_anex_only_all_pages'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          p=Path(os.environ['ARTIFACT_DIR'],'reservation.json');raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw:raise SystemExit('reservation readback failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match111-full-v12-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute full-page slice over existing SSH master
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          sock=Path(os.environ['RUNNER_TEMP'])/('match111-v12-'+os.environ['SLICE_ID']+'.sock');out=Path(os.environ['ARTIFACT_DIR'],'result.json')
+          if subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['ANYTOOUR_DEPLOY_HOST']],text=True,capture_output=True,timeout=10).returncode!=0:
+              data={'status':'failed','stage':'pre_supplier_master_check','reason':'ssh_master_unavailable','operation_id':os.environ['OPERATION_ID'],'supplier_calls_proven':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};out.write_text(json.dumps(data,sort_keys=True,indent=2)+'\n');raise SystemExit('master unavailable')
+          program=Path(os.environ['ARTIFACT_DIR'],'program.php').read_text()
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=720)
+          marker='MATCH111FULL_JSON:';line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None:
+              data={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'search_date':os.environ['SEARCH_DATE'],'search_nights':int(os.environ['SEARCH_NIGHTS']),'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'stdout_sha256':hashlib.sha256(x.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(x.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};out.write_text(json.dumps(data,sort_keys=True,indent=2)+'\n');raise SystemExit('slice unknown; no replay')
+          data=json.loads(line);data.update(family_id=os.environ['FAMILY_ID'],slice_id=os.environ['SLICE_ID'],search_date=os.environ['SEARCH_DATE'],search_nights=int(os.environ['SEARCH_NIGHTS']),source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=x.returncode,no_replay=True)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();out.write_bytes(raw)
+          if len(raw)>3000000:raise SystemExit('result too large')
+          p=data.get('providers') or {};print(json.dumps({'slice':os.environ['SLICE_ID'],'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'status':data.get('status'),'stage':data.get('stage'),'reason':data.get('reason'),'tourvisor':{k:(p.get('tourvisor') or {}).get(k) for k in ('hotel_count','continue_calls','stop_reason')},'andromeda':{k:(p.get('andromeda') or {}).get(k) for k in ('hotel_count','offer_count','pages_consumed','final_pages_count')},'anex_hotels':(p.get('anex') or {}).get('hotel_count'),'triples':(((data.get('comparison') or {}).get('unique_alias_triples') or {}).get('count'))},ensure_ascii=False,sort_keys=True))
+          if x.returncode!=0 or data.get('status')!='completed':raise SystemExit('slice failed')
+          if any(int(data.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','booking_calls','lead_calls')):raise SystemExit('unsafe side effect')
+          PY
+
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match111-full-v12-${{ matrix.sid }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Close SSH control master
+        if: always()
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: |
+          SOCK="$RUNNER_TEMP/match111-v12-${SLICE_ID}.sock"
+          if [ -S "$SOCK" ]; then ssh -S "$SOCK" -O exit "$ANYTOOUR_DEPLOY_HOST" >/dev/null 2>&1 || true; fi
+          rm -f "$RUNNER_TEMP/match111-v12-key-${SLICE_ID}" "$SOCK"
