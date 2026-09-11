@@ -3,7 +3,7 @@ declare(strict_types=1);
 if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_match_current_bulk_review.php';
 
-const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v2';
+const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';
 
 function msr_fuzzy_has_direct_geo(array $row): bool {
     $distance = $row['guard']['distance_m'] ?? null;
@@ -23,9 +23,9 @@ function msr_safe_auto(array $row): bool {
     return true;
 }
 
-function msr_bridge_index(array $anexLocal, array $hotels, array $names): array {
+function msr_bridge_index(array $localSet, array $hotels, array $names): array {
     $index = [];
-    foreach (array_keys($anexLocal) as $id) {
+    foreach (array_keys($localSet) as $id) {
         $id = (int)$id;
         if (!isset($hotels[$id])) continue;
         $country = (int)$hotels[$id]['country_id'];
@@ -72,6 +72,41 @@ function msr_cross_provider_bridge(array $review, array $coordSource, array $bri
     return $review;
 }
 
+function msr_reverse_anex_bridge(array $review, array $coordSource, array $bridgeIndex, array $hotels): ?array {
+    $country = (int)($review['country_id'] ?? 0);
+    $candidateIds = [];
+    $maxTokens = 0;
+    foreach (array_map('strval', $review['source_names'] ?? []) as $name) {
+        $tokens = fc_tokens($name, true);
+        $maxTokens = max($maxTokens, count($tokens));
+        $key = fc_key($name, true, false);
+        if ($key === '') continue;
+        foreach (array_keys($bridgeIndex[$country][$key] ?? []) as $id) $candidateIds[(int)$id] = true;
+    }
+    if (count($candidateIds) !== 1) return null;
+    $targetId = (int)array_key_first($candidateIds);
+    $target = $hotels[$targetId] ?? null;
+    if (!is_array($target)) return null;
+    $guard = mbr_target_guard($coordSource, $target);
+    if ($guard['coordinate_conflict']) return null;
+    $place = fc_place(
+        array_map('strval', $review['source_places'] ?? []),
+        [(string)($target['region_name'] ?? ''), (string)($target['subregion_name'] ?? '')]
+    );
+    $directGeo = ($guard['distance_m'] !== null && $guard['distance_m'] <= 1000) || $place;
+    if ($maxTokens < 2 && !$directGeo) return null;
+    $review['bucket'] = 'auto_accept';
+    $review['reason'] = 'cross_provider_andromeda_tourvisor_strict_name';
+    $review['guard'] = $guard;
+    $review['target'] = mbr_row_target($target);
+    $review['bridge'] = [
+        'andromeda_tourvisor_existing_local' => true,
+        'significant_tokens' => $maxTokens,
+        'direct_geo' => $directGeo,
+    ];
+    return $review;
+}
+
 function msr_review(PDO $db, string $operation): array {
     if ($operation !== MSR_OPERATION) throw new RuntimeException('operation_scope');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -82,7 +117,8 @@ function msr_review(PDO $db, string $operation): array {
         [$hotels,$names,$strict,$broad,$places,$catalogScope] = mbr_catalog($db);
         $shaCountry = fc_sha_countries($db);
         [$anexLocal,$andromedaLocal] = mbr_local_sets($db);
-        $bridgeIndex = msr_bridge_index($anexLocal, $hotels, $names);
+        $anexBridgeIndex = msr_bridge_index($anexLocal, $hotels, $names);
+        $andromedaBridgeIndex = msr_bridge_index($andromedaLocal, $hotels, $names);
 
         $manual = array_fill_keys(array_map('intval', $db->query('SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN)), true);
         $existing = array_fill_keys(array_map('intval', $db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings')->fetchAll(PDO::FETCH_COLUMN)), true);
@@ -105,6 +141,7 @@ function msr_review(PDO $db, string $operation): array {
             'andromeda_country_unknown'=>0,
             'unsafe_fuzzy_demoted'=>0,
             'pair_exclusion_blocked'=>0,
+            'reverse_bridge_pair_exclusion_blocked'=>0,
         ];
         $seenAnex = [];
 
@@ -121,6 +158,27 @@ function msr_review(PDO $db, string $operation): array {
                 $stats['unsafe_fuzzy_demoted']++;
             }
             $blocked[] = $row;
+        };
+
+        $considerAnex = static function(array $row, array $source, int $id) use (&$candidates,&$blocked,&$stats,$andromedaBridgeIndex,$hotels,$excluded,$consider): void {
+            if (msr_safe_auto($row)) {
+                $consider($row, 'strict_current_rule');
+                return;
+            }
+            $bridge = msr_reverse_anex_bridge($row, $source, $andromedaBridgeIndex, $hotels);
+            if ($bridge !== null) {
+                $target = (int)($bridge['target']['local_hotel_id'] ?? 0);
+                if ($target && isset($excluded[$id][$target])) {
+                    $bridge['bucket'] = 'hard_conflict';
+                    $bridge['reason'] = 'pair_exclusion_protected';
+                    $stats['reverse_bridge_pair_exclusion_blocked']++;
+                    $blocked[] = $bridge;
+                    return;
+                }
+                $consider($bridge, 'cross_provider_andromeda_tourvisor');
+                return;
+            }
+            $consider($row, 'strict_current_rule');
         };
 
         $observations = $db->query('SELECT * FROM anex_search_hotel_observations ORDER BY search_count DESC,last_seen_utc DESC,anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC);
@@ -142,7 +200,7 @@ function msr_review(PDO $db, string $operation): array {
                 $row['bucket']='hard_conflict'; $row['reason']='pair_exclusion_protected';
                 $stats['pair_exclusion_blocked']++; $blocked[]=$row; continue;
             }
-            $consider($row,'strict_current_rule');
+            $considerAnex($row,$source,$id);
         }
 
         foreach ($staging as $id=>$s) {
@@ -162,7 +220,7 @@ function msr_review(PDO $db, string $operation): array {
                 $row['bucket']='hard_conflict'; $row['reason']='pair_exclusion_protected';
                 $stats['pair_exclusion_blocked']++; $blocked[]=$row; continue;
             }
-            $consider($row,'strict_current_rule');
+            $considerAnex($row,$source,(int)$id);
         }
 
         $latest=[];
@@ -183,7 +241,7 @@ function msr_review(PDO $db, string $operation): array {
             $prior=fc_evidence($r['evidence_json']??'');
             $coordSource=$prior['source']??[]; if (!is_array($coordSource)) $coordSource=[];
             if ($obs) $coordSource += $obs;
-            $bridge=msr_cross_provider_bridge($row,$coordSource,$bridgeIndex,$hotels);
+            $bridge=msr_cross_provider_bridge($row,$coordSource,$anexBridgeIndex,$hotels);
             if ($bridge!==null && msr_safe_auto($bridge)) {
                 $bridge['candidate_class']='cross_provider_anex_tourvisor'; $candidates[]=$bridge; continue;
             }
@@ -198,6 +256,7 @@ function msr_review(PDO $db, string $operation): array {
 
         $strictCount=count(array_filter($candidates,static fn($r)=>($r['candidate_class']??'')==='strict_current_rule'));
         $bridgeCount=count(array_filter($candidates,static fn($r)=>($r['candidate_class']??'')==='cross_provider_anex_tourvisor'));
+        $reverseBridgeCount=count(array_filter($candidates,static fn($r)=>($r['candidate_class']??'')==='cross_provider_andromeda_tourvisor'));
         $providerCounts=['anex'=>0,'andromeda'=>0];
         foreach($candidates as $row){$p=(string)($row['provider']??'');if(isset($providerCounts[$p]))$providerCounts[$p]++;}
         $blockedReasons=[];foreach($blocked as $row){$reason=(string)($row['reason']??'unknown');$blockedReasons[$reason]=($blockedReasons[$reason]??0)+1;}ksort($blockedReasons);
@@ -214,7 +273,9 @@ function msr_review(PDO $db, string $operation): array {
             'database_writes'=>0,'supplier_calls'=>0,'catalog_scope'=>$catalogScope,'coverage'=>$coverage,
             'counts'=>[
                 'safe_candidates'=>count($candidates),'strict_current_rule'=>$strictCount,
-                'cross_provider_anex_tourvisor'=>$bridgeCount,'candidate_anex'=>$providerCounts['anex'],
+                'cross_provider_anex_tourvisor'=>$bridgeCount,
+                'cross_provider_andromeda_tourvisor'=>$reverseBridgeCount,
+                'candidate_anex'=>$providerCounts['anex'],
                 'candidate_andromeda'=>$providerCounts['andromeda'],'blocked'=>count($blocked),
                 'unsafe_fuzzy_demoted'=>$stats['unsafe_fuzzy_demoted'],
             ]+$missingThird,
@@ -225,6 +286,8 @@ function msr_review(PDO $db, string $operation): array {
                 'existing_mappings_overwritten'=>false,'coordinate_conflict_auto_block_m'=>5000,
                 'strong_fuzzy_requires_direct_geo'=>true,'numeric_star_is_guard_not_identity'=>true,
                 'cross_provider_requires_existing_anex_tourvisor_local'=>true,
+                'reverse_cross_provider_requires_existing_andromeda_tourvisor_local'=>true,
+                'generic_hotel_resort_spa_removed_but_qualifiers_preserved'=>true,
                 'single_token_bridge_requires_direct_geo'=>true,
             ],
         ];
