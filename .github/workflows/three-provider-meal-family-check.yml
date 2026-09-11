@@ -1,0 +1,33 @@
+name: Three-provider meal family
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-meal-family.php'
+      - 'tests/three-provider-meal-family-test.php'
+      - '.github/workflows/three-provider-meal-family-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate meal labels without network
+        run: |
+          php -l app/integrations/three-provider-meal-family.php
+          php -l tests/three-provider-meal-family-test.php
+          php -d allow_url_fopen=0 tests/three-provider-meal-family-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/three-provider-meal-family.php').read_text()
+          assert 'supplier numeric IDs' in src
+          assert "'family_verified' => $family !== null" in src
+          assert "'without_alcohol' => $withoutAlcohol" in src
+          for forbidden in ('curl_', 'PDO', 'SearchTour_', 'CURRENCYINC', 'MEAL='):
+              assert forbidden not in src
+          print('Meal-family static boundary: PASS')
+          PY
