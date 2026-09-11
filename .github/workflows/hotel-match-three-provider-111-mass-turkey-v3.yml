@@ -1,0 +1,189 @@
+name: MATCH three-provider 1-1-1 Turkey mass v3
+
+on:
+  push:
+    branches: [ops/match-three-provider-111-mass-turkey-1971-20260911-v3]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-three-provider-111-mass-turkey-v3
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-three-provider-111-mass-turkey-1971-20260911-v3
+      EXPECTED_BASE_SHA: a916ac0007b23a1c65eca658301ef0496acfea82
+      ARTIFACT_DIR: /tmp/match-three-provider-111-mass-v3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 6
+          persist-credentials: false
+
+      - name: Verify source and reserve all synchronized slices
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-three-provider-111-mass-turkey-1971-20260911-v3'
+          test "$(cat .github/match-three-provider-111-mass-turkey-1971-v3.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' '.github/match-three-provider-111-mass-turkey-1971-v3.arm' '.github/workflows/hotel-match-three-provider-111-mass-turkey-v3.yml' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          mkdir -p "$ARTIFACT_DIR/programs"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+
+          base=Path('scripts/diagnostics/hotel_match_three_provider_111_pilot.php').read_text()
+          oldop='hotel-match-three-provider-111-pilot-1971-20260911-v1'
+          olddate="const M111_DATE = '2026-09-25';"
+          oldnights='const M111_NIGHTS = 8;'
+          if base.count(oldop)!=1 or base.count(olddate)!=1 or base.count(oldnights)!=1:
+              raise SystemExit('frozen diagnostic changed')
+
+          slices=[
+              ('s01','2026-09-18',7),
+              ('s02','2026-09-18',10),
+              ('s03','2026-10-02',7),
+              ('s04','2026-10-02',10),
+              ('s05','2026-10-23',7),
+              ('s06','2026-10-23',10),
+          ]
+          reservations=[]
+          programs=[]
+          root=Path(os.environ['ARTIFACT_DIR'])
+          for sid,date,nights in slices:
+              op=f"{os.environ['OPERATION_ID']}-{sid}"
+              p=(base.replace(oldop,op)
+                     .replace(olddate,f"const M111_DATE = '{date}';")
+                     .replace(oldnights,f'const M111_NIGHTS = {nights};'))
+              out=root/'programs'/f'{sid}.php'
+              out.write_text(p)
+              digest=hashlib.sha256(p.encode()).hexdigest()
+              programs.append({'slice_id':sid,'operation_id':op,'date':date,'nights':nights,'path':str(out),'program_sha256':digest})
+              reservations.append({
+                  'slice_id':sid,
+                  'operation_id':op,
+                  'criteria':{'departure':'Moscow','country':'Turkey','date':date,'nights':nights,'adults':2,'children':0,'currency':'RUB'},
+                  'providers':['tourvisor_anex_only','direct_anex','andromeda_anex_only'],
+                  'program_sha256':digest,
+                  'state':'reserved_before_live_access',
+                  'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,
+                  'no_replay':True,
+              })
+          manifest={
+              'operation_id':os.environ['OPERATION_ID'],
+              'state':'all_slices_reserved_before_live_access',
+              'source_sha':os.environ['GITHUB_SHA'],
+              'base_sha':os.environ['EXPECTED_BASE_SHA'],
+              'run_id':int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'slice_count':len(reservations),
+              'slices':reservations,
+              'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,
+              'no_replay':True,
+          }
+          (root/'reservation.json').write_text(json.dumps(manifest,sort_keys=True,indent=2)+'\n')
+          (root/'programs.json').write_text(json.dumps(programs,sort_keys=True,indent=2)+'\n')
+          PY
+          for p in "$ARTIFACT_DIR"/programs/*.php; do php -l "$p"; done
+
+      - name: Preserve reservations before supplier access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-mass-v3-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: |
+            /tmp/match-three-provider-111-mass-v3/reservation.json
+            /tmp/match-three-provider-111-mass-v3/programs.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute six synchronized slices sequentially
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,subprocess,tempfile,time
+          from pathlib import Path
+
+          root=Path(os.environ['ARTIFACT_DIR'])
+          programs=json.loads((root/'programs.json').read_text())
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          results=[]
+          failed=False
+
+          def persist():
+              totals={'tourvisor_hotels':0,'anex_hotels':0,'andromeda_hotels':0,'triple_name_keys':0}
+              for item in results:
+                  d=item.get('result') or {}
+                  providers=d.get('providers') or {}
+                  totals['tourvisor_hotels']+=int((providers.get('tourvisor') or {}).get('hotel_count') or 0)
+                  totals['anex_hotels']+=int((providers.get('anex') or {}).get('hotel_count') or 0)
+                  totals['andromeda_hotels']+=int((providers.get('andromeda') or {}).get('hotel_count') or 0)
+                  totals['triple_name_keys']+=int((((d.get('comparison') or {}).get('triple_name_keys') or {}).get('count')) or 0)
+              aggregate={
+                  'operation_id':os.environ['OPERATION_ID'],
+                  'source_sha':os.environ['GITHUB_SHA'],
+                  'run_id':int(os.environ['GITHUB_RUN_ID']),
+                  'status':'completed' if len(results)==len(programs) and not failed else 'partial',
+                  'slice_count_planned':len(programs),
+                  'slice_count_recorded':len(results),
+                  'totals':totals,
+                  'slices':results,
+                  'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,
+                  'no_replay':True,
+              }
+              (root/'result.json').write_text(json.dumps(aggregate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+
+          with tempfile.TemporaryDirectory() as td:
+              key=Path(td)/'key'
+              key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw))
+              key.chmod(0o600)
+              known=Path(td)/'known_hosts'
+              for idx,meta in enumerate(programs):
+                  program=Path(meta['path']).read_text()
+                  cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+                  try:
+                      x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=420)
+                      marker='MATCH111_JSON:'
+                      line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+                      if line is None:
+                          item={'slice_id':meta['slice_id'],'operation_id':meta['operation_id'],'date':meta['date'],'nights':meta['nights'],'remote_exit':x.returncode,'status':'failed','reason':'result_marker_missing'}
+                          failed=True
+                      else:
+                          d=json.loads(line)
+                          d.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=x.returncode,no_replay=True)
+                          ok=(x.returncode==0 and d.get('status')=='completed' and all(int(d.get(k) or 0)==0 for k in ('database_writes','mapping_writes','booking_calls','continue_calls')))
+                          item={'slice_id':meta['slice_id'],'operation_id':meta['operation_id'],'date':meta['date'],'nights':meta['nights'],'remote_exit':x.returncode,'status':'completed' if ok else 'failed','result':d}
+                          failed = failed or not ok
+                  except subprocess.TimeoutExpired:
+                      item={'slice_id':meta['slice_id'],'operation_id':meta['operation_id'],'date':meta['date'],'nights':meta['nights'],'status':'failed','reason':'ssh_timeout'}
+                      failed=True
+                  results.append(item)
+                  persist()
+                  print(json.dumps({'slice':meta['slice_id'],'status':item['status'],'date':meta['date'],'nights':meta['nights'],'counts':{k:v.get('hotel_count') for k,v in ((item.get('result') or {}).get('providers') or {}).items()}},ensure_ascii=False,sort_keys=True))
+                  if idx+1 < len(programs): time.sleep(3)
+
+          persist()
+          if failed: raise SystemExit('one or more reserved slices failed; inspect immutable partial result before any new attempt')
+          PY
+
+      - name: Preserve mass result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-mass-v3-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            /tmp/match-three-provider-111-mass-v3/reservation.json
+            /tmp/match-three-provider-111-mass-v3/programs.json
+            /tmp/match-three-provider-111-mass-v3/result.json
+          if-no-files-found: warn
+          retention-days: 90
