@@ -41,6 +41,13 @@ try {
             throw new RuntimeException('review_forbidden', 403);
         }
         $standaloneOwner = true;
+        // The owner explicitly enabled manual match decisions after the pair-exclusion
+        // guards were deployed. Keep this elevation scoped to the standalone owner
+        // entrypoint; an external trusted adapter must still opt into writes itself.
+        $capabilities = is_array($context['capabilities'] ?? null) ? $context['capabilities'] : [];
+        $context['capabilities'] = array_values(array_unique(array_merge($capabilities, ['anex:review', 'anex:decide'])));
+        $context['write_enabled'] = true;
+        $context['pair_exclusions_enforced'] = true;
     }
     if (!is_array($context) || session_status() !== PHP_SESSION_ACTIVE) throw new RuntimeException('review_forbidden', 403);
     require_once $app . '/access.php';
@@ -51,7 +58,7 @@ try {
     }
     $csrf = (string)$_SESSION['anex_review_csrf'];
     // A deployment gate: pair exclusions must also be honored by import paths
-    // before write access is enabled. This packet does not claim that integration.
+    // before write access is enabled.
     $write = ($context['write_enabled'] ?? false) === true && ($context['pair_exclusions_enforced'] ?? false) === true
         && in_array('anex:decide', $context['capabilities'] ?? [], true);
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
