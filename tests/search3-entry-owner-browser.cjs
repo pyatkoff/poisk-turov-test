@@ -120,7 +120,7 @@ async function run(browser, width) {
     assert.equal(await extras.locator('[name=operator]').count(), 1, 'tour operator remains a secondary advanced search parameter');
     assert.equal(await preferences.locator('[name=operator]').count(), 0, 'tour operator is not promoted into the primary search form');
     assert.equal(await extras.evaluate(node => node.open), false, 'secondary supplier-search parameters stay collapsed initially');
-    assert.match((await extras.locator('summary').textContent()).trim(), /^Ещё фильтры\b/, 'secondary supplier-search disclosure keeps truthful search semantics');
+    assert.match((await extras.locator('summary').textContent()).trim(), /^Ещё фильтры(?:\s|$)/, 'secondary supplier-search disclosure keeps truthful search semantics');
     for (const selector of ['[name=stars]', '[name=food]', '[name=price_from]', '[name=price_till]']) {
       const control = preferences.locator(selector);
       assert.equal(await control.isVisible(), true, selector + ' remains permanently visible in primary OTA search');
