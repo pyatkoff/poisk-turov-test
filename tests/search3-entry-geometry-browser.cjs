@@ -45,24 +45,24 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('Взрослых', '<select><option>2</option></select>', 'adults')}
       ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
     </fieldset>
-    <fieldset class="search-group"><legend>Курорт и отель</legend>
+    <fieldset class="search-group"><legend>Курорт</legend>
       ${field('Курорт / регион', '<select><option>Анталья</option></select>', 'region')}
+      ${field('Район / субкурорт', '<select><option>Все районы</option></select>', 'subregion')}
+    </fieldset>
+    <fieldset class="search-group"><legend>Отель</legend>
       ${field('Конкретный отель', '<select><option>Любой отель</option></select>', 'hotel')}
-    </fieldset>
-    <fieldset class="search-group"><legend>Уровень отеля</legend>
       ${field('Категория отеля', '<select><option>4★ и выше</option></select>', 'stars')}
-      ${field('Рейтинг отеля', '<select><option>от 4.0</option></select>', 'rating')}
     </fieldset>
-    <fieldset class="search-group"><legend>Питание и оператор</legend>
+    <fieldset class="search-group"><legend>Питание и рейтинг</legend>
       ${field('Питание', '<select><option>Всё включено</option></select>', 'food')}
-      ${field('Туроператор', '<select><option>Все операторы</option></select>', 'operator')}
+      ${field('Рейтинг отеля', '<select><option>от 4.0</option></select>', 'rating')}
     </fieldset>
     <fieldset class="search-group"><legend>Бюджет</legend>
       ${field('Цена от', '<input type="number" value="80000">', 'price-from')}
       ${field('Цена до', '<input type="number" value="180000">', 'price-to')}
     </fieldset>
   </div>
-  <details class="extras"><summary>Ещё фильтры <span>аэропорт, район, тип отеля, перелёт и услуги</span></summary></details>
+  <details class="extras"><summary>Ещё фильтры <span>аэропорт, туроператор, тип отеля, перелёт и услуги</span></summary></details>
   <button class="primary search-submit" type="submit"><span>Найти туры</span></button>
 </form></main></body>`;
 
@@ -111,7 +111,7 @@ const measure = node => {
         assert.ok(state.labels.every(item => item.fontSize >= 12), `${width}: labels remain readable`);
         assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: native controls keep 44px/16px`);
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
-        assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы', 'Курорт и отель', 'Уровень отеля', 'Питание и оператор', 'Бюджет'], `${width}: full OTA search groups stay visible in canonical order`);
+        assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы', 'Курорт', 'Отель', 'Питание и рейтинг', 'Бюджет'], `${width}: full OTA search groups stay visible in canonical order`);
         if (width === 375) {
           assert.equal(state.mainColumns, 1, '375: primary groups use one readable outer column');
           assert.deepEqual(state.groupColumns, [1, 2, 2, 2, 2, 2, 2, 2], '375: primary route stacks while coupled preference pairs stay compact');
