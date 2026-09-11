@@ -35,12 +35,12 @@
     "checks": 33
   },
   "capability_verification": {
-    "status": "pending_ci",
-    "head": null,
-    "money_facts_run": null,
-    "offer_contract_run": null,
-    "retained_context_run": null,
-    "security_run": null,
+    "status": "success",
+    "head": "721398d01ed5026f8ad85a58dd8ef2b25375e270",
+    "money_facts_run": 34572965339,
+    "offer_contract_run": 34572965224,
+    "retained_context_run": 34572965268,
+    "security_run": 34572965257,
     "checks": 37
   },
   "effects": {
