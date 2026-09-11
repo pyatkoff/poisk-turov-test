@@ -16,8 +16,8 @@ $p=hfsr_pair('DONG DUONG HOTEL','DUONG DONG HOTEL','Хойан',true);
 hfsr_assert($p['anchor_ok']===false,'reordered/different anchor blocked');
 hfsr_assert($p['safe_strong_fuzzy']===false,'unsafe historical fuzzy shape blocked');
 
-$p=hfsr_pair('ROYAL GRAND SHARM','ROYAL GRAND RESORT SHARM','Шарм-эль-Шейх',false);
-hfsr_assert($p['safe_strong_fuzzy']===true,'high-confidence three-token Tourvisor identity accepted');
+$p=hfsr_pair('ROYAL GRAND PALACE SHARM','ROYAL GRAND PALACE RESORT SHARM','Шарм-эль-Шейх',false);
+hfsr_assert($p['safe_strong_fuzzy']===true,'three significant Tourvisor identity tokens survive generic resort');
 
 $p=hfsr_pair('BLUE BAY','BLUE BAY HOTEL','Хургада',false);
 hfsr_assert($p['safe_strong_fuzzy']===false,'short Tourvisor-only generic identity blocked');
