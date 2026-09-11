@@ -1,0 +1,126 @@
+name: MATCH Egypt 20261016 three-provider v15
+
+on:
+  push:
+    branches:
+      - ops/match-egypt-20261016-three-provider-1971-20260911-v15
+    paths:
+      - .github/match-egypt-20261016-three-provider-v15.arm
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-egypt-20261016-three-provider-v15
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-egypt-20261016-three-provider-1971-20260911-v15
+      OUT_DIR: /tmp/match-egypt-v15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 6
+          persist-credentials: false
+
+      - name: Verify and derive frozen full-page diagnostic
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          test "$(cat .github/match-egypt-20261016-three-provider-v15.arm)" = "$OPERATION_ID"
+          mkdir -p "$OUT_DIR"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php').read_text()
+          reps={
+            "hotel-match-three-provider-111-full-pages-1971-20260911-v6":os.environ['OPERATION_ID'],
+            "const M6_DATE = '2026-11-06';":"const M6_DATE = '2026-10-16';",
+            "'countryId'=>4":"'countryId'=>1",
+            "$lookup->execute([1,4]);":"$lookup->execute([1,1]);",
+            "'country'=>'Turkey'":"'country'=>'Egypt'",
+          }
+          for a,b in reps.items():
+            if a not in p: raise SystemExit('derive marker missing: '+a)
+            p=p.replace(a,b)
+          Path(os.environ['OUT_DIR'],'program.php').write_text(p)
+          PY
+          php -l "$OUT_DIR/program.php"
+
+      - name: Establish zero-supplier SSH master
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); key=rt/'m15key'; sock=rt/'m15.sock'; known=rt/'m15known'
+          raw=os.environ['KEY'].strip()
+          key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER'],os.environ['HOST']]
+          a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=1800']+common,text=True,capture_output=True,timeout=30)
+          if a.returncode: raise SystemExit('ssh_master_failed')
+          b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['USER'],os.environ['HOST'],'cd "$HOME/www/anytoour.ru" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php'],text=True,capture_output=True,timeout=30)
+          if b.returncode: raise SystemExit('ssh_preflight_failed')
+          PY
+
+      - name: Persist immutable reservation
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          src=Path(os.environ['OUT_DIR'],'program.php').read_bytes()
+          v={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(src).hexdigest(),'criteria':{'departure':'Moscow','country':'Egypt','country_id':1,'date':'2026-10-16','nights':7,'adults':2},'providers':['tourvisor_anex_only_full_pages','direct_anex','andromeda_anex_only_all_pages'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          p=Path(os.environ['OUT_DIR'],'reservation.json'); raw=(json.dumps(v,sort_keys=True,indent=2)+'\n').encode(); p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation_readback_failed')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-egypt-v15-${{ github.run_id }}-reserved
+          path: /tmp/match-egypt-v15/reservation.json
+          retention-days: 90
+
+      - name: Cooldown before single Tourvisor slice
+        run: sleep 90
+
+      - name: Execute synchronized three-provider slice
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          sock=Path(os.environ['RUNNER_TEMP'])/'m15.sock'; out=Path(os.environ['OUT_DIR'],'result.json'); program=Path(os.environ['OUT_DIR'],'program.php').read_text()
+          chk=subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['HOST']],text=True,capture_output=True,timeout=10)
+          if chk.returncode:
+            v={'status':'failed','stage':'pre_supplier_master_check','reason':'ssh_master_unavailable','operation_id':os.environ['OPERATION_ID'],'supplier_calls_proven':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n'); raise SystemExit('master_unavailable')
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['USER'],os.environ['HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=900)
+          marker='MATCH111FULL_JSON:'; line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None:
+            v={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':x.returncode,'stdout_sha256':hashlib.sha256(x.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(x.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n'); raise SystemExit('unknown_no_replay')
+          v=json.loads(line); v.update({'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'no_replay':True}); out.write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':v.get('status'),'tourvisor_hotels':v.get('providers',{}).get('tourvisor',{}).get('hotel_count'),'anex_hotels':v.get('providers',{}).get('anex',{}).get('hotel_count'),'andromeda_hotels':v.get('providers',{}).get('andromeda',{}).get('hotel_count'),'triple_count':v.get('comparison',{}).get('unique_alias_triples',{}).get('count'),'reason':v.get('reason'),'safe_message':v.get('safe_message')},ensure_ascii=False))
+          if x.returncode or v.get('status')!='completed': raise SystemExit('slice_failed')
+          PY
+
+      - name: Preserve final result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-egypt-v15-${{ github.run_id }}-final
+          path: |
+            /tmp/match-egypt-v15/reservation.json
+            /tmp/match-egypt-v15/result.json
+          if-no-files-found: warn
+          retention-days: 90
