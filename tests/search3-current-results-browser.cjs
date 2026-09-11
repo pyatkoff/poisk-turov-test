@@ -353,8 +353,7 @@ async function run(browser, width, previous) {
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.isVisible(), true, 'current price calendar is visible after a terminal result set');
     const calendarDisclosure = calendar.locator('details');
-    assert.equal(await calendarDisclosure.evaluate(node => node.open), width > 700, 'calendar starts compact only on mobile');
-    if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
+    assert.equal(await calendarDisclosure.evaluate(node => node.open), true, 'Search3 calendar starts expanded on first render at every responsive width');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => [node.dataset.calendarDate, node.querySelector('strong').textContent.replace(/\s/g, '')])), [
       ['2026-09-10', '99000₽'], ['2026-09-12', '148500₽']
     ], 'calendar exposes per-day minima and ignores unpriced tours');
