@@ -3,8 +3,8 @@
   "generated_at": "2026-09-11",
   "scope": "INT source-only canonical offer contract",
   "source": "app/integrations/three-provider-offer-contract.php",
-  "source_commit": "9c5ab52a06a3a87e761c767548f223a692ba6314",
-  "base": "480b8bc4c8dc94248c1f1b0dc8c4007b5c1f49be",
+  "source_commit": "747eb08469a8ba79d60b7f9e8912f3eb5217cb50",
+  "base": "b18fde6b25730edf46aecd5137f5565f9722e206",
   "statuses": {
     "provider_operator_separation": "operator_evidence_object_no_cross_provider_equivalence",
     "local_identity": "nullable_no_inference",
@@ -31,8 +31,8 @@
   "money_provenance_audit": "reports/three-provider-money-provenance-20260911.json",
   "money_provenance_verification": {"head": "9603834cda4af516793b1be44dc573bd225b3066", "money_facts_run": 34572575680, "offer_run": 34572575546, "context_run": 34572575619, "security_run": 34572575522, "checks": 33, "status": "success"},
   "timestamp_audit": "reports/three-provider-offer-timestamp-20260911.json",
-  "timestamp_verification": {"head": null, "offer_run": null, "context_run": null, "security_run": null, "offer_checks": 41, "status": "pending_ci"},
+  "timestamp_verification": {"head": "747eb08469a8ba79d60b7f9e8912f3eb5217cb50", "offer_run": 34577237765, "context_run": 34577237717, "security_run": 34577237785, "offer_checks": 41, "status": "success"},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0},
-  "tests": {"offer_checks": 39, "availability_checks": 20, "flight_checks": 16, "context_checks": 29, "security_run": 34568533875, "offer_run": 34568533837, "context_run": 34568533839, "status": "success"},
+  "tests": {"offer_checks": 41, "availability_checks": 20, "flight_checks": 16, "context_checks": 29, "security_run": 34577237785, "offer_run": 34577237765, "context_run": 34577237717, "status": "success"},
   "next_action": "Run one new non-replayed parity scenario when the approved workflow produces a run; P5 remains blocked on SAMO contract confirmation."
 }

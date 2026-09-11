@@ -16,11 +16,11 @@
   },
   "rejected_examples": ["2026-02-30T03:00:00Z", "2026-09-11T24:00:00Z"],
   "verification": {
-    "status": "pending_ci",
-    "head": null,
-    "offer_contract_run": null,
-    "retained_context_run": null,
-    "security_run": null,
+    "status": "success",
+    "head": "747eb08469a8ba79d60b7f9e8912f3eb5217cb50",
+    "offer_contract_run": 34577237765,
+    "retained_context_run": 34577237717,
+    "security_run": 34577237785,
     "offer_checks": 41
   },
   "effects": {
