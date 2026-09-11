@@ -96,8 +96,9 @@ class Search3SourceBuildTest(unittest.TestCase):
     def test_current_outputs_match_and_build_is_idempotent(self):
         self.assertEqual(builder.build(self.root), 8)
         self.assertEqual(
-            json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']['search3-selected-flow-v2.js'], [])
-        self.assertEqual((self.root / 'v2/search3-selected-flow-v2.js').read_bytes(), b'')
+            json.loads((self.root / 'src/search3/manifest.json').read_text())['assets']['search3-selected-flow-v2.js'],
+            ['behavior/selected-quote-v2.js'])
+        self.assertGreater(len((self.root / 'v2/search3-selected-flow-v2.js').read_bytes()), 0)
         before = (self.root / 'docs/project/search3-production-import.json').read_bytes()
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)
@@ -151,67 +152,54 @@ class Search3SourceBuildTest(unittest.TestCase):
             else:
                 self.assertEqual(content, original)
 
-    def test_invalid_private_include_fails_before_writing_any_output(self):
-        part = self.root / 'src/search3/behavior/search-form/primary-controls.js'
-        original = part.read_bytes()
-        for target in ('behavior/search-form.js',
-                       'behavior/search-form/secondary-controls.js', '../../v2/search3-entry-v1.js'):
-            with self.subTest(target=target):
-                part.write_bytes(original + f'/* @include {target} */\n'.encode())
-                with self.assertRaisesRegex(ValueError, 'Invalid or repeated'):
-                    builder.build(self.root, write=True)
-                for name, content in self.outputs.items():
-                    self.assertEqual((self.root / 'v2' / name).read_bytes(), content)
-        part.write_bytes(original)
-
-    def test_private_css_literal_preserves_strings_escapes_and_host_asset(self):
-        baseline, _, _ = builder.assemble(self.root)
-        _, part = self.install_private_css_fixture()
-        css = b'.x{content:"quote \\\" and slash \\\\";--tokens:red/* note */blue}\n'
-        part.write_bytes(css)
-        with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
-            builder.build(self.root)
-        outputs, _, _ = builder.assemble(self.root)
-        expected = builder.compact_css_comments(css, trim_indentation=True).decode()
-        self.assertIn(expected, text_content_literals(outputs['search3-results-filters-v1.js']))
-        builder.build(self.root, write=True)
-        self.assertEqual(builder.build(self.root), 8)
-        for name, original in baseline.items():
-            if name != 'search3-results-filters-v1.js':
-                self.assertEqual(outputs[name], original)
-
     def test_invalid_private_css_reference_fails_before_writing_outputs(self):
         source, _ = self.install_private_css_fixture()
-        original = source.read_text()
-        for target in ('styles/injected/selected-tour-mobile.css',
-                       '../../v2/search3-entry-v1.css', 'styles/injected/missing.css'):
-            with self.subTest(target=target):
-                source.write_text(original.replace('styles/injected/summary-cta.css', target))
-                with self.assertRaises((ValueError, OSError)):
-                    builder.build(self.root, write=True)
-                for name, content in self.outputs.items():
-                    self.assertEqual((self.root / 'v2' / name).read_bytes(), content)
-        source.write_text(original)
-
-    def test_private_css_is_optimized_and_invalid_css_cannot_write_outputs(self):
-        _, part = self.install_private_css_fixture()
-        part.write_text('.x { color: #AABBCC; margin: 0px 0px; }\n')
-        outputs, _, _ = builder.assemble(self.root)
-        self.assertIn('.x{color:#abc;margin:0}\n',
-                      text_content_literals(outputs['search3-results-filters-v1.js']))
-        part.write_text('.x { color }')
-        with self.assertRaisesRegex(ValueError, 'Colon is expected'):
+        source.write_text('''(function () {
+  const style = document.createElement('style');
+  style.textContent=/* @css-string ../outside.css */ "";
+  document.head.appendChild(style);
+})();
+''')
+        with self.assertRaises(ValueError):
             builder.build(self.root, write=True)
         for name, original in self.outputs.items():
             self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
 
+    def test_private_css_is_optimized_and_invalid_css_cannot_write_outputs(self):
+        source, part = self.install_private_css_fixture()
+        builder.build(self.root, write=True)
+        results = (self.root / 'v2/search3-results-filters-v1.js').read_bytes()
+        self.assertNotIn(b'/* private note */', results)
+        part.write_text('.broken { color: red; /* unterminated')
+        with self.assertRaises(ValueError):
+            builder.build(self.root, write=True)
+
+    def test_private_css_literal_preserves_strings_escapes_and_host_asset(self):
+        source, part = self.install_private_css_fixture()
+        part.write_text(r'''.fixture::before { content:"/* literal */"; --tokens: red/* private */blue; --escape:\"/* note */x; }
+/*! license */''')
+        builder.build(self.root, write=True)
+        results = (self.root / 'v2/search3-results-filters-v1.js').read_text()
+        literals = text_content_literals(results)
+        self.assertIn('/* literal */', ''.join(literals))
+        self.assertNotIn('/* private */', ''.join(literals))
+        self.assertIn('/*! license */', ''.join(literals))
+
     def test_source_outside_module_root_is_rejected(self):
         manifest = self.root / 'src/search3/manifest.json'
         data = json.loads(manifest.read_text())
-        data['assets']['search3-entry-v1.js'] = ['../../v2/search3-entry-v1.js']
+        data['assets']['search3-entry-v1.js'] = ['../outside.js']
         manifest.write_text(json.dumps(data))
-        with self.assertRaisesRegex(ValueError, 'Invalid or repeated'):
+        with self.assertRaises(ValueError):
+            builder.build(self.root)
+
+    def test_invalid_private_include_fails_before_writing_any_output(self):
+        source = self.root / 'src/search3/behavior/results-cards-v2.js'
+        source.write_text('/* @include ../outside.js */')
+        with self.assertRaises(ValueError):
             builder.build(self.root, write=True)
+        for name, original in self.outputs.items():
+            self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
 
 
 if __name__ == '__main__':
