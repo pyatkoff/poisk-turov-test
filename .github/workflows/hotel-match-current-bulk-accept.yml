@@ -4,25 +4,25 @@ on:
   push:
     branches: ['feat/match-current-bulk-review-20260911']
     paths:
-      - '.github/match-accept-1971-v1.arm'
+      - '.github/match-accept-1971-v2.arm'
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: match-current-db-bulk-accept-1971-v1
+  group: match-current-db-bulk-accept-1971-v2
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-current-bulk-accept-1971-20260911-v1
-  MAX_WRITES: '120'
+  OPERATION_ID: hotel-match-current-bulk-accept-1971-20260911-v2
+  MAX_WRITES: '40'
   MAX_ANEX_WRITES: '20'
-  MAX_ANDROMEDA_WRITES: '110'
+  MAX_ANDROMEDA_WRITES: '30'
 jobs:
   accept:
     if: >-
       github.actor == 'pyatkoff' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'MATCH #1971 arm guarded bulk accept v1'
+      github.event.head_commit.message == 'MATCH #1971 arm guarded bulk accept v2'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -32,13 +32,13 @@ jobs:
       - name: Verify exact arm and static write scope
         run: |
           set -euo pipefail
-          test "$(cat .github/match-accept-1971-v1.arm)" = $'operation_id=hotel-match-current-bulk-accept-1971-20260911-v1\nstate=armed'
+          test "$(cat .github/match-accept-1971-v2.arm)" = $'operation_id=hotel-match-current-bulk-accept-1971-20260911-v2\nstate=armed'
           php -l scripts/diagnostics/hotel_match_current_bulk_accept.php
           python3 -B tests/hotel_match_current_bulk_accept_source_test.py
           python3 - <<'PYTHON'
           from pathlib import Path
           src = Path('scripts/diagnostics/hotel_match_current_bulk_accept.php').read_text(encoding='utf-8')
-          assert "const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v1';" in src
+          assert "const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v2';" in src
           assert src.count('$db->commit();') == 1
           assert 'curl' not in src.lower()
           assert 'http://' not in src and 'https://' not in src
@@ -64,9 +64,10 @@ jobs:
               'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
               'source_sha':os.environ['GITHUB_SHA'],
               'mode':'server_current_guarded_write',
-              'prepared_from_read_only_operation':'hotel-match-current-strict-review-1971-20260911-v2',
-              'prepared_safe_candidates':98,
-              'prepared_provider_split':{'anex':6,'andromeda':92},
+              'prepared_from_read_only_operation':'hotel-match-current-strict-review-1971-20260911-v3',
+              'prepared_safe_candidates':22,
+              'prepared_provider_split':{'anex':8,'andromeda':14},
+              'prepared_classes':{'strict_current_rule':9,'cross_provider_anex_tourvisor':9,'cross_provider_andromeda_tourvisor':4},
               'runtime_write_caps':{
                   'total':int(os.environ['MAX_WRITES']),
                   'anex':int(os.environ['MAX_ANEX_WRITES']),
@@ -80,8 +81,8 @@ jobs:
       - name: Preserve reservation before live write
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-current-bulk-accept-1971-20260911-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v1/reservation.json
+          name: hotel-match-current-bulk-accept-1971-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Apply server-current guarded MATCH delta
@@ -111,9 +112,9 @@ jobs:
           accept_body=body(accept).replace(
               "if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
 
-          # Runtime guard is deliberately injected immediately before the only commit.
-          # All target tables are required to be InnoDB by mba_accept(), so exceeding
-          # the reviewed package envelope rolls the transaction back before COMMIT.
+          # Runtime guard is injected immediately before the only commit. All target
+          # tables are required to be InnoDB, so exceeding the reviewed envelope rolls
+          # the whole server-current transaction back before COMMIT.
           needle='$db->commit();'
           if accept_body.count(needle) != 1:
               raise RuntimeError('commit_shape_changed')
@@ -200,6 +201,7 @@ jobs:
               'result_sha256':hashlib.sha256(raw).hexdigest(),
               'database_writes':writes,
               'planned':planned,
+              'planned_classes':result.get('planned_classes'),
               'supplier_calls':0,
               'committed':True,
               'readback_verified':True,
@@ -217,8 +219,8 @@ jobs:
         id: result_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-current-bulk-accept-1971-20260911-v1-result
-          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v1/
+          name: hotel-match-current-bulk-accept-1971-20260911-v2-result
+          path: ${{ runner.temp }}/hotel-match-current-bulk-accept-1971-20260911-v2/
           if-no-files-found: error
           retention-days: 90
       - name: Record completed delta in MATCH queue
@@ -235,10 +237,11 @@ jobs:
           from pathlib import Path
           state=Path(os.environ['STATE'])
           r=json.loads((state/'result.json').read_text())
-          p=r['planned']; cb=r['coverage_before']; ca=r['coverage_after']; ib=r['identity_before']; ia=r['identity_after']
+          p=r['planned']; pc=r.get('planned_classes') or {}; cb=r['coverage_before']; ca=r['coverage_after']; ib=r['identity_before']; ia=r['identity_after']
           text=(
               f"MATCH #1971 guarded delta `{r['operation_id']}` **COMPLETED** with commit + per-row readback verified.\n\n"
               f"Actual DB writes **{r['database_writes']}** = ANEX **{p['anex']}** + Andromeda **{p['andromeda']}**; supplier calls **0**. "
+              f"Classes: strict/current **{pc.get('strict_current_rule',0)}**, Andromeda→ANEX+TV bridge **{pc.get('cross_provider_anex_tourvisor',0)}**, ANEX→Andromeda+TV reverse bridge **{pc.get('cross_provider_andromeda_tourvisor',0)}**. "
               f"Andromeda identity: accepted {ib['accepted']}→{ia['accepted']}, pending {ib['pending']}→{ia['pending']}, conflict {ib['conflict']}→{ia['conflict']}. "
               f"Coverage: ANEX links {cb['anex_links']}→{ca['anex_links']}, ANEX unique local {cb['anex_unique_local']}→{ca['anex_unique_local']}, "
               f"Andromeda unique local {cb['andromeda_unique_local']}→{ca['andromeda_unique_local']}, triple {cb['all_three']}→{ca['all_three']}.\n\n"
