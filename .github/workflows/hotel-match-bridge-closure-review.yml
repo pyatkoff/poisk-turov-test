@@ -31,7 +31,7 @@ jobs:
           s=Path('scripts/diagnostics/hotel_match_bridge_closure_review.php').read_text()
           assert "hotel-match-bridge-closure-review-1971-20260911-v1" in s
           assert 'START TRANSACTION READ ONLY' in s
-          assert 'database_writes'=>0 if False else True
+          assert "'database_writes'=>0" in s and "'supplier_calls'=>0" in s
           for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl','http://','https://'):
               assert bad.lower() not in s.lower(), bad
           print('read-only closure scope verified')
