@@ -8,6 +8,7 @@ on:
       - 'app/integrations/andromeda-network-transport-failure.php'
       - 'app/integrations/andromeda-package-retry-policy.php'
       - 'app/integrations/andromeda-package-attempt-state.php'
+      - 'app/integrations/andromeda-transport.php'
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-saved-package-runtime-smoke.php'
       - 'tests/andromeda-saved-package-attempt-runtime-smoke.php'
@@ -56,22 +57,23 @@ jobs:
       - name: Preserve exact retained/install regression, then exercise candidate runtime
         run: |
           cp package/app/integrations/andromeda-client.php package/app/integrations/andromeda-package-capture.php package/app/integrations/andromeda-selected-offer.php runtime/app/integrations/
-          # Reuse only the prepared transport, never the superseded probe or its workflow.
+          # The old installed six-file contract keeps its exact historical transport.
           cp transport/app/integrations/andromeda-transport.php runtime/app/integrations/
 
-          # First exercise the exact six-file retained/install contract. Do not silently
-          # repin the diagnostic hashes to the candidate runtime under review.
+          # First exercise the exact retained/install contract. Do not silently repin it.
           cp retained-base/v2/api-andromeda-search3-preview.php runtime/v2/
           cp retained-base/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
           php -l change/tests/andromeda-retained-cli-smoke.php
           php -d allow_url_fopen=0 change/tests/andromeda-retained-cli-smoke.php runtime --installed-runtime
 
-          # Only after the installed baseline is proven, assemble the candidate handoff.
+          # Only after the installed baseline is proven, assemble the current candidate.
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/
           cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
+          cp change/app/integrations/andromeda-transport.php runtime/app/integrations/
           cp change/app/integrations/andromeda-claiminc-contract.php change/app/integrations/andromeda-network-transport-failure.php change/app/integrations/andromeda-package-retry-policy.php change/app/integrations/andromeda-package-attempt-state.php runtime/app/integrations/
           php -l runtime/v2/api-andromeda-search3-preview.php
           php -l runtime/app/integrations/andromeda-saved-package-runtime.php
+          php -l runtime/app/integrations/andromeda-transport.php
           php -l runtime/app/integrations/andromeda-claiminc-contract.php
           php -l runtime/app/integrations/andromeda-network-transport-failure.php
           php -l runtime/app/integrations/andromeda-package-retry-policy.php
@@ -112,11 +114,12 @@ jobs:
           receipt = {'source': os.environ['SOURCE_SHA'], 'files_sha256': files,
               'dependencies': {'runtime': '95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa',
                   'package': '7c3c5bb55c88e376d97c998d0ba77a46960584d6',
-                  'transport': '1f628e4b172ce9706eabe875784ce2b226175a0d',
+                  'candidate_transport': os.environ['SOURCE_SHA'],
+                  'retained_install_transport': '1f628e4b172ce9706eabe875784ce2b226175a0d',
                   'retained_install_baseline': '163ef9eed9993c08558b84b7a0295e8b4295d2e8'},
               'scope': 'private-source-handoff-only', 'supplier_calls': 0,
               'published': False, 'package_captured_live': False, 'quote_verified': False,
-              'live_retry_enabled': False}
+              'typed_transport_in_candidate': True, 'live_retry_enabled': False}
           manifest = out / 'receipt.json'
           manifest.write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
           assert json.loads(manifest.read_text()) == receipt
