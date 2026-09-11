@@ -5,7 +5,7 @@ on:
   push:
     branches: ['feat/match-current-bulk-review-20260911']
     paths:
-      - '.github/match-postdirect-single-accept-1971-v1.arm'
+      - '.github/match-postdirect-single-accept-1971-v2.arm'
 
 permissions:
   contents: read
@@ -13,11 +13,11 @@ permissions:
   issues: write
 
 concurrency:
-  group: match-postdirect-single-accept-1971-v1
+  group: match-postdirect-single-accept-1971-v2
   cancel-in-progress: false
 
 env:
-  OPERATION_ID: hotel-match-postdirect-single-accept-1971-20260911-v1
+  OPERATION_ID: hotel-match-postdirect-single-accept-1971-20260911-v2
   TARGET_PROVIDER: andromeda
   TARGET_EXTERNAL_ID: '5104'
   TARGET_LOCAL_ID: '1092'
@@ -30,7 +30,7 @@ jobs:
     if: >-
       github.actor == 'pyatkoff' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'MATCH #1971 arm bounded post-direct accept v1'
+      github.event.head_commit.message == 'MATCH #1971 arm bounded post-direct accept v2'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -41,7 +41,7 @@ jobs:
       - name: Verify exact arm and static write scope
         run: |
           set -euo pipefail
-          test "$(cat .github/match-postdirect-single-accept-1971-v1.arm)" = $'operation_id=hotel-match-postdirect-single-accept-1971-20260911-v1\nprovider=andromeda\nexternal_id=5104\nlocal_id=1092\nstate=armed\nno_replay=true'
+          test "$(cat .github/match-postdirect-single-accept-1971-v2.arm)" = $'operation_id=hotel-match-postdirect-single-accept-1971-20260911-v2\nprovider=andromeda\nexternal_id=5104\nlocal_id=1092\nstate=armed\nno_replay=true'
           php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
           php -l scripts/diagnostics/hotel_match_current_bulk_review.php
           php -l scripts/diagnostics/hotel_match_current_bulk_accept.php
@@ -51,6 +51,7 @@ jobs:
           src=Path('scripts/diagnostics/hotel_match_current_bulk_accept.php').read_text(encoding='utf-8')
           assert src.count("const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v3';")==1
           assert src.count('$db->commit();')==1
+          assert src.count("$prior = fc_evidence($r['evidence_json'] ?? '');")==1
           assert 'curl' not in src.lower() and 'http://' not in src and 'https://' not in src
           assert 'DELETE FROM' not in src.upper()
           assert 'INSERT INTO catalog_hotels' not in src and 'UPDATE catalog_hotels' not in src
@@ -75,6 +76,7 @@ jobs:
             'prepared_from_operation':'hotel-match-current-postdirect-review-1971-20260911-v1',
             'prepared_artifact_id':10268993485,
             'prepared_review_sha256':'9db7483e6e09b43c4c0ed7116b3d89c91a871bae101ddb4a561a2c1dcbc0c62a',
+            'prior_attempt':'hotel-match-postdirect-single-accept-1971-20260911-v1_pre_ssh_no_db_write',
             'immutable_target':{'provider':'andromeda','external_id':'5104','local_id':1092},
             'runtime_write_caps':{'total':1,'anex':0,'andromeda':1},
             'supplier_calls':0,
@@ -86,8 +88,8 @@ jobs:
       - name: Preserve reservation before live write
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-postdirect-single-accept-1971-20260911-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-postdirect-single-accept-1971-20260911-v1/reservation.json
+          name: hotel-match-postdirect-single-accept-1971-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-postdirect-single-accept-1971-20260911-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
 
@@ -122,22 +124,14 @@ jobs:
           if accept_body.count(anex_guard)!=1: raise RuntimeError('anex_resolver_shape_changed')
           accept_body=accept_body.replace(anex_guard,"return null; /* bounded post-direct operation: ANEX writes disabled */",1)
 
-          and_guard="""            if (!mba_row_is_safe_auto_accept($row)) {
-                $skipped['andromeda_not_auto']++;
-                continue;
-            }
-            $prior = fc_evidence($r['evidence_json'] ?? '');"""
-          if accept_body.count(and_guard)!=1: raise RuntimeError('andromeda_guard_shape_changed')
-          and_bounded="""            if (!mba_row_is_safe_auto_accept($row)) {
-                $skipped['andromeda_not_auto']++;
-                continue;
-            }
-            if ($external !== '5104' || (int)($row['target']['local_hotel_id'] ?? 0) !== 1092) {
-                $skipped['andromeda_not_auto']++;
-                continue;
-            }
-            $prior = fc_evidence($r['evidence_json'] ?? '');"""
-          accept_body=accept_body.replace(and_guard,and_bounded,1)
+          prior_needle="$prior = fc_evidence($r['evidence_json'] ?? '');"
+          if accept_body.count(prior_needle)!=1: raise RuntimeError('andromeda_prior_shape_changed')
+          bounded_guard=("if ($external !== '5104' || (int)($row['target']['local_hotel_id'] ?? 0) !== 1092) {\n"
+                         "                $skipped['andromeda_not_auto']++;\n"
+                         "                continue;\n"
+                         "            }\n"
+                         "            "+prior_needle)
+          accept_body=accept_body.replace(prior_needle,bounded_guard,1)
 
           needle='$db->commit();'
           if accept_body.count(needle)!=1: raise RuntimeError('commit_shape_changed')
@@ -165,7 +159,7 @@ jobs:
               (state/'blocker.json').write_text(json.dumps(b)+'\n'); raise RuntimeError('ssh_secret_missing')
 
           (state/'ssh_started.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'ssh_started','source_sha':os.environ['GITHUB_SHA'],'composed_code_sha256':code_sha})+'\n')
-          with tempfile.TemporaryDirectory(prefix='match-postdirect-single-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+          with tempfile.TemporaryDirectory(prefix='match-postdirect-single-v2-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
               key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600); known=Path(tmp)/'known_hosts'
               cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
               clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
@@ -232,8 +226,8 @@ jobs:
         id: result_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-postdirect-single-accept-1971-20260911-v1-result
-          path: ${{ runner.temp }}/hotel-match-postdirect-single-accept-1971-20260911-v1/
+          name: hotel-match-postdirect-single-accept-1971-20260911-v2-result
+          path: ${{ runner.temp }}/hotel-match-postdirect-single-accept-1971-20260911-v2/
           if-no-files-found: error
           retention-days: 90
 
@@ -250,7 +244,7 @@ jobs:
           from pathlib import Path
           s=Path(os.environ['STATE'])
           if (s/'receipt.json').exists():
-              r=json.loads((s/'result.json').read_text()); p=r['planned']; pc=r.get('planned_classes') or {}; cb=r['coverage_before']; ca=r['coverage_after']; ib=r['identity_before']; ia=r['identity_after']; a=r['accepted']['andromeda'][0]
+              r=json.loads((s/'result.json').read_text()); cb=r['coverage_before']; ca=r['coverage_after']; ib=r['identity_before']; ia=r['identity_after']; a=r['accepted']['andromeda'][0]
               text=(f"MATCH #1971 bounded post-direct delta `{r['operation_id']}` **COMPLETED** with commit + exact per-row readback. DB writes **1**: Andromeda `{a['external_id']}` → local `{a['target']}` (`{a['reason']}`), ANEX writes **0**, supplier calls **0**. Andromeda accepted {ib['accepted']}→{ia['accepted']}, pending {ib['pending']}→{ia['pending']}; coverage Andromeda unique {cb['andromeda_unique_local']}→{ca['andromeda_unique_local']}, triple {cb['all_three']}→{ca['all_three']}. Artifact `{os.environ['ARTIFACT_ID']}`. Operation is NO-REPLAY.")
           else:
               b=json.loads((s/'blocker.json').read_text()) if (s/'blocker.json').exists() else {'operation_id':os.environ['OPERATION_ID'],'state':'workflow_failure','reason':'no_blocker_payload'}
