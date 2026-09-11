@@ -1,163 +1,111 @@
+/* Real served Search3 form: reuse the whole-site runner, never fabricate its HTML. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');
-
-const root = path.resolve(__dirname, '..');
-const { execFileSync } = require('node:child_process');
-let legacyNames;
-try {
-  legacyNames = JSON.parse(execFileSync('php', ['-r',
-    'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("css", "search3"));'
-  ], { cwd: root, encoding: 'utf8' }));
-} catch (error) {
-  if (error.code !== 'ENOENT') throw error;
-  legacyNames = ['design-system-v2.css', 'site-header-v2.css', 'site-footer-v1.css', 'current-price-calendar-v1.css'];
-}
-const searchNames = [
-  'search3-results-filters-v1.css',
-  'search3-entry-v1.css',
-  'search3-results-cards-v2.css',
-  'search3-selected-flow-v2.css',
-];
-const css = legacyNames.concat(searchNames)
-  .map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8'))
-  .join('\n');
-
-const field = (label, control, name, preference = false) => `<label class="field${preference ? ' search-preference' : ''} search3-${name}"><span>${label}</span>${control}</label>`;
-const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{width:100%;max-width:1120px;margin:auto;padding:12px}.v2-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}</style>
-<body class="search3-candidate"><main class="v2-shell"><section class="v2-product-hero v2-visually-hidden" aria-labelledby="v2-search-title"><h1 id="v2-search-title">Поиск туров</h1><p>Выберите направление и даты — сравните подходящие предложения.</p></section><form id="tourSearch" class="search-card">
-  <div class="search-section-title"><span>Параметры поездки</span></div>
-  <div class="main-fields">
-    <fieldset class="search-group search-group--route"><legend>Направление</legend>
-      ${field('Вылет из', '<select><option>Калининград</option></select>', 'from')}
-      ${field('Страна', '<select><option>Турция</option></select>', 'country')}
-    </fieldset>
-    <fieldset class="search-group search-group--dates"><legend>Даты вылета</legend>
-      ${field('Вылет с', '<input type="date" value="2026-09-12">', 'date-from')}
-      ${field('Вылет до', '<input type="date" value="2026-09-19">', 'date-to')}
-    </fieldset>
-    <fieldset class="search-group search-group--nights"><legend>Продолжительность</legend>
-      ${field('Ночей от', '<select><option>7</option></select>', 'nights-from')}
-      ${field('Ночей до', '<select><option>10</option></select>', 'nights-to')}
-    </fieldset>
-    <fieldset class="search-group search-group--party"><legend>Туристы</legend>
-      ${field('Взрослых', '<select><option>2</option></select>', 'adults')}
-      ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
-    </fieldset>
-    <div class="search-section-title search-section-title--preferences"><span>Отель и условия</span></div>
-    <div class="search-preferences">
-      ${field('Курорт / регион', '<select><option>Анталья</option></select>', 'region', true)}
-      ${field('Конкретный отель', '<select><option>Любой отель</option></select>', 'hotel', true)}
-      ${field('Категория отеля', '<select><option>4★ и выше</option></select>', 'stars', true)}
-      ${field('Питание', '<select><option>Всё включено</option></select>', 'food', true)}
-      ${field('Цена от', '<input type="number" value="80000">', 'price-from', true)}
-      ${field('Цена до', '<input type="number" value="180000">', 'price-to', true)}
-    </div>
-  </div>
-  <details class="extras"><summary>Ещё фильтры <span>район, рейтинг, аэропорт, туроператор, тип отеля, перелёт и услуги</span></summary></details>
-  <button class="primary search-submit" type="submit"><span>Найти туры</span></button>
-</form></main></body>`;
-
-const measure = node => {
-  const box = node.getBoundingClientRect();
-  const style = getComputedStyle(node);
-  return { top: box.top, bottom: box.bottom, width: box.width, height: box.height, fontSize: parseFloat(style.fontSize), display: style.display, position: style.position };
-};
-
+const base = process.env.SEARCH3_VISUAL_BASE;
+assert.ok(base && new URL(base).hostname === '127.0.0.1', 'requires the isolated local artifact server');
+assert.ok(process.env.SEARCH3_RESULTS_OUTPUT, 'requires retained evidence');
+const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, 'native-form');
+fs.mkdirSync(output, { recursive: true });
+const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
 (async () => {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined,
-  });
-  const output = process.env.SEARCH3_RESULTS_OUTPUT;
-  if (output) fs.mkdirSync(output, { recursive: true });
-  let states = 0;
+  const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440]) {
-      const page = await browser.newPage({ viewport: { width, height: 1300 } });
+    for (const width of widths) {
+      const page = await browser.newPage({ viewport: { width, height: 1000 } });
+      const blocked = [], errors = [];
+      page.on('pageerror', error => errors.push(String(error)));
+      await page.route('**/*', route => {
+        const request = route.request(), url = new URL(request.url());
+        if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) {
+          blocked.push(`${request.method()} ${url.pathname}`);
+          return route.abort();
+        }
+        return route.continue();
+      });
       try {
-        await page.setContent(html);
-        await page.addStyleTag({ content: css });
-        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        const state = await page.evaluate(measureSource => {
-          const measureNode = eval(`(${measureSource})`);
-          const preferences = document.querySelector('.search-preferences');
+        assert.equal((await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8&daysFrom=7&daysTill=10', { waitUntil: 'domcontentloaded' })).status(), 200);
+        await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1' && document.forms.tourSearch.dataset.catalogSource && window.V2SearchLifecycle);
+        await page.evaluate(() => document.fonts.ready);
+        const state = await page.evaluate(() => {
+          const box = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height, fontSize: parseFloat(s.fontSize), position: s.position }; };
+          const form = document.forms.tourSearch, preferences = form.querySelector('.search-preferences');
+          const visible = nodes => [...nodes].filter(node => node.getBoundingClientRect().height > 0);
+          const columns = node => getComputedStyle(node).gridTemplateColumns.split(' ').length;
           return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            hero: measureNode(document.querySelector('.v2-product-hero')),
-            form: measureNode(document.querySelector('#tourSearch')),
-            mainColumns: getComputedStyle(document.querySelector('.main-fields')).gridTemplateColumns.split(' ').length,
-            preferenceColumns: getComputedStyle(preferences).gridTemplateColumns.split(' ').length,
-            preferenceWidth: measureNode(preferences).width,
-            groupColumns: [...document.querySelectorAll('.search-group')].map(node => getComputedStyle(node).gridTemplateColumns.split(' ').length),
-            groupTops: [...document.querySelectorAll('.search-group')].map(node => Math.round(node.getBoundingClientRect().top)),
-            groupLegends: [...document.querySelectorAll('.search-group legend')].map(node => node.textContent.trim()),
-            preferenceTops: [...document.querySelectorAll('.search-preference')].map(node => Math.round(node.getBoundingClientRect().top)),
-            preferenceLabels: [...document.querySelectorAll('.search-preference>span')].map(node => node.textContent.trim()),
-            labels: [...document.querySelectorAll('#tourSearch .field>span')].map(measureNode),
-            controls: [...document.querySelectorAll('#tourSearch .field :is(input,select)')].map(measureNode),
-            dateControls: [...document.querySelectorAll('.search-group--dates input')].map(measureNode),
-            submit: measureNode(document.querySelector('.search-submit')),
-            extras: measureNode(document.querySelector('.extras')),
+            hero: box(document.querySelector('.v2-product-hero')), form: box(form),
+            mainColumns: columns(form.querySelector('.main-fields')), preferenceColumns: columns(preferences), preferenceWidth: box(preferences).width,
+            groupColumns: [...form.querySelectorAll('.search-group')].map(columns),
+            groupTops: [...form.querySelectorAll('.search-group')].map(node => Math.round(box(node).top)),
+            groupLegends: [...form.querySelectorAll('.search-group legend')].map(node => node.textContent.trim()),
+            preferenceTops: [...preferences.children].map(node => Math.round(box(node).top)),
+            preferenceLabels: [...preferences.querySelectorAll('.search-preference>span')].map(node => node.textContent.trim()),
+            preferenceWidths: [...preferences.children].map(node => box(node).width),
+            labels: visible(form.querySelectorAll('.field>span')).map(box),
+            controls: visible(form.querySelectorAll('.field :is(input,select)')).map(box),
+            dateControls: [...form.querySelectorAll('.search-group--dates input')].map(box),
+            submit: box(form.querySelector('.search-submit')), extras: box(form.querySelector('.extras')),
+            operatorSecondary: !!form.querySelector('.extras select[name=operator]'),
           };
-        }, measure.toString());
-        if (output) {
-          fs.writeFileSync(path.join(output, `entry-${width}.json`), JSON.stringify({ width, state }, null, 2) + '\n');
-          await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
-        }
-        assert.ok(state.overflow <= 1, `${width}: form must not overflow horizontally`);
-        assert.equal(state.hero.position, 'absolute', `${width}: semantic Search3 hero stays out of visual flow`);
-        assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, `${width}: redundant hero consumes no first-view space`);
-        assert.ok(state.form.top <= 13, `${width}: search form starts at the shell top without a hero gap`);
-        assert.ok(state.labels.every(item => item.fontSize >= 12), `${width}: labels remain readable`);
-        assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), `${width}: native controls keep 44px/16px`);
-        assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
-        assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы'], `${width}: trip basics keep the existing four canonical groups`);
-        assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до'], `${width}: primary hotel/price preferences stay visible in canonical order`);
+        });
+        fs.writeFileSync(path.join(output, `entry-${width}.json`), JSON.stringify({ width, state }, null, 2) + '\n');
+        await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-${width}.png`), animations: 'disabled' });
+        assert.ok(state.overflow <= 1, `${width}: form does not widen the document`);
+        assert.equal(state.hero.position, 'absolute', 'semantic hero stays outside visual flow');
+        assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
+        assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
+        assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), 'native controls retain 44px/16px');
+        assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, 'primary action remains readable');
+        assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы']);
+        assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до']);
+        assert.equal(state.operatorSecondary, true, 'operator is not a primary search field');
         if (width === 350) {
-          assert.equal(state.mainColumns, 1, '350: full search uses one readable outer column');
-          assert.equal(state.preferenceColumns, 1, '350: narrow phones fall back to one preference column');
-          assert.deepEqual(state.groupColumns, [1, 1, 1, 1], '350: all native field groups stack safely on narrow phones');
-          assert.equal(new Set(state.preferenceTops).size, 6, '350: six primary preference controls stack without cramped pairs');
-          assert.ok(state.submit.width >= state.form.width - 45, '350: primary action spans the mobile form');
+          assert.equal(state.mainColumns, 1); assert.equal(state.preferenceColumns, 1);
+          assert.deepEqual(state.groupColumns, [1, 1, 1, 1]);
+          assert.equal(new Set(state.preferenceTops).size, 6, 'narrow phone has six safe preference rows');
         }
         if (width === 375 || width === 430) {
-          assert.equal(state.mainColumns, 1, `${width}: full search uses one readable outer column`);
-          assert.equal(state.preferenceColumns, 2, `${width}: short primary preferences use two compact mobile columns`);
-          assert.deepEqual(state.groupColumns, [1, 2, 2, 2], `${width}: route stacks while coupled trip pairs stay compact`);
-          assert.equal(new Set(state.preferenceTops).size, 4, `${width}: region and hotel stay full-width while category/meal and price bounds pair`);
-          assert.notEqual(state.preferenceTops[0], state.preferenceTops[1], `${width}: region and exact hotel keep separate full-width rows`);
-          assert.equal(state.preferenceTops[2], state.preferenceTops[3], `${width}: category and meal share one compact row`);
-          assert.equal(state.preferenceTops[4], state.preferenceTops[5], `${width}: price bounds share one compact row`);
-          assert.ok(state.submit.width >= state.form.width - 45, `${width}: primary action spans the mobile form`);
+          assert.equal(state.mainColumns, 1); assert.equal(state.preferenceColumns, 2);
+          assert.deepEqual(state.groupColumns, [1, 2, 2, 2]);
+          assert.equal(new Set(state.preferenceTops).size, 4);
+          assert.notEqual(state.preferenceTops[0], state.preferenceTops[1]);
+          assert.equal(state.preferenceTops[2], state.preferenceTops[3]);
+          assert.equal(state.preferenceTops[4], state.preferenceTops[5]);
+          assert.ok(state.preferenceWidths.slice(0, 2).every(value => Math.abs(value - state.preferenceWidth) < 2), 'region/hotel stay full-width');
         }
-        if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2, `${width}: intermediate primary preferences use two balanced columns`);
-        if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
+        if (width <= 430) assert.ok(state.submit.width >= state.form.width - 45, 'mobile CTA spans the form');
+        if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2);
+        if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, 'closed extras and CTA share a footer row');
         if (width >= 1200) {
-          assert.equal(state.mainColumns, 2, 'wide desktop: canonical trip grid keeps two readable columns');
-          assert.equal(state.preferenceColumns, 3, 'wide desktop: hotel preferences use a dedicated three-column grid');
-          const groupRows = new Map();
-          for (const top of state.groupTops) groupRows.set(top, (groupRows.get(top) || 0) + 1);
-          assert.deepEqual([...groupRows.values()].sort((a,b)=>a-b), [2, 2], 'wide desktop: trip basics use two balanced rows instead of four cramped quarters');
-          assert.ok(state.groupColumns.every(columns => columns === 2), 'wide desktop: each trip group keeps its paired native controls');
-          const preferenceRows = new Map();
-          for (const top of state.preferenceTops) preferenceRows.set(top, (preferenceRows.get(top) || 0) + 1);
-          assert.deepEqual([...preferenceRows.values()].sort((a,b)=>a-b), [3, 3], 'wide desktop: six primary hotel/price preferences use two balanced rows of three');
-          assert.ok(state.preferenceWidth >= state.form.width - 50, 'wide desktop: dedicated preference grid uses the available form width');
-          assert.ok(state.dateControls.every(item => item.width >= 200), 'wide desktop: native date fields keep comfortable full-value width');
-          assert.ok(state.submit.width <= 281, 'wide desktop: primary action does not consume the entire form width');
+          assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 3);
+          const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
+          assert.deepEqual(counts(state.groupTops), [2, 2], 'trip basics retain two balanced rows');
+          assert.ok(state.groupColumns.every(value => value === 2));
+          assert.deepEqual(counts(state.preferenceTops), [3, 3]);
+          assert.ok(state.preferenceWidth >= state.form.width - 50);
+          assert.ok(state.dateControls.every(item => item.width >= 200));
+          assert.ok(state.submit.width <= 281, 'desktop CTA is not oversized');
         }
-        states += 1;
-      } finally {
-        await page.close();
-      }
+        const party = [];
+        for (const count of [1, 2, 3, 0]) {
+          await page.locator('[name=child_count]').selectOption(String(count));
+          await page.waitForFunction(n => document.querySelectorAll('#childAges select').length === n, count);
+          const ages = ['0', '17', '6'].slice(0, count);
+          for (let i = 0; i < count; i++) await page.locator('#childAges select').nth(i).selectOption(ages[i]);
+          const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden }; });
+          assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0 });
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+          party.push(fields);
+        }
+        await page.locator('#tourSearch > .extras > summary').click();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+        await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-expanded-${width}.png`), animations: 'disabled' });
+        assert.deepEqual(errors, []);
+        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ width, party, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
+      } finally { await page.close(); }
     }
-  } finally {
-    await browser.close();
-  }
-  console.log(`SEARCH3_ENTRY_GEOMETRY_OK states=${states}`);
-})().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+  } finally { await browser.close(); }
+  console.log(`SEARCH3_SERVED_ENTRY_GEOMETRY_OK widths=${widths.join(',')} party_states=${widths.length * 4} lead_sent=0`);
+})().catch(error => { console.error(error); process.exitCode = 1; });
