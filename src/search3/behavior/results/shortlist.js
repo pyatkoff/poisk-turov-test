@@ -59,7 +59,7 @@ function render(){
   if(saved.length){const list=node('div','search3-shortlist__items');saved.forEach(item=>{
     const article=node('article','search3-shortlist-item');article.dataset.source=item.source;article.dataset.hotelId=item.hotelId;article.dataset.offerId=item.offerId;article.dataset.searchId=item.searchId;
     const heading=node('h3','',item.hotelName),place=node('p','search3-shortlist-item__place',[item.country,item.region].filter(Boolean).join(' · ')),facts=node('dl','search3-shortlist-item__facts');
-    [['Вылет',item.date],['Ночей',String(item.nights)],['Питание',item.meal],['Номер',item.room],['Размещение',item.placement||'Уточняется'],['Оператор',item.operator||'Уточняется']].forEach(pair=>{const wrap=node('div');wrap.append(node('dt','',pair[0]),node('dd','',pair[1]));facts.append(wrap);});
+    [['Вылет',item.date],['Ночей',String(item.nights)],['Питание',item.meal],['Номер',item.room],['Размещение',item.placement||'Уточняется'],['Источник','Tourvisor'],['Оператор',item.operator||'Уточняется']].forEach(pair=>{const wrap=node('div');wrap.append(node('dt','',pair[0]),node('dd','',pair[1]));facts.append(wrap);});
     const savedPrice=node('div','search3-shortlist-item__price');savedPrice.append(node('small','', 'Цена при сохранении'),node('strong','',price(item.observedPrice)),node('time','',savedTime(item.savedAt)));savedPrice.querySelector('time').dateTime=item.savedAt;
     const actions=node('div','search3-shortlist-item__actions'),select=node('button','search3-shortlist-select',available(item)?'Проверить предложение':'Нет в текущей выдаче'),remove=node('button','search3-shortlist-remove','Удалить');select.type='button';select.dataset.offerId=item.offerId;select.disabled=!available(item);remove.type='button';actions.append(select,remove);article.append(heading,place,facts,savedPrice,actions);list.append(article);
   });panel.append(list);}
@@ -84,5 +84,5 @@ window.addEventListener('v2:search-reset',()=>{currentItems=[];render();});
 window.addEventListener('v2:search-started',()=>{currentItems=[];render();});
 window.addEventListener('v2:tour-returned',()=>{const focus=returnFocus;returnFocus=null;if(!focus)return;requestAnimationFrame(()=>{const button=Array.from(root.querySelectorAll('.search3-shortlist-select')).find(node=>node.dataset.offerId===focus.offerId&&node.closest('.search3-shortlist-item').dataset.searchId===focus.searchId);if(button&&!button.disabled)button.focus({preventScroll:true});});});
 load();render();
-window.Search3Shortlist={storageKey,items:()=>saved.map(item=>Object.assign({},item)),get persistent(){return persistence;},version:1};
+window.Search3Shortlist={storageKey,items:()=>saved.map(item=>Object.assign({},item)),get persistent(){return persistence;},version:2};
 })();
