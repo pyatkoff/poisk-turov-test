@@ -13,7 +13,7 @@ jobs:
     if: >-
       github.event.issue.number == 996 &&
       github.event.comment.user.login == 'pyatkoff' &&
-      github.event.comment.body == '/probe-andromeda-fresh-package-1717'
+      github.event.comment.body == '/probe-andromeda-fresh-package-1717-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,14 +22,14 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 996
           test "${{ github.event.comment.user.login }}" = pyatkoff
-          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717
+          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717-v2
       - uses: actions/checkout@v4
         with:
-          ref: 0cc26c013aab5da717dde2f1bc7d520e1da43ed5
+          ref: f98f2ad125ee9e69e0279564d5888f2ee1e2bccb
           persist-credentials: false
       - name: Verify exact checked diagnostic source
         run: |
-          test "$(git rev-parse HEAD)" = 0cc26c013aab5da717dde2f1bc7d520e1da43ed5
+          test "$(git rev-parse HEAD)" = f98f2ad125ee9e69e0279564d5888f2ee1e2bccb
           python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py
           python3 tests/andromeda_fresh_package_probe_test.py
       - name: Capture one fresh ANEX package without booking
