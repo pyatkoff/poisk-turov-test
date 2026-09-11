@@ -1,0 +1,131 @@
+name: MATCH three-provider 1-1-1 full pages v6
+
+on:
+  push:
+    branches: [ops/match-three-provider-111-full-pages-1971-20260911-v6]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-three-provider-111-full-pages-v6
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-three-provider-111-full-pages-1971-20260911-v6
+      EXPECTED_BASE_SHA: 93beddd94fb19b42937c815ee30d4ca8426903e3
+      ARTIFACT_DIR: /tmp/match-three-provider-111-full-pages-v6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 8
+          persist-credentials: false
+
+      - name: Verify isolated full-page evidence source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'pyatkoff/poisk-turov-test'
+          test "$GITHUB_REF" = 'refs/heads/ops/match-three-provider-111-full-pages-1971-20260911-v6'
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-three-provider-111-full-pages-v6.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' \
+            '.github/match-three-provider-111-full-pages-v6.arm' \
+            '.github/workflows/hotel-match-three-provider-111-full-pages-v6.yml' \
+            'scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          php -l scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php
+          ! grep -Eiq 'INSERT[[:space:]]+INTO|UPDATE[[:space:]].*[[:space:]]SET|DELETE[[:space:]]+FROM|REPLACE[[:space:]]+INTO|ALTER[[:space:]]+TABLE|DROP[[:space:]]+TABLE|TRUNCATE[[:space:]]+TABLE' scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          mkdir -p "$ARTIFACT_DIR"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          source=Path('scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php').read_bytes()
+          value={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved_before_live_access',
+            'source_sha':os.environ['GITHUB_SHA'],
+            'base_sha':os.environ['EXPECTED_BASE_SHA'],
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'diagnostic_sha256':hashlib.sha256(source).hexdigest(),
+            'criteria':{'departure':'Moscow','country':'Turkey','date':'2026-11-06','nights':7,'adults':2,'children':0,'currency':'RUB'},
+            'providers':['tourvisor_anex_only_full','direct_anex_anchor','andromeda_anex_only_all_pages'],
+            'tourvisor_continue_cap':8,
+            'andromeda_page_cap':100,
+            'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,
+            'no_replay':True,
+          }
+          p=Path(os.environ['ARTIFACT_DIR'])/'reservation.json'
+          raw=(json.dumps(value,sort_keys=True,indent=2)+'\n').encode();p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation readback failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-full-pages-v6-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: /tmp/match-three-provider-111-full-pages-v6/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute synchronized full-page server evidence
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,subprocess,tempfile
+          from pathlib import Path
+          required=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(x,'').strip() for x in required): raise SystemExit('missing ssh configuration')
+          program=Path('scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php').read_text()
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory(prefix='match111full-') as td:
+              key=Path(td)/'key'
+              if 'PRIVATE KEY' in raw:key.write_text(raw.rstrip()+'\n')
+              else:key.write_bytes(base64.b64decode(raw))
+              key.chmod(0o600)
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              p=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=600)
+          marker='MATCH111FULL_JSON:'
+          line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
+          if line is None: raise SystemExit('provider result marker missing')
+          data=json.loads(line)
+          data.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=p.returncode,no_replay=True)
+          out=Path(os.environ['ARTIFACT_DIR'])/'result.json';rawout=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();out.write_bytes(rawout)
+          if len(rawout)>3000000: raise SystemExit('result too large')
+          providers=data.get('providers') or {}
+          summary={
+            'status':data.get('status'),'stage':data.get('stage'),'reason':data.get('reason'),'remote_exit':p.returncode,
+            'tourvisor':{k:(providers.get('tourvisor') or {}).get(k) for k in ('hotel_count','initial_result_limit','continue_calls','stop_reason','rounds')},
+            'anex':{k:(providers.get('anex') or {}).get(k) for k in ('hotel_count','external_search_pending')},
+            'andromeda':{k:(providers.get('andromeda') or {}).get(k) for k in ('hotel_count','offer_count','pages_consumed','final_pages_count','pages')},
+            'unique_alias_triples':(((data.get('comparison') or {}).get('unique_alias_triples') or {}).get('count')),
+          }
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if p.returncode!=0 or data.get('status')!='completed': raise SystemExit('full-page 1-1-1 failed')
+          if any(int(data.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','booking_calls','lead_calls')): raise SystemExit('unsafe side effect')
+          PY
+
+      - name: Preserve sanitized full-page result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-full-pages-v6-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            /tmp/match-three-provider-111-full-pages-v6/reservation.json
+            /tmp/match-three-provider-111-full-pages-v6/result.json
+          if-no-files-found: warn
+          retention-days: 90
