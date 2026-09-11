@@ -9,6 +9,7 @@ const HMATSD_DIRECT_OPERATION = 'hotel-match-anex-sold-details-review-1971-20260
 const HMATSD_SELL_RESULT_SHA256 = '47a55cf4ba8cab0fb2fa175f0856e2eca2f144e64b1d7b7a48ddfb0335d85c61';
 const HMATSD_DIRECT_RESULT_SHA256 = '86f3cbe232a262fa6c6bcd5d87a56af8167ce52f1dc7b589c7d4605fd57cc7fa';
 const HMATSD_CORE8 = [1=>true,2=>true,4=>true,8=>true,9=>true,10=>true,12=>true,16=>true];
+const HMATSD_COORDINATE_CONFLICT_BLOCK_M = 5000;
 
 function hmatsd_valid_date(string $date): bool {
     $d = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
@@ -94,7 +95,7 @@ function hmatsd_plan_fingerprint(array $sources,array $slices): string {
 function hmatsd_candidate_for_slice(array $source,string $date,array $row,array $catalog,array $aliases,bool $andromedaBridge): ?array {
     if(!in_array($date,$source['probe_dates']??[],true))return null;
     $country=is_array($row['country']??null)?(int)($row['country']['id']??0):0;if($country!==(int)($source['country_id']??0))return null;
-    $candidate=hmatv_candidate($source['detail']??[],$row,$catalog,$aliases,$andromedaBridge);if($candidate===null)return null;$candidate['sold_date']=$date;return $candidate;
+    $candidate=hmatv_candidate($source['detail']??[],$row,$catalog,$aliases,$andromedaBridge);if($candidate===null)return null;if(($candidate['distance_m']??null)!==null&&(float)$candidate['distance_m']>HMATSD_COORDINATE_CONFLICT_BLOCK_M)$candidate['blocked']='coordinate_conflict';$candidate['sold_date']=$date;return $candidate;
 }
 function hmatsd_review(PDO $db,array $sell,array $direct,array $plan,array $resultSets,string $operation=HMATSD_OPERATION): array {
     if($operation!==HMATSD_OPERATION)throw new RuntimeException('HMATSD_OPERATION_SCOPE');$input=hmatsd_validate_inputs($sell,$direct,$plan);$current=hmatsd_current_sources($db,$input);$sources=$current['sources'];$cat=hmatv_current_catalog($db);$slices=hmatsd_slices($sources);
