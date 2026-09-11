@@ -1,0 +1,145 @@
+name: MATCH resort-star adaptive v6
+
+on:
+  push:
+    branches:
+      - ops/match-resort-star-adaptive-1971-20260911-v6
+    paths:
+      - .github/match-resort-star-adaptive-v6.arm
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-resort-star-adaptive-v6
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPERATION_ID: hotel-match-resort-star-adaptive-1971-20260911-v6
+      EXPECTED_BASE_SHA: 9bc696c29828145092be642deb00c9c12281714b
+      OUT: /tmp/match-rs-v6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 6
+          persist-credentials: false
+
+      - name: Verify isolated source and cooldown
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-resort-star-adaptive-v6.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' \
+            '.github/match-resort-star-adaptive-v6.arm' \
+            '.github/workflows/hotel-match-resort-star-adaptive-v6.yml' \
+            'scripts/diagnostics/hotel_match_resort_star_availability_v6.php' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          php -l scripts/diagnostics/hotel_match_resort_star_availability_v6.php
+          mkdir -p "$OUT"
+          sleep 30
+
+      - name: Establish zero-supplier SSH control master and preflight
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, os, subprocess, time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP'])
+          key=rt/'match-rs-v6-key'; sock=rt/'match-rs-v6.sock'; known=rt/'match-rs-v6-known'
+          raw=os.environ['SSH_KEY'].strip()
+          if 'PRIVATE KEY' in raw: key.write_text(raw.rstrip()+'\n')
+          else: key.write_bytes(base64.b64decode(raw))
+          key.chmod(0o600)
+          base=['ssh','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['SSH_USER'],os.environ['SSH_HOST']]
+          ok=False
+          for _ in range(3):
+              try: sock.unlink()
+              except FileNotFoundError: pass
+              a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=1200']+base[1:],text=True,capture_output=True,timeout=30)
+              if a.returncode==0:
+                  b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['SSH_USER'],os.environ['SSH_HOST'],"cd \"$HOME/www/anytoour.ru\" && test -f config.php && php -r 'echo \"RSV6_OK\\n\";' "],text=True,capture_output=True,timeout=30)
+                  if b.returncode==0 and 'RSV6_OK' in b.stdout:
+                      ok=True; break
+              if sock.exists(): subprocess.run(['ssh','-S',str(sock),'-O','exit',os.environ['SSH_HOST']],text=True,capture_output=True,timeout=10)
+              time.sleep(2)
+          if not ok: raise SystemExit('zero_supplier_control_master_preflight_failed')
+          print('RSV6_OK')
+          PY
+
+      - name: Reserve before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_resort_star_availability_v6.php').read_bytes()
+          v={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],'program_sha256':hashlib.sha256(src).hexdigest(),'country':'Turkey','resorts':['Анталья','Аланья','Кемер','Белек','Сиде','Бодрум','Мармарис'],'stars':[3,4,5],'dates':['2026-09-25','2026-10-02','2026-10-16','2026-11-06','2026-11-20'],'transport':'single_control_master_preflight_to_execution','database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          p=Path(os.environ['OUT'],'reservation.json'); raw=(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation_readback_failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: "hotel-match-resort-star-adaptive-v6-${{ github.run_id }}-reserved"
+          path: /tmp/match-rs-v6/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute adaptive availability discovery over existing SSH master
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          sock=Path(os.environ['RUNNER_TEMP'])/'match-rs-v6.sock'
+          out=Path(os.environ['OUT'])/'result.json'
+          check=subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['SSH_HOST']],text=True,capture_output=True,timeout=10)
+          if check.returncode!=0:
+              v={'status':'failed','stage':'pre_supplier_master_check','reason':'ssh_master_unavailable','operation_id':os.environ['OPERATION_ID'],'supplier_calls_proven':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+              out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n'); print(json.dumps(v,sort_keys=True)); raise SystemExit('master_unavailable_before_supplier_access')
+          src=Path('scripts/diagnostics/hotel_match_resort_star_availability_v6.php').read_text()
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['SSH_USER'],os.environ['SSH_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          p=subprocess.run(cmd,input=src,text=True,capture_output=True,timeout=1500)
+          marker='MATCH_RS_JSON:'; line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
+          if line is None:
+              v={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n'); print(json.dumps(v,sort_keys=True)); raise SystemExit('unknown/no-replay')
+          v=json.loads(line); v.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=p.returncode,no_replay=True); out.write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          rows=v.get('rows') or []
+          print(json.dumps({'catalog_regions_total':v.get('catalog_regions_total'),'searches_started':v.get('searches_started'),'active_slices':sum(1 for r in rows if r.get('active_date')),'no_program':sum(1 for r in rows if r.get('reason')=='no_program_on_probed_dates'),'unresolved_region':sum(1 for r in rows if r.get('reason')=='region_not_unique'),'rows':rows},ensure_ascii=False))
+          if p.returncode!=0 or v.get('status')!='completed': raise SystemExit('discovery_failed')
+          if any(int(v.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','booking_calls','lead_calls')): raise SystemExit('unsafe_side_effect')
+          PY
+
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "hotel-match-resort-star-adaptive-v6-${{ github.run_id }}-final"
+          path: |
+            /tmp/match-rs-v6/reservation.json
+            /tmp/match-rs-v6/result.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Close SSH control master
+        if: always()
+        env:
+          SSH_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: |
+          SOCK="$RUNNER_TEMP/match-rs-v6.sock"
+          if [ -S "$SOCK" ]; then ssh -S "$SOCK" -O exit "$SSH_HOST" >/dev/null 2>&1 || true; fi
+          rm -f "$RUNNER_TEMP/match-rs-v6-key" "$SOCK"
