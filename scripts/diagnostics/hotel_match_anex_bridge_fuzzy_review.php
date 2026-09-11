@@ -82,7 +82,7 @@ function habfr_review(PDO $db, string $operation=HABFR_OPERATION): array {
         foreach($pool as $id=>$origin){
             $hotel=$hotels[$id];
             if(!fc_place($sourcePlaces,[$hotel['region_name'],$hotel['subregion_name']]))continue;
-            $pair=habfr_best_policy($sourceNames,$names[$id]??[$hotel['name']]);
+            $pair=habfr_best_policy($sourceNames,$names[$id]??[$hotel['name']],(string)$hotel['region_name']);
             if(($pair['safe_rank']??0)===0)continue;
             $guard=mbr_target_guard($coordSource,$hotel); if($guard['coordinate_conflict']){$stats['coordinate_conflict']++;continue;}
             $stats['direct_geo_candidates']++;
