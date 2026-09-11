@@ -1,0 +1,113 @@
+name: MATCH ANEX Andromeda prefilter v14
+
+on:
+  push:
+    branches:
+      - ops/match-anex-andromeda-prefilter-1971-20260911-v14
+    paths:
+      - .github/match-anex-andromeda-prefilter-v14.arm
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-anex-andromeda-prefilter-v14
+  cancel-in-progress: false
+
+jobs:
+  prefilter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPERATION_ID: hotel-match-anex-andromeda-prefilter-1971-20260911-v14
+      OUT_DIR: /tmp/match-prefilter-v14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Verify source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          test "$(cat .github/match-anex-andromeda-prefilter-v14.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_andromeda_prefilter_v14.php
+          mkdir -p "$OUT_DIR"
+
+      - name: Establish zero-supplier SSH master
+        env:
+          DEPLOY_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, os, subprocess
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); key=rt/'m14key'; sock=rt/'m14.sock'; known=rt/'m14known'
+          raw=os.environ['DEPLOY_KEY'].strip()
+          if 'PRIVATE KEY' in raw: key.write_text(raw.rstrip()+'\n')
+          else: key.write_bytes(base64.b64decode(raw))
+          key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['DEPLOY_USER'],os.environ['DEPLOY_HOST']]
+          a=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=1800']+common,text=True,capture_output=True,timeout=30)
+          if a.returncode: raise SystemExit('ssh_master_failed')
+          b=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['DEPLOY_USER'],os.environ['DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php'],text=True,capture_output=True,timeout=30)
+          if b.returncode: raise SystemExit('ssh_preflight_failed')
+          PY
+
+      - name: Persist immutable reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          src=Path('scripts/diagnostics/hotel_match_anex_andromeda_prefilter_v14.php').read_bytes()
+          v={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(src).hexdigest(),'countries':[1,4,2,9,16,12,8,10],'dates':['2026-10-16','2026-11-20','2026-12-18'],'nights':7,'providers':['direct_anex','andromeda_anex_only_all_pages'],'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          p=Path(os.environ['OUT_DIR'])/'reservation.json'; raw=(json.dumps(v,sort_keys=True,indent=2)+'\n').encode(); p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation_readback_failed')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-prefilter-v14-${{ github.run_id }}-reserved
+          path: /tmp/match-prefilter-v14/reservation.json
+          retention-days: 90
+
+      - name: Execute direct-provider prefilter
+        env:
+          DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); sock=rt/'m14.sock'; out=Path(os.environ['OUT_DIR'])/'result.json'
+          program=Path('scripts/diagnostics/hotel_match_anex_andromeda_prefilter_v14.php').read_text()
+          chk=subprocess.run(['ssh','-S',str(sock),'-O','check',os.environ['DEPLOY_HOST']],text=True,capture_output=True,timeout=10)
+          if chk.returncode:
+              v={'status':'failed','stage':'pre_supplier_master_check','reason':'ssh_master_unavailable','operation_id':os.environ['OPERATION_ID'],'supplier_calls_proven':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n'); raise SystemExit('master_unavailable')
+          cmd=['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-o','BatchMode=yes','-l',os.environ['DEPLOY_USER'],os.environ['DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=1500)
+          marker='MATCH14_JSON:'; line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None:
+              v={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'stdout_sha256':hashlib.sha256(x.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(x.stderr.encode()).hexdigest(),'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; out.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n'); raise SystemExit('unknown_no_replay')
+          v=json.loads(line); v.update({'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'remote_exit':x.returncode,'no_replay':True}); out.write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':v.get('status'),'tv_candidate_count':v.get('tv_candidate_count'),'tv_candidate_keys':v.get('tv_candidate_keys'),'provider_calls':v.get('provider_calls')},ensure_ascii=False))
+          if x.returncode or v.get('status')!='completed': raise SystemExit('prefilter_failed')
+          PY
+
+      - name: Preserve final result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-prefilter-v14-${{ github.run_id }}-final
+          path: |
+            /tmp/match-prefilter-v14/reservation.json
+            /tmp/match-prefilter-v14/result.json
+          if-no-files-found: warn
+          retention-days: 90
