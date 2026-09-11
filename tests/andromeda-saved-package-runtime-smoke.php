@@ -120,11 +120,13 @@ foreach (['entry-captured', 'entry-stale'] as $case) {
     $budget = json_decode(file_get_contents(dirname($directory) . '/monthly-requests.json'), true);
     check($budget['reserved_requests'] === 1);
 }
-// Exercise only rejected actions on the real pinned transport: these cannot reach cURL.
+// Exercise only rejected actions on the assembled candidate transport: these cannot reach cURL.
 $baseUrl = 'https://gateway.samo.ru/api/?version=1.01&action=';
 refuse(fn() => (new AnyTourAndromedaTransport())($baseUrl . 'broninit'));
 foreach (['bron','bron_ticket','calc','get_flights','price'] as $action) {
     refuse(fn() => (new AnyTourAndromedaTransport(false, true))($baseUrl . $action));
 }
-check((new ReflectionMethod(AnyTourAndromedaTransport::class, '__construct'))->getNumberOfParameters() === 2);
+// Package runtime requires at least the historical allowPackage constructor flag;
+// candidate transports may add test-only optional parameters after it.
+check((new ReflectionMethod(AnyTourAndromedaTransport::class, '__construct'))->getNumberOfParameters() >= 2);
 echo "Selected package entry: existing DTO/current PDO mapping, same capture, stale no-replay and transport exclusions passed offline.\n";
