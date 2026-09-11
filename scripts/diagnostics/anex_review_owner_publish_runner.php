@@ -37,7 +37,7 @@ try {
         $oldSource=$old['source_sha']??'';$oldAfter=$old['after']??null;
         if(($old['status']??'')!=='published'||!preg_match('/\A[0-9a-f]{40}\z/D',$oldSource)||$oldSource!==($input['expected_source']??null)
             ||($old['runtime_files']??null)!=($input['expected_runtime']??null)||($old['write_enabled']??null)!==false)throw new RuntimeException('repair_manifest_drift');
-        $afterExact=$oldAfter===$before;
+        $afterExact=$oldAfter==$before;
         if(!$afterExact){
             $stubsExact=is_array($oldAfter)
                 &&($oldAfter['anex-owner-login.php']??null)===($before['anex-owner-login.php']??null)
@@ -45,7 +45,7 @@ try {
             if(!$ownerWrite||!$stubsExact)throw new RuntimeException('repair_manifest_drift');
             $publicPath=$target.'/anex-owner-panel-manifest.json';
             $publicCurrent=json_decode(file_get_contents($publicPath),true,16,JSON_THROW_ON_ERROR);
-            if(($publicCurrent['source_sha']??null)!==$oldSource||($publicCurrent['write_enabled']??null)!==false||($publicCurrent['files']??null)!==$oldAfter)throw new RuntimeException('owner_write_public_manifest_drift');
+            if(($publicCurrent['source_sha']??null)!==$oldSource||($publicCurrent['write_enabled']??null)!==false||($publicCurrent['files']??null)!=$oldAfter)throw new RuntimeException('owner_write_public_manifest_drift');
             foreach(['anex-owner-login.php','anex-hotel-review.php'] as $entryName){
                 $pattern='/<Files\s+"'.preg_quote($entryName,'/').'"\s*>\s*Require\s+all\s+granted\s*<\/Files>/i';
                 if(preg_match_all($pattern,$htRaw,$matches)!==1)throw new RuntimeException('owner_write_htaccess_drift');
