@@ -215,8 +215,8 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     await start(73);
     const card = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     if (width >= 1025) {
-      assert.equal(await page.locator('.results-filter-rail').isVisible(), false, 'one loaded hotel does not expose unusable local facets');
-      assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results reclaim the hidden filter-rail track');
+      assert.equal(await page.locator('.results-filter-rail').isVisible(), true, 'cross-provider offers expose the useful provider/source facet in the canonical desktop rail');
+      assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results remain readable beside the truthful provider/source facet');
     }
     assert.equal(await card.locator('.tour-row').count(), 1, 'accepted grouped Andromeda offer keeps one compact representative');
     assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
@@ -353,8 +353,7 @@ async function run(browser, width, previous) {
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.isVisible(), true, 'current price calendar is visible after a terminal result set');
     const calendarDisclosure = calendar.locator('details');
-    assert.equal(await calendarDisclosure.evaluate(node => node.open), width > 700, 'calendar starts compact only on mobile');
-    if (!(await calendarDisclosure.evaluate(node => node.open))) await calendar.locator('summary').click();
+    assert.equal(await calendarDisclosure.evaluate(node => node.open), true, 'Search3 calendar starts expanded on first render at every responsive width');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => [node.dataset.calendarDate, node.querySelector('strong').textContent.replace(/\s/g, '')])), [
       ['2026-09-10', '99000₽'], ['2026-09-12', '148500₽']
     ], 'calendar exposes per-day minima and ignores unpriced tours');
