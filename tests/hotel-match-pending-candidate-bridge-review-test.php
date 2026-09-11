@@ -14,6 +14,6 @@ $x=pcbr_compat(['NORTH STAR RESORT'],['SOUTH STAR RESORT']);
 pcbr_assert($x['broad']===false,'north south significant');
 
 $x=pcbr_compat(['THE TOWER PLAZA HOTEL'],['THE TOWER PLAZA HOTEL DUBAI (EX. MILLENNIUM PLAZA)']);
-pcbr_assert($x['shared']>=3,'strong alias overlap');
+pcbr_assert($x['shared']>=2 && $x['score']>=0.6,'strong alias overlap');
 
 echo "ok\n";
