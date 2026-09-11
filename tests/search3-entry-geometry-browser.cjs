@@ -102,6 +102,10 @@ const measure = node => {
             extras: measureNode(document.querySelector('.extras')),
           };
         }, measure.toString());
+        if (output) {
+          fs.writeFileSync(path.join(output, `entry-${width}.json`), JSON.stringify({ width, state }, null, 2) + '\n');
+          await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
+        }
         assert.ok(state.overflow <= 1, `${width}: form must not overflow horizontally`);
         assert.equal(state.hero.position, 'absolute', `${width}: semantic Search3 hero stays out of visual flow`);
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, `${width}: redundant hero consumes no first-view space`);
@@ -144,7 +148,6 @@ const measure = node => {
           assert.ok(state.dateControls.every(item => item.width >= 200), 'wide desktop: native date fields keep comfortable full-value width');
           assert.ok(state.submit.width <= 281, 'wide desktop: primary action does not consume the entire form width');
         }
-        if (output) await page.screenshot({ path: path.join(output, `entry-${width}.png`), fullPage: true, animations: 'disabled' });
         states += 1;
       } finally {
         await page.close();
