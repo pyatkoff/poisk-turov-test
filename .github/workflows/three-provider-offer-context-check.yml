@@ -6,6 +6,7 @@ on:
       - 'app/integrations/three-provider-offer-contract.php'
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/three-provider-availability.php'
+      - 'app/integrations/three-provider-flight-details.php'
       - 'tests/three-provider-offer-context-test.php'
       - '.github/workflows/three-provider-offer-context-check.yml'
 permissions:

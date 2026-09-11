@@ -5,8 +5,10 @@ on:
       - 'app/integrations/three-provider-offer-contract.php'
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/three-provider-availability.php'
+      - 'app/integrations/three-provider-flight-details.php'
       - 'tests/three-provider-offer-contract-test.php'
       - 'tests/three-provider-availability-test.php'
+      - 'tests/three-provider-flight-details-test.php'
       - '.github/workflows/three-provider-offer-contract-check.yml'
 permissions:
   contents: read
@@ -23,18 +25,24 @@ jobs:
         run: |
           php -l app/integrations/three-provider-offer-contract.php
           php -l app/integrations/three-provider-availability.php
+          php -l app/integrations/three-provider-flight-details.php
           php -l tests/three-provider-offer-contract-test.php
           php -l tests/three-provider-availability-test.php
+          php -l tests/three-provider-flight-details-test.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
           php -d allow_url_fopen=0 tests/three-provider-availability-test.php
+          php -d allow_url_fopen=0 tests/three-provider-flight-details-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-offer-contract.php').read_text()
           availability=Path('app/integrations/three-provider-availability.php').read_text()
+          flight=Path('app/integrations/three-provider-flight-details.php').read_text()
           assert "'quote_state' => 'unknown'" in src
           assert "'selection_state' => 'disabled'" in src
           assert "hash('sha256', $offerRef)" in src
           assert "AnyTourThreeProviderAvailability::fromSearch" in src
+          assert "AnyTourThreeProviderFlightDetails::forSearch" in src
+          assert "flight_details_state" not in src
           assert "'canonical_state' => 'unknown'" in availability
           assert "'selection_eligible' => false" in availability
           assert "'booking_eligible' => false" in availability
@@ -43,5 +51,9 @@ jobs:
               assert forbidden not in src
           for forbidden in ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id'):
               assert forbidden not in availability
+          assert "'details_state' => 'not_loaded'" in flight
+          assert "'automatic_fetch_allowed' => false" in flight
+          for forbidden in ('curl_', 'PDO', '->bron(', 'supplier_offer_id', 'provider_hotel_id'):
+              assert forbidden not in flight
           print('Three-provider offer static boundary: PASS')
           PY
