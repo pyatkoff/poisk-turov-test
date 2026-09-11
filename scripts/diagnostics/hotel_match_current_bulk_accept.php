@@ -54,6 +54,51 @@ function mba_row_is_safe_auto_accept(array $row): bool {
     return true;
 }
 
+function mba_bridge_index(array $anexLocal, array $hotels, array $names): array {
+    $index = [];
+    foreach (array_keys($anexLocal) as $id) {
+        $id = (int)$id;
+        if (!isset($hotels[$id])) continue;
+        $country = (int)$hotels[$id]['country_id'];
+        foreach ($names[$id] ?? [$hotels[$id]['name']] as $name) {
+            $key = fc_key($name,true,false);
+            if ($key !== '') $index[$country][$key][$id] = true;
+        }
+    }
+    return $index;
+}
+
+function mba_cross_provider_bridge(array $review, array $coordSource, array $bridgeIndex, array $hotels): ?array {
+    $country = (int)($review['country_id'] ?? 0);
+    $candidateIds = [];
+    $maxTokens = 0;
+    foreach (array_map('strval',$review['source_names'] ?? []) as $name) {
+        $tokens = fc_tokens($name,true);
+        $maxTokens = max($maxTokens,count($tokens));
+        $key = fc_key($name,true,false);
+        if ($key === '') continue;
+        foreach (array_keys($bridgeIndex[$country][$key] ?? []) as $id) $candidateIds[(int)$id] = true;
+    }
+    if (count($candidateIds) !== 1) return null;
+    $targetId = (int)array_key_first($candidateIds);
+    $target = $hotels[$targetId] ?? null;
+    if (!is_array($target)) return null;
+    $guard = mbr_target_guard($coordSource,$target);
+    if ($guard['coordinate_conflict']) return null;
+    $place = fc_place(
+        array_map('strval',$review['source_places'] ?? []),
+        [(string)($target['region_name'] ?? ''),(string)($target['subregion_name'] ?? '')]
+    );
+    $directGeo = ($guard['distance_m'] !== null && $guard['distance_m'] <= 1000) || $place;
+    if ($maxTokens < 2 && !$directGeo) return null;
+    $review['bucket'] = 'auto_accept';
+    $review['reason'] = 'cross_provider_anex_tourvisor_strict_name';
+    $review['guard'] = $guard;
+    $review['target'] = mbr_row_target($target);
+    $review['bridge'] = ['anex_tourvisor_existing_local'=>true,'significant_tokens'=>$maxTokens,'direct_geo'=>$directGeo];
+    return $review;
+}
+
 function mba_anex_evidence(string $operation, array $row): array {
     return [
         'operation_id' => $operation,
@@ -214,6 +259,9 @@ function mba_accept(PDO $db, string $operation): array {
             $existing[(int)$id] = true;
         }
 
+        [$anexLocal] = mbr_local_sets($db);
+        $bridgeIndex = mba_bridge_index($anexLocal,$hotels,$names);
+
         $latest = [];
         foreach ($db->query(
             "SELECT * FROM andromeda_search_hotel_observations
@@ -250,6 +298,14 @@ function mba_accept(PDO $db, string $operation): array {
                 continue;
             }
             $row = mbr_review_andromeda($r,$obs,$country,$hotels,$names,$strict,$places);
+            if (!mba_row_is_safe_auto_accept($row)) {
+                $priorForBridge = fc_evidence($r['evidence_json'] ?? '');
+                $coordSource = $priorForBridge['source'] ?? [];
+                if (!is_array($coordSource)) $coordSource = [];
+                if ($obs) $coordSource += $obs;
+                $bridge = mba_cross_provider_bridge($row,$coordSource,$bridgeIndex,$hotels);
+                if ($bridge !== null) $row = $bridge;
+            }
             if (!mba_row_is_safe_auto_accept($row)) {
                 $skipped['andromeda_not_auto']++;
                 continue;
@@ -338,6 +394,8 @@ function mba_accept(PDO $db, string $operation): array {
                 'coordinate_conflict_auto_block_m'=>5000,
                 'numeric_star_is_guard_not_identity'=>true,
                 'fuzzy_requires_direct_geo'=>true,
+                'cross_provider_bridge_requires_existing_anex_tv_local'=>true,
+                'cross_provider_single_token_requires_direct_geo'=>true,
                 'supplier_calls'=>0,
             ],
         ];
