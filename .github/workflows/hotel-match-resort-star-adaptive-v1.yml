@@ -1,0 +1,111 @@
+name: MATCH resort-star adaptive v1
+
+on:
+  push:
+    branches: [ops/match-resort-star-adaptive-1971-20260911-v1]
+    paths: [.github/match-resort-star-adaptive-v1.arm]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-resort-star-adaptive-v1
+  cancel-in-progress: false
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-resort-star-adaptive-1971-20260911-v1
+      ARTIFACT_DIR: /tmp/match-resort-star-adaptive-v1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - name: Verify one-shot source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-resort-star-adaptive-v1.arm)" = "$OPERATION_ID"
+          mkdir -p "$ARTIFACT_DIR"
+      - name: Zero-supplier SSH preflight
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,tempfile
+          from pathlib import Path
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory() as td:
+            key=Path(td)/'key'; key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'kh'),'-o','ConnectTimeout=15','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],"cd \"$HOME/www/anytoour.ru\" && test -f config.php && php -r 'echo \"MATCH_RS_PREFLIGHT_OK\\n\";' "]
+            p=subprocess.run(cmd,text=True,capture_output=True,timeout=45)
+          if p.returncode or 'MATCH_RS_PREFLIGHT_OK' not in p.stdout: raise SystemExit('preflight failed')
+          PY
+      - name: Persist immutable reservation before supplier access
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'country':'Turkey','country_id':4,'departure_id':1,'operator_id':13,'resort_names':['Antalya','Alanya','Kemer','Belek','Side','Bodrum','Marmaris'],'stars':[3,4,5],'date_ladder':['2026-09-25','2026-10-02','2026-10-16','2026-11-06','2026-11-20'],'rule':'first date with filtered Tourvisor ANEX-only inventory; empty date means no_program_on_date, never unmatched','database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          p=Path(os.environ['ARTIFACT_DIR'])/'reservation.json'; p.write_text(json.dumps(value,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-resort-star-adaptive-v1-${{ github.run_id }}-reserved
+          path: /tmp/match-resort-star-adaptive-v1/reservation.json
+          retention-days: 90
+      - name: Discover active resort-star dates from Tourvisor ANEX-only
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          cat > "$ARTIFACT_DIR/program.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          ini_set('display_errors','0'); ini_set('log_errors','0');
+          require_once getcwd().'/config.php';
+          $dbHelper=is_file(getcwd().'/data/db-v1.php')?getcwd().'/data/db-v1.php':getcwd().'/v2/data/db-v1.php'; require_once $dbHelper;
+          $tvClient=is_file(getcwd().'/data/tourvisor-client-v1.php')?getcwd().'/data/tourvisor-client-v1.php':getcwd().'/v2/data/tourvisor-client-v1.php'; require_once $tvClient;
+          if(!defined('TOURVISOR_ANEX_JWT')) throw new RuntimeException('credential_missing');
+          $token=trim((string)constant('TOURVISOR_ANEX_JWT')); if(stripos($token,'Bearer ')===0)$token=trim(substr($token,7)); putenv('TOURVISOR_JWT='.$token);
+          $pdo=v2_data_db();
+          $wanted=['Antalya','Alanya','Kemer','Belek','Side','Bodrum','Marmaris'];
+          $q=$pdo->prepare('SELECT id,name FROM catalog_regions WHERE country_id=4 AND is_active=1 ORDER BY name'); $q->execute(); $all=$q->fetchAll(PDO::FETCH_ASSOC);
+          $regions=[]; foreach($wanted as $w){$hits=[];foreach($all as $r){if(mb_stripos((string)$r['name'],$w,0,'UTF-8')!==false)$hits[]=$r;} if(count($hits)===1)$regions[]=['wanted'=>$w,'id'=>(int)$hits[0]['id'],'name'=>(string)$hits[0]['name']]; else $regions[]=['wanted'=>$w,'id'=>null,'name'=>null,'catalog_hits'=>count($hits)];}
+          $dates=['2026-09-25','2026-10-02','2026-10-16','2026-11-06','2026-11-20']; $rows=[]; $searches=0;
+          foreach($regions as $r){foreach([3,4,5] as $star){$entry=['resort'=>$r,'star'=>$star,'attempts'=>[],'active_date'=>null,'hotel_count'=>0]; if(!$r['id']){$entry['reason']='region_not_unique';$rows[]=$entry;continue;} foreach($dates as $date){$searches++; try{$start=v2_data_tv_get('/tours/search',['departureId'=>1,'countryId'=>4,'dateFrom'=>$date,'dateTo'=>$date,'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false,'operatorIds'=>[13],'regionIds'=>[$r['id']],'hotelCategory'=>$star]);$sid=(int)($start['searchId']??$start['id']??0);if($sid<=0)throw new RuntimeException('search_id_missing');$done=false;for($i=0;$i<24;$i++){if($i)usleep(700000);$s=v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]);$status=strtolower((string)($s['status']??''));if((int)($s['progress']??0)>=100||in_array($status,['complete','completed','done','ready'],true)){$done=true;break;}}if(!$done)throw new RuntimeException('not_complete');$p=v2_data_tv_get('/tours/search/'.$sid,['limit'=>10000]);$hotels=[];$stack=[$p];while($stack){$x=array_pop($stack);if(!is_array($x))continue;if(isset($x['id'],$x['name'])&&filter_var($x['id'],FILTER_VALIDATE_INT)!==false)$hotels[(string)(int)$x['id']]=(string)$x['name'];foreach($x as $v)if(is_array($v))$stack[]=$v;}$count=count($hotels);$entry['attempts'][]=['date'=>$date,'hotel_count'=>$count];if($count>0){$entry['active_date']=$date;$entry['hotel_count']=$count;break;}}catch(Throwable $e){$entry['attempts'][]=['date'=>$date,'hotel_count'=>0,'error'=>substr($e->getMessage(),0,80)];} usleep(200000);} if(!$entry['active_date'])$entry['reason']='no_program_on_probed_dates';$rows[]=$entry;}}
+          echo 'MATCH_RS_JSON:'.json_encode(['status'=>'completed','operation_id'=>'hotel-match-resort-star-adaptive-1971-20260911-v1','country'=>'Turkey','searches_started'=>$searches,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+          PHP
+          php -l "$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); program=(d/'program.php').read_text(); raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory() as td:
+            key=Path(td)/'key'; key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'kh'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+            p=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=900)
+          marker='MATCH_RS_JSON:'; line=next((x[len(marker):] for x in reversed(p.stdout.splitlines()) if x.startswith(marker)),None)
+          if line is None:
+            out={'status':'unknown','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; (d/'result.json').write_text(json.dumps(out,sort_keys=True,indent=2)+'\n'); raise SystemExit('unknown/no-replay')
+          out=json.loads(line); out.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=p.returncode,no_replay=True); (d/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps({'status':out['status'],'searches_started':out['searches_started'],'active_slices':sum(1 for r in out['rows'] if r.get('active_date')),'rows':out['rows']},ensure_ascii=False));
+          if p.returncode or out.get('status')!='completed': raise SystemExit('discovery failed')
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-resort-star-adaptive-v1-${{ github.run_id }}-final
+          path: |
+            /tmp/match-resort-star-adaptive-v1/reservation.json
+            /tmp/match-resort-star-adaptive-v1/result.json
+          if-no-files-found: warn
+          retention-days: 90
