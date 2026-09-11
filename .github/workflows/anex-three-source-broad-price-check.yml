@@ -1,0 +1,92 @@
+name: ANEX broad three-source price parity
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_three_source_broad_price.php'
+      - 'scripts/diagnostics/anex_three_source_broad_price.py'
+      - 'tests/anex-three-source-broad-price-smoke.php'
+      - 'tests/anex_three_source_broad_price_test.py'
+      - '.github/workflows/anex-three-source-broad-price-check.yml'
+  push:
+    branches:
+      - 'ops/int-anex-three-source-broad-price-20260911'
+    paths:
+      - '.github/ops/anex-three-source-broad-price-20260911'
+permissions:
+  contents: read
+concurrency:
+  group: anex-broad-price-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate broad source without network
+        run: |
+          php -l scripts/diagnostics/anex_three_source_broad_price.php
+          php -l tests/anex-three-source-broad-price-smoke.php
+          php -d allow_url_fopen=0 tests/anex-three-source-broad-price-smoke.php
+          python3 -B tests/anex_three_source_broad_price_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          php=Path('scripts/diagnostics/anex_three_source_broad_price.php').read_text()
+          py=Path('scripts/diagnostics/anex_three_source_broad_price.py').read_text()
+          for forbidden in ('->bron(', 'broninit(', '->calc(', 'get_flights(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
+              assert forbidden not in php
+          assert "ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260911_v1'" in php
+          assert "ANEX_BROAD_PRICE_DATE = '2026-10-04'" in php
+          assert "'ControlMaster=no'" not in py  # transport is reused from already-tested no-mux helper
+          assert 'p3_matching_external' in py
+          workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
+          assert 'ops/int-anex-three-source-broad-price-20260911' in workflow
+          assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
+          print('Broad three-source static boundary: PASS')
+          PY
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-broad-price-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      SOURCE_SHA: 52460edab0949e3160382f5a80e5327db560f5f2
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Bind exact broad scenario
+        run: |
+          test "$(cat control/.github/ops/anex-three-source-broad-price-20260911)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-broad-price;scenario=Turkey-2026-10-04-7n-2a-AI;owner=2026-09-11"
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Run broad provider cases through durable checkpoints
+        id: parity
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/broad-price"
+          python3 -B source/scripts/diagnostics/anex_three_source_broad_price.py "$RUNNER_TEMP/broad-price"
+      - name: Preserve sanitized broad evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-three-source-broad-price-${{ github.run_id }}
+          path: ${{ runner.temp }}/broad-price/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when broad parity did not complete
+        if: steps.parity.outcome != 'success'
+        run: exit 1
