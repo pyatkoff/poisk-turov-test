@@ -1,0 +1,232 @@
+name: MATCH ANEX photos hotelCode evidence
+run-name: MATCH ANEX photos hotelCode evidence #1971
+on:
+  push:
+    branches: ['feat/match-anex-photos-hotelcode-20260911']
+    paths:
+      - '.github/match-anex-photos-hotelcode-evidence-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-photos-hotelcode-evidence-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1
+  SOURCE_RUN_ID: '34585199014'
+  SOURCE_ARTIFACT_ID: '10193275420'
+  SOURCE_ARTIFACT_NAME: hotel-match-anex-sold-details-strong-review-1971-20260911-v1-result
+  SOURCE_RESULT_SHA256: 6ca31304fbb40fad165add17f50175555a3eb50837c8a3a3340e2265fc9b1cb9
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify MATCH evidence source only
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-photos-hotelcode-evidence-1971-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_photos_hotelcode_evidence.php
+          php -l scripts/diagnostics/anex_hotelcode_evidence.php
+          php -l app/integrations/anex-client.php
+          php tests/hotel-match-anex-photos-hotelcode-evidence-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_photos_hotelcode_evidence.php').read_text(encoding='utf-8').lower()
+          assert "hotels_photos" in s and "hmaph_batch_size = 30" in s
+          assert "start transaction read only" in s
+          for bad in ('insert into','update ','delete from','replace into'):
+              assert bad not in s, bad
+          print('photos hotelCode evidence-only source verified')
+          PYTHON
+      - name: Fetch immutable strong-review source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID" > "$STATE/source-meta.json"
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); meta=json.loads((state/'source-meta.json').read_text())
+          assert str(meta['id']) == os.environ['SOURCE_ARTIFACT_ID']
+          assert meta['name'] == os.environ['SOURCE_ARTIFACT_NAME']
+          assert str(meta['workflow_run']['id']) == os.environ['SOURCE_RUN_ID']
+          assert meta.get('expired') is False
+          PYTHON
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$SOURCE_ARTIFACT_ID/zip" > "$STATE/source.zip"
+          mkdir "$STATE/source"; unzip -q "$STATE/source.zip" -d "$STATE/source"
+          test -f "$STATE/source/result.json"
+          echo "$SOURCE_RESULT_SHA256  $STATE/source/result.json" | sha256sum -c -
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); r=json.loads((state/'source/result.json').read_text())
+          assert r['operation_id']=='hotel-match-anex-sold-details-strong-review-1971-20260911-v1'
+          assert r['status']=='completed' and r['historical_operations_replayed'] is False
+          assert len(r['prepared'])==106
+          PYTHON
+      - name: Build server-CURRENT unresolved live plan
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import base64,json,os,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              s=s.replace('declare(strict_types=1);','',1)
+              s=s.replace("require_once __DIR__ . '/anex_hotelcode_evidence.php';",'',1)
+              s=s.replace("require_once dirname(__DIR__, 2) . '/app/integrations/anex-client.php';",'',1)
+              return s
+          source=body('scripts/diagnostics/hotel_match_anex_photos_hotelcode_evidence.php')
+          strong64=base64.b64encode((state/'source/result.json').read_bytes()).decode()
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMAPH_ROOT');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMAPH_DB_HELPER');require_once $dbHelper;
+            $strong=json_decode(base64_decode('''+repr(strong64)+r'''),true,64,JSON_THROW_ON_ERROR);
+            $plan=hmaph_plan(v2_data_db(),$strong,HMAPH_OPERATION);
+            echo hmaph_json($plan),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMAPH_PLAN_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMAPH_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}
+          '''
+          code=source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-photos-plan-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,input='<?php\n'+code,text=True,capture_output=True,timeout=240,env=clean)
+          try:r=json.loads(p.stdout)
+          except Exception: raise RuntimeError('plan_output_unparseable')
+          if p.returncode!=0 or r.get('status')!='ready' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0 or r.get('historical_operations_replayed') is not False: raise RuntimeError('plan_not_ready')
+          if not 1 <= len(r.get('target_ids',[])) <= 300: raise RuntimeError('target_count_invalid')
+          (state/'plan.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          print(json.dumps({'stats':r['stats'],'target_count':len(r['target_ids']),'target_sha256':r['target_sha256']},ensure_ascii=False,sort_keys=True))
+          PYTHON
+      - name: Reserve immutable target set before supplier calls
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); raw=(state/'plan.json').read_bytes(); plan=json.loads(raw)
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_after_server_current_plan_before_supplier_calls','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'plan_sha256':hashlib.sha256(raw).hexdigest(),'target_sha256':plan['target_sha256'],'target_count':len(plan['target_ids']),'database_writes':0,'mapping_writes':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before supplier calls
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/source-meta.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/plan.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Collect Hotels_PHOTOS hotelCode evidence
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import base64,json,os,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/anex_hotelcode_evidence.php')
+          client=body('app/integrations/anex-client.php')
+          source=body('scripts/diagnostics/hotel_match_anex_photos_hotelcode_evidence.php')
+          source=source.replace("require_once __DIR__ . '/anex_hotelcode_evidence.php';",'',1).replace("require_once dirname(__DIR__, 2) . '/app/integrations/anex-client.php';",'',1)
+          plan64=base64.b64encode((state/'plan.json').read_bytes()).decode()
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());$home=(string)getenv('HOME');if(!$root||basename($root)!=='anytoour.ru'||$home==='')throw new RuntimeException('HMAPH_ROOT');
+            $private=realpath($home.'/.anytoour-anex/search3-preview.php');if(!$private||!is_file($private))throw new RuntimeException('HMAPH_PRIVATE_CONFIG');require $private;if(!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('HMAPH_PRIVATE_CONFIG');
+            $plan=json_decode(base64_decode('''+repr(plan64)+r'''),true,64,JSON_THROW_ON_ERROR);
+            $client=new AnyTourAnexClient(ANEX_API_TOKEN);
+            $result=hmaph_collect($client,$plan,HMAPH_OPERATION);
+            echo hmaph_json($result),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMAPH_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMAPH_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0]),"\n";exit(2);}
+          '''
+          code=helper+'\n'+client+'\n'+source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          with tempfile.TemporaryDirectory(prefix='match-photos-collect-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,input='<?php\n'+code,text=True,capture_output=True,timeout=1100,env=clean)
+          progress={'authenticated':'Authenticated to ' in p.stderr or 'Authentication succeeded' in p.stderr,'command_sent':True}
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'output_unparseable','database_writes':0,'mapping_writes':0}
+          (state/'result.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          (state/'ssh-result.json').write_text(json.dumps({'exit_code':p.returncode,'ssh':progress},sort_keys=True)+'\n')
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('historical_operations_replayed') is not False:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'status':'unknown_no_replay','reason':r.get('reason','remote_failure'),'supplier_calls':r.get('supplier_calls'),'no_replay':True},sort_keys=True)+'\n')
+              raise RuntimeError('photos_evidence_not_completed')
+          PYTHON
+      - name: Build receipt and summary
+        if: success()
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); result_raw=(state/'result.json').read_bytes(); r=json.loads(result_raw); plan=json.loads((state/'plan.json').read_text())
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_evidence_only','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_artifact_id':int(os.environ['SOURCE_ARTIFACT_ID']),'target_sha256':r['target_sha256'],'target_count':r['target_count'],'supplier_calls':r['supplier_calls'],'database_writes':0,'mapping_writes':0,'historical_operations_replayed':False,'no_replay':True,'result_sha256':hashlib.sha256(result_raw).hexdigest(),'counts':r['counts']}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          c=r['counts']; msg=(f"MATCH #1971 `Hotels_PHOTOS → hotelCode` evidence `{os.environ['OPERATION_ID']}` completed read-only. "
+              f"Server-CURRENT live unresolved core8 targets **{r['target_count']}**, supplier calls **{r['supplier_calls']}**; response rows **{c['response_rows']}**, requested rows **{c['requested_rows']}**, strict confirmed hotelCode **{c['confirmed']}** (same response key **{c['confirmed_same_key']}**, distinct **{c['confirmed_distinct_key']}**), insufficient **{c['insufficient']}**, conflicts **{c['conflicting']}**, invalid **{c['invalid']}**, missing requested **{len(r['missing_requested_ids'])}**. "
+              f"Strong-details prepared targets excluded **{plan['stats']['strong_prepared_excluded']}**; manual/mapped/pair-excluded protected. DB/mapping/content writes **0**. Any acceptance is a separate NEW server-current guarded operation. Run `{os.environ['GITHUB_RUN_ID']}`.")
+          (state/'summary.md').write_text(msg+'\n')
+          print(msg)
+          PYTHON
+      - name: Upload result receipt
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1-result
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/plan.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/result.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/receipt.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/ssh-result.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/summary.md
+          if-no-files-found: error
+          retention-days: 90
+      - name: Report result to MATCH issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/$OPERATION_ID/summary.md"
+      - name: Upload blocker without replay
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1-blocker
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/blocker.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/result.json
+            ${{ runner.temp }}/hotel-match-anex-photos-hotelcode-evidence-1971-20260911-v1/ssh-result.json
+          if-no-files-found: warn
+          retention-days: 90
