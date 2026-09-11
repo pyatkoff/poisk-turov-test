@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../app/integrations/anex-search.php';
+require_once __DIR__ . '/../app/integrations/anex-preview-gateway.php';
 require_once __DIR__ . '/../app/integrations/anex-search-mapping-registry.php';
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
@@ -215,3 +216,196 @@ $short = array_replace($criteria, ['checkin_end' => '2026-09-12']);
 search3_check(anytour_anex_search3_week($short) === $short, 'short range is not expanded');
 $wideParams = array_replace($params, ['dateTo' => (new DateTimeImmutable($date))->modify('+20 days')->format('Y-m-d')]);
 search3_check(anytour_anex_search3_core($wideParams)['checkin_end'] === (new DateTimeImmutable($date))->modify('+6 days')->format('Y-m-d'), 'dictionary dates use the same week');
+
+// Common Search3 -> existing gateway -> projected refs -> explicit expansion -> saved DTO.
+// All supplier responses/IDs/money below are synthetic; no live supplier or database.
+$now = time();
+$started = $now;
+$clock = static function () use (&$now): int { return $now; };
+$local = 999;
+$resolver = static function (string $namespace, string $id) use (&$local): ?int {
+    search3_check($namespace === 'anex_online' && $id === '1', 'wrong namespace sent to current resolver');
+    return $local;
+};
+$nativeRow = array_replace($row, ['price' => '123.45', 'currency' => 'EUR', 'convertedPrice' => '12345.50 RUB',
+    'room' => 'Standard-Room', 'htPlace' => 'DBL / 2 ADL', 'meal' => 'AI WITHOUT ALCOHOL']);
+$transportCalls = 0;
+$expansionQueries = [];
+$factory = static function () use (&$transportCalls, &$expansionQueries, $nativeRow): AnyTourAnexClient {
+    return new AnyTourAnexClient('test-secret', static function (string $url) use (&$transportCalls, &$expansionQueries, $nativeRow): array {
+        ++$transportCalls;
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        $rows = [$nativeRow];
+        if (isset($query['CATCLAIM'])) {
+            $expansionQueries[] = $query;
+            $rows = [array_replace($nativeRow, ['id' => 'private-concrete-a', 'grouped' => 0]),
+                array_replace($nativeRow, ['id' => 'private-concrete-b', 'grouped' => 0, 'price' => '150.00', 'convertedPrice' => '15000.00 RUB'])];
+        }
+        return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => ['prices' => $rows]])];
+    });
+};
+$savedCriteria = array_replace($context, ['supplier_namespace' => 'anex_online', 'departure_id' => 2, 'destination_id' => 4, 'currency_id' => 1]);
+$gatewaySession = [];
+$groups = anytour_anex_search3_prices($factory(), $resolver, $savedCriteria, $gatewaySession, $clock);
+$state = ['generation' => 7, 'params' => $params, 'gateway' => $gatewaySession, 'expansions' => []];
+$groupState = $state;
+$cards = anytour_anex_search3_project($groups['offers'], $metadata, $params, $groups['search_ref']);
+$groupTour = $cards[0]['tours'][0];
+search3_check(preg_match('/\A[a-f0-9]{32}\z/D', $groupTour['search_ref']) === 1
+    && $groupTour['offer_ref'] === $groups['offers'][0]['offer_key'], 'same-session references not projected');
+search3_check($groupTour['kind'] === 'group_minimum' && $groupTour['selection_enabled'] === false, 'minimum became selectable');
+search3_check($groupTour['price']['currency'] === 'RUB' && $groupTour['price']['amount'] === '12345.50', 'existing RUB display changed');
+
+$readFactoryCalls = 0;
+$noClient = static function () use (&$readFactoryCalls): AnyTourAnexClient {
+    ++$readFactoryCalls;
+    throw new RuntimeException('SAVED_READ_CREATED_CLIENT');
+};
+$currentMetadata = $metadata;
+$metadataReader = static function (array $offers) use (&$currentMetadata): array { return $currentMetadata; };
+$reservations = [];
+$checkpoint = static function (array &$pending) use (&$reservations): void { $reservations[] = $pending; };
+$follow = static function (array $request, array &$current, ?callable $transport = null, ?callable $reserve = null)
+    use (&$now, $resolver, $noClient, $metadataReader, $clock): array {
+    ++$now;
+    return anytour_anex_search3_followup($request, $current, $resolver, $transport ?? $noClient, $metadataReader, $clock, $reserve);
+};
+$groupRequest = ['action' => 'offer', 'generation' => 7, 'search_ref' => $groups['search_ref'],
+    'offer_ref' => $groupTour['offer_ref'], 'local_hotel_id' => 999];
+search3_check($follow($groupRequest, $state)['status'] === 'group_minimum', 'group read fabricated concrete facts');
+$expandRequest = array_replace($groupRequest, ['action' => 'expand']);
+$expanded = $follow($expandRequest, $state, $factory, $checkpoint);
+search3_check($expanded['status'] === 'expanded' && count($expanded['hotels'][0]['tours']) === 2, 'concrete offers missing');
+search3_check($transportCalls === 2 && count($reservations) === 1
+    && $reservations[0]['expansions'][$groupTour['offer_ref']]['status'] === 'unknown', 'expansion not reserved before transport');
+search3_check($expansionQueries[0]['CATCLAIM'] === 'supplier-private-claim' && $expansionQueries[0]['HOTELS'] === '1'
+    && !isset($expansionQueries[0]['PARTITION_PRICE']), 'expansion lost exact retained supplier group');
+$again = $follow($expandRequest, $state);
+search3_check($again === $expanded && $transportCalls === 2 && $readFactoryCalls === 0, 'completed expansion was replayed');
+$readRequest = array_replace($groupRequest, ['offer_ref' => $expanded['hotels'][0]['tours'][0]['offer_ref']]);
+$readA = $follow($readRequest, $state);
+$readB = $follow(array_replace($readRequest, ['offer_ref' => $expanded['hotels'][0]['tours'][1]['offer_ref']]), $state);
+search3_check($readA['status'] === 'current' && $readA['generation'] === 7
+    && $readA['context']['current_context_verified'] === true, 'common saved offer not current');
+search3_check($readA['offer']['money']['search_price'] === ['amount' => '123.45', 'currency' => 'EUR', 'source' => 'anex_search']
+    && $readB['offer']['money']['search_price']['amount'] === '150.00', 'native A/B money was replaced or mixed');
+search3_check($readA['offer']['money']['fuel_charge_reported'] === null && $readA['offer']['money']['quote_price'] === null
+    && $readA['offer']['final_price_verified'] === false && $readA['selection_state'] === 'disabled', 'unknown quote/fuel fabricated');
+search3_check($readA['offer']['meal']['qualifiers']['without_alcohol'] === true && $readA['offer']['room']['raw'] === 'Standard-Room'
+    && $readA['offer']['placement']['raw'] === 'DBL / 2 ADL', 'exact meal/room/placement lost');
+search3_check($readA['offer_ref'] !== $readB['offer_ref'] && $readFactoryCalls === 0 && $transportCalls === 2,
+    'saved read constructed client or repeated search');
+$public = json_encode([$cards, $expanded, $readA, $readB]);
+foreach (['supplier-private-claim', 'private-concrete-a', 'private-concrete-b', 'supplier_offer_id', 'offer_key', 'test-secret'] as $private) {
+    search3_check(strpos($public, $private) === false, 'private identity leaked: ' . $private);
+}
+search3_check($state['gateway']['saved_offers']['expires_at'] === $started + 900, 'expansion/read extended original expiry');
+
+foreach ([['generation' => 8, 'expected' => 'mismatch'], ['search_ref' => str_repeat('a', 32), 'expected' => 'mismatch'],
+    ['offer_ref' => 'anex_online:' . str_repeat('b', 64), 'expected' => 'not_loaded'], ['local_hotel_id' => 998, 'expected' => 'identity_changed']] as $case) {
+    $expected = $case['expected']; unset($case['expected']);
+    search3_check($follow(array_replace($readRequest, $case), $state)['status'] === $expected, 'cross-context read accepted');
+}
+$local = 998;
+search3_check($follow($readRequest, $state)['status'] === 'identity_changed', 'remapped identity accepted');
+search3_check($follow(array_replace($readRequest, ['local_hotel_id' => 998]), $state)['status'] === 'identity_changed', 'remap retargeted old offer');
+$local = null;
+search3_check($follow($readRequest, $state)['status'] === 'identity_unresolved', 'revoked identity accepted');
+$local = 999;
+$currentMetadata[999]['country_id'] = 3;
+search3_check($follow($readRequest, $state)['status'] === 'not_available', 'catalog country drift accepted');
+$currentMetadata = [];
+search3_check($follow($readRequest, $state)['status'] === 'not_available', 'inactive/missing catalog hotel accepted');
+$currentMetadata = $metadata;
+foreach ([['generation' => '7'], ['offer_ref' => 'private-concrete-a'], ['local_hotel_id' => '999'], ['criteria' => []], ['action' => 'flights']] as $invalid) {
+    search3_reject(static function () use ($follow, $readRequest, &$state, $invalid) {
+        $follow(array_replace($readRequest, $invalid), $state);
+    }, 'invalid followup schema must not reach transport');
+}
+search3_check($readFactoryCalls === 0 && $transportCalls === 2, 'rejected read dispatched supplier');
+
+$unknownState = $groupState;
+$failedCalls = 0;
+$failedFactory = static function () use (&$failedCalls): AnyTourAnexClient {
+    return new AnyTourAnexClient('test-secret', static function () use (&$failedCalls): array {
+        ++$failedCalls;
+        throw new RuntimeException('SYNTHETIC_TRANSPORT_FAILURE');
+    });
+};
+$failed = false;
+try { $follow($expandRequest, $unknownState, $failedFactory, $checkpoint); } catch (RuntimeException $expected) { $failed = true; }
+search3_check($failed && $failedCalls === 1, 'synthetic failure not exercised');
+search3_check($follow($expandRequest, $unknownState)['status'] === 'expansion_unknown' && $failedCalls === 1
+    && $readFactoryCalls === 0, 'unknown expansion was replayed');
+$unreserved = $groupState;
+$failed = false;
+try { $follow($expandRequest, $unreserved, $factory); } catch (RuntimeException $error) { $failed = $error->getMessage() === 'ANEX_RESERVATION_REQUIRED'; }
+search3_check($failed && $transportCalls === 2, 'expansion ran without durable reservation contract');
+$unreserved = $groupState;
+$failed = false;
+try {
+    $follow($expandRequest, $unreserved, $factory, static function (): void { throw new RuntimeException('CHECKPOINT_WRITE_FAILED'); });
+} catch (RuntimeException $error) { $failed = $error->getMessage() === 'CHECKPOINT_WRITE_FAILED'; }
+search3_check($failed && $transportCalls === 2, 'checkpoint failure reached supplier');
+
+$now = $started + 898;
+search3_check($follow($readRequest, $state)['status'] === 'current', 'current offer expired too early');
+search3_check($follow($readRequest, $state)['status'] === 'expired', 'exact original expiry accepted');
+search3_check($follow($expandRequest, $groupState)['status'] === 'expired' && $readFactoryCalls === 0, 'expired expansion called supplier');
+$future = $state;
+$future['gateway']['saved_offers']['created_at'] = $now + 1;
+$future['gateway']['saved_offers']['expires_at'] = $now + 901;
+search3_check(!anytour_anex_search3_current($future, $now), 'future-created session accepted');
+
+// Failed new searches must invalidate the same HTTP session before PDO or transport.
+$badState = $state;
+$emptyPdo = new Search3CatalogPdo([]);
+$emptyCache = [];
+$diagnostics = null;
+search3_reject(static function () use (&$badState, $emptyPdo, &$emptyCache, &$diagnostics) {
+    anytour_anex_search3_run(['generation' => 8, 'params' => []], $emptyPdo, null, $emptyCache, $diagnostics, null, $badState);
+}, 'replacement validation must fail');
+search3_check($badState === [] && $emptyPdo->queries === [], 'failed new search kept old selected context');
+$now = $started + 10;
+$newSession = [];
+$newGroups = anytour_anex_search3_prices($factory(), $resolver, $savedCriteria, $newSession, $clock);
+$newState = ['generation' => 7, 'params' => $params, 'gateway' => $newSession, 'expansions' => []];
+search3_check($newGroups['search_ref'] !== $groups['search_ref'] && $follow($readRequest, $newState)['status'] === 'mismatch',
+    'new search reused an old reference even with the same generation');
+
+// The extracted catalog reader still enforces active local rows with bound IDs.
+$catalogPdo = new Search3CatalogPdo([array_values($metadata), [], []]);
+$readMetadata = anytour_anex_search3_metadata($catalogPdo, $groups['offers']);
+search3_check(isset($readMetadata[999]) && $catalogPdo->statements[0]->parameters === [999]
+    && strpos($catalogPdo->queries[0], 'AND is_active=1 LIMIT 300') !== false, 'current catalog read lost its active/bounded scope');
+
+// Exercise real PHP session flush/readback in a separate process before output.
+$endpoint = realpath(__DIR__ . '/../v2/api-anex-search3-preview.php');
+$sessionCheck = 'require ' . var_export($endpoint, true) . ';' . <<<'PHP'
+ini_set('session.use_cookies', '0');
+session_cache_limiter('');
+$dir = sys_get_temp_dir() . '/anex-search3-session-' . bin2hex(random_bytes(8));
+if (!mkdir($dir, 0700)) exit(10);
+session_save_path($dir);
+session_id('anex-test-' . bin2hex(random_bytes(8)));
+if (!session_start()) exit(11);
+$_SESSION['offer_context'] = ['generation' => 7, 'expansions' => ['fixture' => ['status' => 'unknown']]];
+$state =& $_SESSION['offer_context'];
+anytour_anex_search3_checkpoint($state);
+if (session_status() !== PHP_SESSION_ACTIVE || $_SESSION['offer_context'] !== $state) exit(12);
+$state['expansions']['fixture']['status'] = 'complete';
+session_write_close();
+if (!session_start() || $_SESSION['offer_context']['expansions']['fixture']['status'] !== 'complete') exit(13);
+$detached = ['generation' => 99];
+try { anytour_anex_search3_checkpoint($detached); exit(14); }
+catch (InvalidArgumentException $expected) {
+    if ($expected->getMessage() !== 'ANEX_SESSION_CHANGED' || $_SESSION['offer_context']['generation'] !== 7) exit(15);
+}
+session_destroy();
+rmdir($dir);
+echo 'SESSION_RESERVATION_READBACK_OK';
+PHP;
+$sessionOutput = []; $sessionCode = 0;
+exec(escapeshellarg(PHP_BINARY) . ' -d allow_url_fopen=0 -r ' . escapeshellarg($sessionCheck), $sessionOutput, $sessionCode);
+search3_check($sessionCode === 0 && implode('', $sessionOutput) === 'SESSION_RESERVATION_READBACK_OK', 'real session reservation/readback failed');
+echo "ANEX_SEARCH3_RETAINED_OK common_refs=1 expand_once=1 saved_supplier_calls=0 native_money=1 stale_rejected=1 fixed_expiry=1 reservation_readback=1\n";
