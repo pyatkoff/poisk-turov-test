@@ -1,7 +1,7 @@
 # AnyTour — единая организация разработки
 
 Поручение владельца от 2026-09-09: улучшать интеграции ANEX/Андромеды,
-поиск, сайт и SEO параллельно, с одной общей координацией.
+сопоставление отелей, поиск, сайт и SEO параллельно, с одной общей координацией.
 Репозиторий: только `pyatkoff/poisk-turov-test`.
 
 ## Старт и источники текущего состояния
@@ -23,7 +23,8 @@
 | Общие приоритеты, владение общими файлами, передача между направлениями | Этот документ и #996 |
 | Текущий исполняемый продуктовый пакет общего Search3/сайта | Свежая release: `AUTOPILOT_STATE.json.current_task`; конкретные evidence — профильный audit |
 | Порядок продуктовых этапов | `docs/project/search3-product-development-plan.md` на свежей release |
-| Текущие ANEX/data задачи и доказательства | `docs/integrations/anex-search3-autopilot.md` на свежей ANEX-ветке |
+| Текущие supplier/API задачи и доказательства | `docs/integrations/anex-search3-autopilot.md` на свежей ANEX-ветке |
+| Текущее массовое сопоставление отелей и evidence ladder | `docs/project/hotel-matching-autopilot.md` и MATCH #1971 |
 | Конкретная задача и завершённые/незавершённые условия | Issue направления, linked PR и его артефакт |
 | Что действительно опубликовано | Exact source/artifact и успешный deploy/readback; не один head ветки |
 | Предыдущие действия/неудачи/измерения | Датированные audit/history; не повторная очередь исполнения |
@@ -33,11 +34,12 @@
 Новая запись состояния должна исправлять активный указатель; не добавлять ещё один
 конкурирующий «Текущий checkpoint» над историей. Историю сохранять с датой и ссылкой.
 
-## Четыре направления
+## Пять направлений
 
 | Код / направление | Ответственность и результат | Очередь | Рабочая основа |
 | --- | --- | --- | --- |
-| INT — интеграции и данные | Адаптеры поставщиков, нормализация, принятые ID, происхождение данных, сохранённые наблюдения, панель решений | umbrella draft #1493; данные/панель #1647; Андромеда #1717; состав цены #1685 отдельным пакетом | Сейчас `feature/anex-search-adapter-20260907`; перенос в release отдельным согласованным пакетом |
+| INT — интеграции и provider data | Supplier transport/auth/search/package/price, provider response normalization, сохранённые supplier observations и контракты границы с SEARCH | umbrella draft #1493; Андромеда #1717; состав цены #1685 отдельным пакетом | Сейчас `feature/anex-search-adapter-20260907`; перенос в release отдельным согласованным пакетом |
+| MATCH — hotel identity | Массовое Tourvisor ↔ ANEX ↔ Andromeda сопоставление, evidence, accepted/manual/conflict/exclusion registry delta и остаточный review | #1971; история выполненных пакетов #1759 | Matching source на свежей `feature/anex-search-adapter-20260907`; организационный план в release |
 | SEARCH — поиск и выдача | Форма, lifecycle, карточки/фильтры/сортировка, общая выдача, выбор/возврат и контекст конкретного предложения | #1646; текущий release-пакет в `current_task`, координация #996 | `release/search3-production-ready-v1`; существующий ANEX addon временно остаётся в своей ветке |
 | SITE — сайт и путь к покупке | Общий shell, главная и страницы, навигация, правдивый контент, переходы в поиск | #1719; существующий продуктовый план | Свежая release |
 | SEO — органический поиск | Типы посадочных, URL/metadata, ссылки, содержательность и правила будущей индексации | #1720; существующий #395 — зависимость данных/история | Свежая release; сначала read-only аудит и требования |
@@ -45,7 +47,8 @@
 Координатор в #996 выбирает ближайшие пакеты по пользе, устраняет пересечения,
 собирает совместимые результаты и ведёт единое опубликованное состояние.
 Рабочие чаты/агенты — исполнители этих задач; переписка не создаёт новую ветку продукта.
-INT может иметь независимые задачи ANEX и Андромеды, но один владелец общего data-контракта.
+INT может иметь независимые задачи ANEX и Андромеды, но не владеет очередью hotel identity.
+MATCH не меняет supplier transport/search/price/package и получает provider evidence через явный контракт.
 Полное сопоставление каталога не является условием улучшения поиска или начала SITE/SEO.
 
 ## Владельцы компонентов — текущие пути, без массового переноса файлов
@@ -56,11 +59,12 @@ INT может иметь независимые задачи ANEX и Андро
 | Локальные Search3 фильтры / selected handoff | SEARCH | `src/search3/behavior/results/local-hotel-filter.js`, `behavior/summary-cta.js` |
 | Оформление формы, карточек и selected | SEARCH | `src/search3/styles/entry-native-controls.css`, `styles/results-layout.css` |
 | Общие results/selected/lifecycle | SEARCH | `v2/results-renderer-v5.js`, `tour-controller-v4.js`, `runtime-v3.js`, `search-lifecycle-v6.js`, `search-continue-v6.js`, `catalogs-v2.js` |
-| Supplier transport и normalization | INT | `app/integrations/anex-client.php`, `anex-search.php`, `anex-preview-gateway.php`, `anex-normalizer.php` |
-| Принятые ANEX связи / manual / pair exclusions | INT | `app/integrations/anex-search-mapping-registry.php`; сохранять действующую БД и решения |
-| Граница ANEX → Search3 | INT + SEARCH, один исполнитель на пакет | `v2/api-anex-search3-preview.php`; input/projection меняются по согласованному контракту |
+| Supplier transport и response normalization | INT | `app/integrations/anex-client.php`, `anex-search.php`, `anex-preview-gateway.php`, `anex-normalizer.php` |
+| Принятые ANEX/Andromeda hotel identities / manual / pair exclusions | MATCH | действующие mapping/identity registries; сохранять текущую БД, manual решения и exclusions; shared path только после claim #996 |
+| Matching diagnostics / bridge / review datasets | MATCH | существующие `scripts/diagnostics/*matching*`, Andromeda/ANEX bridge diagnostics и новый bounded MATCH tooling; не создавать дублирующий resolver без необходимости |
+| Граница provider → Search3 | INT + SEARCH, один исполнитель на пакет | `v2/api-anex-search3-preview.php` и соответствующая Andromeda projection; input/projection меняются по согласованному контракту |
 | Временный own-preview addon | SEARCH в ANEX-ветке | `v2/anex-search3-preview-v1.js`; не копировать поверх актуального UI и не добавлять третий renderer |
-| Панель и сохранённые досье | INT | `app/admin/anex-review/*`, `v2/anex-hotel-review.php`, существующие bounded diagnostics/importer |
+| Панель matching-review и сохранённые досье | MATCH; auth/runtime contract с INT при необходимости | `app/admin/anex-review/*`, `v2/anex-hotel-review.php`, существующие bounded diagnostics/importer |
 | Общая оболочка и страницы | SITE | `v2/site-page-shell-v1.php`, `site-header-v2.*`, `site-footer-v1.*`, `home-v1.php`, `home-entry-v1.php`, общие стили и route templates |
 | Переходы / свежесть | SITE; контракт с SEARCH/INT | `v2/site-path-v1.php`, `offer-freshness-v1.php`, country/resort/month renderers |
 | SEO policy / metadata / ссылки | SEO; mixed renderer через SITE/SEARCH | `v2/seo-page-*-v1.php`, `seo-internal-links-v1.php`, `seo-structured-data-v1.php`, `seo-content-catalog-v1.php` |
@@ -82,17 +86,18 @@ INT может иметь независимые задачи ANEX и Андро
 Tourvisor, ANEX и будущая Андромеда предоставляют отдельные source/offer/search
 identity и нормализованные данные. Карточки/фильтры/выбор принадлежат общему SEARCH.
 Оператор тура и источник API — разные поля; совпадающие числа ID разных API не связывают отели.
-Принятые связи, manual priority, pair exclusions и evidence provenance сохраняются.
+Принятые связи, manual priority, pair exclusions и evidence provenance принадлежат MATCH и сохраняются.
 
 Общий provider contract описан в `docs/integrations/multi-provider-search-plan.md`
 на ANEX-ветке. Это целевой контракт, не заявление о готовом универсальном registry:
-`hotel-identities.php` пока pilot JSON registry, действующий ANEX resolver указан выше.
+`hotel-identities.php` пока pilot JSON registry, действующие provider resolvers проверяются по свежему source.
 Текущей public ANEX projection ещё не хватает полного offer/search context для выбора.
 
 Передача INT → SEARCH включает: source SHA, целевую свежую release SHA, ограниченный
 список файлов, поля/fixtures и неизвестные сведения, supplier budget, проверки,
-checked/published/deferred, issue принимающего владельца. Затем:
-1. SEARCH/INT фиксируют один контракт и владельца общих файлов в #996.
+checked/published/deferred, issue принимающего владельца. MATCH передаёт только проверенную
+hotel identity/provenance и не подменяет offer/search/package identity. Затем:
+1. SEARCH/INT фиксируют один provider contract и владельца общих файлов в #996; MATCH отдельно claim-ит shared registry paths, если они нужны.
 2. Короткая ветка от свежей release получает только необходимый bounded пакет.
 3. Актуальные UI-владельцы подключают данные; календарь/фильтры/выбор проходят узкий
    совместный сценарий. Новый поиск инвалидирует старые ответы каждого источника.
@@ -101,8 +106,8 @@ checked/published/deferred, issue принимающего владельца. �
 
 Не merge всю старую ANEX-основу поверх release и не включать DS2/старые layers из неё.
 Draft #1493 остаётся изолированным umbrella до конкретного допуска интеграции.
-Андромеда #1717: сначала официальный контракт/доступ и ограниченные ответы, затем
-выключенный adapter; ANEX HOTELS30/7 дней/лимиты не переносить на неё по предположению.
+Андромеда #1717: использовать официальный контракт/доступ и проверенные ограниченные ответы;
+ANEX HOTELS30/7 дней/лимиты не переносить на неё по предположению.
 
 ## Рабочий пакет и параллельность
 
@@ -130,18 +135,21 @@ implemented, checked, preview-published и production-approved; они не вз
 В #996 claim включает issue, branch/PR, paths и последний подтверждённый шаг.
 Зависший claim не снимается по таймеру: сначала проверить PR/CI и текущего исполнителя.
 
-Существующие две автозадачи — исполнители четырёх очередей: общая продуктовая
-ведёт SEARCH/SITE и независимую SEO-подготовку; ANEX ведёт INT и явно назначенный
-addon/handoff пакет SEARCH. Новые одинаковые расписания не нужны. В начале каждого
-запуска читать текущие документы, не хранить многократно переписанные старые checkpoints
-в prompt. Если блокируется одна операция — сохранить причину и взять независимую задачу.
-Не останавливаться после одного PR, пока в запуске есть следующий безопасный шаг.
+Автопилотные очереди разделены по пяти направлениям. MATCH #1971 — самостоятельная очередь,
+а не подзадача INT: она читает `docs/project/hotel-matching-autopilot.md`, current DB/receipts
+и историю #1759. INT не продолжает matching `next_action` из старых checkpoints. Общая продуктовая
+работа ведёт SEARCH/SITE и независимую SEO-подготовку; supplier/API задачи идут через INT.
+Не создавать дублирующие одинаковые очереди. В начале каждого запуска читать текущие документы,
+не хранить многократно переписанные старые checkpoints в prompt. Если блокируется одна операция —
+сохранить причину и взять независимую задачу. Не останавливаться после одного PR, пока в запуске
+есть следующий безопасный шаг.
 
 ## Приоритет, проверки и публикация
 
 Авария/потеря заявок/искажение данных выше плановой работы. Затем пользовательский
-поиск/выбор и интеграционный шов, сайт/переходы; SEO-архитектура идёт независимо,
-массовое расширение страниц ждёт проверенных шаблонов и допуска публикации.
+поиск/выбор и интеграционный шов, сайт/переходы; matching развивается независимо и
+не блокирует SEARCH/SITE, SEO-архитектура идёт независимо, массовое расширение страниц
+ждёт проверенных шаблонов и допуска публикации.
 
 Один связный source-пакет → узкие необходимые проверки → применимые обязательные CI →
 интеграция. Сборку выполнять один раз для пакета; successful exact artifact переиспользовать.
@@ -164,20 +172,25 @@ canonical/redirects/sitemap не менять без отдельного явн
 [INT](anytour-roadmap/integrations.md), [SEARCH](anytour-roadmap/search.md),
 [SITE](anytour-roadmap/site.md), [SEO](anytour-roadmap/seo.md),
 [порядок интеграции и выпуска](anytour-roadmap/delivery.md), [модельные роли](anytour-roadmap/models.md).
+Отдельный план массового hotel identity — [MATCH](hotel-matching-autopilot.md), issue #1971.
 Перед назначением нового пакета читать его зависимости и приёмку; ARCH/BUILD/REVIEW/ASSIST
 подбирать по модельной матрице. Это backlog с проверяемыми результатами, не новая
 копия current_task. Готовые стадии и занятые source-пакеты не перезапускаются.
-Две рабочие основы сохраняются; INT→SEARCH — один ограниченный handoff с одним owner.
-Настройка моделей фоновых задач не считается изменённой от записи рекомендации в документах.
+Две рабочие основы сохраняются; provider INT→SEARCH и identity MATCH — ограниченные handoff
+с одним owner на каждый общий файл. Настройка моделей фоновых задач не считается изменённой
+от записи рекомендации в документах.
 
 ## Ближайшие задачи — ссылки, без второй копии очереди
 
+- MATCH: #1971; продолжать только от CURRENT DB после `hotel-full-catalog-delta-1759-20260911-v2`.
+  Сначала cross-provider bridge и сохранённое evidence, затем Tourvisor→ANEX operator link→
+  `HOTELLIST`/`hotelCode`, manual только последним. Completed/unknown operation не replay.
 - SEARCH: продолжить актуальный `current_task` release и #1646; конкретный point-тур
   должен сохранить свой search context до выбора/возврата. Готовые point/reveal/filter
   пакеты не повторять; минимумы источников не объявлять одинаковыми пакетами.
-- INT: #1647 storage/auth/persistent dossiers по существующей проверенной процедуре;
-  #1685 — отдельный владелец состава цены; #1717 — контракт Андромеды. Блокер API не
-  блокирует остальные задачи. Старые supplier unknown/completed не переигрывать.
+- INT: #1685 — отдельный владелец состава цены; #1717 — supplier/API/package контракт Андромеды.
+  Matching #1971 не является INT-задачей. Блокер API не блокирует остальные задачи.
+  Старые supplier unknown/completed не переигрывать.
 - SITE: #1719, оставшиеся реальные сценарии приёмки и один подтверждённый дефект.
 - SEO: #1720, матрица существующих типов страниц/данных/URL/indexability; старые
   main-based SEO PR сначала сверить с актуальной release, не запускать автоматически.
