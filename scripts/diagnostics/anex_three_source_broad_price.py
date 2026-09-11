@@ -13,11 +13,19 @@ SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-10-19','nights':
 
 def source():
     here=Path(__file__).resolve().parent
-    old=(here/'anex_search3_paired_runner.php').read_text(); new=(here/'anex_three_source_broad_price.php').read_text()
-    if not old.startswith('<?php') or not new.startswith('<?php'): raise ValueError('broad_php_header')
-    new_body=new[5:]; strict='\ndeclare(strict_types=1);\n'
-    if not new_body.startswith(strict): raise ValueError('broad_php_strict_header')
-    return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+new_body[len(strict):]
+    old=(here/'anex_search3_paired_runner.php').read_text()
+    meal=(here.parents[1]/'app/integrations/three-provider-meal.php').read_text()
+    new=(here/'anex_three_source_broad_price.php').read_text()
+    if not old.startswith('<?php') or not meal.startswith('<?php') or not new.startswith('<?php'):
+        raise ValueError('broad_php_header')
+    marker='declare(strict_types=1);'
+    def strict_body(value):
+        body=value[5:].lstrip()
+        if not body.startswith(marker):
+            raise ValueError('broad_php_strict_header')
+        return body[len(marker):].lstrip('\r\n')
+    meal_body=strict_body(meal);new_body=strict_body(new)
+    return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+meal_body+'\n'+new_body
 
 
 def validate_case(value,case_id):
@@ -38,7 +46,8 @@ def validate_case(value,case_id):
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or not isinstance(row.get('local_hotel_id'),int) or row['local_hotel_id']<1 \
                 or row.get('date')!=SPEC['date'] or row.get('nights')!=10 or row.get('adults')!=3 or row.get('children')!=0 \
-                or row.get('meal_family')!='ai' or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) \
+                or row.get('meal_family')!='ai' or row.get('meal_key')!='ai' or row.get('meal_qualifiers')!=[] \
+                or row.get('meal_equivalence_verified') is not False or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str) \
                 or row.get('fuel_inclusion_verified') is not False or row.get('final_price_verified') is not False:
             raise ValueError('broad_offer_invalid')
@@ -46,7 +55,7 @@ def validate_case(value,case_id):
 
 
 def key(row):
-    return (row['local_hotel_id'],row['date'],row['nights'],row['adults'],row['children'],row['meal_family'],row['room_norm'])
+    return (row['local_hotel_id'],row['date'],row['nights'],row['adults'],row['children'],row['meal_key'],row['room_norm'])
 
 
 def index(results):
@@ -67,8 +76,8 @@ def comparison(results):
     }
     examples=[]
     for item in sorted(triple,key=str)[:30]:
-        examples.append({'basis':'same_current_local_hotel_date_party_ai_and_room','identical_supplier_package_verified':False,
-            'fuel_inclusion_verified':False,'key':{'local_hotel_id':item[0],'date':item[1],'nights':item[2],'adults':item[3],'children':item[4],'meal_family':item[5],'room_norm':item[6]},
+        examples.append({'basis':'same_current_local_hotel_date_party_canonical_meal_key_and_room','identical_supplier_package_verified':False,
+            'fuel_inclusion_verified':False,'key':{'local_hotel_id':item[0],'date':item[1],'nights':item[2],'adults':item[3],'children':item[4],'meal_key':item[5],'room_norm':item[6]},
             'offers':{case:idx[case][item] for case in CASES}})
     pair_examples={}
     for name,items in pairs.items():
@@ -77,7 +86,7 @@ def comparison(results):
         elif name=='anex_tourvisor': a,b='anex','tourvisor'
         selected=[]
         for item in sorted(items-triple,key=str)[:20]:
-            selected.append({'key':{'local_hotel_id':item[0],'date':item[1],'nights':item[2],'adults':item[3],'children':item[4],'meal_family':item[5],'room_norm':item[6]},
+            selected.append({'key':{'local_hotel_id':item[0],'date':item[1],'nights':item[2],'adults':item[3],'children':item[4],'meal_key':item[5],'room_norm':item[6]},
                 'offers':{a:idx[a][item],b:idx[b][item]},'identical_supplier_package_verified':False})
         pair_examples[name]=selected
     counts={case:{'offers':len(results.get(case,{}).get('offers',[])),'unique_tuples':len(sets[case]),

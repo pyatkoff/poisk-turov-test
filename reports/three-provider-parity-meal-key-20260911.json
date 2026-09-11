@@ -1,0 +1,47 @@
+{
+  "report": "three-provider-parity-canonical-meal-key",
+  "date": "2026-09-11",
+  "scope": "INT/P2 source-only parity integration",
+  "base": "58831a134f0058bff7b7a1a387016aa3291acde1",
+  "status": "verified",
+  "behavior": {
+    "tuple_key_uses": "canonical meal_key",
+    "plain_ai_accepts": [
+      "AI",
+      "ALL INCLUSIVE",
+      "все включено"
+    ],
+    "plain_ai_rejects": [
+      "UAI",
+      "AI-WITHOUT ALCOHOL",
+      "ALL INCLUSIVE+"
+    ],
+    "meal_equivalence_verified": false,
+    "identical_supplier_package_verified": false
+  },
+  "execution": {
+    "new_supplier_scenario": false,
+    "ops_control_changed": false,
+    "supplier_requests": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "booking_calls": 0,
+    "production_changes": 0
+  },
+  "checkpoint": "No new checkpoint; Egypt v3 remains unexecuted and broninit UNKNOWN remains non-replayable.",
+  "next_action": "Use this source only with a newly approved, uniquely bound future parity scenario.",
+  "source_commit": "f5dc6c4af765028900e47b6ec9de479ed0d2a7bc",
+  "verification": {
+    "php_checks": 39,
+    "python_checks": 19,
+    "total_focused_checks": 58,
+    "parity_run": {
+      "id": 34561233267,
+      "conclusion": "success"
+    },
+    "security_run": {
+      "id": 34561233250,
+      "conclusion": "success"
+    }
+  }
+}

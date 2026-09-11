@@ -5,6 +5,9 @@ if (!function_exists('anex_paired_text')) {
     if (!defined('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY')) define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);
     require __DIR__ . '/anex_search3_paired_runner.php';
 }
+if (!class_exists('AnyTourThreeProviderMeal')) {
+    require __DIR__ . '/../../app/integrations/three-provider-meal.php';
+}
 
 const ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260911_v3';
 const ANEX_BROAD_PRICE_CASES = ['anex','andromeda','tourvisor'];
@@ -29,11 +32,13 @@ function anex_broad_price_norm($value,int $limit=240): string
     return trim((string)preg_replace('/[^\p{L}\p{N}]+/u',' ',str_replace(['ё','Ё'],'е',$text)));
 }
 
-function anex_broad_price_meal($value): ?string
+function anex_broad_price_meal($value): ?array
 {
-    $name=anex_broad_price_norm($value,100);
-    return in_array($name,['ai','all','all inclusive','uai','ultra all inclusive','ai without alcohol',
-        'все включено','ультра все включено','все включено без алкоголя'],true)?'ai':null;
+    try {
+        return AnyTourThreeProviderMeal::fromLabel($value);
+    } catch (InvalidArgumentException) {
+        return null;
+    }
 }
 
 function anex_broad_price_money($value,bool $positive=true): ?string
@@ -46,13 +51,14 @@ function anex_broad_price_money($value,bool $positive=true): ?string
 
 function anex_broad_price_offer(string $provider,int $local,$external,$hotelName,$date,$nights,$adults,$children,$meal,$room,$placement,$price,$currency,$fuel=null): ?array
 {
-    $date=anex_paired_date($date);$amount=anex_broad_price_money($price,true);$mealFamily=anex_broad_price_meal($meal);
-    if($local<1||$date!==ANEX_BROAD_PRICE_DATE||$amount===null||$mealFamily!=='ai'||(int)$nights!==10||(int)$adults!==3||(int)$children!==0)return null;
+    $date=anex_paired_date($date);$amount=anex_broad_price_money($price,true);$mealContract=anex_broad_price_meal($meal);
+    if($local<1||$date!==ANEX_BROAD_PRICE_DATE||$amount===null||($mealContract['canonical_key']??null)!=='ai'||(int)$nights!==10||(int)$adults!==3||(int)$children!==0)return null;
     $currency=strtoupper((string)(anex_paired_text($currency,[],8)??''));if($currency!=='RUB')return null;
     $fuelValue=null;if($fuel!==null){if(is_array($fuel))$fuel=$fuel['value']??$fuel['amount']??null;$fuelValue=anex_broad_price_money($fuel,false);}
     return ['provider'=>$provider,'local_hotel_id'=>$local,'external_hotel_id'=>(string)$external,
         'hotel_name'=>anex_paired_text($hotelName,[],240),'date'=>$date,'nights'=>10,'adults'=>3,'children'=>0,
-        'meal_family'=>'ai','meal_label'=>anex_paired_text($meal,[],100),'room'=>anex_paired_text($room,[],180),
+        'meal_family'=>'ai','meal_key'=>'ai','meal_qualifiers'=>[],'meal_equivalence_verified'=>false,
+        'meal_label'=>anex_paired_text($meal,[],100),'room'=>anex_paired_text($room,[],180),
         'room_norm'=>anex_broad_price_norm($room,180),'placement'=>anex_paired_text($placement,[],120),
         'placement_norm'=>anex_broad_price_norm($placement,120),'price'=>$amount,'currency'=>'RUB','fuel_charge'=>$fuelValue,
         'fuel_inclusion_verified'=>false,'final_price_verified'=>false];
