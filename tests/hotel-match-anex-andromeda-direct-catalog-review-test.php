@@ -38,8 +38,9 @@ ok(($far['bucket']??'')==='hard_conflict','>5km direct identity blocks');
 ok(($far['reason']??'')==='direct_identity_coordinate_conflict_gt_5km','coordinate conflict reason');
 
 $typo=hmadcr_best_pair(hmadcr_expand_names(['MOVENPICK WATERPARK SOMA BAY']),hmadcr_expand_names(['MOVENPIK WATER PARK SOMA BAY']),['Soma Bay'],['Soma Bay']);
-ok($typo['aligned']>=2,'typo token alignment');
-ok($typo['fuzzy_score']>=0.70,'typo fuzzy score retained');
+ok($typo['aligned']>=1,'typo brand evidence retained');
+ok($typo['char_similarity']>=0.75,'typo full-name similarity retained');
+ok(hmadcr_route($typo,null,true,1.0,'neither_side')===null,'one weak typo anchor is not auto-prepared');
 
 ok(hmadcr_validation([2993],2993)==='same_local','same local validation');
 ok(hmadcr_validation([2993],4000)==='different_local','different local validation');
