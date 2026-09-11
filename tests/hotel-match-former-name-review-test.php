@@ -8,5 +8,5 @@ $segments=hmfn_former_segments('CASA BLUE BEACH RESORT EX. MAGIC TULIP');
 hmfn_assert(in_array('MAGIC TULIP',$segments,true),'inline EX segment');
 hmfn_assert(hmfn_key('Double Tree By Hilton')==='double tree by hilton','identity normalization');
 hmfn_assert(hmfn_key('Eden Resort & Spa')==='eden','generic resort/spa ignored');
-hmfn_assert(hcar_critical('Sunset Beach Hotel')===['beach'],'critical qualifier preserved');
+hmfn_assert(hmfn_critical('Sunset Beach Hotel')===['beach'],'critical qualifier preserved');
 echo "hotel-match-former-name-review-test: ok\n";
