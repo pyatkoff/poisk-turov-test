@@ -3,7 +3,7 @@
   "generated_at": "2026-09-11",
   "scope": "INT P2/P4 source-only operator evidence",
   "base": "d5007471411f88289ad8c8f0b8ebf10d5018f699",
-  "status": "pending_ci",
+  "status": "verified",
   "providers": {
     "tourvisor": {"identity": "raw_label_only", "filter_status": "verified", "cross_provider_equivalence_verified": false},
     "anex": {"identity": "provider_fixed", "canonical_name": "ANEX", "filter_status": "unsupported", "cross_provider_equivalence_verified": false},
@@ -11,5 +11,7 @@
   },
   "guards": {"supplier_code_exposed": false, "mapping_inferred": false},
   "effects": {"supplier_calls": 0, "database_writes": 0, "mapping_writes": 0, "booking_calls": 0, "ui_runtime_changes": 0, "production_changes": 0},
+  "verified_head": "687174d77837cefe718bbe805b24e755126b60ac",
+  "verification": {"offer_run": 34569053194, "context_run": 34569053204, "security_run": 34569053182, "status": "success"},
   "next_action": "Verify supplier-specific operator dictionaries before cross-provider canonical equivalence."
 }
