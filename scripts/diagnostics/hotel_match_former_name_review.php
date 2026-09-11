@@ -17,6 +17,11 @@ function hmfn_former_segments(string $name): array {
 }
 function hmfn_tokens(string $name): array { return pcbr_identity_tokens(htxr_latin($name)); }
 function hmfn_key(string $name): string { return implode(' ',hmfn_tokens($name)); }
+function hmfn_critical(string $name): array {
+    $critical=['annex'=>1,'beach'=>1,'garden'=>1,'north'=>1,'south'=>1];$out=[];
+    foreach(hmfn_tokens($name) as $token)if(isset($critical[$token]))$out[$token]=true;
+    $keys=array_keys($out);sort($keys,SORT_STRING);return $keys;
+}
 function hmfn_index(array $hotels,array $names): array {
     $idx=[];$segments=0;
     foreach($hotels as $id=>$hotel){$country=(int)$hotel['country_id'];foreach($names[$id]??[(string)$hotel['name']] as $raw){
@@ -28,7 +33,7 @@ function hmfn_match(array $sourceNames,array $sourcePlaces,array $coordSource,in
     $matches=[];
     foreach($sourceNames as $source){$source=trim((string)$source);if($source==='')continue;$tokens=hmfn_tokens($source);$key=implode(' ',$tokens);if($key==='')continue;
         foreach($index[$country][$key]??[] as $id=>$formerNames){$id=(int)$id;if(isset($excluded[$id])||!isset($hotels[$id]))continue;$h=$hotels[$id];
-            foreach(array_keys($formerNames) as $former){if(hcar_critical($source)!==hcar_critical((string)$former))continue;
+            foreach(array_keys($formerNames) as $former){if(hmfn_critical($source)!==hmfn_critical((string)$former))continue;
                 $guard=mbr_target_guard($coordSource,$h);if($guard['coordinate_conflict'])continue;
                 $distance=$guard['distance_m']??null;$place=htxr_place($sourcePlaces,[(string)($h['region_name']??''),(string)($h['subregion_name']??'')]);
                 $direct=($distance!==null&&(float)$distance<=1000.0)||$place;if(!$direct)continue;
