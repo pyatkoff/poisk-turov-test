@@ -62,9 +62,13 @@ $badCases=[
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search_replayed']),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search','supplier_offer_id'=>'PRIVATE']),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],['amount'=>'1','currency'=>'RUB','source'=>'anex_additional']),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],['amount'=>'1','currency'=>'RUB','source'=>'anex_fuel']),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],['amount'=>'1','currency'=>'RUB','source'=>'andromeda_fuel']),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'BAD-KIND','amount'=>'1','currency'=>'RUB','source'=>'anex_additional']]),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'anex_additional_estimated']]),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('tourvisor',['amount'=>'1','currency'=>'RUB','source'=>'tourvisor_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'andromeda_additional']]),
 ];
 foreach($badCases as $case){try{$case();money_check(false);}catch(InvalidArgumentException $e){money_check(true);}}
 

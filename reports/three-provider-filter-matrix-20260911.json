@@ -224,9 +224,9 @@
     {
       "field": "fuel_additional",
       "canonical_status": "unknown",
-      "tourvisor": {"status": "verified", "note": "fuelCharge is exposed separately; broad-v2 had 10/10 normalized TV offers with non-null fuelCharge; canonical facts require exact tourvisor_search/tourvisor_fuel provenance"},
-      "anex": {"status": "unknown", "note": "SearchTour price has no fuel field; AdditionalPricesDaily is a separate method not yet live-verified; canonical facts require exact anex_search/anex_fuel/anex_additional provenance"},
-      "andromeda": {"status": "unknown", "note": "action=price has no separate documented fuel field; package/quote methods are separate; canonical facts require exact andromeda_search/andromeda_fuel/andromeda_additional provenance"},
+      "tourvisor": {"status": "verified", "note": "fuelCharge is exposed separately; broad-v2 had 10/10 normalized TV offers with non-null fuelCharge; canonical facts allow exact tourvisor_search/tourvisor_fuel provenance and reject Tourvisor additional facts"},
+      "anex": {"status": "unknown", "note": "SearchTour price has no fuel field, so anex_fuel is rejected; separately reported AdditionalPricesDaily facts use exact anex_additional provenance but remain not live-verified"},
+      "andromeda": {"status": "unknown", "note": "action=price has no separate documented fuel/additional field, so both are rejected at search boundary; package/quote methods remain separate"},
       "next_action": "P0 evidence first; never default missing fuel to zero"
     },
     {

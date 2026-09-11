@@ -12,6 +12,11 @@ declare(strict_types=1);
 final class AnyTourThreeProviderMoneyFacts
 {
     private const PROVIDERS = ['tourvisor', 'anex', 'andromeda'];
+    private const SEARCH_CAPABILITIES = [
+        'tourvisor' => ['fuel' => true, 'additional' => false],
+        'anex' => ['fuel' => false, 'additional' => true],
+        'andromeda' => ['fuel' => false, 'additional' => false],
+    ];
 
     public static function fromSearch(
         string $provider,
@@ -26,6 +31,11 @@ final class AnyTourThreeProviderMoneyFacts
             || ($additionalPricesReported !== []
                 && array_keys($additionalPricesReported) !== range(0, count($additionalPricesReported) - 1))) {
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
+        }
+        $capabilities = self::SEARCH_CAPABILITIES[$provider];
+        if (($fuelChargeReported !== null && !$capabilities['fuel'])
+            || ($additionalPricesReported !== [] && !$capabilities['additional'])) {
+            throw new InvalidArgumentException('THREE_PROVIDER_MONEY_CAPABILITY');
         }
 
         $search = self::moneyFact($searchPrice, false, $provider, 'search');
