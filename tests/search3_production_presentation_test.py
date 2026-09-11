@@ -941,7 +941,12 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
             (ROOT / 'v2/search3-selected-flow-v2.css').read_text(),
-            '.selected-picture img{max-width:100%;height:auto}\n',
+            '.selected-picture img{max-width:100%}\n',
+        )
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        self.assertIn(
+            '& .selected-picture img {position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}',
+            results,
         )
         self.assertEqual((ROOT / 'v2/search3-selected-flow-v2.js').stat().st_size, 0)
 
