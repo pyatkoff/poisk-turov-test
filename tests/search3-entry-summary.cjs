@@ -31,10 +31,13 @@ for (const name of ['arrival', 'region', 'subregion', 'hotel', 'operator', 'hote
 assert.match(markup, /\['onlyDirect','only_direct'\],\['onlyCharter','only_charter'\]/, 'direct and charter aliases count once');
 assert.match(markup, /\['1','true','yes'\]/, 'false-ish flight flags stay inactive');
 assert.match(markup, /Активных фильтров: /, 'Search3 exposes a truthful active-filter count');
+assert.match(markup, /курорт, отель, питание, цена и перелёт/, 'Search3 default hint advertises the available price filter');
+assert.match(markup, /v2_search3_enabled\(\)\?'Вылет с':'С'/, 'Search3 start-date label is explicit while legacy stays unchanged');
+assert.match(markup, /v2_search3_enabled\(\)\?'Вылет до':'По'/, 'Search3 end-date label is explicit while legacy stays unchanged');
 assert.match(markup, /v2_search3_enabled\(\)\?e\(\$advancedFilterHint\):'курорт, отель, питание и перелёт'/, 'legacy V2 keeps its previous generic summary');
 assert.match(markup, /v2_search3_enabled\(\)\):\?><section class="v2-product-hero v2-visually-hidden"/, 'Search3 keeps one semantic hero without redundant first-view chrome');
 assert.match(markup, /<\?php else:\?><section class="v2-product-hero"/, 'legacy V2 keeps its visible product hero');
 assert.match(catalogs, /function renderChildAges\(\)/, 'canonical child-age owner remains');
 assert.match(lifecycle, /new FormData\(form\)/, 'canonical FormData owner remains');
 assert.match(lifecycle, /hydrateUrlState\(\)/, 'canonical URL hydration remains');
-console.log('PASS: native server form, compact Search3 hero, active advanced-filter summary, catalog controls, URL hydration and FormData remain; client projection retired');
+console.log('PASS: native server form, compact Search3 hero, explicit date labels, active advanced-filter summary, catalog controls, URL hydration and FormData remain; client projection retired');

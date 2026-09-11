@@ -34,8 +34,8 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('Страна', '<select><option>Турция</option></select>', 'country')}
     </fieldset>
     <fieldset class="search-group search-group--dates"><legend>Даты вылета</legend>
-      ${field('С', '<input type="date" value="2026-09-12">', 'date-from')}
-      ${field('По', '<input type="date" value="2026-09-19">', 'date-to')}
+      ${field('Вылет с', '<input type="date" value="2026-09-12">', 'date-from')}
+      ${field('Вылет до', '<input type="date" value="2026-09-19">', 'date-to')}
     </fieldset>
     <fieldset class="search-group search-group--nights"><legend>Продолжительность</legend>
       ${field('Ночей от', '<select><option>7</option></select>', 'nights-from')}
@@ -46,7 +46,7 @@ const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box
       ${field('Детей', '<select><option>Без детей</option></select>', 'children')}
     </fieldset>
   </div>
-  <details class="extras"><summary>Фильтры отдыха <span>курорт, отель, питание и перелёт</span></summary></details>
+  <details class="extras"><summary>Фильтры отдыха <span>курорт, отель, питание, цена и перелёт</span></summary></details>
   <button class="primary search-submit" type="submit"><span>Найти туры</span></button>
 </form></main></body>`;
 
