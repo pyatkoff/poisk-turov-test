@@ -1,0 +1,24 @@
+name: MATCH ANEX hotelCode evidence check
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - 'scripts/diagnostics/anex_hotelcode_evidence.php'
+      - 'tests/anex-hotelcode-evidence-test.php'
+      - '.github/workflows/anex-hotelcode-evidence-check.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax and pure parser contract
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/anex_hotelcode_evidence.php
+          php -l tests/anex-hotelcode-evidence-test.php
+          php tests/anex-hotelcode-evidence-test.php
