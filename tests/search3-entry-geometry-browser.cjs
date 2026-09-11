@@ -74,7 +74,7 @@ const measure = node => {
   if (output) fs.mkdirSync(output, { recursive: true });
   let states = 0;
   try {
-    for (const width of [375, 760, 761, 1024, 1025, 1199, 1200, 1440]) {
+    for (const width of [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440]) {
       const page = await browser.newPage({ viewport: { width, height: 1300 } });
       try {
         await page.setContent(html);
@@ -111,12 +111,22 @@ const measure = node => {
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, `${width}: submit remains actionable and readable`);
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы'], `${width}: trip basics keep the existing four canonical groups`);
         assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до'], `${width}: primary hotel/price preferences stay visible in canonical order`);
-        if (width === 375) {
-          assert.equal(state.mainColumns, 1, '375: full search uses one readable outer column');
-          assert.equal(state.preferenceColumns, 1, '375: primary hotel preferences use one mobile column');
-          assert.deepEqual(state.groupColumns, [1, 2, 2, 2], '375: route stacks while coupled trip pairs stay compact');
-          assert.equal(new Set(state.preferenceTops).size, 6, '375: six primary preference controls stack without cramped pairs');
-          assert.ok(state.submit.width >= state.form.width - 45, '375: primary action spans the mobile form');
+        if (width === 350) {
+          assert.equal(state.mainColumns, 1, '350: full search uses one readable outer column');
+          assert.equal(state.preferenceColumns, 1, '350: narrow phones fall back to one preference column');
+          assert.deepEqual(state.groupColumns, [1, 1, 1, 1], '350: all native field groups stack safely on narrow phones');
+          assert.equal(new Set(state.preferenceTops).size, 6, '350: six primary preference controls stack without cramped pairs');
+          assert.ok(state.submit.width >= state.form.width - 45, '350: primary action spans the mobile form');
+        }
+        if (width === 375 || width === 430) {
+          assert.equal(state.mainColumns, 1, `${width}: full search uses one readable outer column`);
+          assert.equal(state.preferenceColumns, 2, `${width}: short primary preferences use two compact mobile columns`);
+          assert.deepEqual(state.groupColumns, [1, 2, 2, 2], `${width}: route stacks while coupled trip pairs stay compact`);
+          assert.equal(new Set(state.preferenceTops).size, 4, `${width}: region and hotel stay full-width while category/meal and price bounds pair`);
+          assert.notEqual(state.preferenceTops[0], state.preferenceTops[1], `${width}: region and exact hotel keep separate full-width rows`);
+          assert.equal(state.preferenceTops[2], state.preferenceTops[3], `${width}: category and meal share one compact row`);
+          assert.equal(state.preferenceTops[4], state.preferenceTops[5], `${width}: price bounds share one compact row`);
+          assert.ok(state.submit.width >= state.form.width - 45, `${width}: primary action spans the mobile form`);
         }
         if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2, `${width}: intermediate primary preferences use two balanced columns`);
         if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, `${width}: extra parameters and search share the footer row`);
