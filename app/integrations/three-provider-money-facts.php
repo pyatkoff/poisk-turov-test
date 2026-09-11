@@ -85,10 +85,7 @@ final class AnyTourThreeProviderMoneyFacts
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_CURRENCY');
         }
         $source = $value['source'];
-        if (!is_string($source)
-            || !preg_match('/\A[a-z][a-z0-9_]{2,79}\z/D', $source)
-            || strpos($source, $provider . '_') !== 0
-            || strpos($source, '_' . $expectedKind) === false) {
+        if (!is_string($source) || $source !== $provider . '_' . $expectedKind) {
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_SOURCE');
         }
         return ['amount' => $amount, 'currency' => $currency, 'source' => $source];
