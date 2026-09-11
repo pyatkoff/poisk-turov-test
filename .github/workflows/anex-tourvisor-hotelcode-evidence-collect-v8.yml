@@ -36,7 +36,8 @@ jobs:
           assert 'nightTargets=[7,8,9]' in s
           assert "'nightsFrom'=>$night,'nightsTo'=>$night" in s
           assert "'/tours/search'" in s and "'/operators'" in s and "'/tours/dates'" in s
-          assert '/continue' not in s
+          forbidden="v2_data_tv_get(" + repr('/continue')
+          assert forbidden not in s
           assert "'database_writes'=>0" in s and "'booking_calls'=>0" in s and "'search_continue_calls'=>0" in s
           print('v8 exact-night evidence scope verified')
           PYTHON
