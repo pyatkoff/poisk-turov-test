@@ -9,6 +9,9 @@ on:
   push:
     branches: ['feat/match-anex-sellability-20260911']
     paths:
+      - 'scripts/diagnostics/hotel_match_literal_geo_union_accept.php'
+      - 'tests/hotel-match-literal-geo-union-accept-test.php'
+      - '.github/workflows/hotel-match-literal-geo-union-accept.yml'
       - '.github/match-literal-geo-union-accept-1971-v1.arm'
 permissions:
   contents: read
@@ -52,7 +55,7 @@ jobs:
           PY
   apply:
     needs: validate
-    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1 && (contains(github.event.head_commit.added, '.github/match-literal-geo-union-accept-1971-v1.arm') || contains(github.event.head_commit.modified, '.github/match-literal-geo-union-accept-1971-v1.arm'))
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
