@@ -1,0 +1,165 @@
+name: MATCH direct ANEX-Andromeda missing-side acceptance
+run-name: MATCH direct ANEX-Andromeda missing-side acceptance #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_andromeda_direct_missing_side_accept.php'
+      - 'tests/hotel-match-anex-andromeda-direct-missing-side-accept-test.php'
+      - 'scripts/diagnostics/hotel_match_anex_andromeda_direct_catalog_hardened.php'
+      - '.github/workflows/hotel-match-anex-andromeda-direct-missing-side-accept.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-andromeda-direct-missing-side-accept-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-andromeda-direct-missing-side-accept-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-andromeda-direct-missing-side-accept-1971-20260911-v1
+  SOURCE_RUN_ID: '34599826175'
+  SOURCE_ARTIFACT_NAME: hotel-match-anex-andromeda-direct-catalog-review-1971-20260911-v1-result
+  SOURCE_RESULT_SHA256: '870027c15486692f1b005b4aaf0f99ab8256418628b7f187ee19917873421ee9'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate guarded direct missing-side writer
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_andromeda_direct_missing_side_accept.php
+          php -l tests/hotel-match-anex-andromeda-direct-missing-side-accept-test.php
+          php tests/hotel-match-anex-andromeda-direct-missing-side-accept-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_andromeda_direct_missing_side_accept.php').read_text()
+          assert 'HMADMSA_SOURCE_COUNT=29' in s
+          assert 'HMADMSA_MAX_WRITES=40' in s
+          assert "['anex_only','andromeda_only']" in s
+          assert 'direct_strong_fuzzy_geo' not in s.split('function hmadmsa_actionable',1)[1].split('}',1)[0]
+          assert "'neither_side_writes'=>false" in s and "'different_local_writes'=>false" in s and "'fuzzy_only_writes'=>false" in s
+          assert "'one_transaction'=>true" in s and "'post_commit_per_row_readback'=>true" in s
+          assert 'FOR UPDATE' in s and '$db->commit()' in s
+          assert 'supplier_calls\'=>0' in s or "'supplier_calls'=>0" in s
+          print('direct missing-side guarded writer scope verified')
+          PYTHON
+  apply:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-andromeda-direct-missing-side-accept-1971-v1.arm)" = "$OPERATION_ID"
+      - name: Fetch and verify immutable direct-review allowlist
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/direct-source"; mkdir -p "$SRC"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT_NAME" --dir "$SRC"
+          test -f "$SRC/result.json" && test -f "$SRC/receipt.json"
+          echo "$SOURCE_RESULT_SHA256  $SRC/result.json" | sha256sum -c -
+          python3 - "$SRC/result.json" "$SRC/receipt.json" "$SOURCE_RESULT_SHA256" <<'PYTHON'
+          import json,sys
+          result=json.load(open(sys.argv[1])); receipt=json.load(open(sys.argv[2])); expected=sys.argv[3]
+          assert result['operation_id']=='hotel-match-anex-andromeda-direct-catalog-review-1971-20260911-v1'
+          assert result['status']=='completed' and result['database_writes']==0 and result['mapping_writes']==0 and result['supplier_calls']==0
+          assert result['stats']['one_side_only']==29 and result['stats']['hardened_pairs']==901
+          assert receipt['result_sha256']==expected and receipt['no_replay'] is True
+          PYTHON
+      - name: Prepare SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: SSH/runtime preflight before reservation
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_match_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'root="$HOME/www/anytoour.ru"; cd "$root"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_SSH_OK')"
+          test "$out" = MATCH_SSH_OK
+      - name: Reserve immutable write operation before DB access
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'source_operation':'hotel-match-anex-andromeda-direct-catalog-review-1971-20260911-v1','source_run_id':int(os.environ['SOURCE_RUN_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-andromeda-direct-missing-side-accept-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-andromeda-direct-missing-side-accept-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply one guarded CURRENT transaction
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; SRC="$RUNNER_TEMP/direct-source"; export STATE SRC
+          python3 - <<'PYTHON'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          cross=body('scripts/diagnostics/hotel_match_global_cross_provider_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          tour=body('scripts/diagnostics/hotel_match_global_tourvisor_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_cross_provider_rescue.php';\n",'',1)
+          approx=body('scripts/diagnostics/hotel_match_global_approx_name_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_tourvisor_rescue.php';\n",'',1)
+          direct=body('scripts/diagnostics/hotel_match_anex_andromeda_direct_catalog_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_approx_name_rescue.php';\n",'',1)
+          hardened=body('scripts/diagnostics/hotel_match_anex_andromeda_direct_catalog_hardened.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_direct_catalog_review.php';\n",'',1)
+          accept=body('scripts/diagnostics/hotel_match_anex_andromeda_direct_missing_side_accept.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_direct_catalog_hardened.php';\n",'',1)
+          source=json.loads((Path(os.environ['SRC'])/'result.json').read_text())
+          source_json=json.dumps(source,ensure_ascii=False,separators=(',',':'))
+          wrapper="""
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMADMSA_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMADMSA_DB_HELPER');require_once $dbHelper;$source=json_decode(base64_decode('%s'),true,512,JSON_THROW_ON_ERROR);echo fc_json(hmadmsa_accept(v2_data_db(),$source,HMADMSA_OPERATION,HMADMSA_MAX_WRITES)),"\\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>HMADMSA_OPERATION,'reason'=>'HMADMSA_REMOTE_ERROR','message'=>$e->getMessage(),'no_replay'=>true]),"\\n";exit(2);}
+          """ % __import__('base64').b64encode(source_json.encode()).decode()
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+cross+'\n'+tour+'\n'+approx+'\n'+direct+'\n'+hardened+'\n'+accept+'\n'+wrapper
+          key=os.path.join(os.environ['RUNNER_TEMP'],'anytoour_match_key')
+          p=subprocess.run(['ssh','-T','-i',key,'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',f"{os.environ['ANYTOOUR_DEPLOY_USER'].strip()}@{os.environ['ANYTOOUR_DEPLOY_HOST'].strip()}",'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M'],input=code,text=True,capture_output=True,timeout=1740)
+          state=Path(os.environ['STATE'])
+          try:r=json.loads(p.stdout)
+          except Exception:raise RuntimeError('missing_side_output_unparseable:'+p.stderr[-1600:])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if p.returncode==0 and r.get('status')=='completed' else 'failed_or_unknown_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'no_replay':True,'result_status':r.get('status'),'stats':r.get('stats'),'before':r.get('before'),'after':r.get('after')};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if p.returncode!=0 or r.get('status')!='completed':raise RuntimeError('missing_side_accept_not_completed:'+str(r.get('reason'))+':'+str(r.get('message')))
+          if r.get('supplier_calls')!=0 or r.get('historical_operations_replayed') is not False:raise RuntimeError('write_scope_violation')
+          s=r['stats'];b=r['before'];a=r['after'];summary=f"MATCH #1971 DIRECT missing-side acceptance `{r['operation_id']}` completed / NO-REPLAY. Allow **{s['allow']}**, CURRENT rechecked **{s['current_rechecked']}**, planned/written **{s['planned']}/{s['written']}** = ANEX **{s['written_anex']}** + Andromeda **{s['written_andromeda']}**, live **{s['live_written']}**. Post-COMMIT readback is embedded per written row and required exact. Coverage ANEX links {b['anex_links']}→{a['anex_links']}, ANEX unique {b['anex_unique_local']}→{a['anex_unique_local']}, Andromeda unique {b['andromeda_unique_local']}→{a['andromeda_unique_local']}, triple {b['all_three']}→{a['all_three']}. Supplier calls 0."
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-andromeda-direct-missing-side-accept-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-andromeda-direct-missing-side-accept-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
