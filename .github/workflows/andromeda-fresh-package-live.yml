@@ -13,7 +13,7 @@ jobs:
     if: >-
       github.event.issue.number == 996 &&
       github.event.comment.user.login == 'pyatkoff' &&
-      github.event.comment.body == '/probe-andromeda-fresh-package-1717-v4'
+      github.event.comment.body == '/probe-andromeda-fresh-package-1717-v5'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,24 +22,25 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           test "${{ github.event.issue.number }}" = 996
           test "${{ github.event.comment.user.login }}" = pyatkoff
-          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717-v4
+          test "${{ github.event.comment.body }}" = /probe-andromeda-fresh-package-1717-v5
       - uses: actions/checkout@v4
         with:
-          ref: f3b6a661b1fa6e01657c948aec4991b2abdf5610
+          ref: 424a80db461269cae5567bcecda7e8041de34436
           persist-credentials: false
       - name: Verify exact checked diagnostic source
         run: |
-          test "$(git rev-parse HEAD)" = f3b6a661b1fa6e01657c948aec4991b2abdf5610
-          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py
+          test "$(git rev-parse HEAD)" = 424a80db461269cae5567bcecda7e8041de34436
+          python3 -m py_compile scripts/diagnostics/andromeda_fresh_package_probe.py scripts/diagnostics/andromeda_fresh_package_probe_wide.py scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py
           python3 tests/andromeda_fresh_package_probe_test.py
           python3 tests/andromeda_fresh_package_probe_wide_test.py
           python3 tests/andromeda_fresh_package_supplier_error_probe_test.py
-      - name: Capture one fresh ANEX package without booking
+          python3 tests/andromeda_fresh_package_probe_known_hotel_test.py
+      - name: Capture one known-hotel ANEX package without booking
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 scripts/diagnostics/andromeda_fresh_package_supplier_error_probe.py --execute
+        run: python3 scripts/diagnostics/andromeda_fresh_package_probe_known_hotel.py --execute
       - name: Preserve private package evidence
         if: always()
         uses: actions/upload-artifact@v4
