@@ -1,0 +1,185 @@
+name: MATCH literal geo union guarded acceptance
+run-name: MATCH literal geo union guarded acceptance #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_literal_geo_union_accept.php'
+      - 'tests/hotel-match-literal-geo-union-accept-test.php'
+      - '.github/workflows/hotel-match-literal-geo-union-accept.yml'
+  push:
+    branches: ['ops/match-literal-geo-union-accept-1971-20260912-v1']
+    paths:
+      - 'scripts/diagnostics/hotel_match_literal_geo_union_accept.php'
+      - 'tests/hotel-match-literal-geo-union-accept-test.php'
+      - '.github/workflows/hotel-match-literal-geo-union-accept.yml'
+      - '.github/match-literal-geo-union-accept-1971-20260912-v1.arm'
+permissions: {contents: read, actions: read, issues: write}
+concurrency:
+  group: match-literal-geo-union-accept-v1-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-literal-geo-union-accept-1971-20260912-v1
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate exact guarded writer
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_literal_geo_union_accept.php
+          php tests/hotel-match-literal-geo-union-accept-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_literal_geo_union_accept.php').read_text()
+          required=[
+            "const HMLGUA_OPERATION = 'hotel-match-literal-geo-union-accept-1971-20260912-v1'",
+            'hmlgua_plan_current_in_transaction', 'FOR UPDATE',
+            'source_cross_lane_target_conflict', 'same_provider_union_target_collision',
+            'literal_geo_union_coordinate_conflict_gt_5km',
+            'anex_review_pair_exclusions', "decision_status='pending' AND local_hotel_id IS NULL",
+            'anex_post_commit_readback_failed', 'andromeda_post_commit_readback_failed',
+            "'current_db_same_transaction'=>true", "'supplier_calls'=>0", "'tourvisor_calls'=>0"
+          ]
+          for x in required: assert x in s,x
+          for bad in ('curl_init','curl_exec','https://','http://','AnyTourAnexClient','v2_data_tv_get'):
+            assert bad not in s,bad
+          print('MATCH_LITERAL_GEO_UNION_ACCEPT_STATIC_OK')
+          PY
+
+  apply:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1 && hashFiles('.github/match-literal-geo-union-accept-1971-20260912-v1.arm') != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm
+        run: test "$(cat .github/match-literal-geo-union-accept-1971-20260912-v1.arm)" = "$OPERATION_ID"
+      - name: Build and lint exact server-current payload before reservation
+        run: |
+          set -euo pipefail
+          export PAYLOAD="$RUNNER_TEMP/literal-geo-union-accept-v1.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          chain=[
+            ('hotel_full_catalog_reconcile.php',[]),
+            ('hotel_match_current_bulk_review.php',['hotel_full_catalog_reconcile.php']),
+            ('hotel_match_global_cross_provider_rescue.php',['hotel_match_current_bulk_review.php']),
+            ('hotel_match_global_tourvisor_rescue.php',['hotel_match_global_cross_provider_rescue.php']),
+            ('hotel_match_global_approx_name_rescue.php',['hotel_match_global_tourvisor_rescue.php']),
+            ('hotel_match_anex_andromeda_direct_catalog_review.php',['hotel_match_global_approx_name_rescue.php']),
+            ('hotel_match_anex_andromeda_direct_catalog_hardened.php',['hotel_match_anex_andromeda_direct_catalog_review.php']),
+            ('hotel_match_anex_andromeda_mutual_graph_review.php',['hotel_match_anex_andromeda_direct_catalog_hardened.php']),
+            ('hotel_match_anex_andromeda_cluster_local_review.php',['hotel_match_anex_andromeda_mutual_graph_review.php']),
+            ('hotel_match_mass_identity_graph_review.php',['hotel_match_anex_andromeda_cluster_local_review.php']),
+            ('hotel_match_exact_unique_mass_review.php',['hotel_match_mass_identity_graph_review.php']),
+            ('hotel_match_exact_ordered_mass_review.php',['hotel_match_exact_unique_mass_review.php']),
+            ('hotel_match_exact_ordered_literal_mass_review.php',['hotel_match_exact_ordered_mass_review.php']),
+            ('hotel_match_single_token_geo_mass_review.php',['hotel_match_exact_ordered_literal_mass_review.php']),
+            ('hotel_match_literal_geo_union_review.php',['hotel_match_single_token_geo_mass_review.php']),
+            ('hotel_match_current_bulk_accept.php',['hotel_full_catalog_reconcile.php','hotel_match_current_bulk_review.php']),
+            ('hotel_match_literal_geo_union_accept.php',['hotel_match_literal_geo_union_review.php','hotel_match_current_bulk_accept.php'])]
+          parts=[]
+          for name,parents in chain:
+              s=body('scripts/diagnostics/'+name)
+              if "if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n" in s:
+                  s=s.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n",'',1)
+              for parent in parents:
+                  line="require_once __DIR__ . '/"+parent+"';\n"
+                  if line not in s: raise RuntimeError('dependency_header_shape_changed:'+name+':'+parent)
+                  s=s.replace(line,'',1)
+              parts.append(s)
+          wrapper=r'''try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMLGUA_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMLGUA_DB_HELPER');require_once $dbHelper;$r=hmlgua_accept(v2_data_db(),HMLGUA_OPERATION);echo "HMLGUA_JSON:",fc_json($r),"\n";exit(($r['status']??'')==='completed'?0:2);}catch(Throwable $e){echo "HMLGUA_JSON:",json_encode(['status'=>'failed','operation_id'=>HMLGUA_OPERATION,'reason'=>'HMLGUA_REMOTE_ERROR','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'historical_operations_replayed'=>false]),"\n";exit(2);}'''
+          Path(os.environ['PAYLOAD']).write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+'\n'.join(parts)+'\n'+wrapper,encoding='utf-8')
+          PY
+          php -l "$PAYLOAD"
+          ! grep -Eiq 'curl_init|curl_exec|https://|http://|AnyTourAnexClient|v2_data_tv_get' "$PAYLOAD"
+      - name: Prepare SSH key and zero-DB preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmlgua-key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            if test "$(ssh "${o[@]}" "$U@$H" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_OK' 2>/dev/null)" = MATCH_OK; then ok=1; break; fi
+            sleep $((attempt*3))
+          done
+          test "$ok" = 1
+      - name: Reserve immutable operation before CURRENT DB access
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-accept-v1.php'
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'payload_sha256':hashlib.sha256(payload.read_bytes()).hexdigest(),'mode':'server_current_literal_geo_union_guarded_write','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Preserve durable reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-literal-geo-union-accept-1971-20260912-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute CURRENT recompute + one atomic guarded write exactly once
+        env:
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          state=Path(os.environ['STATE']);payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-accept-v1.php'
+          cmd=['ssh','-T','-i',os.environ['RUNNER_TEMP']+'/hmlgua-key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3',os.environ['U']+'@'+os.environ['H'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=3072M']
+          p=subprocess.run(cmd,input=payload.read_text(),text=True,capture_output=True,timeout=3000)
+          marker='HMLGUA_JSON:';lines=[x[len(marker):] for x in p.stdout.splitlines() if x.startswith(marker)]
+          if len(lines)==1:
+              try:r=json.loads(lines[0])
+              except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_json_invalid','database_writes':'unknown','mapping_writes':'unknown','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False}
+          else:
+              r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','database_writes':'unknown','mapping_writes':'unknown','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'remote_exit':p.returncode,'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest()}
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          state_name='completed_verified' if r.get('status')=='completed' and r.get('readback_verified') is True and p.returncode==0 else ('failed_known' if r.get('status')=='failed' and isinstance(r.get('database_writes'),int) else 'unknown_no_replay')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':state_name,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'remote_exit':p.returncode,'database_writes':r.get('database_writes'),'mapping_writes':r.get('mapping_writes'),'supplier_calls':r.get('supplier_calls',0),'tourvisor_calls':r.get('tourvisor_calls',0),'historical_operations_replayed':False,'readback_verified':r.get('readback_verified',False),'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if state_name=='completed_verified':
+              planned=r['planned'];b=r['coverage_before'];a=r['coverage_after'];summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` **COMMITTED + post-COMMIT verified**. Recomputed in the same locked transaction: prepared **{planned['total']}** = ANEX **{planned['anex']}** + Andromeda **{planned['andromeda']}**, live **{planned['live']}**; actual DB/mapping writes **{r['database_writes']}**, readback **{r['post_commit_readback_count']}/{r['database_writes']}**. Triple coverage **{b['all_three']} → {a['all_three']}**; ANEX links **{b['anex_links']} → {a['anex_links']}**, Andromeda unique **{b['andromeda_unique_local']} → {a['andromeda_unique_local']}**. Supplier/Tourvisor calls 0; manual decisions, pair exclusions, existing mappings and >5km conflicts protected. NO-REPLAY."
+          elif state_name=='failed_known':
+              summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` stopped with exact blocker `{r.get('reason','failed')}`; committed={r.get('committed')}, DB writes={r.get('database_writes')}. Supplier/Tourvisor calls 0. NO-REPLAY."
+          else:
+              summary=f"MATCH #1971 mass literal+geo CURRENT accept `{r['operation_id']}` has **UNKNOWN live result** (`{r.get('reason','unknown')}`); do not replay. Receipt/result artifacts must be reconciled before any successor write."
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          if state_name!='completed_verified':raise SystemExit(2)
+          PY
+      - name: Preserve immutable result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-literal-geo-union-accept-1971-20260912-v1-result
+          path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v1/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record verified MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
