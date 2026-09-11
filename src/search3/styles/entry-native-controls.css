@@ -2,8 +2,8 @@
 .search3-candidate #tourSearch{
 display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;padding:clamp(16px,2vw,22px);background:#fff;border:1px solid #dbe2ed;border-radius:16px;box-shadow:0 8px 24px #17233b08;
 & :is(.search-section-title,.main-fields,.child-ages,.search-preferences){grid-column:1/-1}
-& .main-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:0}
-& .search-preferences{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+& :is(.main-fields,.search-preferences){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+& .main-fields{margin:0}
 & :is(.extra-grid,.child-ages){display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:16px 0}
 & .search-group{min-width:0;margin:0;padding:0;border:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
 & .search-group legend{padding:0;margin-bottom:8px;color:#17233b;font-size:14px;font-weight:700}
@@ -22,7 +22,7 @@ display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;pa
 & .toggle input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:#2743cb}
 & .search-submit{grid-column:2;display:block;width:100%;min-height:48px;margin:0;align-self:start;padding:12px 24px;background:#ff510c;font-weight:700}
 @media(min-width:1200px){& .main-fields{grid-template-columns:minmax(230px,1.1fr) minmax(280px,1.25fr) repeat(2,minmax(200px,1fr))}& .search-preferences{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}grid-template-columns:minmax(0,1fr) 220px;gap:16px;& .search-group{gap:8px}& .search-group legend{margin-bottom:6px;font-size:13px}& .child-ages{grid-template-columns:repeat(auto-fit,minmax(180px,220px));justify-content:start;justify-self:start;gap:12px;width:fit-content;max-width:100%}}
-@media(max-width:700px){grid-template-columns:minmax(0,1fr);& .main-fields{grid-template-columns:1fr}& .search-preferences{grid-template-columns:1fr}& .search-submit{grid-column:1;width:100%;margin-left:0}& .extras>summary span{display:block;margin:4px 0 0}}
+@media(max-width:700px){grid-template-columns:minmax(0,1fr);& :is(.main-fields,.search-preferences){grid-template-columns:1fr}& .search-submit{grid-column:1;width:100%;margin-left:0}& .extras>summary span{display:block;margin:4px 0 0}}
 @media(max-width:430px){& .search-group--route{grid-template-columns:1fr}}
 @media(max-width:350px){& .search-group{grid-template-columns:1fr}}
 }
