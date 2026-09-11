@@ -1,0 +1,120 @@
+name: MATCH former-name accept v3
+on:
+  push:
+    branches:
+      - ops/match-current-former-name-missing-third-accept-1971-20260911-v3
+permissions:
+  contents: read
+  issues: write
+  actions: read
+concurrency:
+  group: match-former-name-v3
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-former-name-missing-third-accept-1971-20260911-v3
+  REVIEW_OPERATION: hotel-match-current-missing-third-strict-review-1971-20260911-v5
+  REVIEW_RUN: '34633267776'
+  REVIEW_ARTIFACT: '10277186924'
+  EXPECTED_BASE_SHA: 1bd848c7ac3c5fb62833c94f82cc959b06a009ee
+  EXPECTED_ACCEPT_BLOB: 4d802154f378dfde961eaed7124765890994ef0b
+  EXPECTED_COMPOSER_BLOB: 076e8455100aef9afaea185ff53ecf14e7077561
+  STATE: /tmp/m3former-v3
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 8
+          persist-credentials: false
+      - name: Verify and compose
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-current-former-name-missing-third-accept-1971-20260911-v3'
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_missing_third_strict_accept.php)" = "$EXPECTED_ACCEPT_BLOB"
+          test "$(git hash-object .github/match-current-former-name-compose-v2.py)" = "$EXPECTED_COMPOSER_BLOB"
+          rm -rf "$STATE"; mkdir -m 700 -p "$STATE"; export STATE
+          python3 .github/match-current-former-name-compose-v2.py
+          php -l "$STATE/live.php"
+          key="$RUNNER_TEMP/m3f3.key"; export key
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Reserve
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); p=s/'live.php'
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'composed_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'review_operation':os.environ['REVIEW_OPERATION'],'review_run':int(os.environ['REVIEW_RUN']),'review_artifact':int(os.environ['REVIEW_ARTIFACT']),'manifest':['anex:797->501','andromeda:106028->711'],'max_writes':2,'database_writes':0,'supplier_calls':0,'no_replay':True}
+          raw=json.dumps(x,sort_keys=True,indent=2)+'\n'; (s/'reservation.json').write_text(raw)
+          if (s/'reservation.json').read_text()!=raw: raise SystemExit('reservation_readback_failed')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-former-v3-${{ github.run_id }}-reserved
+          path: ${{ env.STATE }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Apply current delta
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/m3f3.key"; sock="$RUNNER_TEMP/m3f3.sock"; kh="$RUNNER_TEMP/m3f3.kh"
+          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$kh" -o ConnectTimeout=20 -o ConnectionAttempts=3 -o ControlPersist=300 -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE"
+          ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php'
+          printf '{"operation_id":"%s","state":"ssh_started"}\n' "$OPERATION_ID" > "$STATE/ssh_started.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$STATE/live.php" > "$STATE/live.stdout" 2> "$STATE/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          ssh -S "$sock" -O exit -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" >/dev/null 2>&1 || true
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); out=(s/'live.stdout').read_text(errors='replace'); err=(s/'live.stderr').read_text(errors='replace'); data=None
+          for line in reversed([x for x in out.splitlines() if x.strip()]):
+              try: obj=json.loads(line)
+              except Exception: continue
+              if isinstance(obj,dict): data=obj; break
+          if not isinstance(data,dict):
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_after_ssh','reason':'unparseable_do_not_replay','database_writes':'unknown','supplier_calls':0,'remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'no_replay':True}; (s/'blocker.json').write_text(json.dumps(b,sort_keys=True)+'\n'); raise SystemExit(1)
+          (s/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if not (data.get('operation_id')==os.environ['OPERATION_ID'] and data.get('status')=='completed' and data.get('committed') is True and data.get('readback_verified') is True and int(data.get('supplier_calls',-1))==0):
+              b={'operation_id':os.environ['OPERATION_ID'],'state':'unknown_committed' if data.get('committed') is True else 'known_rolled_back','reason':data.get('reason','contract_mismatch'),'database_writes':data.get('database_writes','unknown'),'supplier_calls':data.get('supplier_calls'),'planned':data.get('planned'),'skipped':data.get('skipped'),'no_replay':True}; (s/'blocker.json').write_text(json.dumps(b,sort_keys=True)+'\n'); raise SystemExit(1)
+          writes=int(data['database_writes']); planned=data['planned']
+          if writes!=int(planned['anex'])+int(planned['andromeda']) or writes>2: raise SystemExit('count_contract')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified','run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256((s/'result.json').read_bytes()).hexdigest(),'database_writes':writes,'planned':planned,'skipped':data.get('skipped'),'coverage_before':data.get('coverage_before'),'coverage_after':data.get('coverage_after'),'accepted':data.get('accepted'),'supplier_calls':0,'readback_verified':True,'no_replay':True}; (s/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve final
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-former-v3-${{ github.run_id }}-final
+          path: ${{ env.STATE }}/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Report success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          r=json.loads(Path(os.environ['STATE'],'result.json').read_text()); p=r['planned']; b=r['coverage_before']; a=r['coverage_after']; rows=[]
+          for x in (r.get('accepted') or {}).get('anex',[]): rows.append(f"ANEX {x.get('external_id')}→{x.get('target')}")
+          for x in (r.get('accepted') or {}).get('andromeda',[]): rows.append(f"Andromeda {x.get('external_id')}→{x.get('target')}")
+          msg=f"MATCH #1971 former-name v3 COMPLETED with commit + exact per-row readback. Mappings **{r['database_writes']}** = ANEX **{p['anex']}** + Andromeda **{p['andromeda']}**; {', '.join(rows)}. Triple {b['all_three']}→{a['all_three']}; exactly-two {b['exactly_two']}→{a['exactly_two']}; supplier calls0. Artifact `{os.environ['ARTIFACT_ID']}`. NO-REPLAY."
+          Path(os.environ['STATE'],'comment.md').write_text(msg+'\n')
+          PY
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
+          gh issue comment 996 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/comment.md"
