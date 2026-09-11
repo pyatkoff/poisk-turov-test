@@ -1,0 +1,112 @@
+name: MATCH literal geo union review v2 isolated
+run-name: MATCH literal geo union review v2 #1971
+on:
+  push:
+    branches: ['ops/match-literal-geo-union-review-1971-v1']
+    paths: ['.github/match-literal-geo-union-review-1971-v2.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: match-literal-geo-union-review-1971-v2, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-literal-geo-union-review-1971-20260911-v2}
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate source and arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-literal-geo-union-review-1971-v2.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_literal_geo_union_review.php
+          php tests/hotel-match-literal-geo-union-review-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_literal_geo_union_review.php').read_text()
+          assert 'START TRANSACTION READ ONLY' in s
+          assert 'per_source_all_raw_candidate_targets_must_agree' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'supplier_calls'=>0" in s
+          PYTHON
+      - name: Build and lint exact v2 payload before reservation
+        run: |
+          set -euo pipefail
+          export PAYLOAD="$RUNNER_TEMP/literal-geo-union-v2.php"
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          chain=[('hotel_full_catalog_reconcile.php',None),('hotel_match_current_bulk_review.php','hotel_full_catalog_reconcile.php'),('hotel_match_global_cross_provider_rescue.php','hotel_match_current_bulk_review.php'),('hotel_match_global_tourvisor_rescue.php','hotel_match_global_cross_provider_rescue.php'),('hotel_match_global_approx_name_rescue.php','hotel_match_global_tourvisor_rescue.php'),('hotel_match_anex_andromeda_direct_catalog_review.php','hotel_match_global_approx_name_rescue.php'),('hotel_match_anex_andromeda_direct_catalog_hardened.php','hotel_match_anex_andromeda_direct_catalog_review.php'),('hotel_match_anex_andromeda_mutual_graph_review.php','hotel_match_anex_andromeda_direct_catalog_hardened.php'),('hotel_match_anex_andromeda_cluster_local_review.php','hotel_match_anex_andromeda_mutual_graph_review.php'),('hotel_match_mass_identity_graph_review.php','hotel_match_anex_andromeda_cluster_local_review.php'),('hotel_match_exact_unique_mass_review.php','hotel_match_mass_identity_graph_review.php'),('hotel_match_exact_ordered_mass_review.php','hotel_match_exact_unique_mass_review.php'),('hotel_match_exact_ordered_literal_mass_review.php','hotel_match_exact_ordered_mass_review.php'),('hotel_match_single_token_geo_mass_review.php','hotel_match_exact_ordered_literal_mass_review.php'),('hotel_match_literal_geo_union_review.php','hotel_match_single_token_geo_mass_review.php')]
+          parts=[]
+          for name,parent in chain:
+              s=body('scripts/diagnostics/'+name)
+              if parent:
+                  header="if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/"+parent+"';\n"
+                  if header not in s: raise RuntimeError('dependency_header_shape_changed:'+name)
+                  s=s.replace(header,'',1)
+              parts.append(s)
+          payload="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+'\n'.join(parts)
+          old='hotel-match-literal-geo-union-review-1971-20260911-v1';new=os.environ['OPERATION_ID']
+          if payload.count(old)!=1: raise RuntimeError('union_operation_literal_count_changed')
+          payload=payload.replace(old,new,1)
+          wrapper=r'''try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMLGUR_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMLGUR_DB_HELPER');require_once $dbHelper;echo fc_json(hmlgur_review(v2_data_db(),HMLGUR_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>HMLGUR_OPERATION,'reason'=>'HMLGUR_REMOTE_ERROR','message'=>$e->getMessage(),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}'''
+          Path(os.environ['PAYLOAD']).write_text(payload+'\n'+wrapper,encoding='utf-8')
+          PYTHON
+          php -l "$PAYLOAD"
+          grep -q "$OPERATION_ID" "$PAYLOAD"
+      - name: Prepare SSH key and persistent master before reservation
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; sock="$RUNNER_TEMP/match-ssh-v2.sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -MNf -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ControlMaster=yes -o ControlPath="$sock" -o ControlPersist=900 "$U@$H"
+          test "$(ssh -S "$sock" -o ControlMaster=no "$U@$H" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_OK')" = MATCH_OK
+          test -S "$sock"
+      - name: Reserve before CURRENT DB access
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'transport':'preestablished_ssh_controlmaster','database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with: {name: hotel-match-literal-geo-union-review-1971-v2-reservation, path: '${{ runner.temp }}/hotel-match-literal-geo-union-review-1971-20260911-v2/reservation.json', if-no-files-found: error, retention-days: 90}
+      - name: Run CURRENT review through existing SSH master
+        env: {H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          sock=os.environ['RUNNER_TEMP']+'/match-ssh-v2.sock';payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-v2.php'
+          p=subprocess.run(['ssh','-T','-S',sock,'-o','ControlMaster=no',os.environ['U']+'@'+os.environ['H'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=3072M'],input=payload.read_text(),text=True,capture_output=True,timeout=2880)
+          state=Path(os.environ['STATE']);(state/'transport.json').write_text(json.dumps({'returncode':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest()},sort_keys=True)+'\n')
+          try:r=json.loads(p.stdout)
+          except Exception:raise RuntimeError('literal_geo_union_v2_output_unparseable:'+p.stderr[-1600:])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          if p.returncode or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0 or r.get('historical_operations_replayed') is not False: raise RuntimeError('literal_geo_union_v2_not_completed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True,'stats':r['stats'],'coverage':r['coverage']};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          s=r['stats'];c=r['coverage'];summary=f"MATCH #1971 literal+single-geo union v2 `{r['operation_id']}` completed read-only / NO-REPLAY. Examined **{s['examined']}**, live **{s['live_examined']}**. Cross-lane source target conflicts **{s['source_cross_lane_target_conflict']}**, >5km conflicts **{s['coordinate_conflict_gt_5km']}**, occupancy blocks **{s['target_occupancy_block']}**, one-to-one demotions **{s['global_uniqueness_demotions']}**. Final prepared **{s['prepared']}** = ANEX **{s['prepared_anex']}** + Andromeda **{s['prepared_andromeda']}**, live **{s['prepared_live']}**. Needs extra **{s['needs_extra']}**, hard conflict **{s['hard_conflict']}**. Coverage ANEX links {c['anex_links']}, ANEX unique {c['anex_unique_local']}, Andromeda unique {c['andromeda_unique_local']}, triple {c['all_three']}. Supplier calls 0; DB/mapping writes 0.";(state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with: {name: hotel-match-literal-geo-union-review-1971-v2-result, path: '${{ runner.temp }}/hotel-match-literal-geo-union-review-1971-20260911-v2/', if-no-files-found: warn, retention-days: 90}
+      - name: Close persistent SSH master
+        if: always()
+        env: {H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: ssh -S "$RUNNER_TEMP/match-ssh-v2.sock" -O exit "$U@$H" || true
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
