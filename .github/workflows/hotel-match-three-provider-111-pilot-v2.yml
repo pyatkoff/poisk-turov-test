@@ -1,0 +1,91 @@
+name: MATCH three-provider 1-1-1 pilot v2
+
+on:
+  push:
+    branches: [ops/match-three-provider-111-pilot-1971-20260911-v2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-three-provider-111-pilot-v2
+  cancel-in-progress: false
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPERATION_ID: hotel-match-three-provider-111-pilot-1971-20260911-v2
+      EXPECTED_BASE_SHA: d58414f2cf1f3f2647d907c52f9e7b290529e866
+      ARTIFACT_DIR: /tmp/match-three-provider-111-v2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Verify source and derive exact slice
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/ops/match-three-provider-111-pilot-1971-20260911-v2'
+          test "$(cat .github/match-three-provider-111-pilot-1971-v2.arm)" = "$OPERATION_ID"
+          test "$(git merge-base "$EXPECTED_BASE_SHA" HEAD)" = "$EXPECTED_BASE_SHA"
+          git diff --name-only "$EXPECTED_BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' '.github/match-three-provider-111-pilot-1971-v2.arm' '.github/workflows/hotel-match-three-provider-111-pilot-v2.yml' | sort > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          mkdir -p "$ARTIFACT_DIR"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_three_provider_111_pilot.php').read_text()
+          oldop='hotel-match-three-provider-111-pilot-1971-20260911-v1'; olddate="const M111_DATE = '2026-09-25';"
+          if p.count(oldop)!=1 or p.count(olddate)!=1: raise SystemExit('frozen diagnostic changed')
+          p=p.replace(oldop,os.environ['OPERATION_ID']).replace(olddate,"const M111_DATE = '2026-10-09';")
+          out=Path(os.environ['ARTIFACT_DIR'])/'program.php';out.write_text(p)
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_live_access','source_sha':os.environ['GITHUB_SHA'],'base_sha':os.environ['EXPECTED_BASE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'program_sha256':hashlib.sha256(p.encode()).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':'2026-10-09','nights':8,'adults':2,'children':0,'currency':'RUB'},'providers':['tourvisor_anex_only','direct_anex','andromeda_anex_only'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'continue_calls':0,'no_replay':True}
+          Path(os.environ['ARTIFACT_DIR'],'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-pilot-v2-${{ github.run_id }}-${{ github.run_attempt }}-reserved
+          path: /tmp/match-three-provider-111-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute synchronized 1-1-1 slice
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,subprocess,tempfile
+          from pathlib import Path
+          raw=os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].strip(); program=Path(os.environ['ARTIFACT_DIR'],'program.php').read_text()
+          with tempfile.TemporaryDirectory() as td:
+            key=Path(td)/'key'; key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(td)/'known_hosts'),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+            x=subprocess.run(cmd,input=program,text=True,capture_output=True,timeout=420)
+          marker='MATCH111_JSON:'; line=next((z[len(marker):] for z in reversed(x.stdout.splitlines()) if z.startswith(marker)),None)
+          if line is None: raise SystemExit('result marker missing')
+          d=json.loads(line);d.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=x.returncode,no_replay=True)
+          Path(os.environ['ARTIFACT_DIR'],'result.json').write_text(json.dumps(d,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':d.get('status'),'counts':{k:v.get('hotel_count') for k,v in (d.get('providers') or {}).items()},'comparison':d.get('comparison'),'remote_exit':x.returncode},ensure_ascii=False,sort_keys=True))
+          if x.returncode or d.get('status')!='completed' or any(d.get(k)!=0 for k in ('database_writes','mapping_writes','booking_calls','continue_calls')): raise SystemExit('pilot failed')
+          PY
+
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-three-provider-111-pilot-v2-${{ github.run_id }}-${{ github.run_attempt }}-final
+          path: |
+            /tmp/match-three-provider-111-v2/reservation.json
+            /tmp/match-three-provider-111-v2/result.json
+          if-no-files-found: warn
+          retention-days: 90
