@@ -4,6 +4,7 @@
 Diagnostic only. Uses the exact successful get_flights claim, performs login plus at
 most two changeservice calls, and never calls calc/bron/booking.
 """
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ import sys
 
 EXPECTED_FLIGHTS_RUN = 34607247181
 EXPECTED_FLIGHTS_RESPONSE_SHA256 = 'a30e6a6d5c6991b6fa56350f6bd766d8a57529b96257389d423fc534391c3a8a'
+EXPECTED_PRIVATE_FILE_SHA256 = '63ccdb5478ba08f8617607bc735e1706d4c653bb6c522c724aaf341186a04c32'
 
 PHP = r'''
 error_reporting(0); ini_set('display_errors','0'); ini_set('log_errors','0');
@@ -115,12 +117,15 @@ def _write(path: Path, value):
         json.dump(value,h,ensure_ascii=False,separators=(',',':'));h.flush();os.fsync(h.fileno())
 
 def load_claim(input_directory: Path):
-    r=json.loads((input_directory/'result.json').read_text()); c=json.loads((input_directory/'private-flights.json').read_text())
-    if r.get('status')!='captured' or r.get('response_sha256')!=EXPECTED_FLIGHTS_RESPONSE_SHA256 or r.get('get_flights_calls')!=1: raise ValueError('get_flights_receipt_mismatch')
-    raw=json.dumps(c,ensure_ascii=False,separators=(',',':')).encode()
-    import hashlib
-    if hashlib.sha256(raw).hexdigest()!=EXPECTED_FLIGHTS_RESPONSE_SHA256: raise ValueError('get_flights_claim_digest_mismatch')
-    return c
+    receipt=json.loads((input_directory/'result.json').read_text())
+    raw=(input_directory/'private-flights.json').read_bytes()
+    if receipt.get('status')!='captured' or receipt.get('response_sha256')!=EXPECTED_FLIGHTS_RESPONSE_SHA256 or receipt.get('get_flights_calls')!=1:
+        raise ValueError('get_flights_receipt_mismatch')
+    if hashlib.sha256(raw).hexdigest()!=EXPECTED_PRIVATE_FILE_SHA256:
+        raise ValueError('get_flights_private_artifact_mismatch')
+    claim=json.loads(raw.decode('utf-8'))
+    if not isinstance(claim,dict): raise ValueError('get_flights_claim_invalid')
+    return claim
 
 def execute(input_directory: Path, output_directory: Path, runner):
     claim=load_claim(input_directory);output_directory.mkdir(mode=0o700)
