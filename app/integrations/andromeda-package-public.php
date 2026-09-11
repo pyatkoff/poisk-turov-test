@@ -179,8 +179,9 @@ final class AnyTourAndromedaPackagePublic
     }
 
     /**
-     * Validate and project a private record without claiming current selection authority.
-     * The only identity fact established here is exact selected-id bytes == catalogKey bytes.
+     * Validate and project a private captured record without claiming current selection authority.
+     * catalogKey is supplier-private related metadata; SAMO confirms that it omits the TO id/search
+     * form carried by the full PRICES[].id/claiminc, so it must never be compared byte-for-byte.
      */
     public static function record(array $record): array
     {
@@ -207,13 +208,12 @@ final class AnyTourAndromedaPackagePublic
             return self::base('claim_document_invalid');
         }
         $document = $documents[0];
-        $catalogKey = $document['catalogKey'] ?? null;
-        if (!is_string($catalogKey) || $catalogKey === '' || strlen($catalogKey) > 4096
-            || !hash_equals($selectedDigest, hash('sha256', $catalogKey))) {
-            return self::base('package_binding_mismatch');
+        // catalogKey is intentionally validated only as bounded private metadata. It is never
+        // emitted and is not a substitute for the full claiminc retained behind selectedDigest.
+        if (self::text($document['catalogKey'] ?? null, 4096) === null) {
+            return self::base('claim_document_invalid');
         }
-        $result = self::base('package_bound_unquoted');
-        $result['package_binding_verified'] = true;
+        $result = self::base('package_captured_unquoted');
         if (($document['condition'] ?? null) !== 'ccOffer') {
             $result['status'] = 'package_not_temporary';
             return $result;
@@ -257,7 +257,8 @@ final class AnyTourAndromedaPackagePublic
 
     /**
      * Safe authority boundary: PackageCapture::read() rechecks current retained context,
-     * mapping and package digest before package-binding evidence may become identity_verified.
+     * mapping, selected full-claiminc digest and package digest. Only that capture provenance,
+     * never catalogKey text, may promote a captured package to current selected-package binding.
      * This does NOT verify availability/final price and never enables selection by itself.
      */
     public static function current(AnyTourAndromedaPackageCapture $capture,
@@ -266,9 +267,15 @@ final class AnyTourAndromedaPackagePublic
         try { $record = $capture->read($store, $context); }
         catch (Throwable $ignored) { return self::base('current_context_invalid'); }
         $result = self::record($record);
-        if (($result['package_binding_verified'] ?? false) === true
-            && in_array($result['status'], ['package_bound_unquoted', 'composition_invalid'], true)) {
+        if ($result['status'] === 'package_captured_unquoted') {
+            $result['status'] = 'package_bound_unquoted';
+            $result['package_binding_verified'] = true;
             $result['identity_verified'] = true;
+        } elseif ($result['status'] === 'composition_invalid') {
+            $result['package_binding_verified'] = true;
+            $result['identity_verified'] = true;
+        } elseif ($result['status'] === 'package_not_temporary') {
+            $result['package_binding_verified'] = true;
         }
         return $result;
     }

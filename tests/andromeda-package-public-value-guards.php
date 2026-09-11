@@ -35,7 +35,8 @@ function projected_package(mixed $variants, bool $includeVariants = true): array
     return AnyTourAndromedaPackagePublic::record([
         'version' => 1,
         'status' => 'captured',
-        'supplier_offer_sha256' => hash('sha256', 'selected-package-id'),
+        // Full PRICES[].id/claiminc provenance is deliberately distinct from shortened catalogKey.
+        'supplier_offer_sha256' => hash('sha256', 'operator5:form42:selected-package-id'),
         'package_sha256' => hash('sha256', json_encode($raw, JSON_THROW_ON_ERROR)),
         'private_package' => $raw,
         'identity_verified' => false,
@@ -45,7 +46,8 @@ function projected_package(mixed $variants, bool $includeVariants = true): array
 }
 
 $projection = projected_package([['hotels' => []]]);
-guard_check($projection['status'] === 'package_bound_unquoted');
+guard_check($projection['status'] === 'package_captured_unquoted');
+guard_check($projection['package_binding_verified'] === false);
 guard_check($projection['alternatives_available'] === true);
 guard_check(!isset($projection['trip']['date_from']) && $projection['trip']['date_to'] === '2026-03-05');
 guard_check(!isset($projection['hotels'][0]['date_from']) && $projection['hotels'][0]['date_to'] === '2026-05-07');

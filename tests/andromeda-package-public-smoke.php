@@ -15,7 +15,8 @@ function public_check(bool $ok): void {
 $ref = str_repeat('a', 64); $generation = 3; $now = 1002; $mappingAllowed = true;
 $criteria = ['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>'20260922','CHECKIN_END'=>'20260922',
     'ADULT'=>2,'CHILD'=>0,'NIGHTS_FROM'=>7,'NIGHTS_TILL'=>7,'CURRENCYINC'=>643,'PAGE'=>1];
-$row = ['id'=>'selected-package-id','hotelKey'=>3414,'operatorKey'=>5,'isOperatorHotelKey'=>0,
+$fullClaiminc = 'operator5:form42:selected-package-id';
+$row = ['id'=>$fullClaiminc,'hotelKey'=>3414,'operatorKey'=>5,'isOperatorHotelKey'=>0,
     'price'=>83080,'currency'=>'RUB','currencyKey'=>643,'checkIn'=>'22.09.2026','nights'=>'7',
     'hotel'=>'Public Hotel','operator'=>'Public Operator','meal'=>'AI','mealKey'=>7,
     'room'=>'Sea View','htplace'=>'DBL','adult'=>'2','child'=>'0'];
@@ -34,6 +35,7 @@ $resolved = AnyTourAndromedaSelectedOffer::resolve($store, $context, $allows, $n
 $context = array_intersect_key($resolved['context'], array_flip(['provider','search_ref','generation','page','offer_ref','hotel_scope','operator_ref']));
 
 // SYNTHETIC fixture shaped from the official claim_struct schema. It is not a live supplier response.
+// Supplier clarification confirms catalogKey is related to, but shorter than, full PRICES[].id/claiminc.
 $raw = [
     'version' => '1.01',
     'claimDocument' => [[
@@ -77,9 +79,11 @@ $persist = static fn(array $next, array $expected): array => $next;
 $capture = new AnyTourAndromedaPackageCapture($record, $persist, $allows, true, static fn(): int => $GLOBALS['now_for_package_public'] ?? 1002);
 $GLOBALS['now_for_package_public'] = $now;
 
+// A raw captured record can expose bounded composition, but cannot establish selection binding by catalogKey.
 $direct = AnyTourAndromedaPackagePublic::record($record);
-public_check($direct['status'] === 'package_bound_unquoted' && $direct['package_binding_verified'] === true);
+public_check($direct['status'] === 'package_captured_unquoted' && $direct['package_binding_verified'] === false);
 public_check($direct['identity_verified'] === false && $direct['quote_verified'] === false && $direct['selection_enabled'] === false);
+// current() may bind only after PackageCapture::read() rechecks retained context/mapping and full claiminc digest.
 $current = AnyTourAndromedaPackagePublic::current($capture, $store, $context);
 public_check($current['status'] === 'package_bound_unquoted' && $current['identity_verified'] === true);
 public_check($current['package_binding_verified'] === true && $current['quote_verified'] === false && $current['selection_enabled'] === false);
@@ -93,7 +97,7 @@ public_check($current['price'] === ['amount'=>'83080.00','currency'=>'RUB','stat
 public_check($current['price_status'] === 'package_unverified' && $current['requires_external_flights'] === true);
 public_check($current['alternatives_available'] === true);
 $publicJson = json_encode($current, JSON_THROW_ON_ERROR);
-foreach (['PRIVATE', 'private@', 'private-', 'selected-package-id', '3414', '643', '90000'] as $secret) {
+foreach (['PRIVATE', 'private@', 'private-', $fullClaiminc, 'selected-package-id', '3414', '643', '90000'] as $secret) {
     public_check(!str_contains($publicJson, $secret));
 }
 public_check(str_contains($publicJson, '83080.00') && str_contains($publicJson, 'Public Hotel'));
@@ -126,16 +130,28 @@ $changed = $record; $changed['private_package']['claimDocument'][0]['buyerMoneys
 $changed['package_sha256']=hash('sha256',json_encode($changed['private_package'],JSON_THROW_ON_ERROR));
 public_check(AnyTourAndromedaPackagePublic::record($changed)['price_status']==='unknown');
 
-// Exact PRICES.id -> broninit claim catalogKey relation is required; no fuzzy/first-row fallback.
-$changed = $record; $changed['private_package']['claimDocument'][0]['catalogKey'] = 'other-package-id';
+// catalogKey is a shortened related supplier key, not full claiminc and not binding authority.
+$changed = $record; $changed['private_package']['claimDocument'][0]['catalogKey'] = 'another-short-catalog-key';
 $changed['package_sha256'] = hash('sha256', json_encode($changed['private_package'], JSON_THROW_ON_ERROR));
 $projection = AnyTourAndromedaPackagePublic::record($changed);
-public_check($projection['status'] === 'package_binding_mismatch' && !$projection['package_binding_verified'] && !isset($projection['trip'],$projection['price']));
+public_check($projection['status'] === 'package_captured_unquoted' && !$projection['package_binding_verified'] && isset($projection['trip'],$projection['price']));
+$changedCapture = new AnyTourAndromedaPackageCapture($changed, $persist, $allows, true, static fn(): int => 1002);
+$projection = AnyTourAndromedaPackagePublic::current($changedCapture, $store, $context);
+public_check($projection['status'] === 'package_bound_unquoted' && $projection['package_binding_verified'] && $projection['identity_verified']);
+foreach (['', "bad\nkey", str_repeat('x',4097), 123] as $badCatalogKey) {
+    $changed = $record;
+    $changed['private_package']['claimDocument'][0]['catalogKey'] = $badCatalogKey;
+    $changed['package_sha256'] = hash('sha256', json_encode($changed['private_package'], JSON_THROW_ON_ERROR));
+    public_check(AnyTourAndromedaPackagePublic::record($changed)['status'] === 'claim_document_invalid');
+}
 
 $changed = $record; $changed['private_package']['claimDocument'][0]['condition'] = 'ccBooked';
 $changed['package_sha256'] = hash('sha256', json_encode($changed['private_package'], JSON_THROW_ON_ERROR));
 $projection = AnyTourAndromedaPackagePublic::record($changed);
-public_check($projection['status'] === 'package_not_temporary' && $projection['package_binding_verified'] && !isset($projection['trip'],$projection['price']));
+public_check($projection['status'] === 'package_not_temporary' && !$projection['package_binding_verified'] && !isset($projection['trip'],$projection['price']));
+$bookedCapture = new AnyTourAndromedaPackageCapture($changed, $persist, $allows, true, static fn(): int => 1002);
+$projection = AnyTourAndromedaPackagePublic::current($bookedCapture, $store, $context);
+public_check($projection['status'] === 'package_not_temporary' && $projection['package_binding_verified'] && !$projection['identity_verified']);
 
 foreach ([[], [$raw['claimDocument'][0], $raw['claimDocument'][0]], ['not'=>'a-list'], [null]] as $documents) {
     $changed = $record; $changed['private_package']['claimDocument'] = $documents;
@@ -168,16 +184,17 @@ $projection = AnyTourAndromedaPackagePublic::current($capture, $store, $context)
 public_check($projection['status'] === 'current_context_invalid' && !$projection['identity_verified']);
 $GLOBALS['now_for_package_public'] = $now;
 
-// Missing hotels is an invalid composition, but current package identity can still be proven.
+// Missing hotels is an invalid composition, but current capture provenance can still establish package binding.
 $noHotels = $record; unset($noHotels['private_package']['claimDocument'][0]['hotels']);
 $noHotels['package_sha256'] = hash('sha256', json_encode($noHotels['private_package'], JSON_THROW_ON_ERROR));
 $noHotelCapture = new AnyTourAndromedaPackageCapture($noHotels, $persist, $allows, true, static fn(): int => 1002);
 $projection = AnyTourAndromedaPackagePublic::current($noHotelCapture, $store, $context);
-public_check($projection['status'] === 'composition_invalid' && $projection['identity_verified'] === true && !isset($projection['price']));
+public_check($projection['status'] === 'composition_invalid' && $projection['package_binding_verified'] === true
+    && $projection['identity_verified'] === true && !isset($projection['price']));
 
 // No source object is mutated by projection.
 $before = serialize($record);
 AnyTourAndromedaPackagePublic::record($record);
 public_check(serialize($record) === $before);
 
-echo 'Package public projection: ' . $checks . " checks passed; synthetic schema fixture, supplier/SSH/DB/filesystem writes=0.\n";
+echo 'Package public projection: ' . $checks . " checks passed; shortened catalogKey fixture, supplier/SSH/DB/filesystem writes=0.\n";
