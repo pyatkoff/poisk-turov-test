@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require __DIR__ . '/../app/integrations/three-provider-money-facts.php';
+require __DIR__ . '/../app/integrations/three-provider-availability.php';
 require __DIR__ . '/../app/integrations/three-provider-offer-contract.php';
 
 $checks = 0;
@@ -24,7 +25,11 @@ function offer_fixture(string $provider = 'tourvisor', ?int $local = 1239): arra
             'qualifiers' => ['plus' => false, 'without_alcohol' => true]],
         'room' => ['raw' => 'Standard Room', 'normalized' => 'standard room'],
         'placement' => ['raw' => 'DBL', 'normalized' => 'dbl'],
-        'availability' => 'available',
+        'availability' => [
+            'hotel' => null,
+            'flight_outbound_economy' => null,
+            'flight_return_economy' => null,
+        ],
         'search_price' => ['amount' => '119114', 'currency' => 'RUB', 'source' => $provider.'_search'],
         'fuel_charge_reported' => $provider === 'tourvisor'
             ? ['amount' => '31710', 'currency' => 'RUB', 'source' => $provider.'_fuel']
@@ -46,7 +51,10 @@ offer_check($value['party'] === ['adults' => 2, 'children' => 0, 'child_ages' =>
 offer_check($value['meal']['family'] === 'ai' && $value['meal']['family_verified'] === true);
 offer_check($value['meal']['qualifiers']['without_alcohol'] === true);
 offer_check($value['room']['normalized'] === 'standard room' && $value['placement']['normalized'] === 'dbl');
-offer_check($value['availability'] === 'available' && $value['flight_details_state'] === 'not_loaded');
+offer_check($value['availability']['hotel']['canonical_state'] === 'unknown' && $value['flight_details_state'] === 'not_loaded');
+offer_check($value['availability']['offer_availability_verified'] === false
+    && $value['availability']['selection_eligible'] === false
+    && $value['availability']['booking_eligible'] === false);
 offer_check($value['money']['search_price']['amount'] === '119114');
 offer_check($value['money']['fuel_charge_reported']['amount'] === '31710');
 offer_check($value['money']['package_buyer_price'] === null && $value['money']['quote_price'] === null);
@@ -54,8 +62,17 @@ offer_check($value['quote_state'] === 'unknown' && $value['final_price_verified'
 offer_check($value['selection_state'] === 'disabled');
 offer_check(!isset($value['search_ref']) && !isset($value['offer_ref']) && !isset($value['provider_hotel_ref']));
 
-$unmapped = AnyTourThreeProviderOfferContract::fromSearch(offer_fixture('anex', null));
+$unmappedFixture = offer_fixture('anex', null);
+$unmappedFixture['availability'] = [
+    'hotel' => 'YYYY',
+    'flight_outbound_economy' => 'Y',
+    'flight_return_economy' => 'R',
+];
+$unmapped = AnyTourThreeProviderOfferContract::fromSearch($unmappedFixture);
 offer_check($unmapped['local_hotel_id'] === null);
+offer_check($unmapped['availability']['hotel']['raw'] === 'YYYY'
+    && $unmapped['availability']['hotel']['canonical_state'] === 'unknown'
+    && $unmapped['availability']['hotel']['canonical_verified'] === false);
 offer_check($unmapped['money']['fuel_charge_reported'] === null);
 offer_check($unmapped['meal']['family_verified'] === true);
 
@@ -68,7 +85,7 @@ $children['flight_details_state'] = 'unknown';
 $childValue = AnyTourThreeProviderOfferContract::fromSearch($children);
 offer_check($childValue['party']['child_ages'] === [7]);
 offer_check($childValue['meal']['family_verified'] === false);
-offer_check($childValue['availability'] === 'on_request');
+offer_check($childValue['availability']['hotel']['evidence_state'] === 'missing');
 
 $bad = [
     function () { $x = offer_fixture('other'); AnyTourThreeProviderOfferContract::fromSearch($x); },
