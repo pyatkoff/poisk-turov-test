@@ -1,5 +1,5 @@
-name: MATCH pending candidate bridge review
-run-name: MATCH pending candidate bridge review #1971
+name: MATCH strict pending bridge review
+run-name: MATCH strict pending bridge review #1971
 on:
   push:
     branches: ['feat/match-current-bulk-review-20260911']
@@ -12,10 +12,10 @@ permissions:
   actions: read
   issues: write
 concurrency:
-  group: match-pending-candidate-bridge-review-1971
+  group: match-strict-pending-bridge-review-1971
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-pending-candidate-bridge-review-1971-20260911-v1
+  OPERATION_ID: hotel-match-pending-candidate-bridge-review-1971-20260911-v2
 jobs:
   review:
     if: github.actor == 'pyatkoff' && github.run_attempt == 1
@@ -42,17 +42,17 @@ jobs:
           import json,os
           from pathlib import Path
           state=Path(os.environ['STATE'])
-          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_pending_candidate_bridge_read_only','database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_strict_pending_bridge_read_only','database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
           (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n',encoding='utf-8')
           PYTHON
       - name: Preserve reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-pending-candidate-bridge-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v1/reservation.json
+          name: hotel-match-strict-pending-bridge-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Read CURRENT DB and prepare pending bridges
+      - name: Read CURRENT DB and prepare strict pending bridges
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -84,7 +84,7 @@ jobs:
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
           host=os.environ[req[1]].strip(); user=os.environ[req[2]].strip()
           if not host or not user or not os.environ[req[0]].strip(): raise RuntimeError('ssh_secret_missing')
-          with tempfile.TemporaryDirectory(prefix='match-pending-bridge-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+          with tempfile.TemporaryDirectory(prefix='match-strict-pending-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
               key=Path(tmp)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600)
               known=Path(tmp)/'known_hosts'
               cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
@@ -96,20 +96,20 @@ jobs:
               raise RuntimeError('live_output_unparseable')
           (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n',encoding='utf-8')
           if p.returncode!=0 or result.get('status')!='completed' or result.get('operation_id')!=os.environ['OPERATION_ID'] or result.get('database_writes')!=0 or result.get('supplier_calls')!=0:
-              raise RuntimeError('pending_bridge_review_not_completed')
+              raise RuntimeError('strict_pending_bridge_review_not_completed')
           raw=(state/'result.json').read_bytes()
-          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'prepared_count':result.get('prepared_count',0),'stats':result.get('stats',{}),'coverage':result.get('coverage',{})}
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'prepared_count':result.get('prepared_count',0),'strict_prepared_count':result.get('strict_prepared_count',0),'stats':result.get('stats',{}),'coverage':result.get('coverage',{})}
           (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n',encoding='utf-8')
           PYTHON
       - name: Preserve result and receipt
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-pending-candidate-bridge-v1-${{ github.run_id }}
+          name: hotel-match-strict-pending-bridge-v2-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v1/result.json
-            ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v1/receipt.json
-            ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v1/blocker.json
+            ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v2/result.json
+            ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v2/receipt.json
+            ${{ runner.temp }}/hotel-match-pending-candidate-bridge-review-1971-20260911-v2/blocker.json
           if-no-files-found: warn
           retention-days: 90
       - name: Publish MATCH result
@@ -121,9 +121,10 @@ jobs:
             const r=JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/${process.env.OPERATION_ID}/result.json`,'utf8'));
             const s=r.stats||{}, c=r.coverage||{};
             const body=[
-              `MATCH #1971 CURRENT-DB pending candidate/geo bridge \`${r.operation_id}\` completed read-only / NO-REPLAY.`,
-              `Prepared Andromeda→existing ANEX+Tourvisor candidates **${r.prepared_count}** from pending **${s.pending_examined||0}**. Prior-candidate rows **${s.prior_candidate_rows||0}**; direct-place pools **${s.place_pool_rows||0}**; ANEX-bridge pools **${s.anex_bridge_pool_rows||0}**; ambiguous blocked **${s.ambiguous||0}**; numeric category mismatches annotated **${s.category_mismatch||0}**.`,
+              `MATCH #1971 strict CURRENT-DB pending bridge \`${r.operation_id}\` completed read-only / NO-REPLAY.`,
+              `Broad evidence rows **${r.prepared_count}**; strict ordered-identity subset **${r.strict_prepared_count}**. Strict numeric category mismatches **${s.strict_category_mismatch||0}** remain annotation only because identity requires direct geography + existing ANEX+Tourvisor local + ordered significant-name agreement.`,
+              `False-positive classes such as brand swaps, token-order swaps and unmatched BEACH/GARDEN/NORTH/SOUTH/ANNEX are blocked. Pending examined **${s.pending_examined||0}**, ambiguous broad rows blocked **${s.ambiguous||0}**.`,
               `Coverage snapshot: ANEX links ${c.anex_links||0}, ANEX unique local ${c.anex_unique_local||0}, Andromeda unique local ${c.andromeda_unique_local||0}, triple ${c.all_three||0}. DB writes **0**, supplier calls **0**.`,
-              `Run \`${process.env.GITHUB_RUN_ID}\`, source \`${process.env.GITHUB_SHA}\`. Any write must re-read CURRENT DB under a new guarded operation with per-row post-COMMIT readback.`
+              `Run \`${process.env.GITHUB_RUN_ID}\`, source \`${process.env.GITHUB_SHA}\`. A write, if any, must recompute this strict rule from CURRENT DB in a new transaction and verify every committed row.`
             ].join('\n\n');
             await github.rest.issues.createComment({owner:context.repo.owner,repo:context.repo.repo,issue_number:1971,body});
