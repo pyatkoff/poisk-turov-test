@@ -101,6 +101,8 @@ $bad = [
     function () { $x = offer_fixture(); $x['supplier_offer_id'] = 'PRIVATE'; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['search_price']['amount'] = '0'; AnyTourThreeProviderOfferContract::fromSearch($x); },
     function () { $x = offer_fixture(); $x['flight_details_state'] = 'available'; AnyTourThreeProviderOfferContract::fromSearch($x); },
+    function () { $x = offer_fixture(); $x['observed_at'] = '2026-02-30T03:00:00Z'; AnyTourThreeProviderOfferContract::fromSearch($x); },
+    function () { $x = offer_fixture(); $x['observed_at'] = '2026-09-11T24:00:00Z'; AnyTourThreeProviderOfferContract::fromSearch($x); },
 ];
 foreach ($bad as $case) {
     try { $case(); offer_check(false); } catch (InvalidArgumentException $e) { offer_check(true); }

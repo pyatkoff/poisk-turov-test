@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-11",
+  "scope": "INT source-only canonical offer observation timestamp",
+  "base_commit": "b18fde6b25730edf46aecd5137f5565f9722e206",
+  "source": "app/integrations/three-provider-offer-contract.php",
+  "source_sha256": "94c1412d01fa31ad4c718602873e9b233e2c7c6b84bd88d878bf9fb2dbcdbfdd",
+  "test": "tests/three-provider-offer-contract-test.php",
+  "test_sha256": "84d70338c02764e6a3c1a5ee96d56b684bd0deb587c2adc4853b7bdc51905ddd",
+  "contract": {
+    "format": "YYYY-MM-DDTHH:MM:SSZ",
+    "timezone": "UTC",
+    "calendar_time_roundtrip_required": true,
+    "freshness_inferred": false,
+    "server_clock_dependency": false
+  },
+  "rejected_examples": ["2026-02-30T03:00:00Z", "2026-09-11T24:00:00Z"],
+  "verification": {
+    "status": "success",
+    "head": "747eb08469a8ba79d60b7f9e8912f3eb5217cb50",
+    "offer_contract_run": 34577237765,
+    "retained_context_run": 34577237717,
+    "security_run": 34577237785,
+    "offer_checks": 41
+  },
+  "effects": {
+    "supplier_calls": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "booking_calls": 0,
+    "ui_runtime_changes": 0,
+    "production_changes": 0
+  },
+  "next_action": "Run one new non-replayed parity scenario only through an approved workflow that creates a run; P5 remains blocked pending SAMO contract confirmation."
+}
