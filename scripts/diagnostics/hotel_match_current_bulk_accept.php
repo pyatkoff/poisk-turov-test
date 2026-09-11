@@ -5,7 +5,7 @@ if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_full_catalog_reconcile.php';
 require_once __DIR__ . '/hotel_match_current_bulk_review.php';
 
-const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v2';
+const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v3';
 
 function mba_require_transactional(PDO $db): void {
     $tables = [
@@ -201,8 +201,6 @@ function mba_accept(PDO $db, string $operation): array {
             $excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']] = true;
         }
 
-        // Snapshot the already accepted Andromeda+Tourvisor identities before adding ANEX rows.
-        // Reverse bridging never depends on a mapping created by this same operation.
         [, $andromedaLocalBefore] = mbr_local_sets($db);
         $reverseBridgeIndex = mba_bridge_index($andromedaLocalBefore,$hotels,$names);
 
@@ -308,8 +306,6 @@ function mba_accept(PDO $db, string $operation): array {
             $existing[(int)$id] = true;
         }
 
-        // Re-read local provider sets inside the same transaction after ANEX inserts so
-        // the forward bridge can use every server-current ANEX+Tourvisor identity.
         [$anexLocal] = mbr_local_sets($db);
         $bridgeIndex = mba_bridge_index($anexLocal,$hotels,$names);
 
@@ -463,8 +459,13 @@ function mba_accept(PDO $db, string $operation): array {
             'operation_scope','required_table_missing','required_transactional_table_missing',
             'country_contract_changed','hotel_scope_limit','alias_scope_limit',
             'anex_insert_not_one','andromeda_concurrent_change',
-            'anex_post_commit_readback_failed','andromeda_post_commit_readback_failed',
+            'anex_post_commit_readback_failed','andromeda_post_commit_readback_failed','write_scope_limit',
         ];
+        $message = $e->getMessage();
+        $lower = strtolower($message);
+        $reason = in_array($message,$known,true) ? $message : 'runtime_failure';
+        if ($e instanceof PDOException && strpos($lower,'lock wait timeout') !== false) $reason = 'db_lock_timeout';
+        if ($e instanceof PDOException && strpos($lower,'deadlock') !== false) $reason = 'db_deadlock';
         return [
             'status'=>'failed',
             'operation_id'=>$operation,
@@ -472,7 +473,9 @@ function mba_accept(PDO $db, string $operation): array {
             'database_writes'=>$committed ? $writes : 0,
             'committed'=>$committed,
             'supplier_calls'=>0,
-            'reason'=>in_array($e->getMessage(),$known,true)?$e->getMessage():'runtime_failure',
+            'planned'=>$planned,
+            'planned_classes'=>$plannedClasses,
+            'reason'=>$reason,
             'readback_verified'=>false,
         ];
     }
