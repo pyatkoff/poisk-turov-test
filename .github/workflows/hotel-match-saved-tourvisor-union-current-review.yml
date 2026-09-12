@@ -9,16 +9,16 @@ on:
       - '.github/workflows/hotel-match-saved-tourvisor-union-current-review.yml'
   push:
     branches: ['ops/match-residual-ensemble-current-1971-v2']
-    paths: ['.github/match-saved-tourvisor-union-current-review-1971-20260912-v3.arm']
+    paths: ['.github/match-saved-tourvisor-union-current-review-1971-20260912-v4.arm']
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v3-${{ github.event_name }}
+  group: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v4-${{ github.event_name }}
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v3
+  OPERATION_ID: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v4
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -41,7 +41,7 @@ jobs:
           assert d['summary']['unique_tourvisor_hotels']==108
           assert d['summary']['recurrence_histogram']=={'1':51,'2':15,'3':11,'4':20,'5':5,'6':6}
           s=Path('scripts/diagnostics/hotel_match_saved_tourvisor_union_current_review.php').read_text()
-          assert s.count("hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2")==1
+          assert s.count('hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2')==1
           for bad in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bcurl_',r'\bfile_put_contents\s*\(',r'\bexec\s*\([^\n]*(?:INSERT|UPDATE|DELETE)']:
               assert not re.search(bad,s,re.I), bad
           for required in ['START TRANSACTION READ ONLY','HMSU_COORD_BLOCK_M=5000.0','prepared_recurrence_dates_min','pair_exclusions_protected','existing_mappings_protected','stars_annotation_not_identity']:
@@ -56,94 +56,123 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Verify immutable arm and start one persistent SSH master
+      - name: Verify immutable arm and build self-contained v4 payload
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-saved-tourvisor-union-current-review-1971-20260912-v4.arm)" = "$OPERATION_ID"
+          export PAYLOAD="$RUNNER_TEMP/hmsu-v4-payload.php"
+          python3 - <<'PY'
+          import base64,os,re
+          from pathlib import Path
+          root=Path('scripts/diagnostics')
+          target='hotel_match_saved_tourvisor_union_current_review.php'
+          op=os.environ['OPERATION_ID']
+          evidence=base64.b64encode(Path('reports/match-saved-tourvisor-anex-union-turkey-20260912.json').read_bytes()).decode()
+          req=re.compile(r"require_once\s+__DIR__\s*\.\s*['\"]\/([^'\"]+\.php)['\"]\s*;|require_once\s+__DIR__\s*['\"]\/([^'\"]+\.php)['\"]\s*;")
+          seen=set(); parts=[]
+          def emit(name):
+              if name in seen: return
+              p=root/name
+              if not p.is_file(): raise SystemExit('missing_dependency:'+name)
+              text=p.read_text()
+              deps=[]
+              for m in req.finditer(text): deps.append(m.group(1) or m.group(2))
+              for dep in deps: emit(dep)
+              seen.add(name)
+              text=text.replace('<?php','',1).replace('declare(strict_types=1);','',1)
+              text=req.sub('',text)
+              if name==target:
+                  old='hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2'
+                  if text.count(old)!=1: raise SystemExit('target_operation_pin_changed')
+                  text=text.replace(old,op,1)
+              parts.append("\n/* INLINE "+name+" */\n"+text)
+          emit(target)
+          payload="<?php\ndeclare(strict_types=1);\ndefine('FC_LIBRARY_ONLY',true);\ndefine('HMSU_EVIDENCE_B64','"+evidence+"');\n"+''.join(parts)
+          Path(os.environ['PAYLOAD']).write_text(payload)
+          print('HMSU_PAYLOAD_FILES='+str(len(seen)))
+          PY
+          php -l "$PAYLOAD"
+      - name: Zero-DB zero-supplier server preflight
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          test "$(cat .github/match-saved-tourvisor-union-current-review-1971-20260912-v3.arm)" = "$OPERATION_ID"
           test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
-          key="$RUNNER_TEMP/hmsu_key"; sock="$RUNNER_TEMP/hmsu_mux.sock"
+          key="$RUNNER_TEMP/hmsu_key"
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
-          rm -f "$sock"
-          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=3 "$USER_VALUE@$HOST_VALUE"
-          ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null
-          out="$(ssh -S "$sock" -T "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; command -v php >/dev/null; printf "\nHMSU_PREFLIGHT_OK\n"')"
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; command -v php >/dev/null; printf "\nHMSU_PREFLIGHT_OK\n"')"
           test "$(printf '%s\n' "$out" | awk 'NF{last=$0} END{print last}')" = HMSU_PREFLIGHT_OK
       - name: Reserve before CURRENT DB access
         run: |
           set -euo pipefail
           STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
-          ssh -S "$RUNNER_TEMP/hmsu_mux.sock" -O check "${{ secrets.ANYTOOUR_DEPLOY_USER }}@${{ secrets.ANYTOOUR_DEPLOY_HOST }}" >/dev/null
           python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
+          payload=Path(os.environ['RUNNER_TEMP'])/'hmsu-v4-payload.php'
           report=Path('reports/match-saved-tourvisor-anex-union-turkey-20260912.json')
-          source=Path('scripts/diagnostics/hotel_match_saved_tourvisor_union_current_review.php').read_text()
-          runtime=source.replace('hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2',os.environ['OPERATION_ID'],1)
-          if runtime==source or os.environ['OPERATION_ID'] not in runtime: raise SystemExit('runtime_operation_rewrite_failed')
-          (Path(os.environ['STATE'])/'runtime.php').write_text(runtime)
-          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':hashlib.sha256(report.read_bytes()).hexdigest(),'runtime_sha256':hashlib.sha256(runtime.encode()).hexdigest(),'target_universe':108,'supplier_calls_budget':0,'tourvisor_calls_budget':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':hashlib.sha256(report.read_bytes()).hexdigest(),'runtime_sha256':hashlib.sha256(payload.read_bytes()).hexdigest(),'target_universe':108,'supplier_calls_budget':0,'tourvisor_calls_budget':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
           (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
           PY
       - name: Preserve durable reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v3-reservation
-          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v3/reservation.json
+          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v4/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Run one CURRENT read-only mass reconciliation on same SSH master
+      - name: Run one CURRENT read-only mass reconciliation over one SSH stdin call
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          STATE="$RUNNER_TEMP/$OPERATION_ID"; sock="$RUNNER_TEMP/hmsu_mux.sock"; remote="/tmp/hmsu-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null
-          stage="$RUNNER_TEMP/hmsu-stage"; rm -rf "$stage"; mkdir -p "$stage/scripts/diagnostics" "$stage/reports"
-          cp scripts/diagnostics/*.php "$stage/scripts/diagnostics/"
-          cp "$STATE/runtime.php" "$stage/scripts/diagnostics/hotel_match_saved_tourvisor_union_current_review.php"
-          cp reports/match-saved-tourvisor-anex-union-turkey-20260912.json "$stage/reports/"
-          tar -C "$stage" -czf "$RUNNER_TEMP/hmsu-src.tgz" scripts reports
-          ssh -S "$sock" -T "$USER_VALUE@$HOST_VALUE" "umask 077; rm -rf '$remote'; mkdir -p '$remote'; cat > '$remote/src.tgz'" < "$RUNNER_TEMP/hmsu-src.tgz"
-          ssh -S "$sock" -T "$USER_VALUE@$HOST_VALUE" "tar -xzf '$remote/src.tgz' -C '$remote'; cd \"\$HOME/www/anytoour.ru\"; php -d display_errors=0 -d log_errors=0 -d allow_url_fopen=0 -d disable_functions=curl_init,curl_exec,fsockopen,pfsockopen,stream_socket_client -r 'define(\"HMSU_EVIDENCE_B64\",base64_encode(file_get_contents(\"$remote/reports/match-saved-tourvisor-anex-union-turkey-20260912.json\"))); require \"$remote/scripts/diagnostics/hotel_match_saved_tourvisor_union_current_review.php\";'" > "$STATE/remote.out" 2> "$STATE/remote.err" || true
-          ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null || true
-          ssh -S "$sock" -T "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" || true
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/hmsu_key"; payload="$RUNNER_TEMP/hmsu-v4-payload.php"
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=10 -o ServerAliveCountMax=3)
+          set +e
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d allow_url_fopen=0 -d disable_functions=curl_init,curl_exec,fsockopen,pfsockopen,stream_socket_client' < "$payload" > "$STATE/remote.out" 2> "$STATE/remote.err"
+          rc=$?
+          set -e
+          printf '%s\n' "$rc" > "$STATE/remote_exit.txt"
+          export STATE
           python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
-          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
-          lines=[x[len('HMSU_RESULT:'):] for x in (state/'remote.out').read_text(errors='replace').splitlines() if x.startswith('HMSU_RESULT:')]
-          if len(lines)!=1: raise SystemExit('missing_unique_result_marker')
-          r=json.loads(lines[0]); zeros=['database_writes','mapping_writes','supplier_calls','tourvisor_calls','anex_calls','andromeda_calls']
-          if r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or any(int(r.get(k,-1))!=0 for k in zeros) or r.get('historical_operations_replayed') is not False: raise SystemExit('invalid_read_only_result')
-          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'result.json').write_bytes(raw)
-          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'stats':r['stats'],'coverage':r['coverage'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          state=Path(os.environ['STATE']); out=(state/'remote.out').read_text(errors='replace'); err=(state/'remote.err').read_bytes(); rc=int((state/'remote_exit.txt').read_text().strip())
+          lines=[x[len('HMSU_RESULT:'):] for x in out.splitlines() if x.startswith('HMSU_RESULT:')]
+          ok=False; r=None
+          if len(lines)==1:
+              try:r=json.loads(lines[0])
+              except Exception:r=None
+          zeros=['database_writes','mapping_writes','supplier_calls','tourvisor_calls','anex_calls','andromeda_calls']
+          if isinstance(r,dict) and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and all(int(r.get(k,-1))==0 for k in zeros) and r.get('historical_operations_replayed') is False:
+              ok=True
+              raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'result.json').write_bytes(raw)
+              receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'stats':r['stats'],'coverage':r['coverage'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'remote_exit':rc,'no_replay':True}
+              s=r['stats']; c=r['coverage']; top=r.get('prepared',[])[:12]
+              summary=[f"MATCH #1971 saved ANEX-only Tourvisor Turkey union CURRENT review `{r['operation_id']}` **COMPLETED read-only / NO-REPLAY**.",f"Saved target universe **108** Tourvisor hotels / 6 completed dates; CURRENT unresolved Turkey examined **{s['examined']}** = ANEX **{s['unresolved_anex_turkey']}** + Andromeda **{s['unresolved_andromeda_turkey']}**. Exact unique **{s['exact_unique']}**, prepared **{s['prepared']}** = ANEX **{s['prepared_anex']}** + Andromeda **{s['prepared_andromeda']}**, live **{s['prepared_live']}**; needs-extra **{s['needs_extra']}**, hard **{s['hard_conflict']}**, one-to-one demotions **{s['one_to_one_demotions']}**. Supplier/Tourvisor/DB/mapping calls+writes 0.",f"Coverage at read: triple **{c['all_three']}**, exactly-two **{c['exactly_two']}**, ANEX unique **{c['anex_unique_local']}**, Andromeda unique **{c['andromeda_unique_local']}**."]
+              if top: summary+=['','Top prepared:']+[f"- {x['provider']} `{x['external_id']}` → local/TV `{x['target_local_hotel_id']}` {x['target_name']} · TV dates={x['tv_date_recurrence']} · live={str(x['live']).lower()} · observations={x['observation_count']}" for x in top]
+              (state/'summary.md').write_text('\n'.join(summary)+'\n')
+          else:
+              failure={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'marker_missing_or_invalid','remote_exit':rc,'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+              raw=(json.dumps(failure,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'result.json').write_bytes(raw)
+              receipt={'operation_id':os.environ['OPERATION_ID'],'state':'unknown','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'remote_exit':rc,'no_replay':True}
+              (state/'summary.md').write_text(f"MATCH #1971 `{os.environ['OPERATION_ID']}` UNKNOWN / NO-REPLAY after durable reservation: marker missing/invalid, remote_exit={rc}; DB/mapping/supplier/Tourvisor writes/calls are absent by the read-only/no-network runtime contract.\n")
           (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
-          s=r['stats']; c=r['coverage']; top=r.get('prepared',[])[:12]
-          lines=[f"MATCH #1971 saved ANEX-only Tourvisor Turkey union CURRENT review `{r['operation_id']}` **COMPLETED read-only / NO-REPLAY**.",f"Saved target universe **108** Tourvisor hotels / 6 completed dates; CURRENT unresolved Turkey examined **{s['examined']}** = ANEX **{s['unresolved_anex_turkey']}** + Andromeda **{s['unresolved_andromeda_turkey']}**. Exact unique **{s['exact_unique']}**, prepared **{s['prepared']}** = ANEX **{s['prepared_anex']}** + Andromeda **{s['prepared_andromeda']}**, live **{s['prepared_live']}**; needs-extra **{s['needs_extra']}**, hard **{s['hard_conflict']}**, one-to-one demotions **{s['one_to_one_demotions']}**. Supplier/Tourvisor/DB/mapping calls+writes 0.",f"Coverage at read: triple **{c['all_three']}**, exactly-two **{c['exactly_two']}**, ANEX unique **{c['anex_unique_local']}**, Andromeda unique **{c['andromeda_unique_local']}**."]
-          if top:
-              lines+=['','Top prepared:']+[f"- {x['provider']} `{x['external_id']}` → local/TV `{x['target_local_hotel_id']}` {x['target_name']} · TV dates={x['tv_date_recurrence']} · live={str(x['live']).lower()} · observations={x['observation_count']}" for x in top]
-          (state/'summary.md').write_text('\n'.join(lines)+'\n')
-          print('\n'.join(lines[:3]))
+          print((state/'summary.md').read_text())
+          if not ok: raise SystemExit(2)
           PY
-      - name: Close persistent SSH master
-        if: always()
-        env:
-          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: ssh -S "$RUNNER_TEMP/hmsu_mux.sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true
       - name: Preserve immutable result and receipt
         if: always()
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v3-result
-          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v3/
+          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v4-result
+          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v4/
           if-no-files-found: warn
           retention-days: 90
       - name: Record MATCH result
