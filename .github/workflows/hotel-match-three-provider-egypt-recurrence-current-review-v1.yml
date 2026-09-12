@@ -1,0 +1,119 @@
+name: MATCH Egypt recurrence CURRENT review v1
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-three-provider-egypt-recurrence-current-review-1971-20260912-v1.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-egypt-recurrence-current-review-1971-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-three-provider-egypt-recurrence-current-review-1971-20260912-v1
+  EVIDENCE_SHA256: 4c5dd318322963e7488278ca62cd926c80b693730ecb48e028b2c10247c9b159
+  STATE_DIR: /tmp/match-egypt-recurrence-current-review-v1
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate evidence, manifest and derive proven read-only algorithm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-three-provider-egypt-recurrence-current-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(sha256sum reports/match-three-provider-egypt-recurrence-evidence-20260912.json | awk '{print $1}')" = "$EVIDENCE_SHA256"
+          php -l scripts/diagnostics/hotel_match_three_provider_egypt_recurrence_current_review.php
+          php scripts/diagnostics/hotel_match_three_provider_egypt_recurrence_current_review.php --self-test
+          mkdir -m 700 -p "$STATE_DIR/package"
+          cp scripts/diagnostics/hotel_match_three_provider_recurrence_current_review.php "$STATE_DIR/package/review.php"
+          export REVIEW="$STATE_DIR/package/review.php"
+          python3 - <<'PY'
+          import base64,hashlib,json,os,re
+          from pathlib import Path
+          evp=Path('reports/match-three-provider-egypt-recurrence-evidence-20260912.json');ev=evp.read_bytes();assert hashlib.sha256(ev).hexdigest()==os.environ['EVIDENCE_SHA256'];d=json.loads(ev);assert d['summary']==[2,56,37,19,19] and len(d['tuples'])==37 and d['scope'][2]==1
+          p=Path(os.environ['REVIEW']);s=p.read_text()
+          reps=[
+            ("const HMRCR_OPERATION = 'hotel-match-three-provider-recurrence-current-review-1971-20260912-v1';","const HMRCR_OPERATION = '"+os.environ['OPERATION_ID']+"';"),
+            ("const HMRCR_EVIDENCE_SHA256 = 'e78a092225a3d976345cc6f1eafd9d5d170bcfe34dd608c66de1cd99f843d98f';","const HMRCR_EVIDENCE_SHA256 = '"+os.environ['EVIDENCE_SHA256']+"';"),
+            ('const HMRCR_COUNTRY_ID = 4;','const HMRCR_COUNTRY_ID = 1;'),
+            ("($d['summary']??null)!==[10,233,71,50,41,32,13,46,40,27]||count($d['tuples']??[])!==71","($d['summary']??null)!==[2,56,37,19,19]||count($d['tuples']??[])!==37"),
+            ("'tourvisor_local_target_not_current_turkey'","'tourvisor_local_target_not_current_egypt'"),
+          ]
+          for a,b in reps:
+            assert s.count(a)==1,(a,s.count(a));s=s.replace(a,b,1)
+          marker='declare(strict_types=1);';assert s.count(marker)==1;s=s.replace(marker,marker+"\ndefine('HMRCR_EVIDENCE_B64','"+base64.b64encode(ev).decode()+"');",1)
+          # self-test still executes only when explicitly requested; live entrypoint remains unchanged.
+          stripped=re.sub(r'/\*.*?\*/|//[^\n]*','',s,flags=re.S)
+          for pat in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bcurl_\w+\s*\(']:assert not re.search(pat,stripped,re.I),pat
+          assert 'START TRANSACTION READ ONLY' in s and "'recurrence_alone_accepts_identity'=>false" in s and "'coordinate_conflict_auto_block_m'=>5000" in s
+          p.write_text(s)
+          PY
+          php -l "$STATE_DIR/package/review.php"
+      - name: Persist reservation before CURRENT DB read
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['STATE_DIR']);p=d/'package'/'review.php';r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':os.environ['EVIDENCE_SHA256'],'evidence_tuples':37,'evidence_observations':56,'package_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'transaction':'REPEATABLE READ / READ ONLY','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};(d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-egypt-recurrence-current-v1-${{ github.run_id }}-reserved
+          path: ${{ env.STATE_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Establish persistent SSH master and execute read-only CURRENT review
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmre-key";sock="$RUNNER_TEMP/hmre.sock";known="$RUNNER_TEMP/hmre-known";remote="/tmp/hmre-${GITHUB_RUN_ID}"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key";ssh-keygen -y -f "$key" >/dev/null
+          ok=0;for attempt in 1 2 3 4 5;do rm -f "$sock";if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE";then ok=1;break;fi;sleep $((attempt*3));done;test "$ok" = 1
+          cleanup(){ ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true;ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true;rm -f "$key";};trap cleanup EXIT
+          ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMRE_PREFLIGHT_OK' | grep -qx HMRE_PREFLIGHT_OK
+          tar -C "$STATE_DIR/package" -czf - . | ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote' && mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -d memory_limit=1024M '$remote/review.php' --live" > "$STATE_DIR/live.stdout" 2> "$STATE_DIR/live.stderr";rc=$?;set -e;export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['STATE_DIR']);out=(d/'live.stdout').read_text(errors='replace');err=(d/'live.stderr').read_text(errors='replace');prefix='HMRCR_RESULT:';lines=[x[len(prefix):] for x in out.splitlines() if x.startswith(prefix)]
+          if len(lines)!=1:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stderr_tail':err[-1500:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          else:r=json.loads(lines[0])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();(d/'result.json').write_bytes(raw)
+          valid=(int(os.environ['RC'])==0 and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('examined')==37 and r.get('input',{}).get('sha256')==os.environ['EVIDENCE_SHA256'] and all(r.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','anex_calls','andromeda_calls','booking_calls','lead_calls']))
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if valid else 'unknown','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True};(d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          c=r.get('counts',{});safe=r.get('safe_targets',[]);summary=[f"MATCH #1971 Egypt CURRENT recurrence review `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY.",f"Input **37** distinct exact triples / **56** observations from 2 completed fresh Egypt full-page slices; **19** recur on both dates. CURRENT: triple **{c.get('already_triple',0)}**, safe missing ANEX **{c.get('safe_missing_anex',0)}**, safe missing Andromeda **{c.get('safe_missing_andromeda',0)}**, both-unlinked TV anchors **{c.get('both_unlinked_tv_anchor',0)}**, protected/conflict **{c.get('protected_or_conflict',0)}**, not-current **{c.get('not_current',0)}**. Supplier/Tourvisor calls0; DB/mapping writes0."]
+          if safe:summary.append('Prepared guarded delta: **'+str(len(safe))+'** — '+', '.join(f"{x['provider']}:{x['external_id']}→TV{x['local_hotel_id']} ({x['observations']} obs/{x['dates']} dates)" for x in safe)+'.')
+          (d/'summary.md').write_text('\n'.join(summary)+'\n');print('\n'.join(summary))
+          if not valid:raise SystemExit(2)
+          PY
+      - name: Preserve immutable result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-egypt-recurrence-current-v1-${{ github.run_id }}-final
+          path: ${{ env.STATE_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE_DIR/summary.md"
