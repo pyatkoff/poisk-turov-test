@@ -35,6 +35,7 @@ final class AnyTourAndromedaSelectedQuote
                     'flight_selection_required' => true,
                     'flights' => $choice['public'],
                     'fuel_surcharges_reported' => [],
+                    'operator_currency_rates_reported' => self::operatorCurrencyRates($claim),
                     'booking_enabled' => false,
                 ];
             }
@@ -64,6 +65,7 @@ final class AnyTourAndromedaSelectedQuote
             'flight_selection_required' => false,
             'flights' => array_values(array_map([self::class, 'publicFlight'], $selectedFlights)),
             'fuel_surcharges_reported' => self::fuelSurcharges($calculated),
+            'operator_currency_rates_reported' => self::operatorCurrencyRates($calculated),
             'booking_enabled' => false,
         ];
     }
@@ -107,6 +109,34 @@ final class AnyTourAndromedaSelectedQuote
             || preg_match('/[1-9]/', $amount) !== 1
             || !is_string($currency) || !preg_match('/^[A-Z0-9_]{2,8}$/D', $currency)) return null;
         return ['amount' => $amount, 'currency' => $currency];
+    }
+
+    /** Supplier-reported operator conversion rows; evidence only, never applied here. */
+    private static function operatorCurrencyRates(array $claim): array
+    {
+        $doc = self::document($claim);
+        $out = [];
+        foreach (($doc['moneys'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['money'] ?? null)) continue;
+            foreach ($block['money'] as $money) {
+                if (!is_array($money)) continue;
+                $currency = $money['currency'] ?? null;
+                $rate = (string)($money['rate'] ?? '');
+                if (!is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1
+                    || preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,6})?$/D', $rate) !== 1
+                    || preg_match('/[1-9]/', $rate) !== 1) continue;
+                $isClaimCurrency = (string)($money['isClaimCurrency'] ?? '');
+                $row = [
+                    'currency' => $currency,
+                    'rate' => $rate,
+                    'is_claim_currency' => $isClaimCurrency === 'true' ? true : ($isClaimCurrency === 'false' ? false : null),
+                    'source' => 'andromeda_claim_money',
+                    'arithmetic_applied' => false,
+                ];
+                $out[$currency . "\0" . $rate . "\0" . var_export($row['is_claim_currency'], true)] = $row;
+            }
+        }
+        return array_values($out);
     }
 
     /** Supplier-reported fuel services are evidence only; do not aggregate or apply them to prices here. */
