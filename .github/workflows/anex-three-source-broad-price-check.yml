@@ -9,9 +9,9 @@ on:
       - '.github/workflows/anex-three-source-broad-price-check.yml'
   push:
     branches:
-      - 'ops/int-anex-three-source-broad-price-v5-20260912'
+      - 'ops/int-anex-three-source-broad-price-v6-20260912'
     paths:
-      - '.github/ops/anex-three-source-broad-price-v5-20260912'
+      - '.github/ops/anex-three-source-broad-price-v6-20260912'
 permissions:
   contents: read
 concurrency:
@@ -27,7 +27,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate broad v5 source without network
+      - name: Validate broad v6 source without network
         run: |
           php -l scripts/diagnostics/anex_three_source_broad_price.php
           php -l tests/anex-three-source-broad-price-smoke.php
@@ -39,29 +39,24 @@ jobs:
           py=Path('scripts/diagnostics/anex_three_source_broad_price.py').read_text()
           for forbidden in ('->bron(', 'broninit(', '->calc(', 'get_flights(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
               assert forbidden not in php
-          assert "ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260912_v5'" in php
-          assert "ANEX_BROAD_PRICE_DATE = '2026-10-12'" in php
-          assert "c.name IN ('Турция','Turkey')" in php
-          assert "'nights_from'=>7" in php and "'adults'=>2" in php
-          assert "supplier_tour_program_id" in php and "supplier_currency_id" in php
-          assert "'reason'=>'pricepage_1_only'" in php
-          assert "'reason'=>'status_without_continue_no_growth'" in php
-          assert "'all_pages_retained'" in php
-          assert "EXPERIMENT='anex_three_source_broad_price_20260912_v5'" in py
-          assert "'country':'Turkey'" in py and "'date':'2026-10-12'" in py
-          assert 'program_fuel_cohorts' in py and 'anex_program_fuel_cohorts' in py
-          assert 'validate_coverage' in py and 'p3_matching_external' in py
+          assert "ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_broad_price_20260912_v6'" in php
+          assert "ANEX_BROAD_PRICE_DATE = '2026-10-05'" in php
+          assert "'nights_from'=>8" in php and "'adults'=>2" in php
+          assert 'anex_broad_price_raw_programs' in php and "raw SearchTour_PRICES id→tourKey/currencyKey binding" in php
+          assert "'reason'=>'pricepage_1_only'" in php and "'reason'=>'status_without_continue_no_growth'" in php
+          assert "EXPERIMENT='anex_three_source_broad_price_20260912_v6'" in py and "'date':'2026-10-05'" in py
+          assert 'program_fuel_cohorts' in py and 'anex_program_fuel_cohorts' in py and 'p3_matching_external' in py
           workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
-          assert 'ops/int-anex-three-source-broad-price-v5-20260912' in workflow
+          assert 'ops/int-anex-three-source-broad-price-v6-20260912' in workflow
           assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
-          print('Broad three-source v5 static boundary: PASS')
+          print('Broad three-source v6 static boundary: PASS')
           PY
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-broad-price-v5-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-broad-price-v6-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      SOURCE_SHA: 289729e9ad97e967a36d2eece0d41c2feb7b8799
+      SOURCE_SHA: 8358c97c2573a2b6dc832123b9515b5f9aafaf01
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -76,25 +71,25 @@ jobs:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - name: Bind exact broad v5 scenario
+      - name: Bind exact broad v6 scenario
         run: |
-          test "$(cat control/.github/ops/anex-three-source-broad-price-v5-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-broad-price-v5;scenario=Turkey-2026-10-12-7n-2a-AI;owner=2026-09-12"
+          test "$(cat control/.github/ops/anex-three-source-broad-price-v6-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-broad-price-v6;scenario=Turkey-2026-10-05-8n-2a-AI;owner=2026-09-12"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
-      - name: Run fresh broad v5 provider cases through durable checkpoints
+      - name: Run fresh broad v6 provider cases through durable checkpoints
         id: parity
         continue-on-error: true
         run: |
           mkdir -m 700 "$RUNNER_TEMP/broad-price"
           python3 -B source/scripts/diagnostics/anex_three_source_broad_price.py "$RUNNER_TEMP/broad-price"
-      - name: Preserve sanitized broad v5 evidence
+      - name: Preserve sanitized broad v6 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-three-source-broad-price-v5-${{ github.run_id }}
+          name: anex-three-source-broad-price-v6-${{ github.run_id }}
           path: ${{ runner.temp }}/broad-price/
           if-no-files-found: error
           retention-days: 30
-      - name: Fail after evidence preservation when broad v5 parity did not complete
+      - name: Fail after evidence preservation when broad v6 parity did not complete
         if: steps.parity.outcome != 'success'
         run: exit 1
