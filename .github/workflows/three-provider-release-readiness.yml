@@ -24,6 +24,7 @@ jobs:
             tests/three-provider-offer-contract-test.php \
             tests/three-provider-offer-context-test.php \
             tests/three-provider-air-search-filter-test.php \
+            tests/three-provider-hotel-category-test.php \
             tests/three-provider-quote-envelope-test.php \
             tests/three-provider-search-handoff-test.php \
             tests/three-provider-anex-offer-test.php
@@ -39,6 +40,7 @@ jobs:
               'app/integrations/three-provider-offer-contract.php',
               'app/integrations/three-provider-offer-context.php',
               'app/integrations/three-provider-air-search-filter.php',
+              'app/integrations/three-provider-hotel-category.php',
               'app/integrations/three-provider-quote-envelope.php',
               'app/integrations/three-provider-search-handoff.php',
           ]
@@ -69,5 +71,12 @@ jobs:
           assert "'allowed' => false" in air
           assert "'raw_numeric_id_universal' => false" in air
           assert "'cross_provider_equivalence_verified' => false" in air
+
+          category = Path('app/integrations/three-provider-hotel-category.php').read_text()
+          assert "'supplier_label_equivalence_verified' => false" in category
+          assert "'raw_supplier_numeric_id_universal' => false" in category
+          assert "'cross_provider_equivalence_verified' => false" in category
+          assert "'identity_proof_from_category' => false" in category
+          assert "'source' => $canonicalKnown ? 'current_local_identity' : null" in category
           print('Three-provider INT release readiness static boundary: PASS')
           PY
