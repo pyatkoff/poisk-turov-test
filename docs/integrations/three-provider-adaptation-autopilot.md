@@ -100,6 +100,7 @@ Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current acce
 - stars/category boundary;
 - rating/services/types local-only boundaries;
 - provider search coverage/exhaustion semantics;
+- provider-neutral P1 observation evidence + immutable scenario lineage;
 - direct ANEX retained concrete-offer bridge;
 - Andromeda quote integrity + canonical quote money;
 - P6 provider-neutral SEARCH handoff.
@@ -206,6 +207,20 @@ Focused `34677474785` SUCCESS: 101; aggregate `34677474771` SUCCESS; Security `3
 - bounded/partial rows remain useful observations, but counts from different providers are not proven comparable;
 - coverage/count equality never proves hotel identity, package identity or price equivalence and never authorizes mapping/arithmetic changes.
 
+### 5.8 P1 observation evidence
+
+#2120 merged `7a935bf3445e98488e893fae4034dea2b67f2168`; P7 follow-up #2122 merged `0a07ea2c000094a3b6d98a96101b4519e8c1c50f`.
+Aggregate exact head `731403082238bcad0685a85d3deda1af384612fa`: run `34678908441` SUCCESS; Security `34678908436` SUCCESS.
+
+- one provider-neutral evidence envelope covers already observed Tourvisor/direct-ANEX/Andromeda rows;
+- every observation binds the existing canonical search window, meal, room/placement, availability, money and provider-specific coverage contract;
+- immutable scenario lineage is mandatory: `operation_id`, scenario revision, criteria digest, source SHA and relative checkpoint path;
+- external hotel ID remains an opaque provider-scoped string, including numeric-looking IDs/leading zeroes;
+- `local_hotel_id=null` is explicit `unmapped` evidence only; actually available name/country/geography/star/coords may travel to #1759/#996, never as mapping authority;
+- supplier labels, coordinates, counts/coverage and price similarity are not hotel/package/price-equivalence proof;
+- observation contract sets mapping/identity decision and replay authority false;
+- P7 runs this suite with PHP warnings promoted to failures; no network/DB/booking primitives are allowed in the aggregate boundary.
+
 ## 6. P6 source handoff — DONE
 
 #2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`; CI `34665905819` SUCCESS, Security `34665905799` SUCCESS.
@@ -216,7 +231,7 @@ Receiving wiring, renderer/controller/selected-state/publication принадл�
 
 ## 7. P7 source release readiness — GREEN
 
-Latest exact-head gate после #2118:
+Latest exact-head gate после #2122:
 
 - money facts: 60;
 - offer contract: 189;
@@ -225,6 +240,7 @@ Latest exact-head gate после #2118:
 - region/resort/subregion: 74;
 - departure/country: 82;
 - search coverage: 101;
+- search observation evidence: 169;
 - hotel category: 57;
 - hotel rating: 69;
 - hotel services: 67;
@@ -233,7 +249,7 @@ Latest exact-head gate после #2118:
 - INT→SEARCH handoff: 97;
 - direct ANEX bridge: 115.
 
-Aggregate `34677474771` SUCCESS: **1179 offline contract checks**. Security `34677474772` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs и bounded result counts не получают universal authority.
+Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts and unmapped observation evidence не получают universal/mapping authority.
 
 Это source-side readiness, не production approval и не UI/publication acceptance.
 
@@ -245,7 +261,7 @@ Aggregate `34677474771` SUCCESS: **1179 offline contract checks**. Security `346
 
 P3 identity/matching никогда не fallback-задача INT.
 
-После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114/#2116/#2118 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types/search-coverage wrapper ради активности.
+После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114/#2116/#2118/#2120/#2122 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types/search-coverage/observation wrapper ради активности.
 
 ### P0/P1 — следующий eligible work
 
@@ -275,7 +291,7 @@ Tuple alignment: `current local identity + date + nights + party + canonical mea
 
 Coverage обязан идти рядом с observation: direct ANEX `PRICEPAGE=1` считать bounded, Andromeda complete только после всех advertised pages одного search context, Tourvisor complete только после explicit continue/no-growth evidence. Нельзя сравнивать provider counts как exhaustive, если соответствующий coverage contract этого не доказывает.
 
-Для `local_id=null` сохранять provider/country/external id/name/geography/star/coords/search criteria, если реально доступны, и передавать #1759/#996. Mapping writes запрещены.
+Для `local_id=null` использовать merged P1 observation envelope: сохранять provider/country/external id/name/geography/star/coords/search criteria только если реально доступны, вместе с coverage + immutable scenario lineage, и передавать #1759/#996. Mapping writes запрещены.
 
 ### P2 — status matrix
 
@@ -303,22 +319,22 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 
 ## 9. Observation contract
 
-Когда реально доступны, сохранять:
+Merged `AnyTourThreeProviderSearchObservation` — единственная source-side P1 envelope для новых наблюдений. Когда реально доступны, она сохраняет:
 
 - provider + operator;
 - country/region/subregion/geography;
-- external hotel id;
-- current `local_id` или null;
+- provider-scoped opaque external hotel id;
+- current `local_id` или null/unmapped;
 - raw name, stars/category, coords;
 - exact search criteria/date/nights/party/child ages;
 - raw+normalized meal/room/placement;
-- availability/flight flags;
+- availability evidence;
 - search price/currency;
 - fuel/additional states отдельно;
 - search coverage state + provider-specific exhaustion evidence;
-- observed_at + source request lineage.
+- `observed_at` + immutable source request lineage.
 
-Каждый supplier scenario получает `operation_id`, checkpoint path, scenario revision, criteria digest и source SHA.
+Каждый supplier scenario получает `operation_id`, checkpoint path, scenario revision, criteria digest и source SHA. Observation envelope не даёт replay/mapping/package/price-equivalence authority и не заменяет #1759 identity decision.
 
 ## 10. Definition of useful progress / stop gates
 
