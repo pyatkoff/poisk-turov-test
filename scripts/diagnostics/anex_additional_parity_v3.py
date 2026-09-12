@@ -12,16 +12,24 @@ SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-12','nights'
       'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
-def php_body(path: Path) -> str:
+def php_body(path: Path, require_strict=True) -> str:
     text=path.read_text()
-    if not text.startswith('<?php\ndeclare(strict_types=1);\n'):
+    if not text.startswith('<?php\n'):
         raise ValueError('php_header_invalid')
-    return text[len('<?php\ndeclare(strict_types=1);\n'):]
+    body=text[len('<?php\n'):]
+    strict='declare(strict_types=1);\n'
+    if require_strict:
+        if not body.startswith(strict):
+            raise ValueError('php_strict_header_invalid')
+        body=body[len(strict):]
+    elif body.startswith(strict):
+        body=body[len(strict):]
+    return body
 
 
 def source() -> str:
     here=Path(__file__).resolve().parent
-    paired=php_body(here/'anex_search3_paired_runner.php')
+    paired=php_body(here/'anex_search3_paired_runner.php',require_strict=False)
     client=php_body(here.parent.parent/'app/integrations/anex-additional-prices-client.php')
     parity=php_body(here/'anex_additional_parity_v3.php')
     return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\ndefine('ANYTOUR_ANEX_ADDITIONAL_PARITY_LIBRARY_ONLY', true);\n"+paired+'\n'+client+'\n'+parity+'\n$report=anex_additional_parity_main(); echo json_encode($report,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\\n"; exit(($report["status"]??null)==="completed"?0:1);'
