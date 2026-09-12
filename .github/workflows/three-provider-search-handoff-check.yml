@@ -1,0 +1,52 @@
+name: Three-provider SEARCH handoff
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-search-handoff.php'
+      - 'app/integrations/three-provider-quote-envelope.php'
+      - 'app/integrations/three-provider-money-facts.php'
+      - 'app/integrations/three-provider-offer-contract.php'
+      - 'app/integrations/three-provider-offer-context.php'
+      - 'app/integrations/three-provider-availability.php'
+      - 'app/integrations/three-provider-flight-details.php'
+      - 'app/integrations/three-provider-meal-family.php'
+      - 'app/integrations/three-provider-room-placement.php'
+      - 'app/integrations/three-provider-operator.php'
+      - 'app/integrations/three-provider-anex-offer.php'
+      - 'tests/three-provider-search-handoff-test.php'
+      - 'tests/three-provider-anex-offer-test.php'
+      - '.github/workflows/three-provider-search-handoff-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate provider-neutral handoff without network
+        run: |
+          php -l app/integrations/three-provider-search-handoff.php
+          php -l tests/three-provider-search-handoff-test.php
+          php -d allow_url_fopen=0 tests/three-provider-search-handoff-test.php
+          php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/three-provider-search-handoff.php').read_text()
+          assert 'AnyTourThreeProviderOfferContext::validate' in src
+          assert 'AnyTourThreeProviderQuoteEnvelope::verified' in src
+          assert 'AnyTourThreeProviderMoneyFacts::fromSearch' in src
+          assert "'selection_state' => 'disabled'" in src
+          assert "'booking_enabled' => false" in src
+          assert "'quote_evidence_digest'" in src
+          assert "'current_context_verified' => true" in src
+          for forbidden in (
+              'curl_', 'file_get_contents(', 'PDO', 'bron(', 'bron_ticket',
+              'supplier_offer_id', 'claiminc', 'agency_cost', '+ $fuel', '+$fuel'
+          ):
+              assert forbidden not in src
+          print('Three-provider SEARCH handoff static boundary: PASS')
+          PY
