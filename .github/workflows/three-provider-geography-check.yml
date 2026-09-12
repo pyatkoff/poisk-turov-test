@@ -1,0 +1,40 @@
+name: Three-provider geography
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-geography.php'
+      - 'tests/three-provider-geography-test.php'
+      - '.github/workflows/three-provider-geography-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate geography semantics without network
+        run: |
+          php -l app/integrations/three-provider-geography.php
+          php -l tests/three-provider-geography-test.php
+          php -d allow_url_fopen=0 tests/three-provider-geography-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-geography.php').read_text()
+          assert "'status' => 'unknown'" in src
+          assert "'allowed' => false" in src
+          assert "'requires_verified_provider_mapping' => true" in src
+          assert "'provider_specific_mapping_required' => true" in src
+          assert "'supplier_geography_equivalence_verified' => false" in src
+          assert "'raw_supplier_numeric_id_universal' => false" in src
+          assert "'cross_provider_equivalence_verified' => false" in src
+          assert "'identity_proof_from_geography' => false" in src
+          assert "? 'not_implemented'" in src
+          assert "'source' => $known ? 'current_local_identity' : null" in src
+          for forbidden in ('curl_', 'PDO', 'mysqli_', 'bron(', 'bron_ticket', 'booking', 'file_get_contents('):
+              assert forbidden not in src
+          print('Three-provider geography static boundary: PASS')
+          PY
