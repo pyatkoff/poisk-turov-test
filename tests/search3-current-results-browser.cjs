@@ -565,6 +565,15 @@ async function run(browser, width, previous) {
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(hotels), 'disclosure leaves frozen source prices, tour order and contents unchanged');
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'expensive', 'rating sorting retained');
+    await page.evaluate(items => window.V2Results.render([{ ...items[0], id: 'no-photo', name: 'Отель без фотографии', picturelink: '' }]), hotels);
+    const noPhoto = page.locator('#results [data-hotel-id=no-photo].hotel-card');
+    const noPhotoGeometry = await noPhoto.evaluate(node => { const box = element => { const r = element.getBoundingClientRect(); return { x:r.x, y:r.y, width:r.width, height:r.height }; }; return { main:box(node.querySelector('.hotel-main')), media:box(node.querySelector('.hotel-photo')), body:box(node.querySelector('.hotel-body')), placeholder:getComputedStyle(node.querySelector('.photo-placeholder')).display, stars:getComputedStyle(node.querySelector('.stars-badge')).display }; });
+    assert.equal(noPhotoGeometry.placeholder, 'none', 'missing photo never reserves a branded fake image');
+    assert.notEqual(noPhotoGeometry.stars, 'none', 'hotel category stays visible when photo is absent');
+    assert.ok(noPhotoGeometry.media.height < 64, 'missing-photo header stays compact instead of reserving media height: '+JSON.stringify({width,previous,noPhotoGeometry}));
+    assert.ok(noPhotoGeometry.body.width >= noPhotoGeometry.main.width - 2, 'missing-photo facts use the card content width');
+    assert.equal((await snapshot(page)).overflow, false, width + ': missing-photo card fits the viewport');
+    if (!previous && [375,1024,1440].includes(width)) await page.screenshot({ path: path.join(output, `results-no-photo-${width}.png`), fullPage: true });
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 44 } })));
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'search start exposes a truthful loading state');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-progress', { detail: { progress: 47 } })));
