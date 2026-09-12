@@ -152,8 +152,8 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
     return [
         'offer_key' => 'anex_online:' . hash('sha256', $kind . "\0" . $supplierId),
         'supplier_offer_id' => $supplierId,
-        // SearchTour_PRICES tourKey/currencyKey are provider-scoped inputs for
-        // server-side AdditionalPricesDaily association; neither is public authority.
+        // SearchTour_PRICES tourKey/currencyKey are provider-scoped diagnostics only.
+        // Their binding to ANEX B2B AdditionalPricesDaily identifiers is unverified.
         'supplier_tour_program_id' => anytour_anex_normalizer_id($row['tourKey'] ?? null),
         'supplier_currency_id' => anytour_anex_normalizer_id($row['currencyKey'] ?? null),
         'provider' => 'anex',
