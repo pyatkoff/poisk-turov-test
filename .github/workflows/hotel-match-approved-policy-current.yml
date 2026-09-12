@@ -1,0 +1,90 @@
+name: MATCH approved policy CURRENT reader audit
+on:
+  push:
+    branches: [fix/match-approved-policy-reader-1971-20260912]
+    paths: [.github/match-approved-policy-current-1971-20260912-v1.arm]
+permissions: {contents: read, actions: read}
+concurrency: {group: anytour-match-approved-policy-current-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-approved-policy-current-1971-20260912-v1
+  OUT: /tmp/match-approved-policy-current-1971
+jobs:
+  audit:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Offline policy tests, source pin and immutable reservation
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-approved-policy-current-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = 15974c5cc66835997d2b369cdd54f46d1d3dede1
+          echo 'a70d4e7627b1ed5a2d4739b0872caf5add285376aca956109c3f54dacdc67d90  scripts/diagnostics/hotel_match_approved_policy_current.php' | sha256sum -c -
+          php -d allow_url_fopen=0 tests/anex_search_mapping_policy_test.php
+          php -d allow_url_fopen=0 scripts/diagnostics/hotel_match_approved_policy_current.php --self-test
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path
+          reader=p('app/integrations/anex-search-mapping-registry.php').read_text()
+          driver=p('scripts/diagnostics/hotel_match_approved_policy_current.php').read_text()
+          header='<?php\ndeclare(strict_types=1);\n'
+          assert reader.startswith(header) and driver.startswith(header)
+          name='final class AnyTourAnexSearchMappingRegistry\n'
+          assert reader.count(name)==1
+          digest=hashlib.sha256(reader.encode()).hexdigest()
+          candidate=reader[len(header):].replace(name,'final class AnyTourAnexSearchMappingRegistryCandidate1971\n',1)
+          bundle=header+"const HMAP_CANDIDATE_SHA256 = '"+digest+"';\n"+candidate+'\n'+driver[len(header):]
+          p(os.environ['RUNNER_TEMP'],'match-policy-audit.php').write_text(bundle)
+          p(os.environ['OUT'],'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'candidate_source_sha':'65feecaf9c858b8675ab8b14e25354df59622c29','candidate_sha256':digest,'state':'reserved_before_db_access','read_only':True,'no_replay':True},sort_keys=True)+'\n')
+          PY
+          php -l "$RUNNER_TEMP/match-policy-audit.php"
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-policy-current-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-policy-reservation-readback, merge-multiple: true}
+      - name: One read-only transaction and independent durable receipt readback
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-policy-reservation-readback/reservation.json
+          key="$RUNNER_TEMP/match-policy-key"; known="$RUNNER_TEMP/match-policy-known"; sock="$RUNNER_TEMP/match-policy.sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known" "$RUNNER_TEMP/match-policy-stdout" "$RUNNER_TEMP/match-policy-stderr"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=256M" < "$RUNNER_TEMP/match-policy-audit.php" > "$RUNNER_TEMP/match-policy-stdout" 2> "$RUNNER_TEMP/match-policy-stderr"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'p="$HOME/.anytoour-match/operations/hotel-match-approved-policy-current-1971-20260912-v1"; if test -f "$p/result.json"; then cat "$p/result.json"; elif test -f "$p/failure.json"; then cat "$p/failure.json"; else printf "{\"status\":\"unknown_do_not_replay\"}\n"; fi' > "$OUT/server-result.json" 2>> "$RUNNER_TEMP/match-policy-stderr"
+          rr=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'p="$HOME/.anytoour-match/operations/hotel-match-approved-policy-current-1971-20260912-v1/receipt.json"; if test -f "$p"; then cat "$p"; else printf "{}\n"; fi' > "$OUT/server-receipt.json" 2>> "$RUNNER_TEMP/match-policy-stderr"
+          sr=$?
+          set -e
+          export RC="$rc" RR="$rr" SR="$sr"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def read(name):
+              try: return json.loads((out/name).read_bytes())
+              except (ValueError,UnicodeError): return {}
+          result=read('server-result.json');server=read('server-receipt.json');reserve=read('reservation.json')
+          digest=hashlib.sha256((out/'server-result.json').read_bytes()).hexdigest()
+          verified=(int(os.environ['RR'])==0 and int(os.environ['SR'])==0 and result.get('status')=='read_only_complete' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and result.get('candidate_sha256')==reserve['candidate_sha256'] and server.get('operation_id')==os.environ['OPERATION_ID'] and server.get('result_sha256')==digest and server.get('readback_verified') is True and all(result.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls']))
+          gate=verified and int(os.environ['RC'])==0 and result.get('existing_identity_preserved') is True
+          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'server_receipt_verified':verified,'comparison_gate_passed':gate,'server_result_sha256':digest,'exit_code':int(os.environ['RC']),'readback_exit_code':int(os.environ['RR']),'no_replay':True}
+          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          summary=f"MATCH #1971 CURRENT reader audit: status={result.get('status','unknown_do_not_replay')}, receipt_verified={verified}; existing stored rows newly visible={result.get('newly_visible_count')}; cohort null {result.get('cohort_null_before')}→{result.get('cohort_null_after')}; existing targets/manuals preserved={result.get('existing_identity_preserved')}. New DB mappings0, supplier/TV calls0, publication=false. Operation {os.environ['OPERATION_ID']}; NO-REPLAY."
+          (out/'summary.md').write_text(summary+'\n');print(summary)
+          if not gate: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-policy-current-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
