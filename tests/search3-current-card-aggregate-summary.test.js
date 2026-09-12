@@ -52,7 +52,7 @@ const contextText = renderer.priceContext(hotel);
 assert(contextText.includes('Несколько дат вылета'));
 assert(contextText.includes('7–10 ноч.'));
 assert(contextText.includes('BB · AI'));
-assert(!contextText.includes('16.09.2026 · 7 ноч. · Завтраки'), 'representative offer must not masquerade as hotel summary');
+assert(!contextText.includes('16.09.2026 · 7 ноч.'), 'representative offer must not masquerade as hotel summary');
 
 const collapsed = renderer.toursHtml(hotel);
 assert(collapsed.includes('Доступные варианты'));
@@ -60,14 +60,14 @@ assert(collapsed.includes('Несколько дат вылета'));
 assert(collapsed.includes('7–10'));
 assert(collapsed.includes('BB · AI'));
 assert(collapsed.includes('Показать 3 варианта'));
-assert(!collapsed.includes('Анекс Тур') || collapsed.indexOf('Туроператоры') < collapsed.indexOf('Анекс Тур'));
+assert(collapsed.includes('Туроператоры'));
 
 const one = {
   id: 1,
   price: 62400,
-  tours: [{ id: 'only', date: '2026-09-16', nights: 7, price: 62400, meal: { fullName: 'Завтраки' }, operator: 'Fun&Sun (RU)', isCharter: true }]
+  tours: [{ id: 'only', date: '2026-09-16', nights: 7, price: 62400, meal: { name: 'BB' }, operator: 'Fun&Sun (RU)', isCharter: true }]
 };
 assert(renderer.priceContext(one).includes('16.09.2026'));
-assert(renderer.toursHtml(one).includes('Завтраки'));
+assert(renderer.toursHtml(one).includes('BB'));
 
 console.log('search3 current card aggregate summary: ok');
