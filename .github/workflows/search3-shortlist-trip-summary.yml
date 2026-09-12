@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - 'src/search3/behavior/results/shortlist.js'
+      - 'src/search3/styles/results-layout.css'
       - 'v2/search3-results-filters-v1.js'
+      - 'v2/search3-results-filters-v1.css'
       - 'docs/project/search3-production-import.json'
       - 'tests/search3-shortlist-trip-summary.test.js'
       - '.github/workflows/search3-shortlist-trip-summary.yml'
@@ -36,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unexpected="$(git diff --name-only -- v2 docs/project/search3-production-import.json | grep -Ev '^(v2/search3-results-filters-v1\.js|docs/project/search3-production-import\.json)$' || true)"
+          unexpected="$(git diff --name-only -- v2 docs/project/search3-production-import.json | grep -Ev '^(v2/search3-results-filters-v1\.(js|css)|docs/project/search3-production-import\.json)$' || true)"
           if [[ -n "$unexpected" ]]; then
             printf 'Unexpected generated drift:\n%s\n' "$unexpected" >&2
             exit 1
@@ -47,8 +49,9 @@ jobs:
           name: search3-shortlist-trip-summary-generated
           path: |
             v2/search3-results-filters-v1.js
+            v2/search3-results-filters-v1.css
             docs/project/search3-production-import.json
           if-no-files-found: error
           retention-days: 3
       - name: Require committed generated parity
-        run: git diff --exit-code -- v2/search3-results-filters-v1.js docs/project/search3-production-import.json
+        run: git diff --exit-code -- v2/search3-results-filters-v1.js v2/search3-results-filters-v1.css docs/project/search3-production-import.json
