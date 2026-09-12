@@ -2,6 +2,9 @@ name: Search3 desktop primary density generate
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - ux/search3-desktop-primary-density-20260912
 
 permissions:
   contents: read
