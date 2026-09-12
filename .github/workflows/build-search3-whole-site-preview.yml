@@ -412,6 +412,7 @@ jobs:
         if: steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         env:
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           SEARCH3_RESULTS_OUTPUT: ${{ runner.temp }}/search3-results-geometry
           SEARCH3_ENTRY_OWNER_OUTPUT: ${{ runner.temp }}/search3-results-geometry/native-entry
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
