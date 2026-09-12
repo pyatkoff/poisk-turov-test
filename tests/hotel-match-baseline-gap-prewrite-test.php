@@ -6,5 +6,5 @@ $ids=[];$bridge=0;$specific=0;foreach($m['pairs'] as$r){if(isset($ids[(int)$r['e
 if($bridge!==93||$specific!==73)exit(12);
 foreach(['START TRANSACTION READ ONLY','broad_geo_without_current_bridge','countrywide_key_not_unique','primary_qualifier_drift','manual_protected','mapping_target_drift','andromeda_hotel_identities'] as$needle)if(!str_contains($src,$needle))exit(13);
 $bad=['INSERT ','UPDATE ','DELETE ',' COMMIT','curl_exec','file_get_contents(\'http','file_get_contents("http'];foreach($bad as$needle)if(str_contains($src,$needle))exit(14);
-if(substr_count($src,'database_writes'=>0)===0)exit(15);
+if(!str_contains($src,"'database_writes'=>0")||!str_contains($src,"'mapping_writes'=>0"))exit(15);
 echo "MATCH baseline-gap prewrite static test PASS; rows=168 bridge=93 specific=73\n";
