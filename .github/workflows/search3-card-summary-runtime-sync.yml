@@ -1,0 +1,38 @@
+name: Search3 card summary runtime sync
+
+on:
+  push:
+    branches:
+      - ux/search3-hotel-card-summary-20260912
+    paths:
+      - '.github/workflows/search3-card-summary-runtime-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/search3-hotel-card-summary-20260912
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Build canonical shared runtime
+        run: node scripts/build/search3-js/shared-runtime.cjs --write
+      - name: Commit only generated runtime
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -n "$(git status --porcelain -- v2/search3-shared-runtime.json)"
+          test -z "$(git status --porcelain --untracked-files=all | grep -v '^ M v2/search3-shared-runtime.json$' || true)"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add v2/search3-shared-runtime.json
+          git commit -m 'SEARCH: sync generated hotel summary runtime'
+          git push origin HEAD:ux/search3-hotel-card-summary-20260912
