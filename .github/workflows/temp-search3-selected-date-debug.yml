@@ -1,0 +1,34 @@
+name: TEMP Search3 selected date debug
+on:
+  push:
+    branches: [ux/search3-selected-date-display-20260912]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - run: php tests/site-preview-path-smoke.php production
+      - run: php tests/site-preview-path-smoke.php preview
+      - run: php tests/search-handoff-smoke.php
+      - run: php tests/seo-price-calendar-ui-smoke.php
+      - run: php tests/offer-freshness-smoke.php
+      - run: node tests/home-search-loading-handoff.cjs
+      - run: python3 -B scripts/build/search3_assets.py --check
+      - run: node scripts/build/search3-js/shared-runtime.cjs --check
+      - run: php tests/search3-shared-runtime-smoke.php
+      - run: php tests/search3-lean-base-bundle-smoke.php
+      - run: node tests/search3-js-compaction.cjs
+      - run: node tests/search3-andromeda-provider.cjs
+      - run: php tests/search3-andromeda-provider-config.php
+      - run: node tests/search3-css-printing.cjs
+      - run: node tests/search3-honest-results-controls.cjs
+      - run: node tests/search3-selected-date-display.test.js
+      - run: python3 -B tests/search3_source_build_test.py
+      - run: python3 -B tests/search3_production_presentation_test.py
+      - run: python3 -B tests/search3_site_preview_isolation_test.py
