@@ -5,10 +5,11 @@ declare(strict_types=1);
 function anytour_anex_additional_specimen_run(array $input): array
 {
     if (PHP_SAPI !== 'cli' || $input !== [
-        'operation_id' => 'anex-additional-prices-specimen-20260912-v3',
-        'date' => '2026-11-14',
-        'nights' => 8,
-        'adults' => 1,
+        'operation_id' => 'anex-additional-prices-specimen-20260912-v4',
+        'date' => '2026-09-20',
+        'nights' => 7,
+        'tour' => 778,
+        'currency' => 3,
     ]) {
         throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_INPUT');
     }
@@ -52,45 +53,38 @@ function anytour_anex_additional_specimen_run(array $input): array
         anytour_anex_search3_dictionary($client, 'SearchTour_STATES', ['TOWNFROMINC' => $departure], $cache),
         ['Турция', 'Turkey']
     );
-    $dated = [
-        'TOWNFROMINC' => $departure,
-        'STATEINC' => $country,
-        'CHECKIN_BEG' => '20261114',
-        'CHECKIN_END' => '20261114',
-        'ADULT' => 1,
-        'CHILD' => 0,
-    ];
-    $currency = anytour_anex_search3_dictionary_id(
-        anytour_anex_search3_dictionary($client, 'SearchTour_CURRENCIES', $dated, $cache),
-        ['RUB', 'RUR', 'Рубль', 'Рубли', 'Руб']
-    );
 
-    // `AdditionalPricesDaily.tour` is a tour/program dictionary identity, not CATCLAIM.
-    // Keep this one-shot discovery private until the supplier response contract is proven.
+    // Validate the owner-provided tour/program identity against the current supplier dictionary
+    // before the single B2B request. It is not a hotel ID and is never mapped locally here.
     $programs = anytour_anex_additional_tour_programs(ANEX_API_TOKEN, $departure, $country);
-    if ($programs === []) {
+    $program = null;
+    foreach ($programs as $candidate) {
+        if (($candidate['id'] ?? null) === 778) {
+            $program = $candidate;
+            break;
+        }
+    }
+    if ($program === null) {
         return [
             'schema_version' => 1,
             'operation_id' => $input['operation_id'],
             'status' => 'blocked',
-            'reason' => 'NO_TOUR_PROGRAMS',
+            'reason' => 'TOUR_PROGRAM_778_NOT_CURRENT',
             'direct_anex_requests' => $client->requestsMade() + 1,
             'additional_prices_requests' => 0,
             'booking_calls' => 0,
             'mapping_writes' => 0,
         ];
     }
-    usort($programs, static function (array $a, array $b): int { return $a['id'] <=> $b['id']; });
-    $program = $programs[0];
 
     $additional = new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN);
     $payload = $additional->additionalPricesDaily([
         'page' => 1,
         'pageSize' => 10,
-        'tour' => $program['id'],
-        'dateBeg' => '2026-11-14',
-        'nights' => 8,
-        'currency' => $currency,
+        'tour' => 778,
+        'dateBeg' => '2026-09-20',
+        'nights' => 7,
+        'currency' => 3,
     ]);
 
     return [
@@ -99,10 +93,11 @@ function anytour_anex_additional_specimen_run(array $input): array
         'status' => 'completed',
         'criteria' => [
             'country' => 'Turkey',
-            'dateBeg' => '2026-11-14',
-            'nights' => 8,
-            'adults' => 1,
-            'currency_id' => $currency,
+            'dateBeg' => '2026-09-20',
+            'nights' => 7,
+            'tour_program_id_sha256' => hash('sha256', '778'),
+            'currency_id' => 3,
+            'currency_label' => null,
         ],
         'tour_program' => [
             'namespace' => 'anex_online',
@@ -207,7 +202,7 @@ if (!defined('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY')) {
     } catch (Throwable $e) {
         fwrite(STDOUT, json_encode([
             'schema_version' => 1,
-            'operation_id' => 'anex-additional-prices-specimen-20260912-v3',
+            'operation_id' => 'anex-additional-prices-specimen-20260912-v4',
             'status' => 'unknown',
             'error' => preg_match('/^ANEX_[A-Z0-9_]+$/D', $e->getMessage()) ? $e->getMessage() : 'ANEX_ADDITIONAL_SPECIMEN_FAILED',
             'automatic_retry' => false,
