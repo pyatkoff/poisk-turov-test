@@ -1,0 +1,76 @@
+name: ANEX GREEN GOLD 1797 flight bind
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_green_gold_1797_flight_bind.py'
+      - 'tests/anex_green_gold_1797_flight_bind_test.py'
+      - '.github/workflows/anex-green-gold-1797-flight-bind.yml'
+  push:
+    branches:
+      - 'ops/int-anex-green-gold-1797-flight-bind-20260913'
+    paths:
+      - '.github/ops/anex-green-gold-1797-flight-bind-20260913'
+permissions:
+  contents: read
+concurrency:
+  group: anex-green-gold-1797-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Focused program1797 flight binding regression
+        run: |
+          python3 -B tests/anex_green_gold_1797_flight_bind_test.py
+          python3 -m py_compile scripts/diagnostics/anex_green_gold_1797_flight_bind.py
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-1797-flight-bind-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind exact reviewed source
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-green-gold-1797-flight-bind-20260913'
+          test "$(cat control/.github/ops/anex-green-gold-1797-flight-bind-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-green-gold-1797-flight-bind;scenario=GREEN-GOLD-2026-10-12-7n-2a-AI-program1797-PC1457-PC1456;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Run one direct-ANEX concrete program1797 flight binding
+        id: binding
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/anex-1797-bind"
+          python3 -B source/scripts/diagnostics/anex_green_gold_1797_flight_bind.py "$RUNNER_TEMP/anex-1797-bind"
+      - name: Preserve sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-green-gold-1797-flight-bind-${{ github.run_id }}
+          path: ${{ runner.temp }}/anex-1797-bind/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: steps.binding.outcome != 'success'
+        run: exit 1
