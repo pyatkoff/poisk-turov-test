@@ -231,7 +231,7 @@ function anex_concrete_fuel_main(): array
         $search=new AnyTourAnexSearch($anexClient,$registry->previewResolver(),$secrets); usleep(1050000); $page=$search->search($criteria);
         $eligible=[]; foreach($page['offers']??[] as $offer){$summary=anex_concrete_fuel_offer_summary($offer);if($summary!==null)$eligible[]=['raw'=>$offer,'summary'=>$summary];}
         if(!$eligible)throw new RuntimeException('CONCRETE_FUEL_ANEX_EMPTY');
-        usort($eligible,static fn(array $a,array $b):int=>(float)$a['summary']['price']=>(float)$b['summary']['price']);
+        usort($eligible,static fn(array $a,array $b):int=>(float)$a['summary']['price']<=>(float)$b['summary']['price']);
         $first=$eligible[0]; $out['group_minimum']=$first['summary']; $concrete=[];
         if(($first['raw']['kind']??null)==='group_minimum'){
             usleep(1050000); $expanded=$search->expand($first['raw']['offer_key']);
@@ -240,7 +240,7 @@ function anex_concrete_fuel_main(): array
             foreach($eligible as $row)if(($row['summary']['kind']??null)==='concrete')$concrete[]=$row;
         }
         if(!$concrete)throw new RuntimeException('CONCRETE_FUEL_NO_CONCRETE');
-        usort($concrete,static fn(array $a,array $b):int=>(float)$a['summary']['price']=>(float)$b['summary']['price']);
+        usort($concrete,static fn(array $a,array $b):int=>(float)$a['summary']['price']<=>(float)$b['summary']['price']);
         foreach(array_slice($concrete,0,30) as $row)$out['concrete_offers'][]=$row['summary'];
         $selected=$concrete[0]; $tour=$selected['summary']['supplier_tour_program_id']??null; $nativeCurrency=$selected['summary']['supplier_currency_id']??null;
         if($tour!==ANEX_CONCRETE_FUEL_PROGRAM||$nativeCurrency!==ANEX_CONCRETE_FUEL_NATIVE_CURRENCY)throw new RuntimeException('CONCRETE_FUEL_PROGRAM');
