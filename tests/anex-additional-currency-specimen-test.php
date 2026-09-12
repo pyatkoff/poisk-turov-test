@@ -16,16 +16,28 @@ additional_check(ANEX_ADDITIONAL_GREEN_GOLD_NIGHTS===7&&ANEX_ADDITIONAL_GREEN_GO
 $criteria=['tour'=>2637,'dateBeg'=>'2026-10-05','nights'=>7,'currency'=>3,'page'=>1,'pageSize'=>10];
 additional_check(anytour_anex_additional_query($criteria)==='page=1&pageSize=10&tour=2637&dateBeg=2026-10-05&nights=7&currency=3');
 $bad=$criteria;$bad['tour']=778;additional_reject(static fn()=>anytour_anex_additional_query($bad),'ANEX_ADDITIONAL_CRITERIA');
-$payload=['data'=>[ ['cashrate'=>104.23,'currency'=>3,'dateBeg'=>'2026-09-20T00:00:00','nights'=>7,'price_adult'=>120,'price_chd'=>120,'price_converted_adult'=>12507.6,'price_converted_chd'=>12507.6,'tour'=>778] ],'totalCount'=>1,'totalPages'=>1];
+$payload=['data'=>[ ['cashrate'=>104.23,'currency'=>3,'dateBeg'=>'2026-10-05T00:00:00','nights'=>7,'price_adult'=>120,'price_chd'=>120,'price_converted_adult'=>12507.6,'price_converted_chd'=>12507.6,'tour'=>2637] ],'totalCount'=>1,'totalPages'=>1];
 $result=anytour_anex_additional_sanitize_payload($payload);
 additional_check($result['total_count']===1&&$result['total_pages']===1&&$result['retained_row_count']===1&&$result['truncated']===false);
 additional_check($result['contract']==='additional_prices_daily_envelope_v4_observed');
 additional_check($result['unit_semantics']==='passenger_category_rate_fields_observed_application_rule_unknown');
 $row=$result['rows'][0];
-additional_check($row['tour']==='778'&&$row['currency']==='3'&&$row['date_beg']==='2026-09-20T00:00:00'&&$row['nights']===7);
+additional_check($row['tour']==='2637'&&$row['currency']==='3'&&$row['date_beg']==='2026-10-05T00:00:00'&&$row['nights']===7);
 additional_check($row['price_adult']==='120'&&$row['price_child']==='120'&&$row['cashrate']==='104.23');
 additional_check($row['price_converted_adult']==='12507.6'&&$row['price_converted_child']==='12507.6');
+$verified=anytour_anex_additional_validate_context($result,$criteria);
+additional_check($verified['context_verified']===true&&$verified['rows']===$result['rows']);
 additional_check(anytour_anex_additional_sanitize_payload(json_encode($payload,JSON_THROW_ON_ERROR))===$result);
+$stringContext=$payload;$stringContext['data'][0]['tour']='2637';$stringContext['data'][0]['currency']='3';$stringContext['data'][0]['nights']='7';
+additional_check(anytour_anex_additional_validate_context(anytour_anex_additional_sanitize_payload($stringContext),$criteria)['context_verified']===true);
+foreach(['tour'=>778,'currency'=>4,'dateBeg'=>'2026-10-06T00:00:00','nights'=>8] as $field=>$value){
+    $mismatch=$payload;$mismatch['data'][0][$field]=$value;
+    $safe=anytour_anex_additional_sanitize_payload($mismatch);
+    additional_reject(static fn()=>anytour_anex_additional_validate_context($safe,$criteria),'ANEX_ADDITIONAL_CONTEXT');
+}
+$midday=$payload;$midday['data'][0]['dateBeg']='2026-10-05T12:00:00';
+additional_reject(static fn()=>anytour_anex_additional_validate_context(anytour_anex_additional_sanitize_payload($midday),$criteria),'ANEX_ADDITIONAL_CONTEXT');
+$missing=$payload;unset($missing['data'][0]['dateBeg']);additional_reject(static fn()=>anytour_anex_additional_sanitize_payload($missing),'ANEX_ADDITIONAL_RESPONSE');
 additional_reject(static fn()=>anytour_anex_additional_sanitize_payload([['price_adult'=>120]]),'ANEX_ADDITIONAL_RESPONSE');
 additional_reject(static fn()=>anytour_anex_additional_sanitize_payload(['data'=>[],'totalCount'=>1,'totalPages'=>1,'extra'=>true]),'ANEX_ADDITIONAL_RESPONSE');
 additional_reject(static fn()=>anytour_anex_additional_sanitize_payload(['data'=>[['tour'=>0]],'totalCount'=>1,'totalPages'=>1]),'ANEX_ADDITIONAL_RESPONSE');
@@ -33,4 +45,6 @@ additional_check(anytour_anex_additional_decimal('0')==='0'&&anytour_anex_additi
 additional_check(anytour_anex_additional_decimal('-1')===null&&anytour_anex_additional_decimal('1e3')===null);
 additional_check(anytour_anex_additional_provider_id(3)==='3'&&anytour_anex_additional_provider_id('03')===null);
 additional_check(anytour_anex_additional_text('EUR',24)==='EUR'&&anytour_anex_additional_text('<x>',24)===null);
-echo "ANEX AdditionalPricesDaily proven envelope guards: PASS\n";
+additional_check(anytour_anex_additional_context_date('2026-10-05')==='2026-10-05'&&anytour_anex_additional_context_date('2026-10-05T00:00:00')==='2026-10-05');
+additional_check(anytour_anex_additional_context_date('2026-10-05T12:00:00')===null);
+echo "ANEX AdditionalPricesDaily request-context guards: PASS\n";
