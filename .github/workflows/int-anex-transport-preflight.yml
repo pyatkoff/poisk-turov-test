@@ -38,3 +38,4 @@ jobs:
           printf '%s\n' "$out"
           first="$(printf '%s\n' "$out" | sed -n '1p')"
           test "$first" = 'INT_TRANSPORT_OK'
+      # Arm revision: 2026-09-12-v2; still no supplier/API access.
