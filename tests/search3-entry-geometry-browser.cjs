@@ -143,9 +143,9 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
             assert.equal(geometry.rows, 1, `${width}: two child ages stay on one compact row`);
             assert.ok(Math.abs(geometry.ages[0].top - geometry.ages[1].top) <= 3, `${width}: child-age controls align horizontally`);
             if (width >= 1200) {
-              assert.ok(geometry.ages.every(item => item.width >= 99 && item.width <= 111), `${width}: child-age controls remain compact rather than stretched`);
+              assert.ok(geometry.ages.every(item => item.width >= 119 && item.width <= 121), `${width}: child-age controls remain compact without wrapping their labels`);
               assert.ok(geometry.party.height <= geometry.nights.height + 12, `${width}: two child ages do not create a blank desktop band beside duration`);
-              assert.ok(geometry.childAges.width <= 229, `${width}: child-age group stays bounded`);
+              assert.ok(geometry.childAges.width <= 249, `${width}: child-age group stays bounded`);
             }
           }
           if (count === 3 && width >= 1200) {
@@ -155,7 +155,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
               return { ages, rows: new Set(ages.map(item => Math.round(item.top))).size, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
             });
             assert.equal(geometry.rows, 2, `${width}: third child age wraps inside the bounded age slot`);
-            assert.ok(geometry.ages.every(item => item.width >= 99 && item.width <= 111), `${width}: three child ages keep compact control widths`);
+            assert.ok(geometry.ages.every(item => item.width >= 119 && item.width <= 121), `${width}: three child ages keep compact control widths`);
             assert.ok(geometry.overflow <= 1, `${width}: three child ages do not create horizontal overflow`);
           }
           party.push(fields);
