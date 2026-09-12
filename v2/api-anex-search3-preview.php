@@ -289,7 +289,8 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
         'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => $projected,
         'external_search_pending' => $result['external_search_pending'], 'first_page_only' => true];
     if ($state !== null) {
-        $state = ['generation' => $request['generation'], 'params' => $params, 'gateway' => $session, 'expansions' => []];
+        $state = ['generation' => $request['generation'], 'params' => $params, 'gateway' => $session,
+            'expansions' => [], 'additional_prices' => []];
         $data['search_ref'] = $searchRef;
     }
     return $data;
@@ -305,13 +306,53 @@ function anytour_anex_search3_current(array $state, int $now): bool
         && $now >= $saved['created_at'] && $now < $saved['expires_at'];
 }
 
-/** Same session/DTO owner for explicit expansion and supplier-free concrete reads. */
+/** AdditionalPricesDaily amounts are supplier-reported facts, never inferred totals. */
+function anytour_anex_search3_additional_decimal($value): ?string
+{
+    if (is_int($value) || (is_float($value) && is_finite($value))) $value = (string) $value;
+    return is_string($value) && preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,4})?\z/D', $value) ? $value : null;
+}
+
+/** Public-safe evidence: no tour/currency/provider IDs and no arithmetic interpretation. */
+function anytour_anex_search3_additional_evidence(array $payload): array
+{
+    $rows = $payload['data'] ?? null;
+    $total = $payload['totalCount'] ?? null;
+    if (!is_array($rows) || ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1))) {
+        throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+    }
+    if (is_string($total) && preg_match('/\A[0-9]{1,9}\z/D', $total)) $total = (int) $total;
+    if (!is_int($total) || $total < 0 || $total > 100000000 || $total < count($rows)) {
+        throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+    }
+    $safe = [];
+    foreach (array_slice($rows, 0, 10) as $row) {
+        if (!is_array($row)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $item = [];
+        foreach (['price_adult', 'price_chd', 'cashrate', 'price_converted_adult', 'price_converted_chd'] as $field) {
+            if (!array_key_exists($field, $row)) {
+                $item[$field] = null;
+                continue;
+            }
+            $item[$field] = anytour_anex_search3_additional_decimal($row[$field]);
+            if ($item[$field] === null) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        }
+        $safe[] = $item;
+    }
+    return ['source' => 'anex_b2b_additional_prices_daily', 'rows' => $safe, 'total_count' => $total,
+        'truncated' => $total > count($safe), 'scope' => 'tour_program_date_nights_currency',
+        'offer_specific' => false, 'currency' => null, 'converted_currency' => null,
+        'per_person_or_package' => 'unknown', 'fuel_equivalence_verified' => false,
+        'included_in_search_price' => 'unknown', 'arithmetic_applied' => false, 'final_price_verified' => false];
+}
+
+/** Same session/DTO owner for explicit expansion, saved reads and bounded additional-price evidence. */
 function anytour_anex_search3_followup(array $request, array &$state, callable $resolver, callable $clientFactory,
-    callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null): array
+    callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null, ?callable $additionalFactory = null): array
 {
     $keys = ['action', 'generation', 'search_ref', 'offer_ref', 'local_hotel_id'];
     if (count($request) !== count($keys) || array_diff($keys, array_keys($request))
-        || !in_array($request['action'] ?? null, ['offer', 'expand'], true)
+        || !in_array($request['action'] ?? null, ['offer', 'expand', 'additional_prices'], true)
         || !is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
         || !is_string($request['search_ref'] ?? null) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['search_ref'])
         || !is_string($request['offer_ref'] ?? null) || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $request['offer_ref'])
@@ -329,7 +370,8 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         return array_replace($reply, ['status' => 'mismatch']);
     }
     $key = $request['offer_ref'];
-    $offer = $saved['offers'][$key]['offer'] ?? null;
+    $savedEntry = $saved['offers'][$key] ?? null;
+    $offer = is_array($savedEntry) ? ($savedEntry['offer'] ?? null) : null;
     $known = array_column($state['gateway']['search']['offers'] ?? [], null, 'offer_key');
     if (!is_array($offer) || !isset($known[$key])) return array_replace($reply, ['status' => 'not_loaded']);
     if (($offer['offer_key'] ?? null) !== $key || $known[$key]['kind'] !== ($offer['kind'] ?? null)
@@ -344,6 +386,42 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     $metadata = $metadataReader([$offer]);
     if (anytour_anex_search3_project([$offer], $metadata, $state['params']) === []) {
         return array_replace($reply, ['status' => 'not_available']);
+    }
+    if ($request['action'] === 'additional_prices') {
+        if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
+        $tour = $savedEntry['supplier_tour_program_id'] ?? null;
+        $currency = $savedEntry['supplier_currency_id'] ?? null;
+        $checkin = $offer['checkin'] ?? null;
+        $nights = $offer['nights'] ?? null;
+        if (!is_string($tour) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $tour)
+            || !is_string($currency) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $currency)
+            || !is_string($checkin) || !preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $checkin)
+            || !is_int($nights) || $nights < 1 || $nights > 60) {
+            return array_replace($reply, ['status' => 'additional_prices_unavailable']);
+        }
+        $digest = hash('sha256', implode("\0", [$tour, $currency, $checkin, (string) $nights]));
+        $attempt = $state['additional_prices'][$digest] ?? null;
+        if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
+            return array_replace($reply, ['status' => 'additional_prices', 'additional_prices' => $attempt['evidence']]);
+        }
+        if ($attempt !== null) return array_replace($reply, ['status' => 'additional_prices_unknown']);
+        if ($checkpoint === null || $additionalFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+        // Persist before B2B transport. Unknown/reserved means no semantic replay.
+        $state['additional_prices'][$digest] = ['status' => 'unknown'];
+        $checkpoint($state);
+        if (!anytour_anex_search3_current($state, $clock())) return $reply;
+        $additional = $additionalFactory();
+        if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
+            throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
+        }
+        $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10, 'tour' => (int) $tour,
+            'dateBeg' => $checkin, 'nights' => $nights, 'currency' => (int) $currency]);
+        if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $evidence = anytour_anex_search3_additional_evidence($payload);
+        $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $clock());
+        $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
+        if (!anytour_anex_search3_current($state, $clock())) return $reply;
+        return array_replace($reply, ['status' => 'additional_prices', 'additional_prices' => $evidence]);
     }
     $gateway = new AnyTourAnexPreviewGateway($clientFactory, $resolver, [], $clock);
     if ($request['action'] === 'offer') {
@@ -433,27 +511,38 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
-        if (!in_array($action, ['search', 'offer', 'expand'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
+        if (!in_array($action, ['search', 'offer', 'expand', 'additional_prices'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         if ($action === 'search' || !is_array($_SESSION['offer_context'] ?? null)) $_SESSION['offer_context'] = [];
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
         require_once $app . '/anex-preview-gateway.php';
         require_once $app . '/anex-search-mapping-registry.php';
         require_once $app . '/anex-search-observations.php';
+        require_once $app . '/anex-additional-prices-client.php';
         $root = realpath((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''));
         if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException('ANEX_DATABASE_UNAVAILABLE');
         $helper = is_file($root . '/data/db-v1.php') ? $root . '/data/db-v1.php' : $root . '/v2/data/db-v1.php';
         require_once $helper;
         // Supplier budget/credentials belong only to actual supplier operations.
-        $clientFactory = static function () use (&$client): AnyTourAnexClient {
+        $reserveSupplierRequest = static function (): void {
             $recent = array_filter($_SESSION['requests'] ?? [], static function ($at) { return is_int($at) && $at > time() - 60; });
             if (count($recent) >= 6) throw new RuntimeException('ANEX_RATE_LIMIT');
             $recent[] = time();
             $_SESSION['requests'] = array_values($recent);
+        };
+        $clientFactory = static function () use (&$client, $reserveSupplierRequest): AnyTourAnexClient {
+            $reserveSupplierRequest();
             $token = trim((string) getenv('ANEX_API_TOKEN'));
             if ($token === '' && defined('ANEX_API_TOKEN')) $token = trim((string) ANEX_API_TOKEN);
             if ($token === '') throw new RuntimeException('ANEX_CLIENT_UNAVAILABLE');
             return $client = new AnyTourAnexClient($token);
+        };
+        $additionalFactory = static function () use (&$additionalClient, $reserveSupplierRequest): AnyTourAnexAdditionalPricesClient {
+            $reserveSupplierRequest();
+            $token = trim((string) getenv('ANEX_B2B_TOKEN'));
+            if ($token === '' && defined('ANEX_B2B_TOKEN')) $token = trim((string) ANEX_B2B_TOKEN);
+            if ($token === '') throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
+            return $additionalClient = new AnyTourAnexAdditionalPricesClient($token);
         };
         $pdo = v2_data_db();
         if ($action === 'search') {
@@ -467,7 +556,7 @@ function anytour_anex_search3_http(): void
             $data = anytour_anex_search3_followup($request, $_SESSION['offer_context'],
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(), $clientFactory,
                 static function (array $offers) use ($pdo): array { return anytour_anex_search3_metadata($pdo, $offers); },
-                null, 'anytour_anex_search3_checkpoint');
+                null, 'anytour_anex_search3_checkpoint', $additionalFactory);
         }
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
@@ -477,12 +566,15 @@ function anytour_anex_search3_http(): void
         anytour_anex_search3_out(['ok' => false, 'error' => $unsupported ? 'search_not_supported' : 'invalid_request'], $unsupported ? 422 : 400);
     } catch (Throwable $error) {
         session_write_close();
-        $last = isset($client) ? $client->lastRequestDiagnostics() : [];
+        $last = isset($additionalClient) ? $additionalClient->lastRequestDiagnostics()
+            : (isset($client) ? $client->lastRequestDiagnostics() : []);
         if ($error->getMessage() === 'ANEX_RATE_LIMIT' || ($last['http_status'] ?? null) === 429) {
             header('Retry-After: 60');
             anytour_anex_search3_out(['ok' => false, 'error' => 'rate_limited'], 429);
         }
-        if ($error->getMessage() === 'ANEX_CLIENT_UNAVAILABLE') anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+        if (in_array($error->getMessage(), ['ANEX_CLIENT_UNAVAILABLE', 'ANEX_ADDITIONAL_CLIENT_UNAVAILABLE'], true)) {
+            anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+        }
         $code = ($last['supplier_code'] ?? null) === 101 ? 'supplier_conditions_rejected'
             : (($last['curl_errno'] ?? null) === 28 ? 'supplier_timeout' : 'supplier_unavailable');
         anytour_anex_search3_out(['ok' => false, 'error' => $code], $code === 'supplier_conditions_rejected' ? 422 : 502);
