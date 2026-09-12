@@ -1,0 +1,127 @@
+name: MATCH Tourvisor targeted hotelIds v1
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-tourvisor-targeted-30-1971-20260912-v1.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-tourvisor-targeted-30-1971-v1
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-tourvisor-targeted-30-1971-20260912-v1
+      ARTIFACT_DIR: /tmp/match-tv-targeted-30-v1
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify arm and prepare targeted program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-tourvisor-targeted-30-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          mkdir -p "$ARTIFACT_DIR"
+          cat > "$ARTIFACT_DIR/program.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-tourvisor-targeted-30-1971-20260912-v1';
+          const IDS=[123389,15887];
+          function rows(array $d): array { if(array_is_list($d)) return array_values(array_filter($d,'is_array')); foreach(['hotels','items','results','data'] as $k) if(is_array($d[$k]??null)){ $r=rows($d[$k]); if($r!==[]) return $r; } return []; }
+          function complete(array $d): bool { if((int)($d['progress']??0)>=100)return true; if(in_array(strtolower(trim((string)($d['status']??''))),['complete','completed','done','ready'],true))return true; foreach($d as $v) if(is_array($v)&&complete($v)) return true; return false; }
+          try {
+            $root=realpath(getcwd()); require_once $root.'/config.php';
+            $tv=is_file($root.'/data/tourvisor-client-v1.php')?$root.'/data/tourvisor-client-v1.php':$root.'/v2/data/tourvisor-client-v1.php'; require_once $tv;
+            if(!defined('TOURVISOR_ANEX_JWT')) throw new RuntimeException('credential_missing');
+            $tok=trim((string)constant('TOURVISOR_ANEX_JWT')); if(stripos($tok,'Bearer ')===0)$tok=trim(substr($tok,7)); if($tok==='') throw new RuntimeException('credential_empty'); putenv('TOURVISOR_JWT='.$tok);
+            $start=v2_data_tv_get('/tours/search',['departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-12-04','dateTo'=>'2026-12-04','nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'currency'=>'RUB','onlyCharter'=>false,'onlyDirect'=>false,'hotelIds'=>IDS]);
+            $sid=(int)($start['searchId']??$start['id']??0); if($sid<=0) throw new RuntimeException('search_id_missing');
+            $polls=0; for($i=1;$i<=24;$i++){ if($i>1)usleep(4000000); $polls++; if(complete(v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]))) break; if($i===24) throw new RuntimeException('search_not_complete'); }
+            $payload=v2_data_tv_get('/tours/search/'.$sid,['limit'=>1000]);
+            $out=[]; foreach(rows($payload) as $r){ $id=(int)($r['id']??0); $name=trim((string)($r['name']??'')); if($id>0&&$name!=='')$out[$id]=['id'=>$id,'name'=>$name,'operator'=>$r['operator']??$r['operatorId']??null]; }
+            usleep(12000000); $cont=0; try { v2_data_tv_get('/tours/search/'.$sid.'/continue'); $cont=1; } catch(Throwable $e) {}
+            if($cont){ for($i=1;$i<=24;$i++){ if($i>1)usleep(4000000); if(complete(v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]))) break; } $p2=v2_data_tv_get('/tours/search/'.$sid,['limit'=>1000]); foreach(rows($p2) as $r){$id=(int)($r['id']??0);$name=trim((string)($r['name']??''));if($id>0&&$name!=='')$out[$id]=['id'=>$id,'name'=>$name,'operator'=>$r['operator']??$r['operatorId']??null];}}
+            echo 'MATCH_TV_TARGET_JSON:'.json_encode(['status'=>'completed','operation_id'=>OP,'requested_hotel_ids'=>IDS,'returned_hotels'=>array_values($out),'returned_count'=>count($out),'search_id'=>$sid,'polls'=>$polls,'continue_calls'=>$cont,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+          } catch(Throwable $e){ echo 'MATCH_TV_TARGET_JSON:'.json_encode(['status'=>'failed','operation_id'=>OP,'reason'=>$e->getMessage(),'requested_hotel_ids'=>IDS,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL; exit(2); }
+          PHP
+          php -l "$ARTIFACT_DIR/program.php"
+      - name: SSH preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-tv-target-key"; sock="$RUNNER_TEMP/match-tv-target.sock"; known="$RUNNER_TEMP/match-tv-target-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0; for attempt in 1 2 3 4 5; do rm -f "$sock"; if ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && printf OK' | grep -qx OK
+          printf '%s\n' "$key" > "$RUNNER_TEMP/match-tv-target-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/match-tv-target-sockpath"
+      - name: Persist reservation
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); d.mkdir(exist_ok=True)
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','requested_hotel_ids':[123389,15887],'country':'Turkey','date':'2026-12-04','nights':7,'tourvisor_credential':'TOURVISOR_ANEX_JWT_only','operatorIds':'OMITTED','cooldown_seconds':120,'database_writes':0,'mapping_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])}
+          (d/'reservation.json').write_text(json.dumps(x,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-targeted-30-v1-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          retention-days: 90
+      - name: Cooldown
+        run: sleep 120
+      - name: Execute targeted TV batch
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sock="$(cat "$RUNNER_TEMP/match-tv-target-sockpath")"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$ARTIFACT_DIR/program.php" > "$ARTIFACT_DIR/live.stdout" 2> "$ARTIFACT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); out=(d/'live.stdout').read_text(errors='replace'); pre='MATCH_TV_TARGET_JSON:'; lines=[x[len(pre):] for x in out.splitlines() if x.startswith(pre)]
+          data=json.loads(lines[-1]) if lines else {'status':'unknown','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID']}
+          data.update(run_id=int(os.environ['GITHUB_RUN_ID']),remote_exit=int(os.environ['RC']),no_replay=True)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (d/'result.json').write_bytes(raw)
+          (d/'summary.md').write_text(f"MATCH #1971 targeted TV batch `{os.environ['OPERATION_ID']}`: **{data.get('status')}** / NO-REPLAY. Requested TV IDs {data.get('requested_hotel_ids')}; returned **{data.get('returned_count')}** hotels; continue {data.get('continue_calls')}; reason `{data.get('reason')}`. DB/mapping writes0.\n")
+          if not (int(os.environ['RC'])==0 and data.get('status')=='completed'): raise SystemExit(2)
+          PY
+      - name: Preserve result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-targeted-30-v1-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+            ${{ env.ARTIFACT_DIR }}/summary.md
+            ${{ env.ARTIFACT_DIR }}/live.stderr
+          retention-days: 90
+      - name: Record result
+        if: always() && hashFiles(format('{0}/summary.md', env.ARTIFACT_DIR)) != ''
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$ARTIFACT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
+      - name: Cleanup
+        if: always()
+        run: |
+          sockfile="$RUNNER_TEMP/match-tv-target-sockpath"; if test -f "$sockfile"; then sock="$(cat "$sockfile")"; ssh -S "$sock" -O exit "${{ secrets.ANYTOOUR_DEPLOY_USER }}@${{ secrets.ANYTOOUR_DEPLOY_HOST }}" >/dev/null 2>&1 || true; fi
+          rm -f "$RUNNER_TEMP/match-tv-target-key" "$RUNNER_TEMP/match-tv-target-keypath" "$RUNNER_TEMP/match-tv-target-sockpath" "$RUNNER_TEMP/match-tv-target-known"
