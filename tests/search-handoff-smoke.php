@@ -20,4 +20,24 @@ check($filtered==='/poisk-turov/?country=4','Handoff allowlist changed');
 $form=v2_form_defaults(['daysFrom'=>'8','daysTill'=>'12','child_age'=>['0','17']]);
 check($form['child_ages']===[0,17]&&$form['nights_till']===12,'Family handoff lost');
 check(v2_form_defaults(['child_age'=>['18','bad',[]]])['child_ages']===[],'Invalid child age accepted');
+
+// Malformed public query values must recover before the form is rendered.
+$fallback=new DateTimeImmutable('2099-10-05');
+set_error_handler(static function($severity,$message,$file,$line){throw new ErrorException($message,0,$severity,$file,$line);});
+try {
+    foreach (["2099-09\0-17",[],['2099-09-17'],null,'','invalid','2099-02-29'] as $invalidDate) {
+        check(v2_date_value($invalidDate,$fallback)==='2099-10-05','Malformed date did not use the existing fallback');
+    }
+    foreach (['2099-09-17'=>'2099-09-17',' 2099-9-7 '=>'2099-09-07','2096-02-29'=>'2096-02-29'] as $raw=>$expected) {
+        check(v2_date_value($raw,$fallback)===$expected,'Valid date normalization changed');
+    }
+    $defaultForm=v2_form_defaults([]);
+    foreach (['date_from','dateFrom','date_till','dateTo'] as $alias) {
+        foreach (["2099-09\0-17",['2099-09-17']] as $invalidDate) {
+            check(v2_form_defaults([$alias=>$invalidDate])===$defaultForm,'Malformed date alias did not recover to normal form defaults');
+        }
+    }
+} finally {
+    restore_error_handler();
+}
 echo "SEARCH_HANDOFF_OK\n";
