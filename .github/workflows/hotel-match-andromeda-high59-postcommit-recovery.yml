@@ -1,0 +1,77 @@
+name: MATCH Andromeda high59 postcommit recovery
+on:
+  push:
+    branches: ['autopilot/hotel-match-andromeda-high59-current-write-20260913']
+    paths: ['.github/match-andromeda-high59-postcommit-recovery-1971-20260913-v1.arm']
+permissions: {contents: read, actions: read}
+concurrency: {group: anytour-match-andromeda-high59-postcommit-recovery-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-andromeda-high59-postcommit-recovery-1971-20260913-v1
+  OUT: /tmp/match-andromeda-high59-postcommit-recovery-1971
+jobs:
+  recover:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate read-only recovery and reserve
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-andromeda-high59-postcommit-recovery-1971-20260913-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_andromeda_high59_postcommit_recovery.php >/dev/null
+          python3 - <<'PY'
+          import pathlib,re
+          p=pathlib.Path('scripts/diagnostics/hotel_match_andromeda_high59_postcommit_recovery.php').read_text()
+          assert "const RECOVERY_OPERATION_ID='hotel-match-andromeda-high59-postcommit-recovery-1971-20260913-v1'" in p
+          assert "const WRITE_OPERATION_ID='hotel-match-andromeda-high59-current-write-1971-20260913-v1'" in p
+          block=p.split('const PAIRS=[',1)[1].split('];',1)[0]
+          assert len(re.findall(r"'([0-9]+)'=>([0-9]+)",block))==59
+          assert 'UPDATE ' not in p and 'INSERT ' not in p and 'DELETE ' not in p
+          PY
+          mkdir -p "$OUT"
+      - name: Read current DB and verify durable receipt
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          test -n "$KEY" && test -n "$HOST" && test -n "$USER"
+          key="$RUNNER_TEMP/match-high59-recovery-key"; known="$RUNNER_TEMP/match-high59-recovery-known"; sock="$RUNNER_TEMP/match-high59-recovery.sock"; remote_tmp="/tmp/match-high59-recovery-${GITHUB_RUN_ID}.php"
+          cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          server_path="\$HOME/.anytoour-match/operations/$OPERATION_ID"
+          before="$(ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "if test -e $server_path; then printf EXISTS; else printf ABSENT; fi")"
+          test "$before" = ABSENT
+          scp -o ControlPath="$sock" -o ControlMaster=no scripts/diagnostics/hotel_match_andromeda_high59_postcommit_recovery.php "$USER@$HOST:$remote_tmp"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 '$remote_tmp'" > "$OUT/executor-stdout.json" 2> "$OUT/executor-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=$server_path; if test -f \"\$p/result.json\"; then cat \"\$p/result.json\"; elif test -f \"\$p/failure.json\"; then cat \"\$p/failure.json\"; else printf '{\"status\":\"unknown_do_not_replay\"}\n'; fi" > "$OUT/server-result.json"
+          rr=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=$server_path/receipt.json; if test -f \"\$p\"; then cat \"\$p\"; else printf '{}\n'; fi" > "$OUT/server-receipt.json"
+          sr=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "rm -f '$remote_tmp'" >/dev/null 2>&1 || true
+          set -e
+          export RC="$rc" RR="$rr" SR="$sr"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def read(n):
+              try:return json.loads((out/n).read_text())
+              except Exception:return {}
+          r=read('server-result.json');p=read('server-receipt.json');digest=hashlib.sha256((out/'server-result.json').read_bytes()).hexdigest()
+          ok=(int(os.environ['RC'])==0 and int(os.environ['RR'])==0 and int(os.environ['SR'])==0 and r.get('status')=='read_only_complete' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('source_sha')==os.environ['GITHUB_SHA'] and r.get('candidate_count')==59 and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('supplier_calls')==0 and r.get('tourvisor_calls')==0 and p.get('operation_id')==os.environ['OPERATION_ID'] and p.get('result_sha256')==digest and p.get('read_only') is True and p.get('readback_verified') is True)
+          s={'operation_id':os.environ['OPERATION_ID'],'receipt_verified':ok,'written_by_operation':r.get('written_by_operation'),'still_pending':r.get('still_pending'),'accepted_other_or_preexisting':r.get('accepted_other_or_preexisting'),'other_state':r.get('other_state'),'missing':r.get('missing'),'coverage':r.get('coverage'),'written_rows':r.get('written_rows',[]),'database_writes':0,'no_replay':True}
+          (out/'summary.json').write_text(json.dumps(s,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(f"MATCH #1971 post-COMMIT recovery: receipt={ok}; written_by_operation={s['written_by_operation']}; still_pending={s['still_pending']}; other/preexisting={s['accepted_other_or_preexisting']}; other_state={s['other_state']}; coverage={s['coverage']}; DB writes=0; NO-REPLAY.")
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-andromeda-high59-recovery-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
