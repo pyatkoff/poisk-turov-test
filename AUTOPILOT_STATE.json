@@ -1265,18 +1265,18 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Complete the current Search3 acceptance and prepare an owner-reviewable preview",
+    "title": "Search3: bounded technical refactor-pass, then per-axis OTA acceptance",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
     "coordinator_issue": 996,
     "pr": null,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "2026-09-10: use the supplied AnyTour desktop/mobile search mockup as the visual reference; improve the native search form and include the existing price calendar. This lane owns visual/UX, not technical search/API/data.",
+    "owner_request": "Owner 2026-09-12/13: run a bounded Search3 technical refactor-pass before the next UI packages, then reach >=9.5 on every SEARCH-QUALITY-1 axis. Preserve the full OTA primary form direction of 2026-09-11, current active queues and all protected boundaries.",
     "last_fully_checked_release_sha": "3427fae296a951efbff9b95b29191969bf29ff0c",
     "published_source_sha": "dbe2d1c28e739ed2bc1aa89d9822f1bb9122b6cf",
     "acceptance_status": "REFERENCE_FORM_CALENDAR_RECOVERY_CARD_HIERARCHY_PREVIEW_PUBLISHED_SELECTION_DISABLED",
-    "next_action": "Use the newly published preview for side-by-side visual acceptance against the supplied reference. Next take one bounded visual package for first-view hotel summary density and comparison-action clarity, preferably CSS-only; if renderer or tests owned by active PR #1861 are required, coordinate and integrate sequentially after its fresh head instead of forking it. Do not change technical search/API/data or repeat the compact form, native nights, price calendar, recovery layout or flattened offer hierarchy. Preserve noindex, disabled leads, counter0 and production isolation; physical Safari/iPhone, unassisted user pilot and full reference-design acceptance remain deferred.",
+    "next_action": "First complete the bounded Search3 preparation stage in the canonical product plan: actual owner/include map, form/URL/results/shortlist/selected state flow, duplicate display helpers/handlers/CSS rules, build parity and focused guard gaps. Read fresh #996/#1646 and exact release/open PR/CI before claiming one small correction; #2261 entry CSS has its own writer until released. Record completed checks/corrections in the existing audit so this pass is not restarted every run. Then continue full primary form, desktop geometry, calendar, URL/state/local facets, cards, compare, selected, lead and accumulated visual acceptance. Historical compact-form/PR1861 next_action is superseded. Do not alter API/provider/matching/content, prices, lead transport/mapping, analytics or production; missing evidence stays not_measured.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
