@@ -97,8 +97,14 @@ final class AnyTourAnexPreviewGateway
         foreach (array_slice($result['offers'], 0, 300) as $offer) {
             $key = $offer['offer_key'];
             if (!isset($known[$key])) continue;
-            unset($offer['supplier_offer_id']);
-            $session['saved_offers']['offers'][$key] = ['offer' => $offer, 'observed_at' => $now];
+            $tourProgramId = $offer['supplier_tour_program_id'] ?? null;
+            unset($offer['supplier_offer_id'], $offer['supplier_tour_program_id']);
+            $session['saved_offers']['offers'][$key] = [
+                'offer' => $offer,
+                'observed_at' => $now,
+                // Private provider-scoped input for a later bounded AdditionalPricesDaily read.
+                'supplier_tour_program_id' => $tourProgramId,
+            ];
         }
         $session['saved_offers']['offers'] = array_intersect_key($session['saved_offers']['offers'], $known);
     }
@@ -221,7 +227,7 @@ final class AnyTourAnexPreviewGateway
                 if (!is_array($offer)) {
                     throw new RuntimeException('ANEX_INVALID_PUBLIC_RESULT');
                 }
-                unset($offer['supplier_offer_id']);
+                unset($offer['supplier_offer_id'], $offer['supplier_tour_program_id']);
             }
             unset($offer);
         }
