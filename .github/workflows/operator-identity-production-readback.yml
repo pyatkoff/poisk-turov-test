@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/operator-identity-production-readback.yml'
       - 'diagnostics/operator_identity_production_readback.php'
+      - 'diagnostics/operator_identity_shape_probe.php'
   workflow_dispatch:
 
 permissions:
@@ -14,66 +15,15 @@ permissions:
 jobs:
   readback:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate readback script
-        shell: bash
-        run: php -l diagnostics/operator_identity_production_readback.php >/dev/null
-
-      - name: Run canonical production search and observer once
+      - name: Validate diagnostic scripts
         shell: bash
         run: |
-          set -euo pipefail
-          base='https://anytoour.ru/api-v2.php'
-          from="$(date -d '+2 day' +%Y-%m-%d)"
-          till="$(date -d '+9 day' +%Y-%m-%d)"
-          curl -fsSL --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" -o /tmp/search-start.json
-          search_id="$(python3 - <<'PY'
-          import json
-          data=json.load(open('/tmp/search-start.json'))
-          value=data.get('searchId') if isinstance(data,dict) else None
-          if not isinstance(value,int) or value<=0: raise SystemExit(1)
-          print(value)
-          PY
-          )"
-          echo "IDENTITY_PROBE_SEARCH_ID=$search_id"
-          complete=0
-          for attempt in $(seq 1 36); do
-            sleep 2
-            curl -fsSL --max-time 45 "$base?action=search_status&searchId=$search_id" -o /tmp/search-status.json
-            if python3 - <<'PY'
-          import json,sys
-          data=json.load(open('/tmp/search-status.json'))
-          ok=isinstance(data,dict) and (data.get('progress')==100 or data.get('status')=='complete')
-          sys.exit(0 if ok else 1)
-          PY
-            then complete=1; break; fi
-          done
-          test "$complete" = "1"
-          curl -fsSL --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" -o /tmp/search-results.json
-          python3 - <<'PY'
-          import json
-          data=json.load(open('/tmp/search-results.json'))
-          assert isinstance(data,list) and data
-          print('IDENTITY_PROBE_RESULT_HOTELS='+str(len(data)))
-          PY
-          code="$(curl -sS -o /tmp/identity-observer.json -w '%{http_code}' --max-time 75 \
-            -H 'Content-Type: application/json' \
-            -H 'Accept: application/json' \
-            --data "{\"searchId\":$search_id,\"departureId\":1,\"countryId\":4,\"adults\":2,\"childs\":[]}" \
-            https://anytoour.ru/data/observe-search-v1.php)"
-          echo "IDENTITY_OBSERVER_HTTP=$code"
-          cat /tmp/identity-observer.json
-          echo
-          test "$code" = "200"
-          python3 - <<'PY'
-          import json
-          data=json.load(open('/tmp/identity-observer.json'))
-          assert data.get('ok') is True and data.get('persisted') is True
-          print('IDENTITY_OBSERVER_PERSISTED=1')
-          PY
+          php -l diagnostics/operator_identity_production_readback.php >/dev/null
+          php -l diagnostics/operator_identity_shape_probe.php >/dev/null
 
       - name: Prepare SSH key
         env:
@@ -90,6 +40,20 @@ jobs:
           fi
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Inspect trusted Tourvisor row field names
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          remote_tmp="/tmp/anytour-operator-identity-shape-${GITHUB_RUN_ID}.php"
+          scp "${opts[@]}" diagnostics/operator_identity_shape_probe.php "$remote:$remote_tmp"
+          ssh "${opts[@]}" "$remote" "set -euo pipefail; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php '$remote_tmp' 13598731733; rm -f '$remote_tmp'"
 
       - name: Read identity evidence counters
         env:
