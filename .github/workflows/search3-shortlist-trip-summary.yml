@@ -1,0 +1,50 @@
+name: Search3 Shortlist Trip Summary
+
+on:
+  pull_request:
+    paths:
+      - 'src/search3/behavior/results/shortlist.js'
+      - 'v2/search3-results-filters-v1.js'
+      - 'docs/project/search3-production-import.json'
+      - 'tests/search3-shortlist-trip-summary.test.js'
+      - '.github/workflows/search3-shortlist-trip-summary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check canonical shortlist owner
+        run: node --check src/search3/behavior/results/shortlist.js
+      - name: Verify shortlist trip summary contract
+        run: node tests/search3-shortlist-trip-summary.test.js
+      - name: Regenerate canonical Search3 assets
+        run: python3 scripts/build/search3_assets.py --write
+      - name: Reject unexpected generated drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(git diff --name-only -- v2 docs/project/search3-production-import.json | grep -Ev '^(v2/search3-results-filters-v1\.js|docs/project/search3-production-import\.json)$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            printf 'Unexpected generated drift:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
+      - name: Upload canonical generated candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-shortlist-trip-summary-generated
+          path: |
+            v2/search3-results-filters-v1.js
+            docs/project/search3-production-import.json
+          if-no-files-found: error
+          retention-days: 3
+      - name: Require committed generated parity
+        run: git diff --exit-code -- v2/search3-results-filters-v1.js docs/project/search3-production-import.json
