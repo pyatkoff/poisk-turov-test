@@ -1,0 +1,66 @@
+name: MATCH ANEX targeted native 30 v3
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-anex-targeted-native-30-1971-20260912-v3.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-anex-targeted-native-30-v3, cancel-in-progress: false}
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      OPERATION_ID: hotel-match-anex-targeted-native-30-1971-20260912-v3
+      HOTEL_IDS: '17446,29881,8409,19199,25030,10605,37262,29688,20628,33850,27704,34025,8418,13494,19116,24968,27233,39683,25085,28938,19579,14962,36043,37022,37600,36522,34321,32825,37171,37181'
+      OUT: /tmp/match-anex-targeted-native-30-v3
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate and reserve
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-anex-targeted-native-30-1971-20260912-v3.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_targeted_native_30_v1.php
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          ids=[int(x) for x in os.environ['HOTEL_IDS'].split(',')]
+          assert len(ids)==30 and len(set(ids))==30
+          Path(os.environ['OUT'],'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','criteria':{'country':'Turkey','date':'2026-12-25','nights':7,'hotel_ids':ids},'provider':'direct_ANEX','tourvisor_calls':0,'andromeda_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True},indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anex-targeted-native-30-v3-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute second ANEX hotel cohort
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/mat30v3-key";known="$RUNNER_TEMP/mat30v3-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key"
+          sleep 20
+          set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && MAT30_OPERATION_ID=$OPERATION_ID MAT30_HOTEL_IDS=$HOTEL_IDS MAT30_DATE=2026-12-25 MAT30_NIGHTS=7 php -d display_errors=0 -d log_errors=0" < scripts/diagnostics/hotel_match_anex_targeted_native_30_v1.php > "$OUT/stdout" 2> "$OUT/stderr"
+          rc=$?
+          set -e
+          grep '^MAT30:' "$OUT/stdout"|tail -1|sed 's/^MAT30://' > "$OUT/result.json" || true
+          export RC="$rc"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['OUT']);x=json.loads((d/'result.json').read_text()) if (d/'result.json').exists() else {'status':'unknown','reason':'marker_missing'}
+          s=f"MATCH #1971 ANEX targeted native-30 v3: **{x.get('status')}** / NO-REPLAY. Requested {x.get('requested_count')}, returned sellable hotels {x.get('returned_hotel_count')}. Tourvisor/Andromeda/DB/mapping writes/calls 0. reason `{x.get('reason')}`."
+          (d/'summary.md').write_text(s+'\n');print(s)
+          raise SystemExit(0 if int(os.environ['RC'])==0 and x.get('status')=='completed' else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anex-targeted-native-30-v3-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
