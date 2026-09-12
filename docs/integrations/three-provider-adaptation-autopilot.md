@@ -82,7 +82,8 @@ Money facts всегда раздельны:
 - provider != operator;
 - strict money provenance и `observed_at`;
 - canonical offer envelope/dedupe/context guards;
-- air-search capability boundary: catalog/discovery evidence отдельно от upstream supplier-search filtering.
+- air-search capability boundary: catalog/discovery evidence отдельно от upstream supplier-search filtering;
+- stars/category evidence boundary: supplier label observational only, canonical category только через current accepted local identity.
 
 ### Direct ANEX
 
@@ -143,6 +144,23 @@ Canonical P2 boundary для `arrival_airport`, `direct_flight`, `charter` те�
 
 Не создавать второй air-filter contract ради тех же статусов. Новое evidence может только безопасно повысить конкретный provider/family status отдельным bounded пакетом.
 
+### Hotel stars/category semantics
+
+#2103 merged `89a530a81b68bd9518913432345369e2771e101d`; exact PR head `006756aa2631fa3a1b6bb8920ebc396990b094f5`.
+Focused run `34668469610` SUCCESS: 57 checks. Security `34668469602` SUCCESS.
+
+Canonical P2 boundary для stars/category:
+
+- provider supplier `star` / category label сохраняется только как bounded raw observation;
+- numeric-looking supplier label вроде `5` не преобразуется автоматически в canonical local category;
+- canonical category `1..5` имеет status `verified` только когда она приходит вместе с явно current accepted local identity и source=`current_local_identity`;
+- supplier-label equivalence не доказана;
+- raw supplier numeric IDs не универсальны;
+- cross-provider category equivalence=false;
+- совпадение категории/звёздности никогда не является hotel identity proof и не запускает mapping write.
+
+Не создавать второй category wrapper ради тех же правил. Новое supplier evidence может повышать только явно доказанный provider-specific capability, не identity authority.
+
 ## 5. P6 source handoff — DONE
 
 #2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`.
@@ -163,8 +181,9 @@ Receiving wiring, renderer/controller/selected-state и публикация п�
 ## 6. P7 source release readiness — GREEN
 
 Base gate #2097 merged `d37b7eff514354a773ea773c75fd782c1312bf87`.
-Air-semantics extension #2101 merged `828cab90b39a51879433c266f90d2c6bd1617912`; exact PR head `745260faff985d3190df001b4cb4cd092cc62d2d`.
-Latest aggregate readiness run `34668250920` SUCCESS; Security `34668250875` SUCCESS.
+Air-semantics extension #2101 merged `828cab90b39a51879433c266f90d2c6bd1617912`.
+Hotel-category extension #2104 merged `94d4f4a4247bad1a9155391ba9af71e2c1385f81`; exact PR head `36ee05156dfe5144e7b9816da9caa6ae3d211c0b`.
+Latest aggregate readiness run `34668552695` SUCCESS; Security `34668552687` SUCCESS.
 
 На одном exact head без network/secrets/DB прошли:
 
@@ -172,12 +191,13 @@ Latest aggregate readiness run `34668250920` SUCCESS; Security `34668250875` SUC
 - offer contract: 189;
 - retained context: 33;
 - air search/filter semantics: 114;
+- hotel stars/category semantics: 57;
 - verified quote envelope: 54;
 - INT→SEARCH handoff: 97;
 - direct ANEX saved-offer bridge: 115;
-- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled, air upstream filtering fail-closed.
+- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled, air upstream filtering fail-closed, supplier category labels не получают identity/canonical authority.
 
-Итого aggregate contract matrix: **662 checks**.
+Итого aggregate contract matrix: **719 checks**.
 
 Это означает **source-side readiness INT contracts**, а не production approval и не UI/publication acceptance.
 
@@ -189,7 +209,7 @@ Latest aggregate readiness run `34668250920` SUCCESS; Security `34668250875` SUC
 
 P3 identity/matching никогда не становится fallback-задачей INT.
 
-После #2096/#2097/#2100/#2101 запрещено создавать второй quote/handoff/air-filter wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
+После #2096/#2097/#2100/#2101/#2103/#2104 запрещено создавать второй quote/handoff/air-filter/category wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
 
 ### P0/P1 — следующий eligible work
 
@@ -229,7 +249,7 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 | departure/country | provider-specific dictionary mapping |
 | region/resort/subregion | не отправлять upstream без verified mapping |
 | hotel | current accepted identity либо observation; P3 writes external |
-| stars/category | semantic label, не raw universal ID |
+| stars/category | raw supplier label = observation only; canonical 1..5 только из current accepted local identity; no identity/equivalence proof |
 | rating/services/types | local_only, пока supplier capability не доказана |
 | meal | raw + canonical key; verified families only |
 | room/placement | raw + normalized; placement separate до parity |
