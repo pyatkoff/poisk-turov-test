@@ -90,8 +90,6 @@ assert.ok(localFilters.includes('function fields(){return[field,regionField,cate
   listeners.get('v2:search-complete')({ detail: { items } });
   assert.equal(details.open, true, 'new search restores initial expanded contract');
   assert.equal(api.collect(items).length, 3);
-  
-  
 }
 assert.ok(priceCalendar.includes("head=compact?'summary':'div'"),
   'Search3 keeps one native disclosure owner instead of creating a second mobile calendar UI');
