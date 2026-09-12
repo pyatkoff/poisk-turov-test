@@ -17,8 +17,8 @@ def load():
 
 class FuelResolverTest(unittest.TestCase):
     def test_boundaries(self):
-        self.assertIn('supplier_requests'=>0 if False else 'supplier_requests',TEXT)
-        self.assertIn('db_writes',TEXT)
+        self.assertIn("'supplier_requests'=>0",TEXT)
+        self.assertIn("'db_writes'=>0",TEXT)
         self.assertNotIn('INSERT ',TEXT.upper())
         self.assertNotIn('UPDATE ',TEXT.upper())
         self.assertNotIn('DELETE ',TEXT.upper())
