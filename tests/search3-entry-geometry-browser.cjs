@@ -8,7 +8,7 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1', 'requires the isolated
 assert.ok(process.env.SEARCH3_RESULTS_OUTPUT, 'requires retained evidence');
 const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, 'native-form');
 fs.mkdirSync(output, { recursive: true });
-const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
+const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 1600];
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -98,11 +98,13 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
           assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, 'closed extras and CTA share a footer row');
         }
         if (width >= 1200) {
-          assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 3);
+          assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 6);
           const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
           assert.deepEqual(counts(state.groupTops), [2, 2], 'trip basics retain two balanced rows');
           assert.ok(state.groupColumns.every(value => value === 2));
-          assert.deepEqual(counts(state.preferenceTops), [3, 3]);
+          assert.deepEqual(counts(state.preferenceTops), [6], 'wide desktop keeps the six primary OTA preferences on one row');
+          assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[0] + 40, 'exact hotel gets the widest primary track');
+          assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[2] + 100, 'hotel track stays materially wider than compact category');
           assert.ok(state.preferenceWidth >= state.form.width - 50);
           assert.ok(state.dateControls.every(item => item.width >= 200));
           assert.ok(state.submit.width <= 281, 'desktop CTA is not oversized');
