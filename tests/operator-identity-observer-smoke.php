@@ -47,7 +47,10 @@ check(is_string($migration) && str_contains($migration,'CREATE TABLE IF NOT EXIS
 check(str_contains($migration,'operator_link VARCHAR(2048) DEFAULT NULL'),'operator link nullable');
 check(str_contains($migration,'operator_link_host VARCHAR(255) DEFAULT NULL'),'operator host nullable');
 $observer = file_get_contents(__DIR__.'/../v2/data/operator-identity-observer-v1.php');
-check(is_string($observer) && str_contains($observer,"implode('|', [$row['hotel_id'],$row['operator_id'],$row['tour_id']])"),'stable link-independent fingerprint');
+$fingerprintNeedle = <<<'PHP'
+implode('|', [$row['hotel_id'],$row['operator_id'],$row['tour_id']])
+PHP;
+check(is_string($observer) && str_contains($observer,$fingerprintNeedle),'stable link-independent fingerprint');
 check(str_contains($observer,'operator_link=COALESCE(VALUES(operator_link),operator_link)'),'later link enrichment');
 $endpoint = file_get_contents(__DIR__.'/../v2/data/observe-search-v1.php');
 check(is_string($endpoint) && str_contains($endpoint,"require_once __DIR__.'/operator-identity-observer-v1.php'"),'production observer wired');
