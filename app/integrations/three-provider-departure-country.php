@@ -6,9 +6,14 @@ declare(strict_types=1);
  *
  * Local catalog IDs are never supplier IDs. A supplier filter becomes usable
  * only after a provider-specific mapping is verified for the current local
- * departure/country context. Current direct ANEX wiring proves one such mapping
- * method: trusted local catalog names -> exact unique supplier dictionaries,
- * with country lookup scoped by the resolved supplier departure.
+ * departure/country context.
+ *
+ * Current source proves two distinct provider contracts:
+ * - direct ANEX: authoritative local names -> exact unique supplier departure,
+ *   then exact unique country dictionary scoped by that supplier departure;
+ * - Andromeda: authoritative local departure name -> exact unique saved
+ *   TOWNFROM dictionary, while local country is pinned to the installed saved
+ *   catalog and its supplier STATEINC.
  */
 final class AnyTourThreeProviderDepartureCountry
 {
@@ -82,6 +87,13 @@ final class AnyTourThreeProviderDepartureCountry
                 'local_form_id_forwarded_as_supplier_id' => false,
             ];
         }
+        if ($provider === 'andromeda') {
+            return [
+                'departure_mapping' => 'verified_exact_unique_saved_dictionary_name',
+                'country_mapping' => 'verified_saved_catalog_local_country_pin',
+                'local_form_id_forwarded_as_supplier_id' => false,
+            ];
+        }
         return [
             'departure_mapping' => 'not_verified_in_this_boundary',
             'country_mapping' => 'not_verified_in_this_boundary',
@@ -116,9 +128,18 @@ final class AnyTourThreeProviderDepartureCountry
     {
         if ($mapping === null) return null;
         if (!$hasLocal) throw new InvalidArgumentException('supplier mapping requires current local catalog context');
-        if ($provider !== 'anex') {
-            throw new InvalidArgumentException('provider mapping contract not verified');
+
+        if ($provider === 'anex') {
+            return self::normalizeAnexMapping($mapping);
         }
+        if ($provider === 'andromeda') {
+            return self::normalizeAndromedaMapping($mapping);
+        }
+        throw new InvalidArgumentException('provider mapping contract not verified');
+    }
+
+    private static function normalizeAnexMapping(array $mapping): array
+    {
         $expected = [
             'departure_id', 'country_id', 'method', 'local_names_authoritative',
             'exact_unique_match', 'country_scoped_by_departure',
@@ -141,6 +162,33 @@ final class AnyTourThreeProviderDepartureCountry
             'local_names_authoritative' => true,
             'exact_unique_match' => true,
             'country_scoped_by_departure' => true,
+        ];
+    }
+
+    private static function normalizeAndromedaMapping(array $mapping): array
+    {
+        $expected = [
+            'departure_id', 'country_id', 'method', 'local_names_authoritative',
+            'exact_unique_departure_match', 'country_pinned_to_local_catalog',
+        ];
+        if (array_keys($mapping) !== $expected) {
+            throw new InvalidArgumentException('invalid supplier mapping keys');
+        }
+        $departureId = self::requiredString($mapping['departure_id'], self::MAX_SUPPLIER_ID_LENGTH, 'supplier departure id');
+        $countryId = self::requiredString($mapping['country_id'], self::MAX_SUPPLIER_ID_LENGTH, 'supplier country id');
+        if ($mapping['method'] !== 'saved_catalog_country_pin_with_exact_departure_dictionary'
+            || $mapping['local_names_authoritative'] !== true
+            || $mapping['exact_unique_departure_match'] !== true
+            || $mapping['country_pinned_to_local_catalog'] !== true) {
+            throw new InvalidArgumentException('unverified supplier mapping');
+        }
+        return [
+            'departure_id' => $departureId,
+            'country_id' => $countryId,
+            'method' => 'saved_catalog_country_pin_with_exact_departure_dictionary',
+            'local_names_authoritative' => true,
+            'exact_unique_departure_match' => true,
+            'country_pinned_to_local_catalog' => true,
         ];
     }
 

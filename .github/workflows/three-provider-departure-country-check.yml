@@ -31,6 +31,10 @@ jobs:
           assert "'hotel_identity_proof_from_departure_country' => false" in src
           assert "'verified_exact_unique_dictionary_name'" in src
           assert "'verified_departure_scoped_exact_unique_dictionary_name'" in src
+          assert "'verified_exact_unique_saved_dictionary_name'" in src
+          assert "'verified_saved_catalog_local_country_pin'" in src
+          assert "'saved_catalog_country_pin_with_exact_departure_dictionary'" in src
+          assert "'country_pinned_to_local_catalog' => true" in src
           assert "'allowed' => $mappingVerified" in src
           assert "'source' => 'current_local_catalog'" in src
           for forbidden in ('curl_', 'PDO', 'mysqli_', 'bron(', 'bron_ticket', 'booking', 'file_get_contents('):
