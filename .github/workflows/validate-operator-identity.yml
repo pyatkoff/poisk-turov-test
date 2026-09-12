@@ -1,0 +1,38 @@
+name: Validate passive operator identity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/operator-identity-observer-v1.php'
+      - 'v2/data/migrations/20260913-tour-operator-identity.sql'
+      - 'v2/data/observe-search-v1.php'
+      - 'tests/operator-identity-observer-smoke.php'
+      - '.github/workflows/validate-operator-identity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-operator-identity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate passive identity capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/operator-identity-observer-v1.php >/dev/null
+          php -l v2/data/observe-search-v1.php >/dev/null
+          php tests/operator-identity-observer-smoke.php
+          grep -Fq 'CREATE TABLE IF NOT EXISTS tour_operator_identity_observations' v2/data/migrations/20260913-tour-operator-identity.sql
+          grep -Fq "v2_data_tv_get('/tours/search/'" v2/data/observe-search-v1.php
+          test "$(grep -Fc "v2_data_tv_get('/tours/search/'" v2/data/observe-search-v1.php)" = '1'
+          grep -Fq 'v2_data_observe_operator_identities($rows, $context)' v2/data/observe-search-v1.php
+          echo PASSIVE_OPERATOR_IDENTITY_OK
