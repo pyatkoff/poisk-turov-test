@@ -1,9 +1,9 @@
-name: MATCH Tourvisor account-scoped recovery v1
+name: MATCH Tourvisor account-scoped recovery v2
 
 on:
   push:
     branches: ['ops/match-residual-ensemble-current-1971-v2']
-    paths: ['.github/match-tourvisor-account-scoped-recovery-1971-20260912-v1.arm']
+    paths: ['.github/match-tourvisor-account-scoped-recovery-1971-20260912-v2.arm']
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: anytour-match-tourvisor-account-scoped-recovery-1971-v1
+  group: anytour-match-tourvisor-account-scoped-recovery-1971-v2
   cancel-in-progress: false
 
 jobs:
@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      OPERATION_ID: hotel-match-tourvisor-account-scoped-recovery-1971-20260912-v1
-      SEARCH_DATE: '2026-12-04'
+      OPERATION_ID: hotel-match-tourvisor-account-scoped-recovery-1971-20260912-v2
+      SEARCH_DATE: '2026-12-06'
       SEARCH_NIGHTS: '7'
       FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
-      ARTIFACT_DIR: /tmp/match-tv-account-scoped-v1
+      ARTIFACT_DIR: /tmp/match-tv-account-scoped-v2
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "$(cat .github/match-tourvisor-account-scoped-recovery-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-tourvisor-account-scoped-recovery-1971-20260912-v2.arm)" = "$OPERATION_ID"
           mkdir -p "$ARTIFACT_DIR"
           curl -fsSL --retry 2 --retry-delay 1 "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" -o "$ARTIFACT_DIR/frozen.php"
           export PROGRAM="$ARTIFACT_DIR/program.php"
@@ -87,7 +87,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: match-tv-account-scoped-v1-${{ github.run_id }}-reserved
+          name: match-tv-account-scoped-v2-${{ github.run_id }}-reserved
           path: ${{ env.ARTIFACT_DIR }}/reservation.json
           if-no-files-found: error
           retention-days: 90
@@ -128,7 +128,7 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: match-tv-account-scoped-v1-${{ github.run_id }}-final
+          name: match-tv-account-scoped-v2-${{ github.run_id }}-final
           path: |
             ${{ env.ARTIFACT_DIR }}/reservation.json
             ${{ env.ARTIFACT_DIR }}/result.json
