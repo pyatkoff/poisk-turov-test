@@ -1,0 +1,134 @@
+{
+  "schema": "hotel-match-saved-evidence-frontier/1-summary",
+  "status": "prepared_only_not_write_authority",
+  "source_branch_base": "293abe097d87601dbc308f0db5bc2e14fd2194ca",
+  "inputs": {
+    "current_census": {
+      "run_id": 34712991575,
+      "artifact_id": 10303632729,
+      "json_sha256": "24dd5bab497cb7fb530ae70945939abcecd20005a0332a9d2ad9f33be0a8407e"
+    },
+    "bulk_review": {
+      "run_id": 34550087360,
+      "artifact_id": 10180466663,
+      "json_sha256": "a6f6f965fa5eb2d9c436d87972cdab9ab6cb4dccae44cdf68c1048f44acb59f9",
+      "tourvisor_anex_seed_count": 431,
+      "seed_payload_has_operator_link_or_hotelcode": false
+    },
+    "tv_only": {
+      "run_id": 34703312373,
+      "artifact_id": 10301086119,
+      "result_sha256": "00d412c21fa7d7c414a3fb8d26f42c231220a99d5ae15de94f702486c9802ab4"
+    },
+    "tv_anex": {
+      "run_id": 34703597330,
+      "artifact_id": 10301685895,
+      "result_sha256": "b7b0c0ec6f04d7dd5417b5f5a5a40696e635bf9e1fdb344cc745b02cf5604a8b"
+    }
+  },
+  "counts": {
+    "current_unresolved_anex_ids": 67,
+    "current_unresolved_occurrences": 1671,
+    "product_identity_review_ids": 6,
+    "product_identity_review_occurrences": 226,
+    "physical_hotel_ids": 61,
+    "physical_hotel_occurrences": 1445,
+    "seeded_operator_link_hotelcode_needed_ids": 52,
+    "seeded_occurrences": 1434,
+    "seeded_physical_id_pct": 85.246,
+    "seeded_physical_occurrence_pct": 99.239,
+    "new_tourvisor_acquisition_scope_ids": 9,
+    "new_scope_occurrences": 11,
+    "saved_direct_anex_overlap_ids": 17,
+    "saved_same_day_name_candidates": 6,
+    "saved_same_day_unique_target_candidates": 4
+  },
+  "product_identity_review": [
+    ["17097", 64, "Fortuna 3 Ai Marmaris"],
+    ["28869", 46, "Тур \" Золотое Кольцо Турции\" 7н/8д"],
+    ["817", 40, "Roulette 3* Sharm El Sheikh"],
+    ["815", 39, "Roulette 5* Sharm El Sheikh"],
+    ["5173", 34, "Roulette 4* Sharm El Sheikh"],
+    ["29000", 3, "Тур \" Стамбул Город Мечты \" 3*/boutigue"]
+  ],
+  "new_tourvisor_acquisition_scope": [
+    ["16691", 2, "Castle Park Hotel", 4],
+    ["39601", 2, "Hotel Golden Way.", 4],
+    ["1767", 1, "Domina Coral Bay Aquamarine Beach Sharm El Sheikh", 1],
+    ["27777", 1, "Orient Express Hotel", 4],
+    ["29036", 1, "Delta Hotel Istanbul", 4],
+    ["29092", 1, "Adora Hotel", 4],
+    ["29430", 1, "The Galataport Hotel", 4],
+    ["32742", 1, "Delta Hotel Istanbul.", 4],
+    ["8798", 1, "Orka Royal Hotel", 4]
+  ],
+  "saved_same_day_name_corroboration": [
+    {
+      "anex_id": "32880",
+      "anex_name": "Grand Emin Hotel.",
+      "search_count": 52,
+      "tourvisor_hotel_id": "17443",
+      "tourvisor_name": "GRAND EMIN HOTEL LALELI",
+      "status": "saved_same_day_name_corroboration_only"
+    },
+    {
+      "anex_id": "44573",
+      "anex_name": "Hotel The Rose Bouquetes",
+      "search_count": 52,
+      "tourvisor_hotel_id": "59085",
+      "tourvisor_name": "THE ROSE BOUTIQUES SULTANAHMET",
+      "status": "saved_same_day_name_corroboration_only"
+    },
+    {
+      "anex_id": "32745",
+      "anex_name": "Raimond Hotel.",
+      "search_count": 45,
+      "tourvisor_hotel_id": "70943",
+      "tourvisor_name": "RAIMOND HOTEL KUMKAPI",
+      "status": "saved_same_day_name_corroboration_only"
+    },
+    {
+      "anex_id": "30424",
+      "anex_name": "Sarnic Hotel",
+      "search_count": 3,
+      "tourvisor_hotel_id": "17617",
+      "tourvisor_name": "SARNIC HOTEL (OTTOMAN MANSION)",
+      "status": "saved_same_day_name_corroboration_only"
+    },
+    {
+      "anex_id": "28882",
+      "anex_name": "Malkoc Hotel",
+      "search_count": 52,
+      "tourvisor_hotel_id": "43528",
+      "tourvisor_name": "MALKOC HOTEL LALELI",
+      "status": "duplicate_provider_ids_same_tv_target_hold",
+      "duplicate_anex_ids": ["28882", "32743"]
+    },
+    {
+      "anex_id": "32743",
+      "anex_name": "Malkoc Hotel.",
+      "search_count": 52,
+      "tourvisor_hotel_id": "43528",
+      "tourvisor_name": "MALKOC HOTEL LALELI",
+      "status": "duplicate_provider_ids_same_tv_target_hold",
+      "duplicate_anex_ids": ["28882", "32743"]
+    }
+  ],
+  "interpretation": {
+    "historical_268_frontier_is_execution_authority": false,
+    "high59_current_ready": 0,
+    "main_saved_evidence_result": "52 of 61 physical unresolved ANEX IDs are already represented in the old 431-seed set, covering 1434 of 1445 physical-hotel observation occurrences; however those seed rows contain only ID/count/reason/next-step metadata and do not contain the operator link or hotelCode itself.",
+    "why_no_write": "Saved same-day TV/direct-ANEX name corroboration is useful prioritization evidence but does not replace the missing Tourvisor operator/card -> ANEX hotelCode identity proof. Duplicate supplier IDs remain independent and are not collapsed.",
+    "next_when_live_path_available": "Acquire operator/card identity for the 52 seeded physical IDs first; only 9 low-frequency IDs require genuinely new Tourvisor acquisition scope. Then run one NEW CURRENT guarded transaction over the demonstrated delta with post-COMMIT per-row readback."
+  },
+  "safety": {
+    "network_calls_this_package": 0,
+    "supplier_calls_this_package": 0,
+    "tourvisor_calls_this_package": 0,
+    "database_writes_this_package": 0,
+    "mapping_writes_this_package": 0,
+    "workflow_or_secret_executor_created": false,
+    "blocked_secret_bearing_executor_bypassed": false,
+    "main_production_runtime_changed": false
+  }
+}
