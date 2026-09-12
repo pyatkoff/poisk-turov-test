@@ -1,0 +1,52 @@
+name: MATCH Andromeda high59 CURRENT audit
+on:
+  push:
+    branches: ['autopilot/hotel-match-andromeda-high59-current-write-20260913']
+    paths: ['.github/match-andromeda-high59-current-audit-1971-20260913-v1.arm']
+permissions: {contents: read, actions: read}
+concurrency: {group: anytour-match-andromeda-high59-current-audit-1971-v1, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-andromeda-high59-current-audit-1971-20260913-v1, OUT: /tmp/match-high59-current-audit}
+jobs:
+  audit:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate immutable read-only audit
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-andromeda-high59-current-audit-1971-20260913-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_andromeda_high59_current_audit.php >/dev/null
+          python3 - <<'PY'
+          import pathlib,re
+          p=pathlib.Path('scripts/diagnostics/hotel_match_andromeda_high59_current_audit.php').read_text()
+          assert "const OP='hotel-match-andromeda-high59-current-audit-1971-20260913-v1'" in p
+          assert len(re.findall(r"'([0-9]+)'=>([0-9]+)",p.split('const PAIRS=[',1)[1].split('];',1)[0]))==59
+          assert 'UPDATE ' not in p and 'INSERT ' not in p and 'DELETE ' not in p
+          PY
+          mkdir -p "$OUT"
+      - name: Run current audit and verify receipt
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"; remote_tmp="/tmp/match-high59-audit-${GITHUB_RUN_ID}.php"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi; chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST"
+          trap 'ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          sp="\$HOME/.anytoour-match/operations/$OPERATION_ID"; test "$(ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "if test -e $sp; then printf EXISTS; else printf ABSENT; fi")" = ABSENT
+          scp -o ControlPath="$sock" -o ControlMaster=no scripts/diagnostics/hotel_match_andromeda_high59_current_audit.php "$USER@$HOST:$remote_tmp"
+          set +e; ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M '$remote_tmp'" >"$OUT/stdout.json" 2>"$OUT/stderr.txt"; rc=$?; set -e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=$sp; if test -f \"\$p/result.json\"; then cat \"\$p/result.json\"; elif test -f \"\$p/failure.json\"; then cat \"\$p/failure.json\"; else printf '{\"status\":\"unknown_do_not_replay\"}\n'; fi" >"$OUT/result.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=$sp/receipt.json; test -f \"\$p\" && cat \"\$p\" || printf '{}\n'" >"$OUT/receipt.json"
+          export RC="$rc"; python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          o=pathlib.Path(os.environ['OUT']);r=json.loads((o/'result.json').read_text());p=json.loads((o/'receipt.json').read_text());d=hashlib.sha256((o/'result.json').read_bytes()).hexdigest()
+          ok=int(os.environ['RC'])==0 and r.get('status')=='read_only_complete' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('source_sha')==os.environ['GITHUB_SHA'] and r.get('candidate_count')==59 and r.get('database_writes')==0 and r.get('mapping_writes')==0 and p.get('result_sha256')==d and p.get('readback_verified') is True
+          s={'receipt_verified':ok,'ready_count':r.get('ready_count'),'reason_counts':r.get('reason_counts'),'ready_rows':r.get('ready_rows',[]),'database_writes':0,'no_replay':True};(o/'summary.json').write_text(json.dumps(s,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(f"MATCH #1971 high59 audit: receipt={ok}; ready={s['ready_count']}; reasons={s['reason_counts']}; DB writes=0; NO-REPLAY.")
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-high59-current-audit-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
