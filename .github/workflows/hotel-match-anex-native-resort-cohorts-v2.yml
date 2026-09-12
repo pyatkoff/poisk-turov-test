@@ -1,0 +1,39 @@
+name: MATCH ANEX native resort cohorts v2
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-anex-native-resort-cohorts-1971-20260912-v2.arm']
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env: {OUT: /tmp/match-anex-native-resorts-v2}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Build CURRENT provider-native cohorts
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail;test "$GITHUB_RUN_ATTEMPT" = 1;test "$(cat .github/match-anex-native-resort-cohorts-1971-20260912-v2.arm)" = hotel-match-anex-native-resort-cohorts-1971-20260912-v2;mkdir -p "$OUT";key="$RUNNER_TEMP/manr2-key";known="$RUNNER_TEMP/manr2-known";if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi;chmod 600 "$key"
+          cat > "$OUT/p.php" <<'PHP'
+          <?php declare(strict_types=1);require_once getcwd().'/config.php';$db=is_file(getcwd().'/data/db-v1.php')?getcwd().'/data/db-v1.php':getcwd().'/v2/data/db-v1.php';require_once $db;$pdo=v2_data_db();$sql="SELECT h.anex_hotel_id,h.api_name,h.api_country,h.api_region,h.api_town,h.api_town_id,h.latitude,h.longitude,m.catalog_hotel_id,COALESCE(o.obs,0) obs FROM anex_hotels h LEFT JOIN anex_hotel_search_mappings m ON m.anex_hotel_id=h.anex_hotel_id LEFT JOIN(SELECT anex_hotel_id,COUNT(*) obs FROM anex_search_hotel_observations GROUP BY anex_hotel_id)o ON o.anex_hotel_id=h.anex_hotel_id WHERE h.api_country IN ('Турция','Египет')";$rows=$pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);$groups=[];foreach($rows as $r){$geo=trim((string)($r['api_town']?:$r['api_region']));if($geo==='')$geo='(unknown)';$k=$r['api_country'].'|'.$r['api_region'].'|'.$geo;if(!isset($groups[$k]))$groups[$k]=['country'=>$r['api_country'],'region'=>$r['api_region'],'geo'=>$geo,'total'=>0,'unmapped'=>0,'live_unmapped'=>0,'obs_sum'=>0,'hotels'=>[]];$g=&$groups[$k];$g['total']++;$mapped=(int)($r['catalog_hotel_id']??0)>0;$obs=(int)$r['obs'];if(!$mapped){$g['unmapped']++;if($obs>0)$g['live_unmapped']++;$g['hotels'][]=['anex_id'=>(int)$r['anex_hotel_id'],'name'=>$r['api_name'],'obs'=>$obs,'lat'=>$r['latitude'],'lon'=>$r['longitude'],'town_id'=>$r['api_town_id']];}$g['obs_sum']+=$obs;unset($g);} $groups=array_values($groups);foreach($groups as &$g){usort($g['hotels'],fn($a,$b)=>($b['obs']<=>$a['obs'])?:($a['anex_id']<=>$b['anex_id']));$g['batches']=array_map(fn($z)=>array_column($z,'anex_id'),array_chunk($g['hotels'],30));}unset($g);usort($groups,fn($a,$b)=>($b['live_unmapped']<=>$a['live_unmapped'])?:($b['unmapped']<=>$a['unmapped'])?:($b['obs_sum']<=>$a['obs_sum']));echo 'MANR2:'.json_encode(['status'=>'completed','operation_id'=>'hotel-match-anex-native-resort-cohorts-1971-20260912-v2','row_count'=>count($rows),'groups'=>array_slice($groups,0,120),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+          PHP
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$OUT/p.php" > "$OUT/stdout" 2> "$OUT/stderr";grep '^MANR2:' "$OUT/stdout"|sed 's/^MANR2://' > "$OUT/result.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['OUT']);x=json.loads((d/'result.json').read_text());gs=x['groups'];lines=[f"MATCH #1971 corrected ANEX native resort cohorts completed / NO-REPLAY. Rows {x['row_count']}; groups {len(gs)}."]
+          for g in gs[:30]:lines.append(f"- {g['country']} / {g['region']} / {g['geo']}: total {g['total']}, unmapped {g['unmapped']}, live-unmapped {g['live_unmapped']}, obs {g['obs_sum']}, batches<=30 {len(g['batches'])}")
+          lines.append('DB/mapping/supplier/Tourvisor writes/calls0.');(d/'summary.md').write_text('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anex-native-resorts-v2-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md"
