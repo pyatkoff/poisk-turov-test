@@ -30,10 +30,10 @@ function bridge_identity(?int $id = 40430): array
 {
     return ['supplier_namespace' => 'anex_online', 'external_id' => '30160', 'local_id' => $id];
 }
-function bridge_offer(array $page, ?array $identity = null, int $index = 0): array
+function bridge_offer(array $page, ?array $identity = null, int $index = 0, array $additionalPricesReported = []): array
 {
     return AnyTourThreeProviderAnexOffer::fromPage($page, $index, $identity ?? bridge_identity(),
-        'fixture-private-search', '2026-09-11T20:00:00Z');
+        'fixture-private-search', '2026-09-11T20:00:00Z', $additionalPricesReported);
 }
 function bridge_reject(callable $call, string $code, string $class = InvalidArgumentException::class): void
 {
@@ -54,6 +54,22 @@ bridge_check($dto['money']['search_price'] === ['amount' => '790.00', 'currency'
 bridge_check($dto['money']['fuel_charge_reported'] === null && $dto['money']['additional_prices_reported'] === []);
 bridge_check($dto['money']['quote_price'] === null && $dto['money']['package_buyer_price'] === null);
 bridge_check($dto['money']['arithmetic_applied'] === false && $dto['money']['search_price_fuel_relation'] === 'unknown');
+
+// Canonical additional-price fixture only: it does not assign semantics to the live v4 currency id.
+$verifiedAdditionalFixture = [
+    ['kind' => 'air_adult', 'amount' => '120', 'currency' => 'USD', 'source' => 'anex_additional'],
+    ['kind' => 'air_child', 'amount' => '120', 'currency' => 'USD', 'source' => 'anex_additional'],
+];
+$withAdditional = bridge_offer($page, null, 0, $verifiedAdditionalFixture);
+bridge_check($withAdditional['money']['additional_prices_reported'] === $verifiedAdditionalFixture);
+bridge_check($withAdditional['money']['search_price'] === $dto['money']['search_price']);
+bridge_check($withAdditional['money']['fuel_charge_reported'] === null
+    && $withAdditional['money']['arithmetic_applied'] === false
+    && $withAdditional['money']['search_price_fuel_relation'] === 'unknown');
+bridge_reject(static fn () => bridge_offer($page, null, 0, [
+    ['kind' => 'air_adult', 'amount' => '120', 'currency' => 'USD', 'source' => 'anex_search'],
+]), 'THREE_PROVIDER_MONEY_SOURCE');
+
 bridge_check($dto['meal']['raw'] === 'BB' && $dto['meal']['family'] === 'bb');
 bridge_check($dto['room']['raw'] === 'Standard-Room' && $dto['room']['normalized'] === 'standard room');
 bridge_check($dto['placement']['raw'] === 'DBL / 2 ADL' && $dto['placement']['normalized'] === 'dbl 2 adl');
