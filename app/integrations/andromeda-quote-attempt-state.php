@@ -91,24 +91,64 @@ final class AnyTourAndromedaQuoteAttemptState
 
     private static function assertPublicResult(array $result): void
     {
-        if (($result['provider'] ?? null) !== 'andromeda'
+        if (($result['schema_version'] ?? null) !== 1
+            || ($result['provider'] ?? null) !== 'andromeda'
             || ($result['selection_enabled'] ?? null) !== true
             || ($result['booking_enabled'] ?? null) !== false
-            || !in_array($result['state'] ?? null, ['quote_verified', 'flight_selection_required'], true)) {
+            || !is_int($result['local_id'] ?? null) || $result['local_id'] < 1
+            || !in_array($result['state'] ?? null, ['quote_verified', 'flight_selection_required'], true)
+            || !is_bool($result['flight_selection_required'] ?? null)
+            || !is_array($result['flights'] ?? null)) {
             throw new RuntimeException('ANDROMEDA_QUOTE_RESULT_INVALID');
         }
+
+        // Search/package/final are distinct supplier facts. Validate shape only;
+        // never infer equality, add fees, convert currencies or replace one with another.
+        self::assertMoney($result['search_price'] ?? null, false);
+        if (($result['package_price'] ?? null) !== null) {
+            self::assertMoney($result['package_price'], false);
+        }
+
         if ($result['state'] === 'quote_verified') {
             if (($result['quote_state'] ?? null) !== 'verified'
                 || ($result['final_price_verified'] ?? null) !== true
-                || !is_array($result['final_price'] ?? null)) {
+                || $result['flight_selection_required'] !== false) {
                 throw new RuntimeException('ANDROMEDA_QUOTE_RESULT_INVALID');
             }
+            self::assertMoney($result['final_price'] ?? null, false);
         } elseif (($result['quote_state'] ?? null) !== 'unverified'
             || ($result['final_price_verified'] ?? null) !== false
-            || ($result['final_price'] ?? null) !== null) {
+            || ($result['final_price'] ?? null) !== null
+            || $result['flight_selection_required'] !== true) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_RESULT_INVALID');
+        }
+
+        if ($result['flights'] !== []
+            && array_keys($result['flights']) !== range(0, count($result['flights']) - 1)) {
             throw new RuntimeException('ANDROMEDA_QUOTE_RESULT_INVALID');
         }
         self::assertNoPrivateKeys($result);
+    }
+
+    private static function assertMoney(mixed $value, bool $allowZero): void
+    {
+        if (!is_array($value)) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_MONEY_INVALID');
+        }
+        $keys = array_keys($value);
+        sort($keys);
+        if ($keys !== ['amount', 'currency']) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_MONEY_INVALID');
+        }
+        $amount = $value['amount'];
+        $currency = $value['currency'];
+        if (!is_string($amount)
+            || preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $amount) !== 1
+            || (!$allowZero && preg_match('/[1-9]/', $amount) !== 1)
+            || !is_string($currency)
+            || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) {
+            throw new RuntimeException('ANDROMEDA_QUOTE_MONEY_INVALID');
+        }
     }
 
     private static function assertNoPrivateKeys(array $value): void
