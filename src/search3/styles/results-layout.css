@@ -147,6 +147,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 &:not(.search3-selected-open) .v2-shell{max-width:1360px;padding-inline:24px}
 & .results-layout:has(#results>*){grid-template-columns:250px minmax(0,1fr);gap:24px}
 & .results-filter-rail{gap:14px;padding:16px}
+& #results{gap:18px}
+& #results .hotel-main{grid-template-columns:minmax(220px,28%) minmax(0,1fr)}
+& #results .hotel-body{padding-inline:22px}
+& #results .tour-row{grid-template-columns:minmax(0,1fr) minmax(230px,250px);gap:18px;padding-block:12px}
 }
 @media(max-width:560px){
 & .catalog-recovery{padding:14px}

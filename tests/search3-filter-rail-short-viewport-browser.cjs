@@ -76,7 +76,28 @@ async function exercise(browser, width, height) {
         layoutWidth: document.querySelector('.results-layout').getBoundingClientRect().width,
         railWidth: rect.width,
         resultsWidth: document.querySelector('#results').getBoundingClientRect().width,
-        workspaceGap: document.querySelector('#results').getBoundingClientRect().left - rect.right
+        workspaceGap: document.querySelector('#results').getBoundingClientRect().left - rect.right,
+        card: (() => {
+          const card = document.querySelector('#results .hotel-card');
+          const main = card.querySelector('.hotel-main');
+          const photo = card.querySelector('.hotel-photo');
+          const body = card.querySelector('.hotel-body');
+          const row = card.querySelector('.tour-row');
+          const meta = row.querySelector('.tour-meta');
+          const action = row.querySelector('.tour-action');
+          const cta = action.querySelector('.direct-tour');
+          const box = node => node.getBoundingClientRect();
+          return {
+            width: box(card).width,
+            mainWidth: box(main).width,
+            photoWidth: box(photo).width,
+            bodyWidth: box(body).width,
+            rowWidth: box(row).width,
+            metaWidth: box(meta).width,
+            actionWidth: box(action).width,
+            ctaHeight: box(cta).height
+          };
+        })()
       };
     });
     assert.equal(initial.overflowY, 'auto', `${width}: rail owns vertical overflow`);
@@ -89,6 +110,12 @@ async function exercise(browser, width, height) {
       assert.ok(initial.railWidth >= 245 && initial.railWidth <= 255, `${width}: OTA filter rail stays intentionally scannable: ${JSON.stringify(initial)}`);
       assert.ok(initial.workspaceGap >= 20 && initial.workspaceGap <= 28, `${width}: rail/results gap stays balanced: ${JSON.stringify(initial)}`);
       assert.ok(initial.resultsWidth >= initial.railWidth * 3.4, `${width}: results remain the dominant decision surface: ${JSON.stringify(initial)}`);
+      const card = initial.card;
+      assert.ok(card.photoWidth / card.mainWidth >= 0.24 && card.photoWidth / card.mainWidth <= 0.29, `${width}: hotel media is supportive rather than dominant on wide desktop: ${JSON.stringify(card)}`);
+      assert.ok(card.bodyWidth >= card.photoWidth * 2.35, `${width}: hotel copy owns the wide desktop summary surface: ${JSON.stringify(card)}`);
+      assert.ok(card.actionWidth >= 228 && card.actionWidth <= 252, `${width}: price/CTA decision column stays bounded: ${JSON.stringify(card)}`);
+      assert.ok(card.metaWidth >= card.actionWidth * 2, `${width}: offer facts remain the dominant row surface: ${JSON.stringify(card)}`);
+      assert.ok(card.ctaHeight >= 44, `${width}: primary tour action keeps its accessible target: ${JSON.stringify(card)}`);
     }
 
     const focusables = page.locator('.results-filter-rail :is(input,select,button):visible:not([disabled])');
