@@ -14,7 +14,7 @@ $criteria = [
     'supplier_namespace' => 'anex_online',
     'departure_id' => '1',
     'destination_id' => '2',
-    'currency_id' => '3',
+    'currency_id' => '9',
     'checkin_begin' => '20260920',
     'checkin_end' => '20260920',
     'nights_from' => 7,
@@ -26,6 +26,7 @@ $criteria = [
 $row = [
     'id' => 'program-group-fixture',
     'tourKey' => 778,
+    'currencyKey' => 3,
     'hotelKey' => 469,
     'hotel' => 'Fixture Hotel',
     'checkIn' => '20260920',
@@ -43,11 +44,19 @@ $row = [
 
 $normalized = anytour_anex_normalize_prices(['prices' => [$row]], $criteria)['offers'][0];
 tour_program_check($normalized['supplier_tour_program_id'] === '778', 'numeric tourKey not retained');
+tour_program_check($normalized['supplier_currency_id'] === '3', 'numeric currencyKey not retained');
+tour_program_check($normalized['supplier_currency_id'] !== $criteria['currency_id'], 'request currency gained native authority');
 $unknownProgram = anytour_anex_normalize_prices(
     ['prices' => [array_replace($row, ['tourKey' => '778&other=1'])]],
     $criteria
 )['offers'][0];
 tour_program_check($unknownProgram['supplier_tour_program_id'] === null, 'invalid tourKey gained authority');
+$unknownCurrency = anytour_anex_normalize_prices(
+    ['prices' => [array_replace($row, ['currencyKey' => '3&other=1'])]],
+    $criteria
+)['offers'][0];
+tour_program_check($unknownCurrency['supplier_currency_id'] === null, 'invalid currencyKey gained authority');
+tour_program_check($unknownCurrency['price']['currency'] === 'EUR', 'invalid currencyKey changed native ISO fact');
 
 $calls = 0;
 $factory = static function () use (&$calls, $row): AnyTourAnexClient {
@@ -71,19 +80,27 @@ $groups = $gateway->handle(['action' => 'search', 'criteria' => $criteria], $ses
 $group = $groups['offers'][0];
 
 tour_program_check(!array_key_exists('supplier_tour_program_id', $group), 'program id leaked in public search result');
+tour_program_check(!array_key_exists('supplier_currency_id', $group), 'currency id leaked in public search result');
 $groupEntry = $session['saved_offers']['offers'][$group['offer_key']] ?? null;
 tour_program_check(is_array($groupEntry)
     && ($groupEntry['supplier_tour_program_id'] ?? null) === '778', 'program id missing from private saved group');
+tour_program_check(is_array($groupEntry)
+    && ($groupEntry['supplier_currency_id'] ?? null) === '3', 'currency id missing from private saved group');
 tour_program_check(!array_key_exists('supplier_tour_program_id', $groupEntry['offer']), 'program id copied into saved public offer');
+tour_program_check(!array_key_exists('supplier_currency_id', $groupEntry['offer']), 'currency id copied into saved public offer');
 
 ++$clock;
 $expanded = $gateway->handle(['action' => 'expand', 'offer_key' => $group['offer_key']], $session);
 $concrete = $expanded['offers'][0];
 tour_program_check(!array_key_exists('supplier_tour_program_id', $concrete), 'program id leaked in public concrete result');
+tour_program_check(!array_key_exists('supplier_currency_id', $concrete), 'currency id leaked in public concrete result');
 $concreteEntry = $session['saved_offers']['offers'][$concrete['offer_key']] ?? null;
 tour_program_check(is_array($concreteEntry)
     && ($concreteEntry['supplier_tour_program_id'] ?? null) === '778', 'program id missing from private saved concrete');
+tour_program_check(is_array($concreteEntry)
+    && ($concreteEntry['supplier_currency_id'] ?? null) === '3', 'currency id missing from private saved concrete');
 tour_program_check(!array_key_exists('supplier_tour_program_id', $concreteEntry['offer']), 'program id entered canonical saved offer');
+tour_program_check(!array_key_exists('supplier_currency_id', $concreteEntry['offer']), 'currency id entered canonical saved offer');
 tour_program_check($calls === 2, 'unexpected supplier calls');
 
-echo "ANEX_TOUR_PROGRAM_RETENTION_OK private_program=1 public_leak=0 supplier_calls=2\n";
+echo "ANEX_TOUR_PROGRAM_RETENTION_OK private_program=1 private_currency=1 request_currency_fallback=0 public_leak=0 supplier_calls=2\n";
