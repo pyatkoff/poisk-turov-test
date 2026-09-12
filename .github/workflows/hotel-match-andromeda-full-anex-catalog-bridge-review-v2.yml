@@ -1,0 +1,59 @@
+name: MATCH Andromeda full ANEX catalog bridge review v2
+on:
+  push:
+    branches: ['ops/match-mass-bridge-1971-20260912']
+    paths: ['.github/match-andromeda-full-anex-catalog-bridge-review-1971-20260912-v2.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-andromeda-full-anex-catalog-review-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-andromeda-full-anex-catalog-bridge-review-1971-20260912-v2
+  OUT: /tmp/match-andromeda-full-anex-review-v2
+  RESULT_OUT: /tmp/match-andromeda-full-anex-review-v2-result
+jobs:
+  review:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Build v2 program, restore immutable catalog, reserve
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-andromeda-full-anex-catalog-bridge-review-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          mkdir -p "$OUT/xml" "$RESULT_OUT"
+          sed -e 's/hotel-match-andromeda-full-anex-catalog-bridge-review-1971-20260912-v1/hotel-match-andromeda-full-anex-catalog-bridge-review-1971-20260912-v2/' -e 's/AND_FULL_ANEX_REVIEW:/AND_FULL_ANEX_REVIEW_V2:/' scripts/diagnostics/hotel_match_andromeda_full_anex_catalog_bridge_review_v1.php > "$OUT/program.php"
+          php -l "$OUT/program.php"
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10029330453/zip" > "$OUT/catalog.zip"
+          unzip -q "$OUT/catalog.zip" -d "$OUT/xml"
+          test "$(sha256sum "$OUT/xml/anex-hotel-catalog-match.json"|cut -d' ' -f1)" = '1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445'
+          printf '{"operation_id":"%s","state":"reserved_before_db_access","run_id":%s,"source_artifact_id":10029330453,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" > "$RESULT_OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'and-full-anex-review-v2-${{ github.run_id }}-reserved', path: '${{ env.RESULT_OUT }}/reservation.json', retention-days: 90}
+      - name: Execute CURRENT read-only full-catalog bridge review v2
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20)
+          scp "${opts[@]}" "$OUT/xml/anex-hotel-catalog-match.json" "$USER_VALUE@$HOST_VALUE:/tmp/anex-hotel-catalog-match.json"
+          trap 'ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -f /tmp/anex-hotel-catalog-match.json" || true' EXIT
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M' < "$OUT/program.php" > "$OUT/stdout" 2> "$RESULT_OUT/stderr"
+          python3 - <<'PY'
+          import json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']); d=pathlib.Path(os.environ['RESULT_OUT']); raw=(out/'stdout').read_bytes(); lines=[x[len(b'AND_FULL_ANEX_REVIEW_V2:'):] for x in raw.splitlines() if x.startswith(b'AND_FULL_ANEX_REVIEW_V2:')]
+          x=json.loads(lines[-1]) if lines else {'status':'failed','safe_message':'marker_missing'}
+          (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 full ANEX catalog→Andromeda bridge v2: **{x.get('status')}**; mapped catalog **{x.get('mapped_anex_catalog_hotels')}**, pending **{x.get('pending_rows')}**, safe **{x.get('safe_count')}**, needs-extra **{x.get('needs_extra_count')}**. Reasons `{json.dumps(x.get('reason_counts') or {},ensure_ascii=False,sort_keys=True)}`. Writes/calls 0. Run `{os.environ['GITHUB_RUN_ID']}`."
+          (d/'summary.md').write_text(s+'\n'); print(s)
+          raise SystemExit(0 if x.get('status')=='completed' and x.get('operation_id')==os.environ['OPERATION_ID'] else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'and-full-anex-review-v2-${{ github.run_id }}-result', path: '${{ env.RESULT_OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$RESULT_OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$RESULT_OUT/summary.md" || true
