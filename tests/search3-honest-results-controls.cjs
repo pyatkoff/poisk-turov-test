@@ -22,6 +22,8 @@ assert.doesNotMatch(redesign, /results-map-requested|data-results-map/);
 assert.doesNotMatch(styles, /results-map-button/);
 assert.match(renderer, /if\(m==='rating'\)/);
 assert.match(renderer, /if\(m==='stars'\)/);
+assert.ok(renderer.includes("return tours.length===1?'1 вариант тура':tours.length>1?tourCountLabel(tours.length)+' для сравнения':'';"),
+  'one loaded offer is described as a tour option, while multiple offers retain comparison wording');
 assert.match(
   page,
   /<\?php if\(!v2_search3_enabled\(\)\):\?><div class="results-view-switch"[\s\S]*?<\?php endif;\?>/,
