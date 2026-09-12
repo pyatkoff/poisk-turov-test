@@ -1,0 +1,37 @@
+name: MATCH ANEX country geo probe v1
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-anex-country-geo-probe-1971-20260912-v1.arm']
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env: {OUT: /tmp/match-anex-country-geo}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Probe CURRENT ANEX geography labels
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail; test "$GITHUB_RUN_ATTEMPT" = 1; test "$(cat .github/match-anex-country-geo-probe-1971-20260912-v1.arm)" = hotel-match-anex-country-geo-probe-1971-20260912-v1; mkdir -p "$OUT"; key="$RUNNER_TEMP/macg-key";known="$RUNNER_TEMP/macg-known";if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi;chmod 600 "$key"
+          cat > "$OUT/p.php" <<'PHP'
+          <?php declare(strict_types=1);require_once getcwd().'/config.php';$db=is_file(getcwd().'/data/db-v1.php')?getcwd().'/data/db-v1.php':getcwd().'/v2/data/db-v1.php';require_once $db;$p=v2_data_db();$countries=$p->query("SELECT COALESCE(api_country,'') api_country,COUNT(*) n FROM anex_hotels GROUP BY api_country ORDER BY n DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);$sample=$p->query("SELECT anex_hotel_id,api_name,api_country,api_region,api_town,api_town_id FROM anex_hotels WHERE COALESCE(api_country,'')<>'' ORDER BY anex_hotel_id LIMIT 100")->fetchAll(PDO::FETCH_ASSOC);echo 'MACG:'.json_encode(['status'=>'completed','operation_id'=>'hotel-match-anex-country-geo-probe-1971-20260912-v1','countries'=>$countries,'sample'=>$sample,'database_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+          PHP
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$OUT/p.php" > "$OUT/stdout" 2> "$OUT/stderr";grep '^MACG:' "$OUT/stdout"|sed 's/^MACG://' > "$OUT/result.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['OUT']);x=json.loads((d/'result.json').read_text());lines=['MATCH #1971 ANEX country/geo label probe completed / NO-REPLAY.']+[f"- {r['api_country']!r}: {r['n']}" for r in x['countries'][:25]]+['DB/supplier/Tourvisor writes/calls0.'];(d/'summary.md').write_text('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anex-country-geo-v1-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md"
