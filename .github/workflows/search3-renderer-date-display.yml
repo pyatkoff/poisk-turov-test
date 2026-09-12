@@ -8,6 +8,7 @@ on:
       - 'v2/assets/operator-logos/**'
       - 'tests/search3-renderer-date-display.test.js'
       - 'tests/search3-hotel-operator-card.test.js'
+      - 'tests/search3-hotel-card-summary.test.js'
       - 'tests/search3-hotel-operator-card-browser.cjs'
       - 'tests/search3-current-results-browser.cjs'
       - '.github/workflows/search3-renderer-date-display.yml'
@@ -36,6 +37,7 @@ jobs:
         run: |
           node tests/search3-renderer-date-display.test.js
           node tests/search3-hotel-operator-card.test.js
+          node tests/search3-hotel-card-summary.test.js
       - name: Syntax check current-results visual contract
         run: |
           node --check tests/search3-current-results-browser.cjs
