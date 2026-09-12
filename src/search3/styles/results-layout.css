@@ -104,7 +104,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist{padding:16px;margin-block:16px}
 & .search3-shortlist__head{display:grid}
 & .search3-shortlist-clear{justify-self:start}
-& .search3-shortlist__items{grid-template-columns:1fr}
+& .search3-shortlist__items{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:88%;gap:12px;padding:0 2px 6px;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x proximity;scroll-padding-inline:2px;scrollbar-width:thin}
+& .search3-shortlist-item{scroll-snap-align:start}
 }
 @media(max-width:430px){
 & .search3-shortlist-item__actions{grid-template-columns:1fr}
