@@ -6,9 +6,9 @@ on:
       - 'scripts/diagnostics/anex_additional_prices_specimen.php'
       - '.github/workflows/anex-additional-prices-specimen.yml'
   push:
-    branches: ['ops/int-anex-additional-prices-specimen-20260912-v1']
+    branches: ['ops/int-anex-additional-prices-specimen-20260912-v2']
     paths:
-      - '.github/ops/int-anex-additional-prices-specimen-20260912-v1'
+      - '.github/ops/int-anex-additional-prices-specimen-20260912-v2'
 permissions:
   contents: read
 concurrency:
@@ -32,16 +32,21 @@ jobs:
           s=Path('scripts/diagnostics/anex_additional_prices_specimen.php').read_text()
           assert "$root . '/config.php'" in s
           assert "ANEX_B2B_TOKEN" in s
+          assert "SearchTour_TOURS" in s
+          assert "supplier_tour_program_dictionary_identity" in s
+          assert "minimum_daily_air_surcharge_service" in s
           assert "new AnyTourAnexAdditionalPricesClient" in s
+          assert "AnyTourAnexSearch(" not in s
+          assert "CATCLAIM" not in s
           assert "'additional_payload_uninterpreted' => true" in s
           assert "'arithmetic_applied' => false" in s
           for forbidden in ('->bron(', 'bron_ticket', 'INSERT INTO', 'UPDATE ', 'DELETE FROM'):
               assert forbidden not in s
-          print('ANEX AdditionalPricesDaily specimen static boundary: PASS')
+          print('ANEX AdditionalPricesDaily tour-program specimen boundary: PASS')
           PY
 
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-prices-specimen-20260912-v1' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-prices-specimen-20260912-v2' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 7
     env:
@@ -56,8 +61,8 @@ jobs:
           persist-credentials: false
       - name: Bind exact one-shot operation
         run: |
-          marker="$(cat control/.github/ops/int-anex-additional-prices-specimen-20260912-v1)"
-          printf '%s\n' "$marker" | grep -Eq '^source=[0-9a-f]{40};operation=anex-additional-prices-specimen-20260912-v1;owner=2026-09-12$'
+          marker="$(cat control/.github/ops/int-anex-additional-prices-specimen-20260912-v2)"
+          printf '%s\n' "$marker" | grep -Eq '^source=[0-9a-f]{40};operation=anex-additional-prices-specimen-20260912-v2;owner=2026-09-12$'
           source_sha="${marker#source=}"
           source_sha="${source_sha%%;*}"
           echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
@@ -70,7 +75,7 @@ jobs:
       - name: Create durable reservation
         run: |
           mkdir -m 700 "$RUNNER_TEMP/specimen"
-          printf '%s\n' '{"operation_id":"anex-additional-prices-specimen-20260912-v1","state":"reserved","replay_allowed":false}' > "$RUNNER_TEMP/specimen/reservation.json"
+          printf '%s\n' '{"operation_id":"anex-additional-prices-specimen-20260912-v2","state":"reserved","replay_allowed":false}' > "$RUNNER_TEMP/specimen/reservation.json"
       - name: Preserve reservation before supplier access
         uses: actions/upload-artifact@v4
         with:
@@ -83,7 +88,7 @@ jobs:
         continue-on-error: true
         run: |
           python3 - <<'PY'
-          import json, os, shlex, subprocess, tempfile
+          import json, os, shlex, subprocess
           from pathlib import Path
           client=Path('source/app/integrations/anex-additional-prices-client.php').read_text()
           runner=Path('source/scripts/diagnostics/anex_additional_prices_specimen.php').read_text()
@@ -101,7 +106,7 @@ jobs:
                    '-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(os.environ['RUNNER_TEMP'])/'specimen/known_hosts'),
                    '-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',os.environ['ANYTOOUR_DEPLOY_USER'],
                    os.environ['ANYTOOUR_DEPLOY_HOST'],'cd "$HOME/www/anytoour.ru" && php -r '+shlex.quote(source)]
-          request={'operation_id':'anex-additional-prices-specimen-20260912-v1','date':'2026-10-31','nights':8,'adults':1}
+          request={'operation_id':'anex-additional-prices-specimen-20260912-v2','date':'2026-11-07','nights':8,'adults':1}
           result=subprocess.run(command,input=json.dumps(request,ensure_ascii=False),text=True,capture_output=True,timeout=300,
                                 env={k:v for k,v in os.environ.items() if not k.startswith('ANEX_')})
           try:
@@ -109,7 +114,7 @@ jobs:
           except Exception:
               value={'schema_version':1,'operation_id':request['operation_id'],'status':'transport_unconfirmed','replay_allowed':False}
           text=json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n'
-          assert 'Bearer ' not in text and 'ANEX_B2B_TOKEN' not in text
+          assert 'Bearer ' not in text and 'ANEX_B2B_TOKEN' not in text and 'oauth_token' not in text
           out.write_text(text)
           if value.get('operation_id')!=request['operation_id'] or value.get('status') not in ('completed','blocked','unknown','transport_unconfirmed'):
               raise SystemExit(1)
