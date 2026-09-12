@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
+require_once __DIR__ . '/../app/integrations/anex-additional-prices-client.php';
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 $checks = 0;
@@ -49,24 +50,6 @@ $metadata = static function (array $offers): array {
 };
 $clock = static function (): int { return 1789220100; };
 $directFactory = static function () { throw new RuntimeException('DIRECT_CLIENT_MUST_NOT_RUN'); };
-
-$client = new class {
-    public $calls = [];
-    public function additionalPricesDaily(array $params): array
-    {
-        $this->calls[] = $params;
-        return ['data' => [[
-            'price_adult' => '120', 'price_chd' => '120', 'cashrate' => '104.23',
-            'price_converted_adult' => '12507.6', 'price_converted_chd' => '12507.6',
-            'tour' => 987654321, 'currency' => 345,
-        ]], 'totalCount' => 1];
-    }
-};
-$factoryCalls = 0;
-$additionalFactory = static function () use ($client, &$factoryCalls) {
-    ++$factoryCalls;
-    return $client;
-};
 $checkpoints = 0;
 $checkpoint = static function (array &$state) use (&$checkpoints, $assert): void {
     ++$checkpoints;
@@ -74,12 +57,29 @@ $checkpoint = static function (array &$state) use (&$checkpoints, $assert): void
     $assert(count($attempts) === 1 && ($attempts[0]['status'] ?? null) === 'unknown', 'reservation before transport');
 };
 
+$factoryCalls = 0;
+$transportCalls = [];
+$additionalFactory = static function () use (&$factoryCalls, &$transportCalls) {
+    ++$factoryCalls;
+    return new AnyTourAnexAdditionalPricesClient('test-token',
+        static function (string $url, array $headers, array $options) use (&$transportCalls): array {
+            $transportCalls[] = ['url' => $url, 'headers' => $headers, 'options' => $options];
+            return ['status' => 200, 'body' => json_encode(['data' => [[
+                'price_adult' => '120', 'price_chd' => '120', 'cashrate' => '104.23',
+                'price_converted_adult' => '12507.6', 'price_converted_chd' => '12507.6',
+                'tour' => 987654321, 'currency' => 345, 'dateBeg' => '2026-09-20T00:00:00', 'nights' => 7,
+            ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
+        });
+};
+
 $state = $stateTemplate;
 $result = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
 $assert($result['status'] === 'additional_prices', 'completed status');
-$assert($factoryCalls === 1 && count($client->calls) === 1 && $checkpoints === 1, 'one client call after one checkpoint');
-$assert($client->calls[0] === ['page' => 1, 'pageSize' => 10, 'tour' => 987654321,
-    'dateBeg' => '2026-09-20', 'nights' => 7, 'currency' => 345], 'private retained criteria drive request');
+$assert($factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1, 'one real client transport after one checkpoint');
+$assert(strpos($transportCalls[0]['url'], 'tour=987654321') !== false
+    && strpos($transportCalls[0]['url'], 'dateBeg=2026-09-20') !== false
+    && strpos($transportCalls[0]['url'], 'nights=7') !== false
+    && strpos($transportCalls[0]['url'], 'currency=345') !== false, 'private retained criteria drive real client request');
 $evidence = $result['additional_prices'];
 $assert($evidence['rows'][0]['price_adult'] === '120' && $evidence['rows'][0]['cashrate'] === '104.23'
     && $evidence['rows'][0]['price_converted_adult'] === '12507.6', 'money facts preserved as decimals');
@@ -94,28 +94,61 @@ $assert(strpos($json, '987654321') === false && strpos($json, '"currency":345') 
     'private supplier criteria do not cross public result');
 
 $again = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
-$assert($again['status'] === 'additional_prices' && $factoryCalls === 1 && count($client->calls) === 1 && $checkpoints === 1,
+$assert($again['status'] === 'additional_prices' && $factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1,
     'completed evidence is supplier-free cached read');
 
 $state = $stateTemplate;
-$badClient = new class {
-    public $calls = 0;
-    public function additionalPricesDaily(array $params): array { ++$this->calls; return ['data' => [['price_adult' => 'bad']], 'totalCount' => 1]; }
+$mismatchFactoryCalls = 0;
+$mismatchTransportCalls = 0;
+$mismatchFactory = static function () use (&$mismatchFactoryCalls, &$mismatchTransportCalls) {
+    ++$mismatchFactoryCalls;
+    return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$mismatchTransportCalls): array {
+        ++$mismatchTransportCalls;
+        return ['status' => 200, 'body' => json_encode(['data' => [[
+            'price_adult' => '120', 'price_chd' => '120', 'cashrate' => '104.23',
+            'price_converted_adult' => '12507.6', 'price_converted_chd' => '12507.6',
+            'tour' => 987654320, 'currency' => 345, 'dateBeg' => '2026-09-20', 'nights' => 7,
+        ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
+    });
 };
+$mismatchFailed = false;
+try {
+    anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $mismatchFactory);
+} catch (RuntimeException $error) {
+    $mismatchFailed = $error->getMessage() === 'ANEX_B2B_CONTEXT_MISMATCH';
+}
+$assert($mismatchFailed && $mismatchFactoryCalls === 1 && $mismatchTransportCalls === 1,
+    'wrong supplier program fails closed in real client');
+$attempts = array_values($state['additional_prices']);
+$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown', 'context mismatch remains no-replay unknown');
+$never = static function () { throw new RuntimeException('REPLAY_FORBIDDEN'); };
+$unknown = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
+$assert($unknown['status'] === 'additional_prices_unknown', 'context mismatch is not replayed');
+
+$state = $stateTemplate;
 $badFactoryCalls = 0;
-$badFactory = static function () use ($badClient, &$badFactoryCalls) { ++$badFactoryCalls; return $badClient; };
+$badTransportCalls = 0;
+$badFactory = static function () use (&$badFactoryCalls, &$badTransportCalls) {
+    ++$badFactoryCalls;
+    return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$badTransportCalls): array {
+        ++$badTransportCalls;
+        return ['status' => 200, 'body' => json_encode(['data' => [[
+            'price_adult' => 'bad', 'tour' => 987654321, 'currency' => 345,
+            'dateBeg' => '2026-09-20', 'nights' => 7,
+        ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
+    });
+};
 $failed = false;
 try {
     anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $badFactory);
 } catch (RuntimeException $error) {
     $failed = $error->getMessage() === 'ANEX_INVALID_ADDITIONAL_PRICES';
 }
-$assert($failed && $badFactoryCalls === 1 && $badClient->calls === 1, 'malformed supplier money fails closed');
+$assert($failed && $badFactoryCalls === 1 && $badTransportCalls === 1, 'malformed supplier money fails closed after valid context');
 $attempts = array_values($state['additional_prices']);
-$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown', 'failed transport/result remains no-replay unknown');
-$never = static function () { throw new RuntimeException('REPLAY_FORBIDDEN'); };
+$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown', 'malformed money remains no-replay unknown');
 $unknown = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
-$assert($unknown['status'] === 'additional_prices_unknown', 'unknown attempt is not replayed');
+$assert($unknown['status'] === 'additional_prices_unknown', 'malformed money is not replayed');
 
 $state = $stateTemplate;
 $state['gateway']['saved_offers']['offers'][$offerRef]['supplier_currency_id'] = null;
@@ -129,4 +162,4 @@ $state['gateway']['search']['offers'][0]['kind'] = 'group_minimum';
 $group = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
 $assert($group['status'] === 'not_concrete' && $state['additional_prices'] === [], 'group minimum cannot request additional evidence');
 
-echo "ANEX retained additional-prices binding: {$checks} checks passed\n";
+echo "ANEX retained additional-prices real-client binding: {$checks} checks passed; network=0\n";
