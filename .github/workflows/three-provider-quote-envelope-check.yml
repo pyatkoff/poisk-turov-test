@@ -1,0 +1,42 @@
+name: Three-provider quote envelope
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-quote-envelope.php'
+      - 'app/integrations/three-provider-money-facts.php'
+      - 'app/integrations/three-provider-offer-context.php'
+      - 'app/integrations/three-provider-offer-contract.php'
+      - 'app/integrations/three-provider-operator.php'
+      - 'tests/three-provider-quote-envelope-test.php'
+      - '.github/workflows/three-provider-quote-envelope-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate quote provenance envelope without network
+        run: |
+          php -l app/integrations/three-provider-quote-envelope.php
+          php -l tests/three-provider-quote-envelope-test.php
+          php -d allow_url_fopen=0 tests/three-provider-quote-envelope-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('app/integrations/three-provider-quote-envelope.php').read_text()
+          assert 'AnyTourThreeProviderOfferContext::validate' in src
+          assert 'AnyTourThreeProviderMoneyFacts::withVerifiedQuote' in src
+          assert "!== 'andromeda'" in src
+          assert "'quote_evidence_digest'" in src
+          assert "'current_context_verified' => true" in src
+          assert "'selection_state' => 'disabled'" in src
+          assert "'booking_enabled' => false" in src
+          assert "'search_price_fuel_relation'" not in src
+          for forbidden in ('curl_', 'file_get_contents(', 'PDO', 'bron(', 'bron_ticket', 'supplier_offer_id', 'claiminc'):
+              assert forbidden not in src
+          print('Three-provider quote envelope static boundary: PASS')
+          PY
