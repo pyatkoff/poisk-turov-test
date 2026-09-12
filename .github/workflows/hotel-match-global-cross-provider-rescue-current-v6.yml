@@ -1,0 +1,159 @@
+name: MATCH global cross-provider rescue CURRENT v6
+run-name: MATCH global cross-provider rescue CURRENT v6
+on:
+  push:
+    branches: ['ops/match-global-cross-provider-rescue-current-1971-v6']
+    paths:
+      - '.github/workflows/hotel-match-global-cross-provider-rescue-current-v6.yml'
+      - '.github/match-global-cross-provider-rescue-current-1971-v6.arm'
+permissions: {contents: read, actions: read, issues: write}
+concurrency:
+  group: match-global-cross-provider-rescue-current-1971-v6
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-global-cross-provider-rescue-1971-20260912-v6
+  OUT_DIR: /tmp/match-global-cross-provider-rescue-current-v6
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate supplier-free CURRENT runtime package
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l scripts/diagnostics/hotel_match_current_bulk_review.php
+          php -l scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          grep -Fq "const HMGCR_OPERATION = 'hotel-match-global-cross-provider-rescue-1971-20260911-v1';" scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          ! grep -Fq 'v2_data_tv_get' scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          ! grep -Fq 'AnyTourAnexClient' scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_global_cross_provider_rescue.php
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_global_cross_provider_rescue.php').read_text()
+          assert "foreach(array_keys($places) as $p){if(strlen($p)<4)continue;" in s
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'supplier_calls'=>0" in s and "'database_writes'=>0" in s
+          print('MATCH_GLOBAL_CROSS_PROVIDER_V6_SOURCE_OK')
+          PY
+  review:
+    needs: validate
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && startsWith(github.event.head_commit.message, 'MATCH #1971 arm global CURRENT residual rescue v6')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Prepare patched immutable runtime package
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-global-cross-provider-rescue-current-1971-v6.arm)" = "$OPERATION_ID"
+          mkdir -p "$OUT_DIR/package"
+          cp scripts/diagnostics/hotel_full_catalog_reconcile.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_current_bulk_review.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_global_cross_provider_rescue.php "$OUT_DIR/package/"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/match-global-cross-provider-rescue-current-v6/package/hotel_match_global_cross_provider_rescue.php')
+          s=p.read_text()
+          old="const HMGCR_OPERATION = 'hotel-match-global-cross-provider-rescue-1971-20260911-v1';"
+          new="const HMGCR_OPERATION = 'hotel-match-global-cross-provider-rescue-1971-20260912-v6';"
+          if s.count(old)!=1: raise SystemExit('operation_constant_not_unique')
+          s=s.replace(old,new)
+          old2="foreach(array_keys($places) as $p){if(strlen($p)<4)continue;"
+          new2="foreach(array_keys($places) as $p){$p=(string)$p;if(strlen($p)<4)continue;"
+          if s.count(old2)!=1: raise SystemExit('numeric_place_fix_target_not_unique')
+          p.write_text(s.replace(old2,new2))
+          PY
+          php -l "$OUT_DIR/package/hotel_match_global_cross_provider_rescue.php"
+          (cd "$OUT_DIR/package" && php -r 'require "hotel_match_global_cross_provider_rescue.php"; if(!hmgcr_place_like("1235",[1234=>true])) exit(2); echo "NUMERIC_PLACE_OK\n";')
+      - name: Persist durable reservation before CURRENT DB read
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); src=root/'package'/'hotel_match_global_cross_provider_rescue.php'
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'patched_algorithm_sha256':hashlib.sha256(src.read_bytes()).hexdigest(),'runtime_fix':'cast_numeric_place_array_key_to_string','mode':'entire_current_core8_cross_provider_residual_read_only','providers':['anex','andromeda'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (root/'reservation.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-global-cross-provider-rescue-current-v6-reservation
+          path: ${{ env.OUT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Establish resilient SSH master and upload package
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmgcr6-key"; sock="$RUNNER_TEMP/hmgcr6.sock"; known="$RUNNER_TEMP/hmgcr6-known"; remote="/tmp/hmgcr6-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=900 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi
+            sleep $((attempt*4))
+          done
+          test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -s config.php && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMGCR6_OK' | grep -qx HMGCR6_OK
+          tar -C "$OUT_DIR/package" -czf - . | ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote' && mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null
+          printf '%s\n' "$sock" > "$RUNNER_TEMP/hmgcr6-sockpath"
+          printf '%s\n' "$remote" > "$RUNNER_TEMP/hmgcr6-remotepath"
+      - name: Execute one-shot ENTIRE CURRENT residual review
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sock="$(cat "$RUNNER_TEMP/hmgcr6-sockpath")"; remote="$(cat "$RUNNER_TEMP/hmgcr6-remotepath")"
+          cleanup(){ ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null
+          set +e
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -r 'define(\"FC_LIBRARY_ONLY\",true); \$root=realpath(getcwd()); require \$root.\"/config.php\"; require is_file(\$root.\"/data/db-v1.php\")?\$root.\"/data/db-v1.php\":\$root.\"/v2/data/db-v1.php\"; require \"$remote/hotel_match_global_cross_provider_rescue.php\"; \$db=v2_data_db(); echo \"HMGCR6_JSON:\".fc_json(hmgcr_review(\$db,\"hotel-match-global-cross-provider-rescue-1971-20260912-v6\")).PHP_EOL;'" > "$OUT_DIR/live.stdout" 2> "$OUT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']);out=(root/'live.stdout').read_text(errors='replace');err=(root/'live.stderr').read_text(errors='replace');marker='HMGCR6_JSON:'
+          line=next((x[len(marker):] for x in reversed(out.splitlines()) if x.startswith(marker)),None)
+          if line is None: result={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          else: result=json.loads(line)
+          result['source_sha']=os.environ['GITHUB_SHA'];result['run_id']=int(os.environ['GITHUB_RUN_ID']);result['remote_exit']=int(os.environ['RC']);result['no_replay']=True
+          (root/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          summary={'status':result.get('status'),'counts':result.get('counts'),'coverage':result.get('coverage'),'reason_counts':result.get('reason_counts'),'country_counts':result.get('country_counts'),'provider_counts':result.get('provider_counts')}
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if result.get('status')!='completed' or int(os.environ['RC'])!=0: raise SystemExit(2)
+          PY
+      - name: Preserve immutable v6 result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-global-cross-provider-rescue-current-v6-final
+          path: |
+            ${{ env.OUT_DIR }}/reservation.json
+            ${{ env.OUT_DIR }}/result.json
+            ${{ env.OUT_DIR }}/live.stderr
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record completed mass review
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          python3 - <<'PY' > "$OUT_DIR/summary.md"
+          import json,os
+          from pathlib import Path
+          r=json.loads((Path(os.environ['OUT_DIR'])/'result.json').read_text())
+          c=r.get('counts') or {};v=r.get('coverage') or {}
+          print(f"MATCH #1971 post-delta global CURRENT residual `{r['operation_id']}` completed: classified **{c.get('classified_total',c.get('examined','?'))}**, prepared/auto **{c.get('prepared_count',c.get('auto_accept','?'))}**, coverage triple **{v.get('all_three','?')}**, ANEX links **{v.get('anex_links','?')}**, Andromeda unique **{v.get('andromeda_unique_local','?')}**. Read-only; DB/mapping/supplier/Tourvisor writes/calls 0. NO-REPLAY."
+          PY
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$OUT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT_DIR/summary.md"
