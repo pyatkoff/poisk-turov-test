@@ -16,9 +16,11 @@ on:
     branches:
       - 'ops/int-anex-three-source-price-v2-20260911'
       - 'ops/int-anex-additional-parity-v3-fixed-20260912'
+      - 'ops/int-anex-additional-program2637-20260912'
     paths:
       - '.github/ops/anex-three-source-price-v2-20260911'
       - '.github/ops/anex-additional-parity-v3-20260912'
+      - '.github/ops/anex-additional-program2637-20260912'
 permissions:
   contents: read
 concurrency:
@@ -150,5 +152,62 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Fail after evidence preservation when v3 did not complete
+        if: steps.parity.outcome != 'success'
+        run: exit 1
+  live_program2637:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-program2637-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind receipt to its exact reviewed source parent
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-additional-program2637-20260912'
+          test "$(cat control/.github/ops/anex-additional-program2637-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-additional-program2637;date=2026-10-12;nights=7;currency=3;retained=10304537645;owner=2026-09-12"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Read existing sanitized inventory without supplier search
+        uses: actions/download-artifact@v4
+        with:
+          name: anex-additional-parity-v3-34715151815
+          run-id: 34715151815
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: retained
+      - name: Read one new program supplement from pinned retained evidence
+        id: parity
+        continue-on-error: true
+        run: |
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.control.outputs.source }}'
+          mkdir -m 700 "$RUNNER_TEMP/additional-program2637"
+          python3 -B source/scripts/diagnostics/anex_additional_parity_v3.py "$RUNNER_TEMP/additional-program2637" --program2637 retained/result.json
+      - name: Preserve sanitized program evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-additional-program2637-${{ github.run_id }}
+          path: ${{ runner.temp }}/additional-program2637/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when program read did not complete
         if: steps.parity.outcome != 'success'
         run: exit 1
