@@ -1,0 +1,114 @@
+name: MATCH reconcile unknown literal geo union write
+run-name: MATCH reconcile unknown literal geo union write #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_literal_geo_union_accept_reconcile.php'
+      - '.github/workflows/hotel-match-literal-geo-union-accept-reconcile.yml'
+  push:
+    branches: ['ops/match-literal-geo-union-accept-1971-20260912-v1']
+    paths: ['.github/match-literal-geo-union-accept-reconcile-1971-20260912-v1.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency:
+  group: match-literal-geo-union-accept-reconcile-v1-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+env: {OPERATION_ID: hotel-match-literal-geo-union-accept-reconcile-1971-20260912-v1}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate read-only reconciliation
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_literal_geo_union_accept_reconcile.php
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_literal_geo_union_accept_reconcile.php').read_text().lower()
+          assert 'start transaction read only' in s
+          assert "hotel-match-literal-geo-union-accept-1971-20260912-v1" in s
+          assert 'mapping_digest=?' in s and "promotion['operation_id']" in s
+          for bad in ('insert into','update ','delete from','replace into','curl_init','curl_exec','https://','http://'):
+              assert bad not in s,bad
+          print('MATCH_UNKNOWN_WRITE_RECONCILE_READ_ONLY_OK')
+          PY
+  reconcile:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable reconciliation arm
+        run: test "$(cat .github/match-literal-geo-union-accept-reconcile-1971-20260912-v1.arm)" = "$OPERATION_ID"
+      - name: Build exact read-only payload and preflight SSH
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmlguar-key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          export PAYLOAD="$RUNNER_TEMP/hmlguar.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text();
+              if s.startswith('<?php'):s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          a=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          b=body('scripts/diagnostics/hotel_match_literal_geo_union_accept_reconcile.php')
+          header="if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n"
+          if header in b:b=b.replace(header,'',1)
+          line="require_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n"
+          if line not in b:raise SystemExit('dependency_shape')
+          b=b.replace(line,'',1)
+          wrapper=r'''try{$root=realpath(getcwd());$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $dbHelper;echo "HMLGUAR_JSON:",fc_json(hmlguar_reconcile(v2_data_db(),HMLGUAR_OPERATION)),"\n";}catch(Throwable $e){echo "HMLGUAR_JSON:",json_encode(['status'=>'failed','operation_id'=>HMLGUAR_OPERATION,'reason'=>'remote_error','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0]),"\n";exit(2);}'''
+          Path(os.environ['PAYLOAD']).write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+a+'\n'+b+'\n'+wrapper)
+          PY
+          php -l "$PAYLOAD"
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ok=0; for attempt in 1 2 3 4 5; do if test "$(ssh "${o[@]}" "$U@$H" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf OK' 2>/dev/null)" = OK; then ok=1; break; fi; sleep $((attempt*3)); done; test "$ok" = 1
+      - name: Reserve before CURRENT DB read
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: hotel-match-literal-geo-union-accept-reconcile-v1-reservation, path: '${{ runner.temp }}/hotel-match-literal-geo-union-accept-reconcile-1971-20260912-v1/reservation.json', retention-days: 90}
+      - name: Reconcile CURRENT DB exactly once
+        env: {H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          state=Path(os.environ['STATE']); payload=Path(os.environ['RUNNER_TEMP'])/'hmlguar.php'
+          p=subprocess.run(['ssh','-T','-i',os.environ['RUNNER_TEMP']+'/hmlguar-key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',os.environ['U']+'@'+os.environ['H'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M'],input=payload.read_text(),text=True,capture_output=True,timeout=1200)
+          marker='HMLGUAR_JSON:'; lines=[x[len(marker):] for x in p.stdout.splitlines() if x.startswith(marker)]
+          if len(lines)!=1: r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'marker_missing','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'remote_exit':p.returncode}
+          else:
+              try:r=json.loads(lines[0])
+              except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'json_invalid','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0}
+          raw=(json.dumps(r,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only' if r.get('status')=='completed' and p.returncode==0 else 'unknown_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'found':r.get('found'),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if r.get('status')=='completed' and p.returncode==0:
+              f=r['found'];c=r['coverage_current']; summary=f"MATCH #1971 UNKNOWN write reconciliation `{r['operation_id']}` completed read-only: target v1 rows found **{f['total']}** = ANEX **{f['anex']}** + Andromeda **{f['andromeda']}**. CURRENT triple **{c['all_three']}**, ANEX links **{c['anex_links']}**, Andromeda unique **{c['andromeda_unique_local']}**. Reconciliation DB writes 0, supplier/Tourvisor calls 0."
+          else: summary=f"MATCH #1971 UNKNOWN write reconciliation `{r['operation_id']}` itself is unknown; no successor write allowed until a fresh reconciliation operation succeeds."
+          (state/'summary.md').write_text(summary+'\n'); print(summary)
+          if r.get('status')!='completed' or p.returncode!=0: raise SystemExit(2)
+          PY
+      - name: Preserve reconciliation result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with: {name: hotel-match-literal-geo-union-accept-reconcile-v1-result, path: '${{ runner.temp }}/hotel-match-literal-geo-union-accept-reconcile-1971-20260912-v1/', retention-days: 90}
+      - name: Record reconciliation
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
