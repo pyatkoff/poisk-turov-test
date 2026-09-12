@@ -1,0 +1,208 @@
+name: MATCH Tourvisor wide paced continue v2
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-tourvisor-wide-paced-continue-1971-20260912-v2.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-tourvisor-wide-paced-continue-1971-20260912-v2
+  cancel-in-progress: false
+
+env:
+  FAMILY_ID: hotel-match-tourvisor-wide-paced-continue-1971-20260912-v2
+  FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - sid: s03r
+            date: '2027-01-22'
+          - sid: s04
+            date: '2027-02-19'
+          - sid: s05
+            date: '2027-03-05'
+          - sid: s06
+            date: '2027-04-02'
+    env:
+      SLICE_ID: ${{ matrix.sid }}
+      SEARCH_DATE: ${{ matrix.date }}
+      OPERATION_ID: hotel-match-tourvisor-wide-paced-continue-1971-20260912-v2-${{ matrix.sid }}
+      ARTIFACT_DIR: /tmp/match-tourvisor-wide-paced-v2-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify immutable arm and derive slower paced program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-tourvisor-wide-paced-continue-1971-20260912-v2.arm)" = "$FAMILY_ID"
+          mkdir -m 700 -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 \
+            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" \
+            -o "$ARTIFACT_DIR/frozen.php"
+          export FROZEN="$ARTIFACT_DIR/frozen.php" PROGRAM="$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          src=Path(os.environ['FROZEN']).read_text()
+          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
+          olddate="const M6_DATE = '2026-11-06';"
+          newdate="const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"
+          assert src.count(oldop)==1 and src.count(olddate)==1
+          out=src.replace(oldop,os.environ['OPERATION_ID']).replace(olddate,newdate)
+          old="'onlyCharter'=>false,'onlyDirect'=>false,'operatorIds'=>[M6_TV_OPERATOR]])"
+          new="'onlyCharter'=>false,'onlyDirect'=>false])"
+          assert out.count(old)==1
+          out=out.replace(old,new)
+          out=out.replace("'tourvisor_operator_id'=>M6_TV_OPERATOR","'tourvisor_operator_id'=>null",1)
+          out=out.replace("['status'=>'completed','operator_id'=>M6_TV_OPERATOR,'hotel_count'=>count($tv)","['status'=>'completed','operator_id'=>null,'operator_filter_applied'=>false,'hotel_count'=>count($tv)",1)
+          assert out.count('usleep(750000);')==1
+          out=out.replace('usleep(750000);','usleep(4000000);')
+          needle="$statusPolls=m6_poll_tv($searchId);$fetched=m6_fetch_tv_results($searchId);"
+          assert out.count(needle)==1
+          out=out.replace(needle,"$statusPolls=m6_poll_tv($searchId);sleep(8);$fetched=m6_fetch_tv_results($searchId);",1)
+          needle2="try{v2_data_tv_get('/tours/search/'.$searchId.'/continue');$continueCalls++;}"
+          assert out.count(needle2)==1
+          out=out.replace(needle2,"try{sleep(12);v2_data_tv_get('/tours/search/'.$searchId.'/continue');$continueCalls++;}",1)
+          needle4="$start=v2_data_tv_get('/tours/search',["
+          assert out.count(needle4)==1
+          out=out.replace(needle4,"sleep(90);$start=v2_data_tv_get('/tours/search',[",1)
+          marker="$result=['status'=>'completed','operation_id'=>M6_OPERATION"
+          assert out.count(marker)==1
+          out=out.replace(marker,"$result=['evidence_semantics'=>'tourvisor_anex_account_no_operator_filter_with_returned_operator_audit','status'=>'completed','operation_id'=>M6_OPERATION",1)
+          # Inspect returned hotel/tour rows for operator metadata without extra HTTP requests.
+          fn="function m6_tv_hotels(array $payload): array {"
+          assert out.count(fn)==1
+          replacement="""function m6_operator_values($v): array {\n    $out=[];\n    $walk=function($x) use (&$walk,&$out){\n        if(!is_array($x))return;\n        foreach($x as $k=>$v){\n            $lk=strtolower((string)$k);\n            if(in_array($lk,['operatorid','operator_id','touroperatorid','touroperator_id'],true)&&is_scalar($v)&&trim((string)$v)!=='')$out['id:'.trim((string)$v)]=true;\n            if(in_array($lk,['operator','operatorname','operator_name','touroperator','touroperatorname'],true)&&is_string($v)&&trim($v)!=='')$out['name:'.m6_text($v,80)]=true;\n            if(is_array($v))$walk($v);\n        }\n    };\n    $walk($v);return array_keys($out);\n}\nfunction m6_tv_hotels(array $payload): array {"""
+          out=out.replace(fn,replacement,1)
+          oldrow="$out[(string)(int)$id]=['id'=>(string)(int)$id,'name'=>$name,'aliases'=>m6_aliases($name)];"
+          assert out.count(oldrow)==1
+          newrow="$out[(string)(int)$id]=['id'=>(string)(int)$id,'name'=>$name,'aliases'=>m6_aliases($name),'returned_operator_values'=>m6_operator_values($row)];"
+          out=out.replace(oldrow,newrow,1)
+          provider="'hotels'=>array_values($tv)]"
+          assert out.count(provider)==1
+          provider_new="'returned_operator_values'=>array_values(array_unique(array_merge(...array_map(static fn($h)=>$h['returned_operator_values']??[],array_values($tv))))),'hotels'=>array_values($tv)]"
+          out=out.replace(provider,provider_new,1)
+          assert "'operatorIds'=>[M6_TV_OPERATOR]" not in out
+          assert "operator_filter_applied'=>false" in out
+          assert "TOURVISOR_ANEX_JWT" in out and "'/continue'" in out
+          Path(os.environ['PROGRAM']).write_text(out)
+          print('MATCH_WIDE_PACED_V2_DERIVATION_OK',os.environ['SLICE_ID'],os.environ['SEARCH_DATE'])
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Establish zero-supplier SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);sid=os.environ['SLICE_ID'];key=rt/('wide-paced-v2-key-'+sid);sock=rt/('wide-paced-v2-'+sid+'.sock');known=rt/('wide-paced-v2-known-'+sid)
+          raw=os.environ['KEY_VALUE'].strip(); key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=1500']+common,text=True,capture_output=True,timeout=30)
+              if p.returncode==0:
+                  q=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && test -f config.php && { test -f data/tourvisor-client-v1.php || test -f v2/data/tourvisor-client-v1.php; } && printf MATCH_WIDE_PACED_V2_PREFLIGHT_OK'],text=True,capture_output=True,timeout=30)
+                  if q.returncode==0 and q.stdout.strip()=='MATCH_WIDE_PACED_V2_PREFLIGHT_OK':ok=True;break
+              time.sleep(2)
+          if not ok:raise SystemExit('ssh preflight failed before reservation')
+          PY
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'program.php'
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':os.environ['SEARCH_DATE'],'nights':7,'adults':2,'children':0,'tourvisor_operator_filter':None},'tourvisor_credential_source':'TOURVISOR_ANEX_JWT','paced':True,'poll_pause_seconds':4,'pre_result_pause_seconds':8,'pre_continue_pause_seconds':12,'pre_search_pause_seconds':90,'continue_until_no_growth':True,'operator_audit_from_returned_rows':True,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tourvisor-wide-paced-v2-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute slower paced synchronized slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/('wide-paced-v2-'+os.environ['SLICE_ID']+'.sock');program=(d/'program.php').read_text()
+          p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M'],input=program,text=True,capture_output=True,timeout=1500)
+          prefix='MATCH111FULL_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None)
+          if line is None:data={'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          else:
+              data=json.loads(line);data.update(source_sha=os.environ['GITHUB_SHA'],frozen_source_sha=os.environ['FROZEN_SOURCE_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=1,no_replay=True)
+          (d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          q=data.get('providers') or {};tv=q.get('tourvisor') or {};an=q.get('anex') or {};ad=q.get('andromeda') or {};triples=(((data.get('comparison') or {}).get('unique_alias_triples') or {}).get('count'))
+          print(json.dumps({'slice':os.environ['SLICE_ID'],'status':data.get('status'),'reason':data.get('reason'),'safe_message':data.get('safe_message'),'tourvisor_hotels':tv.get('hotel_count'),'continue_calls':tv.get('continue_calls'),'stop_reason':tv.get('stop_reason'),'returned_operator_values':tv.get('returned_operator_values'),'anex_hotels':an.get('hotel_count'),'andromeda_hotels':ad.get('hotel_count'),'alias_triples':triples},sort_keys=True))
+          if data.get('status')!='completed':raise SystemExit(2)
+          PY
+
+      - name: Build immutable receipt and issue summary
+        if: always()
+        id: result
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'result.json'
+          data=json.loads(p.read_text()) if p.exists() else {'status':'unknown','reason':'result_missing','operation_id':os.environ['OPERATION_ID']}
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();q=data.get('providers') or {};tv=q.get('tourvisor') or {};an=q.get('anex') or {};ad=q.get('andromeda') or {};triples=(((data.get('comparison') or {}).get('unique_alias_triples') or {}).get('count'))
+          ops=tv.get('returned_operator_values') or []
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':data.get('status','unknown'),'reason':data.get('reason'),'safe_message':data.get('safe_message'),'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw).hexdigest(),'tourvisor_operator_filter':None,'tourvisor_credential_source':'TOURVISOR_ANEX_JWT','tourvisor_returned_operator_values':ops,'tourvisor_hotels':tv.get('hotel_count'),'tourvisor_continue_calls':tv.get('continue_calls'),'tourvisor_stop_reason':tv.get('stop_reason'),'anex_hotels':an.get('hotel_count'),'andromeda_hotels':ad.get('hotel_count'),'alias_triples':triples,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          summary=f"MATCH #1971 wide paced v2 `{r['operation_id']}`: **{r['state']}** / NO-REPLAY. Turkey {os.environ['SEARCH_DATE']}/7n, separate `TOURVISOR_ANEX_JWT`, no `operatorIds`, 90s cooldown, continue-to-no-growth. TV **{r['tourvisor_hotels']}** (continue {r['tourvisor_continue_calls']}, stop `{r['tourvisor_stop_reason']}`), returned operator values `{r['tourvisor_returned_operator_values']}`, ANEX **{r['anex_hotels']}**, Andromeda **{r['andromeda_hotels']}**, alias triples **{r['alias_triples']}**. reason `{r['reason']}`, safe `{r['safe_message']}`. DB/mapping/booking/lead writes0."
+          (d/'summary.md').write_text(summary+'\n')
+          PY
+
+      - name: Preserve immutable result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tourvisor-wide-paced-v2-${{ matrix.sid }}-${{ github.run_id }}-result
+          path: ${{ env.ARTIFACT_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record sanitized result in #1971
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$ARTIFACT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
