@@ -64,28 +64,29 @@ jobs:
           echo_marker="    echo 'MATCH111FULL_JSON:'.json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;\n"
           if s.count(marker)!=1 or s.count(echo_marker)!=1: raise SystemExit('provider-tail marker changed')
           i=s.index(marker); j=s.index(echo_marker,i)
-          replacement=r'''    // v2 deliberately stops after Tourvisor + direct ANEX. v1 terminally proved that a transient
-    // Andromeda transport failure can suppress already-collected TV evidence. No Andromeda supplier call here.
-    $indexes=['tourvisor'=>[],'anex'=>[]];
-    foreach(['tourvisor'=>$tv,'anex'=>$anex] as $provider=>$hotels){
-        foreach($hotels as $key=>$h){foreach(($h['aliases']??[]) as $alias){$indexes[$provider][$alias][]=$key;}}
-    }
-    $aliases=array_intersect(array_keys($indexes['tourvisor']),array_keys($indexes['anex']));sort($aliases,SORT_STRING);
-    $pairs=[];$seen=[];
-    foreach($aliases as $alias){
-        $t=array_values(array_unique($indexes['tourvisor'][$alias]??[]));$a=array_values(array_unique($indexes['anex'][$alias]??[]));
-        if(count($t)!==1||count($a)!==1)continue;
-        $tk=$t[0];$ak=$a[0];$dedupe=$tk.'|'.$ak;if(isset($seen[$dedupe]))continue;$seen[$dedupe]=true;
-        $pairs[]=['alias_key'=>$alias,
-            'tourvisor'=>['id'=>$tv[$tk]['id'],'name'=>$tv[$tk]['name']],
-            'anex'=>['id'=>$anex[$ak]['id'],'name'=>$anex[$ak]['name'],'local_id'=>$anex[$ak]['local_id']??null]];
-    }
-    $result['providers']['andromeda']=['status'=>'not_called','reason'=>'isolated_after_v1_ANDROMEDA_TRANSPORT_ERROR'];
-    $result['comparison']=['unique_alias_tv_anex_pairs'=>['count'=>count($pairs),'rows'=>$pairs],
-        'interpretation'=>'diagnostic exact unique alias evidence only; no mapping is created from availability or price'];
-    $result['provider_calls']=['tourvisor_continue'=>$continueCalls,'andromeda_login'=>0,'andromeda_price_pages'=>0,
-        'direct_anex_searchtour'=>'one bounded normalized price response plus dictionaries'];
-'''
+          replacement=(
+              "    // v2 deliberately stops after Tourvisor + direct ANEX. v1 terminally proved that a transient\n"
+              "    // Andromeda transport failure can suppress already-collected TV evidence. No Andromeda supplier call here.\n"
+              "    $indexes=['tourvisor'=>[],'anex'=>[]];\n"
+              "    foreach(['tourvisor'=>$tv,'anex'=>$anex] as $provider=>$hotels){\n"
+              "        foreach($hotels as $key=>$h){foreach(($h['aliases']??[]) as $alias){$indexes[$provider][$alias][]=$key;}}\n"
+              "    }\n"
+              "    $aliases=array_intersect(array_keys($indexes['tourvisor']),array_keys($indexes['anex']));sort($aliases,SORT_STRING);\n"
+              "    $pairs=[];$seen=[];\n"
+              "    foreach($aliases as $alias){\n"
+              "        $t=array_values(array_unique($indexes['tourvisor'][$alias]??[]));$a=array_values(array_unique($indexes['anex'][$alias]??[]));\n"
+              "        if(count($t)!==1||count($a)!==1)continue;\n"
+              "        $tk=$t[0];$ak=$a[0];$dedupe=$tk.'|'.$ak;if(isset($seen[$dedupe]))continue;$seen[$dedupe]=true;\n"
+              "        $pairs[]=['alias_key'=>$alias,\n"
+              "            'tourvisor'=>['id'=>$tv[$tk]['id'],'name'=>$tv[$tk]['name']],\n"
+              "            'anex'=>['id'=>$anex[$ak]['id'],'name'=>$anex[$ak]['name'],'local_id'=>$anex[$ak]['local_id']??null]];\n"
+              "    }\n"
+              "    $result['providers']['andromeda']=['status'=>'not_called','reason'=>'isolated_after_v1_ANDROMEDA_TRANSPORT_ERROR'];\n"
+              "    $result['comparison']=['unique_alias_tv_anex_pairs'=>['count'=>count($pairs),'rows'=>$pairs],\n"
+              "        'interpretation'=>'diagnostic exact unique alias evidence only; no mapping is created from availability or price'];\n"
+              "    $result['provider_calls']=['tourvisor_continue'=>$continueCalls,'andromeda_login'=>0,'andromeda_price_pages'=>0,\n"
+              "        'direct_anex_searchtour'=>'one bounded normalized price response plus dictionaries'];\n"
+          )
           s=s[:i]+replacement+s[j:]
           for marker2 in ['M6_TV_CONTINUE_CAP = 12','M6_HOTEL_CAP = 10000','int $max=40','usleep(5000000)','usleep(15000000)',"'andromeda_login'=>0"]:
               if marker2 not in s: raise SystemExit('v2 marker missing: '+marker2)
