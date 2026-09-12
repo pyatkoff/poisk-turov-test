@@ -135,6 +135,8 @@ Direct ANEX P4/P6 common-session boundary также уже source-complete: PR 
 
 Следующий P6 шаг по direct ANEX — только bounded receiving handoff владельцу SEARCH с сохранением этих refs/expansion/details contract. INT не редактирует SEARCH renderer/controller/UI и не обходит отдельные SEARCH gates.
 
+Andromeda selected-quote durable replay теперь закрыт двумя последовательными guards: #2088 сохраняет `reserved` до любого supplier-вызова, навсегда запечатывает `reserved/unknown` и разрешает supplier-free replay только завершённого browser-safe результата после повторной проверки current retained offer/mapping endpoint-ом; #2090 merged в INT как `3b8acda85ac164f3e0dd5adf9303d9e411434e81` дополнительно валидирует сам persisted completed result перед сохранением и каждым replay. `search_price`, optional `package_price` и verified `final_price` обязаны оставаться отдельными точными `{amount,currency}` фактами с положительной decimal-суммой; malformed/zero/лишние money keys, несогласованные quote/flight states и повреждённый checkpoint fail closed. Это защита целостности persisted evidence, **не** новая price arithmetic и не повод повторять completed supplier chain.
+
 ---
 
 # 3. Приоритет очереди
@@ -375,6 +377,8 @@ Price change contract должен уметь вернуть:
 - status `unchanged | changed | unavailable | unknown`.
 
 Exact selected-claim chain из §2.4 уже доказал изменение `124864 → 135643 RUB` после выбора обязательных рейсов и `calc`. Не запускать его повторно ради подтверждения. Следующая source задача — использовать уже существующий private verified-quote contract/handoff и сохранять exact-claim provenance; не превращать один sample в общую price arithmetic.
+
+Durable quote checkpoint также является частью price provenance: `reserved/unknown` никогда не разрешают повторный supplier call; completed replay допустим только для того же current context и только после строгой повторной валидации persisted browser-safe money/state payload. Повреждение persisted `search/package/final` money — blocker/local failure, а не повод автоматически делать новый quote.
 
 Включение UI acceptance принадлежит SEARCH.
 
