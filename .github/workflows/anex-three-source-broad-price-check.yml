@@ -9,10 +9,10 @@ on:
       - '.github/workflows/anex-three-source-broad-price-check.yml'
   push:
     branches:
-      - 'ops/int-anex-green-gold-program-v9-20260912'
+      - 'ops/int-anex-green-gold-program-v10-20260912'
       - 'ops/int-anex-transport-preflight-v2-20260912'
     paths:
-      - '.github/ops/anex-green-gold-program-v9-20260912'
+      - '.github/ops/anex-green-gold-program-v10-20260912'
       - '.github/ops/anex-transport-preflight-v2-20260912'
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate Green Gold v9 source without network
+      - name: Validate Green Gold v10 source without network
         run: |
           php -l scripts/diagnostics/anex_three_source_broad_price.php
           php -l tests/anex-three-source-broad-price-smoke.php
@@ -48,12 +48,12 @@ jobs:
           assert 'anex_broad_price_pause' in php and 'usleep(3200000)' in php
           assert "'andromeda_search_price'=>'119952'" in php and "'tourvisor_fuel_charge'=>'29596'" in php and "'requeried'=>false" in php
           assert "EXPERIMENT='anex_green_gold_program_20260912_v9'" in py and "CASES=('anex',)" in py
-          assert "'date':'2026-10-05'" in py and "TARGET_ANEX_HOTEL_ID='25084'" in py
+          assert "maximum_bytes=4000000" in py and "maximum_bytes=2000000" not in py
           assert "'additional_prices_called':False" in py and "'tourvisor_requeried':False" in py and "'andromeda_requeried':False" in py
           workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
-          assert 'ops/int-anex-green-gold-program-v9-20260912' in workflow and 'ops/int-anex-transport-preflight-v2-20260912' in workflow
+          assert 'ops/int-anex-green-gold-program-v10-20260912' in workflow and 'ops/int-anex-transport-preflight-v2-20260912' in workflow
           assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
-          print('Green Gold v9 direct-ANEX static boundary: PASS')
+          print('Green Gold v10 response-limit fix static boundary: PASS')
           PY
   transport_preflight:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-transport-preflight-v2-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
@@ -85,11 +85,11 @@ jobs:
           printf '%s\n' "$out"
           test "$(printf '%s\n' "$out" | sed -n '1p')" = 'INT_TRANSPORT_OK'
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-program-v9-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-program-v10-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 7
     env:
-      SOURCE_SHA: 179c1caf6625aead61323b90d9eeb1789f5b71ba
+      SOURCE_SHA: 794db364212778a9e73ea4a46bc5ffc3600d21bd
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -104,25 +104,25 @@ jobs:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - name: Bind exact Green Gold v9 direct-ANEX scenario
+      - name: Bind exact Green Gold v10 direct-ANEX scenario
         run: |
-          test "$(cat control/.github/ops/anex-green-gold-program-v9-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-green-gold-program-v9;scenario=Turkey-2026-10-05-7n-2a-AI-GreenGold21753-Anex25084-direct-only;owner=2026-09-12"
+          test "$(cat control/.github/ops/anex-green-gold-program-v10-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-green-gold-program-v10;scenario=Turkey-2026-10-05-7n-2a-AI-GreenGold21753-Anex25084-direct-only;owner=2026-09-12"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
-      - name: Run fresh Green Gold v9 direct-ANEX program observation
+      - name: Run fresh Green Gold v10 direct-ANEX program observation
         id: parity
         continue-on-error: true
         run: |
           mkdir -m 700 "$RUNNER_TEMP/broad-price"
           python3 -B source/scripts/diagnostics/anex_three_source_broad_price.py "$RUNNER_TEMP/broad-price"
-      - name: Preserve sanitized Green Gold v9 evidence
+      - name: Preserve sanitized Green Gold v10 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-green-gold-program-v9-${{ github.run_id }}
+          name: anex-green-gold-program-v10-${{ github.run_id }}
           path: ${{ runner.temp }}/broad-price/
           if-no-files-found: error
           retention-days: 30
-      - name: Fail after evidence preservation when Green Gold v9 did not complete
+      - name: Fail after evidence preservation when Green Gold v10 did not complete
         if: steps.parity.outcome != 'success'
         run: exit 1
