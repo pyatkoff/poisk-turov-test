@@ -1,0 +1,46 @@
+name: SITE mobile footer density materialize
+
+on:
+  push:
+    branches:
+      - ux/site-mobile-footer-density-20260912
+    paths:
+      - 'scripts/ci/site_mobile_footer_density_materialize.py'
+      - '.github/workflows/site-mobile-footer-density-materialize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/site-mobile-footer-density-20260912
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply bounded footer source change
+        run: python3 scripts/ci/site_mobile_footer_density_materialize.py
+      - name: Restrict drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(git diff --name-only | grep -Ev '^v2/site-footer-v1\.css$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            printf 'Unexpected drift:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
+          git diff --check
+      - name: Remove materializer and commit exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm scripts/ci/site_mobile_footer_density_materialize.py .github/workflows/site-mobile-footer-density-materialize.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add v2/site-footer-v1.css
+          git commit -m 'SITE: compact shared mobile footer'
+          git push origin HEAD:ux/site-mobile-footer-density-20260912
