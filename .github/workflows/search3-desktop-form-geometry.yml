@@ -18,7 +18,7 @@ permissions:
 jobs:
   exact-builder-readback:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
     steps:
       - name: Check out exact PR head
         uses: actions/checkout@v4
@@ -58,3 +58,15 @@ jobs:
           git diff --exit-code -- v2/search3-entry-v1.css docs/project/search3-production-import.json
           python3 -B scripts/build/search3_assets.py --check
           echo SEARCH3_DESKTOP_FORM_GENERATED_PARITY_OK
+
+      - name: Verify CSS printing contract
+        run: node tests/search3-css-printing.cjs
+
+      - name: Verify source build contract
+        run: python3 -B tests/search3_source_build_test.py
+
+      - name: Verify presentation owner contract
+        run: python3 -B tests/search3_production_presentation_test.py
+
+      - name: Verify preview isolation contract
+        run: python3 -B tests/search3_site_preview_isolation_test.py
