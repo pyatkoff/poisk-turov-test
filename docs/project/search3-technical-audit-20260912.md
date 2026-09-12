@@ -164,3 +164,175 @@ production-approved=false. Не сообщать «ничего не опубл�
 нового browser/build/deploy. Заменённые CSS/JS rules или handlers удалять в том же
 пакете. Физический Safari/iPhone, production migration #1334/#1493 и производственная
 приёмка остаются отдельными gates владельца.
+
+
+## Дополнение: живой browser-аудит и план 9.5, 2026-09-12 UTC
+
+Это более поздний осмотр опубликованного Search3 по поручению владельца
+«осмотри всё и составь актуальный план». Предыдущие разделы сохраняют свои даты
+и scope; их старые blockers не перезапускаются. В этом дополнении были обычные
+поиски через пользовательскую форму preview, чтение выбранного Tourvisor-тура и
+локальные действия. Реальные заявки не отправлялись.
+
+### Что именно проверено
+
+- Свежая release-база: `e2ec8c799e300db463951dad877c421973334a53`.
+- Осмотрен только `/_preview/search3-site-candidate/poisk-turov/`, встроенный
+  Chromium; desktop screenshot canvas 1348×926, DOM viewport около 1348–1363×936
+  в зависимости от полосы прокрутки. Это один desktop-сеанс, не mobile acceptance.
+- Последняя подтверждённая публикация: source
+  `4b3ece32995f88f1d7b624857223bce690056bef`,
+  release на момент публикации `986f89e75582396968ad3c30bd2c9badd7d7a414`,
+  [publisher 34708708798](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34708708798).
+  Прочитан успешный log/receipt; query fingerprints реально подключённых
+  entry/filter/bundle assets совпали с manifest этого source.
+  Независимый побайтовый download/readback в этой сессии не выполнен.
+- Более поздняя попытка
+  [34718576444](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34718576444)
+  красная: `ssh:255 / kex_exchange_identification: Connection reset by peer`
+  до активного переключения. Это внешний publisher blocker; повторять deploy
+  из SEARCH-аудита нельзя. Merged release не равен увиденному preview.
+- `current_task` по-прежнему `S3_PRODUCT_CURRENT_ACCEPTANCE`; активные очереди:
+  она же, `S3_OTA_PROVIDER_PARITY`, `S3_PRODUCT_APPROVED_MIGRATION`.
+  Старые published pins/compact-form next_action в state отстают от свежих
+  #996/#1646. Они не становятся новым поручением.
+- Прочитаны реальные owners: native form, entry CSS, lifecycle, URL hydration,
+  renderer, local facets, shortlist, current-price-calendar, selected/lead
+  controller и import manifest. Это не полный security-аудит всех строк repo.
+
+Сценарии: исходная форма и 3 ребёнка; Москва → Турция, 12.10.2026, 7 ночей,
+2 взрослых, AI, без initial operator; до 586 загруженных отелей; ARES CITY,
+раскрытие 8 вариантов; локальный hotel-name + конфликтующая 5★, zero-match и
+удаление фильтра; сохранение двух Tourvisor-предложений; переход в selected,
+перелёты/стоимость и фокус телефона; native required validation пустой формы без
+отправки; возврат; открытие URL во второй вкладке. Отдельно Кемер, 12–14.10.2026,
+7 ночей, 2 взрослых, AI: три календарных даты, локальный ARES CITY/ARES BLUE,
+раскрытие и выбор 13 октября (оба date-поля стали 2026-10-13).
+
+Данные живые и менялись при догрузке: 80 → 107 → 134 отеля во втором сценарии —
+не performance-замер и не доказательство полного покрытия поставщиков.
+В source facet были Tourvisor и Андромеда. Наличие оператора ANEX не доказывает
+direct-ANEX source. Его полная live-доступность в этом сеансе не подтверждена.
+
+### Подтверждённые наблюдения и их причины
+
+| Наблюдение | Следствие / текущий owner |
+| --- | --- |
+| Все требуемые primary-поля присутствуют в исходной форме; оператор находится в advanced и result rail | Не создавать новую форму и не возвращать compact-only набор. После поиска форма целиком скрыта, toolbar не показывает даты/туристов/условия: требуется постоянный понятный контекст поездки и полный основной flow |
+| Три возраста стоят вертикально в правой части группы, растягивая весь ряд; под ночами большая пустая полоса | Причина в >=1200 rule `entry-native-controls.css`. Свежий [#2261](https://github.com/pyatkoff/poisk-turov-test/pull/2261) уже владеет этой работой. Проверить также 3 ребёнка, а не только common 1–2; второй writer запрещён |
+| URL после submit остаётся пустым route; новая вкладка открывает исходные даты/ночи/питание | В прочитанном lifecycle есть URL hydration, но нет обратной записи параметров. Нужен round-trip в существующем owner: search → URL → reload/Back, без нового supplier mapping |
+| Конкретный отель доступен после региона; в ограниченном списке Кемера ARES CITY отсутствует, хотя он есть в результатах | Полноценный поиск отеля по названию не завершён. Локальную навигацию по уже загруженным вариантам улучшать в SEARCH; полноту первичного каталога/новый контракт отдавать точной внешней dependency |
+| Свернутая desktop-карточка занимает около 620 px; много места у fact cells/operator badges, широкие действия; раскрытые варианты длинные | Структурная композиция в текущем renderer/results CSS, соразмерные действия и обозримые альтернативы. Не объявлять уже merged #2144/#2246 отсутствующими |
+| В ARES CITY показано «3 варианта питания», при этом варианты содержат разные записи AI/All Inclusive/«Всё включено» | `hotelSummary` считает различные display strings, тогда как local filter уже имеет meal families. Согласовать представление в canonical owner, сохранить реальные различия AI/UAI/Soft AI, не менять supplier значения |
+| В operator facet одновременно «Анекс Тур»/«Anex Tour», «Интурист»/«Intourist», «Fun&Sun»/«Fun&Sun (RU)» | Renderer уже имеет reviewed display aliases через `operatorIdentity`, filter использует lowercase raw text. Переиспользовать существующую display identity локально; не заводить вторую таблицу и не менять catalog/manual matching |
+| Hotel-name, active chips, 0-match и снятие 5★ работают; питание/цена/operator/source пересекаются на одном offer в source | Сохранить эти свойства. Улучшения нужны точности бюджета, согласованности значений и сохранению состояния; local filters не должны вызывать submit |
+| Групповой минимум ARES CITY 79 670 ₽ получен из Андромеды; доступный выбранный TV-вариант 104 092 ₽ | Свернутая карточка должна объяснять статус минимального предложения до раскрытия. Не пересчитывать цену, не обещать одинаковую готовность selection у разных sources |
+| Два сохранённых предложения занимают две из трёх колонок; справа пусто; сравнение остаётся над selected | Сетка по фактическому числу 1/2/3, обозримые различия, управляемое раскрытие на desktop, сохранённый контекст без вытеснения выбранного тура |
+| После reopen сохранённые снимки есть, но «Нет в текущей выдаче», без восстановления условий | Exact identity/historical status корректны. Нужен явный путь восстановить исходные условия и повторно найти предложения. Нельзя переиспользовать старый offer как новую подтверждённую цену |
+| Selected Tourvisor показывает правильные отель/104 092 ₽/12.10/7 ночей/2 взрослых/AI/номер; переход к телефону работает | Это подтверждённый happy path. Сборы «—», уточняемые рейсы/багаж требуют понятных unknown-labels. 49 вариантов перелёта не были полностью проверены; delivery/actualization parity всех sources не оценена |
+| Календарь на 3 даты ровный, цена подписана как минимум найденных; hotel filter меняет минимумы; выбор дня выставляет обе границы | Sparse fix #2080 существует. При одной найденной дате календарь скрыт по текущему правилу, это не записано как новый баг. Первое подозрение на самораскрытие не подтвердилось в повторном стабильном тесте; transient 0→results остаётся regression case, не подтверждённым дефектом |
+
+### Оценка SEARCH-QUALITY-1
+
+Пять компонент вектором идут в неизменном порядке из
+[канонической рубрики](search3-product-development-plan.md).
+`N` = `not_measured`; при хотя бы одном N итог /10 не рассчитывается.
+Это экспертные оценки только указанного published desktop scope, не оценка
+неопубликованной release-версии, всего рынка, конверсии или physical устройств.
+Предыдущего сопоставимого baseline SEARCH-QUALITY-1 нет; дельта не заявляется.
+
+| Параметр | Пять компонент | Итог | Что мешает 9.5 / завершённой оценке |
+| --- | --- | --- | --- |
+| Desktop visual | 1 / 1 / 1.5 / 1 / N | not_measured | Семейная сетка, плотность cards/compare, размеры result CTA; промежуточные и короткие экраны не осмотрены в этом сеансе |
+| Mobile visual | N / N / N / N / N | not_measured | Нужен просмотр actual screenshots и интерактивный путь на mobile, а не вывод по CSS |
+| Соответствие макету | N / N / N / N / N | not_measured | Сам approved reference image недоступен для просмотра |
+| Полнота основной формы | 2 / 2 / 1.5 / 1 / 1.5 | **8.0/10** | Основной набор есть; неудобные возраста, ограниченный hotel chooser, исчезающий после submit основной контекст/доступ к цене |
+| Filters / decision UX | 1 / 2 / 2 / 2 / 1 | **8.0/10** | Display aliases операторов расходятся, точный бюджет неудобен, URL/reload не сохраняет flow; существующие chips/reset/same-offer projection работают |
+| Карточки и price/CTA | 1.5 / 1 / 1.5 / 1 / 1.5 | **6.5/10** | Растянутая композиция, ложное число meal labels, минимум из требующего проверки source, тяжёлые альтернативы |
+| Календарь | 2 / N / 2 / 2 / 2 | not_measured | Проверены 3 даты, локальный минимум и точный submit; полная неделя/длинный диапазон и mobile не просмотрены |
+| Compare / shortlist | N / 1 / 2 / 2 / 1 | not_measured | 2-card layout и reload dead end подтверждены; лимит/полный storage/focus failure corpus не перепроверены |
+| Selected tour | 2 / 2 / 1.5 / 1.5 / N | not_measured | Unknown fees/flight readability; смена рейса, stale и вся матрица возврата не перепроверены |
+| Lead-form handoff | 2 / 2 / N / N / 1.5 | not_measured | Happy path/phone focus/пустой required проверены; draft, consent reset, pending/error требуют controlled fixture |
+| Accessibility / state UX | N / 1.5 / 1.5 / N / 1 | not_measured | Нет полного keyboard/zoom/announcement/error corpus; reload теряет условия |
+| Архитектурная чистота / стабильность | 2 / N / N / 2 / N | not_measured | Карта активных owners/protected границ проверена; не выполнены заново весь cleanup, source/generated parity, races/security matrix |
+
+Критерий получает 2 только после проверки в заявленном scope. Для приёмки строки
+в 9.5 допустимо не более одного небольшого остатка на 1.5 и четыре подтверждённых
+критерия по 2; существенный дефект на 1 или N не позволяет закрыть строку.
+Никакой средний балл и green отдельного PR не компенсируют незакрытую строку.
+
+### Исполнимые пакеты внутри существующей SEARCH-очереди
+
+Это последовательность улучшений текущей `S3_PRODUCT_CURRENT_ACCEPTANCE`,
+не новый список active_queue_ids. Точные paths/tests каждого пакета заново
+claim в #996; перечисленное ниже — границы owner, не заранее захваченные файлы.
+
+| Порядок | Пакет / конкретный результат | Приёмка и граница |
+| --- | --- | --- |
+| 1 | Полная форма и постоянный контекст поездки: основные параметры/цена остаются понятными в search flow, hotel chooser имеет честную доступность/поиск по уже полученным названиям | Исходная форма → результаты → изменить → возврат, все primary-поля, closed advanced, длинный отель, 0/1/2/3 ребёнка. `v2/index.php` + текущие form/control owners. Новые API/catalog completeness — dependency, не скрытая доработка |
+| 2 | Desktop geometry: принять #2261 и устранить оставшийся дисбаланс family/control groups в том же owner | 1199/1200/1366/1440/1600, короткий desktop 1024×600, mobile regression 375/430. Проверить 3 возраста и визуальную композицию; основной CTA уже соразмерен в увиденном кадре, не переделывать его без нового дефекта |
+| 3 | Calendar acceptance: дополнить 3-day live evidence полной/редкой матрицей; исправлять только воспроизводимый остаток | 1/2/3/7/21 дней, gaps/unknown, date boundary, local budget/meal/operator filters, догрузка, disclosure после transient zero, exact single submit. Текущий `v2/current-price-calendar-v1.js` и его CSS; новый рыночный календарь не входит |
+| 4a | URL/state round-trip в существующем lifecycle: текущий запрос можно повторно открыть и восстановить | from/country/date range/nights/adults/child ages/region/hotel/stars/meal/price проходят submit → URL → reload → Back/Forward без потери; local state отдельно от supplier fields, operator не добавляется в initial query. Никаких PII, lead draft или consent в URL |
+| 4b | OTA result facets: единая существующая operator display identity, последовательные meal labels, точный бюджет, видимые активные условия | Общие aliases не дробят один reviewed brand; source отдельный; same-offer tests price+meal+operator; счётчики/zero/reset/неполные facets; на каждом local edit 0 supplier searches. Не расширять таблицы matching |
+| 5a | Cards: плотная desktop композиция с фото/местом, короткими фактами, соразмерным блоком цены/действия | Side-by-side before/after на frozen корпусе 1/8/20 offers, длинные имена/цены, 1025/1200/1366/1440/1600 и затронутый mobile. Цена и действие видны вместе; смысл не теряется ради снижения высоты |
+| 5b | Offer decision: убрать ложные meal-count aliases, сделать различимые условия вариантов и readiness минимума | Сохраняются exact IDs/цены/валюта/source/operator; AI/UAI/Soft AI не смешиваются без контракта. Merged #2246 сначала учитывать как baseline. Сортировка внутри раскрытия должна иметь понятный порядок и устойчивость при догрузке |
+| 6 | Compare: 1/2/3-column composition по числу записей, обозримые различия, управляемое раскрытие, восстановление условий исторического снимка | 2 и 3 предложения, удаление/лимит, reload/corrupt/quota, focus, stale; selected не оттесняется полным compare. Данные snapshot не заменяют новую exact identity; восстановить текущую доступность без контракта нельзя |
+| 7 | Selected: компактная связная сводка условий и неизвестных сборов/рейсов, понятный выбор перелёта и возврат | Подтвердить на опубликованной версии уже merged #2204; fresh status date-fix owner из #996 до claim controller. Смена рейса/unknown/stale/back проверяется без новой price arithmetic. Provider parity и fuel truth — INT handoff |
+| 8 | Lead handoff: компактный контекст тура у контактов, доступные ошибки/ожидание/повтор и допустимый draft | Без реальных заявок: controlled validation/pending/error, consent отдельно и сбрасывается при нужной смене тура, focus и возврат. Никакого lead transport/field mapping/analytics изменения |
+| 9 | Накопленная независимая desktop/mobile/mockup/a11y acceptance всего пути | Единый exact artifact, реальный served route и все 12 строк SEARCH-QUALITY-1. WebKit automation и physical Safari/iPhone раздельно; неосмотренное остаётся N/deferred |
+
+Отдельный safe шаг, пока #2261 владеет CSS: подготовить/claim 4a или 4b после
+fresh recheck отсутствия writer на lifecycle/renderer/filter owner. UI-реализация
+не входит в этот docs-only audit PR.
+
+### Обязательная матрица приёмки и внешние зависимости
+
+- Desktop: 1024×600, 1199/1200 breakpoint, 1366/1440/1600; mobile:
+  360/375/390/430, 768 portrait. Это целевой corpus; он не заявляется выполненным.
+  Сценарии: семья 0/1/2/3 ребёнка, длинные названия, 0/1/много отелей/вариантов,
+  разные доступные sources и unknown fields.
+- На затронутом пакете проверять его widths/states и exact screenshots; полную
+  матрицу повторять на полезном накопленном рубеже, не ради количества прогонов.
+  Keyboard-only, visible focus, labels, 200% zoom, loading/partial/empty/error,
+  Back/reload и локальное восстановление входят в итоговую a11y/state приёмку.
+- **Reference dependency:** `Интерфейс поиска туров AnyTour.png`,
+  `libfile_bcd3a18be788819193fbc1924082e3ca`, указан в каноническом плане,
+  но бинарный файл в этой сессии не получен. Соответствие не оценено.
+- **Mobile evidence dependency:** текущий Browser не предоставил смену viewport;
+  полученные GitHub artifact download URLs при чтении вернули HTTP 403 / 1010.
+  Скриншоты CI не были осмотрены, блок не обходился. Получить доступ к exact
+  images штатным способом либо использовать доступную среду mobile viewport.
+- **Publisher dependency:** SSH reset выше; подтвердить актуальный статус
+  свободного publisher и deployment prerequisites накопленного release перед
+  любой публикацией. Новые data/schema изменения других owners не публиковать
+  автоматически как часть SEARCH CSS-пакета.
+- **INT/MATCH dependency:** полная первичная доступность hotel catalog,
+  direct ANEX и Andromeda selection/flight/fuel parity, подтверждённые неизвестные
+  поля. SEARCH делает честный текущий UI и точный handoff, не подменяет контракты.
+- SITE/footer/SEO остаются у своих owners. Визуал футера не захватывается ради
+  повышения SEARCH-оценки. Production migration #1334/#1493 отдельно согласуется.
+- Physical Safari/iPhone, delivery реальной заявки и пользовательский пилот:
+  deferred/not_measured. Для пилота сохранить правило плана: минимум 4 из 5
+  участников выполняют каждую из пяти задач без подсказки и верно называют цену
+  и условия; это не измерение конверсии.
+
+### Скриншоты этого осмотра и статус
+
+Лично просмотрены исходные browser captures:
+`search3-audit-family-desktop-1789250884537.jpg`,
+`search3-audit-expanded-desktop-1789251136187.jpg` (фактически кадр ещё
+свернутой карточки, не evidence раскрытия),
+`search3-audit-compare-desktop-1789251311873.jpg`,
+`search3-audit-selected-desktop-1789251364620.jpg` (нижняя часть lead),
+`search3-audit-selected-summary-1789251581839.jpg`,
+`search3-audit-calendar-desktop-1789252261442.jpg`.
+Это captures текущей сессии, а не заново осмотренные CI-артефакты; бинарные файлы
+не включены в docs PR. Сценарии раскрытых вариантов дополнительно зафиксированы
+в live DOM. Мгновенный screenshot после click мог отставать на один кадр, поэтому
+не трактовался как новый runtime defect.
+
+Результат дополнения: подтверждённый desktop audit, частичный числовой baseline
+и конкретная последовательность работ. **Не 9.5 acceptance, не новое UI-исправление,
+не preview publication и не production approval.** Для docs-only пакета достаточно
+diff/link/claim consistency и применимых CI guards; source/generated/hash
+сохраняются неизменными.
