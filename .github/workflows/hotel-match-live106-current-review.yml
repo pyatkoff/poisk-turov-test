@@ -1,0 +1,101 @@
+name: MATCH live106 CURRENT evidence review 1971
+on:
+  push:
+    branches: ['ops/match-mass-bridge-1971-20260912']
+    paths: ['.github/match-live106-current-review-1971-20260912-v1.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-live106-current-review, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-live106-current-evidence-review-1971-20260912-v1
+  OUT: /tmp/match-live106-current-review
+jobs:
+  review:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate source
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-live106-current-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_live106_current_review.php
+          mkdir -p "$OUT"
+      - name: Restore immutable post539 CURRENT census
+        uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', run-id: 34692312009, artifact-ids: '10297520546', path: '/tmp/live106-census', merge-multiple: true}
+      - name: Restore immutable original ANEX XML catalog evidence
+        uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', run-id: 34150890531, artifact-ids: '10029330453', path: '/tmp/live106-xml', merge-multiple: true}
+      - name: Build exact 106-row source manifest and durable reservation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,hashlib,base64,os,pathlib
+          census=pathlib.Path('/tmp/live106-census/result.json').read_bytes(); assert hashlib.sha256(census).hexdigest()=='e6fd376a447f036a6523bdf98e0ea9d7267e3d4d9a5ec65e76924237231a6a8d'
+          c=json.loads(census); assert c['operation_id']=='hotel-match-post539-current-census-1971-20260912-v1' and c['status']=='completed'
+          bp=pathlib.Path('/tmp/live106-xml/anex-hotel-catalog-match.json'); braw=bp.read_bytes(); assert hashlib.sha256(braw).hexdigest()=='1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445'
+          base=json.loads(braw); by={int(r['external_id']):r for r in base['matches']}
+          rows=[]
+          for o in c['observed_unresolved_top']:
+              aid=int(o['anex_hotel_id']); b=by.get(aid,{})
+              rows.append({'anex_hotel_id':aid,'observation_name':o.get('hotel_name',''),'country_id':o.get('country_id'),'anex_country_id':o.get('anex_country_id'),'search_count':o.get('search_count',0),'last_seen_utc':o.get('last_seen_utc'),'in_staging':o.get('in_staging',False),'xml_name':b.get('name'),'xml_alternate_name':b.get('alternate_name'),'xml_country':b.get('country'),'xml_town':b.get('town')})
+          out={'schema_version':1,'source_census_operation_id':c['operation_id'],'source_census_run_id':34692312009,'rows':rows}
+          raw=(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); assert len(rows)==106 and hashlib.sha256(raw).hexdigest()=='2b0170918707f5cebb5bb257473d402fcd63427ac83959307f9cfd2e8566f93c'
+          pathlib.Path(os.environ['OUT'],'manifest.json').write_bytes(raw)
+          src=pathlib.Path('scripts/diagnostics/hotel_match_live106_current_review.php').read_text(); marker="const OP='hotel-match-live106-current-evidence-review-1971-20260912-v1';"; assert src.count(marker)==1
+          capsule=src.replace(marker,marker+"\ndefine('HM_LIVE_MANIFEST_B64','"+base64.b64encode(raw).decode()+"');",1)
+          pathlib.Path(os.environ['RUNNER_TEMP'],'live106-capsule.php').write_text(capsule)
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'manifest_sha256':hashlib.sha256(raw).hexdigest(),'source_count':106,'run_id':int(os.environ['GITHUB_RUN_ID']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          pathlib.Path(os.environ['OUT'],'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PY
+          php -l "$RUNNER_TEMP/live106-capsule.php"
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: 'match-live106-review-${{ github.run_id }}-reserved'
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/manifest.json
+          retention-days: 90
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: '/tmp/live106-reservation-readback', merge-multiple: true}
+      - name: Verify reservation and run one server-CURRENT read-only review
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/live106-reservation-readback/reservation.json
+          cmp "$OUT/manifest.json" /tmp/live106-reservation-readback/manifest.json
+          key="$RUNNER_TEMP/live106-key";sock="$RUNNER_TEMP/live106.sock";known="$RUNNER_TEMP/live106-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ok=0
+          for n in 1 2 3;do rm -f "$sock"; if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER_VALUE@$HOST_VALUE";then ok=1;break;fi;sleep 12;done
+          test "$ok" = 1
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php'
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M' < "$RUNNER_TEMP/live106-capsule.php" > "$OUT/stdout" 2> "$OUT/stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']); raw=(d/'stdout').read_bytes(); lines=[x[len(b'LIVE106_REVIEW:'):] for x in raw.splitlines() if x.startswith(b'LIVE106_REVIEW:')]
+          x=json.loads(lines[0]) if len(lines)==1 else {'status':'unknown','safe_message':'marker_missing'}
+          result=json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()+b'\n';(d/'result.json').write_bytes(result)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':x.get('status'),'source_count':x.get('source_count'),'safe_count':x.get('safe_count'),'needs_extra_count':x.get('needs_extra_count'),'reason_counts':x.get('reason_counts'),'result_sha256':hashlib.sha256(result).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 live106 CURRENT review: **{x.get('status')}**. Reviewed **{x.get('source_count')}** live unresolved/unprotected ANEX rows in one pass; safe after CURRENT guards **{x.get('safe_count')}**, needs extra evidence **{x.get('needs_extra_count')}**; reasons `{x.get('reason_counts')}`. DB/mapping/supplier/Tourvisor writes/calls0. Run `{os.environ['GITHUB_RUN_ID']}`. NO-REPLAY."
+          (d/'summary.md').write_text(s+'\n');print(s)
+          raise SystemExit(0 if int(os.environ['RC'])==0 and x.get('status')=='completed' and x.get('source_count')==106 else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-live106-review-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
+      - name: Cleanup runner-only material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/live106-key" "$RUNNER_TEMP/live106-known" "$RUNNER_TEMP/live106-capsule.php" "$OUT/stdout" "$OUT/stderr"
