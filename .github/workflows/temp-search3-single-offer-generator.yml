@@ -1,0 +1,47 @@
+name: TEMP Search3 single-offer generator
+on:
+  push:
+    branches: [ux/search3-single-offer-wording-20260912]
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/search3-single-offer-wording-20260912
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefix scripts/build/search3-js --ignore-scripts
+      - name: Patch renderer and focused contract
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('v2/results-renderer-v5.js'); s=p.read_text()
+          old="function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length?tourCountLabel(tours.length)+' для сравнения':'';}"
+          new="function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length===1?'1 вариант тура':tours.length>1?tourCountLabel(tours.length)+' для сравнения':'';}"
+          if new not in s:
+            assert s.count(old)==1, 'choiceHint anchor drift'; s=s.replace(old,new)
+          p.write_text(s)
+          p=Path('tests/search3-honest-results-controls.cjs'); s=p.read_text()
+          anchor="assert.match(renderer, /if\\(m==='stars'\\)/);\n"
+          add=anchor+"assert.ok(renderer.includes(\"return tours.length===1?'1 вариант тура':tours.length>1?tourCountLabel(tours.length)+' для сравнения':'';\"),\n  'one loaded offer is described as a tour option, while multiple offers retain comparison wording');\n"
+          if add not in s:
+            assert s.count(anchor)==1, 'test anchor drift'; s=s.replace(anchor,add)
+          p.write_text(s)
+          PY
+      - run: node scripts/build/search3-js/shared-runtime.cjs --write
+      - run: node scripts/build/search3-js/shared-runtime.cjs --check
+      - run: node tests/search3-honest-results-controls.cjs
+      - name: Commit generated package
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add v2/results-renderer-v5.js v2/search3-shared-runtime.json tests/search3-honest-results-controls.cjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'SEARCH: clarify single-offer card wording [generated single-offer]'
+          git push origin HEAD:ux/search3-single-offer-wording-20260912
