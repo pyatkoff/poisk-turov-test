@@ -1,9 +1,9 @@
-name: MATCH global coordinate-nearest CURRENT v4
+name: MATCH global coordinate-nearest CURRENT v5
 
 on:
   push:
     branches: ['ops/match-residual-ensemble-current-1971-v2']
-    paths: ['.github/match-global-coordinate-nearest-rescue-current-1971-20260912-v4.arm']
+    paths: ['.github/match-global-coordinate-nearest-rescue-current-1971-20260912-v5.arm']
 
 permissions:
   contents: read
@@ -11,12 +11,12 @@ permissions:
   issues: write
 
 concurrency:
-  group: match-global-coordinate-nearest-current-1971-20260912-v4
+  group: match-global-coordinate-nearest-current-1971-20260912-v5
   cancel-in-progress: false
 
 env:
-  OPERATION_ID: hotel-match-global-coordinate-nearest-rescue-1971-20260912-v4
-  STATE_DIR: /tmp/match-global-coordinate-nearest-current-v4
+  OPERATION_ID: hotel-match-global-coordinate-nearest-rescue-1971-20260912-v5
+  STATE_DIR: /tmp/match-global-coordinate-nearest-current-v5
 
 jobs:
   review:
@@ -28,7 +28,7 @@ jobs:
       - name: Validate unchanged coordinate resolver and derive new operation package
         run: |
           set -euo pipefail
-          test "$(cat .github/match-global-coordinate-nearest-rescue-current-1971-20260912-v4.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-global-coordinate-nearest-rescue-current-1971-20260912-v5.arm)" = "$OPERATION_ID"
           php -l scripts/diagnostics/hotel_match_global_coordinate_nearest_rescue.php
           php -l tests/hotel-match-global-coordinate-nearest-rescue-test.php
           php tests/hotel-match-global-coordinate-nearest-rescue-test.php
@@ -41,16 +41,18 @@ jobs:
               s=Path(path).read_text(encoding='utf-8')
               if s.startswith('<?php'): s=s[5:]
               return s.replace('declare(strict_types=1);','',1)
+          cli_guard="if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){fwrite(STDERR,\"library_only: use guarded CURRENT review workflow\\n\");exit(64);}"
           helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
           bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
           cross=body('scripts/diagnostics/hotel_match_global_cross_provider_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          assert cross.count(cli_guard)==1,(cross.count(cli_guard),'cross_cli_guard_count')
+          cross=cross.replace(cli_guard,'',1)
           review=body('scripts/diagnostics/hotel_match_global_coordinate_nearest_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_cross_provider_rescue.php';\n",'',1)
           old="const HMGCN_OPERATION='hotel-match-global-coordinate-nearest-rescue-1971-20260911-v1';"
           new="const HMGCN_OPERATION='"+os.environ['OPERATION_ID']+"';"
           assert review.count(old)==1
           review=review.replace(old,new,1)
-          cli_guard="if(PHP_SAPI==='cli'&&realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){fwrite(STDERR,\"library_only: use guarded CURRENT review workflow\\n\");exit(64);}"
-          assert review.count(cli_guard)==1,(review.count(cli_guard),'cli_guard_count')
+          assert review.count(cli_guard)==1,(review.count(cli_guard),'coordinate_cli_guard_count')
           review=review.replace(cli_guard,'',1)
           resolver_stripped=re.sub(r'/\*.*?\*/|//[^\n]*','',review,flags=re.S)
           for pat in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bREPLACE\s+INTO\b',r'\bcurl_\w+\s*\(',r'https?://']:
@@ -59,7 +61,7 @@ jobs:
           assert 'HMGCN_COORD_BLOCK_M=5000.0' in review and 'HMGCN_SINGLE_M=50.0' in review
           assert "'zero_token_coordinate_only_auto_accept'=>false" in review
           assert "['ANNEX','BEACH','GARDEN','NORTH','SOUTH']" in review
-          assert new in review and old not in review and 'library_only: use guarded CURRENT review workflow' not in review
+          assert new in review and old not in review
           wrapper=r'''
           try{
             $root=realpath(getcwd());
@@ -77,8 +79,9 @@ jobs:
           for pat in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bREPLACE\s+INTO\b',r'\bcurl_\w+\s*\(',r'https?://']:
               assert not re.search(pat,wrapper_stripped,re.I),pat
           code="<?php\ndeclare(strict_types=1);\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+cross+'\n'+review+'\n'+wrapper
+          assert 'library_only: use guarded CURRENT review workflow' not in code
           Path(os.environ['OUT']).write_text(code,encoding='utf-8')
-          print('MATCH_COORD_CURRENT_V4_PACKAGE_OK')
+          print('MATCH_COORD_CURRENT_V5_PACKAGE_OK')
           PY
           php -l "$OUT"
       - name: Persist durable reservation before CURRENT DB access
@@ -94,7 +97,7 @@ jobs:
       - name: Preserve reservation
         uses: actions/upload-artifact@v4
         with:
-          name: match-global-coordinate-nearest-current-v4-${{ github.run_id }}-reserved
+          name: match-global-coordinate-nearest-current-v5-${{ github.run_id }}-reserved
           path: ${{ env.STATE_DIR }}/reservation.json
           if-no-files-found: error
           retention-days: 90
@@ -152,7 +155,7 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: match-global-coordinate-nearest-current-v4-${{ github.run_id }}-final
+          name: match-global-coordinate-nearest-current-v5-${{ github.run_id }}-final
           path: ${{ env.STATE_DIR }}/
           if-no-files-found: warn
           retention-days: 90
