@@ -6,9 +6,9 @@ import sys
 
 from anex_search3_three_source_price import ssh_php_no_mux, transport_failure
 
-EXPERIMENT='anex_three_source_broad_price_20260912_v4'
+EXPERIMENT='anex_three_source_broad_price_20260912_v5'
 CASES=('anex','andromeda','tourvisor')
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-27','nights':8,'adults':1,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-12','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def source():
@@ -49,6 +49,10 @@ def validate_coverage(value,case_id):
     return coverage
 
 
+def _provider_id(value):
+    return value is None or (isinstance(value,str) and value.isdigit() and not value.startswith('0') and len(value)<=18)
+
+
 def validate_case(value,case_id):
     if not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('experiment_id')!=EXPERIMENT \
             or value.get('case_id')!=case_id or value.get('automatic_retry') is not False \
@@ -67,12 +71,16 @@ def validate_case(value,case_id):
     validate_coverage(value,case_id)
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or not isinstance(row.get('local_hotel_id'),int) or row['local_hotel_id']<1 \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=8 or row.get('adults')!=1 or row.get('children')!=0 \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=SPEC['nights'] or row.get('adults')!=SPEC['adults'] or row.get('children')!=0 \
                 or row.get('meal_family')!='ai' or row.get('meal_key')!='ai' or row.get('meal_qualifiers')!=[] \
                 or row.get('meal_equivalence_verified') is not False or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str) \
                 or row.get('fuel_inclusion_verified') is not False or row.get('final_price_verified') is not False:
             raise ValueError('broad_offer_invalid')
+        if case_id=='anex':
+            if 'supplier_tour_program_id' not in row or 'supplier_currency_id' not in row \
+                    or not _provider_id(row.get('supplier_tour_program_id')) or not _provider_id(row.get('supplier_currency_id')):
+                raise ValueError('broad_program_invalid')
     return value
 
 
@@ -86,6 +94,29 @@ def index(results):
         if value.get('status')!='completed': continue
         for row in value['offers']: out[case].setdefault(key(row),[]).append(row)
     return out
+
+
+def program_fuel_cohorts(idx,triple):
+    cohorts={}
+    for item in triple:
+        for anex in idx['anex'][item]:
+            program=anex.get('supplier_tour_program_id');currency=anex.get('supplier_currency_id')
+            if program is None: continue
+            cohort=cohorts.setdefault((program,currency),{'supplier_tour_program_id':program,'supplier_currency_id':currency,
+                'local_hotel_ids':set(),'hotel_names':set(),'tourvisor_fuel_charges':set(),'aligned_tuple_count':0})
+            cohort['local_hotel_ids'].add(item[0]);
+            if isinstance(anex.get('hotel_name'),str) and anex['hotel_name']: cohort['hotel_names'].add(anex['hotel_name'])
+            cohort['aligned_tuple_count']+=1
+            for tv in idx['tourvisor'][item]:
+                fuel=tv.get('fuel_charge')
+                if fuel is not None: cohort['tourvisor_fuel_charges'].add(fuel)
+    out=[]
+    for item in cohorts.values():
+        out.append({'supplier_tour_program_id':item['supplier_tour_program_id'],'supplier_currency_id':item['supplier_currency_id'],
+            'local_hotel_ids':sorted(item['local_hotel_ids']),'hotel_names':sorted(item['hotel_names']),
+            'tourvisor_fuel_charges':sorted(item['tourvisor_fuel_charges']),'aligned_tuple_count':item['aligned_tuple_count'],
+            'fuel_equivalence_verified':False,'arithmetic_applied':False})
+    return sorted(out,key=lambda row:(int(row['supplier_tour_program_id']),str(row['supplier_currency_id'])))
 
 
 def comparison(results):
@@ -113,10 +144,11 @@ def comparison(results):
         pair_examples[name]=selected
     counts={case:{'offers':len(results.get(case,{}).get('offers',[])),'unique_tuples':len(sets[case]),
                   'fuel_reported_offers':sum(1 for row in results.get(case,{}).get('offers',[]) if row.get('fuel_charge') is not None),
+                  'program_id_observed_offers':sum(1 for row in results.get(case,{}).get('offers',[]) if row.get('supplier_tour_program_id') is not None),
                   'coverage_state':results.get(case,{}).get('details',{}).get('coverage',{}).get('state')} for case in CASES}
     return {'provider_counts':counts,'triple_tuple_count':len(triple),'pair_tuple_counts':{name:len(items) for name,items in pairs.items()},
-            'triple_examples':examples,'pair_only_examples':pair_examples,
-            'interpretation':'display-level comparison candidates only; price equality never proves package identity and fuel is never added automatically'}
+            'triple_examples':examples,'pair_only_examples':pair_examples,'anex_program_fuel_cohorts':program_fuel_cohorts(idx,triple),
+            'interpretation':'display-level comparison candidates only; ANEX tourKey is provider-scoped cohort evidence; price equality never proves package identity and fuel is never added automatically'}
 
 
 def save(path,value):
@@ -134,6 +166,7 @@ def run(output):
     all_done=len(results)==3 and all(value['status']=='completed' for value in results.values())
     unresolved={
         'anex_unmapped_received':results.get('anex',{}).get('details',{}).get('unmapped_received'),
+        'anex_program_id_observed_offers':results.get('anex',{}).get('details',{}).get('program_id_observed_offers'),
         'andromeda_received_offers':results.get('andromeda',{}).get('details',{}).get('received_offers'),
         'andromeda_mapped_offers':results.get('andromeda',{}).get('details',{}).get('mapped_offers'),
         'coverage_states':{case:results.get(case,{}).get('details',{}).get('coverage',{}).get('state') for case in CASES},
