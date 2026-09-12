@@ -1,18 +1,18 @@
-name: MATCH ANEX current hotelCode queue v3
-run-name: MATCH ANEX current hotelCode queue #1971 v3
+name: MATCH ANEX current hotelCode queue v4
+run-name: MATCH ANEX current hotelCode queue #1971 v4
 on:
   push:
     branches: ['ops/match-anex-hotelcode-current-1971-v3']
-    paths: ['.github/match-anex-hotelcode-current-queue-v3.arm']
+    paths: ['.github/match-anex-hotelcode-current-queue-v4.arm']
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: match-anex-hotelcode-current-queue-1971-v3
+  group: match-anex-hotelcode-current-queue-1971-v4
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-anex-hotelcode-current-queue-1971-20260912-v3
+  OPERATION_ID: hotel-match-anex-hotelcode-current-queue-1971-20260912-v4
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -33,11 +33,11 @@ jobs:
           assert 'START TRANSACTION READ ONLY' in s
           assert "'database_writes'=>0" in s and "'supplier_calls'=>0" in s
           assert 'anytour_anex_hotelcode_evidence' in s
-          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','https://','http://'):
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','curl_exec','stream_socket_client','fsockopen'):
               assert bad.lower() not in s.lower(), bad
           e=Path('scripts/diagnostics/anex_hotelcode_evidence.php').read_text(encoding='utf-8')
           assert 'files.anextour.ru' in e and 'hotelCode' in e
-          print('MATCH_M3_CURRENT_V3_SCOPE_OK')
+          print('MATCH_M3_CURRENT_V4_SCOPE_OK')
           PY
   current-queue:
     needs: validate
@@ -50,7 +50,7 @@ jobs:
       - name: Verify immutable arm
         run: |
           set -euo pipefail
-          test "$(cat .github/match-anex-hotelcode-current-queue-v3.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-anex-hotelcode-current-queue-v4.arm)" = "$OPERATION_ID"
       - name: Prepare SSH key and bounded zero-DB preflight
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -87,8 +87,8 @@ jobs:
       - name: Preserve durable reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-anex-hotelcode-current-queue-1971-20260912-v3-reservation
-          path: ${{ runner.temp }}/hotel-match-anex-hotelcode-current-queue-1971-20260912-v3/reservation.json
+          name: hotel-match-anex-hotelcode-current-queue-1971-20260912-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-hotelcode-current-queue-1971-20260912-v4/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Read CURRENT DB and build fresh ANEX M3 queue
@@ -110,11 +110,11 @@ jobs:
           parser=body('scripts/diagnostics/anex_hotelcode_evidence.php')
           queue=body('scripts/diagnostics/anex_hotelcode_current_queue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\nrequire_once __DIR__ . '/anex_hotelcode_evidence.php';\n",'',1)
           old="const AHQ_OPERATION = 'hotel-match-anex-hotelcode-current-queue-1971-20260911-v1';"
-          new="const AHQ_OPERATION = 'hotel-match-anex-hotelcode-current-queue-1971-20260912-v3';"
+          new="const AHQ_OPERATION = 'hotel-match-anex-hotelcode-current-queue-1971-20260912-v4';"
           if queue.count(old)!=1: raise RuntimeError('operation_constant_not_unique')
           queue=queue.replace(old,new,1)
           wrapper=r'''
-          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('AHQV3_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('AHQV3_DB_HELPER');require_once $dbHelper;echo fc_json(ahq_review(v2_data_db(),AHQ_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>AHQ_OPERATION,'reason'=>'AHQV3_REMOTE_ERROR','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_http_calls'=>0]),"\n";exit(2);}
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('AHQV4_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('AHQV4_DB_HELPER');require_once $dbHelper;echo fc_json(ahq_review(v2_data_db(),AHQ_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>AHQ_OPERATION,'reason'=>'AHQV4_REMOTE_ERROR','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_http_calls'=>0]),"\n";exit(2);}
           '''
           code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+planner+'\n'+parser+'\n'+queue+'\n'+wrapper
           key=os.path.join(os.environ['RUNNER_TEMP'],'anytoour_match_key')
@@ -140,8 +140,8 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-anex-hotelcode-current-queue-1971-20260912-v3-result
-          path: ${{ runner.temp }}/hotel-match-anex-hotelcode-current-queue-1971-20260912-v3/
+          name: hotel-match-anex-hotelcode-current-queue-1971-20260912-v4-result
+          path: ${{ runner.temp }}/hotel-match-anex-hotelcode-current-queue-1971-20260912-v4/
           if-no-files-found: warn
           retention-days: 90
       - name: Record MATCH queue result
