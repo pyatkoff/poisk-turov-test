@@ -10,6 +10,8 @@ const vm = require('node:vm');
   const returned = [];
   let listedButtons = [];
   let tourShouldFail = false;
+  let revealTarget = null;
+  let revealCalls = 0;
 
   function action(className) {
     return {
@@ -34,7 +36,7 @@ const vm = require('node:vm');
     node.focuses = 0;
     node.scrolls = 0;
     node.getAttribute = name => node.attributes.get(name) || null;
-    node.getClientRects = () => node.connected ? [{}] : [];
+    node.getClientRects = () => node.connected && !node.hidden ? [{}] : [];
     node.focus = () => { node.focuses += 1; };
     node.scrollIntoView = options => { node.scrolls += 1; node.scrollOptions = options; };
     return node;
@@ -44,7 +46,7 @@ const vm = require('node:vm');
   const selected = {
     hidden: true,
     innerHTML: '',
-    contains(node) { return node && node !== original && node !== replacement; },
+    contains(node) { return node && node !== original && node !== replacement && node !== collapsed; },
     querySelector() { return null; },
     querySelectorAll() { return []; },
     focuses: 0,
@@ -68,6 +70,8 @@ const vm = require('node:vm');
   const original = focusableTour(17);
   original.textContent = 'Выбрать тур';
   const replacement = focusableTour(17);
+  const collapsed = focusableTour(17);
+  collapsed.hidden = true;
   const document = {
     body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
     cookie: '',
@@ -79,6 +83,14 @@ const vm = require('node:vm');
   };
   const window = {
     V2_CONFIG: {},
+    V2Results: {
+      revealOfferAlternatives(tid) {
+        revealCalls += 1;
+        if (!revealTarget || String(revealTarget.dataset.tid) !== String(tid)) return null;
+        revealTarget.hidden = false;
+        return revealTarget;
+      }
+    },
     V2Runtime: {
       state: {},
       api(actionName) {
@@ -147,12 +159,26 @@ const vm = require('node:vm');
   assert.equal(returned[1].source, replacement, 'rerendered action with the same tour id is recovered');
   frames.shift()();
   assert.equal(replacement.focuses, 1);
+  assert.equal(revealCalls, 0, 'visible exact offer does not force hotel disclosure open');
 
   replacement.connected = false;
-  listedButtons = [];
+  listedButtons = [collapsed];
+  revealTarget = collapsed;
   selected.hidden = false;
   click({ target: back, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
-  assert.equal(returned[2].source, null, 'missing source is reported truthfully');
+  assert.equal(revealCalls, 1, 'collapsed exact offer asks the canonical renderer to reopen its hotel variants');
+  assert.equal(collapsed.hidden, false, 'canonical renderer makes the exact offer visible again');
+  assert.equal(returned[2].source, collapsed, 'return event identifies the reopened exact offer');
+  frames.shift()();
+  assert.equal(collapsed.focuses, 1, 'reopened exact offer receives focus');
+  assert.equal(collapsed.scrolls, 1, 'reopened exact offer is revealed in the viewport');
+
+  collapsed.connected = false;
+  listedButtons = [];
+  revealTarget = null;
+  selected.hidden = false;
+  click({ target: back, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+  assert.equal(returned[3].source, null, 'missing source is reported truthfully');
   frames.shift()();
   assert.equal(results.focuses, 1, 'results receive fallback focus');
   assert.equal(resultsAttributes.get('tabindex'), '-1', 'fallback focus adds a temporary target');
@@ -171,5 +197,5 @@ const vm = require('node:vm');
   assert.equal(failed.textContent, 'Повторить загрузку тура', 'failed request restores the exact retry label');
   assert.match(selected.innerHTML, /Не удалось загрузить выбранный тур: fixture failure/);
 
-  console.log('PASS: current tour controller owns exact source and fallback return lifecycle');
+  console.log('PASS: current tour controller owns exact source, collapsed disclosure recovery and fallback return lifecycle');
 })();

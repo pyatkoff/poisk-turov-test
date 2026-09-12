@@ -8,9 +8,10 @@ const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 // with compression disabled. Never apply these printer rewrites to source files; normalize
 // only the derived Search3 representation. Exact source hashes and single-match
 // replacements make every accepted rewrite explicit and fail closed on source drift.
+// Relock this hash whenever a reviewed controller source change regenerates the shared map.
 const rules = {
   'tour-controller-v4.js': {
-    sourceSha256: 'd256df8e26f9383ff29fc50f77c083d144678cc6e0e072fd34d07a03bec2fb03',
+    sourceSha256: 'd4f7ad90c909ffdb3b8ab6993adaa574807bd8cc945adbb60be117f9646c81cf',
     from: 'catch(_){};}try{',
     to: 'catch(_){}}try{'
   },
