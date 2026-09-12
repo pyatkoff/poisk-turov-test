@@ -1,0 +1,45 @@
+name: Search3 primary catalog hydration
+
+on:
+  pull_request:
+    paths:
+      - 'v2/catalogs-v2.js'
+      - 'scripts/build/search3-js/shared-source-normalization.cjs'
+      - 'v2/search3-shared-runtime.json'
+      - 'tests/search3-primary-catalog-hydration.test.js'
+      - '.github/workflows/search3-primary-catalog-hydration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  primary-catalog-hydration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Syntax check canonical catalog owner
+        run: node --check v2/catalogs-v2.js
+      - name: Verify permanent primary catalog hydration
+        run: node --test tests/search3-primary-catalog-hydration.test.js
+      - name: Preserve existing hydrated hotel contract
+        run: node --test tests/catalogs-hydrated-hotel.test.js
+      - name: Preserve canonical meal owner
+        run: node tests/search3-meal-owner.cjs
+      - name: Regenerate canonical shared runtime candidate
+        run: node scripts/build/search3-js/shared-runtime.cjs --write
+      - name: Upload canonical shared runtime candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-primary-catalog-shared-runtime
+          path: v2/search3-shared-runtime.json
+          if-no-files-found: error
+          retention-days: 3
+      - name: Require committed shared runtime parity
+        run: git diff --exit-code -- v2/search3-shared-runtime.json
