@@ -9,16 +9,16 @@ on:
       - '.github/workflows/hotel-match-saved-tourvisor-union-current-review.yml'
   push:
     branches: ['ops/match-residual-ensemble-current-1971-v2']
-    paths: ['.github/match-saved-tourvisor-union-current-review-1971-20260912-v1.arm']
+    paths: ['.github/match-saved-tourvisor-union-current-review-1971-20260912-v2.arm']
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1-${{ github.event_name }}
+  group: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2-${{ github.event_name }}
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1
+  OPERATION_ID: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -41,6 +41,7 @@ jobs:
           assert d['summary']['unique_tourvisor_hotels']==108
           assert d['summary']['recurrence_histogram']=={'1':51,'2':15,'3':11,'4':20,'5':5,'6':6}
           s=Path('scripts/diagnostics/hotel_match_saved_tourvisor_union_current_review.php').read_text()
+          assert "const HMSU_OPERATION='hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2'" in s
           for bad in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bcurl_',r'\bfile_put_contents\s*\(',r'\bexec\s*\([^\n]*(?:INSERT|UPDATE|DELETE)']:
               assert not re.search(bad,s,re.I), bad
           for required in ['START TRANSACTION READ ONLY','HMSU_COORD_BLOCK_M=5000.0','prepared_recurrence_dates_min','pair_exclusions_protected','existing_mappings_protected','stars_annotation_not_identity']:
@@ -56,7 +57,7 @@ jobs:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
       - name: Verify immutable arm
-        run: test "$(cat .github/match-saved-tourvisor-union-current-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+        run: test "$(cat .github/match-saved-tourvisor-union-current-review-1971-20260912-v2.arm)" = "$OPERATION_ID"
       - name: Zero-DB zero-supplier server preflight
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -68,9 +69,9 @@ jobs:
           key="$RUNNER_TEMP/hmsu_key"
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
-          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; command -v php >/dev/null; printf HMSU_PREFLIGHT_OK')"
-          test "$out" = HMSU_PREFLIGHT_OK
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; command -v php >/dev/null; printf "\nHMSU_PREFLIGHT_OK\n"')"
+          test "$(printf '%s\n' "$out" | awk 'NF{last=$0} END{print last}')" = HMSU_PREFLIGHT_OK
       - name: Reserve before CURRENT DB access
         run: |
           set -euo pipefail
@@ -85,8 +86,8 @@ jobs:
       - name: Preserve durable reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1/reservation.json
+          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Run one CURRENT read-only mass reconciliation
@@ -96,10 +97,10 @@ jobs:
         run: |
           set -euo pipefail
           STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/hmsu_key"; remote="/tmp/hmsu-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          opts=(-T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           tar -czf "$RUNNER_TEMP/hmsu-src.tgz" scripts/diagnostics reports/match-saved-tourvisor-anex-union-turkey-20260912.json
           ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "umask 077; rm -rf '$remote'; mkdir -p '$remote'"
-          scp "${opts[@]}" "$RUNNER_TEMP/hmsu-src.tgz" "$USER_VALUE@$HOST_VALUE:$remote/src.tgz"
+          scp -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$RUNNER_TEMP/hmsu-src.tgz" "$USER_VALUE@$HOST_VALUE:$remote/src.tgz"
           ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "tar -xzf '$remote/src.tgz' -C '$remote'; cd \"\$HOME/www/anytoour.ru\"; php -d display_errors=0 -d log_errors=0 -d allow_url_fopen=0 -d disable_functions=curl_init,curl_exec,fsockopen,pfsockopen,stream_socket_client -r 'define(\"HMSU_EVIDENCE_B64\",base64_encode(file_get_contents(\"$remote/reports/match-saved-tourvisor-anex-union-turkey-20260912.json\"))); require \"$remote/scripts/diagnostics/hotel_match_saved_tourvisor_union_current_review.php\";'" > "$STATE/remote.out" 2> "$STATE/remote.err" || true
           ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" || true
           python3 - <<'PY'
@@ -125,8 +126,8 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1-result
-          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1/
+          name: hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2-result
+          path: ${{ runner.temp }}/hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2/
           if-no-files-found: warn
           retention-days: 90
       - name: Record MATCH result
