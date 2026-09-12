@@ -4,7 +4,16 @@ declare(strict_types=1);
 /** Owner-approved DB identities for the isolated ANEX search preview. */
 final class AnyTourAnexSearchMappingRegistry
 {
-    private const POLICY = 'owner_exact_and_strong_20260908';
+    // Exact policy/class pairs from completed guarded MATCH acceptances. Do not
+    // admit arbitrary enabled rows, policy prefixes, or a class under another policy.
+    private const APPROVED_CLASSES = [
+        'owner_exact_and_strong_20260908' => ['exact', 'strong_candidate'],
+        'owner_exact_operator_key_20260912' => ['exact_operator_key'],
+        'owner_exact_operator_key_20260912_v2' => ['exact_operator_key'],
+        'owner_coordinate_name_geo_rescue_20260912_v1' => ['coordinate_name_geo'],
+        'owner_multi_evidence_consensus_20260912_v1' => ['multi_evidence_consensus'],
+        'owner_current_exact_cross_provider_20260912' => ['exact_cross_provider'],
+    ];
     private const MAX_ROWS = 50000;
     private const PROVIDERS = ['anex_xml' => true, 'anex_online' => true];
     private $index;
@@ -16,14 +25,22 @@ final class AnyTourAnexSearchMappingRegistry
 
     public static function fromPdo(PDO $pdo): self
     {
+        $policyClauses = [];
+        $policyParameters = [];
+        foreach (self::APPROVED_CLASSES as $policy => $classes) {
+            $policyClauses[] = '(m.approval_policy=? AND m.match_class IN ('
+                . implode(',', array_fill(0, count($classes), '?')) . '))';
+            $policyParameters[] = $policy;
+            foreach ($classes as $class) $policyParameters[] = $class;
+        }
         $mappings = $pdo->prepare(
             'SELECT m.anex_hotel_id,m.catalog_hotel_id,m.match_class,m.approval_policy,m.enabled,m.scope,'
             . ' h.id AS existing_catalog_hotel_id FROM anex_hotel_search_mappings m'
             . ' INNER JOIN catalog_hotels h ON h.id=m.catalog_hotel_id'
-            . " WHERE m.enabled=1 AND m.approval_policy=? AND m.scope='preview'"
-            . " AND m.match_class IN ('exact','strong_candidate') LIMIT 50001"
+            . " WHERE m.enabled=1 AND m.scope='preview' AND ("
+            . implode(' OR ', $policyClauses) . ') LIMIT 50001'
         );
-        $mappings->execute([self::POLICY]);
+        $mappings->execute($policyParameters);
         $mappingRows = $mappings->fetchAll(PDO::FETCH_ASSOC);
         // Read all decisions, including decisions with a missing target, so an
         // explicit block can never disappear through an inner join or fallback.
@@ -73,9 +90,8 @@ final class AnyTourAnexSearchMappingRegistry
             $id = self::rowId($row, $seen);
             $target = self::target($row);
             if (!in_array($row['enabled'] ?? null, [1, '1', true], true)
-                || ($row['approval_policy'] ?? null) !== self::POLICY
                 || ($row['scope'] ?? null) !== 'preview'
-                || !in_array($row['match_class'] ?? null, ['exact', 'strong_candidate'], true)
+                || !self::approved($row)
                 || $target === null) {
                 continue;
             }
@@ -122,6 +138,13 @@ final class AnyTourAnexSearchMappingRegistry
     public function count(): int
     {
         return count($this->index);
+    }
+
+    private static function approved(array $row): bool
+    {
+        $policy = $row['approval_policy'] ?? null;
+        return is_string($policy)
+            && in_array($row['match_class'] ?? null, self::APPROVED_CLASSES[$policy] ?? [], true);
     }
 
     private static function id($value, int $digits): ?string
