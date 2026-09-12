@@ -1,9 +1,13 @@
 name: Temporary Search3 shortlist differences sync
+
 on:
   push:
-    branches: [ux/search3-shortlist-differences-20260912]
+    branches:
+      - ux/search3-shortlist-differences-20260912
+
 permissions:
   contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -37,21 +41,13 @@ jobs:
           if '.search3-shortlist-item__fact--different{' not in s: raise SystemExit('shortlist difference CSS did not materialize')
           p.write_text(s)
           p=Path('tests/search3-shortlist-trip-summary.test.js'); s=p.read_text()
-          block="""\nassert.match(source, /differenceLabels\\(saved\\)/, 'comparison derives difference highlights from saved snapshots');
-assert.match(source, /search3-shortlist-item__fact--different/, 'differing facts receive the comparison marker');
-const differenceSandbox = {};
-vm.createContext(differenceSandbox);
-vm.runInContext(`${displayDateSource}; ${functionLine('plural')}; ${functionLine('partyLabel')}; ${functionLine('factRows')}; ${functionLine('differenceLabels')}; this.values = Array.from(differenceLabels([
-  { date: '2026-09-12', nights: 7, adults: 2, childs: 0, meal: 'BB', room: 'Standard', placement: 'DBL', operator: 'ANEX' },
-  { date: '2026-09-12', nights: 10, adults: 2, childs: 0, meal: 'AI', room: 'Standard', placement: 'DBL', operator: 'FUN&SUN' }
-]));`, differenceSandbox);
-assert.deepEqual(Array.from(differenceSandbox.values), ['Ночей', 'Питание', 'Оператор']);
-"""
+          block="\nassert.match(source, /differenceLabels\\(saved\\)/, 'comparison derives difference highlights from saved snapshots');\nassert.match(source, /search3-shortlist-item__fact--different/, 'differing facts receive the comparison marker');\nconst differenceSandbox = {};\nvm.createContext(differenceSandbox);\nvm.runInContext(`${displayDateSource}; ${functionLine('plural')}; ${functionLine('partyLabel')}; ${functionLine('factRows')}; ${functionLine('differenceLabels')}; this.values = Array.from(differenceLabels([{ date: '2026-09-12', nights: 7, adults: 2, childs: 0, meal: 'BB', room: 'Standard', placement: 'DBL', operator: 'ANEX' }, { date: '2026-09-12', nights: 10, adults: 2, childs: 0, meal: 'AI', room: 'Standard', placement: 'DBL', operator: 'FUN&SUN' }]));`, differenceSandbox);\nassert.deepEqual(Array.from(differenceSandbox.values), ['Ночей', 'Питание', 'Оператор']);\n"
           if 'const differenceSandbox = {};' not in s: s=s.replace("console.log('search3 shortlist trip summary: ok');",block+"\nconsole.log('search3 shortlist trip summary: ok');",1)
           if 'const differenceSandbox = {};' not in s: raise SystemExit('shortlist difference test did not materialize')
           p.write_text(s)
           PY
       - name: Materialize canonical Search3 assets
+        shell: bash
         run: |
           set -euo pipefail
           npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
@@ -59,7 +55,9 @@ assert.deepEqual(Array.from(differenceSandbox.values), ['Ночей', 'Пита�
           python3 -B scripts/build/search3_assets.py --check
           node scripts/build/search3-js/shared-runtime.cjs --check
       - name: Sync reviewed results asset hashes
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
           import hashlib,json
           from pathlib import Path
@@ -69,12 +67,14 @@ assert.deepEqual(Array.from(differenceSandbox.values), ['Ночей', 'Пита�
           p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
           PY
       - name: Focused checks
+        shell: bash
         run: |
           set -euo pipefail
           node --check src/search3/behavior/results/shortlist.js
           node tests/search3-shortlist-trip-summary.test.js
           git diff --check
       - name: Commit bounded package and remove helper
+        shell: bash
         run: |
           set -euo pipefail
           rm .github/workflows/tmp-search3-shortlist-differences-sync.yml
