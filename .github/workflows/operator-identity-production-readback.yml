@@ -5,6 +5,7 @@ on:
     branches: ['diagnostic/operator-identity-readback-20260913']
     paths:
       - '.github/workflows/operator-identity-production-readback.yml'
+      - 'diagnostics/operator_identity_production_readback.php'
   workflow_dispatch:
 
 permissions:
@@ -15,6 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate readback script
+        shell: bash
+        run: php -l diagnostics/operator_identity_production_readback.php >/dev/null
+
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -41,22 +48,6 @@ jobs:
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
-          ssh "${opts[@]}" "$remote" 'cd "$HOME/www/anytoour.ru" && php <<'"'"'PHP'"'"'
-          <?php
-          declare(strict_types=1);
-          require __DIR__ . '/data/db-v1.php';
-          $pdo = v2_data_db();
-          $table = 'tour_operator_identity_observations';
-          $exists = (bool)$pdo->query("SHOW TABLES LIKE 'tour_operator_identity_observations'")->fetchColumn();
-          echo 'IDENTITY_TABLE=' . ($exists ? 'PRESENT' : 'MISSING') . "\n";
-          if (!$exists) exit(0);
-          $row = $pdo->query("SELECT COUNT(*) rows_count, COUNT(DISTINCT hotel_id) hotels, COUNT(DISTINCT operator_id) operators, COALESCE(SUM(observation_count),0) total_observations, MAX(last_seen_at) last_seen_at, SUM(last_seen_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)) seen_15m, SUM(last_seen_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)) seen_1h FROM tour_operator_identity_observations")->fetch(PDO::FETCH_ASSOC) ?: [];
-          foreach (['rows_count','hotels','operators','total_observations','last_seen_at','seen_15m','seen_1h'] as $key) echo 'IDENTITY_' . strtoupper($key) . '=' . ($row[$key] ?? '0') . "\n";
-          echo "IDENTITY_TOP_OPERATORS_BEGIN\n";
-          $stmt = $pdo->query("SELECT operator_id, COALESCE(NULLIF(operator_name,''),'UNKNOWN') operator_name, COUNT(*) rows_count, COUNT(DISTINCT hotel_id) hotels, SUM(observation_count) observations, MAX(last_seen_at) last_seen_at FROM tour_operator_identity_observations GROUP BY operator_id, operator_name ORDER BY observations DESC, hotels DESC LIMIT 20");
-          while ($op = $stmt->fetch(PDO::FETCH_ASSOC)) {
-              $name = preg_replace('/[^\p{L}\p{N} .&+_()\/-]+/u', '', (string)$op['operator_name']);
-              echo implode('|', [(string)$op['operator_id'],$name,(string)$op['rows_count'],(string)$op['hotels'],(string)$op['observations'],(string)$op['last_seen_at']]) . "\n";
-          }
-          echo "IDENTITY_TOP_OPERATORS_END\n";
-          PHP'
+          remote_tmp="/tmp/anytour-operator-identity-readback-${GITHUB_RUN_ID}.php"
+          scp "${opts[@]}" diagnostics/operator_identity_production_readback.php "$remote:$remote_tmp"
+          ssh "${opts[@]}" "$remote" "set -euo pipefail; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php '$remote_tmp'; rm -f '$remote_tmp'"
