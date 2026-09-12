@@ -10,6 +10,7 @@ on:
       - 'app/integrations/anex-client.php'
       - 'v2/api-anex-search3-preview.php'
       - 'tests/anex-search3-preview-smoke.php'
+      - 'tests/anex-retained-additional-prices-test.php'
       - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
       - 'app/integrations/three-provider-meal-family.php'
@@ -64,6 +65,7 @@ jobs:
           php -d allow_url_fopen=0 tests/anex-search3-preview-smoke.php
           php -d allow_url_fopen=0 tests/anex-search-smoke.php
           php -d allow_url_fopen=0 tests/anex-tour-program-retention-test.php
+          php -d allow_url_fopen=0 tests/anex-retained-additional-prices-test.php
           php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
           php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
