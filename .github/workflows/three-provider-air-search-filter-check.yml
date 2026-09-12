@@ -1,0 +1,39 @@
+name: Three-provider air search filter
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-air-search-filter.php'
+      - 'tests/three-provider-air-search-filter-test.php'
+      - '.github/workflows/three-provider-air-search-filter-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate air search filter semantics without network
+        run: |
+          php -l app/integrations/three-provider-air-search-filter.php
+          php -l tests/three-provider-air-search-filter-test.php
+          php -d allow_url_fopen=0 tests/three-provider-air-search-filter-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-air-search-filter.php').read_text()
+          assert "'arrival_airport'" in src
+          assert "'direct_flight'" in src
+          assert "'charter'" in src
+          assert "'catalog_only'" in src
+          assert "'not_verified'" in src
+          assert "'status' => 'unknown'" in src
+          assert "'allowed' => false" in src
+          assert "'raw_numeric_id_universal' => false" in src
+          assert "'cross_provider_equivalence_verified' => false" in src
+          for forbidden in ('curl_', 'PDO', 'bron(', 'bron_ticket', 'booking', 'fetch(', 'file_get_contents('):
+              assert forbidden not in src
+          print('Three-provider air-search static boundary: PASS')
+          PY
