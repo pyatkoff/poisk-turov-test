@@ -37,6 +37,7 @@ try {
     require_once __DIR__.'/tourvisor-client-v1.php';
     require_once __DIR__.'/price-observer-v1.php';
     require_once __DIR__.'/observe-search-batches-v1.php';
+    require_once __DIR__.'/operator-identity-observer-v1.php';
     // Same supplier request as the public completed/continued search. Do not
     // restart the search or accept client-provided prices as authoritative.
     $rows = v2_observe_search_result_rows(v2_data_tv_get('/tours/search/' . $searchId, ['limit'=>100]));
@@ -52,11 +53,13 @@ try {
             throw $e;
         }
     };
-    $result = v2_observe_search_batches($rows, [
+    $context = [
         'searchId'=>$searchId,'departureId'=>$departureId,'countryId'=>$countryId,
-        'adults'=>$adults,'childs'=>$childs,'currency'=>'RUB',
-    ], $write);
-    error_log('ANYTOUR_PRICE_OBSERVER search='.$searchId.' rows='.$result['rows'].' written='.$result['written'].' ignored='.$result['ignored'].' seen='.$result['seen'].' persisted=1');
+        'adults'=>$adults,'childs'=>$childs,'currency'=>'RUB','source'=>'user_search',
+    ];
+    $result = v2_observe_search_batches($rows, $context, $write);
+    $identity = v2_data_observe_operator_identities($rows, $context);
+    error_log('ANYTOUR_PRICE_OBSERVER search='.$searchId.' rows='.$result['rows'].' written='.$result['written'].' ignored='.$result['ignored'].' seen='.$result['seen'].' persisted=1 identity_seen='.(int)($identity['seen'] ?? 0).' identity_written='.(int)($identity['written'] ?? 0).' identity_reason='.(string)($identity['reason'] ?? 'ok'));
     http_response_code(200);
     echo json_encode(['ok'=>true,'persisted'=>true,'searchId'=>$searchId]+$result, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
