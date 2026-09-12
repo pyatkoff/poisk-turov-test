@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse, hashlib, json, re, unicodedata
 from collections import defaultdict
-from pathlib import Path
 try:
     from rapidfuzz import fuzz
 except ImportError:
@@ -111,8 +110,9 @@ def build(census, bulk, tv_only, tv_anex):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('census'); ap.add_argument('bulk_review'); ap.add_argument('tv_only'); ap.add_argument('tv_anex'); ap.add_argument('output')
-    args=ap.parse_args(); paths=[args.census,args.bulk_review,args.tv_only,args.tv_anex]
-    docs=[json.load(open(p,encoding='utf-8')) for p in paths]; out=build(*docs)
-    out['inputs']={Path(p).name:sha256_file(p) for p in paths}
-    Path(args.output).write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+    args=ap.parse_args()
+    labeled=[('current_census',args.census),('bulk_review',args.bulk_review),('tv_only',args.tv_only),('tv_anex',args.tv_anex)]
+    docs=[json.load(open(p,encoding='utf-8')) for _,p in labeled]; out=build(*docs)
+    out['inputs']={label:sha256_file(path) for label,path in labeled}
+    with open(args.output,'w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,sort_keys=True,indent=2); f.write('\n')
 if __name__=='__main__': main()
