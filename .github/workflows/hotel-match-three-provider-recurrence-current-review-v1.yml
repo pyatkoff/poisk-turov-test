@@ -1,0 +1,164 @@
+name: MATCH three-provider recurrence CURRENT review v1
+
+on:
+  pull_request:
+    paths:
+      - 'reports/match-three-provider-recurrence-evidence-20260912.json'
+      - 'scripts/diagnostics/hotel_match_three_provider_recurrence_current_review.php'
+      - '.github/workflows/hotel-match-three-provider-recurrence-current-review-v1.yml'
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-three-provider-recurrence-current-review-1971-20260912-v1.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-three-provider-recurrence-current-review-1971-v1-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-three-provider-recurrence-current-review-1971-20260912-v1
+  EVIDENCE_SHA256: e78a092225a3d976345cc6f1eafd9d5d170bcfe34dd608c66de1cd99f843d98f
+  STATE_DIR: /tmp/match-three-provider-recurrence-current-v1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate immutable recurrence input and read-only source
+        run: |
+          set -euo pipefail
+          test "$(sha256sum reports/match-three-provider-recurrence-evidence-20260912.json | awk '{print $1}')" = "$EVIDENCE_SHA256"
+          php -l scripts/diagnostics/hotel_match_three_provider_recurrence_current_review.php
+          php scripts/diagnostics/hotel_match_three_provider_recurrence_current_review.php --self-test
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          d=json.loads(Path('reports/match-three-provider-recurrence-evidence-20260912.json').read_text())
+          assert d['v']==1 and d['summary']==[10,233,71,50,41,32,13,46,40,27]
+          assert len(d['slices'])==10 and len(d['tuples'])==71
+          keys=[(str(x[0]),str(x[1]),str(x[3]),str(x[2])) for x in d['tuples']]
+          assert len(keys)==len(set(keys))==71
+          assert all(x[8]>=1 and x[9]>=1 and x[10]>0 for x in d['tuples'])
+          src=Path('scripts/diagnostics/hotel_match_three_provider_recurrence_current_review.php').read_text()
+          forbidden=[r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bcurl_\w+\s*\(',r'\bfile_put_contents\s*\(',r'\bputenv\s*\(']
+          stripped=re.sub(r'/\*.*?\*/|//[^\n]*','',src,flags=re.S)
+          for p in forbidden: assert not re.search(p,stripped,re.I),p
+          assert 'START TRANSACTION READ ONLY' in src
+          assert "'recurrence_alone_accepts_identity'=>false" in src
+          assert "'coordinate_conflict_auto_block_m'=>5000" in src
+          print('MATCH_RECURRENCE_CURRENT_SOURCE_OK tuples=71 observations=233')
+          PY
+
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify immutable arm and zero-DB preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-three-provider-recurrence-current-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          KEY="$RUNNER_TEMP/match-recurrence-current-key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$KEY"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$KEY"; fi
+          chmod 600 "$KEY"; ssh-keygen -y -f "$KEY" >/dev/null
+          OUT="$(ssh -T -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && { test -f data/db-v1.php || test -f v2/data/db-v1.php; } && printf MATCH_RECURRENCE_PREFLIGHT_OK')"
+          test "$OUT" = MATCH_RECURRENCE_PREFLIGHT_OK
+
+      - name: Persist reservation before CURRENT DB access
+        run: |
+          set -euo pipefail
+          mkdir -m 700 -p "$STATE_DIR"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['STATE_DIR'])
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':os.environ['EVIDENCE_SHA256'],'evidence_tuples':71,'evidence_observations':233,'transaction':'REPEATABLE READ / READ ONLY','supplier_calls':0,'tourvisor_calls':0,'anex_calls':0,'andromeda_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True,indent=2)+'\n').encode();(d/'reservation.json').write_bytes(raw)
+          assert (d/'reservation.json').read_bytes()==raw
+          PY
+
+      - name: Preserve durable reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-three-provider-recurrence-current-v1-${{ github.run_id }}-reserved
+          path: ${{ env.STATE_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Reconcile all 71 tuples against CURRENT DB snapshot
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess
+          from pathlib import Path
+          state=Path(os.environ['STATE_DIR'])
+          script=Path('scripts/diagnostics/hotel_match_three_provider_recurrence_current_review.php').read_text()
+          evidence=Path('reports/match-three-provider-recurrence-evidence-20260912.json').read_bytes()
+          assert hashlib.sha256(evidence).hexdigest()==os.environ['EVIDENCE_SHA256']
+          marker="declare(strict_types=1);"
+          assert script.count(marker)==1
+          code=script.replace(marker,marker+"\ndefine('HMRCR_EVIDENCE_B64','"+base64.b64encode(evidence).decode()+"');",1)
+          key=Path(os.environ['RUNNER_TEMP'])/'match-recurrence-current-key'
+          p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',os.environ['USER_VALUE']+'@'+os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M -- --live'],input=code,text=True,capture_output=True,timeout=420)
+          prefix='HMRCR_RESULT:'
+          lines=[x[len(prefix):] for x in p.stdout.splitlines() if x.startswith(prefix)]
+          if len(lines)!=1:
+              result={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'anex_calls':0,'andromeda_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          else:
+              result=json.loads(lines[0])
+          raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();(state/'result.json').write_bytes(raw)
+          valid=(p.returncode==0 and result.get('status')=='completed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('examined')==71 and result.get('input',{}).get('sha256')==os.environ['EVIDENCE_SHA256'] and all(result.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','anex_calls','andromeda_calls','booking_calls','lead_calls']))
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if valid else 'unknown','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':os.environ['EVIDENCE_SHA256'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          counts=result.get('counts',{}); safe=result.get('safe_targets',[]); reasons=result.get('reason_counts',{})
+          lines=[f"MATCH #1971 CURRENT recurrence reconciliation `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`.",f"Mass input: **71** distinct synchronized TV↔ANEX↔Andromeda tuples / **233** observations from 10 completed full-page slices. CURRENT buckets: already-triple **{counts.get('already_triple',0)}**, safe missing ANEX **{counts.get('safe_missing_anex',0)}**, safe missing Andromeda **{counts.get('safe_missing_andromeda',0)}**, both-unlinked TV anchors **{counts.get('both_unlinked_tv_anchor',0)}**, protected/conflict **{counts.get('protected_or_conflict',0)}**, not-current **{counts.get('not_current',0)}**. Supplier/Tourvisor/ANEX/Andromeda calls 0; DB/mapping writes 0."]
+          if safe:
+              lines.append('Prepared guarded delta targets: **'+str(len(safe))+'**. Top recurrence: '+', '.join(f"{x['provider']}:{x['external_id']}→TV{x['local_hotel_id']} ({x['observations']} obs/{x['dates']} dates)" for x in sorted(safe,key=lambda x:(-x['observations'],-x['dates'],str(x['provider']),str(x['external_id'])))[:12])+'.')
+          if reasons: lines.append('Top residual reasons: '+', '.join(f"{k}={v}" for k,v in list(reasons.items())[:8])+'.')
+          (state/'summary.md').write_text('\n'.join(lines)+'\n')
+          print('\n'.join(lines))
+          if not valid: raise SystemExit(2)
+          PY
+
+      - name: Preserve immutable result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-three-provider-recurrence-current-v1-${{ github.run_id }}-final
+          path: ${{ env.STATE_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record sanitized MATCH result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE_DIR/summary.md"
+
+      - name: Remove temporary SSH key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/match-recurrence-current-key"
