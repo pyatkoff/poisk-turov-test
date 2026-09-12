@@ -1,0 +1,124 @@
+name: MATCH resort ANEX Andromeda price position v16
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-resort-price-position-1971-20260912-v16.arm']
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: anytour-match-resort-price-position-1971-v16
+  cancel-in-progress: false
+env:
+  FAMILY_ID: hotel-match-resort-price-position-1971-20260912-v16
+  FROZEN_SHA: 769e5beb65df1fcb01741db4ab286178f52356a8
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {sid: tr-antalya, country_id: '4', country: Turkey, region_id: '20', region: Antalya, date: '2026-12-25', nights: '7'}
+          - {sid: tr-alanya, country_id: '4', country: Turkey, region_id: '19', region: Alanya, date: '2026-12-25', nights: '7'}
+          - {sid: tr-kemer, country_id: '4', country: Turkey, region_id: '22', region: Kemer, date: '2026-12-25', nights: '7'}
+          - {sid: tr-side, country_id: '4', country: Turkey, region_id: '23', region: Side, date: '2026-12-25', nights: '7'}
+          - {sid: tr-belek, country_id: '4', country: Turkey, region_id: '21', region: Belek, date: '2026-12-25', nights: '7'}
+          - {sid: tr-bodrum, country_id: '4', country: Turkey, region_id: '24', region: Bodrum, date: '2026-12-25', nights: '7'}
+          - {sid: eg-hurghada, country_id: '1', country: Egypt, region_id: '5', region: Hurghada, date: '2026-12-25', nights: '7'}
+          - {sid: eg-sharm, country_id: '1', country: Egypt, region_id: '6', region: Sharm, date: '2026-12-25', nights: '7'}
+          - {sid: eg-marsa, country_id: '1', country: Egypt, region_id: '11', region: MarsaAlam, date: '2026-12-25', nights: '7'}
+          - {sid: eg-elgouna, country_id: '1', country: Egypt, region_id: '15', region: ElGouna, date: '2026-12-25', nights: '7'}
+    env:
+      SID: ${{ matrix.sid }}
+      COUNTRY_ID: ${{ matrix.country_id }}
+      COUNTRY_NAME: ${{ matrix.country }}
+      REGION_ID: ${{ matrix.region_id }}
+      REGION_NAME: ${{ matrix.region }}
+      SEARCH_DATE: ${{ matrix.date }}
+      SEARCH_NIGHTS: ${{ matrix.nights }}
+      OPERATION_ID: hotel-match-resort-price-position-1971-20260912-v16-${{ matrix.sid }}
+      ARTIFACT_DIR: /tmp/match-resort-v16-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Prepare frozen region-aware collector
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-resort-price-position-1971-20260912-v16.arm)" = "$FAMILY_ID"
+          mkdir -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SHA/scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php" -o "$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['ARTIFACT_DIR'])/'program.php'; s=p.read_text()
+          a="$op=m15_env('M15_OPERATION_ID');$countryId=(int)m15_env('M15_COUNTRY_ID');$countryName=m15_env('M15_COUNTRY_NAME');$date=m15_env('M15_DATE');$nights=(int)m15_env('M15_NIGHTS');"
+          b=a+"$regionId=(int)m15_env('M15_REGION_ID');"
+          if s.count(a)!=1: raise SystemExit('input marker changed')
+          s=s.replace(a,b,1)
+          a2="'regionIds'=>[],'subregionIds'=>[]"
+          b2="'regionIds'=>$regionId>0?[$regionId]:[],'subregionIds'=>[]"
+          if s.count(a2)!=1: raise SystemExit('criteria marker changed')
+          s=s.replace(a2,b2,1)
+          p.write_text(s)
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+          ! grep -Fq 'TOURVISOR_ANEX_JWT' "$ARTIFACT_DIR/program.php"
+      - name: SSH preflight and reservation
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/v16-key-$SID"; sock="$RUNNER_TEMP/v16-$SID.sock"; known="$RUNNER_TEMP/v16-known-$SID"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0; for a in 1 2 3; do rm -f "$sock"; if ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((a*4)); done; test "$ok" = 1
+          printf '%s\n' "$sock" > "$ARTIFACT_DIR/sockpath"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','criteria':{'country_id':int(os.environ['COUNTRY_ID']),'country':os.environ['COUNTRY_NAME'],'region_id':int(os.environ['REGION_ID']),'region':os.environ['REGION_NAME'],'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS'])},'providers':['ANEX','Andromeda ANEX operator'],'recording':['position','price','currency','room','meal','operator'],'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}; (d/'reservation.json').write_text(json.dumps(r,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-resort-v16-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          retention-days: 90
+      - name: Execute region supplier slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sleep 20
+          sock="$(cat "$ARTIFACT_DIR/sockpath")"
+          remote="cd \"\$HOME/www/anytoour.ru\" && M15_OPERATION_ID=$OPERATION_ID M15_COUNTRY_ID=$COUNTRY_ID M15_COUNTRY_NAME=$COUNTRY_NAME M15_REGION_ID=$REGION_ID M15_DATE=$SEARCH_DATE M15_NIGHTS=$SEARCH_NIGHTS php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M"
+          set +e; ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes -l "$USER_VALUE" "$HOST_VALUE" "$remote" < "$ARTIFACT_DIR/program.php" > "$ARTIFACT_DIR/live.stdout" 2> "$ARTIFACT_DIR/live.stderr"; rc=$?; set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); out=(d/'live.stdout').read_text(errors='replace'); pre='M15_JSON:'; lines=[x[len(pre):] for x in out.splitlines() if x.startswith(pre)]
+          data=json.loads(lines[-1]) if lines else {'status':'unknown','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['RC']),'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          data['region_id']=int(os.environ['REGION_ID']); data['region_name']=os.environ['REGION_NAME']; (d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          p=data.get('providers') or {}; c=data.get('comparison') or {}; a=p.get('anex') or {}; x=p.get('andromeda') or {}; e=(c.get('exact_alias_pairs') or {}).get('count'); m=(c.get('mutual_positional_pairs') or {}).get('count')
+          summary=f"MATCH #1971 resort v16 {os.environ['REGION_NAME']} {os.environ['SEARCH_DATE']}: {data.get('status')} / NO-REPLAY. ANEX {a.get('hotel_count')}, Andromeda {x.get('hotel_count')}, exact {e}, positional {m}. Position/price evidence retained. Tourvisor/DB/mapping writes0."
+          (d/'summary.md').write_text(summary+'\n'); print(summary)
+          if data.get('status')!='completed': raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-resort-v16-${{ matrix.sid }}-${{ github.run_id }}-result
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+            ${{ env.ARTIFACT_DIR }}/summary.md
+            ${{ env.ARTIFACT_DIR }}/live.stderr
+          retention-days: 90
