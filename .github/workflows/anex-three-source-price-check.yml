@@ -6,12 +6,19 @@ on:
       - 'scripts/diagnostics/anex_search3_three_source_price.py'
       - 'tests/anex-search3-three-source-price-smoke.php'
       - 'tests/anex_search3_three_source_price_test.py'
+      - 'scripts/diagnostics/anex_additional_parity_v3.php'
+      - 'scripts/diagnostics/anex_additional_parity_v3.py'
+      - 'tests/anex-additional-parity-v3-smoke.php'
+      - 'tests/anex_additional_parity_v3_test.py'
+      - 'app/integrations/anex-additional-prices-client.php'
       - '.github/workflows/anex-three-source-price-check.yml'
   push:
     branches:
       - 'ops/int-anex-three-source-price-v2-20260911'
+      - 'ops/int-anex-additional-parity-v3-20260912'
     paths:
       - '.github/ops/anex-three-source-price-v2-20260911'
+      - '.github/ops/anex-additional-parity-v3-20260912'
 permissions:
   contents: read
 concurrency:
@@ -27,27 +34,41 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate v2 source without network
+      - name: Validate parity sources without network
         run: |
           php -l scripts/diagnostics/anex_search3_three_source_price.php
           php -l tests/anex-search3-three-source-price-smoke.php
           php -d allow_url_fopen=0 tests/anex-search3-three-source-price-smoke.php
           python3 -B tests/anex_search3_three_source_price_test.py
+          php -l scripts/diagnostics/anex_additional_parity_v3.php
+          php -l tests/anex-additional-parity-v3-smoke.php
+          php -d allow_url_fopen=0 tests/anex-additional-parity-v3-smoke.php
+          python3 -B tests/anex_additional_parity_v3_test.py
           python3 - <<'PY'
           from pathlib import Path
-          php=Path('scripts/diagnostics/anex_search3_three_source_price.php').read_text()
-          py=Path('scripts/diagnostics/anex_search3_three_source_price.py').read_text()
-          assert '->bron(' not in php and 'broninit(' not in php and '->calc(' not in php and 'get_flights(' not in php
-          assert "ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_price_20260911_v2'" in php
-          assert "'date':'2026-09-27'" in py
-          assert "'ControlMaster=no'" in py and "'ControlPath=none'" in py and 'ControlMaster=auto' not in py
-          assert 'array_replace($out' in php and "array_replace($result, ['reused'=>true])" in php
+          oldphp=Path('scripts/diagnostics/anex_search3_three_source_price.php').read_text()
+          oldpy=Path('scripts/diagnostics/anex_search3_three_source_price.py').read_text()
+          assert '->bron(' not in oldphp and 'broninit(' not in oldphp and '->calc(' not in oldphp and 'get_flights(' not in oldphp
+          assert "ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_price_20260911_v2'" in oldphp
+          assert "'date':'2026-09-27'" in oldpy
+          assert "'ControlMaster=no'" in oldpy and "'ControlPath=none'" in oldpy and 'ControlMaster=auto' not in oldpy
+          assert 'array_replace($out' in oldphp and "array_replace($result, ['reused'=>true])" in oldphp
+          php=Path('scripts/diagnostics/anex_additional_parity_v3.php').read_text()
+          py=Path('scripts/diagnostics/anex_additional_parity_v3.py').read_text()
+          assert "ANEX_ADDITIONAL_PARITY_EXPERIMENT = 'anex_additional_parity_20260912_v1'" in php
+          assert "ANEX_ADDITIONAL_PARITY_DATE = '2026-10-12'" in php
+          assert 'AnyTourAnexAdditionalPricesClient' in php
+          assert "'supplier_replay_allowed'=>false" in php
+          assert "'price_arithmetic_applied':False" in py and "'universal_formula_verified':False" in py
+          for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
+              assert forbidden not in php
           workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
           assert 'ops/int-anex-three-source-price-v2-20260911' in workflow
-          assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
-          print('Three-source parity v2 boundary: PASS')
+          assert 'ops/int-anex-additional-parity-v3-20260912' in workflow
+          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 2
+          print('ANEX price/additional parity static boundaries: PASS')
           PY
-  live:
+  live_v2:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-price-v2-20260911' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 9
@@ -87,5 +108,47 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Fail after evidence preservation when v2 parity did not complete
+        if: steps.parity.outcome != 'success'
+        run: exit 1
+  live_additional_v3:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-parity-v3-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      SOURCE_SHA: 1506e6f7c021fb5351dbb3d8144a05075bb6793c
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Bind exact new v3 additional-price parity scenario
+        run: |
+          test "$(cat control/.github/ops/anex-additional-parity-v3-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-additional-parity-v3;scenario=Turkey-2026-10-12-7n-2a-AI-six-proven-hotels-ANEX-TV-B2B;owner=2026-09-12"
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Run one new inventory-backed ANEX to Tourvisor to B2B comparison
+        id: parity
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/additional-parity"
+          python3 -B source/scripts/diagnostics/anex_additional_parity_v3.py "$RUNNER_TEMP/additional-parity"
+      - name: Preserve sanitized v3 evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-additional-parity-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/additional-parity/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when v3 did not complete
         if: steps.parity.outcome != 'success'
         run: exit 1
