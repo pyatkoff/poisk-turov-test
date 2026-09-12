@@ -2,15 +2,15 @@ name: MATCH live offer evidence 1971
 on:
   push:
     branches: [feat/match-live-offer-evidence-1971-20260912]
-    paths: [.github/match-live-offer-evidence-1971-20260912-v1.arm]
+    paths: [.github/match-live-offer-evidence-1971-20260912-v2.arm]
 permissions: {contents: read, actions: read, issues: write}
-concurrency: {group: anytour-match-live-offer-evidence-1971-v1, cancel-in-progress: false}
+concurrency: {group: anytour-match-live-offer-evidence-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-live-offer-evidence-1971-20260912-v1
+  OPERATION_ID: hotel-match-live-offer-evidence-1971-20260912-v2
   OUT: /tmp/match-live-offer-evidence-1971
 jobs:
   evidence:
-    if: github.run_attempt == 1 && github.run_number == 1
+    if: github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -24,20 +24,33 @@ jobs:
           mkdir -p "$OUT"
           cp scripts/diagnostics/hotel_match_live_offer_evidence.php "$OUT/program.php"
           python3 - <<'PY'
+          import os
           from pathlib import Path
           p=Path('/tmp/match-live-offer-evidence-1971/program.php')
           s=p.read_text()
+          old_op="hotel-match-live-offer-evidence-1971-20260912-v1"
+          if s.count(old_op)!=1: raise SystemExit('operation template marker drift')
+          s=s.replace(old_op,os.environ['OPERATION_ID'],1)
           old="$preview=$root.'/_preview/search3-anex-candidate';require_once $root.'/config.php';"
           new="$preview=$root.'/_preview/search3-anex-candidate';require_once $preview.'/api-anex-search3-preview.php';require_once $root.'/config.php';"
           if s.count(old)!=1: raise SystemExit('preview injection marker drift')
-          p.write_text(s.replace(old,new,1))
+          s=s.replace(old,new,1)
+          replacements=[
+            ("$depRows=$client->request('SearchTour_TOWNFROMS',[]);","$dayCache=[];$depRows=anytour_anex_search3_dictionary($client,'SearchTour_TOWNFROMS',[],$dayCache);"),
+            ("$stateRows=$client->request('SearchTour_STATES',['TOWNFROMINC'=>$depId]);","$stateRows=anytour_anex_search3_dictionary($client,'SearchTour_STATES',['TOWNFROMINC'=>$depId],$dayCache);"),
+            ("$curRows=$client->request('SearchTour_CURRENCIES',$dated);","$curRows=anytour_anex_search3_dictionary($client,'SearchTour_CURRENCIES',$dated,$dayCache);"),
+          ]
+          for a,b in replacements:
+              if s.count(a)!=1: raise SystemExit('dictionary derivation marker drift: '+a)
+              s=s.replace(a,b,1)
+          p.write_text(s)
           PY
           php -l "$OUT/program.php"
-          test "$(head -n1 .github/match-live-offer-evidence-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(head -n1 .github/match-live-offer-evidence-1971-20260912-v2.arm)" = "$OPERATION_ID"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path(os.environ['OUT'])/'program.php'
-          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'dates':['2026-10-05','2026-10-12'],'nights':7,'party':'2 adults','no_replay':True}
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'dates':['2026-10-05','2026-10-12'],'nights':7,'party':'2 adults','predecessor_run':34708358602,'predecessor_state':'offline_failed_before_reservation_or_supplier_access','no_replay':True}
           (pathlib.Path(os.environ['OUT'])/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4
@@ -67,8 +80,7 @@ jobs:
           data=json.loads(rows[-1]) if rows else {'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0}
           raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); d.joinpath('result.json').write_bytes(raw)
           good=int(os.environ['RC'])==0 and data.get('status')=='completed' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','booking_calls','lead_calls'])
-          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown'),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'supplier_calls':data.get('supplier_calls'),'tourvisor_searches':data.get('tourvisor_calls'),'no_replay':True}
-          d.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown'),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'supplier_calls':data.get('supplier_calls'),'tourvisor_searches':data.get('tourvisor_calls'),'no_replay':True}; d.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
           top=(data.get('candidates') or [])[:12]
           summary=f"MATCH #1971 live-offer evidence `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. CURRENT unresolved {data.get('unresolved_count')} IDs / {data.get('unresolved_occurrences')} saved occurrences; synchronized candidate pairs {data.get('candidate_count')}, safe-review {data.get('safe_review_count')}. Supplier calls {data.get('supplier_calls')}; Tourvisor searches {data.get('tourvisor_calls')}; DB/mapping/booking/lead writes0. Price/rank are soft evidence only; no price arithmetic changed. Top candidate IDs `{[(r.get('anex_hotel_id'),r.get('tourvisor_hotel_id'),r.get('occurrences'),r.get('price_signal')) for r in top]}`. Run {os.environ['GITHUB_RUN_ID']}."
           d.joinpath('summary.md').write_text(summary+'\n'); print(summary)
