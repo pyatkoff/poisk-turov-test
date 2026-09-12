@@ -1,0 +1,22 @@
+{
+  "approval_policy": "owner_exact_and_strong_20260908",
+  "expected_count": 11,
+  "match_class": "strong_candidate",
+  "pairs": [
+    {"catalog_hotel_id":17527,"country_authority":{"classes":[],"ids":[4]},"duplicate_target_count":2,"external_hotel_id":"32616","matched_keys":["MARTINENZ"],"provider":"anex","source_digest":"bd2a32287b700693177b4b3fe18b4f3123a67f3df4176bcd9980cb3739f789c7","target_digest":"c821a8457b75019d9219531e4e6f318fb556985d7f6b406ba2876c40161d936a"},
+    {"catalog_hotel_id":17527,"country_authority":{"classes":[],"ids":[4]},"duplicate_target_count":2,"external_hotel_id":"30538","matched_keys":["MARTINENZ"],"provider":"anex","source_digest":"909c42b5ccdcb6f195a3ff2349e39af29eb65c7959b6aec6aebf8e31bde7b380","target_digest":"c821a8457b75019d9219531e4e6f318fb556985d7f6b406ba2876c40161d936a"},
+    {"catalog_hotel_id":28760,"country_authority":{"classes":[],"ids":[4]},"duplicate_target_count":1,"external_hotel_id":"44596","matched_keys":["METROPARK"],"provider":"anex","source_digest":"f1713e6396c5a5d14c389e0a4d8fcd8d83b9e4200cad8e0311181f8ee36f4045","target_digest":"b3488a73d46a11359b93687308436c85b8761fa803257c324330565e003ff419"},
+    {"catalog_hotel_id":17317,"country_authority":{"classes":["TURKEY"],"ids":[4]},"duplicate_target_count":2,"external_hotel_id":"29618","matched_keys":["AVICENNA"],"provider":"anex","source_digest":"610fe5468bb7c87cfa304c5ac8e433fb164e2d2fedf80e6d13f4ad7e1e3c4181","target_digest":"313c350977d516aae3ca9e70c3bb25e263ccfd2516f1470f0a35904e4d443cab"},
+    {"catalog_hotel_id":17689,"country_authority":{"classes":["TURKEY"],"ids":[4]},"duplicate_target_count":3,"external_hotel_id":"32577","matched_keys":["VENERA"],"provider":"anex","source_digest":"b1056ad5789555922fb9ae016f41b7713b0fee0dac625d0b4d2171409df77fe7","target_digest":"865bba55b83b33659a744107f13f6b30207958e6de4486f280368b5aec4f307b"},
+    {"catalog_hotel_id":17689,"country_authority":{"classes":["TURKEY"],"ids":[]},"duplicate_target_count":3,"external_hotel_id":"16604","matched_keys":["VENERA"],"provider":"anex","source_digest":"90d314f574b5f64afcd3cc58522a869d415b79000142b54b12408262811cff2a","target_digest":"865bba55b83b33659a744107f13f6b30207958e6de4486f280368b5aec4f307b"},
+    {"catalog_hotel_id":28508,"country_authority":{"classes":["TURKEY"],"ids":[]},"duplicate_target_count":1,"external_hotel_id":"19579","matched_keys":["OLEANDER"],"provider":"anex","source_digest":"1878aaa5bea6d8b1d554e64bc49d87472e1ea25b2acf8c3df98b87ea88fb8f08","target_digest":"1c1861a637fc60fc104680dc061151d48784461b7fcbabaea5b935ccb656eb5a"},
+    {"catalog_hotel_id":17317,"country_authority":{"classes":["TURKEY"],"ids":[]},"duplicate_target_count":2,"external_hotel_id":"32700","matched_keys":["AVICENNA"],"provider":"anex","source_digest":"3689ebf239c594804d3c907d602bcc678d62c3d195e14cefe39003038fd63684","target_digest":"313c350977d516aae3ca9e70c3bb25e263ccfd2516f1470f0a35904e4d443cab"},
+    {"catalog_hotel_id":28589,"country_authority":{"classes":["TURKEY"],"ids":[]},"duplicate_target_count":2,"external_hotel_id":"32859","matched_keys":["DIANA"],"provider":"anex","source_digest":"890a1f61bc1fe3447bd7c7d60ec4fdfc0d34d6f3906771548eebbcd8f5f05afd","target_digest":"d534fb3b257f761442a2d46a8317f83590ff06462a37aae93304898f135a6558"},
+    {"catalog_hotel_id":17541,"country_authority":{"classes":["TURKEY"],"ids":[]},"duplicate_target_count":1,"external_hotel_id":"36058","matched_keys":["MONACO"],"provider":"anex","source_digest":"b8e01426add2eb0ee1f2b6a7fa4c3e8816bd32ab01cbd406de10eeeb91fa8020","target_digest":"1eebd3c55298613237a8ef43cd9117ab22938befd5be671264ed1e1b25c76ade"},
+    {"catalog_hotel_id":17535,"country_authority":{"classes":["TURKEY"],"ids":[]},"duplicate_target_count":2,"external_hotel_id":"37182","matched_keys":["METRO"],"provider":"anex","source_digest":"09462ac5f470588673f6558b001d6eeafd73c42d317d9d3575025cfb9cf04100","target_digest":"969214bc8e7009fd6f2775464511bf614814916a99f3fbc95c26293384802fd4"}
+  ],
+  "schema": "hotel-match-strong-digest-write/1",
+  "scope": "preview",
+  "source_audit_operation": "hotel-match-strong-prewrite-audit-1971-20260912-v1",
+  "source_audit_result_sha256": "025c635bb0d425be79b7e89ce73bf828296efaf010510183ec5f5e04dfa03e82"
+}
