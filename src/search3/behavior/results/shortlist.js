@@ -51,6 +51,9 @@ function ensure(){
 function node(tag,className,value){const element=document.createElement(tag);if(className)element.className=className;if(value!==undefined)element.textContent=value;return element;}
 function price(value){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(value)+' ₽';}
 function savedTime(value){try{return new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(value));}catch(error){return value;}}
+function displayDate(value){const label=text(value);if(!label)return'';const iso=label.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T|\s)/);return iso?iso[3]+'.'+iso[2]+'.'+iso[1]:label;}
+function plural(value,one,few,many){const n=Math.abs(Number(value)||0),mod10=n%10,mod100=n%100;return mod10===1&&mod100!==11?one:mod10>=2&&mod10<=4&&(mod100<12||mod100>14)?few:many;}
+function partyLabel(item){const adults=Math.max(0,Number(item&&item.adults)||0),childs=Math.max(0,Number(item&&item.childs)||0),parts=[];if(adults)parts.push(adults+' '+plural(adults,'взрослый','взрослых','взрослых'));if(childs)parts.push(childs+' '+plural(childs,'ребёнок','ребёнка','детей'));return parts.join(' · ')||'Уточняется';}
 function render(){
   const panel=ensure();panel.replaceChildren();panel.hidden=!saved.length&&!message;
   if(panel.hidden){decorate();return;}
@@ -59,7 +62,7 @@ function render(){
   if(saved.length){const list=node('div','search3-shortlist__items');saved.forEach(item=>{
     const article=node('article','search3-shortlist-item');article.dataset.source=item.source;article.dataset.hotelId=item.hotelId;article.dataset.offerId=item.offerId;article.dataset.searchId=item.searchId;
     const heading=node('h3','',item.hotelName),place=node('p','search3-shortlist-item__place',[item.country,item.region].filter(Boolean).join(' · ')),facts=node('dl','search3-shortlist-item__facts');
-    [['Вылет',item.date],['Ночей',String(item.nights)],['Питание',item.meal],['Номер',item.room],['Размещение',item.placement||'Уточняется'],['Оператор',item.operator||'Уточняется']].forEach(pair=>{const wrap=node('div');wrap.append(node('dt','',pair[0]),node('dd','',pair[1]));facts.append(wrap);});
+    [['Вылет',displayDate(item.date)],['Ночей',String(item.nights)],['Туристы',partyLabel(item)],['Питание',item.meal],['Номер',item.room],['Размещение',item.placement||'Уточняется'],['Оператор',item.operator||'Уточняется']].forEach(pair=>{const wrap=node('div');wrap.append(node('dt','',pair[0]),node('dd','',pair[1]));facts.append(wrap);});
     const savedPrice=node('div','search3-shortlist-item__price');savedPrice.append(node('small','', 'Цена при сохранении'),node('strong','',price(item.observedPrice)),node('time','',savedTime(item.savedAt)));savedPrice.querySelector('time').dateTime=item.savedAt;
     const actions=node('div','search3-shortlist-item__actions'),select=node('button','search3-shortlist-select',available(item)?'Проверить предложение':'Нет в текущей выдаче'),remove=node('button','search3-shortlist-remove','Удалить');select.type='button';select.dataset.offerId=item.offerId;select.disabled=!available(item);remove.type='button';actions.append(select,remove);article.append(heading,place,facts,savedPrice,actions);list.append(article);
   });panel.append(list);}
