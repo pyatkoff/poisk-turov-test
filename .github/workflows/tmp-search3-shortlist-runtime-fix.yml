@@ -1,0 +1,77 @@
+name: Temporary Search3 shortlist runtime fix
+
+on:
+  push:
+    branches:
+      - ux/search3-shortlist-differences-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/search3-shortlist-differences-20260912
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Repair shortlist runtime normalization and test isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/search3/behavior/results/shortlist.js'); s=p.read_text()
+          old="function compareState(items){const saved=Array.isArray(items)?items:[],fields=['date','nights','meal','room','placement','operator'],different=fields.filter(field=>new Set(saved.map(item=>text(item[field]))).size>1),prices=saved.map(item=>Number(item.observedPrice)).filter(Number.isFinite),minPrice=prices.length?Math.min(...prices):null;return{different,minPrice};}"
+          new="function compareState(items){const saved=Array.isArray(items)?items:[],normalize=value=>String(value==null?'':value).replace(/\\s+/g,' ').trim(),fields=['date','nights','meal','room','placement','operator'],different=fields.filter(field=>new Set(saved.map(item=>normalize(item[field]))).size>1),prices=saved.map(item=>Number(item.observedPrice)).filter(Number.isFinite),minPrice=prices.length?Math.min(...prices):null;return{different,minPrice};}"
+          if s.count(old)!=1: raise SystemExit('compareState runtime fix point drifted')
+          p.write_text(s.replace(old,new,1))
+          p=Path('tests/search3-shortlist-trip-summary.test.js'); s=p.read_text()
+          old="const compareState=vm.runInNewContext(compareSource,{__compare:[a,b],text:value=>String(value||'').trim(),Set});"
+          new="const compareState=vm.runInNewContext(compareSource,{__compare:[a,b],Set});"
+          if s.count(old)!=1: raise SystemExit('compareState test isolation point drifted')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Materialize canonical Search3 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node scripts/build/search3-js/shared-runtime.cjs --check
+      - name: Sync reviewed results JS hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('docs/project/search3-production-import.json'); data=json.loads(p.read_text()); name='search3-results-filters-v1.js'
+          data['assets'][name]['productionSha256']=hashlib.sha256((Path('v2')/name).read_bytes()).hexdigest()
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Focused checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/search3/behavior/results/shortlist.js
+          node tests/search3-shortlist-trip-summary.test.js
+          git diff --check
+      - name: Commit product fix and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-search3-shortlist-runtime-fix.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/search3/behavior/results/shortlist.js tests/search3-shortlist-trip-summary.test.js v2/search3-results-filters-v1.js docs/project/search3-production-import.json .github/workflows/tmp-search3-shortlist-runtime-fix.yml
+          git diff --cached --check
+          git commit -m 'SEARCH: keep shortlist comparison runtime self-contained'
+          git push origin HEAD:ux/search3-shortlist-differences-20260912
