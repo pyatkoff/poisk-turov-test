@@ -1,0 +1,51 @@
+name: MATCH Andromeda ANEX observation bridge review v1
+on:
+  push:
+    branches: ['ops/match-mass-bridge-1971-20260912']
+    paths: ['.github/match-andromeda-anex-observation-bridge-review-1971-20260912-v1.arm']
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-andromeda-anex-observation-review, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-andromeda-anex-observation-bridge-review-1971-20260912-v1
+  OUT: /tmp/match-andromeda-anex-observation-review
+jobs:
+  review:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate and reserve
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-andromeda-anex-observation-bridge-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_andromeda_anex_observation_bridge_review_v1.php
+          mkdir -p "$OUT"
+          printf '{"operation_id":"%s","state":"reserved_before_db_access","run_id":%s,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'and-anex-obs-review-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute CURRENT read-only observation bridge review
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20)
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M' < scripts/diagnostics/hotel_match_andromeda_anex_observation_bridge_review_v1.php > "$OUT/stdout" 2> "$OUT/stderr"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); raw=(d/'stdout').read_bytes(); lines=[x[len(b'AND_ANEX_OBS_REVIEW:'):] for x in raw.splitlines() if x.startswith(b'AND_ANEX_OBS_REVIEW:')]
+          x=json.loads(lines[-1]) if lines else {'status':'failed','safe_message':'marker_missing'}
+          (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 Andromeda→ANEX observation bridge: **{x.get('status')}**; pending **{x.get('pending_rows')}**, safe **{x.get('safe_count')}**, needs-extra **{x.get('needs_extra_count')}**. Reasons `{json.dumps(x.get('reason_counts') or {},ensure_ascii=False,sort_keys=True)}`. Writes/calls 0. Run `{os.environ['GITHUB_RUN_ID']}`."
+          (d/'summary.md').write_text(s+'\n'); print(s)
+          raise SystemExit(0 if x.get('status')=='completed' and x.get('operation_id')==os.environ['OPERATION_ID'] else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'and-anex-obs-review-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
