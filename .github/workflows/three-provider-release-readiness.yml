@@ -1,0 +1,64 @@
+name: Three-provider INT release readiness
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-*.php'
+      - 'tests/three-provider-*.php'
+      - '.github/workflows/three-provider-release-readiness.yml'
+permissions:
+  contents: read
+jobs:
+  offline-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Run provider-neutral contract matrix without network
+        run: |
+          set -euo pipefail
+          for test in \
+            tests/three-provider-money-facts-test.php \
+            tests/three-provider-offer-contract-test.php \
+            tests/three-provider-offer-context-test.php \
+            tests/three-provider-quote-envelope-test.php \
+            tests/three-provider-search-handoff-test.php \
+            tests/three-provider-anex-offer-test.php
+          do
+            php -l "$test"
+            php -d allow_url_fopen=0 "$test"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+
+          boundary_files = [
+              'app/integrations/three-provider-money-facts.php',
+              'app/integrations/three-provider-offer-contract.php',
+              'app/integrations/three-provider-offer-context.php',
+              'app/integrations/three-provider-quote-envelope.php',
+              'app/integrations/three-provider-search-handoff.php',
+          ]
+          combined = '\n'.join(Path(path).read_text() for path in boundary_files)
+          for forbidden in (
+              'curl_', 'file_get_contents(', 'PDO', 'mysqli_',
+              'bron(', 'bron_ticket', 'Authorization:', 'Bearer ',
+          ):
+              assert forbidden not in combined, forbidden
+
+          handoff = Path('app/integrations/three-provider-search-handoff.php').read_text()
+          assert "'selection_state' => 'disabled'" in handoff
+          assert "'booking_enabled' => false" in handoff
+          assert 'AnyTourThreeProviderQuoteEnvelope::verified' in handoff
+          assert 'AnyTourThreeProviderMoneyFacts::fromSearch' in handoff
+
+          quote = Path('app/integrations/three-provider-quote-envelope.php').read_text()
+          assert 'AnyTourThreeProviderMoneyFacts::withVerifiedQuote' in quote
+          assert "!== 'andromeda'" in quote
+
+          money = Path('app/integrations/three-provider-money-facts.php').read_text()
+          assert "'arithmetic_applied' => false" in money
+          assert "'search_price_fuel_relation' => 'unknown'" in money
+          print('Three-provider INT release readiness static boundary: PASS')
+          PY
