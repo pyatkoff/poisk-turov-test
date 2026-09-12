@@ -1,0 +1,144 @@
+name: MATCH ANEX-Andromeda cluster local review
+run-name: MATCH ANEX-Andromeda cluster local review #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_andromeda_cluster_local_review.php'
+      - 'tests/hotel-match-anex-andromeda-cluster-local-review-test.php'
+      - '.github/workflows/hotel-match-anex-andromeda-cluster-local-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-andromeda-cluster-local-review-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-andromeda-cluster-local-review-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-andromeda-cluster-local-review-1971-20260911-v1
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate supplier-cluster local scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_andromeda_cluster_local_review.php
+          php -l tests/hotel-match-anex-andromeda-cluster-local-review-test.php
+          php tests/hotel-match-anex-andromeda-cluster-local-review-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_andromeda_cluster_local_review.php').read_text()
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'supplier_calls'=>0" in s
+          assert 'HMACLR_COORD_BLOCK_M=5000.0' in s and 'HMACLR_NO_GEO_ANCHORS=3' in s
+          assert "'one_to_one_supplier_and_local_uniqueness_required'=>true" in s
+          assert "'critical_qualifiers_must_agree_both_suppliers'=>true" in s
+          assert "'existing_local_validation_only'=>true" in s
+          assert "'stars_not_identity'=>true" in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','https://','http://'):
+              assert bad.lower() not in s.lower(), bad
+          print('supplier-cluster local read-only scope verified')
+          PYTHON
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-andromeda-cluster-local-review-1971-v1.arm)" = "$OPERATION_ID"
+      - name: Prepare SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: SSH/runtime preflight before reservation
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_match_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'root="$HOME/www/anytoour.ru"; cd "$root"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_SSH_OK')"
+          test "$out" = MATCH_SSH_OK
+      - name: Reserve before CURRENT DB access
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-andromeda-cluster-local-review-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-andromeda-cluster-local-review-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run CURRENT supplier-cluster local review
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          cross=body('scripts/diagnostics/hotel_match_global_cross_provider_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          tour=body('scripts/diagnostics/hotel_match_global_tourvisor_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_cross_provider_rescue.php';\n",'',1)
+          approx=body('scripts/diagnostics/hotel_match_global_approx_name_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_tourvisor_rescue.php';\n",'',1)
+          direct=body('scripts/diagnostics/hotel_match_anex_andromeda_direct_catalog_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_approx_name_rescue.php';\n",'',1)
+          hardened=body('scripts/diagnostics/hotel_match_anex_andromeda_direct_catalog_hardened.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_direct_catalog_review.php';\n",'',1)
+          mutual=body('scripts/diagnostics/hotel_match_anex_andromeda_mutual_graph_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_direct_catalog_hardened.php';\n",'',1)
+          review=body('scripts/diagnostics/hotel_match_anex_andromeda_cluster_local_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_mutual_graph_review.php';\n",'',1)
+          wrapper=r'''
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMACLR_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMACLR_DB_HELPER');require_once $dbHelper;echo fc_json(hmaclr_review(v2_data_db(),HMACLR_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>HMACLR_OPERATION,'reason'=>'HMACLR_REMOTE_ERROR','message'=>$e->getMessage(),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}
+          '''
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+cross+'\n'+tour+'\n'+approx+'\n'+direct+'\n'+hardened+'\n'+mutual+'\n'+review+'\n'+wrapper
+          key=os.path.join(os.environ['RUNNER_TEMP'],'anytoour_match_key')
+          p=subprocess.run(['ssh','-T','-i',key,'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',f"{os.environ['ANYTOOUR_DEPLOY_USER'].strip()}@{os.environ['ANYTOOUR_DEPLOY_HOST'].strip()}",'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M'],input=code,text=True,capture_output=True,timeout=1740)
+          state=Path(os.environ['STATE'])
+          try:r=json.loads(p.stdout)
+          except Exception:raise RuntimeError('cluster_local_output_unparseable:'+p.stderr[-1200:])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0 or r.get('historical_operations_replayed') is not False: raise RuntimeError('cluster_local_review_not_completed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True,'stats':r['stats'],'coverage':r['coverage']};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          s=r['stats'];c=r['coverage'];summary=f"MATCH #1971 supplier-cluster→local graph `{r['operation_id']}` completed read-only / NO-REPLAY. CURRENT ANEX **{s['anex_rows']}** / Andromeda **{s['andromeda_rows']}**; supplier edges examined/safe **{s['supplier_edges_examined']}/{s['supplier_edges_safe']}**. Cluster-local raw prepared **{s['cluster_local_prepared_raw']}**; benchmark same-local/correct **{s['benchmark_same_local']}/{s['benchmark_target_correct']}**. NEW raw one-side/neither **{s['new_one_side_raw']}/{s['new_neither_raw']}**, live **{s['new_live_raw']}**. After one-to-one graph uniqueness: prepared **{s['prepared']}** = one-side **{s['prepared_one_side']}** + neither **{s['prepared_neither']}**, live **{s['prepared_live']}**; uniqueness demotions **{s['uniqueness_demotions']}**. Hard/near **{s['cluster_hard_conflict']}/{s['cluster_near']}**, existing-local conflicts **{s['existing_local_conflict']}**, occupancy blocks **{s['target_occupancy_block']}**. Coverage ANEX links {c['anex_links']}, ANEX unique {c['anex_unique_local']}, Andromeda unique {c['andromeda_unique_local']}, triple {c['all_three']}. Supplier calls 0; DB/mapping writes 0."
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-andromeda-cluster-local-review-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-andromeda-cluster-local-review-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"

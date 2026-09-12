@@ -1,0 +1,148 @@
+name: MATCH Marsa cached Tourvisor confirmation review
+run-name: MATCH Marsa cached Tourvisor confirmation #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_marsa_existing_tv_confirm_review.php'
+      - 'tests/hotel-match-marsa-existing-tv-confirm-review-test.php'
+      - '.github/workflows/hotel-match-marsa-existing-tv-confirm-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths: ['.github/match-marsa-existing-tv-confirm-review-1971-20260912-v1.arm']
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-marsa-existing-tv-confirm-review-1971-20260912-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-marsa-existing-tv-confirm-review-1971-20260912-v1
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate cached confirmation scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_marsa_existing_tv_confirm_review.php
+          php -l tests/hotel-match-marsa-existing-tv-confirm-review-test.php
+          php tests/hotel-match-marsa-existing-tv-confirm-review-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_marsa_existing_tv_confirm_review.php').read_text()
+          assert 'HMETV_SEARCH_ID=13591467617' in s
+          assert "'tv_search_slices'=>0" in s
+          assert "'/tours/search/'.HMETV_SEARCH_ID" in s
+          assert '/continue' not in s
+          assert 'departureId' not in s and 'dateFrom' not in s and 'operatorIds' not in s
+          assert 'INSERT INTO' not in s and 'UPDATE ' not in s and 'DELETE FROM' not in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s
+          assert "['ANNEX','BEACH','GARDEN','NORTH','SOUTH']" in s
+          print('cached Tourvisor confirmation scope verified')
+          PY
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm
+        run: test "$(cat .github/match-marsa-existing-tv-confirm-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+      - name: Prepare SSH key and preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/marsa_tv_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; test -f _preview/search3-anex-candidate/.anex-private.php; printf MATCH_MARSA_PREFLIGHT_OK')"
+          test "$out" = MATCH_MARSA_PREFLIGHT_OK
+      - name: Reserve before CURRENT DB and cached Tourvisor access
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_and_cached_tv_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'search_id':13591467617,'database_writes':0,'mapping_writes':0,'anex_calls':0,'andromeda_calls':0,'tv_search_slices':0,'tv_http_calls_budget':1,'no_replay':True}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-marsa-existing-tv-confirm-review-1971-20260912-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-marsa-existing-tv-confirm-review-1971-20260912-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run CURRENT Marsa plus one-shot cached Tourvisor review
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          files=['hotel_full_catalog_reconcile.php','hotel_match_current_bulk_review.php','hotel_match_global_cross_provider_rescue.php','hotel_match_global_tourvisor_rescue.php','hotel_match_global_approx_name_rescue.php','hotel_match_anex_andromeda_direct_catalog_review.php','hotel_match_anex_andromeda_direct_catalog_hardened.php','hotel_match_anex_andromeda_mutual_graph_review.php','hotel_match_marsa_existing_tv_confirm_review.php']
+          parts=[]
+          requires=[None,"if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_cross_provider_rescue.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_tourvisor_rescue.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_approx_name_rescue.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_direct_catalog_review.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_direct_catalog_hardened.php';\n","if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_andromeda_mutual_graph_review.php';\n"]
+          for i,f in enumerate(files):
+              s=body('scripts/diagnostics/'+f)
+              if requires[i]: s=s.replace(requires[i],'',1)
+              parts.append(s)
+          wrapper=r'''
+          function v2_data_tv_get(string $path,array $params=[]):array{
+              if($path!=='/tours/search/'.HMETV_SEARCH_ID||$params!==['limit'=>10000])throw new RuntimeException('protected_tourvisor_request_changed');
+              $token=trim((string)getenv('TOURVISOR_JWT'));if($token===''&&defined('TOURVISOR_ANEX_JWT'))$token=trim((string)TOURVISOR_ANEX_JWT);if(stripos($token,'Bearer ')===0)$token=trim(substr($token,7));if($token==='')throw new RuntimeException('tourvisor_credential_missing');
+              $url='https://api.tourvisor.ru/search/api/v1/tours/search/'.HMETV_SEARCH_ID.'?limit=10000';$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>60,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token,'Accept: application/json']]);$body=curl_exec($ch);$errno=curl_errno($ch);$error=curl_error($ch);$status=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);if($errno!==0)throw new RuntimeException('Tourvisor connection error: '.$error);if($status<200||$status>=300)throw new RuntimeException('Tourvisor HTTP '.$status.' after 1 attempt');$d=json_decode((string)$body,true);if(!is_array($d))throw new RuntimeException('Invalid Tourvisor JSON response');return$d;
+          }
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMETV_ROOT');$private=$root.'/_preview/search3-anex-candidate/.anex-private.php';if(!is_file($private))throw new RuntimeException('HMETV_PRIVATE');require_once $private;$dbHelper=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php';require_once $dbHelper;echo fc_json(hmetv_review(v2_data_db(),HMETV_OPERATION)),"\n";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>HMETV_OPERATION,'reason'=>'HMETV_REMOTE_ERROR','message'=>$e->getMessage(),'database_writes'=>0,'mapping_writes'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'tv_search_slices'=>0,'tv_http_calls'=>0]),"\n";exit(2);}
+          '''
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+'\n'.join(parts)+'\n'+wrapper
+          key=os.path.join(os.environ['RUNNER_TEMP'],'marsa_tv_key')
+          p=subprocess.run(['ssh','-T','-i',key,'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',f"{os.environ['ANYTOOUR_DEPLOY_USER'].strip()}@{os.environ['ANYTOOUR_DEPLOY_HOST'].strip()}",'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M'],input=code,text=True,capture_output=True,timeout=900)
+          state=Path(os.environ['STATE'])
+          try:r=json.loads(p.stdout)
+          except Exception:raise RuntimeError('marsa_cached_tv_output_unparseable:'+p.stderr[-1200:])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          good=(p.returncode==0 and r.get('status') in ('completed','blocked') and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('anex_calls')==0 and r.get('andromeda_calls')==0 and r.get('tv_search_slices')==0 and int(r.get('tv_http_calls',0))<=1 and r.get('historical_operations_replayed') is False)
+          if not good: raise RuntimeError('marsa_cached_tv_review_invalid')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_'+r['status'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'anex_calls':0,'andromeda_calls':0,'tv_search_slices':0,'tv_http_calls':int(r.get('tv_http_calls',0)),'no_replay':True,'status':r['status'],'reason':r.get('reason'),'coverage':r.get('coverage'),'prepared':int(r.get('prepared',0))};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          c=r.get('coverage',{});lines=[f"MATCH #1971 Marsa cached Tourvisor confirmation `{r['operation_id']}` finished **{r['status']}** / NO-REPLAY.",f"CURRENT mutual-safe Marsa supplier pairs: **{r.get('current_marsa_supplier_pairs',0)}**. Reused historical saturated searchId `{r.get('search_id')}`; new tv_search_slices **0**, tv_http_calls **{r.get('tv_http_calls',0)}**, ANEX calls 0, Andromeda calls 0, DB/mapping writes 0."]
+          if r['status']=='blocked': lines.append(f"Exact blocker: `{r.get('reason')}` — {r.get('message','')}.")
+          else:
+              lines.append(f"Cached Tourvisor hotels **{r.get('tourvisor_cached_hotels',0)}**, current catalog rows among them **{r.get('tourvisor_catalog_hotels',0)}**, prepared unique exact Marsa confirmations **{r.get('prepared',0)}**. Coverage triple {c.get('all_three')}, exactly-two {c.get('exactly_two')}, ANEX unique {c.get('anex_unique_local')}, Andromeda unique {c.get('andromeda_unique_local')}.")
+              rows=r.get('prepared_rows',[])
+              if rows:
+                  lines += ['', '| ANEX | Andromeda | local/TV | TV name | current state |', '|---:|---|---:|---|---|']
+                  for x in rows: lines.append(f"| {x['pair']['anex_hotel_id']} | {x['pair']['andromeda_external_id']} | {x['local_hotel_id']} | {x['tourvisor_name']} | {x['pair']['validation']} |")
+          (state/'summary.md').write_text('\n'.join(lines)+'\n',encoding='utf-8');print('\n'.join(lines[:3]))
+          PY
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-marsa-existing-tv-confirm-review-1971-20260912-v1-result
+          path: ${{ runner.temp }}/hotel-match-marsa-existing-tv-confirm-review-1971-20260912-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"

@@ -1,0 +1,163 @@
+name: MATCH bridge closure refresh review
+run-name: MATCH fixed-point bridge closure refresh #1971
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/hotel-match-bridge-closure-refresh-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-bridge-closure-refresh-review-1971-v2.arm'
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-bridge-closure-review-1971-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-bridge-closure-review-1971-20260911-v2
+  SOURCE_BLOB_SHA: 40989e12d27ec1a72bc96347403cc63bf5dd53f0
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate immutable closure source and read-only scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_bridge_closure_review.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_bridge_closure_review.php)" = "$SOURCE_BLOB_SHA"
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_bridge_closure_review.php').read_text(encoding='utf-8')
+          assert 'hotel-match-bridge-closure-review-1971-20260911-v1' in s
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'supplier_calls'=>0" in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl','http://','https://'):
+              assert bad.lower() not in s.lower(), bad
+          print('immutable fixed-point closure source verified')
+          PYTHON
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify immutable arm and source
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-bridge-closure-refresh-review-1971-v2.arm)" = "$OPERATION_ID"
+          test "$(git hash-object scripts/diagnostics/hotel_match_bridge_closure_review.php)" = "$SOURCE_BLOB_SHA"
+      - name: Prepare normalized SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Reserve operation before CURRENT DB access
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'algorithm_blob_sha':os.environ['SOURCE_BLOB_SHA'],'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-bridge-closure-review-1971-20260911-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run one CURRENT read-only fixed-point closure pass
+        id: live
+        continue-on-error: true
+        env:
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PYTHON'
+          import json,os,subprocess
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          pcbr=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          closure=body('scripts/diagnostics/hotel_match_bridge_closure_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1).replace('hotel-match-bridge-closure-review-1971-20260911-v1',os.environ['OPERATION_ID'],1)
+          wrapper=r'''
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HBCR2_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HBCR2_DB_HELPER');require_once $dbHelper;echo fc_json(hbcr_review(v2_data_db(),HBCR_OPERATION,8)),"\n";}catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HBCR2_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HBCR_OPERATION,'reason'=>$reason,'database_writes'=>0,'supplier_calls'=>0]),"\n";exit(2);}
+          '''
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+pcbr+'\n'+live+'\n'+closure+'\n'+wrapper
+          host=os.environ['ANYTOOUR_DEPLOY_HOST'].strip();user=os.environ['ANYTOOUR_DEPLOY_USER'].strip();key=str(Path(os.environ['RUNNER_TEMP'])/'anytoour_match_key');known=str(state/'known_hosts')
+          cmd=['ssh','-vv','-T','-i',key,'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+known,'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+          p=subprocess.run(cmd,input=code,text=True,capture_output=True,timeout=720)
+          progress={'authenticated':'Authenticated to ' in p.stderr or 'Authentication succeeded' in p.stderr,'command_sent':'Sending command:' in p.stderr,'remote_exit_seen':'Exit status ' in p.stderr}
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'output_unparseable','database_writes':0,'supplier_calls':0}
+          (state/'result.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n');(state/'ssh-result.json').write_text(json.dumps({'exit_code':p.returncode,'ssh':progress},sort_keys=True)+'\n')
+          ok=p.returncode==0 and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('database_writes')==0 and r.get('supplier_calls')==0 and r.get('historical_operations_replayed') is False
+          (state/'outcome.json').write_text(json.dumps({'ok':ok,'command_sent':progress['command_sent'],'no_replay':True,'reason':None if ok else r.get('reason','runtime_failure')},sort_keys=True)+'\n')
+          if not ok: raise SystemExit(2)
+          PYTHON
+      - name: Build durable receipt and summary
+        if: always()
+        run: |
+          set -euo pipefail
+          export STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); outcome=json.loads((state/'outcome.json').read_text()) if (state/'outcome.json').exists() else {'ok':False,'reason':'missing_outcome'}; result=json.loads((state/'result.json').read_text()) if (state/'result.json').exists() else {'status':'unknown','operation_id':os.environ['OPERATION_ID']}; raw=(state/'result.json').read_bytes() if (state/'result.json').exists() else b''; s=result.get('stats',{});c=result.get('coverage',{})
+          receipt={'operation_id':os.environ['OPERATION_ID'],'status':'completed' if outcome.get('ok') else 'unknown_no_replay','no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'algorithm_blob_sha':os.environ['SOURCE_BLOB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest() if raw else None,'database_writes':0,'supplier_calls':0,'prepared':s.get('prepared'),'prepared_andromeda':s.get('prepared_andromeda'),'prepared_anex':s.get('prepared_anex'),'live_prepared':s.get('live_prepared'),'reason':outcome.get('reason')};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if outcome.get('ok'):
+              rounds=', '.join(f"r{x['round']}={x['new']} ({x['andromeda']} Amd/{x['anex']} ANEX)" for x in result.get('rounds',[])) or 'none'; text=f"MATCH #1971 refreshed fixed-point closure `{os.environ['OPERATION_ID']}` completed **read-only / NO-REPLAY** after the latest ANEX writes. CURRENT unresolved examined: Andromeda **{s.get('andromeda_pending_examined',0)}**, ANEX **{s.get('anex_unresolved_examined',0)}**. Prepared **{s.get('prepared',0)}** conservative direct-geo cross-provider candidates: Andromeda **{s.get('prepared_andromeda',0)}**, ANEX **{s.get('prepared_anex',0)}**, live-observed **{s.get('live_prepared',0)}**; closure rounds: {rounds}. DB writes **0**, supplier calls **0**. Coverage snapshot: ANEX links {c.get('anex_links')}, ANEX unique local {c.get('anex_unique_local')}, Andromeda unique local {c.get('andromeda_unique_local')}, triple {c.get('all_three')}. Any acceptance remains a separate NEW server-current guarded write."
+          else:text=f"MATCH #1971 refreshed fixed-point closure `{os.environ['OPERATION_ID']}` is **UNKNOWN/FAILED and NO-REPLAY** after reservation. Reason `{outcome.get('reason')}`; DB writes 0, supplier calls 0. Do not rerun this operation."
+          (state/'summary.md').write_text(text+'\n')
+          PYTHON
+      - name: Preserve result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-bridge-closure-review-1971-20260911-v2-result
+          path: |
+            ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/reservation.json
+            ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/result.json
+            ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/ssh-result.json
+            ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/outcome.json
+            ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/receipt.json
+            ${{ runner.temp }}/hotel-match-bridge-closure-review-1971-20260911-v2/summary.md
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record MATCH result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/$OPERATION_ID/summary.md"
+      - name: Enforce completed result
+        if: always()
+        run: |
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          x=json.loads((Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'outcome.json').read_text());assert x.get('ok') is True,x
+          PYTHON

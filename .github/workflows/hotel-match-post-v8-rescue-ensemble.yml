@@ -1,0 +1,151 @@
+name: MATCH post-v8 rescue ensemble
+run-name: MATCH post-v8 rescue ensemble #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_post_v8_rescue_ensemble.php'
+      - 'tests/hotel-match-post-v8-rescue-ensemble-test.php'
+      - '.github/workflows/hotel-match-post-v8-rescue-ensemble.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-post-v8-rescue-ensemble-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-post-v8-rescue-ensemble-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-post-v8-rescue-ensemble-1971-20260911-v1
+  CROSS_ID: '10260542900'
+  CROSS_RUN: '34594177014'
+  CROSS_SHA: '6239068fa6daeaeaf62f85b09d45dfbb427b26d84dc1e7201fb21fb333496574'
+  TV_ID: '10261643100'
+  TV_RUN: '34596233896'
+  TV_SHA: '6eb0ee129017abd910a56867094be11a4fa3a7bde68116ab770f23fb42c3fe07'
+  STAR_ID: '10196383313'
+  STAR_RUN: '34592993077'
+  STAR_SHA: 'b0b20e6fea5998db907a6448efb57878859f16e863c54f1eea4d1a9bbe422a96'
+  V8_ID: '10262542646'
+  V8_RUN: '34595807968'
+  V8_SHA: '37b8c66f40c0829ad894f05c214d91d66c57473056f78092cc85f3fa1afd3fdb'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate supplier-free post-v8 scope
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_post_v8_rescue_ensemble.php
+          php -l tests/hotel-match-post-v8-rescue-ensemble-test.php
+          php tests/hotel-match-post-v8-rescue-ensemble-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_post_v8_rescue_ensemble.php').read_text()
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'supplier_calls'=>0" in s
+          assert "Villa Green reorder must block" in Path('tests/hotel-match-post-v8-rescue-ensemble-test.php').read_text()
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','https://','http://'):
+              assert bad.lower() not in s.lower(), bad
+          print('post-v8 rescue read-only scope verified')
+          PYTHON
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm and four evidence artifacts
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-post-v8-rescue-ensemble-1971-v1.arm)" = "$OPERATION_ID"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import os,subprocess,json,zipfile,hashlib
+          from pathlib import Path
+          state=Path(os.environ['STATE'])
+          specs=[('cross',os.environ['CROSS_ID'],os.environ['CROSS_RUN'],os.environ['CROSS_SHA'],'hotel-match-global-cross-provider-rescue-1971-20260911-v1'),('tv',os.environ['TV_ID'],os.environ['TV_RUN'],os.environ['TV_SHA'],'hotel-match-global-tourvisor-rescue-1971-20260911-v1'),('star',os.environ['STAR_ID'],os.environ['STAR_RUN'],os.environ['STAR_SHA'],'hotel-match-andromeda-star-bridge-review-1971-20260911-v1'),('v8',os.environ['V8_ID'],os.environ['V8_RUN'],os.environ['V8_SHA'],'hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v8')]
+          for name,aid,run,sha,op in specs:
+              meta=json.loads(subprocess.check_output(['gh','api',f'/repos/{os.environ["GITHUB_REPOSITORY"]}/actions/artifacts/{aid}']))
+              assert str(meta['id'])==aid and str(meta['workflow_run']['id'])==run and meta.get('expired') is False
+              z=state/f'{name}.zip'; z.write_bytes(subprocess.check_output(['gh','api',f'/repos/{os.environ["GITHUB_REPOSITORY"]}/actions/artifacts/{aid}/zip']))
+              d=state/name; d.mkdir(); zipfile.ZipFile(z).extractall(d); p=d/'result.json'; assert p.is_file() and hashlib.sha256(p.read_bytes()).hexdigest()==sha
+              r=json.loads(p.read_text()); assert r['status']=='completed' and r['operation_id']==op
+          PYTHON
+      - name: Prepare SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail; test -n "$KEY_VALUE"; key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Reserve before CURRENT DB access
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True,'artifact_ids':[int(os.environ[x]) for x in ('CROSS_ID','TV_ID','STAR_ID','V8_ID')]}
+          (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(x,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-post-v8-rescue-ensemble-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-post-v8-rescue-ensemble-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run CURRENT post-v8 reconciliation
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import json,os,subprocess,hashlib
+          from pathlib import Path
+          def body(p):
+              s=Path(p).read_text();
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          cross=body('scripts/diagnostics/hotel_match_global_cross_provider_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          tv=body('scripts/diagnostics/hotel_match_global_tourvisor_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_cross_provider_rescue.php';\n",'',1)
+          star=body('scripts/diagnostics/hotel_match_andromeda_star_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          post=body('scripts/diagnostics/hotel_match_post_v8_rescue_ensemble.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_tourvisor_rescue.php';\nrequire_once __DIR__ . '/hotel_match_andromeda_star_bridge_review.php';\n",'',1)
+          state=Path(os.environ['STATE']); inputs=[]
+          for n in ('cross','tv','star','v8'): inputs.append(json.loads((state/n/'result.json').read_text()))
+          packed=json.dumps(inputs,ensure_ascii=False,separators=(',',':'))
+          wrapper="""
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMPV8_ROOT');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper)throw new RuntimeException('HMPV8_DB');require_once $dbHelper;$inputs=json_decode(base64_decode('%s'),true,64,JSON_THROW_ON_ERROR);echo fc_json(hmpv8_review(v2_data_db(),$inputs[0],$inputs[1],$inputs[2],$inputs[3],HMPV8_OPERATION)),"\\n";
+          """ % __import__('base64').b64encode(packed.encode()).decode()
+          code="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+cross+'\n'+tv+'\n'+star+'\n'+post+'\n'+wrapper
+          p=subprocess.run(['ssh','-T','-i',os.path.join(os.environ['RUNNER_TEMP'],'anytoour_match_key'),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',f"{os.environ['USER_VALUE'].strip()}@{os.environ['HOST_VALUE'].strip()}",'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=code,text=True,capture_output=True,timeout=900)
+          r=json.loads(p.stdout); raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw)
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0: raise RuntimeError('post_v8_review_failed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True,'stats':r['stats'],'coverage':r['coverage'],'v8':r['v8']};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          s=r['stats'];c=r['coverage'];v=r['v8'];summary=f"MATCH #1971 post-v8 rescue ensemble `{r['operation_id']}` completed read-only / NO-REPLAY. Source allowlist **{s['allow_sources']}**; CURRENT prepared **{s['prepared']}** = ANEX **{s['prepared_anex']}** + Andromeda **{s['prepared_andromeda']}**, live **{s['prepared_live']}**, multi-source **{s['multi_source']}**. Blocked by stricter promotion guard **{s['promotion_guard_block']}**, target/current changed **{s['target_changed']}**, protected/not-pending **{s['protected']}/{s['not_pending']}**, collisions **{s['collision_demoted']}**. v8 is exhausted evidence: queue {v['queue_count']}, slices {v['planned_slices']}, Tourvisor hotel rows {v['result_rows']}, unique unresolved matches {v['matched_unique']}. Coverage ANEX links {c['anex_links']}, ANEX unique {c['anex_unique_local']}, Andromeda unique {c['andromeda_unique_local']}, triple {c['all_three']}. Supplier calls 0; DB/mapping writes 0."
+          (state/'summary.md').write_text(summary+'\n'); print(summary)
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-post-v8-rescue-ensemble-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-post-v8-rescue-ensemble-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"

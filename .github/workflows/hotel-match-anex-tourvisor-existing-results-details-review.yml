@@ -1,0 +1,161 @@
+name: MATCH existing Tourvisor results + ANEX details review
+run-name: MATCH existing Tourvisor results + ANEX details review #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php'
+      - 'tests/hotel-match-anex-tourvisor-existing-results-details-review-test.php'
+      - '.github/workflows/hotel-match-anex-tourvisor-existing-results-details-review.yml'
+  push:
+    branches: ['feat/match-anex-sellability-20260911']
+    paths:
+      - '.github/match-anex-tourvisor-existing-results-details-review-1971-v1.arm'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-anex-tourvisor-existing-results-details-review-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-tourvisor-existing-results-details-review-1971-20260911-v1
+  V7_ARTIFACT_ID: '10190991099'
+  V7_EVIDENCE_SHA256: da2064b20d2f2caa8e06c2dca46794fb8275b88aa82b1bf68f7d29c376768630
+  DETAILS_ARTIFACT_ID: '10193131262'
+  DETAILS_RESULT_SHA256: 86f3cbe232a262fa6c6bcd5d87a56af8167ce52f1dc7b589c7d4605fd57cc7fa
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate read-only MATCH review
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php
+          php -l tests/hotel-match-anex-tourvisor-existing-results-details-review-test.php
+          php tests/hotel-match-anex-tourvisor-existing-results-details-review-test.php
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php').read_text(encoding='utf-8')
+          assert 'hotel-match-anex-tourvisor-existing-results-details-review-1971-20260911-v1' in s
+          assert 'tourvisor_search_starts\'=>0' in s and 'tourvisor_status_calls\'=>0' in s and 'tourvisor_search_continue_calls\'=>0' in s
+          assert "'database_writes'=>0" in s and "'mapping_writes'=>0" in s and "'anex_supplier_calls'=>0" in s
+          assert 'coordinate_conflict' in s and '5000' in s
+          assert 'critical_ok' in s and "['shared']<2" in s
+          for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO'):
+              assert bad.lower() not in s.lower(), bad
+          print('existing-result review scope verified')
+          PYTHON
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify one-shot arm and immutable source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-tourvisor-existing-results-details-review-1971-v1.arm)" = "$OPERATION_ID"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$V7_ARTIFACT_ID/zip" > "$STATE/v7.zip"
+          mkdir "$STATE/v7"; unzip -q "$STATE/v7.zip" -d "$STATE/v7"
+          test -f "$STATE/v7/evidence.json"
+          echo "$V7_EVIDENCE_SHA256  $STATE/v7/evidence.json" | sha256sum -c -
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$DETAILS_ARTIFACT_ID/zip" > "$STATE/details.zip"
+          mkdir "$STATE/details"; unzip -q "$STATE/details.zip" -d "$STATE/details"
+          test -f "$STATE/details/result.json"
+          echo "$DETAILS_RESULT_SHA256  $STATE/details/result.json" | sha256sum -c -
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];v=json.loads((s/'v7/evidence.json').read_text());d=json.loads((s/'details/result.json').read_text())
+          assert v['operation_id']=='hotel-match-anex-tourvisor-hotelcode-evidence-1971-20260911-v7' and v['status']=='completed'
+          assert v['supplier']['search_starts']==21 and v['supplier']['result_calls']==21 and len([x for x in v['searches'] if x.get('status')=='completed'])==21
+          assert d['operation_id']=='hotel-match-anex-sold-details-review-1971-20260911-v2' and d['status']=='completed'
+          assert d['details']['ok']==208 and d['database_writes']==0 and d['mapping_writes']==0
+          print(json.dumps({'v7_completed_handles':21,'direct_details_ok':208},sort_keys=True))
+          PYTHON
+      - name: Reserve operation before Tourvisor result reads
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import hashlib,json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']);reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_existing_result_reads','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'v7_artifact_id':int(os.environ['V7_ARTIFACT_ID']),'v7_evidence_sha256':os.environ['V7_EVIDENCE_SHA256'],'details_artifact_id':int(os.environ['DETAILS_ARTIFACT_ID']),'details_result_sha256':os.environ['DETAILS_RESULT_SHA256'],'database_writes':0,'mapping_writes':0,'anex_supplier_calls':0,'tourvisor_search_starts':0,'tourvisor_status_calls':0,'tourvisor_search_continue_calls':0,'tourvisor_tour_detail_calls':0,'historical_operations_replayed':False,'no_replay':True};(s/'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before external reads
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-existing-results-details-review-1971-20260911-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-tourvisor-existing-results-details-review-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Re-read completed Tourvisor result handles and CURRENT DB
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import base64,hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          full=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          strong=body('scripts/diagnostics/hotel_match_anex_sold_details_strong_review.php').replace("require_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          source=body('scripts/diagnostics/hotel_match_anex_tourvisor_existing_results_details_review.php').replace("require_once __DIR__ . '/hotel_match_anex_sold_details_strong_review.php';\n",'',1)
+          tv=body('v2/data/tourvisor-client-v1.php')
+          v764=base64.b64encode((state/'v7/evidence.json').read_bytes()).decode();d64=base64.b64encode((state/'details/result.json').read_bytes()).decode()
+          wrapper="""
+          try{
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMATV_ROOT');
+            $config=realpath($root.'/config.php');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$config||!$dbHelper||strpos($config,$root.DIRECTORY_SEPARATOR)!==0||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMATV_RUNTIME');require_once $config;require_once $dbHelper;
+            $v7=json_decode(base64_decode('V764'),true,64,JSON_THROW_ON_ERROR);$direct=json_decode(base64_decode('D64'),true,64,JSON_THROW_ON_ERROR);$inputs=hmatv_validate_inputs($v7,$direct);$sets=[];$reads=0;$readErrors=[];
+            foreach($inputs['handles'] as $h){$sid=(int)$h['search_id'];$got=null;$err=null;foreach([1000,500,100] as $limit){try{$got=v2_data_tv_get('/tours/search/'.$sid,['limit'=>$limit]);$reads++;break;}catch(Throwable $e){$err=$e->getMessage();}}if(is_array($got))$sets[$sid]=$got;else $readErrors[]=['search_id'=>$sid,'country_id'=>$h['country_id'],'reason'=>preg_match('/^Tourvisor (?:HTTP|connection)|^Invalid Tourvisor/',(string)$err)?'tourvisor_result_unavailable':'tourvisor_result_error'];}
+            $review=hmatv_review(v2_data_db(),$v7,$direct,$sets,HMATV_OPERATION);$review['tourvisor_result_reads']=$reads;$review['result_read_errors']=$readErrors;echo fc_json($review),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Za-z0-9_:\- ]{1,140}\z/D',$m)?$m:'HMATV_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMATV_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0,'anex_supplier_calls'=>0,'tourvisor_search_starts'=>0,'tourvisor_status_calls'=>0,'tourvisor_search_continue_calls'=>0,'tourvisor_tour_detail_calls'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          """.replace('V764',v764).replace('D64',d64)
+          code="<?php\nif (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY',true);\n"+full+'\n'+strong+'\n'+tv+'\n'+source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-tv-existing-results-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts';cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'];clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_') and k!='TOURVISOR_JWT'};p=subprocess.run(cmd,input=code,text=True,capture_output=True,timeout=720,env=clean)
+          progress={'authenticated':'Authenticated to ' in p.stderr or 'Authentication succeeded' in p.stderr,'command_sent':'Sending command:' in p.stderr,'remote_exit_seen':'Exit status ' in p.stderr}
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'output_unparseable','database_writes':0,'mapping_writes':0}
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(raw);(state/'ssh-result.json').write_text(json.dumps({'exit_code':p.returncode,'ssh':progress},sort_keys=True)+'\n')
+          valid=p.returncode==0 and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('anex_supplier_calls')==0 and r.get('tourvisor_search_starts')==0 and r.get('tourvisor_status_calls')==0 and r.get('tourvisor_search_continue_calls')==0 and r.get('tourvisor_tour_detail_calls')==0 and r.get('historical_operations_replayed') is False and isinstance(r.get('tourvisor_result_reads'),int) and 0<=r['tourvisor_result_reads']<=21
+          if not valid:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'status':'unknown_no_replay' if progress.get('command_sent') else 'failed_precommand','reason':r.get('reason','review_not_completed'),'exit_code':p.returncode,'ssh':progress},sort_keys=True)+'\n');raise RuntimeError('existing_result_review_not_completed')
+          s=r['stats'];receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_evidence_only','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'v7_evidence_sha256':os.environ['V7_EVIDENCE_SHA256'],'details_result_sha256':os.environ['DETAILS_RESULT_SHA256'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'anex_supplier_calls':0,'tourvisor_result_reads':r['tourvisor_result_reads'],'tourvisor_search_starts':0,'tourvisor_status_calls':0,'tourvisor_search_continue_calls':0,'tourvisor_tour_detail_calls':0,'historical_operations_replayed':False,'no_replay':True,'stats':s,'coverage':r['coverage']};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          summary=(f"MATCH #1971 existing completed Tourvisor-results + direct-ANEX-details `{r['operation_id']}` completed **read-only / NO-REPLAY**. CURRENT direct-details live unresolved **{s['current_direct_live_unresolved']}**; historical completed handles **{s['result_handles']}**, successful bounded result reads **{r['tourvisor_result_reads']}**, returned hotel rows **{s['result_rows']}**, unique TV hotels **{s['unique_tv_hotels']}**. Prepared identity candidates **{s['prepared']}** (Andromeda bridge **{s['andromeda_bridge']}**); no candidate **{s['no_candidate']}**, weak best **{s['weak_best']}**, small margin **{s['small_margin']}**, coordinate conflicts **{s['coordinate_conflict']}**, target already ANEX-claimed **{s['target_already_claimed']}**, target collisions **{s['target_collision']}**. Result-read errors **{len(r.get('result_read_errors') or [])}**. Search starts/status/continue/tour-detail **0/0/0/0**, ANEX calls **0**, DB/mapping writes **0**.")
+          (state/'summary.md').write_text(summary+'\n');print(summary)
+          PYTHON
+      - name: Preserve result and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-existing-results-details-review-1971-20260911-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-tourvisor-existing-results-details-review-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH evidence result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
