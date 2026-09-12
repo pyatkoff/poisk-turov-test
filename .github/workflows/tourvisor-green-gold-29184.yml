@@ -1,0 +1,83 @@
+name: Tourvisor GREEN GOLD 29184 actualization
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/tourvisor_green_gold_actualization_29184.py'
+      - '.github/workflows/tourvisor-green-gold-29184.yml'
+  push:
+    branches:
+      - 'ops/int-tourvisor-green-gold-29184-20260913'
+    paths:
+      - '.github/ops/tourvisor-green-gold-29184-20260913'
+permissions:
+  contents: read
+concurrency:
+  group: tourvisor-green-gold-29184-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate bounded selector
+        run: |
+          python3 -m py_compile scripts/diagnostics/tourvisor_green_gold_actualization_29184.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/tourvisor_green_gold_actualization_29184.py').read_text()
+          assert "abs((float)$r['fuel']-29184.0)<1.0" in p
+          assert 'tourvisor_green_gold_actualization.py' in p
+          for forbidden in ('bron_ticket','broninit','->bron(','->calc(','AdditionalPricesDaily','INSERT INTO anex_hotel_search_mappings','UPDATE anex_hotel_search_mappings'):
+              assert forbidden not in p
+          print('GREEN GOLD 29184 selector: PASS')
+          PY
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-tourvisor-green-gold-29184-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind exact reviewed source
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/tourvisor-green-gold-29184-20260913'
+          test "$(cat control/.github/ops/tourvisor-green-gold-29184-20260913)" = "source=${SOURCE_SHA};operation=read-only-tourvisor-green-gold-29184-actualization;scenario=GREEN-GOLD-2026-10-12-7n-2a-AI-fuel29184;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Run one 29184 search-detail-flights actualization
+        id: actualize
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/tv-29184"
+          python3 -B source/scripts/diagnostics/tourvisor_green_gold_actualization_29184.py "$RUNNER_TEMP/tv-29184"
+      - name: Preserve sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tourvisor-green-gold-29184-${{ github.run_id }}
+          path: ${{ runner.temp }}/tv-29184/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: steps.actualize.outcome != 'success'
+        run: exit 1
