@@ -191,6 +191,24 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-tours>.hotel-choice-hint{padding:12px 18px 8px}
 & .hotel-tours>.provider-detail{margin:14px 18px 0}
 & .hotel-tours>.tour-selection-note{margin:14px 18px 0}
+& .hotel-trip-summary{display:grid;gap:16px;padding:16px 18px}
+& .hotel-trip-summary>.tour-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
+& .hotel-trip-summary .tour-fact{padding:10px 12px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:10px;background:var(--at-soft,#f5f8ff)}
+& .hotel-trip-summary .tour-fact b{font-size:15px}
+& .hotel-operators{display:grid;gap:8px}
+& .hotel-operators-label{color:#526078;font-size:13px}
+& .hotel-operators-list{display:flex;align-items:stretch;flex-wrap:wrap;gap:8px}
+& .hotel-operator{display:inline-grid;grid-template-rows:36px auto;align-content:center;justify-items:center;gap:3px;max-width:100%;min-width:0;width:104px;padding:7px;border:1px solid var(--at-line,#e1e7f3);border-radius:10px;background:#fff}
+& .hotel-operator:not([data-operator-brand]){grid-template-rows:auto}
+& .hotel-operator-logo{display:block;width:100%;height:36px;object-fit:contain}
+& .hotel-operator[data-operator-brand=intourist] .hotel-operator-logo{padding:4px;border-radius:4px;background:#245e99}
+& .hotel-operator-name{font-size:11px;line-height:1.3;overflow-wrap:anywhere;text-align:center;color:#34425a}
+& .hotel-operator-more{display:grid;place-items:center;padding:8px;border-radius:10px;background:var(--at-soft,#f5f8ff);color:#526078;font-size:12px}
+& .hotel-summary-total{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;padding-top:14px;border-top:1px solid var(--at-line-soft,#e9edf6)}
+& .hotel-summary-total>div{display:grid;gap:3px;color:#526078;font-size:14px}
+& .hotel-summary-total .hotel-price{color:#2743cb;font-size:30px}
+& .hotel-offers-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px 14px;color:#17233b}
+& .hotel-offers-heading>span{color:#526078;font-size:13px}
 & .tour-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,24%);gap:16px;align-items:center;border:0;border-top:1px solid var(--at-line-soft,#e9edf6);border-radius:0;padding:14px 18px;background:#fff}
 & .tour-meta>strong{display:block;margin-top:2px;font-size:17px;line-height:1.35}
 & .tour-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin-top:8px}
@@ -200,6 +218,9 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-secondary-facts{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--at-line-soft,#e9edf6)}
 & .tour-secondary-facts .tour-fact{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:baseline}
 & .tour-secondary-facts .tour-fact b{font-size:12px;color:#526078;font-weight:400}
+& .tour-secondary-facts .tour-operator{align-items:center}
+& .tour-operator .hotel-operator{width:112px;grid-template-rows:28px auto;padding:4px 6px}
+& .tour-operator .hotel-operator-logo{height:28px}
 & .tour-action{display:grid;gap:6px;align-content:start;justify-items:stretch;padding-left:16px;border-left:1px solid var(--at-line-soft,#e9edf6);text-align:left}
 & .tour-action>.hotel-price{font-size:24px}
 & .tour-action .direct-tour{margin-top:6px;min-width:0;min-height:44px;padding:10px 14px;border-radius:11px;background:var(--at-accent,#d83d00);color:#fff;font-size:15px;font-weight:700;box-shadow:0 8px 18px #d83d0024}
@@ -211,7 +232,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .provider-detail--error .secondary{justify-self:start;min-height:44px}
 & .search3-shortlist-toggle{min-height:44px;padding:9px 12px;border-color:#c4cfeb;background:#fff;color:#2743cb;font-size:14px;font-weight:600}
 & .search3-shortlist-toggle[aria-pressed=true]{border-color:#9aa9e8;background:#eef2ff;color:#172a86}
-& .tour-more-toggle{justify-self:stretch;width:calc(100% - 36px);max-width:none;min-height:44px;margin:0 18px 14px;padding-inline:16px;border-color:#c4cfeb;background:var(--at-soft-blue,#eef2ff);color:#2743cb;font-weight:600}
+& .tour-more-toggle{justify-self:stretch;width:calc(100% - 36px);max-width:none;min-height:48px;margin:0 18px 16px;padding:12px 16px;border-color:var(--at-accent,#d83d00);background:var(--at-accent,#d83d00);color:#fff;font-size:16px;font-weight:700}
+& .tour-more-toggle[aria-expanded=true]{margin-top:14px;border-color:#c4cfeb;background:var(--at-soft-blue,#eef2ff);color:#2743cb}
 & .tour-loading{padding:12px;color:#526078}
 & .empty-actionable{display:grid;justify-items:start;gap:14px;padding:28px;border:1px dashed #bcc9e6;border-radius:18px;background:#fff}
 & .empty-actionable>strong{font-size:22px;line-height:1.3}
@@ -221,11 +243,12 @@ margin:0;background:#f5f7fb;color:#17233b;
 @media(hover:hover){
 & .tour-action .direct-tour:hover{background:var(--at-accent-dark,#a93000)}
 & .search3-shortlist-toggle:hover{background:#eef2ff}
-& .tour-more-toggle:hover,& .empty-edit-search:hover{background:#eef2ff}
+& .tour-more-toggle:hover{background:var(--at-accent-dark,#a93000)}
+& .tour-more-toggle[aria-expanded=true]:hover,& .empty-edit-search:hover{background:#eef2ff}
 }
 @media(max-width:760px){
 & .hotel-main{display:flex;flex-direction:column}
-& .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/7;max-height:190px}
+& .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/9;max-height:260px}
 & .hotel-photo:has(.photo-placeholder){aspect-ratio:auto;max-height:none;padding:14px 18px 0}
 & .photo-placeholder{min-height:0}
 & .hotel-body{padding:16px 18px}
@@ -245,6 +268,12 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-photo:has(.photo-placeholder){padding-inline:16px}
 & .hotel-body{padding:16px}
 & .hotel-title{font-size:21px}
+& .hotel-trip-summary{padding:0 16px 16px;gap:14px}
+& .hotel-operators-list>.hotel-operator{width:calc((100% - 16px)/3)}
+& .hotel-trip-summary .tour-fact{padding:9px}
+& .hotel-trip-summary .tour-fact b{font-size:14px}
+& .hotel-summary-total .hotel-price{font-size:28px}
+& .hotel-offers-heading{padding-inline:16px}
 & .hotel-tours>.hotel-choice-hint{padding-inline:16px}
 & .hotel-tours>.provider-detail{margin-inline:16px}
 & .hotel-tours>.tour-selection-note{margin-inline:16px}

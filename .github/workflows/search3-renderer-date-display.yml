@@ -10,107 +10,52 @@ on:
       - 'tests/search3-hotel-operator-card.test.js'
       - 'tests/search3-hotel-operator-card-browser.cjs'
       - 'tests/search3-current-results-browser.cjs'
-      - '.github/search3-card-materialization.patch'
       - '.github/workflows/search3-renderer-date-display.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   renderer-date-display:
-    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'ux/search3-hotel-operator-cards-20260912'
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Materialize the bounded reviewed card patch
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Syntax check canonical renderer
+        run: node --check v2/results-renderer-v5.js
+      - name: Verify display-only date normalization and exact operator cards
+        run: |
+          node tests/search3-renderer-date-display.test.js
+          node tests/search3-hotel-operator-card.test.js
+      - name: Syntax check current-results visual contract
+        run: |
+          node --check tests/search3-current-results-browser.cjs
+          node --check tests/search3-hotel-operator-card-browser.cjs
+      - name: Guard against timezone parsing and source mutation
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' '1dbdbf88f7ae4b5878c414ebaa8649a0e29f823d8e31e78d2956ff84797e218a  .github/search3-card-materialization.patch' | sha256sum -c -
-          git apply --check --unidiff-zero .github/search3-card-materialization.patch
-          git apply --unidiff-zero .github/search3-card-materialization.patch
-          python3 - <<'PY'
-          import hashlib, json, urllib.request
-          from pathlib import Path
-          target=Path('v2/assets/operator-logos')
-          target.mkdir(parents=True)
-          entries=[
-            ('funsun.svg','https://api.selcdn.ru/v1/SEL_50469/funandsun-cdn/46810898-51d6-45d4-a9ff-7a110d7e27d6.svg','84d542b9391952af98fbe6043ba537c72aeccc4a75f363815994e9b06aff4c57',7740),
-            ('anex.svg','https://files1.anextour.ru/user-files/elfinder/com/logo/logo-anex.svg','03df39a22a260202e368219588c333324794c6df383637f09f859da2a328d948',7372),
-            ('biblio-globus.svg','https://www.bgoperator.ru/img/logo.svg','d3cba7262d28d4e2b2090d423805acdf7a800e992dbe98cdfee2e3cad7979d6c',18282),
-            ('intourist.png','https://pix.intourist.ru/assets/images/loader-logo.png','9d1271f78c393e2dfd3c0e79d6f6b40c5fefd56de185896fb6e0150ddfc96913',10759)
-          ]
-          assets=[]
-          for name,url,digest,size in entries:
-              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'AnyTour public brand review'}),timeout=15) as response:
-                  data=response.read(200001)
-              assert len(data)==size and hashlib.sha256(data).hexdigest()==digest, name+' original changed'
-              (target/name).write_bytes(data)
-              assets.append({'file':name,'source':url,'sha256':digest,'size':size})
-          provenance={'schema_version':1,'purpose':'Original operator brand artwork displayed only for explicit offer.operator aliases; no source/provider inference.','acquired_at':'2026-09-12','acquisition_run_id':34702311773,'artifact_id':10301140168,'artwork_modified':False,'assets':assets}
-          (target/'provenance.json').write_text(json.dumps(provenance,ensure_ascii=False,indent=2)+'\n')
-          PY
-      - name: Build with the pinned canonical toolchain
-        run: |
-          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
-          python3 -B scripts/build/search3_assets.py --write
-          node scripts/build/search3-js/shared-runtime.cjs --write
-          python3 -B scripts/build/search3_assets.py --check
-          node scripts/build/search3-js/shared-runtime.cjs --check
-      - name: Verify card and date contracts
-        run: |
-          node --check v2/results-renderer-v5.js
-          node tests/search3-renderer-date-display.test.js
-          node tests/search3-hotel-operator-card.test.js
-          node --check tests/search3-hotel-operator-card-browser.cjs
-          node --check tests/search3-current-results-browser.cjs
-      - name: Stage only pinned product Git blob objects without changing refs
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs'), crypto = require('crypto');
-            const expected = {
-              'v2/results-renderer-v5.js':'e249c4de4d884bf1af358167adb74e77feb42b3a5e5ef9d8fffad79ff98abdac',
-              'src/search3/styles/results-layout.css':'1caa1324c3c2448a2c0e813e077d8e0b8ad0626ec1a44a269fd9d52b4f26e5bc',
-              'tests/search3-current-results-browser.cjs':'7bd33f1f4bde28932e3c124a982c14eafab0133b40d1de090a840b1e53edf7d5',
-              'tests/search3-hotel-operator-card.test.js':'58b1307d1123d3813242c08852ef276b86c55536eb0d1866d3b5e127e50d3b48',
-              'tests/search3-hotel-operator-card-browser.cjs':'9cab64f2f1238701650f7776ed4f744ba7ed788ac61bb2ebf973b04b9e92b17d',
-              'v2/search3-shared-runtime.json':'80203cc8c26efdfdbdcf873103b72397ba547afcdc53aaf754c6eb138315aa72',
-              'v2/search3-results-filters-v1.css':'a9c8ab151ba35231d69f76bbc58ea542df28b45831d1432994d5e2c0986e4518',
-              'docs/project/search3-production-import.json':'e0be826de64f90d66908e867f0cb48f67e67ff521c675277ec583b9f8161b336',
-              'v2/assets/operator-logos/funsun.svg':'84d542b9391952af98fbe6043ba537c72aeccc4a75f363815994e9b06aff4c57',
-              'v2/assets/operator-logos/anex.svg':'03df39a22a260202e368219588c333324794c6df383637f09f859da2a328d948',
-              'v2/assets/operator-logos/intourist.png':'9d1271f78c393e2dfd3c0e79d6f6b40c5fefd56de185896fb6e0150ddfc96913',
-              'v2/assets/operator-logos/biblio-globus.svg':'d3cba7262d28d4e2b2090d423805acdf7a800e992dbe98cdfee2e3cad7979d6c',
-              'v2/assets/operator-logos/provenance.json':'1cdcae9010ffdbde035c7cd8ae77d5b79845a874cf075760ba968aa54fa3bfd0'
-            };
-            const prepared=Object.entries(expected).map(([path,sha256])=>{
-              if(!fs.lstatSync(path).isFile())throw new Error('not a regular file: '+path);
-              const data=fs.readFileSync(path);
-              if(crypto.createHash('sha256').update(data).digest('hex')!==sha256)throw new Error('materialization mismatch: '+path);
-              return {path,sha256,data};
-            });
-            const entries=[];
-            for(const {path,sha256,data} of prepared){
-              const result=await github.rest.git.createBlob({...context.repo,content:data.toString('base64'),encoding:'base64'});
-              entries.push({path,sha:result.data.sha,sha256,size:data.length});
-            }
-            const receipt={source_sha:context.payload.pull_request.head.sha,operation:'git-blobs-only',ref_writes:0,commit_writes:0,deployments:0,entries};
-            fs.writeFileSync(process.env.RUNNER_TEMP+'/search3-card-blobs.json',JSON.stringify(receipt,null,2)+'\n');
-            core.info(JSON.stringify(receipt));
-      - name: Retain materialization manifest for ordinary connector review
+          ! grep -Eq 'new[[:space:]]+Date\(' v2/results-renderer-v5.js
+          grep -Fq "date=formatTourDate(t.date)" v2/results-renderer-v5.js
+          grep -Fq "formatTourDate" tests/search3-renderer-date-display.test.js
+          grep -Fq "innerText(), '12.09.2026'" tests/search3-current-results-browser.cjs
+      - name: Regenerate canonical shared runtime candidate
+        run: node scripts/build/search3-js/shared-runtime.cjs --write
+      - name: Upload canonical shared runtime candidate
         uses: actions/upload-artifact@v4
         with:
-          name: search3-card-blobs-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/search3-card-blobs.json
+          name: search3-renderer-date-shared-runtime
+          path: v2/search3-shared-runtime.json
           if-no-files-found: error
           retention-days: 3
+      - name: Require committed shared runtime parity
+        run: git diff --exit-code -- v2/search3-shared-runtime.json
