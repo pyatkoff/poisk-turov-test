@@ -6,6 +6,7 @@ and preview isolation remain active.
 """
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
