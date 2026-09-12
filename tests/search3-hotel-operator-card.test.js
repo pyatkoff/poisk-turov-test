@@ -56,11 +56,13 @@ assert.equal(provenance.artwork_modified,false);
 assert.equal(provenance.assets.length,4);
 for(const asset of provenance.assets){
   const data=fs.readFileSync(path.join(assets,asset.file));
-  assert.equal(crypto.createHash('sha256').update(data).digest('hex'),asset.sha256,asset.file+' preserves official bytes');
+  assert.equal(crypto.createHash('sha256').update(data).digest('hex'),asset.sha256,asset.file+' matches stored artwork provenance');
   assert.equal(data.length,asset.size);
   if(asset.file.endsWith('.svg')){
     const text=data.toString();
     assert.match(text,/<svg\b/);
+    assert.doesNotMatch(text,/\r/,'stored SVG uses LF line endings');
+    assert.doesNotMatch(text,/[ \t]+$/m,'stored SVG has no trailing whitespace');
     assert.doesNotMatch(text,/<(?:script|foreignObject|iframe|image)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*["'](?:https?:|\/\/|data:)|url\(\s*["']?https?:/i,'brand SVG must be passive and self-contained');
   }else assert.equal(data.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
 }

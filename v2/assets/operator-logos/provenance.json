@@ -15,8 +15,11 @@
     {
       "file": "anex.svg",
       "source": "https://files1.anextour.ru/user-files/elfinder/com/logo/logo-anex.svg",
-      "sha256": "03df39a22a260202e368219588c333324794c6df383637f09f859da2a328d948",
-      "size": 7372
+      "sha256": "4cf91402918b789e6a86b7bb6d4e29d6035e4cae5e8e974d1b5d97f02f01bdb3",
+      "size": 7338,
+      "source_sha256": "03df39a22a260202e368219588c333324794c6df383637f09f859da2a328d948",
+      "source_size": 7372,
+      "byte_transform": "Normalize SVG line endings to LF and trim trailing spaces/tabs; artwork paths and attribute values remain semantically unchanged."
     },
     {
       "file": "biblio-globus.svg",
