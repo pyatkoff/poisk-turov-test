@@ -157,19 +157,30 @@ Focused `34676124554` SUCCESS: 74; aggregate `34676124543` SUCCESS; Security `34
 
 ### 5.5 Departure / country
 
-#2114 merged `e92dbd6e85ee8e273dda59f761a895b00ac7b828`; exact head `7b51b0bdb9326fdc8a7c3389418b068795283232`.
-Focused `34676419118` SUCCESS: 73; aggregate `34676419039` SUCCESS; Security `34676419019` SUCCESS.
+Direct ANEX package #2114 merged `e92dbd6e85ee8e273dda59f761a895b00ac7b828`; exact head `7b51b0bdb9326fdc8a7c3389418b068795283232`.
+Focused `34676419118` SUCCESS: 73; Security `34676419019` SUCCESS.
 
 Direct ANEX current source доказывает provider-specific mapping contract:
 
 1. browser/local numeric departure/country IDs **не** становятся supplier IDs;
 2. server читает authoritative active local `catalog_departures/catalog_countries` names;
 3. supplier departure выбирается exact unique name match из `SearchTour_TOWNFROMS`;
-4. supplier country выбирается exact unique name match из `SearchTour_STATES`, причём lookup scoped resolved supplier departure (`TOWNFROMINC`);
+4. supplier country выбирается exact unique name match из `SearchTour_STATES`, lookup scoped resolved supplier departure (`TOWNFROMINC`);
 5. только после этого verified mapping разрешает provider-specific `TOWNFROMINC/STATEINC`;
 6. missing/ambiguous mapping fail closed.
 
-Tourvisor protected mapping и Andromeda mapping этим boundary не доказаны: `not_verified_in_this_boundary`, forwarding не включать по предположению. Supplier numeric IDs provider-specific opaque strings; cross-provider equivalence=false. Departure/country similarity не hotel identity proof.
+Andromeda follow-up #2116 merged `865b96f4b96f04d4d602dfba88ac3b7c390b5bd8`; exact head `7a5be19998702f812483319ea3bafd37aeda280d`.
+Focused `34676677127` SUCCESS: 82; aggregate `34676677124` SUCCESS; Security `34676677093` SUCCESS.
+
+Andromeda current source доказывает отдельный provider-specific contract:
+
+1. request country обязан совпадать с installed saved `local_country_id`;
+2. current active local departure name разрешается exact unique match в saved supplier `TOWNFROM` dictionary;
+3. supplier country берётся из installed saved catalog pin `STATEINC` для этого local country slice;
+4. только при доказанных exact departure mapping + explicit country pin provider-specific supplier IDs считаются usable;
+5. local numeric form IDs не становятся supplier IDs; missing/mismatched context fail closed.
+
+Это **не** тот же mapping contract, что у direct ANEX: ANEX country dictionary разрешается departure-scoped exact lookup, Andromeda country сейчас pinned installed catalog slice. Supplier IDs остаются opaque/provider-specific; cross-provider equivalence=false. Tourvisor departure/country mapping остаётся `not_verified_in_this_boundary`; protected payload не менять. Departure/country similarity не hotel identity proof.
 
 ### 5.6 Hotel category / rating / services / types
 
@@ -193,14 +204,14 @@ Receiving wiring, renderer/controller/selected-state/publication принадл�
 
 ## 7. P7 source release readiness — GREEN
 
-Latest exact-head gate после #2114:
+Latest exact-head gate после #2116:
 
 - money facts: 60;
 - offer contract: 189;
 - retained context: 33;
 - air search/filter: 114;
 - region/resort/subregion: 74;
-- departure/country: 73;
+- departure/country: 82;
 - hotel category: 57;
 - hotel rating: 69;
 - hotel services: 67;
@@ -209,7 +220,7 @@ Latest exact-head gate после #2114:
 - INT→SEARCH handoff: 97;
 - direct ANEX bridge: 115.
 
-Aggregate `34676419039` SUCCESS: **1069 offline contract checks**. Security `34676419019` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs не получают universal authority.
+Aggregate `34676677124` SUCCESS: **1078 offline contract checks**. Security `34676677093` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs не получают universal authority.
 
 Это source-side readiness, не production approval и не UI/publication acceptance.
 
@@ -217,11 +228,11 @@ Aggregate `34676419039` SUCCESS: **1069 offline contract checks**. Security `346
 
 Порядок:
 
-`P0 money/fuel/additional → P1 observation matrix → P2 only genuine uncovered provider semantics → P4/P5 regression/new evidence only → P6/P7 maintenance only if regression → SEARCH handoff`.
+`P0 money/fuel/additional → P1 observation matrix → P2 only genuine new provider-specific semantics → P4/P5 regression/new evidence only → P6/P7 maintenance only if regression → SEARCH handoff`.
 
 P3 identity/matching никогда не fallback-задача INT.
 
-После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types wrapper ради активности.
+После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114/#2116 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types wrapper ради активности.
 
 ### P0/P1 — следующий eligible work
 
@@ -257,7 +268,7 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 
 | Family | Current rule |
 | --- | --- |
-| departure/country | direct ANEX verified exact unique provider-dictionary mapping from authoritative current local names; country lookup departure-scoped; Tourvisor/Andromeda mapping not verified in this boundary |
+| departure/country | direct ANEX verified exact unique provider dictionaries; Andromeda verified exact saved departure dictionary + installed local-country/supplier-STATEINC pin; Tourvisor not verified/protected |
 | region/resort/subregion | generic boundary closed: supplier observation-only; local canonical only current accepted identity; upstream unknown/disabled |
 | hotel | current accepted identity либо observation; P3 writes external |
 | stars/category | supplier label observation-only; canonical current-local only |
@@ -273,7 +284,7 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 | flights/baggage | optional details capability; never auto-fetch by generic contract |
 | fuel/additional | separate money facts; never synthetic total |
 
-Не создавать новый generic P2 wrapper, если family уже имеет current rule. Следующий P2 пакет допустим только при **новом provider-specific evidence**, которое безопасно повышает конкретный status/capability. Иначе возвращаться к genuinely new P0/P1 evidence.
+Не создавать новый generic P2 wrapper, если family уже имеет current rule. Следующий P2 пакет допустим только при **новом provider-specific evidence**, которое безопасно повышает конкретный status/capability. Tourvisor protected payload не трогать ради симметрии. Если такого evidence нет — возвращаться к genuinely new P0/P1 evidence, а не создавать wrapper churn.
 
 ## 9. Observation contract
 
