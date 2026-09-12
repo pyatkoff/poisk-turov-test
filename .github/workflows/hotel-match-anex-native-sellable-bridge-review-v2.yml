@@ -1,0 +1,35 @@
+name: MATCH ANEX native sellable bridge review v2
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-anex-native-sellable-bridge-review-1971-20260912-v2.arm']
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-anex-native-sellable-bridge-review-v2, cancel-in-progress: false}
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {OPERATION_ID: 'hotel-match-anex-native-sellable-bridge-review-1971-20260912-v2', OUT: '/tmp/match-anex-native-sellable-bridge-v2'}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate and reserve
+        run: |
+          set -euo pipefail; test "$GITHUB_RUN_ATTEMPT" = 1; test "$(cat .github/match-anex-native-sellable-bridge-review-1971-20260912-v2.arm)" = "$OPERATION_ID"; php -l scripts/diagnostics/hotel_match_anex_native_sellable_bridge_review_v2.php; mkdir -p "$OUT"; printf '%s\n' '{"operation_id":"hotel-match-anex-native-sellable-bridge-review-1971-20260912-v2","state":"reserved_before_db_access","input_count":6,"supplier_calls":0,"tourvisor_calls":0,"database_writes":0,"mapping_writes":0,"no_replay":true}' > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anex-native-sellable-bridge-v2-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute CURRENT read-only bridge review
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; key="$RUNNER_TEMP/ansbv2-key";known="$RUNNER_TEMP/ansbv2-known"; if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi; chmod 600 "$key"; set +e; ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M' < scripts/diagnostics/hotel_match_anex_native_sellable_bridge_review_v2.php > "$OUT/stdout" 2> "$OUT/stderr"; rc=$?; set -e; grep '^ANSB:' "$OUT/stdout"|tail -1|sed 's/^ANSB://' > "$OUT/result.json" || true; export RC="$rc"; python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['OUT']);x=json.loads((d/'result.json').read_text()) if (d/'result.json').exists() else {'status':'unknown','reason':'marker_missing'};s=f"MATCH #1971 native sellable CURRENT bridge review v2: **{x.get('status')}** / NO-REPLAY. counts `{x.get('counts')}`. Supplier/Tourvisor/DB/mapping writes 0. Run `{os.environ['GITHUB_RUN_ID']}`.";(d/'summary.md').write_text(s+'\n');print(s);raise SystemExit(0 if int(os.environ['RC'])==0 and x.get('status')=='completed' else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anex-native-sellable-bridge-v2-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
