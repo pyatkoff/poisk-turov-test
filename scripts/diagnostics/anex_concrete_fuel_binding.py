@@ -12,10 +12,9 @@ SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-12','nights'
       'child_ages':[],'meal_family':'ai','currency':'RUB'}
 PRESERVED_PROGRAM='2637'
 PRESERVED_NATIVE_CURRENCY='3'
-PRESERVED_CONVERTED_ADULT=Decimal('14592.2')
-PRESERVED_TWO_ADULT_SUPPLEMENT=Decimal('29184.4')
-PRESERVED_EVIDENCE_RUN=34716809979
-PRESERVED_EVIDENCE_ARTIFACT=10304744621
+PRESERVED_RUN=34716809979
+PRESERVED_ARTIFACT=10304744621
+PRESERVED_EXPERIMENT='anex_additional_program2637_20260912_v1'
 
 
 def php_body(path: Path, strict=True) -> str:
@@ -59,6 +58,29 @@ def decimal(value):
     return None
 
 
+def read_preserved(path: Path):
+    value=json.loads(path.read_text())
+    if not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('status')!='completed':
+        raise ValueError('preserved_program2637_invalid')
+    if value.get('experiment_id')!=PRESERVED_EXPERIMENT or value.get('supplier_replay_allowed') is not False:
+        raise ValueError('preserved_program2637_identity_invalid')
+    spec=value.get('spec') or {}
+    if spec.get('country')!='Turkey' or spec.get('date')!='2026-10-12' or spec.get('nights')!=7 \
+       or spec.get('adults')!=2 or spec.get('child_ages')!=[]:
+        raise ValueError('preserved_program2637_scope_invalid')
+    evidence=value.get('evidence') or {}
+    supplement=decimal(evidence.get('candidate_two_adult_rate_sum'))
+    adult=decimal(evidence.get('additional_price_converted_adult'))
+    retained=value.get('retained_search_source') or {}
+    if supplement is None or adult is None or supplement!=adult*Decimal(2):
+        raise ValueError('preserved_program2637_money_invalid')
+    if retained.get('source_operation_still_no_replay') is not True:
+        raise ValueError('preserved_program2637_replay_invalid')
+    if (value.get('new_requests') or {}).get('additional_prices_requests')!=1:
+        raise ValueError('preserved_program2637_request_invalid')
+    return {'supplement':supplement,'adult':adult,'report':value}
+
+
 def validate(value):
     if not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('experiment_id')!=EXPERIMENT:
         raise ValueError('concrete_fuel_result_invalid')
@@ -87,21 +109,19 @@ def validate(value):
     return value
 
 
-def analyze(value):
+def analyze(value,preserved):
+    supplement=preserved['supplement'];adult=preserved['adult']
     report={'schema_version':1,'experiment_id':EXPERIMENT,'status':value.get('status'),
             'spec':SPEC,'supplier_replay_allowed':False,'production_price_arithmetic_applied':False,
             'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'andromeda_requests':0,
             'preserved_additional_prices':{
-                'program':PRESERVED_PROGRAM,'native_currency_id':PRESERVED_NATIVE_CURRENCY,
-                'converted_adult':str(PRESERVED_CONVERTED_ADULT),
-                'candidate_two_adult_supplement':str(PRESERVED_TWO_ADULT_SUPPLEMENT),
-                'source_run':PRESERVED_EVIDENCE_RUN,'source_artifact':PRESERVED_EVIDENCE_ARTIFACT,
-                'supplier_replay_performed':False},
+                'experiment_id':PRESERVED_EXPERIMENT,'program':PRESERVED_PROGRAM,'native_currency_id':PRESERVED_NATIVE_CURRENCY,
+                'converted_adult':str(adult),'candidate_two_adult_supplement':str(supplement),
+                'source_run':PRESERVED_RUN,'source_artifact':PRESERVED_ARTIFACT,'supplier_replay_performed':False},
             'evidence':None}
     if value.get('status')!='completed':
         report['reason']=value.get('reason'); return report
     group=value['group_minimum']; selected=value['selected_concrete']; tv=(value.get('tourvisor') or {}).get('offers') or []
-    supplement=PRESERVED_TWO_ADULT_SUPPLEMENT
     concrete_price=decimal(selected.get('price')); group_price=decimal(group.get('price'))
     matches=[]; group_matches=[]
     for candidate in tv:
@@ -132,8 +152,7 @@ def analyze(value):
         'selected_concrete_price':selected.get('price'),'selected_program':selected.get('supplier_tour_program_id'),
         'selected_native_currency_id':selected.get('supplier_currency_id'),'selected_room_norm':selected.get('room_norm'),
         'selected_placement_norm':selected.get('placement_norm'),
-        'preserved_additional_converted_adult':str(PRESERVED_CONVERTED_ADULT),
-        'candidate_two_adult_supplement':str(supplement),
+        'preserved_additional_converted_adult':str(adult),'candidate_two_adult_supplement':str(supplement),
         'concrete_total_candidate':str(concrete_price+supplement) if concrete_price is not None else None,
         'group_total_candidate':str(group_price+supplement) if group_price is not None else None,
         'concrete_tv_matches':matches,'group_tv_matches':group_matches,
@@ -141,7 +160,7 @@ def analyze(value):
         'anex_airport_pairs':airports,'anex_flight_selected':False,
         'tourvisor_flight_refresh_requested':False,'supplier_package_identity_verified':False,
         'application_rule_verified_for_search':False,
-        'note':'29184.4 RUB is reused from completed program2637 evidence; no B2B replay and no amount is applied to production search price.'}
+        'note':'Program2637 supplement is read from sealed completed evidence; no B2B replay and no amount is applied to production search price.'}
     return report
 
 
@@ -152,16 +171,17 @@ def save(path,value):
     if json.loads(path.read_text())!=value: raise ValueError('concrete_fuel_report_readback')
 
 
-def run(output):
+def run(output,preserved_path):
+    preserved=read_preserved(preserved_path)
     value=transport.ssh_php_no_mux(source(),SPEC,maximum_bytes=4000000)
-    value=validate(value);save(output/'result.json',value);report=analyze(value);save(output/'report.json',report);return report
+    value=validate(value);save(output/'result.json',value);report=analyze(value,preserved);save(output/'report.json',report);return report
 
 
 def main():
-    if len(sys.argv)!=2: raise SystemExit('usage: anex_concrete_fuel_binding.py OUTPUT_DIR')
-    output=Path(sys.argv[1])
+    if len(sys.argv)!=3: raise SystemExit('usage: anex_concrete_fuel_binding.py OUTPUT_DIR PRESERVED_PROGRAM2637_REPORT')
+    output=Path(sys.argv[1]);preserved_path=Path(sys.argv[2])
     try:
-        report=run(output);print(json.dumps(report,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if report['status']=='completed' else 1)
+        report=run(output,preserved_path);print(json.dumps(report,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if report['status']=='completed' else 1)
     except SystemExit: raise
     except Exception as exc:
         report=transport.transport_failure(exc) if type(exc).__name__=='SSHBatchError' else {
