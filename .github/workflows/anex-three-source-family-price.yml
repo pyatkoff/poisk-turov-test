@@ -7,11 +7,12 @@ on:
       - '.github/workflows/anex-three-source-family-price.yml'
   push:
     branches:
-      - 'ops/int-anex-three-source-family-price-20260913'
+      - 'ops/int-anex-three-source-family-price-resume-20260913'
     paths:
-      - '.github/ops/anex-three-source-family-price-20260913'
+      - '.github/ops/anex-three-source-family-price-resume-20260913'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: anex-three-source-family-price-${{ github.ref }}
   cancel-in-progress: false
@@ -30,7 +31,7 @@ jobs:
           python3 -B tests/anex_three_source_family_price_test.py
           python3 -m py_compile scripts/diagnostics/anex_three_source_family_price.py
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-family-price-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-family-price-resume-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
@@ -42,28 +43,51 @@ jobs:
         with:
           ref: ${{ github.sha }}
           path: control
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: false
-      - name: Bind exact reviewed family source
+      - name: Bind exact reviewed family resume source
         id: control
         run: |
-          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-three-source-family-price-20260913'
-          test "$(cat control/.github/ops/anex-three-source-family-price-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-family-price;scenario=Turkey-2026-10-29-9n-2a-1c7-AI;owner=2026-09-13"
+          MARKER='control/.github/ops/anex-three-source-family-price-resume-20260913'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-three-source-family-price-resume-20260913'
+          IFS=';' read -r SOURCE_FIELD OPERATION_FIELD SCENARIO_FIELD RESUME_FIELD OWNER_FIELD EXTRA <<EOF
+          $(cat "$MARKER")
+          EOF
+          test -z "$EXTRA"
+          test "$OPERATION_FIELD" = 'operation=read-only-anex-three-source-family-price-resume'
+          test "$SCENARIO_FIELD" = 'scenario=Turkey-2026-10-29-9n-2a-1c7-AI'
+          test "$OWNER_FIELD" = 'owner=2026-09-13'
+          SOURCE_SHA="${SOURCE_FIELD#source=}"
+          RESUME_RUN="${RESUME_FIELD#resume_run=}"
+          printf '%s' "$SOURCE_SHA" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "$RESUME_RUN" | grep -Eq '^[0-9]{1,20}$'
+          test "$SOURCE_FIELD" = "source=$SOURCE_SHA"
+          test "$RESUME_FIELD" = "resume_run=$RESUME_RUN"
+          git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+          echo "resume_run=$RESUME_RUN" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.control.outputs.source }}
           path: source
           persist-credentials: false
-      - name: Run one family three-source scenario
+      - name: Download immutable prior family evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: anex-three-source-family-price-${{ steps.control.outputs.resume_run }}
+          path: ${{ runner.temp }}/family-prior
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.control.outputs.resume_run }}
+      - name: Run only missing family three-source cases
         id: family
         continue-on-error: true
+        env:
+          ANEX_FAMILY_RESUME_RUN_ID: ${{ steps.control.outputs.resume_run }}
         run: |
           mkdir -m 700 "$RUNNER_TEMP/family-price"
-          python3 -B source/scripts/diagnostics/anex_three_source_family_price.py "$RUNNER_TEMP/family-price"
-      - name: Preserve sanitized family evidence
+          python3 -B source/scripts/diagnostics/anex_three_source_family_price.py "$RUNNER_TEMP/family-price" "$RUNNER_TEMP/family-prior"
+      - name: Preserve cumulative sanitized family evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
