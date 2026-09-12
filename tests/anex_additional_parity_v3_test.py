@@ -26,6 +26,13 @@ def completed(fuel='25015.2', adult='12507.6'):
     }
 
 
+assembled=mod.source()
+assert assembled.startswith("declare(strict_types=1);\n")
+assert 'function anex_paired_text' in assembled
+assert 'final class AnyTourAnexAdditionalPricesClient' in assembled
+assert 'function anex_additional_parity_main' in assembled
+assert assembled.count('<?php')==0
+
 value=mod.validate(completed())
 report=mod.analyze(value); evidence=report['evidence']
 assert report['price_arithmetic_applied'] is False and report['universal_formula_verified'] is False
