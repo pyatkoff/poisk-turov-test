@@ -100,7 +100,7 @@ def main():
     if len(sys.argv)!=2: raise SystemExit('usage: anex_green_gold_1797_flight_bind.py OUTPUT_DIR')
     out=Path(sys.argv[1])
     try:
-        value=validate(transport.ssh_php_no_mux(php_source(),SPEC,maximum_bytes=2000000));save(out/'result.json',value);report=summarize(value);save(out/'report.json',report);print(json.dumps(report,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if value.get('status')=='completed' else 1)
+        value=validate(transport.ssh_php_no_mux(php_source(),SPEC,maximum_bytes=4000000));save(out/'result.json',value);report=summarize(value);save(out/'report.json',report);print(json.dumps(report,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if value.get('status')=='completed' else 1)
     except SystemExit: raise
     except Exception as exc:
         failure={'status':'unconfirmed','error_kind':type(exc).__name__,'automatic_retry':False,'supplier_replay_requested':False};save(out/'failure.json',failure);print(json.dumps(failure,sort_keys=True));raise SystemExit(1)
