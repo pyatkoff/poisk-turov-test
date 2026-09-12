@@ -1,0 +1,100 @@
+name: MATCH ANEX-key Egypt Turkey datesweep v2
+on:
+  push:
+    branches: [ops/match-andromeda-anex-direct-key-matrix-1971-20260912-v1]
+    paths: [.github/workflows/hotel-match-anexkey-egypt-turkey-datesweep-v2.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-anexkey-egypt-turkey-sweep-v2, cancel-in-progress: false}
+jobs:
+  slice:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        country: [egypt, turkey]
+        date: ['2026-10-16','2026-10-30','2026-11-13','2026-12-11','2026-12-25','2027-01-22','2027-02-05','2027-02-19','2027-03-05','2027-03-19','2027-04-02','2027-04-16']
+    env:
+      COUNTRY: ${{ matrix.country }}
+      SEARCH_DATE: ${{ matrix.date }}
+      FAMILY_ID: hotel-match-anexkey-core8-mass-1971-egypt-turkey-datesweep-20260912-v2
+      OUT: /tmp/match-key-sweep-v2
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 3, persist-credentials: false}
+      - name: Derive immutable program and reserve before provider access
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          export OPERATION_ID="${FAMILY_ID}-${COUNTRY}-${SEARCH_DATE}"
+          python3 - <<'PY'
+          import os,pathlib,hashlib,json
+          p=pathlib.Path('scripts/diagnostics/hotel_match_andromeda_anex_operator_key_core8.php').read_text()
+          assert p.count('__MATCH_COUNTRY__')==1 and p.count('__MATCH_DATE__')==1 and p.count('__MATCH_OPERATION__')==1
+          p=p.replace('__MATCH_COUNTRY__',os.environ['COUNTRY']).replace('__MATCH_DATE__',os.environ['SEARCH_DATE']).replace('__MATCH_OPERATION__',os.environ['OPERATION_ID'])
+          d=pathlib.Path(os.environ['OUT']); (d/'program.php').write_text(p)
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'country':os.environ['COUNTRY'],'date':os.environ['SEARCH_DATE'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(p.encode()).hexdigest(),'state':'reserved_before_supplier_access','database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}; (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+          php -l "$OUT/program.php"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'key-sweep-v2-${{ matrix.country }}-${{ matrix.date }}-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute one fresh direct-key slice plus CURRENT readback
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";sock="$RUNNER_TEMP/ssh.sock";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ok=0
+          for n in 1 2 3;do if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST";then ok=1;break;fi;sleep 10;done;test "$ok" = 1
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr";rc=$?
+          set -e;export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes();vals=[x[len('MATCH_CORE8_KEY_JSON:'):] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_CORE8_KEY_JSON:')];x=json.loads(vals[-1]) if vals else {'status':'unknown','reason':'result_marker_missing','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True};x['remote_exit']=int(os.environ['RC']);(d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n');assert x.get('database_writes')==0 and x.get('mapping_writes')==0
+          if int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
+          assert (x.get('provider_calls') or {}).get('tourvisor')==0
+          print(json.dumps({k:x.get(k) for k in ['country','date','pages','direct_anex_hotels','bridges','counts']},ensure_ascii=False,sort_keys=True))
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1||true;rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: key-sweep-v2-${{ matrix.country }}-${{ matrix.date }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/result.json
+          retention-days: 90
+  aggregate:
+    if: always() && github.run_attempt == 1 && github.run_number == 1
+    needs: slice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'key-sweep-v2-*-final', path: /tmp/all, merge-multiple: false}
+      - name: Aggregate deduped safe delta by recurrence
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,collections,os
+          files=list(pathlib.Path('/tmp/all').rglob('result.json')); completed=[];failed=[]
+          for p in files:
+            x=json.loads(p.read_text());(completed if x.get('status')=='completed' else failed).append(x)
+          obs=collections.defaultdict(list);tot=collections.Counter();bycountry=collections.defaultdict(collections.Counter)
+          for x in completed:
+            for k,v in (x.get('counts') or {}).items():tot[k]+=v;bycountry[x['country']][k]+=v
+            for r in x.get('rows') or []:
+              if r.get('bucket') not in {'safe_missing_andromeda_side','safe_missing_anex_side'}:continue
+              k=(r['bucket'],str(r['anex_id']),str(r['andromeda_id']),str(r['anchor_local_id']));obs[k].append({'country':x['country'],'date':x['date'],'image':r['image_pattern_verified'],'name_exact':r['name_exact_normalized'],'anex_name':r['direct_anex_name'],'andromeda_name':r['andromeda_name'],'hotel_url':r['hotel_url']})
+          cand=[]
+          for k,a in obs.items():cand.append({'bucket':k[0],'anex_id':k[1],'andromeda_id':k[2],'local_id':k[3],'country':a[0]['country'],'recurrence':len({z['date'] for z in a}),'observations':a})
+          cand.sort(key=lambda r:(-r['recurrence'],r['country'],int(r['local_id']),int(r['anex_id'])))
+          out={'status':'completed' if len(completed)==24 else 'partial','family_id':'hotel-match-anexkey-core8-mass-1971-egypt-turkey-datesweep-20260912-v2','completed_slices':len(completed),'failed_slices':len(failed),'totals':dict(tot),'country_counts':{k:dict(v) for k,v in bycountry.items()},'safe_observations':sum(len(v) for v in obs.values()),'distinct_safe_candidates':len(cand),'recurring_ge2':sum(x['recurrence']>=2 for x in cand),'recurring_ge3':sum(x['recurrence']>=3 for x in cand),'recurring_ge4':sum(x['recurrence']>=4 for x in cand),'recurring_ge6':sum(x['recurrence']>=6 for x in cand),'candidates':cand,'failed':[{'country':x.get('country'),'date':x.get('date'),'stage':x.get('stage'),'reason':x.get('reason')} for x in failed],'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'no_replay':True}
+          pathlib.Path('aggregate.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 Egypt+Turkey operator-key datesweep v2 READ-ONLY: completed **{out['completed_slices']}/24**, failed **{out['failed_slices']}**; safe observations **{out['safe_observations']}**, distinct safe candidates **{out['distinct_safe_candidates']}**, recurring >=2 **{out['recurring_ge2']}**, >=3 **{out['recurring_ge3']}**, >=4 **{out['recurring_ge4']}**, >=6 **{out['recurring_ge6']}**. CURRENT buckets `{out['totals']}`. Fresh Tourvisor0; DB/mapping/booking/lead writes0. Run `{os.environ['GITHUB_RUN_ID']}`. Evidence only; any write requires NEW server-current guarded operation/readback."
+          pathlib.Path('summary.md').write_text(s+'\n');print(s)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'key-sweep-v2-${{ github.run_id }}-aggregate', path: aggregate.json, retention-days: 90}
+      - name: Record result
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file summary.md
