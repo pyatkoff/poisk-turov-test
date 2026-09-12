@@ -1,0 +1,127 @@
+name: MATCH price-position current review v16
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-price-position-current-review-1971-20260912-v16.arm']
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: anytour-match-price-position-current-review-v16
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-price-position-current-review-1971-20260912-v16
+  ARTIFACT_DIR: /tmp/match-price-position-current-v16
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate immutable arm and source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-price-position-current-review-1971-20260912-v16.arm)" = "$OPERATION_ID"
+          test "$(jq -r .source_run_id reports/match-price-position-v15-strong-candidates.json)" = '34682814570'
+          test "$(jq -r .unique_pair_count reports/match-price-position-v15-strong-candidates.json)" = '18'
+          php -l scripts/diagnostics/hotel_match_price_position_current_review.php
+          mkdir -m 700 -p "$ARTIFACT_DIR"
+      - name: Establish SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);key=rt/'matchpp-v16-key';sock=rt/'matchpp-v16.sock';known=rt/'matchpp-v16-known'
+          raw=os.environ['KEY_VALUE'].strip();key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30)
+              if p.returncode==0:
+                  q=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && test -f config.php && printf MATCHPP_V16_PREFLIGHT_OK'],text=True,capture_output=True,timeout=30)
+                  if q.returncode==0 and q.stdout.strip()=='MATCHPP_V16_PREFLIGHT_OK':ok=True;break
+              time.sleep(2)
+          if not ok:raise SystemExit('ssh preflight failed')
+          PY
+      - name: Persist immutable reservation before DB access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);src=Path('reports/match-price-position-v15-strong-candidates.json').read_bytes();prog=Path('scripts/diagnostics/hotel_match_price_position_current_review.php').read_bytes()
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_run_id':34682814570,'source_sha':'769e5beb65df1fcb01741db4ab286178f52356a8','candidate_count':18,'candidate_sha256':hashlib.sha256(src).hexdigest(),'program_sha256':hashlib.sha256(prog).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-price-position-current-v16-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute CURRENT DB read-only reconciliation
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/'matchpp-v16.sock';program=Path('scripts/diagnostics/hotel_match_price_position_current_review.php').read_text()
+          p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M'],input=program,text=True,capture_output=True,timeout=600)
+          prefix='MATCH_PRICEPOS_CURRENT_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None)
+          if line is None: data={'status':'unknown','reason':'result_marker_missing','remote_exit':p.returncode,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          else: data=json.loads(line)
+          data.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_commit=os.environ['GITHUB_SHA'])
+          (d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':data.get('status'),'counts':data.get('counts'),'input':data.get('input_unique_pairs')},ensure_ascii=False))
+          if data.get('status')!='completed': raise SystemExit(2)
+          PY
+      - name: Build receipt
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'result.json';data=json.loads(p.read_text()) if p.exists() else {'status':'unknown','reason':'result_missing'};raw=p.read_bytes() if p.exists() else b''
+          r={'operation_id':os.environ['OPERATION_ID'],'state':data.get('status','unknown'),'reason':data.get('reason'),'counts':data.get('counts'),'input_unique_pairs':data.get('input_unique_pairs'),'result_sha256':hashlib.sha256(raw).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-price-position-current-v16-${{ github.run_id }}-result
+          path: ${{ env.ARTIFACT_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result in MATCH issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          p=Path(os.environ['ARTIFACT_DIR'])/'result.json';d=json.loads(p.read_text()) if p.exists() else {'status':'unknown'};c=d.get('counts') or {}
+          body=f"MATCH #1971 CURRENT price-position reconciliation `{os.environ['OPERATION_ID']}`: **{d.get('status')}** / NO-REPLAY. Input **{d.get('input_unique_pairs')}** unique ANEX↔Andromeda pairs from immutable v15. Buckets: safe_bridge **{c.get('safe_bridge',0)}**, already_same **{c.get('already_same',0)}**, needs_extra_evidence **{c.get('needs_extra_evidence',0)}**, hard_conflict **{c.get('hard_conflict',0)}**, excluded **{c.get('excluded',0)}**, missing_current_row **{c.get('missing_current_row',0)}**. Supplier/Tourvisor/DB/mapping writes 0. Run `{os.environ['GITHUB_RUN_ID']}`. Any acceptance requires a NEW server-current guarded write operation with post-COMMIT readback."
+          subprocess.run(['gh','issue','comment','1971','--repo',os.environ['GITHUB_REPOSITORY'],'--body',body],check=True)
+          PY
