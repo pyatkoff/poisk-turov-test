@@ -32,10 +32,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
           const box = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height, fontSize: parseFloat(s.fontSize), position: s.position }; };
           const form = document.forms.tourSearch, preferences = form.querySelector('.search-preferences');
           const partyGroup = form.querySelector('.search-group--party'), childAges = form.querySelector('#childAges');
-          // Closed details descendants may retain geometry without being painted.
           const visible = nodes => [...nodes].filter(node => !node.closest('details:not([open])') && node.checkVisibility({ visibilityProperty: true }) && node.getBoundingClientRect().height > 0);
-          // Native control heights may differ slightly inside one align-items:end grid row.
-          // Count cells as one row when their rendered vertical boxes materially overlap.
           const columns = node => {
             const rows = [];
             for (const item of visible([...node.children].filter(child => child.tagName !== 'LEGEND'))) {
@@ -109,7 +106,13 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
           assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 6);
           const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
           assert.deepEqual(counts(state.groupTops), [2, 2], 'trip basics retain two balanced rows');
-          assert.ok(state.groupColumns.every(value => value === 2));
+          assert.deepEqual(state.groupColumns, [2, 2, 2, 3], 'one child age shares the compact tourist row on wide desktop');
+          const adults = state.controls.find(item => item.name === 'count_people');
+          const children = state.controls.find(item => item.name === 'child_count');
+          const childAge = state.controls.find(item => item.name === 'child_age[]');
+          assert.ok(adults && children && childAge, 'wide desktop exposes adults, children and hydrated child age');
+          assert.ok(Math.max(adults.top, children.top, childAge.top) - Math.min(adults.top, children.top, childAge.top) <= 3, 'one child age aligns with adults and children');
+          assert.ok(childAge.width <= Math.max(adults.width, children.width) + 1, 'child age remains a compact tourist control');
           assert.ok(Math.max(...state.preferenceTops) - Math.min(...state.preferenceTops) <= 3, 'wide desktop keeps the six primary OTA preferences visually aligned on one row');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[0] + 40, 'exact hotel gets the widest primary track');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[2] + 100, 'hotel track stays materially wider than compact category');
