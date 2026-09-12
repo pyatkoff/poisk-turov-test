@@ -4,19 +4,19 @@
 INT-база: свежая `feature/anex-search-adapter-20260907`.
 Координация: #996. Рабочие issues: #1685, #1717, #1647. #1759 — только внешний identity dependency.
 
-Этот документ — исполняемый roadmap INT/data/API. Он не заменяет `AGENTS.md`, release `docs/project/anytour-development.md` и scoped `docs/integrations/anex-search3-autopilot.md`. Главный принцип: **свежий подтверждённый state всегда сильнее исторического checkpoint/next_action внутри документа или старого задания**.
+Этот документ — исполняемый roadmap INT/data/API. Он не заменяет `AGENTS.md`, release `docs/project/anytour-development.md` и scoped `docs/integrations/anex-search3-autopilot.md`. Свежие issue/merged code/CI/readback всегда сильнее исторического текста.
 
 ## 0. Scope и владельцы
 
-INT владеет только supplier/data/API частью:
+INT владеет только:
 
-- transport/auth/read-only search;
-- provider dictionaries и честная filter semantics;
+- supplier transport/auth/read-only search;
+- provider dictionaries и честной filter/property semantics;
 - observation ledger;
 - money/price/fuel/additional evidence;
-- canonical provider-neutral offer DTO/fixtures;
+- canonical provider-neutral offer/quote DTO и fixtures;
 - Andromeda package/quote source pipeline в разрешённых границах;
-- bounded handoff contract для SEARCH без владения UI.
+- bounded INT → SEARCH handoff contract без владения UI.
 
 Не брать из этой очереди:
 
@@ -24,60 +24,64 @@ INT владеет только supplier/data/API частью:
 - SEARCH #1646 renderer/controller/UI;
 - SITE #1719;
 - SEO #1720;
+- mapping writers/acceptance/manual/conflict queues;
 - lead transport/field mapping;
 - Metrika/goals/analytics;
 - production SEO;
 - server/platform config;
 - Tourvisor protected URL/payload/price arithmetic.
 
-Для #1759 разрешено только читать свежий baseline и передавать evidence о новых external hotel IDs. Запрещены mapping writers, acceptance queues, bulk reconciliation и ослабление manual/pair/conflict guards.
+Для #1759 разрешено только читать fresh current identity baseline и передавать evidence о новых external hotel IDs. Никаких mapping writes или bulk reconciliation из INT.
 
 ---
 
-# 1. Fresh-state / supersession guard
+## 1. Обязательный fresh-state guard перед каждым запуском
 
-Перед **каждым** автономным запуском:
+Перед выбором пакета:
 
 1. перечитать свежие `AGENTS.md`;
-2. перечитать `docs/project/anytour-development.md` из release;
-3. перечитать scoped `docs/integrations/anex-search3-autopilot.md`;
+2. перечитать release `docs/project/anytour-development.md`;
+3. перечитать `docs/integrations/anex-search3-autopilot.md`;
 4. перечитать этот roadmap;
 5. перечитать свежие #996, #1685, #1717, #1647;
-6. #1759 читать только как current identity baseline/dependency;
+6. #1759 читать только как dependency/current identity truth;
 7. получить fresh INT head, open PR/CI/actions и active claims;
-8. убедиться, что shared path не имеет другого writer;
-9. только после этого выбирать пакет.
+8. проверить, что shared path не имеет другого writer;
+9. только после этого выбирать SAFE/MEDIUM пакет.
 
-### Правила supersession
+Правила supersession:
 
-- Исторический `next_action` не становится очередью автоматически.
-- `completed`, `reserved` или `unknown` supplier operation не replay.
-- Если старое задание противоречит свежему issue/merged code/readback, старый текст считается historical snapshot и **не исполняется**.
-- Новый алгоритм/новая попытка supplier scenario = новый `operation_id`, новый checkpoint и новые критерии. Нельзя маскировать replay переименованием checkpoint.
-- Любая live/read-only supplier execution должна соответствовать **текущим** owner rules, а не старому разрешению из checkpoint.
+- исторический `next_action` не становится очередью автоматически;
+- `completed`, `reserved` или `unknown` supplier operation не replay;
+- новый supplier scenario получает новый `operation_id`, checkpoint и criteria digest;
+- смена имени checkpoint не превращает replay в новую операцию;
+- fresh issue/merged code/readback сильнее старого checkpoint;
+- live/read-only execution подчиняется текущим owner rules, а не старому разрешению.
 
-### Уже superseded факты — не открывать заново
+Уже закрытые исторические факты, которые **не открывать заново**:
 
-1. Исторический diagnostic bug `PHP $out += [...]` уже исправлен: текущий runner использует overwrite-семантику (`array_replace`) для `status/offers/details`. Не создавать второй PR «на исправление» этой ошибки.
-2. Старый Egypt-v3 diagnostic case считать закрытым историческим case. После bugfix не replay; следующий P0/P1 test обязан иметь новые criteria/operation/checkpoint.
-3. Старое ожидание ответа SAMO по `PRICES[].id`/`claiminc` **снято свежим подтверждённым контрактом**: `PRICES[].id` является полным `claiminc` для соответствующего package flow. Исторический UNKNOWN `broninit` при этом остаётся sealed/no-replay.
-4. `bron` и `bron_ticket` по-прежнему запрещены. Подтверждение `claiminc` не является разрешением бронировать или отправлять реальную заявку.
-5. Фиксированные identity counts ниже/в старых комментариях — только historical baseline. Свежий #1759/DB readback авторитетнее и никогда не модифицируется из INT.
+- bug PHP `$out += [...]` исправлен; current diagnostic overwrite semantics корректны;
+- старый Egypt-v3 case закрыт как historical; не replay;
+- `PRICES[].id` подтверждён как полный `claiminc` для Andromeda package flow;
+- legacy UNKNOWN `broninit` остаётся sealed/no-replay;
+- `bron` и `bron_ticket` запрещены;
+- historical identity counts не считать current truth — авторитетен fresh #1759/DB readback.
 
 ---
 
-# 2. Доказанный current baseline
+## 2. Current proven baseline
 
-## 2.1 Money / P0 evidence
+### 2.1 P0 money/fuel evidence
 
-Свежая доказательная выборка Turkey broad-v2 для ANEX-only parity дала 6 exact aligned display tuples на current accepted triple identities:
+Turkey broad-v2 ANEX-only parity дал 6 exact aligned display tuples на current accepted triple identities:
 
-- direct ANEX `search_price` совпал с Andromeda ANEX-only `search_price` во всех 6;
-- разница Tourvisor displayed/group price и этих search prices совпала с Tourvisor `fuelCharge` во всех 6;
-- это **не** доказывает общий supplier package и **не** разрешает менять price arithmetic;
-- отсутствие fuel/additional поля = `unknown`, не `0`.
+- direct ANEX `search_price` == Andromeda ANEX-only `search_price` во всех 6;
+- Tourvisor displayed/group price minus этот search price == Tourvisor `fuelCharge` во всех 6;
+- это cohort evidence, а не универсальная формула;
+- отсутствие fuel/additional поля = `unknown`, не `0`;
+- совпадение цены не доказывает один package и не принимает mapping.
 
-Следовательно текущая модель обязана хранить отдельно:
+Canonical money факты всегда раздельны:
 
 - `search_price` + currency;
 - `fuel_charge_reported`;
@@ -85,379 +89,377 @@ INT владеет только supplier/data/API частью:
 - `package_buyer_price`;
 - `quote_price`;
 - `final_price_verified`;
-- source/method/timestamp/provenance каждого денежного факта.
+- source/method/timestamp/context provenance.
 
-Ничего из этих полей автоматически не складывать.
+Ничего автоматически не складывать. Search/package/quote/final не fallback друг в друга.
 
-## 2.2 Уже закрытые P2/P4 пакеты
+### 2.2 Закрытые source semantics
 
-Не открывать заново без regression evidence:
+Без нового regression evidence не открывать заново:
 
-- date/nights/adults/children/ages semantics;
-- AI meal semantics + canonical `meal_key`;
+- date/nights/adults/children/ages;
+- canonical meal key/families и qualifiers;
 - availability с честным `unknown`;
 - flight/detail capability flags;
-- `provider != operator` и operator evidence;
+- provider != operator;
 - strict money provenance;
-- `observed_at` / freshness evidence;
-- canonical envelope strictness/dedupe guards.
+- `observed_at`/freshness;
+- canonical offer envelope strictness/dedupe;
+- direct ANEX saved concrete-offer read/context boundary;
+- Andromeda durable quote no-replay/persisted-money validation;
+- canonical verified-quote money handoff;
+- exact quote provenance/context envelope.
 
-## 2.3 Andromeda P5 supplier contract
+### 2.3 Andromeda supplier/package contract
 
-Подтверждено и уже отражено в source guards:
+Подтверждено:
 
 - `PRICES[].id` → полный `claiminc`;
-- `broninit` используется только как package composition/details step, не как booking;
-- private claiminc/SID/UID не публикуются в browser DTO;
+- `broninit` = package composition/details, не booking;
+- `get_flights` только когда он нужен selected-quote flow;
+- auto-selection только при однозначной outbound+return паре;
+- `changeservice`/`calc` относятся к quote/package verification;
+- private claiminc/SID/UID не публикуются;
 - typed transport retry не превращается в semantic replay;
-- `get_flights` вызывается только когда он действительно нужен source pipeline;
-- auto-selection flights допустим только при однозначной outbound+return паре;
-- `changeservice`/`calc` относятся к quote/package verification, не к booking;
-- legacy UNKNOWN operation не replay;
 - реальные заявки, `bron`, `bron_ticket` запрещены.
 
-Новый live package/quote capture выполняется только по текущему exact owner-control/allowlist. Source-only SAFE/MEDIUM пакеты могут продолжаться независимо.
+На одном явно выбранном fresh claim доказана read-only цепочка:
 
-## 2.4 Current P5/P6 execution evidence — не повторять и не обобщать
+- `broninit`: `124864 RUB`;
+- `get_flights`;
+- 2× `changeservice` для единственной outbound+return пары;
+- `calc`: `135643 RUB`;
+- для **этого exact claim** `final_price_verified=true`.
 
-На одном свежем явно выбранном Andromeda claim уже доказана полная read-only цепочка без booking:
+Completed chain запечатан/no-replay. Он доказывает, что package/search price может отличаться от calc quote, но не доказывает fuel formula или универсальную арифметику.
 
-- `broninit`: run `34605764015`, исходная выбранная туристическая цена `124864 RUB`;
-- `get_flights`: run `34607247181` SUCCESS;
-- ровно требуемая outbound+return пара выбрана через 2× `changeservice`: run `34608731086` SUCCESS;
-- `calc`: run `34609344978` SUCCESS;
-- exact-claim tourist buyer price изменилась `124864 → 135643 RUB`;
-- для **этого конкретного claim** `final_price_verified=true`.
+### 2.4 Direct ANEX P4/P6 boundary
 
-Это доказывает рабочий порядок `broninit → get_flights → changeservice → calc` для данного external-flight case и доказывает, что search/package price может отличаться от итоговой calc price. Это **не** универсальная формула, не fuel arithmetic и не разрешение автоматически складывать сборы. Этот completed chain не replay.
+PR #2081 merged в INT как `e92253bbcadfc5228f3fa233f64be5cd1983228f`:
 
-Direct ANEX P4/P6 common-session boundary также уже source-complete: PR #2081 merged в INT как `e92253bbcadfc5228f3fa233f64be5cd1983228f`. Существующий `ANYTOUR_ANEX_SEARCH3` хранит реальные random `search_ref`, opaque source-qualified `offer_ref`, исходные normalized facts, one-shot group expansion с durable unknown-before-transport checkpoint и supplier-free saved concrete-offer read. Current mapping/catalog/generation/search/fixed-expiry guards обязательны; group minima не становятся selected offer; private supplier IDs не публикуются. Source merge не означает preview publication или SEARCH acceptance.
+- существующий `ANYTOUR_ANEX_SEARCH3` хранит real random `search_ref`;
+- opaque source-qualified `offer_ref`;
+- исходные normalized facts;
+- one-shot group expansion с durable unknown-before-transport checkpoint;
+- supplier-free saved concrete-offer read;
+- current mapping/catalog/generation/search/fixed-expiry guards;
+- group minimum не может стать selected offer;
+- private supplier IDs не публикуются.
 
-Следующий P6 шаг по direct ANEX — только bounded receiving handoff владельцу SEARCH с сохранением этих refs/expansion/details contract. INT не редактирует SEARCH renderer/controller/UI и не обходит отдельные SEARCH gates.
+Следующий direct ANEX шаг — только receiving handoff владельцу SEARCH. INT не редактирует SEARCH renderer/controller/UI.
 
-Andromeda selected-quote durable replay теперь закрыт двумя последовательными guards: #2088 сохраняет `reserved` до любого supplier-вызова, навсегда запечатывает `reserved/unknown` и разрешает supplier-free replay только завершённого browser-safe результата после повторной проверки current retained offer/mapping endpoint-ом; #2090 merged в INT как `3b8acda85ac164f3e0dd5adf9303d9e411434e81` дополнительно валидирует сам persisted completed result перед сохранением и каждым replay. `search_price`, optional `package_price` и verified `final_price` обязаны оставаться отдельными точными `{amount,currency}` фактами с положительной decimal-суммой; malformed/zero/лишние money keys, несогласованные quote/flight states и повреждённый checkpoint fail closed. Это защита целостности persisted evidence, **не** новая price arithmetic и не повод повторять completed supplier chain.
+### 2.5 Andromeda quote integrity и provider-neutral money
 
-Canonical provider-neutral money handoff для доказанного Andromeda quote теперь source-complete: PR #2092 merged в INT как `510166858b4a4443e0fb2a869b92292cc2706aea`. `withVerifiedQuote()` принимает только неизменённый canonical search-money state, сохраняет `search_price`, optional `package_buyer_price` и `quote_price` как отдельные exact-source facts (`andromeda_search` / `andromeda_package` / `andromeda_quote`), ставит `final_price_verified=true` без delta/fuel/total arithmetic и оставляет `search_price_fuel_relation=unknown`. Tourvisor/direct ANEX quote enrichment остаётся unsupported до отдельного доказанного supplier contract.
+#2088 + #2090 закрыли semantic replay и corrupted completed-result reuse:
+
+- `reserved` пишется до supplier call;
+- `reserved/unknown` навсегда запрещают повтор;
+- completed replay supplier-free и только после current-context revalidation;
+- persisted `search/package/final` money повторно валидируется;
+- malformed/zero/extra money keys и inconsistent quote/flight state fail closed.
+
+#2092 merged как `510166858b4a4443e0fb2a869b92292cc2706aea`:
+
+- `withVerifiedQuote()` принимает только canonical untampered Andromeda search-money state;
+- `search_price`, optional `package_buyer_price`, `quote_price` остаются отдельными facts;
+- sources: `andromeda_search` / `andromeda_package` / `andromeda_quote`;
+- `final_price_verified=true` только по verified quote;
+- `search_price_fuel_relation=unknown`;
+- `arithmetic_applied=false`;
+- Tourvisor/direct ANEX quote enrichment остаётся unsupported без отдельного supplier contract.
+
+### 2.6 NEW: exact verified-quote provenance/context envelope
+
+PR #2094 merged в INT как `62ec85a5143840ef62c0628fa56a814b2d81ddbd`.
+Exact head `3ed213817ac1b7e01b11e274eea8a2d4b198fe2b`; focused run `34665514483` SUCCESS (54 checks), Security `34665514441` SUCCESS.
+
+Теперь provider-neutral verified Andromeda quote может пересечь INT handoff только если:
+
+- canonical search offer заново проходит retained-offer validation;
+- retained envelope точно соответствует offer identity;
+- current provider/operator/local-hotel + digest identity + generation/page совпадают;
+- TTL ещё current;
+- quote `provider/local/operator/search_price` совпадает с canonical offer;
+- quote имеет только verified, no-flight-choice-required, booking-disabled state;
+- package/final money имеют строгую `{amount,currency}` форму;
+- canonical enrichment идёт только через #2092 money layer.
+
+Output содержит digest-only offer identity/provenance + separate canonical money. Private supplier identities и flight payload не переходят этот boundary. `selection_state=disabled`, `booking_enabled=false`. Supplier/network/SSH/DB/mapping/booking/UI/production effects этого пакета = 0.
+
+Это закрывает прежний P5/P6 gap «exact provenance/context envelope around canonical money handoff».
 
 ---
 
-# 3. Приоритет очереди
+## 3. Исполняемый приоритет
 
-Исполняемый порядок:
+`P0 money/fuel/additional → P1 observation matrix → P2 filter/property semantics → P4 canonical offer → P5 package/quote/final → P6 bounded SEARCH handoff → P7 release readiness`
 
-`P0 money/fuel/additional → P1 observation search matrix → P2 filter/property semantics → P4 canonical offer contract → P5 package/quote/final → P6 bounded SEARCH handoff → P7 release readiness`
+P3 identity/matching = EXTERNAL и никогда не становится fallback-задачей INT.
 
-**P3 identity/matching = EXTERNAL** и не участвует в выборе INT-пакета. Если INT упирается в unmapped hotel, он сохраняет evidence и передаёт его в #1759/#996, после чего берёт независимый INT-пакет.
+Если текущий stage blocked, зафиксировать blocker и взять следующий независимый SAFE/MEDIUM INT package.
 
 ---
 
-# Этап P0 — цена, fuel и additional
+## P0 — money / fuel / additional
 
-## P0.1 ANEX-only parity
+### P0.1 ANEX-only parity
 
 Сравнивать только current accepted triple-mapped subject:
 
 - direct ANEX;
-- Andromeda с `OPERATORS=5`;
-- Tourvisor с ANEX в **исходном** supplier request.
+- Andromeda `OPERATORS=5`;
+- Tourvisor с ANEX в **исходном** request.
 
-Сравнение допустимо только при одинаковых:
+Tuple alignment только при одинаковых:
 
-`current local identity + date + nights + party + meal + room`.
+`current local identity + date + nights + party + canonical meal + room`.
 
-`placement` хранить отдельно, пока parity не доказан. Совпадение цены не доказывает один package и не принимает mapping.
+`placement` хранить отдельно до доказанного parity.
 
-## P0.2 Money state machine
+### P0.2 Money state machine
 
-Для каждого provider money fact хранить минимум:
+Для каждого факта:
 
-- state: `known | unknown | unsupported | stale`;
-- amount/currency, только если known;
-- source method;
-- supplier/operator context;
+- state `known | unknown | unsupported | stale`;
+- amount/currency только если `known`;
+- source method/provider/operator;
 - observed_at;
 - search/selection lineage.
 
-Правила:
+Особые правила:
 
 - Tourvisor `fuelCharge` — отдельный reported fact;
-- ANEX `AdditionalPricesDaily` — отдельный fact только после exact contract/разрешённого вызова;
-- Andromeda search money не получает synthetic fuel=0;
-- agency cost и buyer/customer money никогда не fallback друг в друга;
-- защищённую price arithmetic не менять в этой очереди без отдельного доказанного контракта и owner decision.
+- ANEX `AdditionalPricesDaily` — отдельный fact только после exact contract/current allowance;
+- Andromeda search не получает synthetic fuel=0;
+- agency cost и buyer/customer money не смешивать;
+- protected price arithmetic не менять без отдельного доказанного contract + owner decision.
 
-## P0.3 Следующие samples
+### P0.3 Новый sample
 
-Новый sample разрешён только если он добавляет evidence и не является replay. Приоритет:
+Новый supplier sample только если он приносит новый evidence и не replay. Приоритет:
 
-1. новый future date/party/nights на triple-mapped hotel;
+1. новая future date/party/nights на triple-mapped hotel;
 2. новый room/placement;
-3. другая core8 country с verified identity/filter mapping;
+3. другая core8 country с verified filter/identity mapping;
 4. family case;
-5. additional/fuel state, который ещё не наблюдался.
+5. ещё не наблюдавшийся additional/fuel state.
 
-UNKNOWN/reserved supplier case не повторять.
-
-**P0 DONE** только когда search/fuel/additional/package/quote semantics документированы раздельно и есть sanitized reproducible samples. Это не означает автоматического включения новой арифметики.
+UNKNOWN/reserved/completed criteria не использовать повторно.
 
 ---
 
-# Этап P1 — read-only search matrix и observation ledger
+## P1 — read-only search matrix + observation ledger
 
-Каждый разрешённый supplier search обязан принести хотя бы одно:
+Каждый разрешённый search должен дать минимум одно:
 
 - новую price observation;
-- новый materially different scenario;
+- materially different scenario;
 - новые external hotel IDs.
 
-Почти идентичный запрос ради отчёта запрещён.
+На один run максимум **3** новых supplier scenarios и только при зелёных applicable CI/budgets.
 
-## P1.1 Observation contract
-
-Сохранять, когда реально доступно:
-
-- provider + operator;
-- country/region/subregion/geography;
-- external hotel id;
-- current `local_id` или `null`;
-- raw hotel name;
-- stars/category;
-- coordinates;
-- search criteria;
-- date/nights/party/child ages;
-- raw+normalized meal/room/placement;
-- availability/flight flags;
-- search price/currency;
-- fuel/additional states отдельно;
-- observed_at + source request lineage.
-
-Для `local_id=null` никаких mapping writes. Evidence отправляется #1759/#996 с provider/country/external id/name/geography/star/coords/criteria, если эти поля фактически были получены.
-
-## P1.2 Scenario diversity
-
-Core8 сначала: Turkey, Egypt, Thailand, Maldives, UAE, Cuba, Sri Lanka, Vietnam.
+Core8: Turkey, Egypt, Thailand, Maldives, UAE, Cuba, Sri Lanka, Vietnam.
 
 Разнообразить:
 
 - future dates;
-- nights: 6/7/8/10/12/14;
-- adults: 1/2/3;
-- family: 2+1, затем 2 children с ages;
+- nights 6/7/8/10/12/14;
+- adults 1/2/3;
+- family 2+1, затем 2 children с ages;
 - AI baseline;
-- другие meals/stars/regions только после verified mapping;
-- broad и hotel-scoped cases.
+- broad и hotel-scoped;
+- meals/stars/regions только после verified mapping semantics.
 
-За один run — максимум **3 новых supplier search scenarios**, и только если предыдущие cases не `unknown/reserved`, supplier budgets в норме и применимый CI green.
+Observation, когда реально доступно:
 
-## P1.3 Operation identity
+- provider + operator;
+- country/region/subregion/geography;
+- external hotel id;
+- current `local_id` или null;
+- raw name, stars/category, coords;
+- criteria/date/nights/party/ages;
+- raw+normalized meal/room/placement;
+- availability/flight flags;
+- search price/currency;
+- fuel/additional states отдельно;
+- observed_at + source lineage.
 
-Каждый новый supplier scenario получает явные:
+`local_id=null` → evidence в #1759/#996; никаких mapping writes.
 
-- `operation_id`;
-- `checkpoint_path`;
-- scenario revision;
-- exact criteria digest;
-- source head SHA.
-
-Если criteria/operation уже sealed как completed/unknown/reserved — не использовать повторно.
+Каждый scenario получает `operation_id`, checkpoint path, scenario revision, criteria digest, source SHA.
 
 ---
 
-# Этап P2 — canonical filter/property matrix
+## P2 — canonical filter/property matrix
 
-Никакой raw numeric supplier ID не универсален.
-
-Статусы только:
+Никакой raw numeric supplier ID не универсален. Статусы только:
 
 `verified | local_only | unsupported | unknown`.
 
-| Canonical family | Tourvisor | direct ANEX | Andromeda | Правило |
+| Family | Tourvisor | direct ANEX | Andromeda | Rule |
 | --- | --- | --- | --- | --- |
-| departure | verified baseline | dictionary mapping | dictionary mapping | provider-specific IDs |
-| country | verified baseline | dictionary mapping | saved catalog mapping | provider-specific IDs |
-| region/resort | local/catalog | partial projection | limited/verify | не отправлять upstream без mapping |
-| subregion | local/catalog | partial projection | limited/verify | отдельная semantics |
+| departure | verified | dictionary mapping | dictionary mapping | provider-specific IDs |
+| country | verified | dictionary mapping | saved catalog mapping | provider-specific IDs |
+| region/resort | local/catalog | partial | limited/verify | no upstream without mapping |
+| subregion | local/catalog | partial | limited/verify | separate semantics |
 | hotel | local ID | accepted mapping/observation | accepted mapping/observation | P3 writes external |
-| stars/category | local catalog | supplier label | catalog label/verify | semantic, не raw key |
-| rating | local | local_only | local_only | не обещать upstream |
-| meal families | TV/local | verified families only | verified families only | raw + canonical key |
+| stars/category | local | supplier label | catalog label/verify | semantic, not raw key |
+| rating | local | local_only | local_only | no upstream promise |
+| meal families | verified | verified families only | verified families only | raw + canonical key |
 | room | offer text | offer text | offer text | raw + normalized |
-| placement | offer text | offer text | partial/gap | raw отдельно до parity |
-| operator | TV operator | ANEX | Andromeda operator | operator != provider |
-| hotel services | Search3/local | unsupported upstream | unsupported upstream | local_only |
-| hotel types | Search3/local | unsupported upstream | unsupported upstream | local_only |
-| arrival airport | TV/Search3 | unknown/unsupported until proven | unknown/unsupported until proven | не выдумывать |
-| direct flight | TV capability | unknown/unsupported until proven | unknown/unsupported until proven | capability evidence |
-| charter | TV capability | unknown/unsupported until proven | unknown/unsupported until proven | capability evidence |
-| dates/nights | verified | verified | verified | current closed family |
-| adults/children/ages | verified | verified | verified | current closed family |
-| price/currency | verified/source | source + local post-filter | source + local post-filter | money provenance |
-| availability | verified/source | source/unknown | source/unknown | enum + raw evidence |
-| flights/baggage | details | separate details | separate methods | optional detail DTO; Andromeda get_flights execution proven only for selected quote path |
-| fuel/additional | separate reported field | separate method/evidence | search unknown; package/quote separate | P0/P5 |
+| placement | offer text | offer text | partial/gap | keep separate |
+| operator | TV operator | ANEX | Andromeda raw/canonical evidence | operator != provider |
+| hotel services/types | local | unsupported upstream | unsupported upstream | local_only |
+| arrival airport | capability/local | unknown until proven | unknown until proven | no invention |
+| direct/charter | TV capability | unknown until proven | unknown until proven | capability evidence |
+| dates/nights | verified | verified | verified | closed family |
+| adults/children/ages | verified | verified | verified | closed family |
+| price/currency | source | source + local post-filter | source + local post-filter | money provenance |
+| availability | source | source/unknown | source/unknown | raw + canonical state |
+| flights/baggage | details | separate details | selected quote methods | optional detail DTO |
+| fuel/additional | reported separately | separate method | package/quote separate | P0/P5 |
 
-Каждый PR — одно небольшое семейство полей. Не делать broad provider rewrite.
+Один PR = одно bounded field family, без broad provider rewrite.
 
 ---
 
-# Этап P3 — EXTERNAL hotel identity/matching
+## P3 — EXTERNAL hotel identity/matching
 
-**Не исполняется этим автопилотом.**
+Не исполняется этим автопилотом.
 
-INT имеет право только:
+INT может только:
 
-1. прочитать fresh #1759/DB identity baseline;
-2. использовать уже accepted current local identity;
-3. записать observation с `local_id=null`;
-4. передать evidence/priority external IDs в #1759/#996.
+1. читать fresh #1759/DB baseline;
+2. использовать accepted current local identity;
+3. сохранять observation с `local_id=null`;
+4. передавать external-id evidence в #1759/#996.
 
-INT не имеет права:
-
-- принимать mapping;
-- менять matcher/mapping writer;
-- менять acceptance/manual/conflict queue;
-- запускать bulk reconciliation;
-- использовать price similarity как identity proof.
-
-Historical counts (3417 all-three, 11762 exactly-two, 11667 ANEX unique local, 6929 Andromeda unique local) — только snapshot начала плана. Никогда не использовать их как current truth без fresh readback.
+INT не может принимать mapping, менять matcher/writer/manual/conflict queue или запускать bulk reconciliation. Price similarity не является identity proof.
 
 ---
 
-# Этап P4 — canonical offer contract
+## P4 — canonical offer contract
 
-Provider-neutral DTO обязан сохранять:
+Provider-neutral offer сохраняет:
 
 - provider отдельно от operator;
-- current `local_hotel_id` или null observation state;
-- public-safe provider offer reference, если контракт позволяет;
-- date/nights/party/child ages;
-- raw+normalized meal;
-- raw+normalized room;
-- raw+normalized placement;
+- current local hotel identity или null observation state;
+- digest/public-safe provider offer identity только по разрешённому contract;
+- date/nights/party/ages;
+- raw+normalized meal/room/placement;
 - availability + raw evidence;
 - flight/detail capability;
-- search price + currency;
-- fuel/additional states отдельно;
+- search price/currency;
+- fuel/additional отдельно;
 - package/quote/final states отдельно;
 - observed_at/freshness;
-- search/selection context guard.
+- search/selection context guards.
 
-Private supplier offer identity, claiminc, SID/UID, credentials и agency-only money не публиковать.
+Private supplier offer ID, claiminc, SID/UID, credentials и agency-only money не публиковать.
 
-Новый поиск инвалидирует stale provider context. A→B rapid selection не может вернуть A-result в B-context.
+Новый search инвалидирует stale provider context. A→B race не может вернуть A result в B context.
 
-SEARCH renderer/controller не менять. INT готовит bounded DTO, fixtures, contract tests и handoff evidence.
+SEARCH renderer/controller не менять. INT готовит contract, DTO, fixtures и evidence.
 
 ---
 
-# Этап P5 — package/quote/final price
+## P5 — package / quote / final
 
-P5 больше **не** заблокирован старым вопросом `PRICES[].id`/`claiminc`; supplier contract подтверждён. Но это не отменяет live guards.
+Разрешённая модель Andromeda:
 
-Разрешённая модель:
-
-`selected source offer → broninit(package composition) → get_flights only if required → unambiguous flight selection only → changeservice if contract requires → calc quote`
+`selected source offer → broninit → get_flights only if required → unique flight pair only → changeservice if required → calc`
 
 На каждом шаге:
 
-- stale/current context guard;
-- private identifiers server-side only;
-- sanitized artifact;
+- current/stale context guard;
+- private IDs server-side;
+- sanitized state;
 - typed status;
-- no semantic replay;
-- no booking/application action.
+- durable no-replay;
+- no booking/application.
 
-`quote_price` ≠ `search_price` ≠ `final_price_verified` по умолчанию.
+Exact completed 124864→135643 case не повторять.
 
-Price change contract должен уметь вернуть:
+#2092 + #2094 закрывают canonical verified-money + exact-context handoff source-side. Следующая P5 работа допускается только если появится **новый** независимый supplier-contract gap/evidence; не создавать второй quote path и не запускать новый live quote только ради дополнительного sample.
 
-- old/new;
-- delta;
-- currency;
-- timestamp;
-- source/operator;
-- status `unchanged | changed | unavailable | unknown`.
-
-Exact selected-claim chain из §2.4 уже доказал изменение `124864 → 135643 RUB` после выбора обязательных рейсов и `calc`. Не запускать его повторно ради подтверждения. Следующая source задача — использовать уже существующий private verified-quote contract/handoff и сохранять exact-claim provenance; не превращать один sample в общую price arithmetic.
-
-Durable quote checkpoint также является частью price provenance: `reserved/unknown` никогда не разрешают повторный supplier call; completed replay допустим только для того же current context и только после строгой повторной валидации persisted browser-safe money/state payload. Повреждение persisted `search/package/final` money — blocker/local failure, а не повод автоматически делать новый quote.
-
-Canonical money layer после #2092 уже умеет перенести verified Andromeda quote в provider-neutral handoff без новой arithmetic: только неизменённый search-money state может получить optional `package_buyer_price` и verified `quote_price`; direct ANEX/Tourvisor остаются unsupported для такого enrichment. Следующий P5/P6 source gap — exact provenance/context envelope вокруг этого canonical money handoff, а не повтор supplier quote.
-
-Включение UI acceptance принадлежит SEARCH.
-
-Любой новый live package/quote capture — только по current exact owner-control. `bron`, `bron_ticket`, реальная заявка — стоп-гейт.
+UI acceptance принадлежит SEARCH.
 
 ---
 
-# Этап P6 — bounded handoff в SEARCH
+## P6 — bounded handoff в SEARCH
 
-INT не владеет UI. Готовится только stable handoff contract для:
+INT не владеет UI. Current source-side prerequisite теперь закрыт для:
 
-`search → offer select → package/quote check → changed-price state → existing lead handoff`.
+- direct ANEX saved concrete offer/context (#2081);
+- Andromeda durable verified quote (#2088/#2090);
+- canonical separate money facts (#2092);
+- exact offer+quote current-context envelope (#2094).
 
-INT acceptance fixtures должны покрывать:
+**Следующий безопасный INT package:** provider-neutral handoff acceptance fixtures/contract matrix, без нового supplier call и без SEARCH-owned source edits.
 
-- Tourvisor offer;
-- direct ANEX offer;
-- Andromeda offer;
-- operator provenance;
-- unavailable/unknown quote;
+P6 fixture matrix должна покрыть минимум:
+
+- Tourvisor search offer без synthetic quote;
+- direct ANEX group minimum vs concrete saved offer;
+- Andromeda search offer → current verified quote envelope;
+- provider != operator;
+- unknown/unavailable quote;
 - A→B selection race;
 - stale/expired context;
 - provider failure isolation;
-- sanitized payload без private supplier IDs.
+- canonical money separation;
+- sanitized payload без private supplier IDs;
+- selection/booking disabled на INT boundary.
 
-Direct ANEX INT-side common-session prerequisite закрыт #2081: SEARCH-получатель должен сохранить `search_ref`/`offer_ref`, явно вызывать expansion/concrete saved read и не подменять group minimum выбранным туром. Это handoff evidence, а не разрешение INT менять SEARCH-owned renderer/controller/UI.
-
-SEARCH #1646 принимает этот contract отдельно своим owner/writer.
+Receiving SEARCH owner сам подключает contract к renderer/controller/selected state и проходит свои publication/browser gates. INT не меняет эти файлы.
 
 ---
 
-# Этап P7 — release readiness
+## P7 — release readiness
 
-До release handoff:
+Перед release handoff:
 
 1. fresh INT/release heads;
-2. contract/focused tests green;
+2. focused/contract tests green;
 3. Security/applicable CI green;
 4. supplier no-replay/budget guards intact;
 5. money semantics documented;
-6. canonical filter matrix актуальна;
-7. P3 остаётся внешним dependency без скрытых writes;
-8. preview publication/readback только по текущему exact control;
-9. no lead/Metrika/Tourvisor protected contract drift;
+6. filter matrix актуальна;
+7. P3 остаётся внешним dependency без hidden writes;
+8. preview publication/readback только по current exact control;
+9. no lead/Metrika/Tourvisor protected-contract drift;
 10. rollback/provenance известны;
-11. production migration — только отдельный owner approval.
+11. production migration только отдельным owner approval.
 
 ---
 
-# 4. Автономный execution loop
+## 4. Execution loop
 
 Для каждого пакета:
 
-1. выбрать один bounded SAFE/MEDIUM INT-пакет по P0→P1→P2→P4→P5→P6→P7;
-2. если stage blocked — записать точный blocker и взять независимый следующий INT-пакет;
-3. создать fresh short branch от текущей INT-базы;
-4. в #996 объявить exact issue/branch/owned paths/dependencies/risk;
+1. выбрать один bounded SAFE/MEDIUM INT package по P0→P1→P2→P4→P5→P6→P7;
+2. если stage blocked — записать точный blocker и взять независимый следующий INT package;
+3. short branch от fresh INT base;
+4. exact claim в #996: issue/branch/owned paths/dependencies/risk;
 5. один writer на shared path;
-6. реализовать минимальный пакет;
+6. минимальная реализация;
 7. focused tests;
-8. Security и применимый CI;
-9. merge в INT только при green;
-10. supplier/live execution — только если разрешено current owner rules;
-11. после merge продолжить следующий безопасный шаг, если он есть;
-12. сообщать владельцу только новый существенный результат, точный blocker/решение или доказанное изменение money/filter semantics.
+8. Security + applicable CI;
+9. merge в INT только green;
+10. live/read-only execution только если current owner rules разрешают;
+11. после merge продолжить следующий safe step;
+12. обновить этот roadmap свежим confirmed state;
+13. владельцу сообщать только substantive result/blocker/proven semantic change.
 
-Не делать force-push и не перетирать чужие файлы.
+Без force-push. Не перетирать чужие файлы. Не создавать PR ради пустого checkpoint churn.
 
 ---
 
-# 5. Risk / stop gates
+## 5. Stop gates
 
 Отдельное разрешение обязательно для:
 
-- production/main вне уже явно разрешённого exact preview-control;
+- production/main вне exact previously allowed preview-control;
 - `bron`, `bron_ticket`, реальной заявки/бронирования;
 - изменения Tourvisor protected URL/payload/price arithmetic;
 - lead contract/transport/field mapping;
@@ -468,21 +470,21 @@ SEARCH #1646 принимает этот contract отдельно своим ow
 - ослабления manual/pair/conflict guards;
 - нового HIGH-risk supplier action.
 
-SAFE/MEDIUM source-only INT-пакеты продолжаются автономно.
+SAFE/MEDIUM source-only INT packages продолжаются автономно.
 
 ---
 
-# 6. Definition of useful progress
+## 6. Definition of useful progress
 
-Пакет считается полезным, только если даёт минимум одно:
+Пакет полезен только если даёт минимум одно:
 
 - новый доказанный money/fuel/additional fact;
 - новый non-replay observation scenario;
-- новый external-hotel evidence handoff без mapping write;
-- закрытое семейство filter/property semantics;
-- усиленный canonical offer contract/guard;
+- external-hotel evidence handoff без mapping write;
+- закрытое filter/property family;
+- усиленный canonical offer/quote guard;
 - подтверждённый package/quote state без booking;
-- bounded handoff fixture для SEARCH;
+- bounded SEARCH handoff fixture;
 - устранённый stale-state/unsafe-replay риск.
 
-Не создавать PR только ради обновления checkpoint текста без нового state/guard. Исключение — docs change, который предотвращает реальный unsafe replay или ownership conflict, как этот fresh-state guard.
+Не присылать неизменившиеся почасовые отчёты.
