@@ -95,6 +95,7 @@ jobs:
         env:
           SEARCH3_SELECTED_ACCEPTANCE_BASE: http://127.0.0.1:8099/_preview/search3-site-candidate
           SEARCH3_SELECTED_ACCEPTANCE_OUTPUT: ${{ runner.temp }}/search3-selected-current
+          SEARCH3_SELECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           export NODE_PATH="$RUNNER_TEMP/search3-selected-tools/node_modules"
