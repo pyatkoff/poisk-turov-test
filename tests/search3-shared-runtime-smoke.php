@@ -40,7 +40,16 @@ try {
     verify_shared(strlen($compact) < strlen($plain), 'served Search3 response did not shrink');
     verify_shared(render_shared($temp, 'full') === $full, 'legacy response changed');
     foreach (v2_bundle_files('js', 'search3') as $name) {
-        $expected = $map['entries'][$name]['code'] ?? file_get_contents($root . '/v2/' . $name);
+        $source = file_get_contents($root . '/v2/' . $name);
+        $entry = $map['entries'][$name] ?? null;
+        $expected = $source;
+        if (is_array($entry)
+            && isset($entry['code'], $entry['sourceSha256'], $entry['codeSha256'])
+            && is_string($entry['code'])
+            && hash_equals((string)$entry['sourceSha256'], hash('sha256', $source))
+            && hash_equals((string)$entry['codeSha256'], hash('sha256', $entry['code']))) {
+            $expected = $entry['code'];
+        }
         verify_shared(str_contains($compact, "\n;/* --- $name --- */\n" . $expected . "\n;\n"), 'missing/reordered script boundary: ' . $name);
         $boundary = "\n;/* --- $name --- */\n" . $expected . "\n;\n";
         $deferred = in_array($name, $later, true);
