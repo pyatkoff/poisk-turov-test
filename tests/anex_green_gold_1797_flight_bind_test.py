@@ -1,13 +1,18 @@
 from pathlib import Path
 import importlib.util
+import sys
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
-SCRIPT=ROOT/'scripts'/'diagnostics'/'anex_green_gold_1797_flight_bind.py'
+DIAG=ROOT/'scripts'/'diagnostics'
+SCRIPT=DIAG/'anex_green_gold_1797_flight_bind.py'
 TEXT=SCRIPT.read_text()
 
 
 def load():
+    diag=str(DIAG)
+    if diag not in sys.path:
+        sys.path.insert(0,diag)
     spec=importlib.util.spec_from_file_location('bind1797',SCRIPT)
     mod=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
