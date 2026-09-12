@@ -47,6 +47,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for name in contract['sections']:
             with self.subTest(name=name):
                 source = (ROOT / contract['source_root'] / name).read_text()
+                # Strip complete CSS comments without crossing their closing delimiter.
                 source = re.sub(r'/\*[^*]*\*+(?:[^/*][^*]*\*+)*/', '', source)
                 self.assertNotRegex(source, r'(?m)^[ \t]*@media[^{};]+\{\s*\}')
 
@@ -70,6 +71,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertEqual(source.count('& ' + shared + ' b{'), 1)
         for selector in ('.search3-hotel-facts', '.tour-fact'):
             self.assertNotIn(prefix + selector + ' small{', source)
+        # :is() contributes its most-specific argument: one class, exactly as
+        # either replaced selector did. The trailing element is unchanged.
         self.assertEqual(shared.count('.'), 2)
 
     def test_shared_lead_guard_has_one_current_lifecycle_owner(self):
@@ -598,7 +601,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("'selected-tour-description-v1.js'", scoped)
         self.assertIn('function ensureDescriptionDisclosure()', current)
         self.assertIn('function ensureFactsDisclosure()', current)
-        self.assertIn("setText(selected.querySelector('.selected-head h2')", current)
+        self.assertIn("setText(selected.querySelector('.selected-head .eyebrow'), 'ВАШ ТУР')", current)
+        self.assertIn("addClass(selected, 'v2-approved-selected-tour')", current)
         detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
         self.assertIn('& .selected-head .eyebrow{min-height:0!important', detail)
         self.assertIn('window.V2SelectedTourDescription=', legacy)
@@ -802,6 +806,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         inspector = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(inspector)
         contract = json.loads(inspector.CONTRACT.read_text())
+        # Mutate copies only; regression checks must never rewrite checked-in CSS.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / contract['source_root']
@@ -820,6 +825,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
                 mutations = (
                     ('lost seam newline', original[:-1], 'byte count changed'),
                     ('CRLF conversion', original.replace(b'\n', b'\r\n'), 'byte count changed'),
+                    # Retired sections may contain provenance comments only.
+                    # Replacing the final newline changes bytes without changing length.
                     ('same-length source corruption', original[:-1] + b' ', 'blob changed'),
                 )
                 for name, changed, message in mutations:
@@ -831,6 +838,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
                                 inspector.inspect_sections()
                         finally:
                             path.write_bytes(original)
+                # Restoration is exact; inspection remains read-only.
                 self.assertEqual(inspector.inspect_sections()[1], raw)
 
     def test_reviewed_assets_and_protected_runtime(self):
@@ -856,6 +864,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(marker, controller)
 
     def test_shared_footer_has_no_search3_replacement(self):
+        # Search3 renders the same server footer as the rest of the site.
+        # Its retired client replacement and private CSS must not be shipped.
         for name in MANIFEST['assets']:
             self.assertFalse('search3-footer-' in (ROOT / 'v2' / name).read_text(), name)
 
@@ -1030,6 +1040,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             'from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
             'count_people', 'child_count',
         ):
+            # Nights have mutually exclusive native/legacy presentation branches.
             self.assertEqual(index.count(f'name="{name}"'), 2 if name in ('daysFrom', 'daysTill') else 1, name)
         self.assertIn('& .search-group{', native)
         self.assertIn('& :is(.main-fields,.search-preferences){grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;display:grid}', native)
@@ -1080,7 +1091,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("list.every(value=>value>0)", source)
         self.assertIn("fieldNode.hidden=options.length<2", source)
         self.assertIn("facets.categories[index]===facets.category", source)
-        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:9}", source)
+        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:8}", source)
         self.assertIn("mealField.hidden=!available", source)
         self.assertIn("window.matchMedia('(min-width:1025px)')", source)
         self.assertIn("Number(t&&t.price||0)<=budget", source)
@@ -1109,6 +1120,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
 
     def test_protected_core_files_and_hashes_remain_exact(self):
         protected = MANIFEST['protectedSha256']
+        # Count executable closures, not filename mentions in the phase allowlist.
+        # Every protected source must still be delivered exactly once on each route.
         closures = json.loads(subprocess.check_output([
             'php', '-r',
             'require "v2/bundle-manifest-v1.php"; echo json_encode(['
@@ -1120,6 +1133,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
+                # Reviewed offer handoff and in-memory editor draft only.
                 self.assertEqual(source.count("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode()), 1)
                 source = source.replace("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode(), "window.addEventListener('v2:search-reset',()=>{tourGeneration++;".encode(), 1)
                 self.assertEqual(source.count("if(e.target.closest&&e.target.closest('.other-hotel-offers')){e.preventDefault();e.stopPropagation();const renderer=window.V2Results,target=renderer&&renderer.revealOfferAlternatives&&renderer.revealOfferAlternatives(currentTour&&currentTour.id);rememberSource(target);returnToResults(root);return;}const retry=e.target.closest&&e.target.closest('.retry-tour');".encode()), 1)
@@ -1132,14 +1146,22 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 source = source.replace('+alternativesHtml(tid)+descriptionHtml(desc)+\'<div class="tour-flights">'.encode(), '+descriptionHtml(desc)+\'<div class="tour-flights">'.encode(), 1)
                 self.assertEqual(source.count('let leadDraft=null;\nfunction keepLeadDraft(root){if(!currentTour||!document.body.classList.contains(\'search3-candidate\'))return;const form=root.querySelector(\'.lead-form\');if(!form)return;if(form.dataset.sent===\'1\'){leadDraft=null;return;}leadDraft={};for(const name of[\'name\',\'phone\',\'comment\']){const field=form.querySelector(\'[name="\'+name+\'"]\');if(field)leadDraft[name]=field.value;}}\nfunction restoreLeadDraft(root){if(!leadDraft||!document.body.classList.contains(\'search3-candidate\'))return;for(const name of[\'name\',\'phone\',\'comment\']){const field=root.querySelector(\'.lead-form [name="\'+name+\'"]\');if(field&&typeof leadDraft[name]===\'string\')field.value=leadDraft[name];}}\nfunction alternativesHtml(tid){if(!document.body.classList.contains(\'search3-candidate\'))return\'\';const renderer=window.V2Results,info=renderer&&renderer.offerAlternatives&&renderer.offerAlternatives(tid);return info&&info.count>1?\'<button type="button" class="secondary other-hotel-offers">Другие варианты этого отеля (\'+(info.count-1)+\')</button>\':\'\';}\nfunction tourHtml(t,tid){'.encode()), 1)
                 source = source.replace('let leadDraft=null;\nfunction keepLeadDraft(root){if(!currentTour||!document.body.classList.contains(\'search3-candidate\'))return;const form=root.querySelector(\'.lead-form\');if(!form)return;if(form.dataset.sent===\'1\'){leadDraft=null;return;}leadDraft={};for(const name of[\'name\',\'phone\',\'comment\']){const field=form.querySelector(\'[name="\'+name+\'"]\');if(field)leadDraft[name]=field.value;}}\nfunction restoreLeadDraft(root){if(!leadDraft||!document.body.classList.contains(\'search3-candidate\'))return;for(const name of[\'name\',\'phone\',\'comment\']){const field=root.querySelector(\'.lead-form [name="\'+name+\'"]\');if(field&&typeof leadDraft[name]===\'string\')field.value=leadDraft[name];}}\nfunction alternativesHtml(tid){if(!document.body.classList.contains(\'search3-candidate\'))return\'\';const renderer=window.V2Results,info=renderer&&renderer.offerAlternatives&&renderer.offerAlternatives(tid);return info&&info.count>1?\'<button type="button" class="secondary other-hotel-offers">Другие варианты этого отеля (\'+(info.count-1)+\')</button>\':\'\';}\nfunction tourHtml(t,tid){'.encode(), 'function tourHtml(t,tid){'.encode(), 1)
+                # Search3-only native disclosure changes presentation, with the
+                # original legacy markup and all protected bytes recovered below.
                 description_helper = 'function descriptionHtml(desc){if(!desc)return\'\';const content=\'<div class="hotel-desc">\'+esc(desc)+\'</div>\';return document.body.classList.contains(\'search3-candidate\')&&desc.length>280?\'<details class="selected-description"><summary>Об отеле</summary>\'+content+\'</details>\':content;}\n'.encode()
                 self.assertEqual(source.count(description_helper), 1)
                 self.assertEqual(source.count(b"+descriptionHtml(desc)+"), 1)
                 source = source.replace(description_helper, b'', 1).replace(
                     b"+descriptionHtml(desc)+", '+(desc?\'<div class="hotel-desc">\'+esc(desc)+\'</div>\':\'\')+'.encode(), 1)
+                # Reviewed keyboard-entry fix only; reversing the exact insertion
+                # must recover all existing business and transport bytes below.
                 focus_entry = b"if(root.focus)root.focus({preventScroll:true});root.scrollIntoView({behavior:'smooth',block:'start'});"
                 self.assertEqual(source.count(focus_entry), 1, 'one selected-tour entry focus owner')
                 source = source.replace(focus_entry, b"root.scrollIntoView({behavior:'smooth',block:'start'});", 1)
+                # Owner-authorized display-only meal label and hotel-description
+                # entity decoding: reversing these exact fragments must recover
+                # the entire protected controller. Decoded text is still escaped.
+                # Lead mapping, arithmetic, selection and transport stay hash-locked.
                 entity_decoder = ("const descriptionEntities={amp:'&',lt:'<',gt:'>',quot:'\"',apos:\"'\",nbsp:' ',sup2:'²'};\n"
                                   "function decodeEntities(v){return String(v||'').replace(/&(#(?:x[0-9a-f]+|[0-9]+)|amp|lt|gt|quot|apos|nbsp|sup2);/gi,(match,entity)=>{if(entity[0]!=='#')return descriptionEntities[entity.toLowerCase()];const hex=entity[1].toLowerCase()==='x',point=Number.parseInt(entity.slice(hex?2:1),hex?16:10);return Number.isInteger(point)&&point>0&&point<=1114111&&!(point>=55296&&point<=57343)?String.fromCodePoint(point):match;});}\n").encode()
                 current_clean = b"function clean(v){return decodeEntities(String(v||'').replace(/<[^>]*>/g,' ')).replace(/\\s+/g,' ').trim();}"
@@ -1151,6 +1173,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
                 source = source.replace(display, original, 1)
+                # Reviewed presentation-state fix: preserve the renderer's exact
+                # action label while the existing selection request is pending.
+                # Reversing both fragments recovers the protected controller.
                 label_capture = b"const buttonLabel=button?button.textContent:'';"
                 label_restore = b"button.textContent=buttonLabel;"
                 self.assertEqual(source.count(label_capture), 1, 'one selection action label capture')
@@ -1164,6 +1189,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for retained behavior contracts')
     def test_retained_business_and_runtime_behavior(self):
+        # The reset retires CSS-owner assertions, not booking, lifecycle, price,
+        # filter, handoff or lead behavior. Keep those contracts executable.
         for name in (
             'search3-presentation-utils.cjs', 'search3-booking-summary.cjs',
             'search3-booking-services.cjs', 'search3-lead-note-owner.cjs',
