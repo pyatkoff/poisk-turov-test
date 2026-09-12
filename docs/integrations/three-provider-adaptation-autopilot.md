@@ -1,6 +1,6 @@
 # AnyTour INT — Tourvisor + direct ANEX + Andromeda
 
-Актуализировано: 2026-09-12. Репозиторий: только `pyatkoff/poisk-turov-test`.
+Актуализировано: 2026-09-13. Репозиторий: только `pyatkoff/poisk-turov-test`.
 INT-база: свежая `feature/anex-search-adapter-20260907`. Координация: #996.
 Рабочие issues: #1685, #1717, #1647. #1759 — только внешний identity dependency.
 
@@ -82,15 +82,17 @@ Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current acce
 
 `final_price_verified=true` относится только к exact verified claim. Это доказывает, что search/package и calc quote могут отличаться, но не доказывает fuel formula.
 
-### 4.1 AdditionalPricesDaily — следующий конкретный P0 consumer
+### 4.1 AdditionalPricesDaily — текущий P0 blocker
 
-#2236/#2237: run `34715151815`, artifact `10304537645` сохранил Moscow→Turkey, 2026-10-12, 7n, 2ad, AI. Для программы 778 ставка `13549.9 RUB/adult`, две ставки `27099.8`, сопоставимый Tourvisor fuel/delta `27100`; это наблюдение, не разрешение округлять/складывать цены выдачи. Старый `anex_additional_parity_20260912_v1` остаётся UNKNOWN/NO-REPLAY после checkpoint readback failure.
+#2236/#2237 дали первый bounded cohort: для B2B `tour=778` ставка `13549.9 RUB/adult`, две взрослые ставки `27099.8`, сопоставимый Tourvisor fuel/delta `27100`. Это evidence применимости adult-rate внутри этого cohort, а не разрешение округлять, складывать или переносить формулу на другие предложения.
 
-В существующем `anex_additional_parity_v3.py/php` добавлен отдельный `--program2637 RETAINED_RESULT_JSON`: один новый B2B GET `tour=2637/dateBeg=2026-10-12/nights=7/currency=3`, **ANEX search=0, Tourvisor=0, mapping/booking=0**. Consumer проверяет SHA256 сохранённого `result.json` `7b9a8237739b9d1334f1cebfa91fa89b6c4321f029714d76dabca710b2cae589`, выбирает уже сопоставленный исторический GREEN GOLD minimum `119448 → 140294`, TV fuel `20846`, не по совпадению цен и без нового matching. У других сохранённых предложений этого же отеля fuel `29184`: отель/дата сами по себе не universal fuel key.
+#2250/#2251 на сохранённых concrete GREEN GOLD предложениях доказали две разные SearchTour family/flight bands: `tourKey=2637` имеет базы `119448`/`122366` и Tourvisor fuel `20846`; `tourKey=1797` имеет базы `133310`/`136541` и Tourvisor fuel `29184`. При этом `AdditionalPricesDaily(tour=2637)` и `AdditionalPricesDaily(tour=1797)` вернули одинаковый two-adult candidate `29184.4`. Следовательно, числовой B2B параметр `tour` **не установлен** как тот же namespace, что SearchTour `tourKey` / `supplier_tour_program_id`.
 
-Новая операция `anex_additional_program2637_20260912_v1` имеет отдельный durable checkpoint; старый не переоткрывается. В том же функциональном пакете исправлены JSON byte readback вместо ошибочного PHP float/int strict comparison и потеря числовых converted-rate значений в Python evidence. Несколько Additional rows остаются ambiguous, отсутствующая ставка unknown.
+#2258/#2262/#2263 дополнительно доказали для exact program1797, что Tourvisor fuel/final зависит от выбранной flight combination при неизменной direct-ANEX базе: default PC1457+PC1456 даёт `133310 + 29184 = 162494`, alternate TK3155+PC1456 — `133310 + 32311 = 165621`. `AdditionalPricesDaily=29184.4` совпадает только с default band и не объясняет alternate band. Search price/base, Tourvisor `fuelCharge`, AdditionalPricesDaily, package money и final/quote money остаются отдельными фактами.
 
-Статус этого изменения — source preparation, **не live proof программы 2637**. Существующий owner-control workflow запускает её только с receipt, привязанным к exact reviewed source parent, после green focused/Security CI и merge; результат/lineage фиксировать в #996/#1685, не отдельным no-op docs PR. Затем допустим новый family 2+1 evidence для adult/child/age semantics либо точный supplier blocker. P2/P4/P6/P7 ради этого не расширять; поиск/пакет/quote/final money не смешивать.
+#2265 inspected six concrete SearchTour rows. Доступны provider-scoped `tourKey`, `programTypeKey`, `spoKey`, `partnerIncomingKey`, `packetType`, `currencyKey` и другие поля, но отдельного поля, явно связывающего SearchTour с B2B `AdditionalPricesDaily.tour`, не найдено. `tour`/`tourAlt` там являются labels, а не доказанным B2B id. Не пробовать `programTypeKey`, `spoKey` или другие числа как B2B `tour` по догадке.
+
+Текущий точный P0 blocker: нужен **authoritative ANEX B2B tour dictionary/lookup либо supplier-issued binding** от concrete SearchTour/CATCLAIM/freight package к `AdditionalPricesDaily.tour`. До этого direct-ANEX production fuel arithmetic выключена, новые blind numeric `tour` probes запрещены, отсутствующий fuel остаётся `unknown`. Если authoritative binding недоступен, следующий независимый полезный шаг — genuinely new P1 observation scenario при green budget/owner-control; P2/P4/P6/P7 ради заполнения очереди не расширять.
 
 ## 5. Закрытые source-side contracts — второй слой не создавать
 
@@ -211,7 +213,7 @@ Andromeda current source доказывает отдельный provider-specif
 #2118 merged `3fd3b8ae4bb63bfaa3f3514dd586d10bafe4dbf7`; exact head `b33d3266f787158012cfe6eb81b6d85e9162d61e`.
 Focused `34677474785` SUCCESS: 101; aggregate `34677474771` SUCCESS; Security `34677474772` SUCCESS.
 
-- direct ANEX current search fixes `PRICEPAGE=1`; without a verified total-page/continuation contract its observed rows are `bounded`, never automatically exhaustive;
+- direct ANEX current search fixes `PRICEPAGE=1`; without a verified total-page/continuation contract its observed rows are `bounded`, never automatically exhaustive`;
 - Andromeda result is `complete` only when one exact search context retains every advertised page `1..PAGES_COUNT`; page 1 of N is `partial`;
 - Tourvisor `status=complete` alone does not prove result exhaustion; canonical `complete` requires an explicit continuation round and verified no-growth evidence;
 - bounded/partial rows remain useful observations, but counts from different providers are not proven comparable;
@@ -259,7 +261,7 @@ Latest exact-head gate после #2122:
 - INT→SEARCH handoff: 97;
 - direct ANEX bridge: 115.
 
-Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts and unmapped observation evidence не получают universal/mapping authority.
+Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts и unmapped observation evidence не получают universal/mapping authority.
 
 Это source-side readiness, не production approval и не UI/publication acceptance.
 
