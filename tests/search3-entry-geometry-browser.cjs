@@ -34,14 +34,22 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
           const partyGroup = form.querySelector('.search-group--party'), childAges = form.querySelector('#childAges');
           // Closed details descendants may retain geometry without being painted.
           const visible = nodes => [...nodes].filter(node => !node.closest('details:not([open])') && node.checkVisibility({ visibilityProperty: true }) && node.getBoundingClientRect().height > 0);
-          // Fieldset may serialize repeat()/minmax() rather than resolved tracks.
-          // Count the actual visible cells in each row, never spaces in CSS text.
+          // Native control heights may differ slightly inside one align-items:end grid row.
+          // Count cells as one row when their rendered vertical boxes materially overlap.
           const columns = node => {
             const rows = [];
             for (const item of visible([...node.children].filter(child => child.tagName !== 'LEGEND'))) {
-              const top = box(item).top;
-              const row = rows.find(entry => Math.abs(entry.top - top) < 1);
-              if (row) row.count += 1; else rows.push({ top, count: 1 });
+              const itemBox = box(item);
+              const row = rows.find(entry => {
+                const overlap = Math.min(entry.bottom, itemBox.bottom) - Math.max(entry.top, itemBox.top);
+                return overlap >= Math.min(entry.height, itemBox.height) * 0.5;
+              });
+              if (row) {
+                row.count += 1;
+                row.top = Math.min(row.top, itemBox.top);
+                row.bottom = Math.max(row.bottom, itemBox.bottom);
+                row.height = row.bottom - row.top;
+              } else rows.push({ top: itemBox.top, bottom: itemBox.bottom, height: itemBox.height, count: 1 });
             }
             return Math.max(0, ...rows.map(row => row.count));
           };
