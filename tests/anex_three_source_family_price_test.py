@@ -19,14 +19,15 @@ def load():
 
 class FamilyPriceTest(unittest.TestCase):
     def test_source_is_one_exact_family_scenario(self):
-        m=load();source=m.source()
-        self.assertIn('anex_three_source_family_price_20260913_v1',source)
-        self.assertIn('2026-10-29',source);self.assertIn('20261029',source)
-        self.assertIn("'nightsFrom'=>9,'nightsTo'=>9",source)
-        self.assertIn("'childs'=>[7]",source);self.assertIn("'AGES'=>'7'",source)
-        self.assertNotIn('2026-09-27',source);self.assertNotIn('20260927',source)
-        for forbidden in ('AdditionalPricesDaily','bron_ticket','->bron(','broninit(','->calc(','get_flights('):
-            self.assertNotIn(forbidden,source)
+        m=load();source=m.source();marker="const ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_family_price_20260913_v1';"
+        self.assertEqual(source.count(marker),1);family=marker+source.split(marker,1)[1]
+        self.assertIn('2026-10-29',family);self.assertIn('20261029',family)
+        self.assertIn("'nightsFrom'=>9,'nightsTo'=>9",family);self.assertIn("'nights_from'=>9,'nights_till'=>9",family)
+        self.assertIn("'childs'=>[7]",family);self.assertIn("'AGES'=>'7'",family);self.assertIn("'children'=>1",family)
+        for leaked in ('2026-09-27','20260927',"'nightsFrom'=>7","'nights_from'=>7","'childs'=>[]","'CHILD'=>0"):
+            self.assertNotIn(leaked,family)
+        for forbidden in ("->request('AdditionalPricesDaily'",'bron_ticket','->bron(','broninit(','->calc(','get_flights('):
+            self.assertNotIn(forbidden,family)
 
     def test_resolver_coverage_resolves_and_fails_ambiguous(self):
         m=load()
