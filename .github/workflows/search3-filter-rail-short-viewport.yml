@@ -106,6 +106,7 @@ jobs:
           path: |
             ${{ runner.temp }}/search3-filter-rail-evidence/
             v2/search3-results-filters-v1.css
+            v2/search3-entry-v1.css
             docs/project/search3-production-import.json
           if-no-files-found: error
           retention-days: 30
