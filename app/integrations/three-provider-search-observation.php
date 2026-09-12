@@ -199,10 +199,8 @@ final class AnyTourThreeProviderSearchObservation
         if (!is_int($revision) || $revision < 1 || $revision > 10000) {
             throw new InvalidArgumentException('THREE_PROVIDER_OBSERVATION_REVISION');
         }
-        foreach (['criteria_digest'] as $key) {
-            if (!is_string($lineage[$key]) || preg_match('/\A[a-f0-9]{64}\z/D', $lineage[$key]) !== 1) {
-                throw new InvalidArgumentException('THREE_PROVIDER_OBSERVATION_DIGEST');
-            }
+        if (!is_string($lineage['criteria_digest']) || preg_match('/\A[a-f0-9]{64}\z/D', $lineage['criteria_digest']) !== 1) {
+            throw new InvalidArgumentException('THREE_PROVIDER_OBSERVATION_DIGEST');
         }
         if (!is_string($lineage['source_sha']) || preg_match('/\A[a-f0-9]{40}\z/D', $lineage['source_sha']) !== 1) {
             throw new InvalidArgumentException('THREE_PROVIDER_OBSERVATION_SOURCE');
@@ -210,7 +208,7 @@ final class AnyTourThreeProviderSearchObservation
         $checkpoint = $lineage['checkpoint_path'];
         if (!is_string($checkpoint) || $checkpoint === '' || strlen($checkpoint) > 240
             || str_starts_with($checkpoint, '/') || str_contains($checkpoint, '..')
-            || preg_match('/[\\\x00-\x1f]/', $checkpoint) === 1) {
+            || str_contains($checkpoint, '\\') || preg_match('/[\x00-\x1f]/', $checkpoint) === 1) {
             throw new InvalidArgumentException('THREE_PROVIDER_OBSERVATION_CHECKPOINT');
         }
         return [
