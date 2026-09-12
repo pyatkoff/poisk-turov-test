@@ -25,8 +25,8 @@ jobs:
           from pathlib import Path
           src = Path('app/integrations/three-provider-hotel-category.php').read_text()
           assert "'current_local_identity'" in src
-          assert "'current_local_identity' :" not in src
-          assert "'status' => $canonicalKnown ? 'verified' : 'unknown'" in src
+          assert "$canonicalKnown ? 'verified' : 'unknown'" in src
+          assert "'source' => $canonicalKnown ? 'current_local_identity' : null" in src
           assert "'supplier_label_equivalence_verified' => false" in src
           assert "'raw_supplier_numeric_id_universal' => false" in src
           assert "'cross_provider_equivalence_verified' => false" in src
