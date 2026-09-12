@@ -142,11 +142,11 @@ async function exercise(browser, width, height) {
     await exercise(browser, 1200, 700);
     await exercise(browser, 1366, 768);
     await exercise(browser, 1440, 560);
-    await exercise(browser, 1600, 900);
+    await exercise(browser, 1600, 700);
   } finally {
     await browser.close();
   }
-  console.log('SEARCH3_FILTER_RAIL_SHORT_VIEWPORT_OK widths=1025x520,1200x700,1366x768,1440x560,1600x900 keyboard=1 rail_scroll=1 page_scroll=0 horizontal_overflow=0 supplier_calls_on_reset=0');
+  console.log('SEARCH3_FILTER_RAIL_SHORT_VIEWPORT_OK widths=1025x520,1200x700,1366x768,1440x560,1600x700 keyboard=1 rail_scroll=1 page_scroll=0 horizontal_overflow=0 supplier_calls_on_reset=0');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
