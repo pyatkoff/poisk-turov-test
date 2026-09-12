@@ -6,7 +6,6 @@ on:
     paths:
       - '.github/workflows/operator-identity-production-readback.yml'
       - 'diagnostics/operator_identity_production_readback.php'
-      - 'diagnostics/operator_identity_shape_probe.php'
   workflow_dispatch:
 
 permissions:
@@ -19,11 +18,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate diagnostic scripts
+      - name: Validate readback script
+        shell: bash
+        run: php -l diagnostics/operator_identity_production_readback.php >/dev/null
+
+      - name: Invoke production observer on completed search
         shell: bash
         run: |
-          php -l diagnostics/operator_identity_production_readback.php >/dev/null
-          php -l diagnostics/operator_identity_shape_probe.php >/dev/null
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/identity-observer.json -w '%{http_code}' --max-time 75 \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json' \
+            --data '{"searchId":13598731733,"departureId":1,"countryId":4,"adults":2,"childs":[]}' \
+            https://anytoour.ru/data/observe-search-v1.php)"
+          echo "IDENTITY_OBSERVER_HTTP=$code"
+          cat /tmp/identity-observer.json
+          echo
+          test "$code" = "200"
 
       - name: Prepare SSH key
         env:
@@ -41,7 +52,7 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Inspect trusted Tourvisor row field names
+      - name: Read identity evidence counters using one SSH connection
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -51,20 +62,5 @@ jobs:
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
-          remote_tmp="/tmp/anytour-operator-identity-shape-${GITHUB_RUN_ID}.php"
-          scp "${opts[@]}" diagnostics/operator_identity_shape_probe.php "$remote:$remote_tmp"
-          ssh "${opts[@]}" "$remote" "set -euo pipefail; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php '$remote_tmp' 13598731733; rm -f '$remote_tmp'"
-
-      - name: Read identity evidence counters
-        env:
-          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
-          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
-          remote="$USER_VALUE@$HOST_VALUE"
-          remote_tmp="/tmp/anytour-operator-identity-readback-${GITHUB_RUN_ID}.php"
-          scp "${opts[@]}" diagnostics/operator_identity_production_readback.php "$remote:$remote_tmp"
-          ssh "${opts[@]}" "$remote" "set -euo pipefail; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php '$remote_tmp'; rm -f '$remote_tmp'"
+          base64 -w0 diagnostics/operator_identity_production_readback.php | \
+            ssh "${opts[@]}" "$remote" 'base64 -d | ANYTOUR_ROOT="$HOME/www/anytoour.ru" php'
