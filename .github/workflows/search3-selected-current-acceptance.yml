@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   PREVIEW_BASE: /_preview/search3-site-candidate
@@ -54,6 +54,18 @@ jobs:
           path: v2/search3-shared-runtime.json
           if-no-files-found: error
           retention-days: 3
+
+      - name: Stage exact candidate as unreferenced Git blob
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          encoded="$(base64 -w0 v2/search3-shared-runtime.json)"
+          blob_sha="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" -f content="$encoded" -f encoding=base64 --jq .sha)"
+          printf 'SEARCH3_SHARED_RUNTIME_BLOB_SHA=%s\n' "$blob_sha"
+          printf 'Canonical candidate blob: `%s`\n' "$blob_sha" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require committed shared runtime parity
         run: git diff --exit-code -- v2/search3-shared-runtime.json
