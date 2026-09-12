@@ -182,6 +182,48 @@ Tourvisor/API URL/payload, price arithmetic, lead transport/field mapping, Metri
 analytics, catalog/manual mappings, server config и production SEO-indexation не менять.
 Не отправлять реальные заявки. Полная готовность INT/MATCH не блокирует независимый SEARCH.
 
+
+## Живой аудит 2026-09-12: ближайшие пакеты до 9.5
+
+[Дополнение к существующему техническому/визуальному аудиту](search3-technical-audit-20260912.md)
+содержит exact source/release/publication pins, реальные browser-сценарии,
+пять компонент SEARCH-QUALITY-1 по каждой оси, найденные причины и acceptance matrix.
+Это более позднее evidence, не вторая очередь или state tracker.
+
+Осмотренный published desktop: полнота формы **8.0/10**, filters/decision **8.0/10**,
+карточки/price/CTA **6.5/10** в указанном там scope. По остальным строкам полного
+измерения нет; особенно mobile и соответствие недоступному approved image —
+`not_measured`. Не переносить эти оценки на ещё не опубликованный release.
+
+Ближайшая конкретизация действующего порядка:
+
+1. Полный primary flow и постоянный контекст поездки: после submit сейчас скрыта
+   вся форма, URL не хранит условия, hotel chooser ограничен загруженным списком.
+   Исправлять существующие owners; полнота нового каталога — внешняя dependency.
+2. Принять текущую desktop-family работу [#2261](https://github.com/pyatkoff/poisk-turov-test/pull/2261),
+   включая три возраста, 1199/1200 и невысокий desktop; не создавать второго CSS writer.
+3. Календарь: 3-day live grid, локальные минимумы и точная дата проверены;
+   добрать sparse/full/mobile/unknown/transient-zero corpus. Не повторять #2080
+   и не считать однодневное скрытие новым дефектом без изменения требования.
+4. В существующем lifecycle обеспечить URL round-trip/reload/Back; в текущих
+   facets переиспользовать reviewed operator display identity, улучшить точный
+   бюджет и согласованность meal labels. Local filters — ноль supplier searches.
+5. Структурно уменьшить пустоты cards/expanded offers, убрать ложные counts
+   одинакового питания, объяснять readiness минимальной цены до раскрытия.
+   Уже merged #2246 и другие density-пакеты учитывать в свежем baseline.
+6. Compare: правильная сетка 1/2/3, раскрытие и восстановление условий сохранённого
+   снимка; selected не оттесняется полным compare. Не переиспользовать stale identity.
+7. Selected/lead: ясные unknown fee/flight labels и контекст возле контактов;
+   учесть уже merged #2204 и fresh controller/date claim. Проверки ошибок/draft/
+   consent через controlled fixtures, без реальных заявок и новых price/lead contracts.
+8. Накопленная mobile/desktop/mockup/a11y приёмка — все 12 строк отдельно ≥9.5.
+   Отсутствующий reference, непроверенный mobile или внешний handoff не считать passed.
+
+Publisher SSH reset и недоступные для просмотра mobile/reference artifacts отмечены
+как точные зависимости в audit. Они не запрещают независимый SEARCH-пакет,
+но не позволяют заявить публикацию/визуальную приёмку. Этот docs-only план
+не запускает supplier operations, build/deploy или production migration.
+
 ## История и актуальные доказательства
 
 - [План до этой актуализации, immutable release 827fb8ab](https://github.com/pyatkoff/poisk-turov-test/blob/827fb8abc0b68cf6fa2ac6d9e1f6f391d72fe85c/docs/project/search3-product-development-plan.md): прежние этапы, опубликованные пакеты, исходные источники сравнения ОТА и dated evidence сохранены в Git без переписывания истории.
