@@ -17,6 +17,10 @@ $operatorMoney=static fn(string $usd,string $rub):array => [['money'=>[
     ['price'=>$usd,'net'=>$usd,'currency'=>'USD','rate'=>'1','isClaimCurrency'=>'true'],
     ['price'=>$rub,'net'=>$rub,'currency'=>'RUB','rate'=>'89.83','isClaimCurrency'=>'false'],
 ]]];
+$calcOperatorMoney=static fn():array => [['money'=>[
+    ['price'=>'1510','net'=>'1402','priceForCommiss'=>'1349.79','sumCommission'=>'108','currency'=>'USD','rate'=>'1','isClaimCurrency'=>'true'],
+    ['price'=>'135643','net'=>'125942','priceForCommiss'=>'121251.64','sumCommission'=>'9702','currency'=>'RUB','rate'=>'89.83','isClaimCurrency'=>'false'],
+]]];
 $package=[
     'version'=>'1.01',
     'claimDocument'=>[0=>[
@@ -53,7 +57,7 @@ $fuelServices=[['service'=>[
     ['type'=>'stOther','servicetype'=>'9','servicecategoryName'=>'Не топливо','price'=>'999','currencyAlias'=>'USD','routeIndex'=>'0','uid'=>'other_service'],
 ]]];
 $reserved=0;$seen=[];
-$request=static function(string $url,string $post)use(&$seen,$getFlights,$fuelServices,$money,$operatorMoney):array{
+$request=static function(string $url,string $post)use(&$seen,$getFlights,$fuelServices,$money,$calcOperatorMoney):array{
     parse_str((string)parse_url($url,PHP_URL_QUERY),$q);
     if(($q['version']??null)!=='1.01'||!in_array($q['action']??null,['get_flights','changeservice','calc'],true))throw new RuntimeException('BAD_ACTION');
     parse_str($post,$form);$claim=json_decode($form['claim']??'',true,64,JSON_THROW_ON_ERROR);
@@ -65,7 +69,7 @@ $request=static function(string $url,string $post)use(&$seen,$getFlights,$fuelSe
     }else{
         $reply=$claim;
         $reply['claimDocument'][0]['buyerMoneys']=$money('135643');
-        $reply['claimDocument'][0]['moneys']=$operatorMoney('1510','135643');
+        $reply['claimDocument'][0]['moneys']=$calcOperatorMoney();
         $reply['claimDocument'][0]['services']=$fuelServices;
     }
     return ['status'=>200,'body'=>json_encode($reply,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)];
@@ -89,7 +93,11 @@ if(($result['operator_currency_rates_reported']??null)!==[
     ['currency'=>'USD','rate'=>'1','is_claim_currency'=>true,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
     ['currency'=>'RUB','rate'=>'89.83','is_claim_currency'=>false,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
 ])throw new RuntimeException('operator rates');++$checks;
-if(isset($result['fuel_total'])||isset($result['surcharge_total'])||isset($result['price_with_fuel']))throw new RuntimeException('synthetic arithmetic');++$checks;
+if(($result['calc_money_facts_reported']??null)!==[
+    ['currency'=>'USD','gross_amount'=>'1510','net_amount'=>'1402','commissionable_amount'=>'1349.79','commission_amount'=>'108','source'=>'andromeda_calc_money','arithmetic_applied'=>false],
+    ['currency'=>'RUB','gross_amount'=>'135643','net_amount'=>'125942','commissionable_amount'=>'121251.64','commission_amount'=>'9702','source'=>'andromeda_calc_money','arithmetic_applied'=>false],
+])throw new RuntimeException('calc money facts');++$checks;
+if(isset($result['fuel_total'])||isset($result['surcharge_total'])||isset($result['price_with_fuel'])||isset($result['commission_rate'])||isset($result['derived_price']))throw new RuntimeException('synthetic arithmetic');++$checks;
 $encoded=json_encode($result,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
 foreach(['opaque-claiminc','out_uid','back_uid','fuel_out','fuel_back','other_service','private-request-0','private-request-1','private-offer','SID_test_123','catalog-reduced'] as $secret)if(str_contains($encoded,$secret))throw new RuntimeException('private leak '.$secret);++$checks;
 
@@ -106,6 +114,7 @@ $choice=AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient(
 if(($choice['state']??null)!=='flight_selection_required'||($choice['final_price_verified']??null)!==false)throw new RuntimeException('ambiguous state');++$checks;
 if($seen2!==['get_flights']||$reserved2!==1)throw new RuntimeException('ambiguous calls');++$checks;
 if(($choice['fuel_surcharges_reported']??null)!==[])throw new RuntimeException('ambiguous fuel');++$checks;
+if(($choice['calc_money_facts_reported']??null)!==[])throw new RuntimeException('ambiguous calc facts');++$checks;
 if(($choice['operator_currency_rates_reported']??null)!==[
     ['currency'=>'USD','rate'=>'1','is_claim_currency'=>true,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
     ['currency'=>'RUB','rate'=>'89.83','is_claim_currency'=>false,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
@@ -127,5 +136,9 @@ $direct=AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient(
 if(($direct['final_price']['amount']??null)!=='130000'||$seen3!==['calc']||$reserved3!==1)throw new RuntimeException('direct calc');++$checks;
 if(($direct['fuel_surcharges_reported']??null)!==[])throw new RuntimeException('direct fuel');++$checks;
 if(($direct['operator_currency_rates_reported'][1]['rate']??null)!=='89.83')throw new RuntimeException('direct rates');++$checks;
+if(($direct['calc_money_facts_reported']??null)!==[
+    ['currency'=>'USD','gross_amount'=>'1447.18','net_amount'=>'1447.18','commissionable_amount'=>null,'commission_amount'=>null,'source'=>'andromeda_calc_money','arithmetic_applied'=>false],
+    ['currency'=>'RUB','gross_amount'=>'130000','net_amount'=>'130000','commissionable_amount'=>null,'commission_amount'=>null,'source'=>'andromeda_calc_money','arithmetic_applied'=>false],
+])throw new RuntimeException('direct calc facts');++$checks;
 
 print("Andromeda selected quote: {$checks} checks passed\n");

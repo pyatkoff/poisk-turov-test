@@ -36,6 +36,7 @@ final class AnyTourAndromedaSelectedQuote
                     'flights' => $choice['public'],
                     'fuel_surcharges_reported' => [],
                     'operator_currency_rates_reported' => self::operatorCurrencyRates($claim),
+                    'calc_money_facts_reported' => [],
                     'booking_enabled' => false,
                 ];
             }
@@ -66,6 +67,7 @@ final class AnyTourAndromedaSelectedQuote
             'flights' => array_values(array_map([self::class, 'publicFlight'], $selectedFlights)),
             'fuel_surcharges_reported' => self::fuelSurcharges($calculated),
             'operator_currency_rates_reported' => self::operatorCurrencyRates($calculated),
+            'calc_money_facts_reported' => self::calcMoneyFacts($calculated),
             'booking_enabled' => false,
         ];
     }
@@ -134,6 +136,43 @@ final class AnyTourAndromedaSelectedQuote
                     'arithmetic_applied' => false,
                 ];
                 $out[$currency . "\0" . $rate . "\0" . var_export($row['is_claim_currency'], true)] = $row;
+            }
+        }
+        return array_values($out);
+    }
+
+    private static function moneyFactValue($value): ?string
+    {
+        if (is_int($value) || (is_float($value) && is_finite($value))) $value = (string)$value;
+        if (!is_string($value)
+            || preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $value) !== 1) return null;
+        return $value;
+    }
+
+    /** Raw calc money rows are supplier facts only; no totals, rates or differences are derived here. */
+    private static function calcMoneyFacts(array $claim): array
+    {
+        $doc = self::document($claim);
+        $out = [];
+        foreach (($doc['moneys'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['money'] ?? null)) continue;
+            foreach ($block['money'] as $money) {
+                if (!is_array($money)) continue;
+                $currency = $money['currency'] ?? null;
+                $gross = self::moneyFactValue($money['price'] ?? null);
+                if (!is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1
+                    || $gross === null || preg_match('/[1-9]/', $gross) !== 1) continue;
+                $row = [
+                    'currency' => $currency,
+                    'gross_amount' => $gross,
+                    'net_amount' => self::moneyFactValue($money['net'] ?? null),
+                    'commissionable_amount' => self::moneyFactValue($money['priceForCommiss'] ?? null),
+                    'commission_amount' => self::moneyFactValue($money['sumCommission'] ?? null),
+                    'source' => 'andromeda_calc_money',
+                    'arithmetic_applied' => false,
+                ];
+                $out[$currency . "\0" . implode("\0", array_map(static fn($v): string => $v === null ? '' : (string)$v,
+                    [$row['gross_amount'], $row['net_amount'], $row['commissionable_amount'], $row['commission_amount']]))] = $row;
             }
         }
         return array_values($out);
