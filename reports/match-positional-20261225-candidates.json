@@ -1,0 +1,27 @@
+{
+  "operation_basis": "25.12.2026 Turkey synchronized slice positional window ±5",
+  "date": "2026-12-25",
+  "country_id": 4,
+  "candidates": [
+    {"provider":"andromeda","external_id":"2000049891","target_local_hotel_id":63576,"tv_pos":1,"provider_pos":1,"source_name":"Kleopatra Sunlight Hotel","target_name":"KLEOPATRA SUN LIGHT HOTEL","name_score":0.973,"margin":0.246},
+    {"provider":"andromeda","external_id":"2000025180","target_local_hotel_id":33619,"tv_pos":20,"provider_pos":20,"source_name":"Blue Istanbul Hotel Sultanahmet","target_name":"BLUE ISTANBUL HOTEL","name_score":0.783,"margin":0.203},
+    {"provider":"andromeda","external_id":"13802","target_local_hotel_id":17616,"tv_pos":23,"provider_pos":24,"source_name":"Santa Sophia Hotel","target_name":"SANTA SOPHIA HOTEL SULTANAHMET","name_score":0.783,"margin":0.171},
+    {"provider":"andromeda","external_id":"45225","target_local_hotel_id":153743,"tv_pos":39,"provider_pos":44,"source_name":"Garner Hotel Istanbul - Airport Arnavutkoy By Ihg","target_name":"GARNER AIRPORT ARNAVUTKOY","name_score":0.758,"margin":0.758},
+    {"provider":"andromeda","external_id":"212739","target_local_hotel_id":17374,"tv_pos":41,"provider_pos":46,"source_name":"City Center Hotel","target_name":"CITY CENTER HOTEL TAKSIM","name_score":0.783,"margin":0.783},
+    {"provider":"andromeda","external_id":"-948943","target_local_hotel_id":81253,"tv_pos":89,"provider_pos":90,"source_name":"Ramada Plaza by Wyndham Istanbul Tekstilkent","target_name":"RAMADA PLAZA BY WYNDHAM ISTANBUL SULTANAHMET","name_score":0.818,"margin":0.818},
+    {"provider":"anex","external_id":"27140","target_local_hotel_id":63576,"tv_pos":1,"provider_pos":1,"source_name":"Kleopatra Sunlight Hotel","target_name":"KLEOPATRA SUN LIGHT HOTEL","name_score":0.973,"margin":0.246},
+    {"provider":"anex","external_id":"32749","target_local_hotel_id":17449,"tv_pos":6,"provider_pos":6,"source_name":"Grand Liza Hotel.","target_name":"GRAND LIZA HOTEL","name_score":1.0,"margin":0.333},
+    {"provider":"anex","external_id":"32623","target_local_hotel_id":17663,"tv_pos":11,"provider_pos":11,"source_name":"Tayhan Hotel.","target_name":"TAYHAN HOTEL","name_score":1.0,"margin":1.0},
+    {"provider":"anex","external_id":"32808","target_local_hotel_id":28738,"tv_pos":12,"provider_pos":12,"source_name":"Hotel Grand Mark.","target_name":"GRAND MARK","name_score":1.0,"margin":0.333},
+    {"provider":"anex","external_id":"28759","target_local_hotel_id":33619,"tv_pos":20,"provider_pos":20,"source_name":"Blue Istanbul Hotel Sultanahmet","target_name":"BLUE ISTANBUL HOTEL","name_score":0.783,"margin":0.783},
+    {"provider":"anex","external_id":"8800","target_local_hotel_id":17616,"tv_pos":23,"provider_pos":19,"source_name":"Santa Sophia Hotel","target_name":"SANTA SOPHIA HOTEL SULTANAHMET","name_score":0.783,"margin":0.171},
+    {"provider":"anex","external_id":"32809","target_local_hotel_id":71266,"tv_pos":26,"provider_pos":26,"source_name":"The Galataport Hotel.","target_name":"GALATOWER (EX.THE GALATAPORT HOTEL)","name_score":0.737,"margin":0.737},
+    {"provider":"anex","external_id":"38750","target_local_hotel_id":17272,"tv_pos":27,"provider_pos":28,"source_name":"Adora Hotel.","target_name":"ADORA HOTEL","name_score":1.0,"margin":1.0},
+    {"provider":"anex","external_id":"32740","target_local_hotel_id":17486,"tv_pos":34,"provider_pos":38,"source_name":"Hotel Ipek Palas.","target_name":"IPEK PALAS HOTEL","name_score":1.0,"margin":1.0},
+    {"provider":"anex","external_id":"32819","target_local_hotel_id":57198,"tv_pos":37,"provider_pos":42,"source_name":"Albatros Hagia Sophia Hotel.","target_name":"ALBATROS HAGIA SOPHIA","name_score":1.0,"margin":1.0},
+    {"provider":"anex","external_id":"45225","target_local_hotel_id":153743,"tv_pos":39,"provider_pos":44,"source_name":"Garner Hotel Istanbul - Airport Arnavutkoy By Ihg","target_name":"GARNER AIRPORT ARNAVUTKOY","name_score":0.758,"margin":0.758},
+    {"provider":"anex","external_id":"32722","target_local_hotel_id":35307,"tv_pos":40,"provider_pos":45,"source_name":"Skalion Hotel & Spa.","target_name":"SKALION HOTEL","name_score":1.0,"margin":1.0},
+    {"provider":"anex","external_id":"29783","target_local_hotel_id":17374,"tv_pos":41,"provider_pos":46,"source_name":"City Center Hotel","target_name":"CITY CENTER HOTEL TAKSIM","name_score":0.783,"margin":0.783},
+    {"provider":"anex","external_id":"32721","target_local_hotel_id":71232,"tv_pos":43,"provider_pos":48,"source_name":"Beyazit Palace Hotel.","target_name":"BEYAZIT PALACE HOTEL","name_score":1.0,"margin":1.0}
+  ]
+}
