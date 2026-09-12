@@ -1,0 +1,158 @@
+name: MATCH global coordinate-nearest CURRENT v2
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-global-coordinate-nearest-rescue-current-1971-20260912-v2.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-global-coordinate-nearest-current-1971-20260912-v2
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-global-coordinate-nearest-rescue-1971-20260912-v2
+  STATE_DIR: /tmp/match-global-coordinate-nearest-current-v2
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate unchanged coordinate resolver and derive new operation package
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-global-coordinate-nearest-rescue-current-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_global_coordinate_nearest_rescue.php
+          php -l tests/hotel-match-global-coordinate-nearest-rescue-test.php
+          php tests/hotel-match-global-coordinate-nearest-rescue-test.php
+          mkdir -m 700 -p "$STATE_DIR/package"
+          export OUT="$STATE_DIR/package/review.php"
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          cross=body('scripts/diagnostics/hotel_match_global_cross_provider_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          review=body('scripts/diagnostics/hotel_match_global_coordinate_nearest_rescue.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_global_cross_provider_rescue.php';\n",'',1)
+          old="const HMGCN_OPERATION='hotel-match-global-coordinate-nearest-rescue-1971-20260911-v1';"
+          new="const HMGCN_OPERATION='"+os.environ['OPERATION_ID']+"';"
+          assert review.count(old)==1
+          review=review.replace(old,new,1)
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());
+            if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('HMGCN_ROOT');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+            if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMGCN_DB_HELPER');
+            require_once $dbHelper;
+            echo 'HMGCN_RESULT:'.fc_json(hmgcn_review(v2_data_db(),HMGCN_OPERATION))."\n";
+          }catch(Throwable $e){
+            echo 'HMGCN_RESULT:'.json_encode(['status'=>'failed','operation_id'=>HMGCN_OPERATION,'reason'=>'HMGCN_REMOTE_ERROR','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'historical_operations_replayed'=>false])."\n";
+            exit(2);
+          }
+          '''
+          code="<?php\ndeclare(strict_types=1);\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+cross+'\n'+review+'\n'+wrapper
+          stripped=re.sub(r'/\*.*?\*/|//[^\n]*','',code,flags=re.S)
+          for pat in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bREPLACE\s+INTO\b',r'\bcurl_\w+\s*\(',r'https?://']:
+              assert not re.search(pat,stripped,re.I),pat
+          assert 'START TRANSACTION READ ONLY' in code
+          assert 'HMGCN_COORD_BLOCK_M=5000.0' in code and 'HMGCN_SINGLE_M=50.0' in code
+          assert "'zero_token_coordinate_only_auto_accept'=>false" in code
+          assert "['ANNEX','BEACH','GARDEN','NORTH','SOUTH']" in code
+          assert new in code and old not in code
+          Path(os.environ['OUT']).write_text(code,encoding='utf-8')
+          print('MATCH_COORD_CURRENT_V2_PACKAGE_OK')
+          PY
+          php -l "$OUT"
+      - name: Persist durable reservation before CURRENT DB access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['STATE_DIR']); p=d/'package'/'review.php'
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'package_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'scope':'entire_current_core8_coordinate_residual','transaction':'REPEATABLE READ / READ ONLY','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-global-coordinate-nearest-current-v2-${{ github.run_id }}-reserved
+          path: ${{ env.STATE_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute CURRENT read-only mass review over persistent SSH
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmgcn-key"; sock="$RUNNER_TEMP/hmgcn.sock"; known="$RUNNER_TEMP/hmgcn-known"; remote="/tmp/hmgcn-${GITHUB_RUN_ID}"
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=900 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi
+            sleep $((attempt*3))
+          done
+          test "$ok" = 1
+          cleanup(){ ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; rm -f "$key"; }; trap cleanup EXIT
+          ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMGCN_PREFLIGHT_OK' | grep -qx HMGCN_PREFLIGHT_OK
+          tar -C "$STATE_DIR/package" -czf - . | ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote' && mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -d memory_limit=2048M '$remote/review.php'" > "$STATE_DIR/live.stdout" 2> "$STATE_DIR/live.stderr"; rc=$?
+          set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['STATE_DIR']); out=(d/'live.stdout').read_text(errors='replace'); err=(d/'live.stderr').read_text(errors='replace'); prefix='HMGCN_RESULT:'
+          lines=[x[len(prefix):] for x in out.splitlines() if x.startswith(prefix)]
+          if len(lines)!=1:
+              r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stderr_tail':err[-1200:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          else:
+              r=json.loads(lines[0])
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (d/'result.json').write_bytes(raw)
+          valid=(int(os.environ['RC'])==0 and r.get('status')=='completed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('mode')=='global_coordinate_nearest_current_read_only' and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('supplier_calls')==0 and r.get('historical_operations_replayed') is False)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only' if valid else 'unknown','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          if valid: receipt['stats']=r.get('stats',{}); receipt['coverage']=r.get('coverage',{})
+          (d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          if valid:
+              s=r['stats']; c=r['coverage']; summary=(f"MATCH #1971 CURRENT coordinate fixed-point `{r['operation_id']}` completed read-only / NO-REPLAY. "
+                f"Examined Andromeda **{s['andromeda_examined']}** (coords **{s['andromeda_source_coords']}**), ANEX observed/staging **{s['anex_observed_examined']}/{s['anex_staging_examined']}** (coords **{s['anex_source_coords']}**). "
+                f"Prepared **{s['prepared']}** = Andromeda **{s['prepared_andromeda']}** + ANEX **{s['prepared_anex']}**, live **{s['prepared_live']}**, star-mismatch annotation **{s['prepared_star_mismatch']}**. "
+                f"Routes exact/translit/two-token/single **{s['route_exact']}/{s['route_translit']}/{s['route_two_token']}/{s['route_single']}**; near **{s['near']}**. "
+                f"Coverage ANEX links {c['anex_links']}, ANEX unique {c['anex_unique_local']}, Andromeda unique {c['andromeda_unique_local']}, triple {c['all_three']}. Supplier/Tourvisor calls0; DB/mapping writes0.")
+          else:
+              summary=f"MATCH #1971 CURRENT coordinate fixed-point `{os.environ['OPERATION_ID']}` UNKNOWN / NO-REPLAY after durable reservation; reason `{r.get('reason')}`. Do not replay; reconcile/readback first."
+          (d/'summary.md').write_text(summary+'\n'); print(summary)
+          if not valid: raise SystemExit(2)
+          PY
+      - name: Preserve immutable result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-global-coordinate-nearest-current-v2-${{ github.run_id }}-final
+          path: ${{ env.STATE_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE_DIR/summary.md"
