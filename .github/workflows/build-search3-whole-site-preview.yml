@@ -281,6 +281,17 @@ jobs:
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Detect results decision contract changes
+        id: results-contract
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/behavior/results src/search3/behavior/summary-cta.js v2/search3-results-filters-v1.js tests/search3-current-results-browser.cjs tests/search3-shortlist-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Detect results-card or entry-form geometry changes
         id: results-geometry
         shell: bash
@@ -288,7 +299,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/behavior/results/shortlist.js src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-current-results-browser.cjs tests/search3-shortlist-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/results-renderer-v5.js src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs tests/search3-header-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -304,7 +315,7 @@ jobs:
           fi
 
       - name: Install browser geometry tooling
-        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-contract.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
@@ -386,8 +397,8 @@ jobs:
           node tests/search3-lean-entry-browser.cjs
           node tests/search3-flight-fallback-browser.cjs
 
-      - name: Verify results-card and entry-form geometry
-        if: steps.results-geometry.outputs.required == 'true'
+      - name: Verify results browser tier
+        if: steps.results-contract.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         env:
           SEARCH3_RESULTS_OUTPUT: ${{ runner.temp }}/search3-results-geometry
@@ -396,8 +407,8 @@ jobs:
         run: |
           set -euo pipefail
           export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
-          # The reset retired the old fabricated disclosure/drawer/guest/header
-          # fixtures. Exercise the actual served route and its native controls.
+          # Contract-only result changes keep the browser decision journey, while
+          # CSS/renderer geometry additionally pays for the entry geometry sweep.
           cat > "$RUNNER_TEMP/search3-current-results-router.php" <<'PHP'
           <?php
           $entry = '/_preview/search3-site-candidate/poisk-turov/';
@@ -412,8 +423,10 @@ jobs:
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
           node tests/search3-current-results-browser.cjs
           node tests/search3-shortlist-browser.cjs
-          node tests/search3-entry-owner-browser.cjs
-          node tests/search3-entry-geometry-browser.cjs
+          if [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
+            node tests/search3-entry-owner-browser.cjs
+            node tests/search3-entry-geometry-browser.cjs
+          fi
 
       - name: Retain native entry evidence
         if: always() && steps.entry-owner.outputs.required == 'true'
@@ -442,8 +455,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Retain results-card geometry evidence
-        if: always() && steps.results-geometry.outputs.required == 'true'
+      - name: Retain results browser evidence
+        if: always() && (steps.results-contract.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: search3-results-geometry-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
