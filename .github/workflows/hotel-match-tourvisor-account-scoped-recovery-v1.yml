@@ -1,0 +1,148 @@
+name: MATCH Tourvisor account-scoped recovery v1
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-tourvisor-account-scoped-recovery-1971-20260912-v1.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-tourvisor-account-scoped-recovery-1971-v1
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPERATION_ID: hotel-match-tourvisor-account-scoped-recovery-1971-20260912-v1
+      SEARCH_DATE: '2026-12-04'
+      SEARCH_NIGHTS: '7'
+      FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+      ARTIFACT_DIR: /tmp/match-tv-account-scoped-v1
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+
+      - name: Derive no-operator paced program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-tourvisor-account-scoped-recovery-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          mkdir -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" -o "$ARTIFACT_DIR/frozen.php"
+          export PROGRAM="$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['ARTIFACT_DIR'])/'frozen.php'; s=p.read_text()
+          reps=[
+            ('hotel-match-three-provider-111-full-pages-1971-20260911-v6',os.environ['OPERATION_ID']),
+            ("const M6_DATE = '2026-11-06';","const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"),
+            ("'tourvisor_operator_id'=>M6_TV_OPERATOR","'tourvisor_account_scope'=>'ANEX-only'"),
+            ("'operator_id'=>M6_TV_OPERATOR","'account_scope'=>'ANEX-only'"),
+            ("usleep(750000);","usleep(4000000);"),
+            ("try{v2_data_tv_get('/tours/search/'.$searchId.'/continue');","usleep(12000000);try{v2_data_tv_get('/tours/search/'.$searchId.'/continue');"),
+          ]
+          for a,b in reps:
+              if s.count(a)!=1: raise SystemExit('derivation marker changed: '+a)
+              s=s.replace(a,b,1)
+          op=",'operatorIds'=>[M6_TV_OPERATOR]"
+          if s.count(op)!=1: raise SystemExit('operatorIds marker changed')
+          s=s.replace(op,'',1)
+          start=s.split("$start=v2_data_tv_get('/tours/search'",1)[1].split(');',1)[0]
+          if 'operatorIds' in start: raise SystemExit('Tourvisor operatorIds still present')
+          if "TOURVISOR_ANEX_JWT" not in s or "putenv('TOURVISOR_JWT='.$tvToken)" not in s: raise SystemExit('separate credential contract missing')
+          Path(os.environ['PROGRAM']).write_text(s)
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Establish resilient SSH preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-tv-scope-key"; sock="$RUNNER_TEMP/match-tv-scope.sock"; known="$RUNNER_TEMP/match-tv-scope-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0; for attempt in 1 2 3 4 5; do rm -f "$sock"; if ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && printf MATCH_TV_SCOPE_PREFLIGHT_OK' | grep -qx MATCH_TV_SCOPE_PREFLIGHT_OK
+          printf '%s\n' "$key" > "$RUNNER_TEMP/match-tv-scope-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/match-tv-scope-sockpath"; printf '%s\n' "$known" > "$RUNNER_TEMP/match-tv-scope-knownpath"
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); p=d/'program.php'
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':os.environ['SEARCH_DATE'],'nights':7,'adults':2,'tourvisor_operator_ids':'OMITTED','tourvisor_credential':'TOURVISOR_ANEX_JWT_only','pre_search_cooldown_seconds':120,'poll_seconds':4,'pre_continue_seconds':12},'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(x,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-account-scoped-v1-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Cool down before Tourvisor start
+        run: sleep 120
+
+      - name: Execute one synchronized slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/match-tv-scope-keypath")"; sock="$(cat "$RUNNER_TEMP/match-tv-scope-sockpath")"
+          cleanup(){ ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }; trap cleanup EXIT
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M' < "$ARTIFACT_DIR/program.php" > "$ARTIFACT_DIR/live.stdout" 2> "$ARTIFACT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); out=(d/'live.stdout').read_text(errors='replace'); err=(d/'live.stderr').read_text(errors='replace'); pre='MATCH111FULL_JSON:'; lines=[x[len(pre):] for x in out.splitlines() if x.startswith(pre)]
+          if len(lines)==1:
+              data=json.loads(lines[0]); data.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_sha=os.environ['GITHUB_SHA'],tourvisor_operator_ids='OMITTED',tourvisor_credential='TOURVISOR_ANEX_JWT_only',no_replay=True)
+          else:
+              data={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (d/'result.json').write_bytes(raw)
+          good=int(os.environ['RC'])==0 and data.get('status')=='completed' and data.get('operation_id')==os.environ['OPERATION_ID']
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown'),'reason':data.get('reason'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True}; (d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          p=data.get('providers') or {}; cmp=data.get('comparison') or {}; tv=p.get('tourvisor') or {}; an=p.get('anex') or {}; ad=p.get('andromeda') or {}; tr=(cmp.get('unique_alias_triples') or {}).get('count')
+          summary=f"MATCH #1971 account-scoped Tourvisor recovery `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. Turkey {os.environ['SEARCH_DATE']}/7n; separate `TOURVISOR_ANEX_JWT`; `operatorIds` omitted; 120s cooldown + paced poll/continue. TV **{tv.get('hotel_count')}** (continue {tv.get('continue_calls')}), ANEX **{an.get('hotel_count')}**, Andromeda **{ad.get('hotel_count')}**, exact triples **{tr}**. reason `{data.get('reason')}`. DB/mapping/booking/lead writes0."
+          (d/'summary.md').write_text(summary+'\n'); print(summary)
+          if not good: raise SystemExit(2)
+          PY
+
+      - name: Preserve immutable result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-account-scoped-v1-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+            ${{ env.ARTIFACT_DIR }}/receipt.json
+            ${{ env.ARTIFACT_DIR }}/summary.md
+            ${{ env.ARTIFACT_DIR }}/live.stderr
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result
+        if: always() && hashFiles(format('{0}/summary.md', env.ARTIFACT_DIR)) != ''
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$ARTIFACT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
+      - name: Cleanup
+        if: always()
+        run: rm -f "$RUNNER_TEMP/match-tv-scope-key" "$RUNNER_TEMP/match-tv-scope-keypath" "$RUNNER_TEMP/match-tv-scope-sockpath" "$RUNNER_TEMP/match-tv-scope-knownpath"
