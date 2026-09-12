@@ -1,13 +1,15 @@
 <?php
 declare(strict_types=1);
 
-const ANEX_CONCRETE_FUEL_EXPERIMENT = 'anex_concrete_fuel_binding_20260912_v1';
-const ANEX_CONCRETE_FUEL_DATE = '2026-10-19';
-const ANEX_CONCRETE_FUEL_DATE_COMPACT = '20261019';
+const ANEX_CONCRETE_FUEL_EXPERIMENT = 'anex_concrete_fuel_binding_20260913_v2';
+const ANEX_CONCRETE_FUEL_DATE = '2026-10-12';
+const ANEX_CONCRETE_FUEL_DATE_COMPACT = '20261012';
 const ANEX_CONCRETE_FUEL_LOCAL_HOTEL = 21753;
 const ANEX_CONCRETE_FUEL_EXTERNAL_HOTEL = '25084';
 const ANEX_CONCRETE_FUEL_NIGHTS = 7;
 const ANEX_CONCRETE_FUEL_ADULTS = 2;
+const ANEX_CONCRETE_FUEL_PROGRAM = '2637';
+const ANEX_CONCRETE_FUEL_NATIVE_CURRENCY = '3';
 
 function anex_concrete_fuel_input($value): array
 {
@@ -189,11 +191,11 @@ function anex_concrete_fuel_tv(array $local, array &$requestLog, array &$secrets
 
 function anex_concrete_fuel_main(): array
 {
-    $started=microtime(true); $pdo=null; $lock=null; $reserved=false; $path=null; $secrets=[]; $tvLog=[]; $anexClient=null; $b2b=null;
+    $started=microtime(true); $pdo=null; $lock=null; $reserved=false; $path=null; $secrets=[]; $tvLog=[]; $anexClient=null;
     $out=['schema_version'=>1,'experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'status'=>'blocked','automatic_retry'=>false,
         'supplier_replay_allowed'=>false,'anex_requests'=>0,'tourvisor_requests'=>0,'additional_prices_requests'=>0,
         'andromeda_requests'=>0,'booking_calls'=>0,'broninit_calls'=>0,'mapping_writes'=>0,'group_minimum'=>null,
-        'concrete_offers'=>[],'selected_concrete'=>null,'anex_flights'=>null,'additional_prices'=>null,'tourvisor'=>null];
+        'concrete_offers'=>[],'selected_concrete'=>null,'anex_flights'=>null,'tourvisor'=>null];
     try {
         $raw=file_get_contents('php://stdin',false,null,0,4097); if(!is_string($raw)||$raw===''||strlen($raw)>4096)throw new RuntimeException('CONCRETE_FUEL_INVALID_INPUT');
         anex_concrete_fuel_input(json_decode($raw,true,8,JSON_THROW_ON_ERROR));
@@ -201,8 +203,7 @@ function anex_concrete_fuel_main(): array
         if(!$root||!$preview||$preview!==$root.'/_preview/search3-anex-candidate'||!in_array(realpath((string)getcwd()),[$root,$preview],true))throw new RuntimeException('CONCRETE_FUEL_RUNTIME');
         require_once $home.'/.anytoour-anex/search3-preview.php'; require_once $root.'/config.php';
         if(!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('CONCRETE_FUEL_ANEX_TOKEN');
-        if(!defined('ANEX_B2B_TOKEN')||!is_string(ANEX_B2B_TOKEN)||trim(ANEX_B2B_TOKEN)==='')throw new RuntimeException('CONCRETE_FUEL_B2B_TOKEN');
-        $secrets=[ANEX_API_TOKEN,ANEX_B2B_TOKEN];
+        $secrets=[ANEX_API_TOKEN];
         $db=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php'; require_once $db; $pdo=v2_data_db();
         if(!$pdo instanceof PDO||$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)!=='mysql')throw new RuntimeException('CONCRETE_FUEL_DB');
         $lookup=$pdo->prepare("SELECT d.id departure_id,d.name departure_name,c.id country_id,c.name country_name FROM catalog_departures d CROSS JOIN catalog_countries c WHERE d.is_active=1 AND c.is_active=1 AND d.name IN ('Москва','Moscow') AND c.name IN ('Турция','Turkey') LIMIT 2");
@@ -230,7 +231,7 @@ function anex_concrete_fuel_main(): array
         $search=new AnyTourAnexSearch($anexClient,$registry->previewResolver(),$secrets); usleep(1050000); $page=$search->search($criteria);
         $eligible=[]; foreach($page['offers']??[] as $offer){$summary=anex_concrete_fuel_offer_summary($offer);if($summary!==null)$eligible[]=['raw'=>$offer,'summary'=>$summary];}
         if(!$eligible)throw new RuntimeException('CONCRETE_FUEL_ANEX_EMPTY');
-        usort($eligible,static fn(array $a,array $b):int=>(float)$a['summary']['price']<=>(float)$b['summary']['price']);
+        usort($eligible,static fn(array $a,array $b):int=>(float)$a['summary']['price']=>(float)$b['summary']['price']);
         $first=$eligible[0]; $out['group_minimum']=$first['summary']; $concrete=[];
         if(($first['raw']['kind']??null)==='group_minimum'){
             usleep(1050000); $expanded=$search->expand($first['raw']['offer_key']);
@@ -239,29 +240,26 @@ function anex_concrete_fuel_main(): array
             foreach($eligible as $row)if(($row['summary']['kind']??null)==='concrete')$concrete[]=$row;
         }
         if(!$concrete)throw new RuntimeException('CONCRETE_FUEL_NO_CONCRETE');
-        usort($concrete,static fn(array $a,array $b):int=>(float)$a['summary']['price']<=>(float)$b['summary']['price']);
+        usort($concrete,static fn(array $a,array $b):int=>(float)$a['summary']['price']=>(float)$b['summary']['price']);
         foreach(array_slice($concrete,0,30) as $row)$out['concrete_offers'][]=$row['summary'];
         $selected=$concrete[0]; $tour=$selected['summary']['supplier_tour_program_id']??null; $nativeCurrency=$selected['summary']['supplier_currency_id']??null;
-        if(!is_string($tour)||!preg_match('/\A[1-9][0-9]{0,17}\z/D',$tour)||!is_string($nativeCurrency)||!preg_match('/\A[1-9][0-9]{0,17}\z/D',$nativeCurrency))throw new RuntimeException('CONCRETE_FUEL_PROGRAM');
+        if($tour!==ANEX_CONCRETE_FUEL_PROGRAM||$nativeCurrency!==ANEX_CONCRETE_FUEL_NATIVE_CURRENCY)throw new RuntimeException('CONCRETE_FUEL_PROGRAM');
         $out['selected_concrete']=$selected['summary']; usleep(1050000); $flightResult=$search->flights($selected['raw']['offer_key']); $out['anex_flights']=['routes'=>anex_concrete_fuel_routes($flightResult),'selected'=>false,'final_price_verified'=>false];
         $out['anex_requests']=$anexClient->requestsMade();
-        usleep(1050000); $b2b=new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN);
-        $context=['page'=>1,'pageSize'=>10,'tour'=>(int)$tour,'dateBeg'=>ANEX_CONCRETE_FUEL_DATE,'nights'=>7,'currency'=>(int)$nativeCurrency];
-        $out['additional_request_context']=$context; $out['additional_prices']=$b2b->additionalPricesDaily($context); $out['additional_prices_requests']=$b2b->requestsMade();
         $out['tourvisor']=anex_concrete_fuel_tv($local,$tvLog,$secrets); $out['tourvisor_requests']=count($tvLog);
-        $out['status']='completed'; $out['supplier_effect']='read_only_search_expand_flights_additional_tv_completed'; $out['reused']=false;
+        $out['status']='completed'; $out['supplier_effect']='read_only_search_expand_flights_tv_completed'; $out['reused']=false;
         anex_concrete_fuel_save($path,['schema_version'=>1,'experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'status'=>'completed','completed_at'=>gmdate('c'),'result'=>$out]); $reserved=false;
     } catch(Throwable $e) {
-        $code=$e->getMessage(); $safe=preg_match('/\A(?:CONCRETE_FUEL|ANEX_B2B|PAIRED_TV)_[A-Z0-9_]{1,90}\z/D',$code)?$code:'CONCRETE_FUEL_UNCONFIRMED';
+        $code=$e->getMessage(); $safe=preg_match('/\A(?:CONCRETE_FUEL|PAIRED_TV)_[A-Z0-9_]{1,90}\z/D',$code)?$code:'CONCRETE_FUEL_UNCONFIRMED';
         $out['status']=$reserved?'unknown':'blocked';$out['reason']=$safe;$out['supplier_effect']=$reserved?'unknown':'none';
         if($reserved&&is_string($path)){try{anex_concrete_fuel_save($path,['schema_version'=>1,'experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'status'=>'unknown','recorded_at'=>gmdate('c'),'reason'=>$safe]);}catch(Throwable $ignored){}}
     } finally {
         if(is_resource($lock)){flock($lock,LOCK_UN);fclose($lock);} if($pdo instanceof PDO&&$pdo->inTransaction())$pdo->rollBack();
-        if($anexClient instanceof AnyTourAnexClient)$out['anex_requests']=$anexClient->requestsMade(); if($b2b instanceof AnyTourAnexAdditionalPricesClient)$out['additional_prices_requests']=$b2b->requestsMade();
+        if($anexClient instanceof AnyTourAnexClient)$out['anex_requests']=$anexClient->requestsMade();
         $out['tourvisor_requests']=max($out['tourvisor_requests'],count($tvLog));$out['elapsed_ms']=(int)round((microtime(true)-$started)*1000);
     }
     $json=json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-    foreach($secrets as $secret)if($secret!==''&&is_string($json)&&strpos($json,$secret)!==false)return['schema_version'=>1,'experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'status'=>'unknown','reason'=>'CONCRETE_FUEL_OUTPUT_REDACTED','automatic_retry'=>false,'supplier_replay_allowed'=>false,'booking_calls'=>0,'broninit_calls'=>0,'mapping_writes'=>0];
+    foreach($secrets as $secret)if($secret!==''&&is_string($json)&&strpos($json,$secret)!==false)return['schema_version'=>1,'experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'status'=>'unknown','reason'=>'CONCRETE_FUEL_OUTPUT_REDACTED','automatic_retry'=>false,'supplier_replay_allowed'=>false,'booking_calls'=>0,'broninit_calls'=>0,'mapping_writes'=>0,'additional_prices_requests'=>0];
     return $out;
 }
 
