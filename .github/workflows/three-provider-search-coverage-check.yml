@@ -1,0 +1,39 @@
+name: Three-provider search coverage
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-search-coverage.php'
+      - 'tests/three-provider-search-coverage-test.php'
+      - '.github/workflows/three-provider-search-coverage-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate search coverage semantics without network
+        run: |
+          php -l app/integrations/three-provider-search-coverage.php
+          php -l tests/three-provider-search-coverage-test.php
+          php -d allow_url_fopen=0 tests/three-provider-search-coverage-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-search-coverage.php').read_text()
+          assert "'counts_exhaustive' => $exhaustive" in src
+          assert "'cross_provider_count_comparability_verified' => false" in src
+          assert "'hotel_identity_proof_from_coverage' => false" in src
+          assert "'package_identity_proof_from_coverage' => false" in src
+          assert "'price_equivalence_proof_from_coverage' => false" in src
+          assert "'pricepage_1_without_total_pagination_proof'" in src
+          assert "'all_advertised_pages_retained'" in src
+          assert "'search_complete_and_continue_no_growth'" in src
+          assert "'search_complete_without_continuation_exhaustion'" in src
+          for forbidden in ('curl_', 'PDO', 'mysqli_', 'bron(', 'bron_ticket', 'booking', 'file_get_contents(', 'Authorization:', 'Bearer '):
+              assert forbidden not in src
+          print('Three-provider search coverage static boundary: PASS')
+          PY
