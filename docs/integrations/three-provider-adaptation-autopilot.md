@@ -99,6 +99,7 @@ Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current acce
 - region/resort/subregion geography boundary;
 - stars/category boundary;
 - rating/services/types local-only boundaries;
+- provider search coverage/exhaustion semantics;
 - direct ANEX retained concrete-offer bridge;
 - Andromeda quote integrity + canonical quote money;
 - P6 provider-neutral SEARCH handoff.
@@ -194,6 +195,17 @@ Andromeda current source доказывает отдельный provider-specif
 - similarity не hotel identity proof;
 - services/types strict dedupe обязан сохранять opaque numeric-string type (`"77"` не превращать в integer key).
 
+### 5.7 Search coverage / exhaustion
+
+#2118 merged `3fd3b8ae4bb63bfaa3f3514dd586d10bafe4dbf7`; exact head `b33d3266f787158012cfe6eb81b6d85e9162d61e`.
+Focused `34677474785` SUCCESS: 101; aggregate `34677474771` SUCCESS; Security `34677474772` SUCCESS.
+
+- direct ANEX current search fixes `PRICEPAGE=1`; without a verified total-page/continuation contract its observed rows are `bounded`, never automatically exhaustive;
+- Andromeda result is `complete` only when one exact search context retains every advertised page `1..PAGES_COUNT`; page 1 of N is `partial`;
+- Tourvisor `status=complete` alone does not prove result exhaustion; canonical `complete` requires an explicit continuation round and verified no-growth evidence;
+- bounded/partial rows remain useful observations, but counts from different providers are not proven comparable;
+- coverage/count equality never proves hotel identity, package identity or price equivalence and never authorizes mapping/arithmetic changes.
+
 ## 6. P6 source handoff — DONE
 
 #2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`; CI `34665905819` SUCCESS, Security `34665905799` SUCCESS.
@@ -204,7 +216,7 @@ Receiving wiring, renderer/controller/selected-state/publication принадл�
 
 ## 7. P7 source release readiness — GREEN
 
-Latest exact-head gate после #2116:
+Latest exact-head gate после #2118:
 
 - money facts: 60;
 - offer contract: 189;
@@ -212,6 +224,7 @@ Latest exact-head gate после #2116:
 - air search/filter: 114;
 - region/resort/subregion: 74;
 - departure/country: 82;
+- search coverage: 101;
 - hotel category: 57;
 - hotel rating: 69;
 - hotel services: 67;
@@ -220,7 +233,7 @@ Latest exact-head gate после #2116:
 - INT→SEARCH handoff: 97;
 - direct ANEX bridge: 115.
 
-Aggregate `34676677124` SUCCESS: **1078 offline contract checks**. Security `34676677093` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs не получают universal authority.
+Aggregate `34677474771` SUCCESS: **1179 offline contract checks**. Security `34677474772` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs и bounded result counts не получают universal authority.
 
 Это source-side readiness, не production approval и не UI/publication acceptance.
 
@@ -232,7 +245,7 @@ Aggregate `34676677124` SUCCESS: **1078 offline contract checks**. Security `346
 
 P3 identity/matching никогда не fallback-задача INT.
 
-После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114/#2116 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types wrapper ради активности.
+После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114/#2116/#2118 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types/search-coverage wrapper ради активности.
 
 ### P0/P1 — следующий eligible work
 
@@ -259,6 +272,8 @@ ANEX-only parity только current accepted triple-mapped subject:
 direct ANEX ↔ Andromeda `OPERATORS=5` ↔ Tourvisor с ANEX в исходном request.
 
 Tuple alignment: `current local identity + date + nights + party + canonical meal + room`; placement отдельно до доказанного parity.
+
+Coverage обязан идти рядом с observation: direct ANEX `PRICEPAGE=1` считать bounded, Andromeda complete только после всех advertised pages одного search context, Tourvisor complete только после explicit continue/no-growth evidence. Нельзя сравнивать provider counts как exhaustive, если соответствующий coverage contract этого не доказывает.
 
 Для `local_id=null` сохранять provider/country/external id/name/geography/star/coords/search criteria, если реально доступны, и передавать #1759/#996. Mapping writes запрещены.
 
@@ -300,6 +315,7 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 - availability/flight flags;
 - search price/currency;
 - fuel/additional states отдельно;
+- search coverage state + provider-specific exhaustion evidence;
 - observed_at + source request lineage.
 
 Каждый supplier scenario получает `operation_id`, checkpoint path, scenario revision, criteria digest и source SHA.
