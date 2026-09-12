@@ -8,7 +8,7 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1', 'requires the isolated
 assert.ok(process.env.SEARCH3_RESULTS_OUTPUT, 'requires retained evidence');
 const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, 'native-form');
 fs.mkdirSync(output, { recursive: true });
-const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
+const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 1600];
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -34,14 +34,22 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
           const partyGroup = form.querySelector('.search-group--party'), childAges = form.querySelector('#childAges');
           // Closed details descendants may retain geometry without being painted.
           const visible = nodes => [...nodes].filter(node => !node.closest('details:not([open])') && node.checkVisibility({ visibilityProperty: true }) && node.getBoundingClientRect().height > 0);
-          // Fieldset may serialize repeat()/minmax() rather than resolved tracks.
-          // Count the actual visible cells in each row, never spaces in CSS text.
+          // Native control heights may differ slightly inside one align-items:end grid row.
+          // Count cells as one row when their rendered vertical boxes materially overlap.
           const columns = node => {
             const rows = [];
             for (const item of visible([...node.children].filter(child => child.tagName !== 'LEGEND'))) {
-              const top = box(item).top;
-              const row = rows.find(entry => Math.abs(entry.top - top) < 1);
-              if (row) row.count += 1; else rows.push({ top, count: 1 });
+              const itemBox = box(item);
+              const row = rows.find(entry => {
+                const overlap = Math.min(entry.bottom, itemBox.bottom) - Math.max(entry.top, itemBox.top);
+                return overlap >= Math.min(entry.height, itemBox.height) * 0.5;
+              });
+              if (row) {
+                row.count += 1;
+                row.top = Math.min(row.top, itemBox.top);
+                row.bottom = Math.max(row.bottom, itemBox.bottom);
+                row.height = row.bottom - row.top;
+              } else rows.push({ top: itemBox.top, bottom: itemBox.bottom, height: itemBox.height, count: 1 });
             }
             return Math.max(0, ...rows.map(row => row.count));
           };
@@ -98,11 +106,13 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
           assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, 'closed extras and CTA share a footer row');
         }
         if (width >= 1200) {
-          assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 3);
+          assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 6);
           const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
           assert.deepEqual(counts(state.groupTops), [2, 2], 'trip basics retain two balanced rows');
           assert.ok(state.groupColumns.every(value => value === 2));
-          assert.deepEqual(counts(state.preferenceTops), [3, 3]);
+          assert.ok(Math.max(...state.preferenceTops) - Math.min(...state.preferenceTops) <= 3, 'wide desktop keeps the six primary OTA preferences visually aligned on one row');
+          assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[0] + 40, 'exact hotel gets the widest primary track');
+          assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[2] + 100, 'hotel track stays materially wider than compact category');
           assert.ok(state.preferenceWidth >= state.form.width - 50);
           assert.ok(state.dateControls.every(item => item.width >= 200));
           assert.ok(state.submit.width <= 281, 'desktop CTA is not oversized');
