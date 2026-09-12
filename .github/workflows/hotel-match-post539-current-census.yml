@@ -1,0 +1,75 @@
+name: MATCH post539 CURRENT census 1971
+on:
+  push:
+    branches: ['ops/match-mass-bridge-1971-20260912']
+    paths: ['.github/match-post539-current-census-1971-20260912-v1.arm']
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-post539-current-census, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-post539-current-census-1971-20260912-v1
+  OUT: /tmp/match-post539-current-census
+jobs:
+  census:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate source and reserve before DB access
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-post539-current-census-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_post539_current_census.php
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          pathlib.Path(os.environ['OUT'],'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-post539-census-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: '/tmp/match-post539-reservation-readback', merge-multiple: true}
+      - name: Verify reservation and execute one CURRENT read-only transaction
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-post539-reservation-readback/reservation.json
+          key="$RUNNER_TEMP/post539-key";sock="$RUNNER_TEMP/post539.sock";known="$RUNNER_TEMP/post539-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ok=0
+          for n in 1 2 3;do
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER_VALUE@$HOST_VALUE";then ok=1;break;fi
+            sleep 12
+          done
+          test "$ok" = 1
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php'
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M' < scripts/diagnostics/hotel_match_post539_current_census.php > "$OUT/stdout" 2> "$OUT/stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);raw=(d/'stdout').read_bytes();lines=[x[len(b'POST539_CENSUS:'):] for x in raw.splitlines() if x.startswith(b'POST539_CENSUS:')]
+          x=json.loads(lines[0]) if len(lines)==1 else {'status':'unknown','safe_message':'marker_missing'}
+          result=json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()+b'\n';(d/'result.json').write_bytes(result)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':x.get('status'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'coverage':x.get('coverage'),'observed_unresolved_unprotected':x.get('observed_unresolved_unprotected'),'observed_unresolved_absent_from_staging':x.get('observed_unresolved_absent_from_staging'),'andromeda_pending_core8_by_country':x.get('andromeda_pending_core8_by_country'),'result_sha256':hashlib.sha256(result).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          c=x.get('coverage') or {};summary=f"MATCH #1971 post+539 CURRENT census: **{x.get('status')}**. ANEX mappings **{c.get('anex_mapping_rows')}**, unique local **{c.get('anex_unique_local')}**; Andromeda accepted/pending/conflict **{(c.get('andromeda_status') or {}).get('accepted')}/{(c.get('andromeda_status') or {}).get('pending')}/{(c.get('andromeda_status') or {}).get('conflict')}**, unique local **{c.get('andromeda_unique_local')}**; triple **{c.get('triple')}**, ANEX+TV only **{c.get('anex_tv_only')}**, Andromeda+TV only **{c.get('andromeda_tv_only')}**. Live unresolved/unprotected ANEX **{x.get('observed_unresolved_unprotected')}**, absent staging **{x.get('observed_unresolved_absent_from_staging')}**. DB/mapping/supplier/Tourvisor writes/calls0. Run `{os.environ['GITHUB_RUN_ID']}`. NO-REPLAY."
+          (d/'summary.md').write_text(summary+'\n');print(summary)
+          raise SystemExit(0 if int(os.environ['RC'])==0 and x.get('status')=='completed' and x.get('operation_id')==os.environ['OPERATION_ID'] else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-post539-census-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
+      - name: Cleanup runner credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/post539-key" "$RUNNER_TEMP/post539-known" "$OUT/stdout" "$OUT/stderr"
