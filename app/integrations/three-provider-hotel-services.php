@@ -83,8 +83,10 @@ final class AnyTourThreeProviderHotelServices
             if ($item === '' || strlen($item) > self::MAX_ITEM_LENGTH || preg_match('/[\x00-\x1F\x7F]/', $item)) {
                 throw new InvalidArgumentException('invalid '.$label);
             }
-            $result[$item] = true;
+            if (!in_array($item, $result, true)) {
+                $result[] = $item;
+            }
         }
-        return array_keys($result);
+        return $result;
     }
 }
