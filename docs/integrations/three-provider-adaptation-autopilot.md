@@ -81,7 +81,8 @@ Money facts всегда раздельны:
 - flight/detail capability flags;
 - provider != operator;
 - strict money provenance и `observed_at`;
-- canonical offer envelope/dedupe/context guards.
+- canonical offer envelope/dedupe/context guards;
+- air-search capability boundary: catalog/discovery evidence отдельно от upstream supplier-search filtering.
 
 ### Direct ANEX
 
@@ -126,6 +127,22 @@ Money facts всегда раздельны:
 
 Focused run `34665514483` SUCCESS (54), Security `34665514441` SUCCESS.
 
+### Air search/filter semantics
+
+#2100 merged `bdaeb8856fffff4018d8ed154bb8d73a705d8abf`; exact PR head `c6c9ab2f0849f64e1547e7bb8484bd3e17dd8010`.
+Focused run `34668203993` SUCCESS: 114 checks. Security `34668204017` SUCCESS.
+
+Canonical P2 boundary для `arrival_airport`, `direct_flight`, `charter` теперь явный:
+
+- Tourvisor current source имеет **verified catalog/discovery evidence**: существующий arrivals catalog и `onlyDirect`/`onlyCharter` catalog paths;
+- это доказательство относится только к catalog/discovery и **не** разрешает автоматически добавлять/менять protected Tourvisor tour-search payload;
+- upstream supplier-search filter status для всех трёх families пока `unknown`, forwarding fail-closed;
+- direct ANEX и Andromeda catalog/search-filter capability остаётся `unknown`, пока не доказан provider-specific contract;
+- raw numeric airport/supplier IDs не универсальны;
+- cross-provider equivalence=false.
+
+Не создавать второй air-filter contract ради тех же статусов. Новое evidence может только безопасно повысить конкретный provider/family status отдельным bounded пакетом.
+
 ## 5. P6 source handoff — DONE
 
 #2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`.
@@ -145,19 +162,22 @@ Receiving wiring, renderer/controller/selected-state и публикация п�
 
 ## 6. P7 source release readiness — GREEN
 
-#2097 merged `d37b7eff514354a773ea773c75fd782c1312bf87`.
-Exact head `a53da11775b9e90028c01e4624ac1d1e28471edc`.
-Aggregate readiness run `34666151867` SUCCESS; Security `34666151846` SUCCESS.
+Base gate #2097 merged `d37b7eff514354a773ea773c75fd782c1312bf87`.
+Air-semantics extension #2101 merged `828cab90b39a51879433c266f90d2c6bd1617912`; exact PR head `745260faff985d3190df001b4cb4cd092cc62d2d`.
+Latest aggregate readiness run `34668250920` SUCCESS; Security `34668250875` SUCCESS.
 
 На одном exact head без network/secrets/DB прошли:
 
 - money facts: 60 checks;
 - offer contract: 189;
 - retained context: 33;
+- air search/filter semantics: 114;
 - verified quote envelope: 54;
 - INT→SEARCH handoff: 97;
 - direct ANEX saved-offer bridge: 115;
-- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled.
+- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled, air upstream filtering fail-closed.
+
+Итого aggregate contract matrix: **662 checks**.
 
 Это означает **source-side readiness INT contracts**, а не production approval и не UI/publication acceptance.
 
@@ -169,7 +189,7 @@ Aggregate readiness run `34666151867` SUCCESS; Security `34666151846` SUCCESS.
 
 P3 identity/matching никогда не становится fallback-задачей INT.
 
-После #2096/#2097 запрещено создавать второй quote/handoff wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
+После #2096/#2097/#2100/#2101 запрещено создавать второй quote/handoff/air-filter wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
 
 ### P0/P1 — следующий eligible work
 
@@ -214,7 +234,7 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 | meal | raw + canonical key; verified families only |
 | room/placement | raw + normalized; placement separate до parity |
 | operator | provider != operator; supplier codes private |
-| arrival airport/direct/charter | unknown/unsupported until capability proven |
+| arrival airport/direct/charter | Tourvisor catalog/discovery verified only; upstream supplier-search status unknown/fail-closed для всех; direct ANEX/Andromeda discovery unknown; raw IDs provider-specific |
 | dates/nights/party/ages | verified/closed family |
 | availability | source/raw evidence, unknown когда нет доказательства |
 | flights/baggage | optional detail capability, не auto-fetch |
