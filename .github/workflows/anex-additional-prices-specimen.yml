@@ -36,8 +36,8 @@ jobs:
           assert "supplier_tour_program_dictionary_identity" in s
           assert "minimum_daily_air_surcharge_service" in s
           assert "new AnyTourAnexAdditionalPricesClient" in s
-          assert "AnyTourAnexSearch(" not in s
-          assert "CATCLAIM" not in s
+          assert "new AnyTourAnexSearch" not in s
+          assert "$search->expand" not in s
           assert "'additional_payload_uninterpreted' => true" in s
           assert "'arithmetic_applied' => false" in s
           for forbidden in ('->bron(', 'bron_ticket', 'INSERT INTO', 'UPDATE ', 'DELETE FROM'):
