@@ -26,6 +26,59 @@ const hotels = [
   }
 ];
 
+async function renderFixture(page) {
+  await page.goto(`${base}/poisk-turov/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.V2Results && typeof window.V2Results.render === 'function');
+  await page.evaluate(items => {
+    window.V2Results.render(items);
+    window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 901, items } }));
+  }, hotels);
+}
+
+async function exerciseActiveChips(page, container, requestCount) {
+  const hotelInput = page.locator(`${container} .search3-hotel-filter input`);
+  await hotelInput.fill('Альфа');
+  const hotelChip = page.locator(`${container} .search3-active-filters button[data-filter-key="hotel"]`);
+  await hotelChip.waitFor({ state: 'visible' });
+  assert.match(await hotelChip.getAttribute('aria-label'), /^Убрать фильтр: Отель: Альфа$/);
+  assert.equal(await page.locator('#results .hotel-card:visible').count(), 1, 'hotel chip reflects the local hotel predicate');
+  let before = requestCount();
+  await hotelChip.click();
+  assert.equal(requestCount(), before, 'removing hotel chip never launches supplier/lead transport');
+  assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'removing one chip restores only that predicate');
+  await page.waitForFunction(() => document.activeElement?.matches('.search3-hotel-filter input'));
+
+  const budget = page.locator(`${container} .search3-budget-filter input`);
+  await budget.waitFor({ state: 'visible' });
+  const bounds = await budget.evaluate(node => ({ min: Number(node.min), max: Number(node.max) }));
+  const budgetValue = Math.max(bounds.min, bounds.max - 5000);
+  await budget.fill(String(budgetValue));
+  await budget.dispatchEvent('input');
+  const budgetChip = page.locator(`${container} .search3-active-filters button[data-filter-key="budget"]`);
+  await budgetChip.waitFor({ state: 'visible' });
+  assert.ok((await budgetChip.boundingBox()).height >= 43.5, 'active filter chip keeps an accessible hit target');
+
+  const operator = page.locator(`${container} .search3-operator-filter select`);
+  await operator.waitFor({ state: 'visible' });
+  const operatorValue = await operator.locator('option').nth(1).getAttribute('value');
+  await operator.selectOption(operatorValue);
+  const operatorChip = page.locator(`${container} .search3-active-filters button[data-filter-key="operator"]`);
+  await operatorChip.waitFor({ state: 'visible' });
+  assert.equal(await budgetChip.count(), 1, 'budget remains active when operator is added');
+  before = requestCount();
+  await operatorChip.click();
+  assert.equal(requestCount(), before, 'removing projected operator chip stays local');
+  assert.equal(await budgetChip.count(), 1, 'removing operator preserves budget');
+  assert.equal(await operator.inputValue(), '', 'operator alone is cleared');
+  await page.waitForFunction(() => document.activeElement?.matches('.search3-operator-filter select'));
+
+  before = requestCount();
+  await budgetChip.click();
+  assert.equal(requestCount(), before, 'removing budget chip stays local');
+  assert.equal(await page.locator(`${container} .search3-active-filters button`).count(), 0, 'all individual chips are gone after their own predicates are cleared');
+  await page.waitForFunction(() => document.activeElement?.matches('.search3-budget-filter input'));
+}
+
 async function exercise(browser, width, height) {
   const page = await browser.newPage({ viewport: { width, height } });
   const runtimeErrors = [];
@@ -36,13 +89,10 @@ async function exercise(browser, width, height) {
     if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(pathname)) supplierLikeRequests += 1;
   });
   try {
-    await page.goto(`${base}/poisk-turov/`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.V2Results && typeof window.V2Results.render === 'function');
-    await page.evaluate(items => {
-      window.V2Results.render(items);
-      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 901, items } }));
-    }, hotels);
+    await renderFixture(page);
     await page.locator('.results-filter-rail').waitFor({ state: 'visible' });
+
+    await exerciseActiveChips(page, '.results-filter-rail', () => supplierLikeRequests);
 
     const hotelInput = page.locator('.results-filter-rail .search3-hotel-filter input');
     await hotelInput.fill('Проверочный');
@@ -77,6 +127,7 @@ async function exercise(browser, width, height) {
         railWidth: rect.width,
         resultsWidth: document.querySelector('#results').getBoundingClientRect().width,
         workspaceGap: document.querySelector('#results').getBoundingClientRect().left - rect.right,
+        activeFiltersParent: document.querySelector('.search3-active-filters')?.parentElement?.className || '',
         card: (() => {
           const card = document.querySelector('#results .hotel-card');
           const main = card.querySelector('.hotel-main');
@@ -100,6 +151,7 @@ async function exercise(browser, width, height) {
         })()
       };
     });
+    assert.match(initial.activeFiltersParent, /results-filter-rail/, `${width}: desktop active conditions live in the canonical rail`);
     assert.equal(initial.overflowY, 'auto', `${width}: rail owns vertical overflow`);
     assert.ok(initial.clientHeight <= height - 34, `${width}: rail is bounded inside the short viewport: ${JSON.stringify(initial)}`);
     assert.ok(initial.scrollHeight > initial.clientHeight, `${width}: fixture actually exercises an overflowing rail: ${JSON.stringify(initial)}`);
@@ -162,9 +214,45 @@ async function exercise(browser, width, height) {
   }
 }
 
+async function exerciseMobile(browser) {
+  const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
+  let supplierLikeRequests = 0;
+  const runtimeErrors = [];
+  page.on('pageerror', error => runtimeErrors.push(String(error)));
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(pathname)) supplierLikeRequests += 1;
+  });
+  try {
+    await renderFixture(page);
+    const panel = page.locator('.search3-mobile-filter-panel');
+    await panel.waitFor({ state: 'visible' });
+    await panel.locator('summary').click();
+    await exerciseActiveChips(page, '.search3-mobile-filter-panel__body', () => supplierLikeRequests);
+    await page.locator('.search3-mobile-filter-panel__body .search3-hotel-filter input').fill('Альфа');
+    const mobileChip = page.locator('.search3-mobile-filter-panel__body .search3-active-filters button[data-filter-key="hotel"]');
+    await mobileChip.waitFor({ state: 'visible' });
+    const mobile = await page.evaluate(() => ({
+      chipParent: document.querySelector('.search3-active-filters')?.parentElement?.className || '',
+      overflowX: document.documentElement.scrollWidth > innerWidth + 2,
+      summary: document.querySelector('[data-search3-mobile-filter-summary]')?.textContent || '',
+      chipHeight: document.querySelector('.search3-active-filters button')?.getBoundingClientRect().height || 0
+    }));
+    assert.match(mobile.chipParent, /search3-mobile-filter-panel__body/, 'mobile active conditions move into the canonical disclosure');
+    assert.equal(mobile.overflowX, false, 'mobile active filter chips do not widen the page');
+    assert.match(mobile.summary, /Отель: Альфа/, 'mobile summary remains consistent with visible active condition');
+    assert.ok(mobile.chipHeight >= 43.5, 'mobile chip remains touch accessible');
+    await page.screenshot({ path: path.join(output, 'filter-chips-375x812.png'), fullPage: false });
+    assert.deepEqual(runtimeErrors, [], 'mobile active chips have no runtime errors');
+  } finally {
+    await page.close();
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
+    await exerciseMobile(browser);
     await exercise(browser, 1025, 520);
     await exercise(browser, 1200, 700);
     await exercise(browser, 1366, 768);
@@ -173,7 +261,7 @@ async function exercise(browser, width, height) {
   } finally {
     await browser.close();
   }
-  console.log('SEARCH3_FILTER_RAIL_SHORT_VIEWPORT_OK widths=1025x520,1200x700,1366x768,1440x560,1600x700 keyboard=1 rail_scroll=1 page_scroll=0 horizontal_overflow=0 supplier_calls_on_reset=0');
+  console.log('SEARCH3_FILTER_RAIL_SHORT_VIEWPORT_OK mobile=375x812 widths=1025x520,1200x700,1366x768,1440x560,1600x700 active_chips=1 individual_remove=1 keyboard=1 rail_scroll=1 page_scroll=0 horizontal_overflow=0 supplier_calls_on_filter_remove=0 supplier_calls_on_reset=0');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
