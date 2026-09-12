@@ -6,6 +6,8 @@ const { chromium } = require('playwright');
 const base = process.env.SEARCH3_VISUAL_BASE;
 assert.ok(base && new URL(base).hostname === '127.0.0.1', 'requires the isolated local artifact server');
 assert.ok(process.env.SEARCH3_RESULTS_OUTPUT, 'requires retained evidence');
+const sourceSha = process.env.SEARCH3_SOURCE_SHA;
+assert.match(sourceSha || '', /^[0-9a-f]{40}$/, 'requires the exact checked source SHA');
 const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, 'native-form');
 fs.mkdirSync(output, { recursive: true });
 const widths = [350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 1200, 1366, 1440, 1600];
@@ -166,9 +168,9 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 120
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-expanded-${width}.png`), animations: 'disabled' });
         assert.deepEqual(errors, []);
-        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ width, party, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
+        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ source_sha: sourceSha, width, party, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
       } finally { await page.close(); }
     }
   } finally { await browser.close(); }
-  console.log(`SEARCH3_SERVED_ENTRY_GEOMETRY_OK widths=${widths.join(',')} party_states=${widths.length * 4} lead_sent=0`);
+  console.log(`SEARCH3_SERVED_ENTRY_GEOMETRY_OK source=${sourceSha} widths=${widths.join(',')} party_states=${widths.length * 4} lead_sent=0`);
 })().catch(error => { console.error(error); process.exitCode = 1; });
