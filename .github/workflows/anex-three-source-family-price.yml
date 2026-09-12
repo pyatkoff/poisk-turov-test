@@ -1,0 +1,76 @@
+name: ANEX three-source family price
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_three_source_family_price.py'
+      - 'tests/anex_three_source_family_price_test.py'
+      - '.github/workflows/anex-three-source-family-price.yml'
+  push:
+    branches:
+      - 'ops/int-anex-three-source-family-price-20260913'
+    paths:
+      - '.github/ops/anex-three-source-family-price-20260913'
+permissions:
+  contents: read
+concurrency:
+  group: anex-three-source-family-price-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Focused family scenario regression
+        run: |
+          python3 -B tests/anex_three_source_family_price_test.py
+          python3 -m py_compile scripts/diagnostics/anex_three_source_family_price.py
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-family-price-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind exact reviewed family source
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-three-source-family-price-20260913'
+          test "$(cat control/.github/ops/anex-three-source-family-price-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-family-price;scenario=Turkey-2026-10-29-9n-2a-1c7-AI;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Run one family three-source scenario
+        id: family
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/family-price"
+          python3 -B source/scripts/diagnostics/anex_three_source_family_price.py "$RUNNER_TEMP/family-price"
+      - name: Preserve sanitized family evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-three-source-family-price-${{ github.run_id }}
+          path: ${{ runner.temp }}/family-price/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: steps.family.outcome != 'success'
+        run: exit 1
