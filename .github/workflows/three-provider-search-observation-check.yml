@@ -1,0 +1,46 @@
+name: Three-provider search observation
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-search-observation.php'
+      - 'tests/three-provider-search-observation-test.php'
+      - '.github/workflows/three-provider-search-observation-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate observation evidence without network or persistence
+        run: |
+          php -l app/integrations/three-provider-search-observation.php
+          php -l tests/three-provider-search-observation-test.php
+          php -d allow_url_fopen=0 -r 'set_error_handler(static function(int $severity, string $message, string $file, int $line): never { throw new ErrorException($message, 0, $severity, $file, $line); }); require "tests/three-provider-search-observation-test.php";'
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-search-observation.php').read_text()
+          for required in (
+              "'external_id_universal' => false",
+              "'mapping_write_allowed' => false",
+              "'hotel_identity_decision_allowed' => false",
+              "'package_identity_verified' => false",
+              "'cross_provider_price_equivalence_verified' => false",
+              "'replay_authority' => false",
+              'AnyTourThreeProviderSearchCoverage::fromEvidence',
+              'AnyTourThreeProviderSearchWindow::fromSearch',
+              'AnyTourThreeProviderMoneyFacts::fromSearch',
+              "str_contains($checkpoint, '\\\\')",
+          ):
+              assert required in src, required
+          for forbidden in (
+              'curl_', 'PDO', 'mysqli_', 'file_get_contents(', 'bron(', 'bron_ticket',
+              'booking', 'Authorization:', 'Bearer ', 'INSERT ', 'UPDATE ', 'DELETE '
+          ):
+              assert forbidden not in src, forbidden
+          print('Three-provider search observation static boundary: PASS')
+          PY
