@@ -1,0 +1,136 @@
+name: MATCH ANEX Andromeda price position v15
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-anex-andromeda-price-position-1971-20260912-v15.arm']
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: anytour-match-anex-andromeda-price-position-1971-20260912-v15
+  cancel-in-progress: false
+env:
+  FAMILY_ID: hotel-match-anex-andromeda-price-position-1971-20260912-v15
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {sid: s01, country_id: '4', country_name: Turkey, date: '2026-12-08', nights: '7'}
+          - {sid: s02, country_id: '4', country_name: Turkey, date: '2027-01-12', nights: '8'}
+          - {sid: s03, country_id: '1', country_name: Egypt, date: '2026-12-09', nights: '7'}
+          - {sid: s04, country_id: '1', country_name: Egypt, date: '2027-01-13', nights: '8'}
+    env:
+      SLICE_ID: ${{ matrix.sid }}
+      COUNTRY_ID: ${{ matrix.country_id }}
+      COUNTRY_NAME: ${{ matrix.country_name }}
+      SEARCH_DATE: ${{ matrix.date }}
+      SEARCH_NIGHTS: ${{ matrix.nights }}
+      OPERATION_ID: hotel-match-anex-andromeda-price-position-1971-20260912-v15-${{ matrix.sid }}
+      ARTIFACT_DIR: /tmp/matchaa-price-position-v15-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate collector and immutable arm
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-anex-andromeda-price-position-1971-20260912-v15.arm)" = "$FAMILY_ID"
+          php -l scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php
+          grep -Fq "price_candidates" scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php
+          grep -Fq "position" scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php
+          ! grep -Fq "TOURVISOR_ANEX_JWT" scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php
+          ! grep -Fq "/tours/search" scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php
+          mkdir -m 700 -p "$ARTIFACT_DIR"
+      - name: Establish zero-supplier SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);sid=os.environ['SLICE_ID'];key=rt/('m15-key-'+sid);sock=rt/('m15-'+sid+'.sock');known=rt/('m15-known-'+sid)
+          raw=os.environ['KEY_VALUE'].strip(); key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=1200']+common,text=True,capture_output=True,timeout=30)
+              if p.returncode==0:
+                  q=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php && printf M15_PREFLIGHT_OK'],text=True,capture_output=True,timeout=30)
+                  if q.returncode==0 and q.stdout.strip()=='M15_PREFLIGHT_OK':ok=True;break
+              time.sleep(3)
+          if not ok:raise SystemExit('ssh preflight failed before reservation')
+          PY
+      - name: Persist reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=Path('scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php')
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country_id':int(os.environ['COUNTRY_ID']),'country':os.environ['COUNTRY_NAME'],'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'adults':2},'providers':['direct_anex','andromeda_anex_operator_all_pages'],'recording':['hotel_id','name','position','price_candidates','currency_candidates','room_candidates','meal_candidates','operator_candidates'],'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchaa-price-position-v15-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute supplier-first price-position slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sleep 20
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/('m15-'+os.environ['SLICE_ID']+'.sock');program=Path('scripts/diagnostics/hotel_match_anex_andromeda_price_position_v15.php').read_text()
+          remote='cd "$HOME/www/anytoour.ru" && M15_OPERATION_ID='+os.environ['OPERATION_ID']+' M15_COUNTRY_ID='+os.environ['COUNTRY_ID']+' M15_COUNTRY_NAME='+os.environ['COUNTRY_NAME']+' M15_DATE='+os.environ['SEARCH_DATE']+' M15_NIGHTS='+os.environ['SEARCH_NIGHTS']+' php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M'
+          p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],remote],input=program,text=True,capture_output=True,timeout=900)
+          prefix='M15_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None)
+          if line is None:data={'status':'unknown','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          else:data=json.loads(line)
+          (d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'status':data.get('status'),'reason':data.get('reason'),'anex_hotels':((data.get('providers') or {}).get('anex') or {}).get('hotel_count'),'andromeda_hotels':((data.get('providers') or {}).get('andromeda') or {}).get('hotel_count'),'exact_pairs':(((data.get('comparison') or {}).get('exact_alias_pairs') or {}).get('count')),'positional_pairs':(((data.get('comparison') or {}).get('mutual_positional_pairs') or {}).get('count'))},sort_keys=True))
+          if data.get('status')!='completed':raise SystemExit(2)
+          PY
+      - name: Build receipt
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'result.json';data=json.loads(p.read_text()) if p.exists() else {'status':'unknown','reason':'result_missing','operation_id':os.environ['OPERATION_ID']}
+          raw=p.read_bytes() if p.exists() else b'';a=((data.get('providers') or {}).get('anex') or {});x=((data.get('providers') or {}).get('andromeda') or {});c=data.get('comparison') or {}
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':data.get('status','unknown'),'reason':data.get('reason'),'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw).hexdigest(),'anex_hotels':a.get('hotel_count'),'andromeda_hotels':x.get('hotel_count'),'exact_pairs':(c.get('exact_alias_pairs') or {}).get('count'),'positional_pairs':(c.get('mutual_positional_pairs') or {}).get('count'),'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          (d/'summary.md').write_text(f"MATCH #1971 price-position v15 `{r['operation_id']}`: **{r['state']}** / NO-REPLAY. ANEX {r['anex_hotels']}, Andromeda {r['andromeda_hotels']}, exact pairs {r['exact_pairs']}, mutual positional pairs {r['positional_pairs']}. Price/currency/position evidence retained from normalized offers. Tourvisor/DB/mapping writes 0.\n")
+          PY
+      - name: Preserve result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: matchaa-price-position-v15-${{ matrix.sid }}-${{ github.run_id }}-result
+          path: ${{ env.ARTIFACT_DIR }}/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result in MATCH issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
