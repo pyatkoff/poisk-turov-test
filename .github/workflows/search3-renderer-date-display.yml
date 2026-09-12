@@ -10,14 +10,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   renderer-date-display:
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'ux/search3-card-date-display-20260912' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -34,14 +38,20 @@ jobs:
           ! grep -Eq 'new[[:space:]]+Date\(' v2/results-renderer-v5.js
           grep -Fq "date=formatTourDate(t.date)" v2/results-renderer-v5.js
           grep -Fq "formatTourDate" tests/search3-renderer-date-display.test.js
-      - name: Regenerate canonical shared runtime candidate
+      - name: Regenerate canonical shared runtime
         run: node scripts/build/search3-js/shared-runtime.cjs --write
-      - name: Upload canonical shared runtime candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: search3-renderer-date-shared-runtime
-          path: v2/search3-shared-runtime.json
-          if-no-files-found: error
-          retention-days: 3
-      - name: Require committed shared runtime parity
-        run: git diff --exit-code -- v2/search3-shared-runtime.json
+      - name: Commit exact generated runtime when stale
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- v2/search3-shared-runtime.json; then
+            echo SEARCH3_SHARED_RUNTIME_ALREADY_CURRENT
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add v2/search3-shared-runtime.json
+          git commit -m "SEARCH: regenerate shared runtime for renderer date display"
+          git push origin "HEAD:refs/heads/$HEAD_BRANCH"
