@@ -15,6 +15,9 @@ require_once __DIR__ . '/three-provider-offer-contract.php';
  * identity read for the exact namespace/external ID. This mapper does not resolve
  * identities or treat the page's historical local_id as current authority.
  * Native search money is preserved: converted_price is not silently substituted.
+ * Already-normalized supplier-verified additional-price facts may be supplied by
+ * an upstream evidence consumer; the existing money contract validates them and
+ * keeps them separate from search price/fuel without applying arithmetic.
  * Group minima need a separate grouped contract, not a fabricated concrete offer.
  * No runtime endpoint is wired here; downstream selection still requires its own
  * current-context check, quote and final-price evidence.
@@ -26,7 +29,8 @@ final class AnyTourThreeProviderAnexOffer
         int $offerIndex,
         array $currentIdentity,
         string $searchRef,
-        string $observedAt
+        string $observedAt,
+        array $additionalPricesReported = []
     ): array {
         if (($page['schema_version'] ?? null) !== 1 || ($page['provider'] ?? null) !== 'anex'
             || ($page['supplier_namespace'] ?? null) !== 'anex_online'
@@ -94,7 +98,7 @@ final class AnyTourThreeProviderAnexOffer
             'search_price' => ['amount' => $offer['price']['amount'] ?? null,
                 'currency' => $offer['price']['currency'] ?? null, 'source' => 'anex_search'],
             'fuel_charge_reported' => null,
-            'additional_prices_reported' => [],
+            'additional_prices_reported' => $additionalPricesReported,
             'observed_at' => $observedAt,
         ]);
     }
