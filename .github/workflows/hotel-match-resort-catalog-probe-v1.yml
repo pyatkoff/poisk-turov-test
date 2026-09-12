@@ -1,0 +1,55 @@
+name: MATCH resort catalog probe v1
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-resort-catalog-probe-1971-20260912-v1.arm']
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: anytour-match-resort-catalog-probe-1971-v1
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPERATION_ID: hotel-match-resort-catalog-probe-1971-20260912-v1
+      ARTIFACT_DIR: /tmp/match-resort-catalog-probe-v1
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify arm
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-resort-catalog-probe-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          mkdir -p "$ARTIFACT_DIR"
+      - name: Read current resort catalog
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-resort-key"; known="$RUNNER_TEMP/match-resort-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          for a in 1 2 3; do ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -r '\''require "config.php"; require "data/db-v1.php"; $p=v2_data_db(); $out=[]; foreach([4,1] as $cid){$q=$p->prepare("SELECT r.id,r.name,(SELECT COUNT(*) FROM catalog_hotels h WHERE h.region_id=r.id AND h.is_active=1) hotels FROM catalog_regions r WHERE r.country_id=? AND r.is_active=1 ORDER BY hotels DESC,r.name");$q->execute([$cid]);$out[$cid]=$q->fetchAll(PDO::FETCH_ASSOC);} echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);'\''' > "$ARTIFACT_DIR/result.json" && break || sleep $((a*4)); done
+          test -s "$ARTIFACT_DIR/result.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); x=json.loads((d/'result.json').read_text())
+          lines=['MATCH #1971 resort catalog CURRENT read-only / NO-REPLAY. DB writes 0.']
+          for cid,label in [('4','Turkey'),('1','Egypt')]:
+              rows=x.get(cid,[])[:20]; lines.append(label+': '+', '.join(f"{r['id']}={r['name']}({r['hotels']})" for r in rows))
+          (d/'summary.md').write_text('\n'.join(lines)+'\n')
+          print('\n'.join(lines))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-resort-catalog-probe-v1-${{ github.run_id }}
+          path: ${{ env.ARTIFACT_DIR }}/
+          retention-days: 30
