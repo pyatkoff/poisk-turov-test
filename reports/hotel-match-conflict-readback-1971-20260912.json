@@ -1,0 +1,161 @@
+{
+  "apply_manifest": false,
+  "audit_generated_at_utc": "2026-09-12T14:58:32+00:00",
+  "audit_operation_id": "hotel-match-conflict-readback-1971-20260912-v1",
+  "cases": [
+    {
+      "alternative_checks": [
+        {
+          "local_id": 123389,
+          "local_name": "NOVA HOTEL ISTANBUL",
+          "primary_name_guard": {
+            "auto_accept": false,
+            "differing_qualifiers": [
+              "city"
+            ],
+            "reason": "current_primary_qualifier_mismatch",
+            "status": "blocked"
+          }
+        },
+        {
+          "local_id": 131384,
+          "local_name": "NOVA CITY HOTEL (EX. GRAND INOVA, AMBER SUITES)",
+          "primary_name_guard": {
+            "auto_accept": false,
+            "differing_qualifiers": [],
+            "reason": null,
+            "status": "requires_other_identity_guards"
+          }
+        }
+      ],
+      "anex_hotel_id": 44411,
+      "current_mappings": [
+        {
+          "anex_hotel_id": 44411,
+          "approval_policy": "owner_exact_operator_key_20260912_v2",
+          "catalog_hotel_id": 131384,
+          "enabled": 1,
+          "mapping_digest": "34844e0a887a4bbb18d71281119bab82e91eb5a1c61f50cb52a60f53dca4dcc6",
+          "match_class": "exact_operator_key",
+          "scope": "preview",
+          "source_row_digest": "d579a508394785ab342d6c89f72746adea53d5cbb7d3de433127c97ff6544a05"
+        }
+      ],
+      "legacy_computed_proposal": {
+        "local_id": 123389,
+        "name_score": 0.76828,
+        "provenance_kind": "computed_candidate_not_supplier_identity",
+        "rule": "direct_details_strong_name_margin_geo"
+      },
+      "raw_supplier_detail": {
+        "id": 44411,
+        "name": "Nova City Hotel Istanbul",
+        "region": "Стамбул",
+        "state": "Турция",
+        "town": "Стамбул",
+        "townKey": 116
+      },
+      "supplier_reported_local_id": null
+    },
+    {
+      "alternative_checks": [
+        {
+          "local_id": 9373,
+          "local_name": "SUNRISE DIAMOND BEACH RESORT",
+          "primary_name_guard": {
+            "auto_accept": false,
+            "differing_qualifiers": [
+              "posh"
+            ],
+            "reason": "current_primary_qualifier_mismatch",
+            "status": "blocked"
+          }
+        },
+        {
+          "local_id": 132075,
+          "local_name": "POSH CLUB SUNRISE DIAMOND BEACH RESORT",
+          "primary_name_guard": {
+            "auto_accept": false,
+            "differing_qualifiers": [],
+            "reason": null,
+            "status": "requires_other_identity_guards"
+          }
+        }
+      ],
+      "anex_hotel_id": 37719,
+      "current_mappings": [],
+      "legacy_computed_proposal": {
+        "local_id": 132075,
+        "name_score": 0.732212,
+        "provenance_kind": "computed_candidate_not_supplier_identity",
+        "rule": "direct_details_strong_name_margin_geo"
+      },
+      "raw_supplier_detail": {
+        "address": "Ras Om El Sid Hill, Hadaba, Sharm El Sheikh, Egypt",
+        "id": 37719,
+        "latitude": "27.881584",
+        "longitude": "34.319717",
+        "name": "Posh Club By Sunrise Diamond Beach Resort Grand Select",
+        "region": "Шарм Эль Шейх",
+        "state": "Египет",
+        "town": "Хадаба",
+        "townKey": 5913
+      },
+      "supplier_reported_local_id": null
+    }
+  ],
+  "database_writes": 0,
+  "guard_scope": "necessary_primary_name_veto_only_not_installed_in_runtime_or_existing_writers",
+  "historical_row_count": 86,
+  "input_sha256": {
+    "computed_review": "6ca31304fbb40fad165add17f50175555a3eb50837c8a3a3340e2265fc9b1cb9",
+    "current_audit": "5df9465c79da10d9d5d1d1105704e42b4a227854aa41279c2652425aa5ad37e5",
+    "raw_details": "86f3cbe232a262fa6c6bcd5d87a56af8167ce52f1dc7b589c7d4605fd57cc7fa"
+  },
+  "mapping_writes": 0,
+  "no_replay": true,
+  "nova_note": "44411 was written. Raw ANEX does not identify local123389; that ID was a fuzzy suggestion. Do not reassign the existing131384 mapping on that false provenance.",
+  "posh_anchor_proposal": {
+    "alternate_name": "Sunrise Diamond Beach Resort",
+    "auto_accept": false,
+    "existing_target_guard": {
+      "auto_accept": false,
+      "differing_qualifiers": [
+        "posh"
+      ],
+      "reason": "current_primary_qualifier_mismatch",
+      "status": "blocked"
+    },
+    "expected_current_evidence_sha256": "afe13fa576700fce4bdcbc1b5054cc4acccccce0f13ec8c72287272d4aab417c",
+    "external_hotel_id": "2000042757",
+    "mandatory_before_any_change": [
+      "explicit_owner_authorization",
+      "new_current_full_evidence_revalidation",
+      "preserve_original_evidence",
+      "compare_and_swap_expected_old_target_status_digest",
+      "transaction_and_post_commit_readback"
+    ],
+    "namespace": "andromeda_catalog",
+    "observed_current_local_id": 9373,
+    "observed_current_status": "accepted",
+    "primary_name": "Posh Club by Sunrise Diamond Beach Resort Select",
+    "proposed_local_id": 132075,
+    "proposed_target_guard": {
+      "auto_accept": false,
+      "differing_qualifiers": [],
+      "reason": null,
+      "status": "requires_other_identity_guards"
+    },
+    "status": "requires_explicit_owner_authorization_not_executable"
+  },
+  "receipt_counts": {
+    "digest_changed": 0,
+    "full_match": 71,
+    "matching_available_fields_incomplete_legacy_provenance": 15,
+    "target_or_cardinality_changed": 0
+  },
+  "schema_version": 1,
+  "status": "offline_interpretation_of_completed_current_audit",
+  "supplier_calls": 0,
+  "tourvisor_calls": 0
+}
