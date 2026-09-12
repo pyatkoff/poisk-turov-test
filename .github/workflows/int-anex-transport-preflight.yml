@@ -1,0 +1,40 @@
+name: INT ANEX transport preflight
+on:
+  push:
+    branches:
+      - 'ops/int-anex-transport-preflight-20260912'
+    paths:
+      - '.github/workflows/int-anex-transport-preflight.yml'
+permissions:
+  contents: read
+concurrency:
+  group: int-anex-transport-preflight-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  transport:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-transport-preflight-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - name: Verify inputs
+        run: |
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY"
+          test -n "$ANYTOOUR_DEPLOY_HOST"
+          test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Verify SSH authentication without supplier access
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -T 10 -H "$ANYTOOUR_DEPLOY_HOST" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          out="$(ssh -o BatchMode=yes -o ConnectTimeout=15 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 "$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST" 'printf "INT_TRANSPORT_OK\\n"; pwd')"
+          printf '%s\n' "$out"
+          first="$(printf '%s\n' "$out" | sed -n '1p')"
+          test "$first" = 'INT_TRANSPORT_OK'
