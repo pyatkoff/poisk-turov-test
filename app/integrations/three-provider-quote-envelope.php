@@ -21,6 +21,10 @@ final class AnyTourThreeProviderQuoteEnvelope
         'quote_state', 'final_price', 'final_price_verified',
         'flight_selection_required', 'flights',
     ];
+    private const REPORTED_QUOTE_KEYS = [
+        'fuel_surcharges_reported', 'operator_currency_rates_reported',
+        'calc_money_facts_reported',
+    ];
 
     public static function verified(
         array $offer,
@@ -53,7 +57,7 @@ final class AnyTourThreeProviderQuoteEnvelope
             throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_CAPABILITY');
         }
 
-        self::assertVerifiedQuote($quote);
+        $reported = self::assertVerifiedQuote($quote);
         if ($quote['provider'] !== $offer['provider']
             || $quote['local_id'] !== $offer['local_hotel_id']
             || $quote['operator'] !== $offer['operator']['raw']) {
@@ -78,6 +82,13 @@ final class AnyTourThreeProviderQuoteEnvelope
             $package === null ? null : $package + ['source' => 'andromeda_package'],
             $final + ['source' => 'andromeda_quote']
         );
+        // Keep supplier-reported evidence separate from canonical price fields. These
+        // rows are copied only after strict validation; no totals, rates or deltas are
+        // derived and their relation to search/final price remains intentionally unknown.
+        $money['fuel_surcharges_reported'] = $reported['fuel_surcharges_reported'];
+        $money['operator_currency_rates_reported'] = $reported['operator_currency_rates_reported'];
+        $money['calc_money_facts_reported'] = $reported['calc_money_facts_reported'];
+        $money['transport_markups_reported'] = self::transportMarkupsReported($quote['flights']);
 
         $evidence = [
             'provider' => 'andromeda',
@@ -86,6 +97,12 @@ final class AnyTourThreeProviderQuoteEnvelope
             'search_price' => $search,
             'package_price' => $package,
             'final_price' => $final,
+            'reported_money_facts' => [
+                'fuel_surcharges_reported' => $money['fuel_surcharges_reported'],
+                'operator_currency_rates_reported' => $money['operator_currency_rates_reported'],
+                'calc_money_facts_reported' => $money['calc_money_facts_reported'],
+                'transport_markups_reported' => $money['transport_markups_reported'],
+            ],
             'state' => 'quote_verified',
             'quote_state' => 'verified',
             'final_price_verified' => true,
@@ -134,9 +151,11 @@ final class AnyTourThreeProviderQuoteEnvelope
         return $ttl;
     }
 
-    private static function assertVerifiedQuote(array $quote): void
+    private static function assertVerifiedQuote(array $quote): array
     {
-        if (!self::exactKeys($quote, self::QUOTE_KEYS)
+        $legacy = self::exactKeys($quote, self::QUOTE_KEYS);
+        $current = self::exactKeys($quote, array_merge(self::QUOTE_KEYS, self::REPORTED_QUOTE_KEYS));
+        if ((!$legacy && !$current)
             || ($quote['schema_version'] ?? null) !== 1
             || ($quote['provider'] ?? null) !== 'andromeda'
             || ($quote['selection_enabled'] ?? null) !== true
@@ -158,6 +177,135 @@ final class AnyTourThreeProviderQuoteEnvelope
             || !is_array($quote['final_price'] ?? null)) {
             throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_STATE');
         }
+        if ($legacy) {
+            return [
+                'fuel_surcharges_reported' => [],
+                'operator_currency_rates_reported' => [],
+                'calc_money_facts_reported' => [],
+            ];
+        }
+        if (!is_array($quote['fuel_surcharges_reported'])
+            || !is_array($quote['operator_currency_rates_reported'])
+            || !is_array($quote['calc_money_facts_reported'])) {
+            throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_REPORTED_FACTS');
+        }
+        return [
+            'fuel_surcharges_reported' => self::fuelSurchargesReported($quote['fuel_surcharges_reported']),
+            'operator_currency_rates_reported' => self::operatorCurrencyRatesReported($quote['operator_currency_rates_reported']),
+            'calc_money_facts_reported' => self::calcMoneyFactsReported($quote['calc_money_facts_reported']),
+        ];
+    }
+
+    private static function fuelSurchargesReported(array $rows): array
+    {
+        self::listShape($rows, 'THREE_PROVIDER_QUOTE_FUEL_FACT');
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row) || !self::exactKeys($row, ['amount', 'currency', 'route_index', 'source'])
+                || !self::amount($row['amount'], false)
+                || !self::currency($row['currency'])
+                || !in_array($row['route_index'], [null, '0', '1'], true)
+                || $row['source'] !== 'andromeda_claim_service') {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_FUEL_FACT');
+            }
+            $out[] = $row;
+        }
+        return $out;
+    }
+
+    private static function operatorCurrencyRatesReported(array $rows): array
+    {
+        self::listShape($rows, 'THREE_PROVIDER_QUOTE_RATE_FACT');
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row) || !self::exactKeys($row, [
+                    'currency', 'rate', 'is_claim_currency', 'source', 'arithmetic_applied'
+                ])
+                || !self::currency($row['currency'])
+                || !is_string($row['rate'])
+                || preg_match('/\A(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,6})?\z/D', $row['rate']) !== 1
+                || preg_match('/[1-9]/', $row['rate']) !== 1
+                || !(is_bool($row['is_claim_currency']) || $row['is_claim_currency'] === null)
+                || $row['source'] !== 'andromeda_claim_money'
+                || $row['arithmetic_applied'] !== false) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_RATE_FACT');
+            }
+            $out[] = $row;
+        }
+        return $out;
+    }
+
+    private static function calcMoneyFactsReported(array $rows): array
+    {
+        self::listShape($rows, 'THREE_PROVIDER_QUOTE_CALC_MONEY_FACT');
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row) || !self::exactKeys($row, [
+                    'currency', 'gross_amount', 'net_amount', 'commissionable_amount',
+                    'commission_amount', 'source', 'arithmetic_applied'
+                ])
+                || !self::currency($row['currency'])
+                || !self::amount($row['gross_amount'], true)
+                || !self::nullableAmount($row['net_amount'])
+                || !self::nullableAmount($row['commissionable_amount'])
+                || !self::nullableAmount($row['commission_amount'])
+                || $row['source'] !== 'andromeda_calc_money'
+                || $row['arithmetic_applied'] !== false) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_CALC_MONEY_FACT');
+            }
+            $out[] = $row;
+        }
+        return $out;
+    }
+
+    private static function transportMarkupsReported(array $flights): array
+    {
+        self::listShape($flights, 'THREE_PROVIDER_QUOTE_FLIGHT');
+        $out = [];
+        foreach ($flights as $flight) {
+            if (!is_array($flight)) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_FLIGHT');
+            }
+            $fact = $flight['transport_markup_reported'] ?? null;
+            if ($fact === null) continue;
+            if (!is_array($fact) || !self::exactKeys($fact, ['amount', 'currency', 'source', 'aggregation'])
+                || !self::amount($fact['amount'], false)
+                || !self::currency($fact['currency'])
+                || $fact['source'] !== 'andromeda_transport_detail'
+                || $fact['aggregation'] !== 'unknown') {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_TRANSPORT_MARKUP_FACT');
+            }
+            $direction = $flight['direction'] ?? null;
+            if (!in_array($direction, [null, '0', '1'], true)) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_TRANSPORT_MARKUP_FACT');
+            }
+            $out[] = ['direction' => $direction] + $fact;
+        }
+        return $out;
+    }
+
+    private static function listShape(array $rows, string $error): void
+    {
+        if ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1)) {
+            throw new InvalidArgumentException($error);
+        }
+    }
+
+    private static function nullableAmount($value): bool
+    {
+        return $value === null || self::amount($value, false);
+    }
+
+    private static function amount($value, bool $positive): bool
+    {
+        return is_string($value)
+            && preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $value) === 1
+            && (!$positive || preg_match('/[1-9]/', $value) === 1);
+    }
+
+    private static function currency($value): bool
+    {
+        return is_string($value) && preg_match('/\A[A-Z0-9_]{2,8}\z/D', $value) === 1;
     }
 
     private static function publicMoney(array $value, string $error): array
