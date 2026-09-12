@@ -1,0 +1,33 @@
+name: Search3 renderer date display
+
+on:
+  pull_request:
+    paths:
+      - 'v2/results-renderer-v5.js'
+      - 'tests/search3-renderer-date-display.test.js'
+      - '.github/workflows/search3-renderer-date-display.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renderer-date-display:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check canonical renderer
+        run: node --check v2/results-renderer-v5.js
+      - name: Verify display-only date normalization
+        run: node tests/search3-renderer-date-display.test.js
+      - name: Guard against timezone parsing and source mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eq 'new[[:space:]]+Date\(' v2/results-renderer-v5.js
+          grep -Fq "date=formatTourDate(t.date)" v2/results-renderer-v5.js
+          grep -Fq "formatTourDate" tests/search3-renderer-date-display.test.js
