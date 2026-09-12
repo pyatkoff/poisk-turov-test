@@ -54,10 +54,31 @@ wire=mod.ssh_php_no_mux('echo 1;',{'case':'fixture'}); check(wire==blocked)
 joined=' '.join(captured['command']); check('ControlMaster=no' in joined and 'ControlPath=none' in joined and 'ControlMaster=auto' not in joined)
 check('PRIVATE-KEY-FIXTURE' not in joined and 'PRIVATE-KEY-FIXTURE' not in str(captured['kwargs']['env'])); check(captured['kwargs']['input']==json.dumps({'case':'fixture'},ensure_ascii=False))
 
-def fake_bad(command,**kwargs): return SimpleNamespace(stdout='',stderr='Permission denied SECRET',returncode=255)
-mod.subprocess.run=fake_bad
+flaky_calls=[]; sleeps=[]
+def fake_flaky(command,**kwargs):
+    flaky_calls.append(command)
+    if len(flaky_calls)==1:
+        return SimpleNamespace(stdout='',stderr='debug1: Connection established.\nkex_exchange_identification: Connection closed by remote host\n',returncode=255)
+    return SimpleNamespace(stdout=json.dumps(blocked),stderr='debug1: Connection established.\nAuthenticated to fixture\ndebug1: Sending command: fixed\ndebug1: Exit status 0\n',returncode=0)
+mod.subprocess.run=fake_flaky; mod.time.sleep=lambda value:sleeps.append(value)
+wire=mod.ssh_php_no_mux('echo 1;',{'case':'fixture'}); check(wire==blocked); check(len(flaky_calls)==2); check(sleeps==[2])
+
+auth_calls=[]
+def fake_auth(command,**kwargs):
+    auth_calls.append(command)
+    return SimpleNamespace(stdout='',stderr='debug1: Connection established.\nPermission denied SECRET\n',returncode=255)
+mod.subprocess.run=fake_auth
 try: mod.ssh_php_no_mux('echo 1;',{'case':'fixture'}); check(False)
 except Exception as exc:
-    check(type(exc).__name__=='SSHBatchError'); check('SECRET' not in str(mod.transport_failure(exc)))
+    check(type(exc).__name__=='SSHBatchError'); check('SECRET' not in str(mod.transport_failure(exc))); check(len(auth_calls)==1)
+
+started_calls=[]
+def fake_started(command,**kwargs):
+    started_calls.append(command)
+    return SimpleNamespace(stdout='',stderr='debug1: Connection established.\nAuthenticated to fixture\ndebug1: Sending command: fixed\nConnection closed by remote host\n',returncode=255)
+mod.subprocess.run=fake_started
+try: mod.ssh_php_no_mux('echo 1;',{'case':'fixture'}); check(False)
+except Exception as exc:
+    check(type(exc).__name__=='SSHBatchError'); check(len(started_calls)==1)
 
 print(f'Three-source ANEX price Python guards: {checks} checks passed; network=0')
