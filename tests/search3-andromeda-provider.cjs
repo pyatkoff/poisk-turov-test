@@ -36,7 +36,7 @@ assert.equal(unresolved[0].tours.length,1,'matching names alone never merge an u
 const invalid=rawHotel(21477);invalid.tours[0].offer_context={...context,generation:0};
 assert.equal(api.normalizeHotel(invalid),null,'invalid offer context is rejected before rendering');
 const rendererWindow={};
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../v2/results-renderer-v5.js'),'utf8'),{window:rendererWindow,document:{readyState:'loading',addEventListener(){}},Intl,Number,String,Object,Array,Set});
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../v2/results-renderer-v5.js'),'utf8'),{window:rendererWindow,document:{readyState:'loading',addEventListener(){},querySelector(){return null;}},Intl,Number,String,Object,Array,Set});
 const andromedaRow=rendererWindow.V2Results.tourRow(normalized.tours[0]);
 assert.match(andromedaRow,/Источник<\/small><b>Андромеда<\/b>/);
 assert.match(andromedaRow,/перед выбором нужна проверка/);

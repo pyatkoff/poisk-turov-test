@@ -5,7 +5,10 @@ on:
     paths:
       - 'v2/results-renderer-v5.js'
       - 'v2/search3-shared-runtime.json'
+      - 'v2/assets/operator-logos/**'
       - 'tests/search3-renderer-date-display.test.js'
+      - 'tests/search3-hotel-operator-card.test.js'
+      - 'tests/search3-hotel-operator-card-browser.cjs'
       - 'tests/search3-current-results-browser.cjs'
       - '.github/workflows/search3-renderer-date-display.yml'
   workflow_dispatch:
@@ -19,6 +22,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -26,10 +32,14 @@ jobs:
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
       - name: Syntax check canonical renderer
         run: node --check v2/results-renderer-v5.js
-      - name: Verify display-only date normalization
-        run: node tests/search3-renderer-date-display.test.js
+      - name: Verify display-only date normalization and exact operator cards
+        run: |
+          node tests/search3-renderer-date-display.test.js
+          node tests/search3-hotel-operator-card.test.js
       - name: Syntax check current-results visual contract
-        run: node --check tests/search3-current-results-browser.cjs
+        run: |
+          node --check tests/search3-current-results-browser.cjs
+          node --check tests/search3-hotel-operator-card-browser.cjs
       - name: Guard against timezone parsing and source mutation
         shell: bash
         run: |

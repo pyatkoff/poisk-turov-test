@@ -57,7 +57,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   const rendererSource = fs.readFileSync(path.join(__dirname, '../v2/results-renderer-v5.js'), 'utf8');
   vm.runInNewContext(rendererSource, {
     window: rendererWindow,
-    document: { readyState: 'loading', addEventListener() {} }
+    document: { readyState: 'loading', addEventListener() {}, querySelector() { return null; } }
   });
   const results = rendererWindow.V2Results;
   const tour = { id: 'meal-shape-check', price: 125000, meal: { id: 7, fullName: 'All Inclusive' } };

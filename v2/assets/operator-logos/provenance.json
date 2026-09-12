@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "purpose": "Original operator brand artwork displayed only for explicit offer.operator aliases; no source/provider inference.",
+  "acquired_at": "2026-09-12",
+  "acquisition_run_id": 34702311773,
+  "artifact_id": 10301140168,
+  "artwork_modified": false,
+  "assets": [
+    {
+      "file": "funsun.svg",
+      "source": "https://api.selcdn.ru/v1/SEL_50469/funandsun-cdn/46810898-51d6-45d4-a9ff-7a110d7e27d6.svg",
+      "sha256": "84d542b9391952af98fbe6043ba537c72aeccc4a75f363815994e9b06aff4c57",
+      "size": 7740
+    },
+    {
+      "file": "anex.svg",
+      "source": "https://files1.anextour.ru/user-files/elfinder/com/logo/logo-anex.svg",
+      "sha256": "4cf91402918b789e6a86b7bb6d4e29d6035e4cae5e8e974d1b5d97f02f01bdb3",
+      "size": 7338,
+      "source_sha256": "03df39a22a260202e368219588c333324794c6df383637f09f859da2a328d948",
+      "source_size": 7372,
+      "byte_transform": "Normalize SVG line endings to LF and trim trailing spaces/tabs; artwork paths and attribute values remain semantically unchanged."
+    },
+    {
+      "file": "biblio-globus.svg",
+      "source": "https://www.bgoperator.ru/img/logo.svg",
+      "sha256": "d3cba7262d28d4e2b2090d423805acdf7a800e992dbe98cdfee2e3cad7979d6c",
+      "size": 18282
+    },
+    {
+      "file": "intourist.png",
+      "source": "https://pix.intourist.ru/assets/images/loader-logo.png",
+      "sha256": "9d1271f78c393e2dfd3c0e79d6f6b40c5fefd56de185896fb6e0150ddfc96913",
+      "size": 10759
+    }
+  ]
+}

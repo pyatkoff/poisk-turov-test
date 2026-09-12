@@ -224,7 +224,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
       assert.equal(await page.locator('.results-filter-rail').isVisible(), true, 'cross-provider offers expose the useful provider/source facet in the canonical desktop rail');
       assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results remain readable beside the truthful provider/source facet');
     }
-    assert.equal(await card.locator('.tour-row').count(), 1, 'accepted grouped Andromeda offers keep one compact hotel summary');
+    assert.equal(await card.locator('.tour-row').count(), 0, 'a grouped hotel summary is not a concrete provider offer');
     assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
     assert.equal(await card.locator('[data-andromeda-expand]').innerText(), 'Все варианты Андромеды', 'current card exposes one explicit provider expansion action');
     await card.locator('[data-andromeda-expand]').click();
@@ -528,14 +528,14 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.hotel-price').count(), 1, 'collapsed card exposes one authoritative total');
     assert.match(await card.locator('.hotel-decision-rating').innerText(), /Рейтинг 5/, 'hotel score is not confused with star category');
     assert.match(await page.locator('#resultSummary').innerText(), /цены указаны за весь тур/, 'result summary explains price scope');
-    assert.equal(await card.locator('.tour-row').count(), 1, 'multiple offers start with one aggregate row');
+    assert.equal(await card.locator('.tour-row').count(), 0, 'collapsed hotel contains no concrete offer rows');
     assert.equal(await card.locator('.hotel-trip-summary').count(), 1, 'collapsed card uses the canonical aggregate summary');
     assert.equal(await card.locator('.direct-tour').count(), 0, 'an aggregate has no misleading implicit offer selection');
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
-    assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать 3 варианта', 'disclosure states the total loaded offer count');
-    assert.equal(await card.locator('.tour-meta>small').innerText(), 'Доступные варианты', 'summary is explicitly distinguished from one exact offer');
-    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Вылет', '12.09.2026'], ['Ночей', '9 ноч.'], ['Питание', 'AI']], 'aggregate facts describe the shared departure, duration and meal');
-    assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Туроператоры', 'OTHER OPERATOR · TEST OPERATOR']], 'summary does not misrepresent a single operator as common to all offers');
+    assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'disclosure states the total loaded offer count');
+    assert.equal(await card.locator('.tour-meta').count(), 0, 'hotel summary never uses the concrete offer owner');
+    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Вылет', '12.09.2026'], ['Длительность', '9 ноч.'], ['Питание', 'AI'], ['Перелёт', 'Уточняется по варианту']], 'aggregate facts describe the shared departure, duration and meal');
+    assert.deepEqual(await card.locator('.hotel-operators .hotel-operator-name').allTextContents(), ['OTHER OPERATOR', 'TEST OPERATOR'], 'summary contains actual operator names without guessing a brand');
     assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от148500,6₽', 'aggregate minimum is distinct from an exact offer price');
     const single = page.locator('#results [data-hotel-id=cheap].hotel-card');
     assert.equal(await single.locator('.hotel-trip-summary,.tour-more-toggle').count(), 0, 'single-offer hotel needs no redundant aggregate or disclosure');
@@ -579,7 +579,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').press('Space');
-    assert.equal(await card.locator('.tour-row').count(), 1, 'actual toggle collapses');
+    assert.equal(await card.locator('.tour-row').count(), 0, 'actual toggle collapses back to hotel summary, not an offer');
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard collapse retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false');
     assert.equal(await card.locator('.direct-tour').count(), 0, 'collapse restores the aggregate without an implicit representative action');
@@ -709,6 +709,7 @@ async function run(browser, width, previous) {
     if ([375, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       await checkAndromedaExpansion(page, width, previous, andromeda);
+      await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
