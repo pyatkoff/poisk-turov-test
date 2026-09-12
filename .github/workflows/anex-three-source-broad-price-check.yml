@@ -9,10 +9,10 @@ on:
       - '.github/workflows/anex-three-source-broad-price-check.yml'
   push:
     branches:
-      - 'ops/int-anex-green-gold-program-v8-20260912'
+      - 'ops/int-anex-green-gold-program-v9-20260912'
       - 'ops/int-anex-transport-preflight-v2-20260912'
     paths:
-      - '.github/ops/anex-three-source-green-gold-v8-20260912'
+      - '.github/ops/anex-green-gold-program-v9-20260912'
       - '.github/ops/anex-transport-preflight-v2-20260912'
 permissions:
   contents: read
@@ -29,7 +29,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Validate Green Gold v8 source without network
+      - name: Validate Green Gold v9 source without network
         run: |
           php -l scripts/diagnostics/anex_three_source_broad_price.php
           php -l tests/anex-three-source-broad-price-smoke.php
@@ -39,25 +39,21 @@ jobs:
           from pathlib import Path
           php=Path('scripts/diagnostics/anex_three_source_broad_price.php').read_text()
           py=Path('scripts/diagnostics/anex_three_source_broad_price.py').read_text()
-          for forbidden in ('->bron(', 'broninit(', '->calc(', 'get_flights(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
+          for forbidden in ('->bron(', 'broninit(', '->calc(', 'get_flights(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings', 'AnyTourAnexSearchObservations::record'):
               assert forbidden not in php
-          assert "ANEX_BROAD_PRICE_EXPERIMENT = 'anex_three_source_green_gold_20260912_v8'" in php
-          assert "ANEX_BROAD_PRICE_DATE = '2026-09-28'" in php and 'ANEX_BROAD_PRICE_NIGHTS = 7' in php
-          assert 'ANEX_BROAD_PRICE_TARGET_LOCAL_HOTEL = 21753' in php and "ANEX_BROAD_PRICE_TARGET_ANEX_HOTEL = '25084'" in php
-          assert "'HOTELS'=>ANEX_BROAD_PRICE_TARGET_ANEX_HOTEL" in php
-          assert "'hotelIds'=>[ANEX_BROAD_PRICE_TARGET_LOCAL_HOTEL]" in php
-          assert "target_filter_stage'=>'local_response_only_protected_request_unchanged'" in php
-          assert 'anex_broad_price_raw_programs' in php and "raw SearchTour_PRICES id→tourKey/currencyKey binding" in php
-          assert "'reason'=>'pricepage_1_target_hotel_only'" in php and "'reason'=>'status_without_continue_no_growth'" in php
-          assert "EXPERIMENT='anex_three_source_green_gold_20260912_v8'" in py and "'date':'2026-09-28'" in py and "'nights':7" in py
-          assert "TARGET_LOCAL_HOTEL_ID=21753" in py and "TARGET_ANEX_HOTEL_ID='25084'" in py
-          assert 'program_fuel_cohorts' in py and 'anex_program_fuel_cohorts' in py and 'p3_matching_external' in py
+          assert "ANEX_BROAD_PRICE_EXPERIMENT = 'anex_green_gold_program_20260912_v9'" in php
+          assert "ANEX_BROAD_PRICE_CASES = ['anex']" in php
+          assert "ANEX_BROAD_PRICE_DATE = '2026-10-05'" in php and 'ANEX_BROAD_PRICE_NIGHTS = 7' in php
+          assert "ANEX_BROAD_PRICE_TARGET_ANEX_HOTEL = '25084'" in php and "'HOTELS'=>ANEX_BROAD_PRICE_TARGET_ANEX_HOTEL" in php
+          assert 'anex_broad_price_pause' in php and 'usleep(3200000)' in php
+          assert "'andromeda_search_price'=>'119952'" in php and "'tourvisor_fuel_charge'=>'29596'" in php and "'requeried'=>false" in php
+          assert "EXPERIMENT='anex_green_gold_program_20260912_v9'" in py and "CASES=('anex',)" in py
+          assert "'date':'2026-10-05'" in py and "TARGET_ANEX_HOTEL_ID='25084'" in py
+          assert "'additional_prices_called':False" in py and "'tourvisor_requeried':False" in py and "'andromeda_requeried':False" in py
           workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
-          assert 'ops/int-anex-green-gold-program-v8-20260912' in workflow
-          assert 'ops/int-anex-transport-preflight-v2-20260912' in workflow
-          assert 'Verify SSH transport without supplier access' in workflow
+          assert 'ops/int-anex-green-gold-program-v9-20260912' in workflow and 'ops/int-anex-transport-preflight-v2-20260912' in workflow
           assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
-          print('Green Gold three-source v8 static boundary: PASS')
+          print('Green Gold v9 direct-ANEX static boundary: PASS')
           PY
   transport_preflight:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-transport-preflight-v2-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
@@ -89,11 +85,11 @@ jobs:
           printf '%s\n' "$out"
           test "$(printf '%s\n' "$out" | sed -n '1p')" = 'INT_TRANSPORT_OK'
   live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-program-v8-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-program-v9-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
-    timeout-minutes: 9
+    timeout-minutes: 7
     env:
-      SOURCE_SHA: d837937b7eb36c09d0ac3ed4755eee2b52134eea
+      SOURCE_SHA: 179c1caf6625aead61323b90d9eeb1789f5b71ba
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -108,25 +104,25 @@ jobs:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - name: Bind exact Green Gold v8 scenario
+      - name: Bind exact Green Gold v9 direct-ANEX scenario
         run: |
-          test "$(cat control/.github/ops/anex-three-source-green-gold-v8-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-green-gold-program-v8;scenario=Turkey-2026-09-28-7n-2a-AI-GreenGold21753-Anex25084;owner=2026-09-12"
+          test "$(cat control/.github/ops/anex-green-gold-program-v9-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-green-gold-program-v9;scenario=Turkey-2026-10-05-7n-2a-AI-GreenGold21753-Anex25084-direct-only;owner=2026-09-12"
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
-      - name: Run fresh Green Gold v8 provider cases through durable checkpoints
+      - name: Run fresh Green Gold v9 direct-ANEX program observation
         id: parity
         continue-on-error: true
         run: |
           mkdir -m 700 "$RUNNER_TEMP/broad-price"
           python3 -B source/scripts/diagnostics/anex_three_source_broad_price.py "$RUNNER_TEMP/broad-price"
-      - name: Preserve sanitized Green Gold v8 evidence
+      - name: Preserve sanitized Green Gold v9 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-three-source-green-gold-v8-${{ github.run_id }}
+          name: anex-green-gold-program-v9-${{ github.run_id }}
           path: ${{ runner.temp }}/broad-price/
           if-no-files-found: error
           retention-days: 30
-      - name: Fail after evidence preservation when Green Gold v8 did not complete
+      - name: Fail after evidence preservation when Green Gold v9 did not complete
         if: steps.parity.outcome != 'success'
         run: exit 1
