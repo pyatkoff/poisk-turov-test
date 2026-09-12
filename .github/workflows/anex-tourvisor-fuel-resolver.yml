@@ -1,0 +1,33 @@
+name: ANEX Tourvisor fuel resolver
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/anex-tourvisor-fuel-resolver.php'
+      - 'tests/anex-tourvisor-fuel-resolver-smoke.php'
+      - '.github/workflows/anex-tourvisor-fuel-resolver.yml'
+permissions:
+  contents: read
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Lint pure resolver
+        run: php -l app/integrations/anex-tourvisor-fuel-resolver.php
+      - name: Verify real retained fuel bands and fail-closed guards
+        run: php tests/anex-tourvisor-fuel-resolver-smoke.php
+      - name: Prove no I/O or runtime wiring
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('app/integrations/anex-tourvisor-fuel-resolver.php').read_text()
+          for forbidden in ('curl_','file_get_contents','PDO','mysqli','INSERT ','UPDATE ','DELETE ','AdditionalPricesDaily','FreightMonitor','broninit','->bron(','->calc('):
+              assert forbidden not in text, forbidden
+          assert "'runtime_arithmetic_authorized' => false" in text
+          assert "'identical_supplier_package_verified' => false" in text
+          print('pure resolver boundary: PASS')
+          PY
