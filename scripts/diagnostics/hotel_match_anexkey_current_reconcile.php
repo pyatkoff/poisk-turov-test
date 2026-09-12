@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /** MATCH #1971. Read-only CURRENT reconciliation; plan is injected by workflow. */
-const HM_OPERATION='hotel-match-anexkey-current-reconcile-1971-20260912-v1';
+const HM_OPERATION='hotel-match-anexkey-current-reconcile-1971-20260912-v2';
 function hm_out(array $x,int $rc=0):void{echo 'MATCH_CURRENT_JSON:'.json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;exit($rc);}
 function hm_select_in(PDO $db,string $sql,array $ids):array{
     if(!$ids)return[];$marks=implode(',',array_fill(0,count($ids),'?'));$q=$db->prepare(str_replace('__IN__',$marks,$sql));$q->execute(array_values($ids));return $q->fetchAll(PDO::FETCH_ASSOC);
@@ -22,17 +22,17 @@ try{
     $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
     $aids=array_values(array_unique(array_map(fn($r)=>(string)$r['anex_id'],$plan['triples'])));$dids=array_values(array_unique(array_map(fn($r)=>(string)$r['andromeda_id'],$plan['triples'])));
     $maps=hm_select_in($db,'SELECT anex_hotel_id,catalog_hotel_id,enabled,scope,approval_policy FROM anex_hotel_search_mappings WHERE anex_hotel_id IN (__IN__) ORDER BY anex_hotel_id,catalog_hotel_id',$aids);
-    $dec=hm_select_in($db,'SELECT anex_hotel_id,catalog_hotel_id,decision FROM anex_hotel_decisions WHERE anex_hotel_id IN (__IN__) ORDER BY anex_hotel_id',$aids);
-    $exc=hm_select_in($db,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions WHERE anex_hotel_id IN (__IN__) ORDER BY anex_hotel_id',$aids);
+    $dec=hm_select_in($db,'SELECT anex_hotel_id FROM anex_hotel_decisions WHERE anex_hotel_id IN (__IN__) ORDER BY anex_hotel_id',$aids);
+    $exc=hm_select_in($db,'SELECT anex_hotel_id FROM anex_review_pair_exclusions WHERE anex_hotel_id IN (__IN__) ORDER BY anex_hotel_id',$aids);
     $and=hm_select_in($db,"SELECT external_hotel_id,local_hotel_id,decision_status,evidence_sha256,catalog_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id IN (__IN__) ORDER BY external_hotel_id",$dids);
     $db->exec('ROLLBACK');
-    $mi=[];foreach($maps as $r)$mi[(string)$r['anex_hotel_id']][]=$r;$di=[];foreach($dec as $r)$di[(string)$r['anex_hotel_id']][]=$r;$ei=[];foreach($exc as $r)$ei[(string)$r['anex_hotel_id']][]=$r;$ai=[];foreach($and as $r)$ai[(string)$r['external_hotel_id']]=$r;
+    $mi=[];foreach($maps as $r)$mi[(string)$r['anex_hotel_id']][]=$r;$di=[];foreach($dec as $r)$di[(string)$r['anex_hotel_id']]=true;$ei=[];foreach($exc as $r)$ei[(string)$r['anex_hotel_id']]=true;$ai=[];foreach($and as $r)$ai[(string)$r['external_hotel_id']]=$r;
     $confA=array_fill_keys(array_map('strval',$plan['provider_conflicts']['anex']??[]),true);$confD=array_fill_keys(array_map('strval',$plan['provider_conflicts']['andromeda']??[]),true);
     $rows=[];$counts=[];
     foreach($plan['triples'] as $t){
         $aid=(string)$t['anex_id'];$did=(string)$t['andromeda_id'];$tv=(int)$t['tourvisor_id'];$bucket='needs_more_evidence';$reason=[];$am=$mi[$aid]??[];$ar=$ai[$did]??null;
         if(isset($confA[$aid])||isset($confD[$did])){$bucket='provider_one_to_many_conflict';$reason[]='provider_conflict';}
-        elseif(($di[$aid]??[])||($ei[$aid]??[])){$bucket='protected_manual_or_exclusion';$reason[]='anex_protected';}
+        elseif(isset($di[$aid])||isset($ei[$aid])){$bucket='protected_manual_or_exclusion';$reason[]='anex_protected';}
         elseif(count($am)>1){$bucket='current_anex_multiple_rows';$reason[]='multiple_mapping_rows';}
         elseif($ar===null){$bucket='andromeda_identity_missing';$reason[]='registry_missing';}
         elseif((string)$ar['decision_status']==='conflict'){$bucket='current_andromeda_conflict';$reason[]='andromeda_conflict';}
