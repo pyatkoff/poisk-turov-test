@@ -8,7 +8,7 @@ $checks=[
     strpos($raw,"'price_arithmetic_modified'=>false")!==false,
     strpos($raw,"'database_writes'=>0")!==false,
     strpos($raw,"'mapping_writes'=>0")!==false,
-    strpos($raw,"array_chunk($ids,30)")!==false,
+    strpos($raw,'array_chunk($ids,30)')!==false,
     strpos($raw,"'operatorStatus'=>false")!==false,
     strpos($raw,"price_relative_delta")!==false,
     strpos($raw,"unique_alias")!==false,
