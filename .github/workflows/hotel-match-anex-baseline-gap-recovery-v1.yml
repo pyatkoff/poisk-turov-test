@@ -1,0 +1,175 @@
+name: MATCH ANEX baseline-gap recovery v1
+run-name: MATCH ANEX baseline-gap recovery #1971
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_baseline_gap_census.php'
+      - 'scripts/diagnostics/hotel_match_anex_baseline_gap_identity_review.py'
+      - 'scripts/diagnostics/hotel_match_anex_baseline_gap_geo_review.py'
+      - 'tests/hotel_match_anex_baseline_gap_geo_review_test.py'
+      - '.github/workflows/hotel-match-anex-baseline-gap-recovery-v1.yml'
+  push:
+    branches: ['ops/match-anex-baseline-gap-recovery-1971-20260912-v1']
+    paths: ['.github/match-anex-baseline-gap-recovery-1971-20260912-v1.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency:
+  group: match-anex-baseline-gap-v1-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-baseline-gap-recovery-1971-20260912-v1
+  PREDECESSOR_ARTIFACT_ID: '10303220870'
+  PREDECESSOR_RESULT_SHA256: 0195a9965c881ce1367da98cf2b21183eea7fe502cb824c64912084f9d649040
+  BASELINE_ARTIFACT_ID: '10029330453'
+  BASELINE_SHA256: 1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate read-only baseline-gap sources
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_baseline_gap_census.php
+          php scripts/diagnostics/hotel_match_anex_baseline_gap_census.php --self-test
+          python3 -m pip install --disable-pip-version-check 'rapidfuzz==3.14.3'
+          ln -sf hotel_match_anex_baseline_gap_identity_review.py scripts/diagnostics/hotel_match_core8_identity_review.py
+          ln -sf hotel_match_anex_baseline_gap_geo_review.py scripts/diagnostics/hotel_match_geo_context_review.py
+          python3 tests/hotel_match_anex_baseline_gap_geo_review_test.py -v
+          python3 - <<'PY'
+          from pathlib import Path
+          census=Path('scripts/diagnostics/hotel_match_anex_baseline_gap_census.php').read_text().lower()
+          geo=Path('scripts/diagnostics/hotel_match_anex_baseline_gap_geo_review.py').read_text().lower()
+          assert 'start transaction read only' in census
+          for bad in ('insert into','update ','delete from','replace into','curl_init','curl_exec','https://','http://'):
+              assert bad not in census,bad
+          for bad in ('requests.','urllib.request','http://','https://'):
+              assert bad not in geo,bad
+          assert "out['status']='coordinate_conflict'" in geo
+          assert "out['status']='significant_qualifier_difference'" in geo
+          assert "out['status']='small_name_margin'" in geo
+          print('MATCH_ANEX_BASELINE_GAP_STATIC_OK')
+          PY
+  review:
+    needs: validate
+    if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify immutable arm and reserve before DB access
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-baseline-gap-recovery-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          OUT="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$OUT"; echo "OUT=$OUT" >> "$GITHUB_ENV"
+          cp scripts/diagnostics/hotel_match_anex_baseline_gap_census.php "$OUT/census.php"
+          export CENSUS="$OUT/census.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['CENSUS']); s=p.read_text()
+          old="const HM_CENSUS_OP = 'hotel-match-core8-identity-census-1971-20260912-v1';"
+          new="const HM_CENSUS_OP = '"+os.environ['OPERATION_ID']+"';"
+          if s.count(old)!=1: raise SystemExit('census_operation_marker_drift')
+          p.write_text(s.replace(old,new,1))
+          PY
+          php -l "$OUT/census.php"; php "$OUT/census.php" --self-test
+          sha256sum "$OUT/census.php" > "$OUT/census-input.sha256"
+          export OUT
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          p=Path(os.environ['OUT']); inp=p.joinpath('census-input.sha256').read_bytes()
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','source_sha':os.environ['GITHUB_SHA'],'predecessor_artifact_id':int(os.environ['PREDECESSOR_ARTIFACT_ID']),'predecessor_result_sha256':os.environ['PREDECESSOR_RESULT_SHA256'],'baseline_artifact_id':int(os.environ['BASELINE_ARTIFACT_ID']),'baseline_json_sha256':os.environ['BASELINE_SHA256'],'census_input_sha256':hashlib.sha256(inp).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          p.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-anex-baseline-gap-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: '${{ runner.temp }}/reservation-readback', merge-multiple: true}
+      - name: Read one fresh CURRENT core8 census
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          H: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          U: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" "$RUNNER_TEMP/reservation-readback/reservation.json"
+          key="$RUNNER_TEMP/match-anex-gap-key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20)
+          test "$(ssh "${o[@]}" "$U@$H" 'cd "$HOME/www/anytoour.ru" && { test -f data/db-v1.php || test -f v2/data/db-v1.php; } && printf OK' 2>/dev/null)" = OK
+          set +e
+          ssh -T "${o[@]}" "$U@$H" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M' < "$OUT/census.php" > "$OUT/census.stdout" 2> "$OUT/census.stderr"
+          rc=$?; set -e; export RC="$rc" OUT
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['OUT']); marker='MATCH_CENSUS:'
+          rows=[x[len(marker):] for x in p.joinpath('census.stdout').read_text(errors='replace').splitlines() if x.startswith(marker)]
+          if len(rows)!=1: raise SystemExit('census_marker_missing_do_not_replay')
+          data=json.loads(rows[0]); p.joinpath('current-census.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          good=int(os.environ['RC'])==0 and data.get('status')=='completed' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls'))
+          if not good: raise SystemExit('current_census_unknown_do_not_replay')
+          PY
+      - name: Recover only predecessor source-name gaps from saved ANEX baseline
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check 'rapidfuzz==3.14.3'
+          ln -sf hotel_match_anex_baseline_gap_identity_review.py scripts/diagnostics/hotel_match_core8_identity_review.py
+          ln -sf hotel_match_anex_baseline_gap_geo_review.py scripts/diagnostics/hotel_match_geo_context_review.py
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$PREDECESSOR_ARTIFACT_ID/zip" > "$OUT/predecessor.zip"
+          unzip -p "$OUT/predecessor.zip" result.json > "$OUT/predecessor-result.json"
+          test "$(sha256sum "$OUT/predecessor-result.json" | awk '{print $1}')" = "$PREDECESSOR_RESULT_SHA256"
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$BASELINE_ARTIFACT_ID/zip" > "$OUT/baseline.zip"
+          unzip -p "$OUT/baseline.zip" anex-hotel-catalog-match.json > "$OUT/anex-hotel-catalog-match.json"
+          test "$(sha256sum "$OUT/anex-hotel-catalog-match.json" | awk '{print $1}')" = "$BASELINE_SHA256"
+          export OUT
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['OUT']); pred=json.loads(p.joinpath('predecessor-result.json').read_text())
+          if pred.get('operation_id')!='hotel-match-current-geo-evidence-1971-20260912-v2': raise SystemExit('predecessor_operation_drift')
+          ids=sorted(str(r['external_hotel_id']) for r in pred['rows']['anex']['source_name_missing'])
+          if len(ids)!=168 or len(set(ids))!=168: raise SystemExit('predecessor_gap_count_drift')
+          p.joinpath('gap-ids.json').write_text(json.dumps(ids,indent=2)+'\n')
+          PY
+          census_sha="$(sha256sum "$OUT/current-census.json" | awk '{print $1}')"
+          PYTHONHASHSEED=1 python3 scripts/diagnostics/hotel_match_anex_baseline_gap_geo_review.py "$OUT/current-census.json" "$OUT/anex-hotel-catalog-match.json" "$OUT/full-evidence.json" --census-sha256 "$census_sha" --baseline-sha256 "$BASELINE_SHA256"
+          python3 - <<'PY'
+          import collections,hashlib,json,os
+          from pathlib import Path
+          p=Path(os.environ['OUT']); gaps=set(json.loads(p.joinpath('gap-ids.json').read_text())); r=json.loads(p.joinpath('full-evidence.json').read_text())
+          rows=[x for x in r['rows'] if x.get('source',{}).get('provider')=='anex' and str(x['source']['external_id']) in gaps]
+          found={str(x['source']['external_id']) for x in rows}; missing=sorted(gaps-found,key=int); counts=dict(collections.Counter(x['status'] for x in rows)); ready=[x for x in rows if x['status']=='prepared_geography_evidence']
+          package={'schema':'hotel-match-anex-baseline-gap-recovery/1','operation_id':os.environ['OPERATION_ID'],'predecessor_operation_id':'hotel-match-current-geo-evidence-1971-20260912-v2','predecessor_source_name_missing':168,'fresh_current_rows_reviewed':len(rows),'no_longer_in_current_unresolved_queue':missing,'status_counts':counts,'prepared_count':len(ready),'prepared_pairs':[{'external_id':str(x['source']['external_id']),'local_id':x['local_id'],'distance_km':x.get('distance_km'),'name_margin':x.get('name_margin'),'observed':bool(x['source'].get('observed')),'search_count':x['source'].get('search_count'),'source_names':x['source'].get('names'),'source_geography':x['source'].get('geography')} for x in ready],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'write_authority':False,'requires_new_server_current_transaction':True,'no_replay':True}
+          raw=(json.dumps(package,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); p.joinpath('prepared-package.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_baseline_gap_recovery','source_sha':os.environ['GITHUB_SHA'],'full_evidence_sha256':hashlib.sha256(p.joinpath('full-evidence.json').read_bytes()).hexdigest(),'prepared_package_sha256':hashlib.sha256(raw).hexdigest(),'reviewed_count':len(rows),'prepared_count':len(ready),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}; p.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          summary=f"MATCH #1971 ANEX baseline-gap recovery complete: predecessor missing-name **168**; fresh CURRENT reviewed **{len(rows)}**; freshly prepared geo/name evidence **{len(ready)}**; no-longer-current **{len(missing)}**; status counts `{counts}`. DB/mapping/supplier/Tourvisor writes/calls **0**. These are evidence rows only; any apply requires NEW same-transaction CURRENT guards/readback. Operation `{os.environ['OPERATION_ID']}` NO-REPLAY."
+          p.joinpath('summary.md').write_text(summary+'\n'); print(summary)
+          PY
+      - uses: actions/upload-artifact@v4
+        id: result
+        if: always()
+        with:
+          name: match-anex-baseline-gap-${{ github.run_id }}-result
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/current-census.json
+            ${{ env.OUT }}/gap-ids.json
+            ${{ env.OUT }}/full-evidence.json
+            ${{ env.OUT }}/prepared-package.json
+            ${{ env.OUT }}/receipt.json
+            ${{ env.OUT }}/summary.md
+            ${{ env.OUT }}/census.stderr
+          retention-days: 90
+      - name: Record successful package
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.result.outputs.artifact-id }}'}
+        run: |
+          printf ' Result artifact `%s`.\n' "$ARTIFACT_ID" >> "$OUT/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md"
