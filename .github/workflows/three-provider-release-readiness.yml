@@ -25,6 +25,7 @@ jobs:
             tests/three-provider-offer-context-test.php \
             tests/three-provider-air-search-filter-test.php \
             tests/three-provider-hotel-category-test.php \
+            tests/three-provider-hotel-rating-test.php \
             tests/three-provider-quote-envelope-test.php \
             tests/three-provider-search-handoff-test.php \
             tests/three-provider-anex-offer-test.php
@@ -41,6 +42,7 @@ jobs:
               'app/integrations/three-provider-offer-context.php',
               'app/integrations/three-provider-air-search-filter.php',
               'app/integrations/three-provider-hotel-category.php',
+              'app/integrations/three-provider-hotel-rating.php',
               'app/integrations/three-provider-quote-envelope.php',
               'app/integrations/three-provider-search-handoff.php',
           ]
@@ -78,5 +80,14 @@ jobs:
           assert "'cross_provider_equivalence_verified' => false" in category
           assert "'identity_proof_from_category' => false" in category
           assert "'source' => $canonicalKnown ? 'current_local_identity' : null" in category
+
+          rating = Path('app/integrations/three-provider-hotel-rating.php').read_text()
+          assert "'status' => 'local_only'" in rating
+          assert "'allowed' => false" in rating
+          assert "'supplier_rating_equivalence_verified' => false" in rating
+          assert "'raw_supplier_numeric_value_universal' => false" in rating
+          assert "'cross_provider_equivalence_verified' => false" in rating
+          assert "'identity_proof_from_rating' => false" in rating
+          assert "'source' => $canonicalKnown ? 'current_local_identity' : null" in rating
           print('Three-provider INT release readiness static boundary: PASS')
           PY
