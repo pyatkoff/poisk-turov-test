@@ -1,0 +1,141 @@
+name: MATCH global Tourvisor-local rescue CURRENT v2
+run-name: MATCH global Tourvisor-local rescue CURRENT v2 #1971
+
+on:
+  push:
+    branches:
+      - ops/match-residual-ensemble-current-1971-v2
+    paths:
+      - .github/match-global-tourvisor-rescue-current-1971-v2.arm
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-global-tourvisor-rescue-current-v2
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-global-tourvisor-rescue-1971-20260912-v2
+  OUT_DIR: /tmp/match-global-tourvisor-rescue-current-v2
+
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 4, persist-credentials: false}
+      - name: Validate and build runtime package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-global-tourvisor-rescue-current-1971-v2.arm)" = "$OPERATION_ID"
+          mkdir -p "$OUT_DIR/package"
+          files=(hotel_full_catalog_reconcile.php hotel_match_current_bulk_review.php hotel_match_global_cross_provider_rescue.php hotel_match_global_tourvisor_rescue.php)
+          for f in "${files[@]}"; do php -l "scripts/diagnostics/$f"; cp "scripts/diagnostics/$f" "$OUT_DIR/package/$f"; done
+          ! grep -Fq 'v2_data_tv_get' scripts/diagnostics/hotel_match_global_tourvisor_rescue.php
+          ! grep -Fq 'curl_' scripts/diagnostics/hotel_match_global_tourvisor_rescue.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_global_tourvisor_rescue.php
+          grep -Fq 'START TRANSACTION READ ONLY' scripts/diagnostics/hotel_match_global_tourvisor_rescue.php
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR'])/'package'
+          p=root/'hotel_match_global_tourvisor_rescue.php'; s=p.read_text()
+          old="const HMGTR_OPERATION = 'hotel-match-global-tourvisor-rescue-1971-20260911-v1';"; new=f"const HMGTR_OPERATION = '{os.environ['OPERATION_ID']}';"
+          if s.count(old)!=1: raise SystemExit('op_constant_not_unique')
+          p.write_text(s.replace(old,new))
+          p=root/'hotel_match_global_cross_provider_rescue.php'; s=p.read_text()
+          old="foreach(array_keys($places) as $p){if(strlen($p)<4)continue;"; new="foreach(array_keys($places) as $p){$p=(string)$p;if(strlen($p)<4)continue;"
+          if s.count(old)!=1: raise SystemExit('numeric_place_fix_not_unique')
+          p.write_text(s.replace(old,new))
+          PY
+          for f in "$OUT_DIR"/package/*.php; do php -l "$f"; done
+      - name: Durable reservation before CURRENT DB read
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); p=root/'package'/'hotel_match_global_tourvisor_rescue.php'
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'mode':'global_tourvisor_local_catalog_rescue_read_only','algorithm_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'tv_search_slices':0,'tv_http_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (root/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-global-tourvisor-rescue-current-v2-reservation
+          path: ${{ env.OUT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Establish resilient SSH master and upload package
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmgtr2-key"; sock="$RUNNER_TEMP/hmgtr2.sock"; known="$RUNNER_TEMP/hmgtr2-known"; remote="/tmp/hmgtr2-${GITHUB_RUN_ID}"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          connect(){ rm -f "$sock"; ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; }
+          ok=0; for n in 1 2 3 4 5; do if connect; then ok=1; break; fi; sleep $((n*4)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -s config.php && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMGTR2_OK' | grep -qx HMGTR2_OK
+          tar -C "$OUT_DIR/package" -czf - . | ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote' && mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          printf '%s\n' "$key" > "$RUNNER_TEMP/hmgtr2-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/hmgtr2-sockpath"; printf '%s\n' "$known" > "$RUNNER_TEMP/hmgtr2-knownpath"; printf '%s\n' "$remote" > "$RUNNER_TEMP/hmgtr2-remotepath"
+      - name: Execute one-shot CURRENT global local rescue
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/hmgtr2-keypath")"; sock="$(cat "$RUNNER_TEMP/hmgtr2-sockpath")"; known="$(cat "$RUNNER_TEMP/hmgtr2-knownpath")"; remote="$(cat "$RUNNER_TEMP/hmgtr2-remotepath")"
+          cleanup(){ ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }; trap cleanup EXIT
+          if ! ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1; then rm -f "$sock"; ok=0; for n in 1 2 3 4 5; do if ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((n*4)); done; test "$ok" = 1; fi
+          set +e
+          ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -d memory_limit=2048M -r 'define(\"FC_LIBRARY_ONLY\",true); \$root=realpath(getcwd()); require \$root.\"/config.php\"; require is_file(\$root.\"/data/db-v1.php\")?\$root.\"/data/db-v1.php\":\$root.\"/v2/data/db-v1.php\"; require \"$remote/hotel_match_global_tourvisor_rescue.php\"; \$db=v2_data_db(); echo \"HMGTR2_JSON:\".fc_json(hmgtr_review(\$db,\"$OPERATION_ID\")).PHP_EOL;'" > "$OUT_DIR/live.stdout" 2> "$OUT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); out=(root/'live.stdout').read_text(errors='replace'); err=(root/'live.stderr').read_text(errors='replace'); marker='HMGTR2_JSON:'
+          line=next((x[len(marker):] for x in reversed(out.splitlines()) if x.startswith(marker)),None)
+          if line is None: r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stderr_tail':err[-3000:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          else: r=json.loads(line)
+          r['source_sha']=os.environ['GITHUB_SHA']; r['run_id']=int(os.environ['GITHUB_RUN_ID']); r['remote_exit']=int(os.environ['RC']); r['no_replay']=True
+          if r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('supplier_calls')!=0: raise SystemExit('budget_violation')
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (root/'result.json').write_bytes(raw)
+          state='completed_read_only' if r.get('status')=='completed' and int(os.environ['RC'])==0 else 'unknown_no_replay'
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':state,'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'tv_search_slices':0,'tv_http_calls':0,'no_replay':True,'stats':r.get('stats'),'coverage':r.get('coverage')}; (root/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if r.get('status')=='completed': summary=f"MATCH #1971 CURRENT global local/Tourvisor identity rescue `{r['operation_id']}` completed read-only / NO-REPLAY. Stats {json.dumps(r.get('stats',{}),ensure_ascii=False,sort_keys=True)}. Prepared **{len(r.get('prepared',[]))}**, hard **{len(r.get('hard_conflicts',[]))}**, near **{len(r.get('near',[]))}**. Coverage {json.dumps(r.get('coverage',{}),ensure_ascii=False,sort_keys=True)}. Supplier/Tourvisor HTTP calls0; DB/mapping writes0. Artifact follows."
+          else: summary=f"MATCH #1971 CURRENT global local/Tourvisor identity rescue `{r.get('operation_id')}` UNKNOWN / NO-REPLAY: `{r.get('reason')}`."
+          (root/'summary.md').write_text(summary+'\n'); print(summary)
+          if state!='completed_read_only': raise SystemExit(2)
+          PY
+      - name: Preserve immutable result
+        if: always()
+        id: final_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-global-tourvisor-rescue-current-v2-final
+          path: |
+            ${{ env.OUT_DIR }}/reservation.json
+            ${{ env.OUT_DIR }}/result.json
+            ${{ env.OUT_DIR }}/receipt.json
+            ${{ env.OUT_DIR }}/live.stderr
+            ${{ env.OUT_DIR }}/summary.md
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record MATCH result
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.final_artifact.outputs.artifact-id }}'}
+        shell: bash
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$OUT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT_DIR/summary.md"
