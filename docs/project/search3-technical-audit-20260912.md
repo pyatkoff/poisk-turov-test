@@ -336,3 +336,82 @@ fresh recheck отсутствия writer на lifecycle/renderer/filter owner. 
 не preview publication и не production approval.** Для docs-only пакета достаточно
 diff/link/claim consistency и применимых CI guards; source/generated/hash
 сохраняются неизменными.
+
+
+## Технический refactor-pass: текущие guards, 2026-09-13
+
+Выполняется по явному уточнению владельца «в автопилот и делаем» после browser audit.
+Подготовительный порядок и актуальный `current_task` закреплены в #2271:
+merge `78819dd10225bfc9f07a9e045cc1dd079c4b7c45`;
+Security `34724509988` и state validation `34724509996` прошли.
+Единственный существующий ежечасный SEARCH-автопилот обновлён на месте.
+
+### Выполненная техническая проверка
+
+Exact baseline runtime: release `78819dd10225bfc9f07a9e045cc1dd079c4b7c45`
+(от предшествующей `3c21d805...` отличаются только plan/current_task).
+Получены точные исходники, manifest, существующие build tools и публичные outputs.
+Pinned `npm ci` в этой среде прошёл; прежний чужой npm blocker сюда не переносится.
+
+- `python3 scripts/build/search3_assets.py --check`: **8 assets, passed**.
+- `python3 tests/search3_source_build_test.py`: **13/13 passed**,
+  включая drift, идемпотентность, fail-before-write, private includes/CSS и path boundary.
+- `node scripts/build/search3-js/shared-runtime.cjs --check`: **passed**,
+  source bytes 138276 → generated 120726. Это существующая компактизация baseline,
+  **не экономия от текущего пакета**.
+- Подтверждены четыре активных presentation behavior owners из README/manifest:
+  native form shell, local facets, shortlist и summary CTA. Восемь public paths
+  и порядок включений сохраняются; retired slots не становятся owners.
+- Renderer и local filter по-прежнему имеют разные operator display keys;
+  meal summary считает сырые labels. URL hydration существует, обратной записи
+  условий поиска нет. Это прежние подтверждённые остатки, а не завершённые исправления.
+- Уважены claims #2261 на entry CSS/import manifest и selected-date-v4
+  (#996 comment5648815213) на controller/shared runtime. Пересекающиеся записи
+  source/generated/hash не начаты. Блок занятости снимается только свежим claim/readback.
+
+### Первый независимый кодовый пакет
+
+Claim #996 comment5649311860, branch
+`refactor/search3-current-presentation-guards-20260913`.
+Точные изменённые paths: `tests/search3_production_presentation_test.py` и этот audit.
+
+Найдено 53 проверки прежней композиции в отключённом классе на 890 строк.
+Многие ссылались на уже удалённых CSS/JS-владельцев. Их сохранение затрудняло понимание
+реальной защиты Search3; выбор исполняемого класса зависел от наличия исторического
+`search3-half-size-reset.json`, а не от текущего runtime contract.
+
+Изменение:
+
+- удалён отключённый старый класс и его неиспользуемые imports;
+- все **14 существующих live tests и setUp сохранены с идентичным AST**;
+  protected-controller reconstruction, price/lead/business calls, local-only facets,
+  shortlist isolation и одна runtime closure на маршрут не изменены;
+- три по-прежнему применимых guard-метода перенесены **без изменения AST** в live suite:
+  отсутствие preview simulation markers в public assets, отсутствие старой
+  supplier-party overlay, отсутствие второго Search3 footer;
+- текущие проверки исполняются напрямую, исторический audit-файл больше не служит
+  переключателем тестового поколения; число live tests выросло **14 → 17**;
+- размер файла **1210 → 335 строк**. Удалены строки тестового технического долга;
+  размер/поведение загружаемых пользователем CSS/JS этим пакетом не изменяется.
+
+Локально три возвращённых guard-теста прошли (3/3). Существующий whole-site workflow
+уже включает этот test path и запускает полный PHP/business/isolation корпус на
+exact PR head; его checks/merge receipt фиксируются в #996/#1646 после завершения.
+Новый workflow, упрощённые assertions, runtime patch или trigger-only commit не нужны.
+Этот test-only пакет не требует новой визуальной оценки или deploy; screenshots
+прошлого аудита не выдаются за новую приёмку.
+
+### Продолжение без повторного старта
+
+Карта текущих presentation owners и оба канонических build baseline проверены.
+Независимая очистка guards реализована; итог CHECKED/MERGED определяется свежим receipt
+PR в #996. Весь refactor-pass пока **не закрыт**: следующие ограниченные пункты —
+согласовать единственную operator/meal display логику и owner состояния form/URL,
+после освобождения нужных shared generated paths либо с одним согласованным writer.
+Затем действующий продуктовый порядок и 12 отдельных ≥9.5 acceptance.
+
+Повторять полный исторический обзор или эти успешно проверенные build cases каждый
+час без новых изменений не требуется. На свежем release проверять изменившиеся
+контракты/claims и брать следующий незавершённый пункт. Производственные approvals,
+supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferred
+сохраняют прежние границы.
