@@ -6,6 +6,7 @@ on:
       - 'v2/results-renderer-v5.js'
       - 'v2/search3-shared-runtime.json'
       - 'tests/search3-renderer-date-display.test.js'
+      - 'tests/search3-hotel-card-summary.test.js'
       - 'tests/search3-current-results-browser.cjs'
       - '.github/workflows/search3-renderer-date-display.yml'
   workflow_dispatch:
@@ -28,6 +29,8 @@ jobs:
         run: node --check v2/results-renderer-v5.js
       - name: Verify display-only date normalization
         run: node tests/search3-renderer-date-display.test.js
+      - name: Verify truthful hotel-card summary
+        run: node tests/search3-hotel-card-summary.test.js
       - name: Syntax check current-results visual contract
         run: node --check tests/search3-current-results-browser.cjs
       - name: Guard against timezone parsing and source mutation
