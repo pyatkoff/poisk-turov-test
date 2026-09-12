@@ -23,12 +23,14 @@ on:
       - 'ops/int-anex-additional-program2637-20260912'
       - 'ops/int-anex-concrete-fuel-binding-20260912'
       - 'ops/int-anex-concrete-fuel-binding-v2-20260913'
+      - 'ops/int-anex-additional-program1797-20260913'
     paths:
       - '.github/ops/anex-three-source-price-v2-20260911'
       - '.github/ops/anex-additional-parity-v3-20260912'
       - '.github/ops/anex-additional-program2637-20260912'
       - '.github/ops/anex-concrete-fuel-binding-20260912'
       - '.github/ops/anex-concrete-fuel-binding-v2-20260913'
+      - '.github/ops/anex-additional-program1797-20260913'
 permissions:
   contents: read
 concurrency:
@@ -73,6 +75,9 @@ jobs:
           assert "ANEX_ADDITIONAL_PARITY_DATE = '2026-10-12'" in php
           assert 'AnyTourAnexAdditionalPricesClient' in php
           assert "'supplier_replay_allowed'=>false" in php
+          assert "PROGRAM1797_EXPERIMENT='anex_additional_program1797_20260913_v1'" in py
+          assert "PROGRAM1797_CONTEXT={'page':1,'pageSize':10,'tour':1797" in py
+          assert 'CONCRETE1797_ARTIFACT_ID=10306073917' in py
           assert "'price_arithmetic_applied':False" in py and "'universal_formula_verified':False" in py
           for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
               assert forbidden not in php
@@ -92,7 +97,8 @@ jobs:
           assert 'ops/int-anex-additional-parity-v3-fixed-20260912' in workflow
           assert 'ops/int-anex-concrete-fuel-binding-20260912' in workflow
           assert 'ops/int-anex-concrete-fuel-binding-v2-20260913' in workflow
-          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 4
+          assert 'ops/int-anex-additional-program1797-20260913' in workflow
+          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 5
           print('ANEX price/additional parity static boundaries: PASS')
           PY
   live_v2:
@@ -340,4 +346,61 @@ jobs:
           retention-days: 30
       - name: Fail after evidence preservation when known-date binding did not complete
         if: steps.binding.outcome != 'success'
+        run: exit 1
+  live_program1797:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-program1797-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind program1797 receipt to exact reviewed source parent
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-additional-program1797-20260913'
+          test "$(cat control/.github/ops/anex-additional-program1797-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-additional-program1797;date=2026-10-12;nights=7;currency=3;retained=10306073917;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Read completed concrete and Tourvisor evidence without search replay
+        uses: actions/download-artifact@v4
+        with:
+          name: anex-concrete-fuel-binding-v2-34720156085
+          run-id: 34720156085
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: retained-concrete
+      - name: Read one new program1797 additional-price response
+        id: parity
+        continue-on-error: true
+        run: |
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.control.outputs.source }}'
+          mkdir -m 700 "$RUNNER_TEMP/additional-program1797"
+          python3 -B source/scripts/diagnostics/anex_additional_parity_v3.py "$RUNNER_TEMP/additional-program1797" --program1797 retained-concrete/result.json
+      - name: Preserve sanitized program1797 evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-additional-program1797-${{ github.run_id }}
+          path: ${{ runner.temp }}/additional-program1797/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when program1797 did not complete
+        if: steps.parity.outcome != 'success'
         run: exit 1
