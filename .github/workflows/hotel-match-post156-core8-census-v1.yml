@@ -1,0 +1,171 @@
+name: MATCH post156 core8 CURRENT census 1971
+on:
+  push:
+    branches: [ops/match-post156-core8-census-1971-20260912-v1]
+    paths: [.github/match-post156-core8-census-1971-20260912-v1.arm]
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-post156-core8-census-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-post156-core8-census-1971-20260912-v1
+  OUT: /tmp/match-post156-core8-census-1971-v1
+jobs:
+  census:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Offline guards and immutable reservation
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-post156-core8-census-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_baseline_gap_census.php
+          php scripts/diagnostics/hotel_match_anex_baseline_gap_census.php --self-test
+          mkdir -p "$OUT/bundle"
+          cp scripts/diagnostics/hotel_match_anex_baseline_gap_census.php "$OUT/bundle/census.php"
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path(os.environ['OUT'])/'bundle/census.php'
+          s=p.read_text()
+          old="const HM_CENSUS_OP = 'hotel-match-core8-identity-census-1971-20260912-v1';"
+          new="const HM_CENSUS_OP = 'hotel-match-post156-core8-census-1971-20260912-v1';"
+          if s.count(old)!=1: raise SystemExit('operation marker drift')
+          p.write_text(s.replace(old,new,1))
+          PY
+          php -l "$OUT/bundle/census.php"
+          sha256sum "$OUT/bundle/census.php" > "$OUT/input.sha256"
+          python3 - <<'PY'
+          import json,hashlib,os,pathlib
+          d=pathlib.Path(os.environ['OUT']);raw=d.joinpath('input.sha256').read_bytes()
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(raw).hexdigest(),'mode':'read_only_current_census','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          d.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-post156-core8-census-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-post156-core8-census-reservation, merge-multiple: true}
+      - name: Execute CURRENT read-only census
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-post156-core8-census-reservation/reservation.json
+          key="$RUNNER_TEMP/match-post156-census-key"; known="$RUNNER_TEMP/match-post156-census-known"; sock="$RUNNER_TEMP/match-post156-census.sock"
+          cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }; trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          tar -C "$OUT/bundle" -cf - census.php | ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; tar -xf - -C "$tmp" || exit 91; cd "$HOME/www/anytoour.ru" || exit 92; php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M "$tmp/census.php"' > "$OUT/live.stdout" 2> "$OUT/live.stderr"
+          python3 - <<'PY'
+          import json,os,pathlib,re,unicodedata,hashlib,collections
+          d=pathlib.Path(os.environ['OUT']); lines=d.joinpath('live.stdout').read_text(errors='replace').splitlines(); rows=[x[len('MATCH_CENSUS:'):] for x in lines if x.startswith('MATCH_CENSUS:')]
+          if not rows: raise SystemExit('missing census json')
+          data=json.loads(rows[-1]);
+          if data.get('status')!='completed' or data.get('operation_id')!=os.environ['OPERATION_ID'] or any(data.get(k)!=0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls']): raise SystemExit('census guard failed')
+          d.joinpath('census.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          local={str(r['id']):r for r in data.get('local',[])}; local_ids=set(local); country_ids={str(k):v for k,v in data.get('country_ids',{}).items()}; core=set(country_ids.values())
+          generic={'hotel','hotels','resort','resorts','spa','otel','отель','отеля','the','and'}
+          def norm(v):
+              s=unicodedata.normalize('NFKC',str(v or '')).casefold().replace('&',' and ').replace('ё','е')
+              s=re.sub(r'[^\w]+',' ',s,flags=re.UNICODE); w=[x for x in s.split() if x not in generic]; return ' '.join(w)
+          def forms(v):
+              raw=str(v or '').strip(); out=[]
+              if raw: out.append(raw)
+              m=re.search(r'\(\s*(?:ex\.?|former(?:ly)?|бывш\.?|ех\.?)\s*[:\-]?\s*([^()]+)\)\s*$',raw,re.I)
+              if m: out += [raw[:m.start()].strip(),m.group(1).strip()]
+              return [x for x in dict.fromkeys(out) if x]
+          def nforms(v): return {norm(x) for x in forms(v) if norm(x)}
+          aliases=collections.defaultdict(list)
+          for a in data.get('aliases',[]):
+              hid=str(a.get('hotel_id',''))
+              if hid in local_ids: aliases[hid].append(str(a.get('alias') or ''))
+          idx=collections.defaultdict(lambda:collections.defaultdict(set))
+          for hid,r in local.items():
+              cc=r.get('country_class');
+              if not cc: continue
+              vals=[str(r.get('name') or '')]+aliases.get(hid,[])
+              for v in vals:
+                  for k in nforms(v): idx[cc][k].add(hid)
+          mappings=[m for m in data.get('anex_mappings',[]) if str(m.get('catalog_hotel_id','')) in local_ids and int(m.get('enabled') or 0)==1]
+          anex_ids={str(m.get('anex_hotel_id')) for m in mappings}; anex_local={str(m.get('catalog_hotel_id')) for m in mappings}
+          decision_ids={str(x.get('anex_hotel_id')) for x in data.get('anex_decisions',[])}
+          and_rows=[r for r in data.get('andromeda',[]) if str(r.get('supplier_namespace') or '')=='andromeda_catalog']
+          and_acc=[r for r in and_rows if r.get('decision_status')=='accepted' and str(r.get('local_hotel_id') or '') in local_ids]
+          and_local={str(r.get('local_hotel_id')) for r in and_acc}; triple=anex_local & and_local
+          obs=data.get('anex_observations',[]); live_ids=set(); live_occ=0; live_by=collections.defaultdict(lambda:{'ids':set(),'occurrences':0})
+          for o in obs:
+              eid=str(o.get('anex_hotel_id')); cc=country_ids.get(str(o.get('country_id') or ''))
+              if not cc or eid in anex_ids or eid in decision_ids: continue
+              live_ids.add(eid); n=int(o.get('search_count') or 0); live_occ+=n; live_by[cc]['ids'].add(eid); live_by[cc]['occurrences']+=n
+          stage={str(r.get('anex_hotel_id')):r for r in data.get('anex',[])}
+          obs_by=collections.defaultdict(list)
+          for o in obs: obs_by[str(o.get('anex_hotel_id'))].append(o)
+          anex_exact=[]
+          exclusions={(str(x.get('anex_hotel_id')),str(x.get('catalog_hotel_id') or x.get('local_hotel_id') or '')) for x in data.get('anex_exclusions',[])}
+          for eid in sorted(live_ids):
+              names=[]; cc=None; geo=[]
+              for o in obs_by[eid]:
+                  names.append(str(o.get('hotel_name') or '')); cc=cc or country_ids.get(str(o.get('country_id') or ''))
+              s=stage.get(eid,{})
+              names += [str(s.get(k) or '') for k in ('api_name','xml_name','xml_alternate_name')]
+              geo += [str(s.get(k) or '') for k in ('api_region','api_town')]
+              if not cc:
+                  raw=norm(s.get('api_country'))
+                  country_words={'египет':'egypt','egypt':'egypt','турция':'turkey','turkey':'turkey','turkiye':'turkey','türkiye':'turkey','таиланд':'thailand','thailand':'thailand','оаэ':'uae','uae':'uae','united arab emirates':'uae','вьетнам':'vietnam','vietnam':'vietnam','viet nam':'vietnam','шри ланка':'srilanka','sri lanka':'srilanka','мальдивы':'maldives','maldives':'maldives','куба':'cuba','cuba':'cuba'}; cc=country_words.get(raw)
+              if not cc: continue
+              keys=set().union(*(nforms(x) for x in names if x)); cands=set()
+              for k in keys: cands |= idx[cc].get(k,set())
+              cands={x for x in cands if (eid,x) not in exclusions}
+              if len(cands)!=1: continue
+              target=next(iter(cands)); tr=local[target]; tg={norm(tr.get('region_name')),norm(tr.get('subregion_name'))}; sg={norm(x) for x in geo if norm(x)}; direct_geo=bool((tg- {''}) & sg)
+              max_tokens=max([len(k.split()) for k in keys] or [0]); lane='anex_exact_cross_provider' if target in and_local else 'anex_exact_local'
+              anex_exact.append({'external_hotel_id':eid,'local_hotel_id':int(target),'country':cc,'lane':lane,'significant_tokens':max_tokens,'direct_geo':direct_geo,'source_names':sorted({x for x in names if x})[:6],'target_name':tr.get('name')})
+          pending=[r for r in and_rows if r.get('decision_status')=='pending' and not r.get('local_hotel_id')]
+          p_by=collections.Counter((r.get('country_class') or 'unknown') for r in pending); p_sources=sum(1 for r in pending if r.get('sources'))
+          and_exact=[]
+          for r in pending:
+              cc=r.get('country_class'); eid=str(r.get('external_hotel_id')); srcs=r.get('sources') or []
+              if not cc: continue
+              chosen=[s for s in srcs if str(s.get('id') or s.get('hotelKey') or '')==eid] or srcs
+              names=[]; geo=[]
+              for s in chosen:
+                  names += [str(s.get('name') or ''),str(s.get('lName') or '')]
+                  geo += [str(s.get('town') or ''),str(s.get('region') or '')]
+              keys=set().union(*(nforms(x) for x in names if x)); cands=set()
+              for k in keys: cands |= idx[cc].get(k,set())
+              if len(cands)!=1: continue
+              target=next(iter(cands)); tr=local[target]; tg={norm(tr.get('region_name')),norm(tr.get('subregion_name'))}; sg={norm(x) for x in geo if norm(x)}; direct_geo=bool((tg- {''}) & sg)
+              max_tokens=max([len(k.split()) for k in keys] or [0]); bridge=target in anex_local
+              and_exact.append({'external_hotel_id':eid,'local_hotel_id':int(target),'country':cc,'bridge_to_anex':bridge,'significant_tokens':max_tokens,'direct_geo':direct_geo,'source_names':sorted({x for x in names if x})[:6],'source_geo':sorted({x for x in geo if x})[:6],'target_name':tr.get('name'),'target_region':tr.get('region_name'),'target_subregion':tr.get('subregion_name')})
+          and_bridge_safe=[x for x in and_exact if x['bridge_to_anex'] and (x['significant_tokens']>=2 or x['direct_geo'])]
+          and_exact_safe=[x for x in and_exact if x['significant_tokens']>=2 or x['direct_geo']]
+          anex_exact_safe=[x for x in anex_exact if x['significant_tokens']>=2 or x['direct_geo']]
+          summary={'status':'completed','operation_id':os.environ['OPERATION_ID'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'counts':{
+            'anex_mappings_core8_active':len(mappings),'anex_unique_local_core8':len(anex_local),'andromeda_status_all':data.get('counts',{}).get('andromeda_all_statuses',{}),'andromeda_accepted_unique_local_core8':len(and_local),'triple_core8':len(triple),'anex_plus_tv_only_core8':len(anex_local-and_local),'andromeda_plus_tv_only_core8':len(and_local-anex_local),'exactly_two_core8':len((anex_local-and_local)|(and_local-anex_local)),'live_anex_unresolved_ids':len(live_ids),'live_anex_unresolved_occurrences':live_occ,'live_anex_unresolved_missing_staging':sum(1 for x in live_ids if x not in stage),'andromeda_pending_rows_census':len(pending),'andromeda_pending_with_sources':p_sources,'andromeda_pending_country_authority':dict(sorted(p_by.items())),'anex_live_exact_unique_candidates':len(anex_exact),'anex_live_exact_guard_candidates':len(anex_exact_safe),'andromeda_pending_exact_unique_candidates':len(and_exact),'andromeda_pending_exact_guard_candidates':len(and_exact_safe),'andromeda_pending_cross_provider_bridge_guard_candidates':len(and_bridge_safe)},
+            'live_anex_by_country':{k:{'ids':len(v['ids']),'occurrences':v['occurrences']} for k,v in sorted(live_by.items())},
+            'candidate_sha256':hashlib.sha256(json.dumps({'anex':anex_exact_safe,'andromeda_bridge':and_bridge_safe},sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest(),'no_replay':True}
+          d.joinpath('summary.json').write_text(json.dumps(summary,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          d.joinpath('candidates.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'anex_live_exact_guard':anex_exact_safe,'andromeda_pending_cross_provider_bridge_guard':and_bridge_safe,'andromeda_pending_all_exact_guard':and_exact_safe},ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          text=(f"MATCH #1971 post156 CURRENT census: live ANEX unresolved {len(live_ids)} ids/{live_occ} occurrences; Andromeda status {summary['counts']['andromeda_status_all']}; pending country authority {dict(sorted(p_by.items()))}; triple {len(triple)}, ANEX+TV-only {len(anex_local-and_local)}, Andromeda+TV-only {len(and_local-anex_local)}. Prepared exact-name guard candidates: ANEX live {len(anex_exact_safe)}; Andromeda pending cross-provider bridge {len(and_bridge_safe)} (all exact guard {len(and_exact_safe)}). Writes/calls0. Candidate SHA {summary['candidate_sha256']}. NO-REPLAY.")
+          d.joinpath('summary.md').write_text(text+'\n'); print(text)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-post156-core8-census-${{ github.run_id }}-result
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/census.json
+            ${{ env.OUT }}/summary.json
+            ${{ env.OUT }}/candidates.json
+            ${{ env.OUT }}/summary.md
+            ${{ env.OUT }}/live.stderr
+          retention-days: 90
+      - name: Record result
+        if: always() && hashFiles(format('{0}/summary.md', env.OUT)) != ''
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
