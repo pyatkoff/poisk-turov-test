@@ -27,6 +27,7 @@ jobs:
             tests/three-provider-geography-test.php \
             tests/three-provider-departure-country-test.php \
             tests/three-provider-search-coverage-test.php \
+            tests/three-provider-search-observation-test.php \
             tests/three-provider-hotel-category-test.php \
             tests/three-provider-hotel-rating-test.php \
             tests/three-provider-hotel-services-test.php \
@@ -36,7 +37,11 @@ jobs:
             tests/three-provider-anex-offer-test.php
           do
             php -l "$test"
-            php -d allow_url_fopen=0 "$test"
+            if [[ "$test" == 'tests/three-provider-search-observation-test.php' ]]; then
+              php -d allow_url_fopen=0 -r 'set_error_handler(static function(int $severity, string $message, string $file, int $line): never { throw new ErrorException($message, 0, $severity, $file, $line); }); require "tests/three-provider-search-observation-test.php";'
+            else
+              php -d allow_url_fopen=0 "$test"
+            fi
           done
           python3 - <<'PY'
           from pathlib import Path
@@ -49,6 +54,7 @@ jobs:
               'app/integrations/three-provider-geography.php',
               'app/integrations/three-provider-departure-country.php',
               'app/integrations/three-provider-search-coverage.php',
+              'app/integrations/three-provider-search-observation.php',
               'app/integrations/three-provider-hotel-category.php',
               'app/integrations/three-provider-hotel-rating.php',
               'app/integrations/three-provider-hotel-services.php',
@@ -60,6 +66,7 @@ jobs:
           for forbidden in (
               'curl_', 'file_get_contents(', 'PDO', 'mysqli_',
               'bron(', 'bron_ticket', 'Authorization:', 'Bearer ',
+              'INSERT ', 'UPDATE ', 'DELETE ',
           ):
               assert forbidden not in combined, forbidden
 
@@ -114,6 +121,17 @@ jobs:
           assert "'pricepage_1_without_total_pagination_proof'" in coverage
           assert "'all_advertised_pages_retained'" in coverage
           assert "'search_complete_and_continue_no_growth'" in coverage
+
+          observation = Path('app/integrations/three-provider-search-observation.php').read_text()
+          assert 'AnyTourThreeProviderSearchCoverage::fromEvidence' in observation
+          assert 'AnyTourThreeProviderSearchWindow::fromSearch' in observation
+          assert 'AnyTourThreeProviderMoneyFacts::fromSearch' in observation
+          assert "'external_id_universal' => false" in observation
+          assert "'mapping_write_allowed' => false" in observation
+          assert "'hotel_identity_decision_allowed' => false" in observation
+          assert "'package_identity_verified' => false" in observation
+          assert "'cross_provider_price_equivalence_verified' => false" in observation
+          assert "'replay_authority' => false" in observation
 
           category = Path('app/integrations/three-provider-hotel-category.php').read_text()
           assert "'supplier_label_equivalence_verified' => false" in category
