@@ -22,6 +22,7 @@ on:
       - 'tests/three-provider-anex-offer-test.php'
       - 'tests/anex-normalizer-smoke.php'
       - 'tests/anex-search-smoke.php'
+      - 'tests/anex-tour-program-retention-test.php'
       - 'tests/three-provider-offer-context-test.php'
       - 'tests/three-provider-room-placement-test.php'
       - 'tests/three-provider-meal-family-test.php'
@@ -62,6 +63,7 @@ jobs:
           # Explicit offline suites; execution also checks each test file's syntax.
           php -d allow_url_fopen=0 tests/anex-search3-preview-smoke.php
           php -d allow_url_fopen=0 tests/anex-search-smoke.php
+          php -d allow_url_fopen=0 tests/anex-tour-program-retention-test.php
           php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
           php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
