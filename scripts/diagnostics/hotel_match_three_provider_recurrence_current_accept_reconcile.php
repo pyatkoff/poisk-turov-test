@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /** Reconcile UNKNOWN recurrence writer v1 from CURRENT DB provenance only. */
-const HMRCRX_OPERATION = 'hotel-match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v1';
+const HMRCRX_OPERATION = 'hotel-match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v2';
 const HMRCRX_UNKNOWN_OPERATION = 'hotel-match-three-provider-recurrence-current-accept-1971-20260912-v1';
 const HMRCRX_EVIDENCE_SHA256 = 'e78a092225a3d976345cc6f1eafd9d5d170bcfe34dd608c66de1cd99f843d98f';
 const HMRCRX_POLICY = 'owner_exact_and_strong_20260908';
