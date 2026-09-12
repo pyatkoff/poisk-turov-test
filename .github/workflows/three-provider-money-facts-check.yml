@@ -3,7 +3,9 @@ on:
   pull_request:
     paths:
       - 'app/integrations/three-provider-money-facts.php'
+      - 'app/integrations/anex-additional-prices-client.php'
       - 'tests/three-provider-money-facts-test.php'
+      - 'tests/anex-additional-prices-client-test.php'
       - '.github/workflows/three-provider-money-facts-check.yml'
 permissions:
   contents: read
@@ -19,8 +21,11 @@ jobs:
       - name: Validate money facts without network
         run: |
           php -l app/integrations/three-provider-money-facts.php
+          php -l app/integrations/anex-additional-prices-client.php
           php -l tests/three-provider-money-facts-test.php
+          php -l tests/anex-additional-prices-client-test.php
           php -d allow_url_fopen=0 tests/three-provider-money-facts-test.php
+          php -d allow_url_fopen=0 tests/anex-additional-prices-client-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-money-facts.php').read_text()
@@ -41,5 +46,14 @@ jobs:
           assert "'andromeda' => ['fuel' => false, 'additional' => false]" in src
           for forbidden in ('+ $fuel', '+$fuel', 'agency_cost', 'buyerClaimMoney', 'broninit', 'curl_', 'PDO'):
               assert forbidden not in src
+
+          b2b=Path('app/integrations/anex-additional-prices-client.php').read_text()
+          assert "https://api.anextour.ru/b2b/AdditionalPricesDaily" in b2b
+          assert "User-Agent: TourismPlus" in b2b
+          assert "Authorization: Bearer " in b2b
+          assert "follow_redirects' => false" in b2b
+          assert 'function additionalPricesDaily' in b2b
+          for forbidden in ('final_price_verified', 'search_price_fuel_relation', 'arithmetic_applied', 'bron(', 'bron_ticket', 'PDO', 'mysqli_'):
+              assert forbidden not in b2b
           print('Three-provider money static boundary: PASS')
           PY
