@@ -1,0 +1,92 @@
+# Default-branch registration only; the existing INT workflow owns execution.
+# Owner approval: prepare a service PR, not merge/dispatch/deploy (#1685, #2163).
+name: ANEX AdditionalPricesDaily specimen
+
+'on':
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/anex-additional-prices-specimen.yml']
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Dictionary-only follow-up; never replay the completed v4 specimen
+        type: choice
+        options: ['anex-additional-currency-20260912-v1']
+        required: true
+      source_sha:
+        description: Exact checked INT source from PR 2163; select the INT branch, not main
+        type: string
+        default: 'cd1a5bdc3e42b06199ec104471489170b3e37fd4'
+        required: true
+
+permissions: {}
+
+jobs:
+  registration-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify registration-only boundary without supplier access
+        shell: bash
+        run: |
+          ruby - <<'RUBY'
+          require 'yaml'
+          path = '.github/workflows/anex-additional-prices-specimen.yml'
+          doc = YAML.safe_load(File.read(path), permitted_classes: [], aliases: false)
+          checks = 0
+          check = lambda do |condition, label|
+            raise "Registration contract failed: #{label}" unless condition
+            checks += 1
+          end
+          check.call(doc.keys.sort == %w[jobs name on permissions], 'top-level allowlist')
+          check.call(doc['name'] == 'ANEX AdditionalPricesDaily specimen', 'existing workflow name')
+          events = doc.fetch('on')
+          check.call(events.keys.sort == %w[pull_request workflow_dispatch], 'no automatic live triggers')
+          check.call(events['pull_request'] == {'branches' => ['main'], 'paths' => [path]}, 'scoped PR check')
+          inputs = events.fetch('workflow_dispatch').fetch('inputs')
+          check.call(inputs.keys.sort == %w[operation source_sha], 'existing INT input names')
+          operation = inputs.fetch('operation')
+          check.call(operation['type'] == 'choice' && operation['required'] == true &&
+                     operation['options'] == ['anex-additional-currency-20260912-v1'], 'one dictionary operation')
+          source = inputs.fetch('source_sha')
+          check.call(source['type'] == 'string' && source['required'] == true &&
+                     source['default'] == 'cd1a5bdc3e42b06199ec104471489170b3e37fd4', 'checked INT source hint')
+          check.call(doc['permissions'] == {}, 'no default token permissions')
+          jobs = doc.fetch('jobs')
+          check.call(jobs.keys.sort == %w[registration-contract registration-only], 'no live job imported')
+          guard = jobs.fetch('registration-contract')
+          check.call(guard['if'] == "github.event_name == 'pull_request'" &&
+                     guard['permissions'] == {'contents' => 'read'}, 'unprivileged PR-only check')
+          checkout = guard.fetch('steps').first
+          check.call(checkout['uses'] == 'actions/checkout@v4' &&
+                     checkout['with'] == {'ref' => '${{ github.event.pull_request.head.sha }}',
+                                          'persist-credentials' => false}, 'exact PR head checkout')
+          stub = jobs.fetch('registration-only')
+          expected_run = "printf '%s\\n' 'Registration only. Select branch feature/anex-search-adapter-20260907 for the existing dictionary procedure; main never calls the supplier.'\nexit 1\n"
+          check.call(stub == {
+            'if' => "github.event_name == 'workflow_dispatch'",
+            'runs-on' => 'ubuntu-latest', 'timeout-minutes' => 1, 'permissions' => {},
+            'steps' => [{'name' => 'Refuse execution from the registration stub',
+                         'shell' => 'bash', 'run' => expected_run}]
+          }, 'main dispatch cannot access credentials, network or runtime')
+          puts "ANEX registration-only contract: #{checks} checks passed; supplier calls=0"
+          RUBY
+
+  registration-only:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Refuse execution from the registration stub
+        shell: bash
+        run: |
+          printf '%s\n' 'Registration only. Select branch feature/anex-search-adapter-20260907 for the existing dictionary procedure; main never calls the supplier.'
+          exit 1
