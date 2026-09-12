@@ -10,7 +10,7 @@ env:
   OUT: /tmp/match-posh-correct-1971
 jobs:
   apply:
-    if: github.run_attempt == 1 && github.run_number == 1
+    if: github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
