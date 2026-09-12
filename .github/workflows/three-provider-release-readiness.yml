@@ -23,6 +23,7 @@ jobs:
             tests/three-provider-money-facts-test.php \
             tests/three-provider-offer-contract-test.php \
             tests/three-provider-offer-context-test.php \
+            tests/three-provider-air-search-filter-test.php \
             tests/three-provider-quote-envelope-test.php \
             tests/three-provider-search-handoff-test.php \
             tests/three-provider-anex-offer-test.php
@@ -37,6 +38,7 @@ jobs:
               'app/integrations/three-provider-money-facts.php',
               'app/integrations/three-provider-offer-contract.php',
               'app/integrations/three-provider-offer-context.php',
+              'app/integrations/three-provider-air-search-filter.php',
               'app/integrations/three-provider-quote-envelope.php',
               'app/integrations/three-provider-search-handoff.php',
           ]
@@ -60,5 +62,12 @@ jobs:
           money = Path('app/integrations/three-provider-money-facts.php').read_text()
           assert "'arithmetic_applied' => false" in money
           assert "'search_price_fuel_relation' => 'unknown'" in money
+
+          air = Path('app/integrations/three-provider-air-search-filter.php').read_text()
+          assert "'upstream_search_filter'" in air
+          assert "'status' => 'unknown'" in air
+          assert "'allowed' => false" in air
+          assert "'raw_numeric_id_universal' => false" in air
+          assert "'cross_provider_equivalence_verified' => false" in air
           print('Three-provider INT release readiness static boundary: PASS')
           PY
