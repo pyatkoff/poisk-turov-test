@@ -112,6 +112,7 @@ final class AnyTourAnexAdditionalPricesClient
         if (!is_array($decoded)) {
             throw new RuntimeException('ANEX_B2B_INVALID_RESPONSE');
         }
+        $this->validateResponseContext($decoded, $criteria);
 
         return $this->redactPayload($decoded);
     }
@@ -149,6 +150,30 @@ final class AnyTourAnexAdditionalPricesClient
         }
 
         return $criteria;
+    }
+
+    /** Fail closed if supplier rows do not belong to the exact requested program/date/night/currency context. */
+    private function validateResponseContext(array $payload, array $criteria): void
+    {
+        $rows = $payload['data'] ?? null;
+        if (!is_array($rows) || ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1))) {
+            throw new RuntimeException('ANEX_B2B_INVALID_RESPONSE');
+        }
+        foreach ($rows as $row) {
+            if (!is_array($row)) throw new RuntimeException('ANEX_B2B_INVALID_RESPONSE');
+            $tour = $row['tour'] ?? null;
+            $currency = $row['currency'] ?? null;
+            $nights = $row['nights'] ?? null;
+            if ((is_int($tour) || is_string($tour)) && preg_match('/\A[1-9][0-9]{0,8}\z/D', (string) $tour)) $tour = (int) $tour; else $tour = null;
+            if ((is_int($currency) || is_string($currency)) && preg_match('/\A[1-9][0-9]{0,8}\z/D', (string) $currency)) $currency = (int) $currency; else $currency = null;
+            if ((is_int($nights) || is_string($nights)) && preg_match('/\A[0-9]{1,2}\z/D', (string) $nights)) $nights = (int) $nights; else $nights = null;
+            $date = $row['dateBeg'] ?? null;
+            if (!is_string($date) || !preg_match('/\A(\d{4}-\d{2}-\d{2})(?:T00:00:00)?\z/D', $date, $m)) $date = null; else $date = $m[1];
+            if ($tour !== $criteria['tour'] || $currency !== $criteria['currency']
+                || $date !== $criteria['dateBeg'] || $nights !== $criteria['nights']) {
+                throw new RuntimeException('ANEX_B2B_CONTEXT_MISMATCH');
+            }
+        }
     }
 
     private function redactPayload(array $payload): array
