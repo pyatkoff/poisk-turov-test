@@ -66,7 +66,7 @@ jobs:
                      guard['permissions'] == {'contents' => 'read'}, 'unprivileged PR-only check')
           checkout = guard.fetch('steps').first
           check.call(checkout['uses'] == 'actions/checkout@v4' &&
-                     checkout['with'] == {'ref' => '${{ github.event.pull_request.head.sha }}',
+                     checkout['with'] == {'ref' => ('$' + '{{ github.event.pull_request.head.sha }}'),
                                           'persist-credentials' => false}, 'exact PR head checkout')
           stub = jobs.fetch('registration-only')
           expected_run = "printf '%s\\n' 'Registration only. Select branch feature/anex-search-adapter-20260907 for the existing dictionary procedure; main never calls the supplier.'\nexit 1\n"
