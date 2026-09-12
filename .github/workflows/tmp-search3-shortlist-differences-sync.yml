@@ -1,0 +1,99 @@
+name: Temporary Search3 shortlist differences sync
+
+on:
+  push:
+    branches:
+      - ux/search3-shortlist-differences-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/search3-shortlist-differences-20260912
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply bounded shortlist difference highlights
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/search3/behavior/results/shortlist.js')
+          s = p.read_text()
+          old = "function partyLabel(item){const adults=Math.max(0,Number(item&&item.adults)||0),childs=Math.max(0,Number(item&&item.childs)||0),parts=[];if(adults)parts.push(adults+' '+plural(adults,'взрослый','взрослых','взрослых'));if(childs)parts.push(childs+' '+plural(childs,'ребёнок','ребёнка','детей'));return parts.join(' · ')||'Уточняется';}\nfunction render(){"
+          new = "function partyLabel(item){const adults=Math.max(0,Number(item&&item.adults)||0),childs=Math.max(0,Number(item&&item.childs)||0),parts=[];if(adults)parts.push(adults+' '+plural(adults,'взрослый','взрослых','взрослых'));if(childs)parts.push(childs+' '+plural(childs,'ребёнок','ребёнка','детей'));return parts.join(' · ')||'Уточняется';}\nfunction factRows(item){return [['Вылет',displayDate(item.date)],['Ночей',String(item.nights)],['Туристы',partyLabel(item)],['Питание',item.meal],['Номер',item.room],['Размещение',item.placement||'Уточняется'],['Оператор',item.operator||'Уточняется']];}\nfunction differenceLabels(items){const rows=(Array.isArray(items)?items:[]).map(factRows),different=new Set;if(rows.length<2)return different;rows[0].forEach((pair,index)=>{const values=new Set(rows.map(row=>String(row[index]&&row[index][1]||'').replace(/\\s+/g,' ').trim().toLocaleLowerCase('ru-RU')));if(values.size>1)different.add(pair[0]);});return different;}\nfunction render(){"
+          if s.count(old) != 1: raise SystemExit('shortlist helper insertion point drifted')
+          s = s.replace(old, new, 1)
+          old = "  if(saved.length){const list=node('div','search3-shortlist__items');saved.forEach(item=>{"
+          new = "  if(saved.length){const list=node('div','search3-shortlist__items'),differences=differenceLabels(saved);saved.forEach(item=>{"
+          if s.count(old) != 1: raise SystemExit('shortlist differences render insertion point drifted')
+          s = s.replace(old, new, 1)
+          old = "    [['Вылет',displayDate(item.date)],['Ночей',String(item.nights)],['Туристы',partyLabel(item)],['Питание',item.meal],['Номер',item.room],['Размещение',item.placement||'Уточняется'],['Оператор',item.operator||'Уточняется']].forEach(pair=>{const wrap=node('div');wrap.append(node('dt','',pair[0]),node('dd','',pair[1]));facts.append(wrap);});"
+          new = "    factRows(item).forEach(pair=>{const wrap=node('div');if(differences.has(pair[0]))wrap.classList.add('search3-shortlist-item__fact--different');wrap.append(node('dt','',pair[0]),node('dd','',pair[1]));facts.append(wrap);});"
+          if s.count(old) != 1: raise SystemExit('shortlist fact rows render block drifted')
+          p.write_text(s.replace(old, new, 1))
+          p = Path('src/search3/styles/results-layout.css')
+          s = p.read_text()
+          old = "& .search3-shortlist-item__facts div{display:grid;align-content:start;gap:2px}\n& .search3-shortlist-item__facts dt{color:#526078;font-size:11px}"
+          new = "& .search3-shortlist-item__facts div{display:grid;align-content:start;gap:2px}\n& .search3-shortlist-item__fact--different{padding:7px 8px;border-radius:9px;background:#fff4e8;box-shadow:inset 0 0 0 1px #f2c9a4}\n& .search3-shortlist-item__facts dt{color:#526078;font-size:11px}\n& .search3-shortlist-item__fact--different dt{color:#8a4b18;font-weight:700}"
+          if s.count(old) != 1: raise SystemExit('shortlist difference CSS insertion point drifted')
+          p.write_text(s.replace(old, new, 1))
+          p = Path('tests/search3-shortlist-trip-summary.test.js')
+          s = p.read_text()
+          old = "assert.match(source, /\\['Туристы',partyLabel\\(item\\)\\]/, 'rendered comparison must expose the saved party composition');\n"
+          new = "assert.match(source, /\\['Туристы',partyLabel\\(item\\)\\]/, 'rendered comparison must expose the saved party composition');\nassert.match(source, /differenceLabels\\(saved\\)/, 'rendered comparison must derive difference highlights from the saved snapshots');\nassert.match(source, /search3-shortlist-item__fact--different/, 'only differing facts receive the shortlist difference marker');\n"
+          if s.count(old) != 1: raise SystemExit('shortlist test assertion insertion point drifted')
+          s = s.replace(old, new, 1)
+          old = "assert.deepEqual(Array.from(partySandbox.values), [\n  '2 взрослых',\n  '2 взрослых · 1 ребёнок',\n  '1 взрослый · 2 ребёнка',\n  '21 взрослый · 5 детей',\n  'Уточняется'\n]);\n\nassert.doesNotMatch(source, /window\\.Search3Shortlist=.*displayDate|window\\.Search3Shortlist=.*partyLabel/, 'presentation helpers stay private; shortlist public API is not expanded');"
+          new = "assert.deepEqual(Array.from(partySandbox.values), [\n  '2 взрослых',\n  '2 взрослых · 1 ребёнок',\n  '1 взрослый · 2 ребёнка',\n  '21 взрослый · 5 детей',\n  'Уточняется'\n]);\n\nconst differenceSandbox = {};\nvm.createContext(differenceSandbox);\nvm.runInContext(`${displayDateSource}; ${functionLine('plural')}; ${functionLine('partyLabel')}; ${functionLine('factRows')}; ${functionLine('differenceLabels')}; this.values = Array.from(differenceLabels([\n  { date: '2026-09-12', nights: 7, adults: 2, childs: 0, meal: 'BB', room: 'Standard', placement: 'DBL', operator: 'ANEX' },\n  { date: '2026-09-12', nights: 10, adults: 2, childs: 0, meal: 'AI', room: 'Standard', placement: 'DBL', operator: 'FUN&SUN' }\n]));`, differenceSandbox);\nassert.deepEqual(Array.from(differenceSandbox.values), ['Ночей', 'Питание', 'Оператор']);\n\nassert.doesNotMatch(source, /window\\.Search3Shortlist=.*displayDate|window\\.Search3Shortlist=.*partyLabel|window\\.Search3Shortlist=.*differenceLabels/, 'presentation helpers stay private; shortlist public API is not expanded');"
+          if s.count(old) != 1: raise SystemExit('shortlist difference test block drifted')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Materialize canonical Search3 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node scripts/build/search3-js/shared-runtime.cjs --check
+      - name: Sync reviewed results asset hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          p = Path('docs/project/search3-production-import.json')
+          data = json.loads(p.read_text())
+          for name in ('search3-results-filters-v1.js','search3-results-filters-v1.css'):
+              asset = Path('v2') / name
+              data['assets'][name]['productionSha256'] = hashlib.sha256(asset.read_bytes()).hexdigest()
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+          PY
+      - name: Focused checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check src/search3/behavior/results/shortlist.js
+          node tests/search3-shortlist-trip-summary.test.js
+          git diff --check
+      - name: Commit bounded package and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-search3-shortlist-differences-sync.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/search3/behavior/results/shortlist.js src/search3/styles/results-layout.css tests/search3-shortlist-trip-summary.test.js v2/search3-results-filters-v1.js v2/search3-results-filters-v1.css docs/project/search3-production-import.json .github/workflows/tmp-search3-shortlist-differences-sync.yml
+          git diff --cached --check
+          git commit -m 'SEARCH: highlight shortlist differences'
+          git push origin HEAD:ux/search3-shortlist-differences-20260912
