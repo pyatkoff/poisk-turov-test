@@ -1,4 +1,4 @@
-name: MATCH recurrence accept reconcile v1
+name: MATCH recurrence accept reconcile v2
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
       - '.github/workflows/hotel-match-three-provider-recurrence-current-accept-reconcile-v1.yml'
   push:
     branches: ['ops/match-residual-ensemble-current-1971-v2']
-    paths: ['.github/match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v1.arm']
+    paths: ['.github/match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v2.arm']
 
 permissions:
   contents: read
@@ -16,14 +16,14 @@ permissions:
   issues: write
 
 concurrency:
-  group: match-three-provider-recurrence-current-accept-reconcile-v1-${{ github.event_name }}
+  group: match-three-provider-recurrence-current-accept-reconcile-v2-${{ github.event_name }}
   cancel-in-progress: false
 
 env:
-  OPERATION_ID: hotel-match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v1
+  OPERATION_ID: hotel-match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v2
   UNKNOWN_OPERATION_ID: hotel-match-three-provider-recurrence-current-accept-1971-20260912-v1
   EVIDENCE_SHA256: e78a092225a3d976345cc6f1eafd9d5d170bcfe34dd608c66de1cd99f843d98f
-  STATE_DIR: /tmp/match-three-provider-recurrence-accept-reconcile-v1
+  STATE_DIR: /tmp/match-three-provider-recurrence-accept-reconcile-v2
 
 jobs:
   validate:
@@ -44,85 +44,118 @@ jobs:
           stripped=re.sub(r'/\*.*?\*/|//[^\n]*','',s,flags=re.S)
           for p in [r'\bINSERT\s+INTO\b',r'\bUPDATE\s+[A-Za-z_]',r'\bDELETE\s+FROM\b',r'\bcurl_\w+\s*\(',r'\bfile_put_contents\s*\(']: assert not re.search(p,stripped,re.I),p
           assert 'START TRANSACTION READ ONLY' in s
+          assert "HMRCRX_OPERATION = 'hotel-match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v2'" in s
           assert "HMRCRX_UNKNOWN_OPERATION = 'hotel-match-three-provider-recurrence-current-accept-1971-20260912-v1'" in s
           assert "'reconciled_committed':'reconciled_no_write'" in s
-          print('MATCH_RECURRENCE_ACCEPT_RECONCILE_SOURCE_OK')
+          print('MATCH_RECURRENCE_ACCEPT_RECONCILE_V2_SOURCE_OK')
           PY
 
   reconcile:
     needs: validate
     if: github.event_name == 'push' && github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Verify arm and zero-DB preflight
+
+      - name: Verify immutable v2 arm and prepare embedded read-only package
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          mkdir -m 700 -p "$STATE_DIR/package"
+          python3 - <<'PY'
+          import base64,hashlib,os
+          from pathlib import Path
+          evidence=Path('reports/match-three-provider-recurrence-evidence-20260912.json').read_bytes()
+          assert hashlib.sha256(evidence).hexdigest()==os.environ['EVIDENCE_SHA256']
+          s=Path('scripts/diagnostics/hotel_match_three_provider_recurrence_current_accept_reconcile.php').read_text()
+          marker='declare(strict_types=1);';assert s.count(marker)==1
+          s=s.replace(marker,marker+"\ndefine('HMRCRX_EVIDENCE_B64','"+base64.b64encode(evidence).decode()+"');",1)
+          Path(os.environ['STATE_DIR']+'/package/reconcile.php').write_text(s)
+          PY
+          php -l "$STATE_DIR/package/reconcile.php"
+
+      - name: Persist durable reservation before CURRENT DB read
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['STATE_DIR']);p=d/'package'/'reconcile.php'
+          r={'operation_id':os.environ['OPERATION_ID'],'reconciles_operation_id':os.environ['UNKNOWN_OPERATION_ID'],'state':'reserved_before_current_db_reconciliation','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':os.environ['EVIDENCE_SHA256'],'package_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'transaction':'REPEATABLE READ / READ ONLY','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve durable reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-three-provider-recurrence-accept-reconcile-v2-${{ github.run_id }}-reserved
+          path: ${{ env.STATE_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Establish resilient SSH master and upload read-only package
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          test "$(cat .github/match-three-provider-recurrence-current-accept-reconcile-1971-20260912-v1.arm)" = "$OPERATION_ID"
           test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
-          KEY="$RUNNER_TEMP/match-recurrence-reconcile-key"
-          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$KEY"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$KEY"; fi
-          chmod 600 "$KEY"; ssh-keygen -y -f "$KEY" >/dev/null
-          OUT=""
-          for attempt in 1 2 3; do
-            set +e; OUT="$(ssh -T -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && { test -f data/db-v1.php || test -f v2/data/db-v1.php; } && printf MATCH_RECURRENCE_RECONCILE_PREFLIGHT_OK' 2>/dev/null)"; rc=$?; set -e
-            [[ $rc -eq 0 && "$OUT" == MATCH_RECURRENCE_RECONCILE_PREFLIGHT_OK ]] && break
-            sleep $((attempt * 2))
-          done
-          test "$OUT" = MATCH_RECURRENCE_RECONCILE_PREFLIGHT_OK
-      - name: Persist reservation before CURRENT DB read
-        run: |
-          set -euo pipefail; mkdir -m 700 -p "$STATE_DIR"
-          python3 - <<'PY'
-          import json,os
-          from pathlib import Path
-          d=Path(os.environ['STATE_DIR']);r={'operation_id':os.environ['OPERATION_ID'],'reconciles_operation_id':os.environ['UNKNOWN_OPERATION_ID'],'state':'reserved_before_current_db_reconciliation','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'evidence_sha256':os.environ['EVIDENCE_SHA256'],'transaction':'REPEATABLE READ / READ ONLY','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};(d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
-          PY
-      - name: Preserve reservation
-        uses: actions/upload-artifact@v4
-        with:
-          name: match-three-provider-recurrence-accept-reconcile-v1-${{ github.run_id }}-reserved
-          path: ${{ env.STATE_DIR }}/reservation.json
-          if-no-files-found: error
-          retention-days: 90
-      - name: Attribute UNKNOWN operation from CURRENT DB provenance
+          key="$RUNNER_TEMP/hmrcx2-key"; sock="$RUNNER_TEMP/hmrcx2.sock"; known="$RUNNER_TEMP/hmrcx2-known"; remote="/tmp/hmrcx2-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          connect_master(){ rm -f "$sock"; ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; }
+          ok=0; for attempt in 1 2 3 4 5; do if connect_master; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMRCRX2_PREFLIGHT_OK' | grep -qx HMRCRX2_PREFLIGHT_OK
+          tar -C "$STATE_DIR/package" -czf - . | ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote' && mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null
+          printf '%s\n' "$key" > "$RUNNER_TEMP/hmrcx2-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/hmrcx2-sockpath"; printf '%s\n' "$known" > "$RUNNER_TEMP/hmrcx2-knownpath"; printf '%s\n' "$remote" > "$RUNNER_TEMP/hmrcx2-remotepath"
+
+      - name: Attribute UNKNOWN writer from CURRENT DB provenance over persistent master
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/hmrcx2-keypath")"; sock="$(cat "$RUNNER_TEMP/hmrcx2-sockpath")"; known="$(cat "$RUNNER_TEMP/hmrcx2-knownpath")"; remote="$(cat "$RUNNER_TEMP/hmrcx2-remotepath")"
+          cleanup(){ ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          if ! ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1; then
+            rm -f "$sock"; ok=0; for attempt in 1 2 3 4 5; do if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          fi
+          set +e
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -d memory_limit=512M '$remote/reconcile.php' --live" > "$STATE_DIR/live.stdout" 2> "$STATE_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
           python3 - <<'PY'
-          import base64,hashlib,json,os,subprocess
+          import hashlib,json,os
           from pathlib import Path
-          state=Path(os.environ['STATE_DIR']);script=Path('scripts/diagnostics/hotel_match_three_provider_recurrence_current_accept_reconcile.php').read_text();evidence=Path('reports/match-three-provider-recurrence-evidence-20260912.json').read_bytes();assert hashlib.sha256(evidence).hexdigest()==os.environ['EVIDENCE_SHA256']
-          marker='declare(strict_types=1);';assert script.count(marker)==1;code=script.replace(marker,marker+"\ndefine('HMRCRX_EVIDENCE_B64','"+base64.b64encode(evidence).decode()+"');",1)
-          key=Path(os.environ['RUNNER_TEMP'])/'match-recurrence-reconcile-key'
-          p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15',os.environ['USER_VALUE']+'@'+os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=512M -- --live'],input=code,text=True,capture_output=True,timeout=300)
-          prefix='HMRCRX_RESULT:';lines=[x[len(prefix):] for x in p.stdout.splitlines() if x.startswith(prefix)]
-          if len(lines)!=1: result={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
+          state=Path(os.environ['STATE_DIR']);out=(state/'live.stdout').read_text(errors='replace');err=(state/'live.stderr').read_text(errors='replace');prefix='HMRCRX_RESULT:'
+          lines=[x[len(prefix):] for x in out.splitlines() if x.startswith(prefix)]
+          if len(lines)!=1: result={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'stderr_tail':err[-2000:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}
           else: result=json.loads(lines[0])
           raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();(state/'result.json').write_bytes(raw)
-          valid=(p.returncode==0 and result.get('status')=='completed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('reconciles_operation_id')==os.environ['UNKNOWN_OPERATION_ID'] and result.get('examined_tuples')==71 and result.get('evidence_sha256')==os.environ['EVIDENCE_SHA256'] and result.get('reconciliation') in ('reconciled_no_write','reconciled_committed') and not result.get('unexpected_operation_rows') and all(result.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','anex_calls','andromeda_calls','booking_calls','lead_calls']))
+          valid=(int(os.environ['RC'])==0 and result.get('status')=='completed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('reconciles_operation_id')==os.environ['UNKNOWN_OPERATION_ID'] and result.get('examined_tuples')==71 and result.get('evidence_sha256')==os.environ['EVIDENCE_SHA256'] and result.get('reconciliation') in ('reconciled_no_write','reconciled_committed') and not result.get('unexpected_operation_rows') and all(result.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls','anex_calls','andromeda_calls','booking_calls','lead_calls']))
           receipt={'operation_id':os.environ['OPERATION_ID'],'reconciles_operation_id':os.environ['UNKNOWN_OPERATION_ID'],'state':'completed' if valid else 'unknown','reconciliation':result.get('reconciliation'),'operation_owned_rows':result.get('operation_owned_rows'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
-          rows=result.get('owned_rows',[]);safe=result.get('safe_target_current',{});summary=[f"MATCH #1971 reconciliation `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. UNKNOWN writer `{os.environ['UNKNOWN_OPERATION_ID']}` resolved as **{result.get('reconciliation','unknown')}**.",f"Scanned immutable **71** tuple provider IDs in CURRENT DB. Operation-owned rows **{result.get('operation_owned_rows',0)}** (ANEX {result.get('operation_owned_anex',0)}, Andromeda {result.get('operation_owned_andromeda',0)}); unexpected provenance rows **{len(result.get('unexpected_operation_rows',[]))}**. This reconciliation itself wrote 0 rows and made 0 supplier/Tourvisor calls."]
+          rows=result.get('owned_rows',[]);safe=result.get('safe_target_current',{});summary=[f"MATCH #1971 reconciliation `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. UNKNOWN writer `{os.environ['UNKNOWN_OPERATION_ID']}` resolved as **{result.get('reconciliation','unknown')}**.",f"Scanned immutable **71** tuple provider IDs in CURRENT DB. Operation-owned rows **{result.get('operation_owned_rows',0)}** (ANEX {result.get('operation_owned_anex',0)}, Andromeda {result.get('operation_owned_andromeda',0)}); unexpected provenance rows **{len(result.get('unexpected_operation_rows',[]))}**. Reconciliation writes 0; supplier/Tourvisor calls 0."]
           if rows: summary.append('Attributed committed rows: '+', '.join(f"{x['provider']}:{x['external_id']}→local/TV{x['local_hotel_id']}" for x in rows)+'.')
-          a=safe.get('anex_8280_mappings',[]);b=safe.get('andromeda_2000034099',[]);summary.append(f"Prior safe target readback: ANEX8280 mappings={[(x.get('catalog_hotel_id'),x.get('enabled')) for x in a]}; Andromeda2000034099={[(x.get('local_hotel_id'),x.get('decision_status')) for x in b]}.")
+          a=safe.get('anex_8280_mappings',[]);b=safe.get('andromeda_2000034099',[]);summary.append(f"Prior safe target CURRENT readback: ANEX8280 mappings={[(x.get('catalog_hotel_id'),x.get('enabled')) for x in a]}; Andromeda2000034099={[(x.get('local_hotel_id'),x.get('decision_status')) for x in b]}.")
           (state/'summary.md').write_text('\n'.join(summary)+'\n');print('\n'.join(summary))
           if not valid: raise SystemExit(2)
           PY
-      - name: Preserve immutable reconciliation
+
+      - name: Preserve immutable v2 reconciliation
         if: always()
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: match-three-provider-recurrence-accept-reconcile-v1-${{ github.run_id }}-final
-          path: ${{ env.STATE_DIR }}/
+          name: match-three-provider-recurrence-accept-reconcile-v2-${{ github.run_id }}-final
+          path: |
+            ${{ env.STATE_DIR }}/reservation.json
+            ${{ env.STATE_DIR }}/result.json
+            ${{ env.STATE_DIR }}/receipt.json
+            ${{ env.STATE_DIR }}/summary.md
+            ${{ env.STATE_DIR }}/live.stderr
           if-no-files-found: warn
           retention-days: 90
       - name: Record reconciliation
@@ -131,6 +164,6 @@ jobs:
         run: |
           printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE_DIR/summary.md"
           gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE_DIR/summary.md"
-      - name: Remove SSH key
+      - name: Remove local key
         if: always()
-        run: rm -f "$RUNNER_TEMP/match-recurrence-reconcile-key"
+        run: rm -f "$RUNNER_TEMP/hmrcx2-key" "$RUNNER_TEMP/hmrcx2-keypath" "$RUNNER_TEMP/hmrcx2-sockpath" "$RUNNER_TEMP/hmrcx2-knownpath" "$RUNNER_TEMP/hmrcx2-remotepath"
