@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-/** One owner-authorized read-only specimen: fresh direct-ANEX tour -> AdditionalPricesDaily. */
+/** One owner-authorized read-only specimen: ANEX tour/program -> AdditionalPricesDaily. */
 function anytour_anex_additional_specimen_run(array $input): array
 {
     if (PHP_SAPI !== 'cli' || $input !== [
-        'operation_id' => 'anex-additional-prices-specimen-20260912-v1',
-        'date' => '2026-10-31',
+        'operation_id' => 'anex-additional-prices-specimen-20260912-v2',
+        'date' => '2026-11-07',
         'nights' => 8,
         'adults' => 1,
     ]) {
@@ -39,8 +39,6 @@ function anytour_anex_additional_specimen_run(array $input): array
     }
 
     require_once $preview . '/app/integrations/anex-client.php';
-    require_once $preview . '/app/integrations/anex-normalizer.php';
-    require_once $preview . '/app/integrations/anex-search.php';
     $_SERVER['SCRIPT_FILENAME'] = '';
     require_once $preview . '/api-anex-search3-preview.php';
 
@@ -57,8 +55,8 @@ function anytour_anex_additional_specimen_run(array $input): array
     $dated = [
         'TOWNFROMINC' => $departure,
         'STATEINC' => $country,
-        'CHECKIN_BEG' => '20261031',
-        'CHECKIN_END' => '20261031',
+        'CHECKIN_BEG' => '20261107',
+        'CHECKIN_END' => '20261107',
         'ADULT' => 1,
         'CHILD' => 0,
     ];
@@ -66,65 +64,32 @@ function anytour_anex_additional_specimen_run(array $input): array
         anytour_anex_search3_dictionary($client, 'SearchTour_CURRENCIES', $dated, $cache),
         ['RUB', 'RUR', 'Рубль', 'Рубли', 'Руб']
     );
-    $search = new AnyTourAnexSearch($client, null, [ANEX_API_TOKEN, ANEX_B2B_TOKEN]);
-    $result = $search->search([
-        'supplier_namespace' => 'anex_online',
-        'departure_id' => $departure,
-        'destination_id' => $country,
-        'currency_id' => $currency,
-        'checkin_begin' => '2026-10-31',
-        'checkin_end' => '2026-10-31',
-        'nights_from' => 8,
-        'nights_till' => 8,
-        'adults' => 1,
-        'children' => 0,
-        'child_ages' => [],
-    ]);
 
-    $offer = null;
-    foreach ($result['offers'] as $candidate) {
-        if (($candidate['kind'] ?? null) === 'concrete'
-            && is_string($candidate['supplier_offer_id'] ?? null)
-            && preg_match('/^[1-9][0-9]{0,8}$/D', $candidate['supplier_offer_id'])) {
-            $offer = $candidate;
-            break;
-        }
-    }
-    if ($offer === null) {
-        foreach ($result['offers'] as $candidate) {
-            if (($candidate['kind'] ?? null) !== 'group_minimum') continue;
-            $expanded = $search->expand((string) $candidate['offer_key']);
-            foreach ($expanded['offers'] as $concrete) {
-                if (is_string($concrete['supplier_offer_id'] ?? null)
-                    && preg_match('/^[1-9][0-9]{0,8}$/D', $concrete['supplier_offer_id'])) {
-                    $offer = $concrete;
-                    break 2;
-                }
-            }
-            break;
-        }
-    }
-    if ($offer === null) {
+    // `AdditionalPricesDaily.tour` is a tour/program dictionary identity, not CATCLAIM.
+    // Keep this one-shot discovery private until the supplier response contract is proven.
+    $programs = anytour_anex_additional_tour_programs(ANEX_API_TOKEN, $departure, $country);
+    if ($programs === []) {
         return [
             'schema_version' => 1,
             'operation_id' => $input['operation_id'],
             'status' => 'blocked',
-            'reason' => 'NO_NUMERIC_CONCRETE_TOUR',
-            'direct_anex_requests' => $client->requestsMade(),
+            'reason' => 'NO_TOUR_PROGRAMS',
+            'direct_anex_requests' => $client->requestsMade() + 1,
             'additional_prices_requests' => 0,
             'booking_calls' => 0,
             'mapping_writes' => 0,
         ];
     }
+    usort($programs, static function (array $a, array $b): int { return $a['id'] <=> $b['id']; });
+    $program = $programs[0];
 
-    $tour = (int) $offer['supplier_offer_id'];
     $additional = new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN);
     $payload = $additional->additionalPricesDaily([
         'page' => 1,
         'pageSize' => 10,
-        'tour' => $tour,
-        'dateBeg' => (string) $offer['checkin'],
-        'nights' => (int) $offer['nights'],
+        'tour' => $program['id'],
+        'dateBeg' => '2026-11-07',
+        'nights' => 8,
         'currency' => $currency,
     ]);
 
@@ -134,34 +99,104 @@ function anytour_anex_additional_specimen_run(array $input): array
         'status' => 'completed',
         'criteria' => [
             'country' => 'Turkey',
-            'dateBeg' => (string) $offer['checkin'],
-            'nights' => (int) $offer['nights'],
+            'dateBeg' => '2026-11-07',
+            'nights' => 8,
             'adults' => 1,
             'currency_id' => $currency,
         ],
-        'selected_offer' => [
-            'hotel_external_id' => $offer['hotel']['external_id'] ?? null,
-            'hotel_name' => $offer['hotel']['name'] ?? null,
-            'room' => $offer['room'] ?? null,
-            'placement' => $offer['hotel_place'] ?? null,
-            'meal' => $offer['meal'] ?? null,
-            'search_price' => $offer['price'] ?? null,
-            'tour_id_sha256' => hash('sha256', (string) $tour),
+        'tour_program' => [
+            'namespace' => 'anex_online',
+            'id_sha256' => hash('sha256', (string) $program['id']),
+            'name' => $program['name'],
+            'available_program_count' => count($programs),
+            'semantics' => 'supplier_tour_program_dictionary_identity',
         ],
         'additional_prices_payload' => $payload,
-        'direct_anex_requests' => $client->requestsMade(),
+        'direct_anex_requests' => $client->requestsMade() + 1,
         'additional_prices_requests' => $additional->requestsMade(),
         'additional_request_diagnostics' => $additional->lastRequestDiagnostics(),
         'money_semantics' => [
-            'search_price_separate' => true,
+            'service_scope' => 'minimum_daily_air_surcharge_service',
             'additional_payload_uninterpreted' => true,
-            'fuel_inclusion_verified' => false,
+            'per_person_or_package' => 'unknown',
+            'included_in_search_price' => 'unknown',
+            'fuel_equivalence_verified' => false,
             'final_price_verified' => false,
             'arithmetic_applied' => false,
         ],
         'booking_calls' => 0,
         'mapping_writes' => 0,
     ];
+}
+
+/**
+ * Bounded one-shot access to the read-only SearchTour_TOURS dictionary.
+ * It intentionally returns only numeric program identity + short label and never supplier text on errors.
+ */
+function anytour_anex_additional_tour_programs(string $token, int $departure, int $country): array
+{
+    if (!function_exists('curl_init')) throw new RuntimeException('ANEX_ADDITIONAL_TOURS_TRANSPORT');
+    if ($departure < 1 || $country < 1) throw new RuntimeException('ANEX_ADDITIONAL_TOURS_CRITERIA');
+    $url = 'https://parser.anextour.ru/export/default.php?' . http_build_query([
+        'samo_action' => 'api', 'version' => '1.0', 'type' => 'json',
+        'action' => 'SearchTour_TOURS', 'oauth_token' => $token,
+        'TOWNFROMINC' => $departure, 'STATEINC' => $country,
+    ], '', '&', PHP_QUERY_RFC3986);
+    $ch = curl_init($url);
+    if ($ch === false) throw new RuntimeException('ANEX_ADDITIONAL_TOURS_TRANSPORT');
+    $body = '';
+    $tooLarge = false;
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => false,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_PROXY => '',
+        CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
+        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+        CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$body, &$tooLarge): int {
+            if (strlen($body) + strlen($chunk) > 2097152) { $tooLarge = true; return 0; }
+            $body .= $chunk;
+            return strlen($chunk);
+        },
+    ]);
+    try {
+        $ok = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        if ($ok === false || $tooLarge || $status !== 200) throw new RuntimeException('ANEX_ADDITIONAL_TOURS_TRANSPORT');
+    } finally {
+        curl_close($ch);
+    }
+    try {
+        $decoded = json_decode($body, true, 64, JSON_THROW_ON_ERROR);
+    } catch (Throwable $ignored) {
+        throw new RuntimeException('ANEX_ADDITIONAL_TOURS_RESPONSE');
+    }
+    if (!is_array($decoded) || array_key_exists('error', $decoded)
+        || !array_key_exists('SearchTour_TOURS', $decoded) || !is_array($decoded['SearchTour_TOURS'])) {
+        throw new RuntimeException('ANEX_ADDITIONAL_TOURS_RESPONSE');
+    }
+    $payload = $decoded['SearchTour_TOURS'];
+    if (array_key_exists('error', $payload)) throw new RuntimeException('ANEX_ADDITIONAL_TOURS_RESPONSE');
+    $rows = isset($payload['tours']) && is_array($payload['tours']) ? $payload['tours'] : $payload;
+    if ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1)) {
+        throw new RuntimeException('ANEX_ADDITIONAL_TOURS_RESPONSE');
+    }
+    $result = [];
+    foreach (array_slice($rows, 0, 500) as $row) {
+        if (!is_array($row)) continue;
+        $id = $row['id'] ?? $row['tourKey'] ?? $row['tourId'] ?? null;
+        if (is_string($id) && preg_match('/^[1-9][0-9]{0,8}$/D', $id)) $id = (int) $id;
+        if (!is_int($id) || $id < 1 || $id > 999999999) continue;
+        $name = $row['name'] ?? $row['tour'] ?? null;
+        if (!is_string($name) || $name === '' || strlen($name) > 240 || preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/', $name)) {
+            $name = null;
+        }
+        $result[$id] = ['id' => $id, 'name' => $name];
+    }
+    return array_values($result);
 }
 
 if (!defined('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY')) {
@@ -175,7 +210,7 @@ if (!defined('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY')) {
     } catch (Throwable $e) {
         fwrite(STDOUT, json_encode([
             'schema_version' => 1,
-            'operation_id' => 'anex-additional-prices-specimen-20260912-v1',
+            'operation_id' => 'anex-additional-prices-specimen-20260912-v2',
             'status' => 'unknown',
             'error' => preg_match('/^ANEX_[A-Z0-9_]+$/D', $e->getMessage()) ? $e->getMessage() : 'ANEX_ADDITIONAL_SPECIMEN_FAILED',
             'automatic_retry' => false,
