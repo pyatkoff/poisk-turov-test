@@ -1,0 +1,174 @@
+name: MATCH Andromeda ANEX direct-key matrix v2
+on:
+  push:
+    branches: [ops/match-andromeda-anex-direct-key-matrix-1971-20260912-v1]
+    paths:
+      - .github/workflows/hotel-match-andromeda-anex-direct-key-matrix-v2.yml
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: anytour-match-anexkey-matrix-v2
+  cancel-in-progress: false
+jobs:
+  slice:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - {sid: s01, date: '2026-11-27', v10_artifact: '10274864188'}
+          - {sid: s02, date: '2026-12-25', v10_artifact: '10275587264'}
+          - {sid: s03, date: '2027-01-08', v10_artifact: '10275787006'}
+          - {sid: s04, date: '2027-01-22', v10_artifact: '10275707170'}
+    env:
+      FAMILY_ID: hotel-match-andromeda-anex-direct-key-matrix-1971-20260912-v2
+      OPERATION_ID: hotel-match-andromeda-anex-direct-key-matrix-1971-20260912-v2-${{ matrix.sid }}
+      SLICE_ID: ${{ matrix.sid }}
+      SEARCH_DATE: ${{ matrix.date }}
+      BASE_SHA: bb1ed7ba405b0e6ac7514ccb26c6e61c09983448
+      OUT: /tmp/match-anexkey-v2-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 4, persist-credentials: false}
+      - name: Verify exact source and derive immutable program
+        run: |
+          set -euo pipefail
+          test "$(git merge-base "$BASE_SHA" HEAD)" = "$BASE_SHA"
+          git diff --name-only "$BASE_SHA" HEAD | sort > "$RUNNER_TEMP/paths"
+          printf '%s\n' '.github/workflows/hotel-match-andromeda-anex-direct-key-matrix-v2.yml' > "$RUNNER_TEMP/expected"
+          diff -u "$RUNNER_TEMP/expected" "$RUNNER_TEMP/paths"
+          mkdir -p "$OUT"
+          php -l scripts/diagnostics/hotel_match_andromeda_anex_direct_key_matrix.php
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path('scripts/diagnostics/hotel_match_andromeda_anex_direct_key_matrix.php').read_text()
+          assert p.count('__MATCH_DATE__')==1 and p.count('__MATCH_OPERATION__')==1
+          p=p.replace('__MATCH_DATE__',os.environ['SEARCH_DATE']).replace('__MATCH_OPERATION__',os.environ['OPERATION_ID'])
+          pathlib.Path(os.environ['OUT'],'program.php').write_text(p)
+          PY
+          php -l "$OUT/program.php"
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); src=(d/'program.php').read_bytes()
+          x={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'date':os.environ['SEARCH_DATE'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(src).hexdigest(),'state':'reserved_before_supplier_access','tourvisor_fresh_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          raw=(json.dumps(x,sort_keys=True,indent=2)+'\n').encode(); (d/'reservation.json').write_bytes(raw); assert (d/'reservation.json').read_bytes()==raw
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anexkey-v2-${{ matrix.sid }}-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Read immutable matching v10 Tourvisor slice
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34629144442
+          artifact-ids: ${{ matrix.v10_artifact }}
+          path: /tmp/v10-saved
+      - name: Execute fresh Andromeda plus direct ANEX only
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php'
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']); stdout=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes(); lines=stdout.decode(errors='replace').splitlines(); marker='MATCH_ANEXKEY_JSON:'
+          vals=[x[len(marker):] for x in lines if x.startswith(marker)]
+          x=json.loads(vals[-1]) if vals else {'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','stdout_sha256':hashlib.sha256(stdout).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True}
+          x['remote_exit']=int(os.environ['RC']); (d/'provider-result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
+          assert x.get('database_writes')==0 and x.get('mapping_writes')==0 and (x.get('provider_calls') or {}).get('tourvisor')==0
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true
+          rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+      - name: Intersect exact operator IDs with saved same-date Tourvisor
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,re,unicodedata,collections
+          out=pathlib.Path(os.environ['OUT']); fresh=json.loads((out/'provider-result.json').read_text())
+          candidates=list(pathlib.Path('/tmp/v10-saved').rglob('result.json')); assert len(candidates)==1
+          old=json.loads(candidates[0].read_text()); assert old.get('status')=='completed' and old.get('search_date')==os.environ['SEARCH_DATE']
+          drop={'hotel','hotels','resort','resorts','spa','the','and','by','otel','отель','отели','гостиница'}
+          def norm(s):
+            s=unicodedata.normalize('NFKD',str(s or '').casefold()).replace('ı','i').replace('&',' and '); s=''.join(c for c in s if not unicodedata.combining(c)); w=re.findall(r'[^\W_]+',s); return ' '.join(sorted(x for x in w if x not in drop))
+          def forms(name):
+            vals={str(name or '')}; vals.add(re.sub(r'\([^)]*\)',' ',str(name or ''))); return {n for v in vals if (n:=norm(v))}
+          idx=collections.defaultdict(set); tv={str(x['id']):x for x in old['providers']['tourvisor']['hotels']}
+          for tid,h in tv.items():
+            for a in h.get('aliases') or []: idx[a].add(tid)
+            for a in forms(h.get('name')): idx[a].add(tid)
+          oldtuples={(str(r['tourvisor']['id']),str(r['anex']['id']),str(r['andromeda']['id'])) for r in (((old.get('comparison') or {}).get('unique_alias_triples') or {}).get('rows') or [])}
+          triples=[]
+          for b in fresh.get('bridges') or []:
+            if not b.get('direct_anex_present'): continue
+            hits=set()
+            for k in forms(b.get('direct_anex_name')): hits |= idx.get(k,set())
+            if len(hits)!=1: continue
+            tid=next(iter(hits)); tup=(tid,str(b['anex_hotel_id']),str(b['andromeda_hotel_id']))
+            triples.append({'tourvisor_id':tid,'tourvisor_name':tv[tid]['name'],'anex_id':tup[1],'anex_name':b.get('direct_anex_name'),'andromeda_id':tup[2],'andromeda_name':b.get('andromeda_name'),'image_pattern_verified':bool(b.get('image_pattern_verified')),'prior_v10_exact_tuple':tup in oldtuples,'hotel_url':b.get('hotel_url')})
+          triples.sort(key=lambda r:(int(r['tourvisor_id']),int(r['anex_id']),int(r['andromeda_id'])))
+          result={'status':'completed','operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'date':os.environ['SEARCH_DATE'],'fresh_counts':fresh.get('counts'),'andromeda_pages':(fresh.get('providers') or {}).get('andromeda',{}).get('pages_consumed'),'saved_tourvisor_hotels':len(tv),'operator_key_triple_count':len(triples),'prior_v10_exact_tuple_count':sum(1 for x in triples if x['prior_v10_exact_tuple']),'triples':triples,'database_writes':0,'mapping_writes':0,'tourvisor_fresh_calls':0,'no_replay':True}
+          (out/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({k:v for k,v in result.items() if k!='triples'},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anexkey-v2-${{ matrix.sid }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/provider-result.json
+            ${{ env.OUT }}/result.json
+          retention-days: 90
+  aggregate:
+    if: github.run_attempt == 1 && github.run_number == 1
+    needs: slice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'match-anexkey-v2-*-final', path: /tmp/all, merge-multiple: false}
+      - name: Aggregate recurring exact-ID triples
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,collections,os
+          files=list(pathlib.Path('/tmp/all').rglob('result.json')); rows=[]
+          for p in files:
+            d=json.loads(p.read_text()); assert d['status']=='completed'; rows.append(d)
+          assert len(rows)==4
+          seen=collections.defaultdict(set); names={}
+          for d in rows:
+            for r in d['triples']:
+              k=(r['tourvisor_id'],r['anex_id'],r['andromeda_id']); seen[k].add(d['date']); names[k]=r
+          recurring=[]
+          for k,dates in seen.items():
+            r=dict(names[k]); r['dates']=sorted(dates); r['recurrence']=len(dates); recurring.append(r)
+          recurring.sort(key=lambda r:(-r['recurrence'],int(r['tourvisor_id'])))
+          out={'status':'completed','family_id':'hotel-match-andromeda-anex-direct-key-matrix-1971-20260912-v2','slices':4,'slice_triple_observations':sum(len(x['triples']) for x in rows),'distinct_exact_id_triples':len(recurring),'recurring_ge2':sum(r['recurrence']>=2 for r in recurring),'recurring_ge3':sum(r['recurrence']>=3 for r in recurring),'recurring_all4':sum(r['recurrence']==4 for r in recurring),'slice_summaries':[{k:d[k] for k in ['slice_id','date','fresh_counts','andromeda_pages','saved_tourvisor_hotels','operator_key_triple_count','prior_v10_exact_tuple_count']} for d in sorted(rows,key=lambda x:x['slice_id'])],'triples':recurring,'database_writes':0,'mapping_writes':0,'tourvisor_fresh_calls':0,'no_replay':True}
+          pathlib.Path('aggregate.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 direct operator-key 1-1-1 matrix v2 COMPLETE/READ-ONLY: 4 synchronized Turkey slices, fresh Andromeda ANEX-only all pages + direct ANEX, **fresh Tourvisor calls 0** (immutable v10 same-date Tourvisor results reused). Triple observations **{out['slice_triple_observations']}**, distinct exact ID triples **{out['distinct_exact_id_triples']}**, recurring >=2 dates **{out['recurring_ge2']}**, >=3 **{out['recurring_ge3']}**, all4 **{out['recurring_all4']}**. DB/mapping/booking/lead writes0. Run `{os.environ['GITHUB_RUN_ID']}`. All v2 operation IDs NEW/NO-REPLAY; v1 stopped pre-supplier and is not replayed. Evidence only; CURRENT protections/readback required before mappings."
+          pathlib.Path('summary.md').write_text(s+'\n'); print(s)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anexkey-v2-${{ github.run_id }}-aggregate', path: 'aggregate.json', retention-days: 90}
+      - name: Record result
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file summary.md
