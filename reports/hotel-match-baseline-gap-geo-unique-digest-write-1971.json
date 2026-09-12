@@ -1,0 +1,10 @@
+{
+  "schema": "hotel-match-baseline-gap-geo-unique-digest-write/1",
+  "source_audit_operation": "hotel-match-baseline-gap-geo-unique-audit-1971-20260912-v1",
+  "source_audit_result_sha256": "9132409fdf10c370d3d240cdceeede69c3f91ce75766c860d1dc7010c3d098f4",
+  "expected_count": 13,
+  "expected_safe_set_sha256": "fbee1eb04fd690145d5415391a755d09b364e190c65d5b3fbb60af6b3ddc98c6",
+  "approval_policy": "owner_exact_and_strong_20260908",
+  "match_class": "strong_candidate",
+  "scope": "preview"
+}
