@@ -5,8 +5,8 @@ declare(strict_types=1);
 function anytour_anex_additional_specimen_run(array $input): array
 {
     if (PHP_SAPI !== 'cli' || $input !== [
-        'operation_id' => 'anex-additional-prices-specimen-20260912-v2',
-        'date' => '2026-11-07',
+        'operation_id' => 'anex-additional-prices-specimen-20260912-v3',
+        'date' => '2026-11-14',
         'nights' => 8,
         'adults' => 1,
     ]) {
@@ -55,8 +55,8 @@ function anytour_anex_additional_specimen_run(array $input): array
     $dated = [
         'TOWNFROMINC' => $departure,
         'STATEINC' => $country,
-        'CHECKIN_BEG' => '20261107',
-        'CHECKIN_END' => '20261107',
+        'CHECKIN_BEG' => '20261114',
+        'CHECKIN_END' => '20261114',
         'ADULT' => 1,
         'CHILD' => 0,
     ];
@@ -88,7 +88,7 @@ function anytour_anex_additional_specimen_run(array $input): array
         'page' => 1,
         'pageSize' => 10,
         'tour' => $program['id'],
-        'dateBeg' => '2026-11-07',
+        'dateBeg' => '2026-11-14',
         'nights' => 8,
         'currency' => $currency,
     ]);
@@ -99,7 +99,7 @@ function anytour_anex_additional_specimen_run(array $input): array
         'status' => 'completed',
         'criteria' => [
             'country' => 'Turkey',
-            'dateBeg' => '2026-11-07',
+            'dateBeg' => '2026-11-14',
             'nights' => 8,
             'adults' => 1,
             'currency_id' => $currency,
@@ -129,10 +129,7 @@ function anytour_anex_additional_specimen_run(array $input): array
     ];
 }
 
-/**
- * Bounded one-shot access to the read-only SearchTour_TOURS dictionary.
- * It intentionally returns only numeric program identity + short label and never supplier text on errors.
- */
+/** Bounded one-shot access to the read-only SearchTour_TOURS dictionary. */
 function anytour_anex_additional_tour_programs(string $token, int $departure, int $country): array
 {
     if (!function_exists('curl_init')) throw new RuntimeException('ANEX_ADDITIONAL_TOURS_TRANSPORT');
@@ -210,7 +207,7 @@ if (!defined('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY')) {
     } catch (Throwable $e) {
         fwrite(STDOUT, json_encode([
             'schema_version' => 1,
-            'operation_id' => 'anex-additional-prices-specimen-20260912-v2',
+            'operation_id' => 'anex-additional-prices-specimen-20260912-v3',
             'status' => 'unknown',
             'error' => preg_match('/^ANEX_[A-Z0-9_]+$/D', $e->getMessage()) ? $e->getMessage() : 'ANEX_ADDITIONAL_SPECIMEN_FAILED',
             'automatic_retry' => false,
