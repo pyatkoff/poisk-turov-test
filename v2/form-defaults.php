@@ -8,8 +8,9 @@ function v2_positive_int($value, int $fallback, int $max = PHP_INT_MAX): int
 
 function v2_date_value($value, DateTimeImmutable $fallback): string
 {
+    if (!is_scalar($value)) return $fallback->format('Y-m-d');
     $raw = trim((string)$value);
-    if ($raw === '') return $fallback->format('Y-m-d');
+    if ($raw === '' || strpos($raw, "\0") !== false) return $fallback->format('Y-m-d');
 
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
     $errors = DateTimeImmutable::getLastErrors();
