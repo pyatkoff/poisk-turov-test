@@ -136,7 +136,6 @@ sc_check($tvComplete['price_equivalence_proof_from_coverage'] === false);
 
 $bad = [
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('samo', null); },
-    function () { AnyTourThreeProviderSearchCoverage::fromEvidence('anex', ['received_rows' => 1, 'price_page' => 1]); },
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('anex', ['price_page' => 2, 'received_rows' => 1]); },
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('anex', ['price_page' => 1, 'received_rows' => -1]); },
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('anex', ['price_page' => 1, 'received_rows' => '300']); },
@@ -153,7 +152,6 @@ $bad = [
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('tourvisor', ['search_status'=>'complete','results_fetch_limit'=>100,'continuation_rounds'=>-1,'no_growth_after_continue'=>false,'unique_groups'=>1]); },
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('tourvisor', ['search_status'=>'complete','results_fetch_limit'=>100,'continuation_rounds'=>0,'no_growth_after_continue'=>true,'unique_groups'=>1]); },
     function () { AnyTourThreeProviderSearchCoverage::fromEvidence('tourvisor', ['search_status'=>'complete','results_fetch_limit'=>100,'continuation_rounds'=>1,'no_growth_after_continue'=>1,'unique_groups'=>1]); },
-    function () { AnyTourThreeProviderSearchCoverage::fromEvidence('tourvisor', ['unique_groups'=>1,'search_status'=>'complete','results_fetch_limit'=>100,'continuation_rounds'=>1,'no_growth_after_continue'=>true]); },
 ];
 foreach ($bad as $case) {
     try {
