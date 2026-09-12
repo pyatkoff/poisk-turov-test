@@ -231,7 +231,7 @@ Aggregate exact head `731403082238bcad0685a85d3deda1af384612fa`: run `3467890844
 - immutable scenario lineage is mandatory: `operation_id`, scenario revision, criteria digest, source SHA and relative checkpoint path;
 - external hotel ID remains an opaque provider-scoped string, including numeric-looking IDs/leading zeroes;
 - `local_hotel_id=null` is explicit `unmapped` evidence only; actually available name/country/geography/star/coords may travel to #1759/#996, never as mapping authority;
-- supplier labels, coordinates, counts/coverage и price similarity are not hotel/package/price-equivalence proof;
+- supplier labels, coordinates, counts/coverage and price similarity are not hotel/package/price-equivalence proof;
 - observation contract sets mapping/identity decision and replay authority false;
 - P7 runs this suite with PHP warnings promoted to failures; no network/DB/booking primitives are allowed in the aggregate boundary.
 
@@ -263,7 +263,7 @@ Latest exact-head gate после #2122:
 - INT→SEARCH handoff: 97;
 - direct ANEX bridge: 115.
 
-Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts и unmapped observation evidence не получают universal/mapping authority.
+Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts and unmapped observation evidence не получают universal/mapping authority.
 
 Это source-side readiness, не production approval и не UI/publication acceptance.
 
