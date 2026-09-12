@@ -38,6 +38,10 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Install pinned Search3 build tools
+        shell: bash
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+
       - name: Verify exact source and Search3 generated parity
         shell: bash
         env:
