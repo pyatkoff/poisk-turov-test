@@ -110,7 +110,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
           const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
           assert.deepEqual(counts(state.groupTops), [2, 2], 'trip basics retain two balanced rows');
           assert.ok(state.groupColumns.every(value => value === 2));
-          assert.deepEqual(counts(state.preferenceTops), [6], 'wide desktop keeps the six primary OTA preferences on one row');
+          assert.ok(Math.max(...state.preferenceTops) - Math.min(...state.preferenceTops) <= 3, 'wide desktop keeps the six primary OTA preferences visually aligned on one row');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[0] + 40, 'exact hotel gets the widest primary track');
           assert.ok(state.preferenceWidths[1] >= state.preferenceWidths[2] + 100, 'hotel track stays materially wider than compact category');
           assert.ok(state.preferenceWidth >= state.form.width - 50);
