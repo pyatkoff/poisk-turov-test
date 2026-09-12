@@ -4,9 +4,9 @@
 INT-база: свежая `feature/anex-search-adapter-20260907`. Координация: #996.
 Рабочие issues: #1685, #1717, #1647. #1759 — только внешний identity dependency.
 
-Этот файл — исполняемый INT/data/API roadmap. Свежие issue, merged code, CI и readback сильнее любого исторического checkpoint/next_action.
+Этот файл — исполняемый current-only roadmap INT/data/API. Свежие issue, merged source, CI и readback сильнее любого старого checkpoint/next_action. Подробная история остаётся в issues/PR; сюда не дублировать завершённые очереди.
 
-## 1. Scope и обязательный pre-run
+## 1. Обязательный pre-run
 
 Перед каждым запуском перечитать свежие:
 
@@ -18,41 +18,53 @@ INT-база: свежая `feature/anex-search-adapter-20260907`. Коорди�
 6. #1759 только как current accepted identity baseline/dependency;
 7. fresh INT head, open PR/CI/actions и active claims.
 
-INT владеет supplier transport/auth/read-only search, dictionaries/filter semantics, observation ledger, money/fuel/additional evidence, provider-neutral offer/quote/handoff contracts и разрешённой Andromeda package/quote source pipeline.
+Один writer на shared path. Short branch от fresh INT base → exact claim #996 → focused tests + Security/applicable CI → merge только green. Без force-push. SAFE/MEDIUM source-only пакеты продолжать автономно; HIGH-risk новое действие требует отдельного допуска.
 
-Не брать из этой очереди:
+## 2. Scope / hard boundaries
+
+INT владеет:
+
+- supplier transport/auth/read-only search;
+- provider dictionaries и filter semantics;
+- observation ledger;
+- money/fuel/additional evidence;
+- provider-neutral offer/quote/handoff contracts;
+- разрешённой Andromeda package/quote source pipeline.
+
+INT не владеет:
 
 - P3 hotel matching / identity reconciliation — EXTERNAL (#1759);
 - mapping writers, acceptance/manual/conflict queues, bulk reconciliation;
 - SEARCH #1646 renderer/controller/UI;
 - SITE #1719 и SEO #1720;
-- lead transport/field mapping, Metrika/goals/analytics;
-- production SEO, server/platform config;
+- lead transport/field mapping;
+- Metrika/goals/analytics;
+- production SEO;
+- server/platform config;
 - Tourvisor protected URL/payload/price arithmetic.
 
-Один writer на shared path, short branch от fresh base, exact claim в #996, focused tests + Security/applicable CI, merge только green, без force-push. SAFE/MEDIUM source-only пакеты продолжаются автономно. HIGH-risk новое действие требует отдельного допуска.
+Нельзя отправлять реальные заявки/бронирования. `bron` и `bron_ticket` запрещены.
 
-## 2. No-replay и stop guards
+## 3. No-replay / supplier guards
 
 - `completed`, `reserved`, `unknown` supplier operation не replay.
 - Новый supplier scenario = новый `operation_id`, checkpoint, criteria digest и source SHA.
-- Переименование checkpoint не делает replay новой операцией.
+- Переименование checkpoint не превращает replay в новую операцию.
 - Legacy UNKNOWN `broninit` sealed/no-replay.
-- `bron` и `bron_ticket` запрещены; реальные заявки/бронирования запрещены.
 - Старый Egypt-v3 case historical/no-replay.
 - PHP diagnostic `$out += [...]` bug уже исправлен; второй fix не создавать.
 - `PRICES[].id` подтверждён как полный `claiminc` для Andromeda package flow.
 - Historical identity counts не current truth; свежий #1759/DB readback авторитетнее.
 
-## 3. Current proven money semantics
+## 4. Current money / P0 semantics
 
 Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current accepted triple identities:
 
 - direct ANEX `search_price` == Andromeda `OPERATORS=5` `search_price` во всех 6;
 - Tourvisor displayed/group price minus этот search price == Tourvisor `fuelCharge` во всех 6;
-- это cohort evidence, не универсальная формула и не proof одного package.
+- это cohort evidence, не универсальная formula и не proof одного package.
 
-Money facts всегда раздельны:
+Всегда хранить раздельно:
 
 - `search_price` + currency;
 - `fuel_charge_reported`;
@@ -64,36 +76,38 @@ Money facts всегда раздельны:
 
 Отсутствующий fuel/additional = `unknown`, не `0`. Ничего автоматически не складывать. Agency cost и customer money не fallback друг в друга. Protected price arithmetic не менять.
 
-Для одного exact Andromeda claim доказана и уже sealed цепочка:
+Для одного exact Andromeda claim доказана и sealed цепочка:
 
 `broninit 124864 RUB → get_flights → unique outbound+return changeservice → calc 135643 RUB`.
 
-`final_price_verified=true` относится только к этому exact claim. Это доказывает, что package/search и calc quote могут отличаться, но не доказывает fuel formula.
+`final_price_verified=true` относится только к exact verified claim. Это доказывает, что search/package и calc quote могут отличаться, но не доказывает fuel formula.
 
-## 4. Закрытые source-side контракты — не делать второй слой
+## 5. Закрытые source-side contracts — второй слой не создавать
 
-Без regression evidence не открывать заново:
+Без нового evidence/regression не открывать заново:
 
 - dates/nights/adults/children/ages;
 - canonical meal key/families/qualifiers;
-- availability с честным `unknown`;
 - room/placement raw+normalized semantics;
+- availability с честным `unknown`;
 - flight/detail capability flags;
 - provider != operator;
-- strict money provenance и `observed_at`;
+- strict money provenance + `observed_at`;
 - canonical offer envelope/dedupe/context guards;
-- air-search capability boundary: catalog/discovery evidence отдельно от upstream supplier-search filtering;
-- region/resort/subregion geography boundary: supplier geography observation отдельно от current local canonical geography; generic upstream forwarding fail-closed;
-- stars/category evidence boundary: supplier label observational only, canonical category только через current accepted local identity;
-- hotel rating: local-only canonical fact, supplier score observational only;
-- hotel services/amenities: local-only canonical list, supplier labels/codes observational only;
-- hotel types: local-only canonical list, supplier labels/codes observational only.
+- air-search capability boundary;
+- departure/country provider-specific mapping boundary;
+- region/resort/subregion geography boundary;
+- stars/category boundary;
+- rating/services/types local-only boundaries;
+- direct ANEX retained concrete-offer bridge;
+- Andromeda quote integrity + canonical quote money;
+- P6 provider-neutral SEARCH handoff.
 
-### Direct ANEX
+### 5.1 Direct ANEX retained offer
 
 #2081 merged `e92253bbcadfc5228f3fa233f64be5cd1983228f`:
 
-- real random `search_ref` + opaque source-qualified `offer_ref`;
+- random `search_ref` + opaque source-qualified `offer_ref`;
 - original normalized facts retained;
 - one-shot group expansion с durable unknown-before-transport guard;
 - supplier-free saved concrete-offer read;
@@ -101,251 +115,169 @@ Money facts всегда раздельны:
 - group minimum нельзя выдать за concrete selected offer;
 - private supplier IDs не публикуются.
 
-Дальнейшее receiving wiring принадлежит SEARCH; INT не меняет renderer/controller/UI.
+Receiving wiring принадлежит SEARCH #1646.
 
-### Andromeda quote integrity
+### 5.2 Andromeda quote integrity
 
-#2088/#2090:
+#2088/#2090/#2092/#2094:
 
 - durable `reserved` до supplier call;
 - `reserved/unknown` запрещают semantic replay;
 - completed read supplier-free и только после current-context revalidation;
-- persisted search/package/final money и quote/flight state повторно валидируются;
-- malformed/zero/extra money fields fail closed.
-
-#2092 merged `510166858b4a4443e0fb2a869b92292cc2706aea`:
-
-- canonical search/package/quote money остаются раздельными;
+- malformed/zero/extra money fail closed;
+- search/package/quote money раздельны;
 - `final_price_verified=true` только через verified Andromeda quote;
-- `search_price_fuel_relation=unknown`;
-- `arithmetic_applied=false`;
-- Tourvisor/direct ANEX quote enrichment unsupported без отдельного доказанного contract.
+- `search_price_fuel_relation=unknown`, `arithmetic_applied=false`;
+- verified quote обязан совпасть с exact current provider/operator/local hotel + digest/generation/page/TTL/search money;
+- private claim/session/offer IDs и flight payload не переходят browser boundary;
+- selection/booking disabled/false.
 
-#2094 merged `62ec85a5143840ef62c0628fa56a814b2d81ddbd`:
+### 5.3 Air search/filter
 
-- verified quote должен совпасть с exact current retained provider/operator/local hotel + digest identity + generation/page + non-expired TTL;
-- quote local/operator/search money обязаны совпасть с canonical offer;
-- принимается только quote_verified/final verified/no-flight-choice-required/booking-disabled state;
-- output содержит digest-only provenance и separate canonical money;
-- private claim/session/offer IDs и flight payload не переходят boundary;
-- selection/booking остаются disabled/false.
+#2100/#2101:
 
-Focused run `34665514483` SUCCESS (54), Security `34665514441` SUCCESS.
+- Tourvisor имеет verified catalog/discovery evidence для arrivals + `onlyDirect`/`onlyCharter` catalog paths;
+- это не разрешает менять protected Tourvisor tour-search payload;
+- upstream supplier-search filtering для arrival/direct/charter пока `unknown`/fail-closed;
+- direct ANEX/Andromeda capability без нового provider contract остаётся unknown;
+- raw airport/supplier IDs provider-specific; cross-provider equivalence=false.
 
-### Air search/filter semantics
+### 5.4 Region / resort / subregion
 
-#2100 merged `bdaeb8856fffff4018d8ed154bb8d73a705d8abf`; exact PR head `c6c9ab2f0849f64e1547e7bb8484bd3e17dd8010`.
-Focused run `34668203993` SUCCESS: 114 checks. Security `34668204017` SUCCESS.
+#2112 merged `8223edf0efc054ec927367d8d385d5729fc4f817`; exact head `ed393add386fcc9cbb6d17bfcae7a663ef91956b`.
+Focused `34676124554` SUCCESS: 74; aggregate `34676124543` SUCCESS; Security `34676124544` SUCCESS.
 
-Canonical P2 boundary для `arrival_airport`, `direct_flight`, `charter` теперь явный:
+- supplier region/resort/subregion ID/label = bounded provider-scoped observation only;
+- numeric-looking supplier IDs остаются opaque strings, including leading zeroes;
+- canonical local geography `verified` per-level только из current accepted local identity;
+- generic upstream geography `unknown`, `allowed=false`, provider-specific mapping required;
+- current direct ANEX adapter generic geography forwarding = `not_implemented` (это факт текущей wiring, не утверждение об API ANEX);
+- Tourvisor/Andromeda generic forwarding = `not_verified`;
+- geography equality/similarity не identity proof и не mapping authority.
 
-- Tourvisor current source имеет **verified catalog/discovery evidence**: существующий arrivals catalog и `onlyDirect`/`onlyCharter` catalog paths;
-- это доказательство относится только к catalog/discovery и **не** разрешает автоматически добавлять/менять protected Tourvisor tour-search payload;
-- upstream supplier-search filter status для всех трёх families пока `unknown`, forwarding fail-closed;
-- direct ANEX и Andromeda catalog/search-filter capability остаётся `unknown`, пока не доказан provider-specific contract;
-- raw numeric airport/supplier IDs не универсальны;
-- cross-provider equivalence=false.
+### 5.5 Departure / country
 
-Не создавать второй air-filter contract ради тех же статусов. Новое evidence может только безопасно повысить конкретный provider/family status отдельным bounded пакетом.
+#2114 merged `e92dbd6e85ee8e273dda59f761a895b00ac7b828`; exact head `7b51b0bdb9326fdc8a7c3389418b068795283232`.
+Focused `34676419118` SUCCESS: 73; aggregate `34676419039` SUCCESS; Security `34676419019` SUCCESS.
 
-### Hotel stars/category semantics
+Direct ANEX current source доказывает provider-specific mapping contract:
 
-#2103 merged `89a530a81b68bd9518913432345369e2771e101d`; exact PR head `006756aa2631fa3a1b6bb8920ebc396990b094f5`.
-Focused run `34668469610` SUCCESS: 57 checks. Security `34668469602` SUCCESS.
+1. browser/local numeric departure/country IDs **не** становятся supplier IDs;
+2. server читает authoritative active local `catalog_departures/catalog_countries` names;
+3. supplier departure выбирается exact unique name match из `SearchTour_TOWNFROMS`;
+4. supplier country выбирается exact unique name match из `SearchTour_STATES`, причём lookup scoped resolved supplier departure (`TOWNFROMINC`);
+5. только после этого verified mapping разрешает provider-specific `TOWNFROMINC/STATEINC`;
+6. missing/ambiguous mapping fail closed.
 
-Canonical P2 boundary для stars/category:
+Tourvisor protected mapping и Andromeda mapping этим boundary не доказаны: `not_verified_in_this_boundary`, forwarding не включать по предположению. Supplier numeric IDs provider-specific opaque strings; cross-provider equivalence=false. Departure/country similarity не hotel identity proof.
 
-- provider supplier `star` / category label сохраняется только как bounded raw observation;
-- numeric-looking supplier label вроде `5` не преобразуется автоматически в canonical local category;
-- canonical category `1..5` имеет status `verified` только когда она приходит вместе с явно current accepted local identity и source=`current_local_identity`;
-- supplier-label equivalence не доказана;
-- raw supplier numeric IDs не универсальны;
-- cross-provider category equivalence=false;
-- совпадение категории/звёздности никогда не является hotel identity proof и не запускает mapping write.
+### 5.6 Hotel category / rating / services / types
 
-Не создавать второй category wrapper ради тех же правил. Новое supplier evidence может повышать только явно доказанный provider-specific capability, не identity authority.
+#2103/#2104/#2107/#2108/#2110:
 
-### Hotel rating semantics
-
-#2107 merged `1bbf4e538115a29c10c7c539d783552cdc6827d5`; exact PR head `bacbd6023bee5bb19084b8fdf33b1fbcd01c2221`.
-Focused run `34671228420` SUCCESS: 69 checks. Security `34671228371` SUCCESS.
-
-Canonical P2 boundary для customer/hotel rating:
-
-- rating остаётся local Search3/catalog facet;
-- canonical rating имеет status `verified` только из current accepted local identity и валидного local `>0..5` значения;
-- supplier/raw score (`4.7`, `9.2/10`, label и т.п.) сохраняется только как bounded observation;
-- supplier rating нельзя автоматически масштабировать/нормализовать в local rating;
-- generic upstream supplier filter запрещён (`local_only`, `allowed=false`);
-- numeric-looking supplier score не универсален;
+- supplier category/star/rating/service/type values = observations only;
+- canonical category/rating/services/types получают authority только из current accepted local identity/current local catalog;
+- rating/services/types остаются local-only и generic upstream запрещён;
+- supplier numeric-looking IDs/scores/codes не универсальны;
 - cross-provider equivalence=false;
-- совпадение rating никогда не является hotel identity proof.
+- similarity не hotel identity proof;
+- services/types strict dedupe обязан сохранять opaque numeric-string type (`"77"` не превращать в integer key).
 
-### Hotel services/amenities semantics
+## 6. P6 source handoff — DONE
 
-#2108 merged `c095df6b5094e442a3e0066121d5df2f66bc2992`; exact final PR head `9e4b7aa95897a2f9ddf3e3e065df8d9ecfe35135`.
-Focused run `34673612499` SUCCESS: 67 checks. Aggregate `34673612490` SUCCESS. Security `34673612515` SUCCESS.
+#2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`; CI `34665905819` SUCCESS, Security `34665905799` SUCCESS.
 
-Canonical P2 boundary для hotel services/amenities:
+Один browser-safe INT→SEARCH DTO покрывает Tourvisor search offer, direct ANEX concrete saved offer, Andromeda search offer и Andromeda verified quote. Перед projection повторно валидируются retained/context/nested facts, stale/race/TTL/local identity guards. Private supplier refs не публикуются. Search offer остаётся quote unknown/final false; final verified допустим только через verified Andromeda quote. На INT boundary всегда selection disabled / booking false.
 
-- canonical services — local Search3/catalog list и имеют status `verified` только при current accepted local identity и явно предоставленном local list;
-- explicit local empty list отличается от unknown/null;
-- supplier labels/codes/lists сохраняются только как bounded observations;
-- supplier service code/ID не универсален и не переводится автоматически в local service;
-- cross-provider equivalence=false;
-- generic upstream supplier filtering запрещён (`local_only`, `allowed=false`);
-- service similarity никогда не является hotel identity proof и не создаёт mapping write.
+Receiving wiring, renderer/controller/selected-state/publication принадлежат SEARCH #1646.
 
-Первый aggregate CI на PR корректно обнаружил PHP key coercion numeric-string supplier code (`"77"` → integer key). Реализация исправлена на strict string-preserving dedupe; финальный exact head зелёный. Не возвращаться к associative-key dedupe, которое меняет тип opaque supplier code.
+## 7. P7 source release readiness — GREEN
 
-### Hotel types semantics
+Latest exact-head gate после #2114:
 
-#2110 merged `13598d6cebf55a8819128a99095e21f6fbbedf68`; exact PR head `a3d04fd07b4c973467a7797eabc18c3df3f67213`.
-Focused run `34673815843` SUCCESS: 67 checks. Aggregate `34673815828` SUCCESS. Security `34673815810` SUCCESS.
-
-Canonical P2 boundary для hotel types:
-
-- canonical types — local Search3/catalog list и имеют status `verified` только при current accepted local identity и явно предоставленном local list;
-- explicit local empty list отличается от unknown/null;
-- supplier type labels/codes/lists сохраняются только как bounded observations;
-- numeric-looking/opaque supplier type code остаётся строкой, provider-specific и не переводится автоматически в local type;
-- cross-provider equivalence=false;
-- generic upstream supplier filtering запрещён (`local_only`, `allowed=false`);
-- type similarity никогда не является hotel identity proof и не создаёт mapping write.
-
-Former `rating/services/types` P2 family теперь полностью закрыта source-side. Не создавать второй wrapper для этих трёх local-only families без нового provider-specific evidence или regression.
-
-### Region / resort / subregion geography semantics
-
-#2112 merged `8223edf0efc054ec927367d8d385d5729fc4f817`; exact PR head `ed393add386fcc9cbb6d17bfcae7a663ef91956b`.
-Focused run `34676124554` SUCCESS: 74 checks. Aggregate `34676124543` SUCCESS. Security `34676124544` SUCCESS.
-
-Canonical P2 boundary для geography теперь fail-closed и provider-scoped:
-
-- supplier `region/resort/subregion` ID/label сохраняются только как bounded provider-specific observation;
-- numeric-looking supplier IDs остаются opaque strings, включая leading zeroes; raw supplier ID не универсален;
-- canonical local geography получает `verified` отдельно по каждому уровню только из current accepted local identity и явно известного local значения; отсутствие уровня остаётся `unknown`;
-- generic upstream filtering для region/resort/subregion имеет `status=unknown`, `allowed=false` и требует отдельно доказанного provider-specific mapping/filter contract;
-- current direct ANEX adapter имеет явный criteria allowlist без generic region/resort/subregion input, поэтому **только текущая adapter wiring** помечена `not_implemented`; это не утверждение, что supplier API не имеет geography capability;
-- Tourvisor и Andromeda generic upstream geography forwarding остаются `not_verified`, пока не получен bounded provider-specific contract/evidence;
-- supplier geography equality/cross-provider similarity не является hotel identity proof и никогда не создаёт mapping write.
-
-Не создавать второй generic geography wrapper. Следующее изменение этой семьи допустимо только при новом provider-specific dictionary/filter evidence и не должно менять protected Tourvisor payload без отдельного допуска.
-
-## 5. P6 source handoff — DONE
-
-#2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`.
-Exact head `12e5b2fc9d700b1e607af2af95f083670134278e`.
-CI `34665905819` SUCCESS: 97 provider-neutral handoff checks + 115 unchanged direct-ANEX bridge checks. Security `34665905799` SUCCESS.
-
-Один стабильный browser-safe INT→SEARCH DTO теперь покрывает:
-
-- Tourvisor canonical search offer;
-- direct ANEX canonical concrete saved offer;
-- Andromeda canonical search offer;
-- Andromeda current verified quote envelope.
-
-Перед projection он реконструирует retained offer и fail-closes nested tampering meal/room/placement/availability/flight/money/timestamp/party. A→B race, stale/expired/generation/page/local mismatch отклоняются. Private supplier refs не публикуются. Search offer остаётся quote unknown/final false. `final_price_verified=true` допустим только через verified Andromeda quote. На INT boundary всегда `selection_state=disabled`, `booking_enabled=false`.
-
-Receiving wiring, renderer/controller/selected-state и публикация принадлежат SEARCH #1646. Это больше не INT source gap.
-
-## 6. P7 source release readiness — GREEN
-
-Base gate #2097 merged `d37b7eff514354a773ea773c75fd782c1312bf87`.
-Air-semantics extension #2101 merged `828cab90b39a51879433c266f90d2c6bd1617912`.
-Hotel-category extension #2104 merged `94d4f4a4247bad1a9155391ba9af71e2c1385f81`.
-Hotel-rating extension #2107 merged `1bbf4e538115a29c10c7c539d783552cdc6827d5`.
-Hotel-services extension #2108 merged `c095df6b5094e442a3e0066121d5df2f66bc2992`.
-Hotel-types extension #2110 merged `13598d6cebf55a8819128a99095e21f6fbbedf68`.
-Geography extension #2112 merged `8223edf0efc054ec927367d8d385d5729fc4f817`; exact PR head `ed393add386fcc9cbb6d17bfcae7a663ef91956b`.
-Latest aggregate readiness run `34676124543` SUCCESS; Security `34676124544` SUCCESS.
-
-На одном exact head без network/secrets/DB прошли:
-
-- money facts: 60 checks;
+- money facts: 60;
 - offer contract: 189;
 - retained context: 33;
-- air search/filter semantics: 114;
-- region/resort/subregion geography semantics: 74;
-- hotel stars/category semantics: 57;
-- hotel rating semantics: 69;
-- hotel services semantics: 67;
-- hotel types semantics: 67;
-- verified quote envelope: 54;
+- air search/filter: 114;
+- region/resort/subregion: 74;
+- departure/country: 73;
+- hotel category: 57;
+- hotel rating: 69;
+- hotel services: 67;
+- hotel types: 67;
+- quote envelope: 54;
 - INT→SEARCH handoff: 97;
-- direct ANEX saved-offer bridge: 115;
-- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled, air/geography upstream filtering fail-closed, supplier geography/category/rating/services/types facts не получают identity/canonical authority.
+- direct ANEX bridge: 115.
 
-Итого aggregate contract matrix: **996 checks**.
+Aggregate `34676419039` SUCCESS: **1069 offline contract checks**. Security `34676419019` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs не получают universal authority.
 
-Это означает **source-side readiness INT contracts**, а не production approval и не UI/publication acceptance.
+Это source-side readiness, не production approval и не UI/publication acceptance.
 
-## 7. Исполняемый приоритет дальше
+## 8. Исполняемый приоритет дальше
 
-Порядок остаётся:
+Порядок:
 
-`P0 money/fuel/additional → P1 observation matrix → P2 filter/property semantics → P4/P5 regression only if new evidence → P6/P7 maintenance only if regression → handoff to SEARCH`.
+`P0 money/fuel/additional → P1 observation matrix → P2 only genuine uncovered provider semantics → P4/P5 regression/new evidence only → P6/P7 maintenance only if regression → SEARCH handoff`.
 
-P3 identity/matching никогда не становится fallback-задачей INT.
+P3 identity/matching никогда не fallback-задача INT.
 
-После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112 запрещено создавать второй quote/handoff/air-filter/geography/category/rating/services/types wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
+После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108/#2110/#2112/#2114 запрещено создавать второй quote/handoff/air/geography/departure-country/category/rating/services/types wrapper ради активности.
 
 ### P0/P1 — следующий eligible work
 
 Новый supplier search разрешён только если:
 
-- предыдущий related case не `unknown/reserved/completed` replay;
+- related case не completed/reserved/unknown replay;
 - applicable CI/budgets green;
 - scenario materially different;
-- он приносит новую price/fuel/additional observation, новый meaningful scenario или новые external hotel IDs;
+- есть новая price/fuel/additional observation, materially new scenario или external hotel IDs;
 - максимум 3 новых supplier scenarios за run.
 
-Приоритет scenario diversity:
+Diversity priority:
 
 - core8: Turkey, Egypt, Thailand, Maldives, UAE, Cuba, Sri Lanka, Vietnam;
 - future dates;
 - nights 6/7/8/10/12/14;
 - adults 1/2/3;
-- family 2+1, затем 2 children с ages;
+- family 2+1, затем 2 children with ages;
 - broad и hotel-scoped;
-- meal/stars/regions только после verified mapping semantics;
-- new room/placement или ещё не наблюдавшийся fuel/additional state предпочтительнее почти идентичного поиска.
+- new room/placement или ещё не observed fuel/additional state предпочтительнее почти идентичного поиска.
 
-ANEX-only parity сравнивать только current accepted triple-mapped subject:
+ANEX-only parity только current accepted triple-mapped subject:
 
 direct ANEX ↔ Andromeda `OPERATORS=5` ↔ Tourvisor с ANEX в исходном request.
 
 Tuple alignment: `current local identity + date + nights + party + canonical meal + room`; placement отдельно до доказанного parity.
 
-Для `local_id=null` сохранять provider/country/external id/name/geography/star/coords/search criteria, если фактически доступны, и передавать #1759/#996. Никаких mapping writes.
+Для `local_id=null` сохранять provider/country/external id/name/geography/star/coords/search criteria, если реально доступны, и передавать #1759/#996. Mapping writes запрещены.
 
-### P2 — eligible только uncovered semantic family
+### P2 — status matrix
 
-Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric IDs никогда не универсальны.
+Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric IDs никогда не universal.
 
-| Family | Rule |
+| Family | Current rule |
 | --- | --- |
-| departure/country | provider-specific dictionary mapping; следующий audit только по фактически существующим current dictionaries и без generic numeric-ID equivalence |
-| region/resort/subregion | source-side generic boundary closed: supplier IDs/labels observation-only; canonical local value только из current accepted identity; generic upstream `unknown`/`allowed=false`; direct ANEX current adapter generic forwarding `not_implemented`, Tourvisor/Andromeda `not_verified` |
+| departure/country | direct ANEX verified exact unique provider-dictionary mapping from authoritative current local names; country lookup departure-scoped; Tourvisor/Andromeda mapping not verified in this boundary |
+| region/resort/subregion | generic boundary closed: supplier observation-only; local canonical only current accepted identity; upstream unknown/disabled |
 | hotel | current accepted identity либо observation; P3 writes external |
-| stars/category | raw supplier label = observation only; canonical 1..5 только из current accepted local identity; no identity/equivalence proof |
-| rating | local_only/closed; canonical 0..5 only from current accepted local identity; supplier score observation only |
-| services | local_only/closed; canonical list only from current accepted local identity; supplier labels/codes observation only |
-| types | local_only/closed; canonical list only from current accepted local identity; supplier labels/codes observation only |
-| meal | raw + canonical key; verified families only |
-| room/placement | raw + normalized; placement separate до parity |
+| stars/category | supplier label observation-only; canonical current-local only |
+| rating | local_only/closed |
+| services | local_only/closed |
+| types | local_only/closed |
+| meal | verified canonical family/key contract closed |
+| room/placement | raw+normalized contract closed; placement kept separate until parity |
 | operator | provider != operator; supplier codes private |
-| arrival airport/direct/charter | Tourvisor catalog/discovery verified only; upstream supplier-search status unknown/fail-closed для всех; direct ANEX/Andromeda discovery unknown; raw IDs provider-specific |
-| dates/nights/party/ages | verified/closed family |
-| availability | source/raw evidence, unknown когда нет доказательства |
-| flights/baggage | optional detail capability, не auto-fetch |
-| fuel/additional | separate reported facts, никогда synthetic total |
+| arrival airport/direct/charter | Tourvisor discovery evidence only; supplier-search forwarding unknown/fail-closed |
+| dates/nights/party/ages | verified/closed |
+| availability | source/raw evidence; absent proof = unknown |
+| flights/baggage | optional details capability; never auto-fetch by generic contract |
+| fuel/additional | separate money facts; never synthetic total |
 
-Один PR = одно bounded field family, без broad provider rewrite. Следующий P2 audit предпочтительно брать только для `departure/country`, если fresh source действительно даёт новое provider-specific dictionary evidence; иначе вернуться к materially new P0/P1 observation, а не создавать ещё один generic wrapper.
+Не создавать новый generic P2 wrapper, если family уже имеет current rule. Следующий P2 пакет допустим только при **новом provider-specific evidence**, которое безопасно повышает конкретный status/capability. Иначе возвращаться к genuinely new P0/P1 evidence.
 
-## 8. Observation contract
+## 9. Observation contract
 
-Когда данные реально доступны, сохранять:
+Когда реально доступны, сохранять:
 
 - provider + operator;
 - country/region/subregion/geography;
@@ -361,22 +293,20 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 
 Каждый supplier scenario получает `operation_id`, checkpoint path, scenario revision, criteria digest и source SHA.
 
-## 9. Definition of useful progress
+## 10. Definition of useful progress / stop gates
 
-Пакет полезен только если даёт минимум одно:
+Полезный пакет даёт минимум одно:
 
 - новый доказанный money/fuel/additional fact;
 - новый non-replay observation scenario;
-- новый external-hotel evidence handoff без mapping write;
-- закрытый ранее unknown P2 filter/property family;
-- реальный regression fix canonical offer/quote/handoff guards;
-- новый подтверждённый supplier package/quote state без booking;
-- устранённый stale-state/unsafe-replay риск.
+- new external-hotel evidence handoff без mapping write;
+- new provider-specific filter/property evidence;
+- regression fix canonical offer/quote/handoff guards;
+- новый подтверждённый package/quote state без booking;
+- устранённый stale-state/unsafe-replay risk.
 
-Не создавать PR/checkpoint churn без такого результата. Пользователю сообщать только substantive result, exact blocker/solution или доказанное изменение semantics.
+Не создавать PR/checkpoint churn без результата.
 
-## 10. Release/stop gates
+Отдельное разрешение обязательно для production/main, `bron`/`bron_ticket`, real booking/application, Tourvisor protected contract/arithmetic, lead contract, Metrika/goals, production SEO, server/platform config, irreversible schema/data operation, weakening manual/pair/conflict guards и любого нового HIGH-risk supplier action.
 
-Отдельное разрешение обязательно для production/main, `bron`/`bron_ticket`, реальной заявки/бронирования, Tourvisor protected contract/arithmetic, lead contract, Metrika/goals, production SEO, server/platform config, irreversible schema/data operation, ослабления manual/pair/conflict guards и любого нового HIGH-risk supplier action.
-
-Source-side INT readiness не является production approval. Preview/publication/readback выполняются только по текущему exact owner-control и соответствующему владельцу.
+Source-side INT readiness не production approval. Preview/publication/readback только по current exact owner-control и соответствующему владельцу.
