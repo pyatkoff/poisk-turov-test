@@ -1,0 +1,81 @@
+name: MATCH current exact review 1971 v2
+on:
+  push:
+    branches: [ops/match-current-exact-census-1971-20260912-v1]
+    paths: [.github/workflows/hotel-match-current-exact-review-1971-v2.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-current-exact-review-1971-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-core8-identity-census-1971-20260912-v3
+  OUT: /tmp/match-current-exact-review-1971-v2
+jobs:
+  review:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Offline guards and reservation
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_core8_identity_census.php
+          php scripts/diagnostics/hotel_match_core8_identity_census.php --self-test
+          python3 scripts/diagnostics/hotel_match_current_exact_review_1971_20260912_v2.py --self-test
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import json,os,pathlib
+          x={'operation_id':os.environ['OPERATION_ID'],'status':'reserved_before_db_access','run_id':os.environ['GITHUB_RUN_ID'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          pathlib.Path(os.environ['OUT'],'reservation.json').write_text(json.dumps(x,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-current-exact-review-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: '/tmp/match-current-exact-review-reservation', merge-multiple: true}
+      - name: CURRENT DB census and guarded review
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-current-exact-review-reservation/reservation.json
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"; src="$RUNNER_TEMP/census.php"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"
+          python3 - <<'PY'
+          import os,pathlib,re
+          p=pathlib.Path('scripts/diagnostics/hotel_match_core8_identity_census.php').read_text()
+          p=re.sub(r"const HM_CENSUS_OP = '[^']+';",f"const HM_CENSUS_OP = '{os.environ['OPERATION_ID']}';",p,count=1)
+          pathlib.Path(os.environ['RUNNER_TEMP'],'census.php').write_text(p)
+          PY
+          ok=0
+          for n in 1 2 3; do if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi; sleep 10; done
+          test "$ok" = 1
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M' < "$src" > "$RUNNER_TEMP/raw.txt"
+          python3 - <<'PY'
+          import json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']);raw=pathlib.Path(os.environ['RUNNER_TEMP'],'raw.txt').read_text()
+          lines=[z[len('MATCH_CENSUS:'):] for z in raw.splitlines() if z.startswith('MATCH_CENSUS:')]
+          if len(lines)!=1: raise SystemExit('census_marker_missing')
+          x=json.loads(lines[0])
+          if x.get('status')!='completed' or x.get('operation_id')!=os.environ['OPERATION_ID'] or x.get('database_writes')!=0 or x.get('mapping_writes')!=0: raise SystemExit('census_guard_failed')
+          (out/'census.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+          python3 scripts/diagnostics/hotel_match_current_exact_review_1971_20260912_v2.py --census "$OUT/census.json" --output "$OUT/review.json" --summary "$OUT/summary.md"
+          python3 - <<'PY'
+          import json,hashlib,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); x=json.loads((d/'review.json').read_text())
+          rec={'operation_id':os.environ['OPERATION_ID'],'status':'completed','run_id':os.environ['GITHUB_RUN_ID'],'safe_count':x['counts']['safe'],'provider_counts':{'anex':x['counts']['anex'],'andromeda':x['counts']['andromeda']},'review_sha256':hashlib.sha256((d/'review.json').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(rec,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true
+          rm -f "$key" "$known" "$src" "$RUNNER_TEMP/raw.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-current-exact-review-1971-v2-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record result
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
+      - name: Cleanup
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known" "$RUNNER_TEMP/census.php" "$RUNNER_TEMP/raw.txt"
