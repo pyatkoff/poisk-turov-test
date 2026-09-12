@@ -31,6 +31,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
         const state = await page.evaluate(() => {
           const box = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height, fontSize: parseFloat(s.fontSize), position: s.position }; };
           const form = document.forms.tourSearch, preferences = form.querySelector('.search-preferences');
+          const partyGroup = form.querySelector('.search-group--party'), childAges = form.querySelector('#childAges');
           // Closed details descendants may retain geometry without being painted.
           const visible = nodes => [...nodes].filter(node => !node.closest('details:not([open])') && node.checkVisibility({ visibilityProperty: true }) && node.getBoundingClientRect().height > 0);
           // Fieldset may serialize repeat()/minmax() rather than resolved tracks.
@@ -57,6 +58,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
             labels: visible(form.querySelectorAll('.field>span')).map(box),
             controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name })),
             dateControls: [...form.querySelectorAll('.search-group--dates input')].map(box),
+            partyBox: box(partyGroup), childAgesBox: box(childAges), childAgesInsideParty: childAges.parentElement === partyGroup,
             submit: box(form.querySelector('.search-submit')), extras: box(form.querySelector('.extras')),
             operatorSecondary: !!form.querySelector('.extras select[name=operator]'),
           };
@@ -73,6 +75,8 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы']);
         assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до']);
         assert.equal(state.operatorSecondary, true, 'operator is not a primary search field');
+        assert.equal(state.childAgesInsideParty, true, 'child ages stay in the canonical tourist group');
+        assert.ok(state.childAgesBox.left >= state.partyBox.left - 1 && state.childAgesBox.right <= state.partyBox.right + 1, `${width}: child ages stay within the tourist group`);
         if (width === 350) {
           assert.equal(state.mainColumns, 1); assert.equal(state.preferenceColumns, 1);
           assert.deepEqual(state.groupColumns, [1, 1, 1, 1]);
@@ -89,7 +93,10 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
         }
         if (width <= 430) assert.ok(state.submit.width >= state.form.width - 45, 'mobile CTA spans the form');
         if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2);
-        if (width > 700) assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, 'closed extras and CTA share a footer row');
+        if (width > 700) {
+          assert.ok(state.childAgesBox.width <= state.partyBox.width + 1, `${width}: child ages never stretch beyond tourists`);
+          assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, 'closed extras and CTA share a footer row');
+        }
         if (width >= 1200) {
           assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 3);
           const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
@@ -106,8 +113,8 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1440];
           await page.waitForFunction(n => document.querySelectorAll('#childAges select').length === n, count);
           const ages = ['0', '17', '6'].slice(0, count);
           for (let i = 0; i < count; i++) await page.locator('#childAges select').nth(i).selectOption(ages[i]);
-          const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden }; });
-          assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0 });
+          const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden, insideParty: !!form.querySelector('.search-group--party > #childAges') }; });
+          assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0, insideParty: true });
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
           party.push(fields);
         }

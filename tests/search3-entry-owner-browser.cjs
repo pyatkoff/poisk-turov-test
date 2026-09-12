@@ -118,11 +118,11 @@ async function run(browser, width) {
       return { hero: box('.v2-product-hero'), form: box('#tourSearch'), ages: box('#childAges'), extras: box('#tourSearch > .extras'), submit: box('.search-submit') };
     });
     assert.ok(formGeometry.hero.bottom - formGeometry.hero.top < 140, 'compact hero leaves room for trip parameters');
-    if (width >= 1200) {
-      assert.ok(formGeometry.ages.width >= 180, 'wide desktop child ages retain a readable native track');
-      assert.ok(formGeometry.ages.width < formGeometry.form.width / 2, 'wide desktop child ages no longer paint a full-width strip');
+    assert.ok(formGeometry.ages.width >= 180, 'child ages retain a readable native track');
+    if (width <= 700) {
+      assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'mobile child ages fill the tourist row');
     } else {
-      assert.ok(formGeometry.ages.width > formGeometry.form.width - 50, 'child ages keep a full form row below wide desktop');
+      assert.ok(formGeometry.ages.width < formGeometry.form.width / 2, 'non-mobile child ages stay grouped with tourists instead of stretching across the form');
     }
     if (width > 700) assert.ok(Math.abs(formGeometry.extras.top - formGeometry.submit.top) <= 1, 'closed extras and primary action share a desktop row');
     if (width >= 1199) {
