@@ -6,9 +6,9 @@ import sys
 
 from anex_search3_three_source_price import ssh_php_no_mux, transport_failure
 
-EXPERIMENT='anex_three_source_broad_price_20260911_v3'
+EXPERIMENT='anex_three_source_broad_price_20260912_v4'
 CASES=('anex','andromeda','tourvisor')
-SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-10-19','nights':10,'adults':3,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-27','nights':8,'adults':1,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def source():
@@ -28,6 +28,27 @@ def source():
     return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+meal_body+'\n'+new_body
 
 
+def validate_coverage(value,case_id):
+    details=value.get('details')
+    if not isinstance(details,dict) or not isinstance(details.get('coverage'),dict):
+        raise ValueError('broad_coverage_invalid')
+    coverage=details['coverage']
+    if case_id=='anex':
+        if coverage.get('state')!='bounded' or coverage.get('reason')!='pricepage_1_only' or coverage.get('all_pages_retained') is not False:
+            raise ValueError('broad_coverage_invalid')
+    elif case_id=='andromeda':
+        if coverage.get('state') not in ('partial','complete'):
+            raise ValueError('broad_coverage_invalid')
+        if coverage.get('state')=='complete' and coverage.get('all_pages_retained') is not True:
+            raise ValueError('broad_coverage_invalid')
+        if coverage.get('state')=='partial' and coverage.get('all_pages_retained') is not False:
+            raise ValueError('broad_coverage_invalid')
+    elif case_id=='tourvisor':
+        if coverage.get('state')!='bounded' or coverage.get('reason')!='status_without_continue_no_growth' or coverage.get('all_pages_retained') is not False:
+            raise ValueError('broad_coverage_invalid')
+    return coverage
+
+
 def validate_case(value,case_id):
     if not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('experiment_id')!=EXPERIMENT \
             or value.get('case_id')!=case_id or value.get('automatic_retry') is not False \
@@ -43,9 +64,10 @@ def validate_case(value,case_id):
         return value
     if status!='completed' or value.get('supplier_effect')!='read_only_search_completed' or not isinstance(value.get('offers'),list) or len(value['offers'])>1500:
         raise ValueError('broad_case_invalid')
+    validate_coverage(value,case_id)
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or not isinstance(row.get('local_hotel_id'),int) or row['local_hotel_id']<1 \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=10 or row.get('adults')!=3 or row.get('children')!=0 \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=8 or row.get('adults')!=1 or row.get('children')!=0 \
                 or row.get('meal_family')!='ai' or row.get('meal_key')!='ai' or row.get('meal_qualifiers')!=[] \
                 or row.get('meal_equivalence_verified') is not False or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str) \
@@ -90,7 +112,8 @@ def comparison(results):
                 'offers':{a:idx[a][item],b:idx[b][item]},'identical_supplier_package_verified':False})
         pair_examples[name]=selected
     counts={case:{'offers':len(results.get(case,{}).get('offers',[])),'unique_tuples':len(sets[case]),
-                  'fuel_reported_offers':sum(1 for row in results.get(case,{}).get('offers',[]) if row.get('fuel_charge') is not None)} for case in CASES}
+                  'fuel_reported_offers':sum(1 for row in results.get(case,{}).get('offers',[]) if row.get('fuel_charge') is not None),
+                  'coverage_state':results.get(case,{}).get('details',{}).get('coverage',{}).get('state')} for case in CASES}
     return {'provider_counts':counts,'triple_tuple_count':len(triple),'pair_tuple_counts':{name:len(items) for name,items in pairs.items()},
             'triple_examples':examples,'pair_only_examples':pair_examples,
             'interpretation':'display-level comparison candidates only; price equality never proves package identity and fuel is never added automatically'}
@@ -113,6 +136,7 @@ def run(output):
         'anex_unmapped_received':results.get('anex',{}).get('details',{}).get('unmapped_received'),
         'andromeda_received_offers':results.get('andromeda',{}).get('details',{}).get('received_offers'),
         'andromeda_mapped_offers':results.get('andromeda',{}).get('details',{}).get('mapped_offers'),
+        'coverage_states':{case:results.get(case,{}).get('details',{}).get('coverage',{}).get('state') for case in CASES},
     }
     report={'schema_version':1,'experiment_id':EXPERIMENT,'status':'completed' if all_done else next((v['status'] for v in results.values() if v['status']!='completed'),'unconfirmed'),
             'spec':SPEC,'case_statuses':{k:v['status'] for k,v in results.items()},'comparison':comparison(results),'observation_summary':unresolved,
