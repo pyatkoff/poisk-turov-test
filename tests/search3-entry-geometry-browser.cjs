@@ -8,7 +8,7 @@ assert.ok(base && new URL(base).hostname === '127.0.0.1', 'requires the isolated
 assert.ok(process.env.SEARCH3_RESULTS_OUTPUT, 'requires retained evidence');
 const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, 'native-form');
 fs.mkdirSync(output, { recursive: true });
-const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 1600];
+const widths = [350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 1200, 1366, 1440, 1600];
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -97,12 +97,12 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
           assert.ok(state.preferenceWidths.slice(0, 2).every(value => Math.abs(value - state.preferenceWidth) < 2), 'region/hotel stay full-width');
         }
         if (width <= 430) assert.ok(state.submit.width >= state.form.width - 45, 'mobile CTA spans the form');
-        if (width > 700 && width < 1200) assert.equal(state.preferenceColumns, 2);
+        if (width > 700 && width < 1100) assert.equal(state.preferenceColumns, 2);
         if (width > 700) {
           assert.ok(state.childAgesBox.width <= state.partyBox.width + 1, `${width}: child ages never stretch beyond tourists`);
           assert.ok(Math.abs(state.submit.top - state.extras.top) <= 1, 'closed extras and CTA share a footer row');
         }
-        if (width >= 1200) {
+        if (width >= 1100) {
           assert.equal(state.mainColumns, 2); assert.equal(state.preferenceColumns, 6);
           const counts = tops => [...tops.reduce((rows, top) => rows.set(top, (rows.get(top) || 0) + 1), new Map()).values()].sort((a, b) => a - b);
           assert.deepEqual(counts(state.groupTops), [2, 2], 'trip basics retain two balanced rows');
@@ -129,7 +129,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
           const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden, insideParty: !!form.querySelector('.search-group--party > #childAges') }; });
           assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0, insideParty: true });
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
-          if (count === 2 && [1199, 1200, 1366, 1440, 1600].includes(width)) {
+          if (count === 2 && [1099, 1100, 1101, 1199, 1200, 1366, 1440, 1600].includes(width)) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
               const ages = [...document.querySelectorAll('#childAges .child-age')].map(box), childAges = box(document.querySelector('#childAges'));
@@ -142,18 +142,20 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1199, 1200, 1366, 1440, 160
             assert.ok(geometry.overflow <= 1, `${width}: two child ages keep document width bounded`);
             assert.equal(geometry.rows, 1, `${width}: two child ages stay on one compact row`);
             assert.ok(Math.abs(geometry.ages[0].top - geometry.ages[1].top) <= 3, `${width}: child-age controls align horizontally`);
-            if (width >= 1200) {
+            if (width >= 1100) {
               assert.ok(geometry.ages.every(item => item.width >= 119 && item.width <= 121), `${width}: child-age controls remain compact without wrapping their labels`);
               assert.ok(geometry.party.height <= geometry.nights.height + 12, `${width}: two child ages do not create a blank desktop band beside duration`);
               assert.ok(geometry.childAges.width <= 249, `${width}: child-age group stays bounded`);
             }
           }
-          if (count === 3 && width >= 1200) {
+          if (count === 3 && width >= 1100) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, width: r.width }; };
               const ages = [...document.querySelectorAll('#childAges .child-age')].map(box);
               return { ages, rows: new Set(ages.map(item => Math.round(item.top))).size, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
             });
+            fs.writeFileSync(path.join(output, `entry-party-3-${width}.json`), JSON.stringify({ width, geometry }, null, 2) + '\n');
+            await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-party-3-${width}.png`), animations: 'disabled' });
             assert.equal(geometry.rows, 2, `${width}: third child age wraps inside the bounded age slot`);
             assert.ok(geometry.ages.every(item => item.width >= 119 && item.width <= 121), `${width}: three child ages keep compact control widths`);
             assert.ok(geometry.overflow <= 1, `${width}: three child ages do not create horizontal overflow`);
