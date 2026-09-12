@@ -8,13 +8,13 @@ on:
       - '.github/workflows/hotel-match-literal-geo-union-accept.yml'
   push:
     branches: ['ops/match-literal-geo-union-accept-1971-20260912-v1']
-    paths: ['.github/match-literal-geo-union-accept-1971-20260912-v1.arm']
+    paths: ['.github/match-literal-geo-union-accept-1971-20260912-v2.arm']
 permissions: {contents: read, actions: read, issues: write}
 concurrency:
-  group: match-literal-geo-union-accept-v1-${{ github.event_name }}-${{ github.ref }}
+  group: match-literal-geo-union-accept-v2-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-literal-geo-union-accept-1971-20260912-v1
+  OPERATION_ID: hotel-match-literal-geo-union-accept-1971-20260912-v2
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -29,10 +29,10 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/diagnostics/hotel_match_literal_geo_union_accept.php').read_text()
-          required=["const HMLGUA_OPERATION = 'hotel-match-literal-geo-union-accept-1971-20260912-v1'",'hmlgua_plan_current_in_transaction','FOR UPDATE','source_cross_lane_target_conflict','same_provider_union_target_collision','literal_geo_union_coordinate_conflict_gt_5km','anex_review_pair_exclusions',"decision_status='pending' AND local_hotel_id IS NULL",'anex_post_commit_readback_failed','andromeda_post_commit_readback_failed',"'current_db_same_transaction'=>true","'supplier_calls'=>0","'tourvisor_calls'=>0"]
+          required=["const HMLGUA_OPERATION = 'hotel-match-literal-geo-union-accept-1971-20260912-v2'",'hmlgua_plan_current_in_transaction','FOR UPDATE','source_cross_lane_target_conflict','same_provider_union_target_collision','literal_geo_union_coordinate_conflict_gt_5km','anex_review_pair_exclusions',"decision_status='pending' AND local_hotel_id IS NULL",'anex_post_commit_readback_failed','andromeda_post_commit_readback_failed',"'current_db_same_transaction'=>true","'supplier_calls'=>0","'tourvisor_calls'=>0",'literal_geo_union_server_current_v2']
           for x in required: assert x in s,x
           for bad in ('curl_init','curl_exec','https://','http://','AnyTourAnexClient','v2_data_tv_get'): assert bad not in s,bad
-          print('MATCH_LITERAL_GEO_UNION_ACCEPT_STATIC_OK')
+          print('MATCH_LITERAL_GEO_UNION_ACCEPT_V2_STATIC_OK')
           PY
 
   apply:
@@ -43,12 +43,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Verify immutable arm
-        run: test "$(cat .github/match-literal-geo-union-accept-1971-20260912-v1.arm)" = "$OPERATION_ID"
+      - name: Verify immutable v2 arm
+        run: test "$(cat .github/match-literal-geo-union-accept-1971-20260912-v2.arm)" = "$OPERATION_ID"
       - name: Build and lint exact server-current payload before reservation
         run: |
           set -euo pipefail
-          export PAYLOAD="$RUNNER_TEMP/literal-geo-union-accept-v1.php"
+          export PAYLOAD="$RUNNER_TEMP/literal-geo-union-accept-v2.php"
           python3 - <<'PY'
           import os
           from pathlib import Path
@@ -89,53 +89,61 @@ jobs:
           PY
           php -l "$PAYLOAD"
           ! grep -Eiq 'curl_init|curl_exec|https://|http://|AnyTourAnexClient|v2_data_tv_get' "$PAYLOAD"
-      - name: Prepare SSH key and zero-DB preflight
+      - name: Establish resilient zero-DB SSH master before reservation
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          key="$RUNNER_TEMP/hmlgua-key"
+          key="$RUNNER_TEMP/hmlgua-v2-key"; sock="$RUNNER_TEMP/hmlgua-v2.sock"; known="$RUNNER_TEMP/hmlgua-v2-known"
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
-          o=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           ok=0
           for attempt in 1 2 3 4 5; do
-            if test "$(ssh "${o[@]}" "$U@$H" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_OK' 2>/dev/null)" = MATCH_OK; then ok=1; break; fi
-            sleep $((attempt*3))
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=900 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 "$U@$H"; then
+              if test "$(ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$U@$H" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_OK')" = MATCH_OK; then ok=1; break; fi
+            fi
+            ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true
+            sleep $((attempt*4))
           done
           test "$ok" = 1
-      - name: Reserve immutable operation before CURRENT DB access
+          ssh -S "$sock" -O check "$U@$H" >/dev/null
+          printf '%s\n' "$sock" > "$RUNNER_TEMP/hmlgua-v2-sockpath"
+      - name: Reserve immutable v2 operation before CURRENT DB access
         run: |
           set -euo pipefail
           STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
           python3 - <<'PY'
           import hashlib,json,os
           from pathlib import Path
-          payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-accept-v1.php'
+          payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-accept-v2.php'
           r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'payload_sha256':hashlib.sha256(payload.read_bytes()).hexdigest(),'mode':'server_current_literal_geo_union_guarded_write','supplier_calls':0,'tourvisor_calls':0,'historical_operations_replayed':False,'no_replay':True}
           (Path(os.environ['STATE'])/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
           PY
-      - name: Preserve durable reservation
+      - name: Preserve durable v2 reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-literal-geo-union-accept-1971-20260912-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v1/reservation.json
+          name: hotel-match-literal-geo-union-accept-1971-20260912-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Execute CURRENT recompute plus one atomic guarded write exactly once
+      - name: Execute one-shot CURRENT recompute and atomic write through verified master
         env:
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
           STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          sock="$(cat "$RUNNER_TEMP/hmlgua-v2-sockpath")"
+          ssh -S "$sock" -O check "$U@$H" >/dev/null
+          export SOCK="$sock"
           python3 - <<'PY'
           import hashlib,json,os,subprocess
           from pathlib import Path
-          state=Path(os.environ['STATE']);payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-accept-v1.php'
-          cmd=['ssh','-T','-i',os.environ['RUNNER_TEMP']+'/hmlgua-key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=no','-o','UserKnownHostsFile=/dev/null','-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3',os.environ['U']+'@'+os.environ['H'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=3072M']
+          state=Path(os.environ['STATE']);payload=Path(os.environ['RUNNER_TEMP'])/'literal-geo-union-accept-v2.php'
+          cmd=['ssh','-T','-S',os.environ['SOCK'],'-o','ControlMaster=no','-o','BatchMode=yes',os.environ['U']+'@'+os.environ['H'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=3072M']
           p=subprocess.run(cmd,input=payload.read_text(),text=True,capture_output=True,timeout=3000)
           marker='HMLGUA_JSON:';lines=[x[len(marker):] for x in p.stdout.splitlines() if x.startswith(marker)]
           if len(lines)==1:
@@ -153,16 +161,17 @@ jobs:
           (state/'summary.md').write_text(summary+'\n');print(summary)
           if state_name!='completed_verified':raise SystemExit(2)
           PY
-      - name: Preserve immutable result and receipt
+          ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true
+      - name: Preserve immutable v2 result and receipt
         if: always()
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-literal-geo-union-accept-1971-20260912-v1-result
-          path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v1/
+          name: hotel-match-literal-geo-union-accept-1971-20260912-v2-result
+          path: ${{ runner.temp }}/hotel-match-literal-geo-union-accept-1971-20260912-v2/
           if-no-files-found: error
           retention-days: 90
-      - name: Record verified MATCH result
+      - name: Record verified MATCH v2 result
         if: success()
         env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
         run: |
