@@ -1091,7 +1091,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("list.every(value=>value>0)", source)
         self.assertIn("fieldNode.hidden=options.length<2", source)
         self.assertIn("facets.categories[index]===facets.category", source)
-        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:8}", source)
+        self.assertIn("window.Search3LocalHotelFilter={apply,clear,project,reset,version:9}", source)
         self.assertIn("mealField.hidden=!available", source)
         self.assertIn("window.matchMedia('(min-width:1025px)')", source)
         self.assertIn("Number(t&&t.price||0)<=budget", source)
@@ -1165,7 +1165,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 entity_decoder = ("const descriptionEntities={amp:'&',lt:'<',gt:'>',quot:'\"',apos:\"'\",nbsp:' ',sup2:'²'};\n"
                                   "function decodeEntities(v){return String(v||'').replace(/&(#(?:x[0-9a-f]+|[0-9]+)|amp|lt|gt|quot|apos|nbsp|sup2);/gi,(match,entity)=>{if(entity[0]!=='#')return descriptionEntities[entity.toLowerCase()];const hex=entity[1].toLowerCase()==='x',point=Number.parseInt(entity.slice(hex?2:1),hex?16:10);return Number.isInteger(point)&&point>0&&point<=1114111&&!(point>=55296&&point<=57343)?String.fromCodePoint(point):match;});}\n").encode()
                 current_clean = b"function clean(v){return decodeEntities(String(v||'').replace(/<[^>]*>/g,' ')).replace(/\\s+/g,' ').trim();}"
-                original_clean = b"function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\\s+/g,' ').trim();}"
+                original_clean = b"function clean(v){return String(v||'').replace(/<[^>]*>/g,' ')).replace(/\\s+/g,' ').trim();}"
                 self.assertEqual(source.count(entity_decoder), 1, 'one reviewed description entity decoder')
                 self.assertEqual(source.count(current_clean), 1, 'one reviewed description clean path')
                 source = source.replace(entity_decoder, b'', 1).replace(current_clean, original_clean, 1)
