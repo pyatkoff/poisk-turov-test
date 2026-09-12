@@ -22,11 +22,13 @@ on:
       - 'ops/int-anex-additional-parity-v3-fixed-20260912'
       - 'ops/int-anex-additional-program2637-20260912'
       - 'ops/int-anex-concrete-fuel-binding-20260912'
+      - 'ops/int-anex-concrete-fuel-binding-v2-20260913'
     paths:
       - '.github/ops/anex-three-source-price-v2-20260911'
       - '.github/ops/anex-additional-parity-v3-20260912'
       - '.github/ops/anex-additional-program2637-20260912'
       - '.github/ops/anex-concrete-fuel-binding-20260912'
+      - '.github/ops/anex-concrete-fuel-binding-v2-20260913'
 permissions:
   contents: read
 concurrency:
@@ -76,18 +78,21 @@ jobs:
               assert forbidden not in php
           binding=Path('scripts/diagnostics/anex_concrete_fuel_binding.php').read_text()
           binding_py=Path('scripts/diagnostics/anex_concrete_fuel_binding.py').read_text()
-          assert "ANEX_CONCRETE_FUEL_EXPERIMENT = 'anex_concrete_fuel_binding_20260912_v1'" in binding
-          assert "ANEX_CONCRETE_FUEL_DATE = '2026-10-19'" in binding
+          assert "ANEX_CONCRETE_FUEL_EXPERIMENT = 'anex_concrete_fuel_binding_20260913_v2'" in binding
+          assert "ANEX_CONCRETE_FUEL_DATE = '2026-10-12'" in binding
+          assert "ANEX_CONCRETE_FUEL_PROGRAM = '2637'" in binding
           assert '->expand(' in binding and '->flights(' in binding
           assert "'tour_flights_requested'=>false" in binding
           assert "'production_price_arithmetic_applied':False" in binding_py
-          for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
+          assert 'PRESERVED_RUN=34716809979' in binding_py and 'PRESERVED_ARTIFACT=10304744621' in binding_py
+          for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'AnyTourAnexAdditionalPricesClient', 'ANEX_B2B_TOKEN', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
               assert forbidden not in binding
           workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
           assert 'ops/int-anex-three-source-price-v2-20260911' in workflow
           assert 'ops/int-anex-additional-parity-v3-fixed-20260912' in workflow
           assert 'ops/int-anex-concrete-fuel-binding-20260912' in workflow
-          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 3
+          assert 'ops/int-anex-concrete-fuel-binding-v2-20260913' in workflow
+          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 4
           print('ANEX price/additional parity static boundaries: PASS')
           PY
   live_v2:
@@ -277,5 +282,62 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Fail after evidence preservation when concrete binding did not complete
+        if: steps.binding.outcome != 'success'
+        run: exit 1
+  live_concrete_fuel_binding_v2:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-concrete-fuel-binding-v2-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind known-date concrete fuel receipt to exact reviewed source parent
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-concrete-fuel-binding-v2-20260913'
+          test "$(cat control/.github/ops/anex-concrete-fuel-binding-v2-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-concrete-fuel-binding-v2;scenario=Turkey-2026-10-12-7n-2a-AI-GREEN-GOLD-concrete-expand-flights-TV-preserved2637;retained=10304744621;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Read completed program2637 evidence without supplier replay
+        uses: actions/download-artifact@v4
+        with:
+          name: anex-additional-program2637-34716809979
+          run-id: 34716809979
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: retained-program2637
+      - name: Run one new known-inventory concrete fuel binding scenario
+        id: binding
+        continue-on-error: true
+        run: |
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.control.outputs.source }}'
+          mkdir -m 700 "$RUNNER_TEMP/concrete-fuel-binding-v2"
+          python3 -B source/scripts/diagnostics/anex_concrete_fuel_binding.py "$RUNNER_TEMP/concrete-fuel-binding-v2" retained-program2637/report.json
+      - name: Preserve sanitized known-date concrete binding evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-concrete-fuel-binding-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/concrete-fuel-binding-v2/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when known-date binding did not complete
         if: steps.binding.outcome != 'success'
         run: exit 1
