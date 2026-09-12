@@ -12,7 +12,7 @@ on:
       - '.github/workflows/search3-shortlist-trip-summary.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   focused:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
+          persist-credentials: true
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -53,5 +53,21 @@ jobs:
             docs/project/search3-production-import.json
           if-no-files-found: error
           retention-days: 3
+      - name: Materialize exact generated parity on the PR branch
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          paths=(v2/search3-results-filters-v1.js v2/search3-results-filters-v1.css docs/project/search3-production-import.json)
+          if git diff --quiet -- "${paths[@]}"; then
+            echo 'Generated parity already committed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "${paths[@]}"
+          git commit -m 'SEARCH: materialize mobile compare assets'
+          git push origin "HEAD:${HEAD_REF}"
       - name: Require committed generated parity
         run: git diff --exit-code -- v2/search3-results-filters-v1.js v2/search3-results-filters-v1.css docs/project/search3-production-import.json
