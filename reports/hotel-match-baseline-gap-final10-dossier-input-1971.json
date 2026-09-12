@@ -1,0 +1,118 @@
+{
+  "expected_count": 10,
+  "geo_audit_result_sha256": "9132409fdf10c370d3d240cdceeede69c3f91ce75766c860d1dc7010c3d098f4",
+  "recovery_full_evidence_sha256": "e2d29a0c7f1e0b19f1540d7d347633416e51d1433df708fe7c67c31aafce9f22",
+  "rows": [
+    {
+      "country_class": "egypt",
+      "countrywide_candidate_local_ids": [211],
+      "external_hotel_id": 542,
+      "geo_candidate_local_ids": [],
+      "matched_key": "fantazia yaro",
+      "proposed_local_id": 211,
+      "recovery_bridges": [],
+      "source_geo": "Наама Бэй",
+      "source_names": ["Yaro Fantazia Hotel (Ex. Trs Fantazia Naama Bay Hotel)"]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [17292,17333],
+      "external_hotel_id": 8795,
+      "geo_candidate_local_ids": [17292,17333],
+      "matched_key": "antea",
+      "proposed_local_id": 17292,
+      "recovery_bridges": [],
+      "source_geo": "Султанахмет-Фатих",
+      "source_names": ["Antea-"]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [17401,27576,28618,39191,45672,60190,66121,80230,134192,136241,157863,162383],
+      "external_hotel_id": 29995,
+      "geo_candidate_local_ids": [17401,27576],
+      "matched_key": "elite world",
+      "proposed_local_id": 17401,
+      "recovery_bridges": [],
+      "source_geo": "Таксим-Бейоглу",
+      "source_names": ["Elite World-"]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [76242,82758,116377,151287],
+      "external_hotel_id": 31800,
+      "geo_candidate_local_ids": [76242,116377,151287],
+      "matched_key": "weingart",
+      "proposed_local_id": 76242,
+      "recovery_bridges": [],
+      "source_geo": "Бейоглу",
+      "source_names": ["Weingart Hotel"]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [17684,57715],
+      "external_hotel_id": 32737,
+      "geo_candidate_local_ids": [17684,57715],
+      "matched_key": "tria",
+      "proposed_local_id": 17684,
+      "recovery_bridges": [],
+      "source_geo": "Султанахмет-Фатих",
+      "source_names": ["Tria Hotel."]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [76242,82758,116377,151287],
+      "external_hotel_id": 32822,
+      "geo_candidate_local_ids": [76242,116377,151287],
+      "matched_key": "weingart",
+      "proposed_local_id": 76242,
+      "recovery_bridges": [],
+      "source_geo": "Бейоглу",
+      "source_names": ["Weingart Hotel."]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [17360,17612],
+      "external_hotel_id": 35685,
+      "geo_candidate_local_ids": [17360,17612],
+      "matched_key": "sahinler",
+      "proposed_local_id": 17612,
+      "recovery_bridges": [],
+      "source_geo": "Лалели-Фатих",
+      "source_names": ["Hotel Sahinler."]
+    },
+    {
+      "country_class": "turkey",
+      "countrywide_candidate_local_ids": [17318,17580,52933,132301],
+      "external_hotel_id": 35891,
+      "geo_candidate_local_ids": [17318,17580,52933],
+      "matched_key": "ayasofya",
+      "proposed_local_id": 17318,
+      "recovery_bridges": [],
+      "source_geo": "Султанахмет-Фатих",
+      "source_names": ["Ayasofya Hotel"]
+    },
+    {
+      "country_class": "srilanka",
+      "countrywide_candidate_local_ids": [103067,146171],
+      "external_hotel_id": 36357,
+      "geo_candidate_local_ids": [103067,146171],
+      "matched_key": "blue whale",
+      "proposed_local_id": 103067,
+      "recovery_bridges": [{"external_id":"2000082981","name_keys":["blue whale"],"provider":"andromeda"}],
+      "source_geo": "Калпития",
+      "source_names": ["Blue Whale Resort","Blue Whale Resort."]
+    },
+    {
+      "country_class": "thailand",
+      "countrywide_candidate_local_ids": [9405,108078],
+      "external_hotel_id": 43320,
+      "geo_candidate_local_ids": [9405,108078],
+      "matched_key": "10 galleria",
+      "proposed_local_id": 9405,
+      "recovery_bridges": [{"external_id":"528356","name_keys":["10 galleria"],"provider":"andromeda"}],
+      "source_geo": "Бангкок",
+      "source_names": ["Galleria 10 Hotel Bangkok"]
+    }
+  ],
+  "schema": "hotel-match-baseline-gap-final10-dossier-input/1"
+}
