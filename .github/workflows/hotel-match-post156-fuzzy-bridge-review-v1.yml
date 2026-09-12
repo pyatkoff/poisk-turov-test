@@ -1,0 +1,181 @@
+name: MATCH post156 fuzzy bridge review 1971
+on:
+  push:
+    branches: [ops/match-post156-fuzzy-bridge-review-1971-20260912-v1]
+    paths: [.github/match-post156-fuzzy-bridge-review-1971-20260912-v1.arm]
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-post156-fuzzy-bridge-review-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-post156-fuzzy-bridge-review-1971-20260912-v1
+  OUT: /tmp/match-post156-fuzzy-bridge-review-1971-v1
+jobs:
+  review:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Offline guards and immutable reservation
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-post156-fuzzy-bridge-review-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_anex_baseline_gap_census.php
+          php scripts/diagnostics/hotel_match_anex_baseline_gap_census.php --self-test
+          python3 -m pip install --disable-pip-version-check --no-input rapidfuzz==3.14.3 >/dev/null
+          mkdir -p "$OUT/bundle"
+          cp scripts/diagnostics/hotel_match_anex_baseline_gap_census.php "$OUT/bundle/census.php"
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path(os.environ['OUT'])/'bundle/census.php'; s=p.read_text()
+          old="const HM_CENSUS_OP = 'hotel-match-core8-identity-census-1971-20260912-v1';"
+          new="const HM_CENSUS_OP = 'hotel-match-post156-fuzzy-bridge-review-1971-20260912-v1';"
+          if s.count(old)!=1: raise SystemExit('operation marker drift')
+          p.write_text(s.replace(old,new,1))
+          PY
+          php -l "$OUT/bundle/census.php"
+          sha256sum "$OUT/bundle/census.php" > "$OUT/input.sha256"
+          python3 - <<'PY'
+          import json,hashlib,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); raw=d.joinpath('input.sha256').read_bytes()
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(raw).hexdigest(),'mode':'read_only_full_pending_fuzzy_bridge_review','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'not_write_authority':True,'no_replay':True}
+          d.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-post156-fuzzy-bridge-review-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-post156-fuzzy-review-reservation, merge-multiple: true}
+      - name: Execute fresh CURRENT read-only source census
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-post156-fuzzy-review-reservation/reservation.json
+          key="$RUNNER_TEMP/match-post156-fuzzy-key"; known="$RUNNER_TEMP/match-post156-fuzzy-known"; sock="$RUNNER_TEMP/match-post156-fuzzy.sock"
+          cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }; trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          tar -C "$OUT/bundle" -cf - census.php | ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; tar -xf - -C "$tmp" || exit 91; cd "$HOME/www/anytoour.ru" || exit 92; php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M "$tmp/census.php"' > "$OUT/live.stdout" 2> "$OUT/live.stderr"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); lines=d.joinpath('live.stdout').read_text(errors='replace').splitlines(); rows=[x[len('MATCH_CENSUS:'):] for x in lines if x.startswith('MATCH_CENSUS:')]
+          if not rows: raise SystemExit('missing census json')
+          data=json.loads(rows[-1])
+          if data.get('status')!='completed' or data.get('operation_id')!=os.environ['OPERATION_ID'] or any(data.get(k)!=0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls']): raise SystemExit('census guard failed')
+          d.joinpath('census.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          PY
+      - name: Build conservative full-pending fuzzy review
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,unicodedata,collections,hashlib,os,pathlib
+          from rapidfuzz import fuzz,process
+          d=pathlib.Path(os.environ['OUT']); D=json.loads(d.joinpath('census.json').read_text())
+          local={str(r['id']):r for r in D.get('local',[])}; local_ids=set(local)
+          aliases=collections.defaultdict(list)
+          for a in D.get('aliases',[]):
+              hid=str(a.get('hotel_id',''))
+              if hid in local_ids: aliases[hid].append(str(a.get('alias') or ''))
+          generic={'hotel','hotels','resort','resorts','spa','otel','отель','отеля','the','and','ex','former','formerly'}
+          qualifiers={'annex','adults','adult','only','family','beach','garden','palace','park','harem','villas','villa','apart','apartments','suites','suite','wing','north','south','east','west','club','city','grand','royal','boutique','central','island','waterpark','aqua','marina','bay','beachfront'}
+          def norm(v):
+              s=unicodedata.normalize('NFKD',str(v or '')).casefold().replace('ё','е').replace('&',' and ')
+              s=''.join(ch for ch in s if not unicodedata.combining(ch)); s=re.sub(r'[^\w]+',' ',s,flags=re.UNICODE)
+              return ' '.join(x for x in s.split() if x not in generic)
+          def geo_norm(v):
+              s=unicodedata.normalize('NFKD',str(v or '')).casefold().replace('ё','е'); s=''.join(ch for ch in s if not unicodedata.combining(ch))
+              return ' '.join(re.findall(r'[\w]+',s,re.UNICODE))
+          def forms(v):
+              raw=str(v or '').strip(); out=[raw] if raw else []
+              for m in re.finditer(r'\(\s*(?:ex\.?|former(?:ly)?|бывш\.?|ех\.?)\s*[:\-]?\s*([^()]+)\)',raw,re.I): out += [raw[:m.start()].strip(),m.group(1).strip()]
+              return list(dict.fromkeys(x for x in out if x))
+          def qset(v): return {x for x in norm(v).split() if x in qualifiers}
+          key_ids=collections.defaultdict(lambda:collections.defaultdict(set)); key_list={}
+          for hid,r in local.items():
+              cc=r.get('country_class')
+              if not cc: continue
+              for value in [str(r.get('name') or '')]+aliases.get(hid,[]):
+                  for f in forms(value):
+                      k=norm(f)
+                      if k: key_ids[cc][k].add(hid)
+          for cc in key_ids: key_list[cc]=list(key_ids[cc])
+          anex_local={str(m.get('catalog_hotel_id')) for m in D.get('anex_mappings',[]) if int(m.get('enabled') or 0)==1 and str(m.get('catalog_hotel_id')) in local_ids}
+          pending=[r for r in D.get('andromeda',[]) if str(r.get('supplier_namespace') or '')=='andromeda_catalog' and r.get('decision_status')=='pending' and not r.get('local_hotel_id')]
+          all_rows=[]
+          def geo_score(srcs,target):
+              vals=[]
+              for s in srcs:
+                  for k in ('town','region'):
+                      if s.get(k): vals.append(geo_norm(s[k]))
+              tv=[geo_norm(target.get('region_name')),geo_norm(target.get('subregion_name'))]; best=0.0; pair=None
+              for a in vals:
+                  for b in tv:
+                      if not a or not b: continue
+                      sc=max(fuzz.ratio(a,b),fuzz.token_set_ratio(a,b))
+                      if sc>best: best=sc; pair=[a,b]
+              return best,pair
+          for r in pending:
+              cc=r.get('country_class'); eid=str(r.get('external_hotel_id')); srcs=r.get('sources') or []
+              if not cc or cc not in key_list: continue
+              chosen=[s for s in srcs if str(s.get('id') or s.get('hotelKey') or '')==eid] or srcs; names=[]
+              for s in chosen:
+                  for k in ('name','lName'):
+                      if s.get(k): names.extend(forms(s[k]))
+              src_keys=list(dict.fromkeys(norm(x) for x in names if norm(x)))
+              if not src_keys: continue
+              scores=collections.defaultdict(float); matched={}
+              for sk in src_keys:
+                  for lk,score,_ in process.extract(sk,key_list[cc],scorer=fuzz.WRatio,limit=8,score_cutoff=55):
+                      for hid in key_ids[cc][lk]:
+                          if score>scores[hid]: scores[hid]=float(score); matched[hid]=[sk,lk]
+              if not scores: continue
+              ranked=sorted(scores.items(),key=lambda x:(-x[1],int(x[0]))); target_id,best=ranked[0]; second=ranked[1][1] if len(ranked)>1 else 0.0; margin=best-second; target=local[target_id]
+              geo,pair=geo_score(chosen,target); source_q=set().union(*(qset(x) for x in names)); target_q=qset(target.get('name'))
+              qualifier_conflict=bool(source_q and target_q and source_q.isdisjoint(target_q)); stars=[]
+              for s in chosen:
+                  v=s.get('star')
+                  if str(v or '').isdigit(): stars.append(int(v))
+              star=stars[0] if stars else None; category=int(target.get('category') or 0); star_diff=abs(star-category) if star and category else None
+              token_count=len([t for t in matched[target_id][0].split() if len(t)>=2]); bridge=target_id in anex_local
+              star_ok=star_diff is None or star_diff<=1; low_ok=token_count>=2 or (bridge and best>=99.9 and geo>=95)
+              tiers=[]
+              if not qualifier_conflict and star_ok and low_ok:
+                  if best>=95 and margin>=10 and geo>=95: tiers.append('strong_fuzzy_geo_large_margin')
+                  if bridge and best>=95 and margin>=5 and geo>=95: tiers.append('cross_provider_fuzzy_geo')
+                  if bridge and best>=97 and margin>=10: tiers.append('cross_provider_name_large_margin')
+                  if token_count>=2 and best>=99.9 and geo>=95: tiers.append('exact_name_geo')
+              all_rows.append({'external_hotel_id':eid,'country':cc,'proposed_local_id':int(target_id),'source_names':sorted(set(names))[:6],'target_name':target.get('name'),'target_region':target.get('region_name'),'target_subregion':target.get('subregion_name'),'best_score':round(best,3),'second_score':round(second,3),'margin':round(margin,3),'geo_score':round(geo,3),'geo_pair':pair,'matched_name_pair':matched[target_id],'significant_tokens':token_count,'current_anex_tv_bridge':bridge,'source_qualifiers':sorted(source_q),'target_qualifiers':sorted(target_q),'qualifier_conflict':qualifier_conflict,'source_star':star,'target_category':category,'star_difference':star_diff,'tiers':tiers})
+          selected=[x for x in all_rows if x['tiers']]; targets=collections.Counter(x['proposed_local_id'] for x in selected); duplicate_targets={str(k):v for k,v in targets.items() if v>1}
+          if duplicate_targets: raise SystemExit('duplicate selected target guard')
+          selected.sort(key=lambda x:(x['country'],x['external_hotel_id']))
+          tier_counts=collections.Counter(t for x in selected for t in x['tiers']); countries=collections.Counter(x['country'] for x in selected)
+          bridge=sum(1 for x in selected if x['current_anex_tv_bridge']); known=sum(1 for r in pending if r.get('country_class'))
+          payload={'schema':'hotel-match-post156-fuzzy-bridge-review/1','status':'prepared_only','operation_id':os.environ['OPERATION_ID'],'not_write_authority':True,'source_census_sha256':hashlib.sha256(d.joinpath('census.json').read_bytes()).hexdigest(),'pending_examined':len(pending),'pending_with_country_authority':known,'selected_count':len(selected),'selected_unique_targets':len(targets),'selected_cross_provider_bridge':bridge,'tier_counts':dict(sorted(tier_counts.items())),'country_counts':dict(sorted(countries.items())),'policy':{'name_scorer':'rapidfuzz.WRatio-3.14.3','generic_identity_words_ignored':sorted(generic),'significant_qualifiers_preserved':sorted(qualifiers),'coordinate_policy':'source coordinates absent; no coordinate override permitted','geo_direct_threshold':95,'star_difference_max_when_semantic_numeric':1,'strong_fuzzy_geo':['best>=95','margin>=10','geo>=95'],'cross_provider_fuzzy_geo':['target already current ANEX+Tourvisor','best>=95','margin>=5','geo>=95'],'cross_provider_name_large_margin':['target already current ANEX+Tourvisor','best>=97','margin>=10'],'low_information':['>=2 significant tokens OR exact score+current ANEX bridge+direct geo'],'duplicate_selected_target':'fail_closed'},'rows':selected,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          canonical=json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode(); candidate_sha=hashlib.sha256(canonical).hexdigest(); payload['candidate_sha256']=candidate_sha
+          d.joinpath('review.json').write_text(json.dumps(payload,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          summary={'operation_id':os.environ['OPERATION_ID'],'status':'prepared_only','pending_examined':len(pending),'selected_count':len(selected),'selected_unique_targets':len(targets),'selected_cross_provider_bridge':bridge,'tier_counts':dict(sorted(tier_counts.items())),'country_counts':dict(sorted(countries.items())),'candidate_sha256':candidate_sha,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'not_write_authority':True,'no_replay':True}
+          d.joinpath('summary.json').write_text(json.dumps(summary,sort_keys=True,indent=2)+'\n')
+          text=f"MATCH #1971 full-pending fuzzy+geo review PREPARED_ONLY: examined {len(pending)} Andromeda pending; selected {len(selected)} safe-review candidates / {len(targets)} unique local targets, including {bridge} current ANEX+Tourvisor bridges. Tiers {dict(sorted(tier_counts.items()))}; countries {dict(sorted(countries.items()))}. Writes/calls0. Candidate SHA {candidate_sha}. This is not write authority; next step must recompute CURRENT evidence in one guarded transaction. NO-REPLAY."
+          d.joinpath('summary.md').write_text(text+'\n'); print(text)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-post156-fuzzy-bridge-review-${{ github.run_id }}-result
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/census.json
+            ${{ env.OUT }}/review.json
+            ${{ env.OUT }}/summary.json
+            ${{ env.OUT }}/summary.md
+            ${{ env.OUT }}/live.stderr
+          retention-days: 90
+      - name: Record result
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          if [ -s "$OUT/summary.md" ]; then gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true; fi
