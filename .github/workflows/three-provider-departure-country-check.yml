@@ -1,0 +1,39 @@
+name: Three-provider departure/country
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-departure-country.php'
+      - 'tests/three-provider-departure-country-test.php'
+      - '.github/workflows/three-provider-departure-country-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate departure/country semantics without network
+        run: |
+          php -l app/integrations/three-provider-departure-country.php
+          php -l tests/three-provider-departure-country-test.php
+          php -d allow_url_fopen=0 tests/three-provider-departure-country-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-departure-country.php').read_text()
+          assert "'provider_specific_mapping_required' => true" in src
+          assert "'local_numeric_id_is_supplier_id' => false" in src
+          assert "'raw_supplier_numeric_id_universal' => false" in src
+          assert "'cross_provider_equivalence_verified' => false" in src
+          assert "'hotel_identity_proof_from_departure_country' => false" in src
+          assert "'verified_exact_unique_dictionary_name'" in src
+          assert "'verified_departure_scoped_exact_unique_dictionary_name'" in src
+          assert "'allowed' => $mappingVerified" in src
+          assert "'source' => 'current_local_catalog'" in src
+          for forbidden in ('curl_', 'PDO', 'mysqli_', 'bron(', 'bron_ticket', 'booking', 'file_get_contents('):
+              assert forbidden not in src
+          print('Three-provider departure/country static boundary: PASS')
+          PY
