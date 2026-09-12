@@ -4,9 +4,12 @@ on:
   pull_request:
     paths:
       - 'src/search3/behavior/results/shortlist.js'
+      - 'src/search3/styles/results-layout.css'
       - 'v2/search3-results-filters-v1.js'
+      - 'v2/search3-results-filters-v1.css'
       - 'docs/project/search3-production-import.json'
       - 'tests/search3-shortlist-trip-summary.test.js'
+      - 'tests/search3-shortlist-browser.cjs'
       - '.github/workflows/search3-shortlist-trip-summary.yml'
 
 permissions:
@@ -26,8 +29,10 @@ jobs:
           python-version: '3.12'
       - name: Install pinned Search3 build tools
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
-      - name: Syntax check canonical shortlist owner
-        run: node --check src/search3/behavior/results/shortlist.js
+      - name: Syntax check canonical shortlist owner and browser contract
+        run: |
+          node --check src/search3/behavior/results/shortlist.js
+          node --check tests/search3-shortlist-browser.cjs
       - name: Verify shortlist trip summary contract
         run: node tests/search3-shortlist-trip-summary.test.js
       - name: Regenerate canonical Search3 assets
@@ -36,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unexpected="$(git diff --name-only -- v2 docs/project/search3-production-import.json | grep -Ev '^(v2/search3-results-filters-v1\.js|docs/project/search3-production-import\.json)$' || true)"
+          unexpected="$(git diff --name-only -- v2 docs/project/search3-production-import.json | grep -Ev '^(v2/search3-results-filters-v1\.(js|css)|docs/project/search3-production-import\.json)$' || true)"
           if [[ -n "$unexpected" ]]; then
             printf 'Unexpected generated drift:\n%s\n' "$unexpected" >&2
             exit 1
@@ -47,8 +52,9 @@ jobs:
           name: search3-shortlist-trip-summary-generated
           path: |
             v2/search3-results-filters-v1.js
+            v2/search3-results-filters-v1.css
             docs/project/search3-production-import.json
           if-no-files-found: error
           retention-days: 3
       - name: Require committed generated parity
-        run: git diff --exit-code -- v2/search3-results-filters-v1.js docs/project/search3-production-import.json
+        run: git diff --exit-code -- v2/search3-results-filters-v1.js v2/search3-results-filters-v1.css docs/project/search3-production-import.json
