@@ -142,7 +142,7 @@ async function run(browser, width) {
     assert.equal(columnCount(lead.leadColumns), expected.lead_columns, `lead fields columns at ${width}`);
     assert.equal(lead.phoneRequired, true, 'phone remains required');
     assert.equal(lead.consentRequired, true, 'consent remains required');
-    assert.equal(lead.phoneLabel, 'Телефон', 'phone keeps a visible associated label');
+    assert.equal(lead.phoneLabel, 'Телефон (обязательно)', 'phone keeps a visible associated required label');
     assert.equal(lead.submitText, 'Отправить заявку', 'one clear lead action remains');
     assert.equal(lead.activeName, contract.invariants.lead_focus_target, 'lead handoff focuses the phone field');
     assert.ok(lead.phoneHeight >= contract.invariants.minimum_touch_target_px, 'phone keeps a full touch target');
