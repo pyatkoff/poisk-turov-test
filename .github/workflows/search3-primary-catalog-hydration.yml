@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   primary-catalog-hydration:
@@ -19,8 +19,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -43,18 +41,5 @@ jobs:
           path: v2/search3-shared-runtime.json
           if-no-files-found: error
           retention-days: 3
-      - name: Commit exact generated runtime on same-repository PR
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- v2/search3-shared-runtime.json; then
-            exit 0
-          fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add v2/search3-shared-runtime.json
-          git commit -m 'build(search3): sync primary catalog shared runtime'
-          git push origin HEAD:${{ github.head_ref }}
       - name: Require committed shared runtime parity
         run: git diff --exit-code -- v2/search3-shared-runtime.json
