@@ -59,22 +59,25 @@ function v2_operator_identity_extract(array $hotels, array $context): array
         $subregionId = v2_operator_identity_id($sub);
         $regionName = v2_operator_identity_text($region, 180);
         $subregionName = v2_operator_identity_text($sub, 180);
-        $lat = isset($common['latitude']) && is_numeric($common['latitude']) ? (float)$common['latitude'] : null;
-        $lon = isset($common['longitude']) && is_numeric($common['longitude']) ? (float)$common['longitude'] : null;
+        $latValue = $hotel['latitude'] ?? ($common['latitude'] ?? null);
+        $lonValue = $hotel['longitude'] ?? ($common['longitude'] ?? null);
+        $lat = is_numeric($latValue) ? (float)$latValue : null;
+        $lon = is_numeric($lonValue) ? (float)$lonValue : null;
         foreach (($hotel['tours'] ?? []) as $tour) {
             if (!is_array($tour)) continue;
             $operator = is_array($tour['operator'] ?? null) ? $tour['operator'] : [];
             $operatorId = v2_operator_identity_id($operator);
             $tourId = v2_operator_identity_text($tour['id'] ?? $tour['tourId'] ?? '', 220);
+            if ($operatorId === null || $tourId === '') continue;
             $link = v2_operator_identity_safe_link($tour['operatorLink'] ?? ($hotel['operatorLink'] ?? null));
-            if ($operatorId === null || $tourId === '' || $link === null) continue;
             $rows[] = [
                 'source'=>$source,'search_id'=>$searchId,'country_id'=>$countryId,'region_id'=>$regionId,'subregion_id'=>$subregionId,
                 'hotel_id'=>$hotelId,'hotel_name'=>$hotelName !== '' ? $hotelName : null,
                 'region_name'=>$regionName !== '' ? $regionName : null,'subregion_name'=>$subregionName !== '' ? $subregionName : null,
                 'latitude'=>$lat,'longitude'=>$lon,'operator_id'=>$operatorId,
                 'operator_name'=>v2_operator_identity_text($operator, 180) ?: null,'tour_id'=>$tourId,
-                'operator_link'=>$link['url'],'operator_link_host'=>$link['host'],'operator_link_path'=>$link['path'],'operator_link_query'=>$link['query'],
+                'operator_link'=>$link['url'] ?? null,'operator_link_host'=>$link['host'] ?? null,
+                'operator_link_path'=>$link['path'] ?? null,'operator_link_query'=>$link['query'] ?? null,
             ];
         }
     }
@@ -100,7 +103,7 @@ function v2_operator_identity_ensure_schema(PDO $pdo): bool
 function v2_data_observe_operator_identities(array $hotels, array $context): array
 {
     $rows = v2_operator_identity_extract($hotels, $context);
-    if ($rows === []) return ['seen'=>0,'written'=>0,'reason'=>'no_safe_operator_links'];
+    if ($rows === []) return ['seen'=>0,'written'=>0,'reason'=>'no_operator_identity_rows'];
     try {
         require_once __DIR__ . '/db-v1.php';
         $pdo = v2_data_db();
@@ -119,11 +122,15 @@ function v2_data_observe_operator_identities(array $hotels, array $context): arr
             last_seen_at=VALUES(last_seen_at),observation_count=observation_count+1,
             hotel_name=COALESCE(VALUES(hotel_name),hotel_name),region_name=COALESCE(VALUES(region_name),region_name),
             subregion_name=COALESCE(VALUES(subregion_name),subregion_name),latitude=COALESCE(VALUES(latitude),latitude),
-            longitude=COALESCE(VALUES(longitude),longitude),operator_name=COALESCE(VALUES(operator_name),operator_name)");
+            longitude=COALESCE(VALUES(longitude),longitude),operator_name=COALESCE(VALUES(operator_name),operator_name),
+            operator_link=COALESCE(VALUES(operator_link),operator_link),
+            operator_link_host=COALESCE(VALUES(operator_link_host),operator_link_host),
+            operator_link_path=COALESCE(VALUES(operator_link_path),operator_link_path),
+            operator_link_query=COALESCE(VALUES(operator_link_query),operator_link_query)");
         $seenAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
         $written = 0;
         foreach ($rows as $row) {
-            $fingerprint = hash('sha256', implode('|', [$row['hotel_id'],$row['operator_id'],$row['tour_id'],$row['operator_link']]));
+            $fingerprint = hash('sha256', implode('|', [$row['hotel_id'],$row['operator_id'],$row['tour_id']]));
             $stmt->execute($row + ['fingerprint'=>$fingerprint,'seen'=>$seenAt]);
             $written++;
         }

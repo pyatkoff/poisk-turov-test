@@ -1,5 +1,5 @@
 -- Passive all-operator identity evidence captured from already-fetched Tourvisor search rows.
--- No extra Tourvisor calls. Safe to apply independently before deploying observer code.
+-- No extra Tourvisor calls. Operator URL fields are optional because canonical search rows do not expose them.
 CREATE TABLE IF NOT EXISTS tour_operator_identity_observations (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     fingerprint CHAR(64) NOT NULL,
@@ -20,9 +20,9 @@ CREATE TABLE IF NOT EXISTS tour_operator_identity_observations (
     operator_id INT UNSIGNED NOT NULL,
     operator_name VARCHAR(180) DEFAULT NULL,
     tour_id VARCHAR(220) NOT NULL,
-    operator_link VARCHAR(2048) NOT NULL,
-    operator_link_host VARCHAR(255) NOT NULL,
-    operator_link_path VARCHAR(1200) NOT NULL,
+    operator_link VARCHAR(2048) DEFAULT NULL,
+    operator_link_host VARCHAR(255) DEFAULT NULL,
+    operator_link_path VARCHAR(1200) DEFAULT NULL,
     operator_link_query VARCHAR(1200) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
