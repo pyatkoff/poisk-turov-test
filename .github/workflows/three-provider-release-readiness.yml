@@ -26,6 +26,7 @@ jobs:
             tests/three-provider-air-search-filter-test.php \
             tests/three-provider-geography-test.php \
             tests/three-provider-departure-country-test.php \
+            tests/three-provider-search-coverage-test.php \
             tests/three-provider-hotel-category-test.php \
             tests/three-provider-hotel-rating-test.php \
             tests/three-provider-hotel-services-test.php \
@@ -47,6 +48,7 @@ jobs:
               'app/integrations/three-provider-air-search-filter.php',
               'app/integrations/three-provider-geography.php',
               'app/integrations/three-provider-departure-country.php',
+              'app/integrations/three-provider-search-coverage.php',
               'app/integrations/three-provider-hotel-category.php',
               'app/integrations/three-provider-hotel-rating.php',
               'app/integrations/three-provider-hotel-services.php',
@@ -102,6 +104,16 @@ jobs:
           assert "'verified_exact_unique_dictionary_name'" in departure_country
           assert "'verified_departure_scoped_exact_unique_dictionary_name'" in departure_country
           assert "'allowed' => $mappingVerified" in departure_country
+
+          coverage = Path('app/integrations/three-provider-search-coverage.php').read_text()
+          assert "'counts_exhaustive' => $exhaustive" in coverage
+          assert "'cross_provider_count_comparability_verified' => false" in coverage
+          assert "'hotel_identity_proof_from_coverage' => false" in coverage
+          assert "'package_identity_proof_from_coverage' => false" in coverage
+          assert "'price_equivalence_proof_from_coverage' => false" in coverage
+          assert "'pricepage_1_without_total_pagination_proof'" in coverage
+          assert "'all_advertised_pages_retained'" in coverage
+          assert "'search_complete_and_continue_no_growth'" in coverage
 
           category = Path('app/integrations/three-provider-hotel-category.php').read_text()
           assert "'supplier_label_equivalence_verified' => false" in category
