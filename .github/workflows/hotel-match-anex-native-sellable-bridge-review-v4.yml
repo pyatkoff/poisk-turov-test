@@ -1,0 +1,36 @@
+name: MATCH ANEX native sellable bridge review v4
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-anex-native-sellable-bridge-review-1971-20260912-v4.arm']
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-anex-native-sellable-bridge-review-v4, cancel-in-progress: false}
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env: {OPERATION_ID: 'hotel-match-anex-native-sellable-bridge-review-1971-20260912-v4', OUT: '/tmp/match-anex-native-sellable-bridge-v4'}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Freeze corrected reviewer and establish SSH before reservation
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; test "$GITHUB_RUN_ATTEMPT" = 1; test "$(cat .github/match-anex-native-sellable-bridge-review-1971-20260912-v4.arm)" = "$OPERATION_ID"; mkdir -p "$OUT"; cp scripts/diagnostics/hotel_match_anex_native_sellable_bridge_review_v2.php "$OUT/program.php"; sed -i "s/hotel-match-anex-native-sellable-bridge-review-1971-20260912-v2/hotel-match-anex-native-sellable-bridge-review-1971-20260912-v4/g; s/\$a\['name'\]/\$a['api_name']/g" "$OUT/program.php"; php -l "$OUT/program.php"; key="$RUNNER_TEMP/ansbv4-key";sock="$RUNNER_TEMP/ansbv4.sock";known="$RUNNER_TEMP/ansbv4-known"; if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi;chmod 600 "$key";ok=0;for a in 1 2 3;do rm -f "$sock";if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE";then if ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && printf OK' | grep -qx OK;then ok=1;break;fi;fi;sleep $((a*3));done;test "$ok" = 1;printf '%s\n' "$sock" > "$OUT/sock";printf '%s\n' '{"operation_id":"hotel-match-anex-native-sellable-bridge-review-1971-20260912-v4","state":"reserved_before_db_access","input_count":6,"supplier_calls":0,"tourvisor_calls":0,"database_writes":0,"mapping_writes":0,"no_replay":true}' > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anex-native-sellable-bridge-v4-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute CURRENT read-only bridge review
+        env: {HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail;sock="$(cat "$OUT/sock")";set +e;ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M' < "$OUT/program.php" > "$OUT/stdout" 2> "$OUT/stderr";rc=$?;set -e;grep '^ANSB:' "$OUT/stdout"|tail -1|sed 's/^ANSB://' > "$OUT/result.json" || true;export RC="$rc";python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['OUT']);x=json.loads((d/'result.json').read_text()) if (d/'result.json').exists() else {'status':'unknown','reason':'marker_missing'};s=f"MATCH #1971 native sellable CURRENT bridge review v4: **{x.get('status')}** / NO-REPLAY. counts `{x.get('counts')}`. Supplier/Tourvisor/DB/mapping writes 0. Run `{os.environ['GITHUB_RUN_ID']}`.";(d/'summary.md').write_text(s+'\n');print(s);raise SystemExit(0 if int(os.environ['RC'])==0 and x.get('status')=='completed' else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anex-native-sellable-bridge-v4-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
