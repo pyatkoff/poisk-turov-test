@@ -22,7 +22,7 @@ function hm_image_ids(string $url):?array{
 }
 try{
  ini_set('display_errors','0');ini_set('log_errors','0');
- if(HM_DATE==='__MATCH_DATE__'||HM_OPERATION==='__MATCH_OPERATION__')hm_fail('bootstrap','unarmed_source');
+ if(!preg_match('/^20\d\d-\d\d-\d\d$/D',HM_DATE)||!str_starts_with(HM_OPERATION,'hotel-match-andromeda-anex-direct-key-matrix-1971-'))hm_fail('bootstrap','unarmed_source');
  $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')hm_fail('bootstrap','server_root_invalid');
  $preview=$root.'/_preview/search3-anex-candidate';$api=$preview.'/api-andromeda-search3-preview.php';if(!is_file($api))hm_fail('bootstrap','andromeda_runtime_missing');require_once $api;
  $private=$preview.'/.andromeda-private.php';if(!is_file($private))hm_fail('bootstrap','andromeda_private_missing');$cfg=require $private;if(!is_array($cfg))hm_fail('bootstrap','andromeda_config_invalid');
@@ -30,14 +30,12 @@ try{
  $app=is_file($preview.'/app/integrations/anex-search.php')?$preview.'/app/integrations':$root.'/app/integrations';foreach(['anex-search','anex-search-mapping-registry'] as $f)require_once $app.'/'.$f.'.php';
  $criteria=['departureId'=>1,'countryId'=>4,'dateFrom'=>HM_DATE,'dateTo'=>HM_DATE,'nightsFrom'=>HM_NIGHTS,'nightsTo'=>HM_NIGHTS,'adults'=>2,'childs'=>[],'currency'=>'RUB','meal'=>'','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>''];
  $out=['status'=>'completed','operation_id'=>HM_OPERATION,'criteria'=>['departure'=>'Moscow','country'=>'Turkey','date'=>HM_DATE,'nights'=>HM_NIGHTS,'adults'=>2,'children'=>0,'currency'=>'RUB'],'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'raw_provider_bodies_recorded'=>false,'token_values_recorded'=>false];
- // Direct ANEX exact-day anchor.
  $token=trim((string)getenv('ANEX_API_TOKEN'));if($token===''&&defined('ANEX_API_TOKEN'))$token=trim((string)ANEX_API_TOKEN);if($token==='')hm_fail('anex','credential_missing');
  $client=new AnyTourAnexClient($token);$cache=[];$core=anytour_anex_search3_core($criteria);$q=$pdo->prepare('SELECT d.name departure_name,c.name country_name FROM catalog_departures d CROSS JOIN catalog_countries c WHERE d.id=? AND c.id=? AND d.is_active=1 AND c.is_active=1 LIMIT 1');$q->execute([1,4]);$names=$q->fetch(PDO::FETCH_ASSOC);if(!$names)hm_fail('anex','local_dictionary_names_missing');
  $core['supplier_namespace']='anex_online';$core['departure_id']=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_TOWNFROMS',[],$cache),[$names['departure_name']]);$core['destination_id']=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_STATES',['TOWNFROMINC'=>$core['departure_id']],$cache),[$names['country_name']]);
  $dated=['TOWNFROMINC'=>$core['departure_id'],'STATEINC'=>$core['destination_id'],'CHECKIN_BEG'=>str_replace('-','',$core['checkin_begin']),'CHECKIN_END'=>str_replace('-','',$core['checkin_end']),'ADULT'=>2,'CHILD'=>0];$core['currency_id']=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_CURRENCIES',$dated,$cache),['RUB','RUR','Рубль','Рубли','Руб']);
  $resolver=AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();$ar=anytour_anex_search3_prices($client,$resolver,$core);$anex=[];
  foreach($ar['offers'] as $offer){$h=$offer['hotel']??[];$id=(string)($h['external_id']??'');$name=hm_text($h['name']??'');if($id===''||$name==='')continue;if(!isset($anex[$id]))$anex[$id]=['anex_hotel_id'=>$id,'name'=>$name,'local_id'=>$h['local_id']??null];if(count($anex)>HM_HOTEL_CAP)hm_fail('anex','hotel_cap_exceeded');}
- // Andromeda ANEX-only all reported pages, retaining original.hotelKey.
  $req=['generation'=>1,'page'=>1,'params'=>$criteria,'andromeda_operator_ids'=>[HM_ANDROMEDA_OPERATOR]];$saved=anytour_andromeda_search3_catalog($cfg,$req);$saved['excluded_operator_ids']=$cfg['excluded_operator_ids']??[];$base=anytour_andromeda_search3_params($req,$pdo,$saved);$budgetDir=dirname((string)$cfg['catalog_path']);$transport=new AnyTourAndromedaTransport(true);
  $mk=static function()use($transport,$budgetDir){return new AnyTourAndromedaClient(static function($url,$opts)use($transport,$budgetDir){anytour_andromeda_search3_budget($budgetDir);return $transport($url,$opts);},true);};
  $ac=$mk();$ac->login((string)$cfg['username'],(string)$cfg['password']);$session=$ac->privateSession();if(!$session)hm_fail('andromeda','private_session_missing');
