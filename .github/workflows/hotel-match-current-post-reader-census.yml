@@ -1,0 +1,87 @@
+name: MATCH current post-reader census 1971
+on:
+  push:
+    branches: ['ops/match-current-post-reader-census-1971-20260912-v1']
+    paths: ['.github/workflows/hotel-match-current-post-reader-census.yml']
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-current-post-reader-census-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-current-post-reader-census-1971-20260912-v1
+  OUT: /tmp/match-current-post-reader-census
+jobs:
+  census:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Offline validation and immutable reservation
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_post_reader_census.php
+          php -d allow_url_fopen=0 scripts/diagnostics/hotel_match_current_post_reader_census.php --self-test
+          grep -Fq "const HM_POST_READER_OP = '$OPERATION_ID';" scripts/diagnostics/hotel_match_current_post_reader_census.php
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('scripts/diagnostics/hotel_match_current_post_reader_census.php')
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'source_file_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'run_id':os.environ['GITHUB_RUN_ID'],'read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          pathlib.Path(os.environ['OUT'],'reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-current-post-reader-census-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-current-post-reader-reservation-readback, merge-multiple: true}
+      - name: Verify reservation then one CURRENT read-only transaction
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-current-post-reader-reservation-readback/reservation.json
+          key="$RUNNER_TEMP/hmpr-key"; sock="$RUNNER_TEMP/hmpr.sock"; known="$RUNNER_TEMP/hmpr-known"
+          cleanup(){ ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; rm -f "$key" "$known" "$RUNNER_TEMP/hmpr-stdout" "$RUNNER_TEMP/hmpr-stderr"; }
+          trap cleanup EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ok=0
+          for n in 1 2 3; do
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi
+            sleep 15
+          done
+          test "$ok" = 1
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=1536M" < scripts/diagnostics/hotel_match_current_post_reader_census.php > "$RUNNER_TEMP/hmpr-stdout" 2> "$RUNNER_TEMP/hmpr-stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'hmpr-stdout').read_bytes()
+          rows=[x[len(b'MATCH_POST_READER:'):] for x in raw.splitlines() if x.startswith(b'MATCH_POST_READER:')]
+          data=json.loads(rows[0]) if len(rows)==1 else {'status':'unknown_do_not_replay','safe_message':'result_marker_missing'}
+          payload=json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()+b'\n'
+          (out/'result.json').write_bytes(payload)
+          reservation=json.loads((out/'reservation.json').read_text())
+          verified=(int(os.environ['RC'])==0 and data.get('status')=='completed' and data.get('operation_id')==os.environ['OPERATION_ID'] and data.get('source_sha')==os.environ['GITHUB_SHA'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls']))
+          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'status':data.get('status'),'result_sha256':hashlib.sha256(payload).hexdigest(),'reservation_source_file_sha256':reservation['source_file_sha256'],'readback_verified':verified,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          c=data.get('counts') or {}
+          summary=(f"MATCH #1971 NEW CURRENT post-reader census: **{data.get('status','unknown')}** / NO-REPLAY. "
+                   f"Live unresolved core8 ANEX **{c.get('live_unresolved_core8_anex')} IDs / {c.get('live_unresolved_occurrences')} saved occurrences**, absent staging **{c.get('live_unresolved_absent_staging')}**; prepared unique-exact candidates **{c.get('live_unique_exact_candidates')}**, including exact accepted-Andromeda name bridges **{c.get('live_exact_cross_provider_bridge_candidates')}**; >5km coordinate blocks **{c.get('live_coordinate_gt5km_blocked')}**. "
+                   f"Andromeda pending core8 **{c.get('andromeda_pending_core8')}**, live-observed pending **{c.get('andromeda_pending_live_observed')}**, prepared unique-exact **{c.get('andromeda_unique_exact_candidates')}**, exact accepted-ANEX name bridges **{c.get('andromeda_exact_anex_bridge_candidates')}**. "
+                   f"Current unique-local triple / ANEX+TV-only / Andromeda+TV-only = **{c.get('triple_unique_local')} / {c.get('anex_tv_only_unique_local')} / {c.get('andromeda_tv_only_unique_local')}**. "
+                   f"Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`. DB/mapping/supplier/Tourvisor writes/calls **0**; this is a mass prepared CURRENT evidence package, not an acceptance manifest.")
+          (out/'summary.md').write_text(summary+'\n'); print(summary)
+          if not verified: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-current-post-reader-census-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record result in MATCH issue
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
