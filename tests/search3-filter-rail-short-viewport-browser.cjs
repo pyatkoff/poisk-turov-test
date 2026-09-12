@@ -71,7 +71,12 @@ async function exercise(browser, width, height) {
         rectBottom: rect.bottom,
         overflowY: style.overflowY,
         overflowX: document.documentElement.scrollWidth > innerWidth + 2,
-        viewportHeight: innerHeight
+        viewportHeight: innerHeight,
+        shellWidth: document.querySelector('.v2-shell').getBoundingClientRect().width,
+        layoutWidth: document.querySelector('.results-layout').getBoundingClientRect().width,
+        railWidth: rect.width,
+        resultsWidth: document.querySelector('#results').getBoundingClientRect().width,
+        workspaceGap: document.querySelector('#results').getBoundingClientRect().left - rect.right
       };
     });
     assert.equal(initial.overflowY, 'auto', `${width}: rail owns vertical overflow`);
@@ -79,6 +84,12 @@ async function exercise(browser, width, height) {
     assert.ok(initial.scrollHeight > initial.clientHeight, `${width}: fixture actually exercises an overflowing rail: ${JSON.stringify(initial)}`);
     assert.ok(initial.rectTop >= 16 && initial.rectBottom <= height + 1, `${width}: sticky rail stays inside the viewport: ${JSON.stringify(initial)}`);
     assert.equal(initial.overflowX, false, `${width}: page has no horizontal overflow before keyboard traversal`);
+    if (width >= 1200) {
+      assert.ok(initial.shellWidth >= Math.min(width - 8, 1350), `${width}: wide desktop uses the available workspace: ${JSON.stringify(initial)}`);
+      assert.ok(initial.railWidth >= 245 && initial.railWidth <= 255, `${width}: OTA filter rail stays intentionally scannable: ${JSON.stringify(initial)}`);
+      assert.ok(initial.workspaceGap >= 20 && initial.workspaceGap <= 28, `${width}: rail/results gap stays balanced: ${JSON.stringify(initial)}`);
+      assert.ok(initial.resultsWidth >= initial.railWidth * 3.4, `${width}: results remain the dominant decision surface: ${JSON.stringify(initial)}`);
+    }
 
     const focusables = page.locator('.results-filter-rail :is(input,select,button):visible:not([disabled])');
     assert.ok(await focusables.count() >= 5, `${width}: rail exposes a real keyboard path`);
@@ -128,11 +139,14 @@ async function exercise(browser, width, height) {
   const browser = await chromium.launch({ headless: true });
   try {
     await exercise(browser, 1025, 520);
+    await exercise(browser, 1200, 700);
+    await exercise(browser, 1366, 768);
     await exercise(browser, 1440, 560);
+    await exercise(browser, 1600, 700);
   } finally {
     await browser.close();
   }
-  console.log('SEARCH3_FILTER_RAIL_SHORT_VIEWPORT_OK widths=1025x520,1440x560 keyboard=1 rail_scroll=1 page_scroll=0 horizontal_overflow=0 supplier_calls_on_reset=0');
+  console.log('SEARCH3_FILTER_RAIL_SHORT_VIEWPORT_OK widths=1025x520,1200x700,1366x768,1440x560,1600x700 keyboard=1 rail_scroll=1 page_scroll=0 horizontal_overflow=0 supplier_calls_on_reset=0');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;

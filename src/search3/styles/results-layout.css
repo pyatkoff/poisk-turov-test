@@ -143,6 +143,11 @@ margin:0;background:#f5f7fb;color:#17233b;
 & #results .tour-action{padding:12px 14px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:12px;background:var(--at-soft,#f5f8ff)}
 & #results .tour-action>.hotel-price{font-size:26px}
 }
+@media(min-width:1200px){
+&:not(.search3-selected-open) .v2-shell{max-width:1360px;padding-inline:24px}
+& .results-layout:has(#results>*){grid-template-columns:250px minmax(0,1fr);gap:24px}
+& .results-filter-rail{gap:14px;padding:16px}
+}
 @media(max-width:560px){
 & .catalog-recovery{padding:14px}
 & .catalog-recovery .search-progress-error{align-items:stretch;flex-direction:column;gap:12px}
