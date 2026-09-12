@@ -98,4 +98,76 @@ try {
 }
 ++$checks;
 
+$badMoney = [];
+foreach ([
+    ['final_price', ['currency' => 'RUB']],
+    ['final_price', ['amount' => '0', 'currency' => 'RUB']],
+    ['final_price', ['amount' => '135643.001', 'currency' => 'RUB']],
+    ['final_price', ['amount' => '135643', 'currency' => 'rub']],
+    ['final_price', ['amount' => '135643', 'currency' => 'RUB', 'source' => 'invented']],
+    ['search_price', ['amount' => '0', 'currency' => 'RUB']],
+    ['search_price', ['amount' => '119114', 'currency' => 'RUB', 'total' => '150824']],
+    ['package_price', ['amount' => '124864', 'currency' => 'RUB', 'agency_cost' => '1']],
+] as [$field, $value]) {
+    $bad = $result;
+    $bad[$field] = $value;
+    $badMoney[] = $bad;
+}
+foreach ($badMoney as $bad) {
+    try {
+        AnyTourAndromedaQuoteAttemptState::completed($reserved, $bad);
+        throw new RuntimeException('malformed money accepted');
+    } catch (RuntimeException $e) {
+        if ($e->getMessage() !== 'ANDROMEDA_QUOTE_MONEY_INVALID') throw $e;
+    }
+    ++$checks;
+}
+
+$noPackagePrice = $result;
+$noPackagePrice['package_price'] = null;
+if (AnyTourAndromedaQuoteAttemptState::replay(
+    AnyTourAndromedaQuoteAttemptState::completed($reserved, $noPackagePrice),
+    $context,
+    $operation
+) !== $noPackagePrice) throw new RuntimeException('nullable package price rejected');
+++$checks;
+
+foreach ([
+    ['schema_version', 2],
+    ['local_id', null],
+    ['local_id', 0],
+    ['flight_selection_required', true],
+    ['flights', ['not-a-list' => []]],
+] as [$field, $value]) {
+    $bad = $result;
+    $bad[$field] = $value;
+    try {
+        AnyTourAndromedaQuoteAttemptState::completed($reserved, $bad);
+        throw new RuntimeException('state mismatch accepted');
+    } catch (RuntimeException $e) {
+        if ($e->getMessage() !== 'ANDROMEDA_QUOTE_RESULT_INVALID') throw $e;
+    }
+    ++$checks;
+}
+
+$choiceMismatch = $choice;
+$choiceMismatch['flight_selection_required'] = false;
+try {
+    AnyTourAndromedaQuoteAttemptState::completed($reserved, $choiceMismatch);
+    throw new RuntimeException('choice boolean mismatch accepted');
+} catch (RuntimeException $e) {
+    if ($e->getMessage() !== 'ANDROMEDA_QUOTE_RESULT_INVALID') throw $e;
+}
+++$checks;
+
+$corruptCompleted = $completed;
+$corruptCompleted['result']['final_price'] = ['amount' => 'not-money', 'currency' => 'RUB'];
+try {
+    AnyTourAndromedaQuoteAttemptState::replay($corruptCompleted, $context, $operation);
+    throw new RuntimeException('corrupt completed replay accepted');
+} catch (RuntimeException $e) {
+    if ($e->getMessage() !== 'ANDROMEDA_QUOTE_MONEY_INVALID') throw $e;
+}
+++$checks;
+
 print("Andromeda quote attempt state: {$checks} checks passed\n");
