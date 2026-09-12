@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import sys
+import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 DIAG=ROOT/'scripts'/'diagnostics'
@@ -19,6 +21,19 @@ assert 'final class AnyTourAnexSearchMappingRegistry' in assembled
 assert 'function anex_concrete_fuel_main' in assembled
 assert "require_once __DIR__ . '/anex-client.php'" not in assembled
 assert '$report=anex_concrete_fuel_main();' in assembled
+
+preserved={
+    'schema_version':1,'experiment_id':'anex_additional_program2637_20260912_v1','status':'completed',
+    'supplier_replay_allowed':False,
+    'spec':{'country':'Turkey','date':'2026-10-12','nights':7,'adults':2,'child_ages':[]},
+    'evidence':{'candidate_two_adult_rate_sum':'29184.4','additional_price_converted_adult':'14592.2'},
+    'retained_search_source':{'source_operation_still_no_replay':True},
+    'new_requests':{'additional_prices_requests':1},
+}
+with tempfile.TemporaryDirectory() as td:
+    p=Path(td)/'report.json';p.write_text(json.dumps(preserved))
+    retained=mod.read_preserved(p)
+assert str(retained['supplement'])=='29184.4' and str(retained['adult'])=='14592.2'
 
 value={
     'schema_version':1,'experiment_id':mod.EXPERIMENT,'status':'completed','automatic_retry':False,
@@ -40,7 +55,7 @@ value={
     ],'search_complete':True},
 }
 assert mod.validate(value) is value
-report=mod.analyze(value);e=report['evidence']
+report=mod.analyze(value,retained);e=report['evidence']
 assert report['production_price_arithmetic_applied'] is False
 assert report['preserved_additional_prices']['supplier_replay_performed'] is False
 assert report['preserved_additional_prices']['source_run']==34716809979
@@ -58,7 +73,7 @@ assert report['requests']['additional_prices']==0
 
 ambiguous=copy.deepcopy(value)
 ambiguous['tourvisor']['offers'].append({'price':'162494.2','fuel_charge':'29184.2','room_norm':'standard room','placement_norm':'dbl'})
-assert mod.analyze(ambiguous)['evidence']['unique_concrete_tv_match'] is False
+assert mod.analyze(ambiguous,retained)['evidence']['unique_concrete_tv_match'] is False
 for field,bad in [('booking_calls',1),('mapping_writes',1),('andromeda_requests',1),('additional_prices_requests',1)]:
     broken=copy.deepcopy(value);broken[field]=bad
     try:mod.validate(broken)
@@ -68,6 +83,12 @@ wrong_program=copy.deepcopy(value);wrong_program['selected_concrete']['supplier_
 try:mod.validate(wrong_program)
 except ValueError:pass
 else:raise AssertionError('wrong program accepted')
+with tempfile.TemporaryDirectory() as td:
+    bad=copy.deepcopy(preserved);bad['retained_search_source']['source_operation_still_no_replay']=False
+    p=Path(td)/'bad.json';p.write_text(json.dumps(bad))
+    try:mod.read_preserved(p)
+    except ValueError:pass
+    else:raise AssertionError('replayable preserved evidence accepted')
 for bad in (None,True,False,float('nan'),float('inf'),-1,'NaN','-1'):
     assert mod.decimal(bad) is None
 assert mod.decimal(0.0)==0
