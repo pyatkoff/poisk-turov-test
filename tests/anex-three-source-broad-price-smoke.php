@@ -4,12 +4,12 @@ define('ANYTOUR_ANEX_BROAD_PRICE_LIBRARY_ONLY',true);
 require __DIR__.'/../scripts/diagnostics/anex_three_source_broad_price.php';
 
 $checks=0;function broad_check(bool $ok):void{global $checks;++$checks;if(!$ok)throw new RuntimeException('broad_price_check_'.$checks);}
-broad_check(ANEX_BROAD_PRICE_EXPERIMENT==='anex_three_source_broad_price_20260912_v4');
-broad_check(ANEX_BROAD_PRICE_DATE==='2026-10-27');
-$base=['experiment_id'=>ANEX_BROAD_PRICE_EXPERIMENT,'case_id'=>'anex','country'=>'Turkey','date'=>ANEX_BROAD_PRICE_DATE,'nights'=>8,'adults'=>1,'child_ages'=>[],'meal_family'=>'ai','currency'=>'RUB'];
+broad_check(ANEX_BROAD_PRICE_EXPERIMENT==='anex_three_source_broad_price_20260912_v5');
+broad_check(ANEX_BROAD_PRICE_DATE==='2026-10-12');
+$base=['experiment_id'=>ANEX_BROAD_PRICE_EXPERIMENT,'case_id'=>'anex','country'=>'Turkey','date'=>ANEX_BROAD_PRICE_DATE,'nights'=>7,'adults'=>2,'child_ages'=>[],'meal_family'=>'ai','currency'=>'RUB'];
 broad_check(anex_broad_price_input($base)===$base);
 foreach(ANEX_BROAD_PRICE_CASES as $case){$v=$base;$v['case_id']=$case;broad_check(anex_broad_price_input($v)['case_id']===$case);}
-foreach([['date','2026-10-26'],['country','Egypt'],['nights',7],['adults',2],['meal_family','bb'],['currency','USD'],['case_id','bad']] as [$key,$value]){$v=$base;$v[$key]=$value;try{anex_broad_price_input($v);broad_check(false);}catch(RuntimeException $e){broad_check($e->getMessage()==='BROAD_PRICE_INVALID_INPUT');}}
+foreach([['date','2026-10-11'],['country','Egypt'],['nights',8],['adults',1],['meal_family','bb'],['currency','USD'],['case_id','bad']] as [$key,$value]){$v=$base;$v[$key]=$value;try{anex_broad_price_input($v);broad_check(false);}catch(RuntimeException $e){broad_check($e->getMessage()==='BROAD_PRICE_INVALID_INPUT');}}
 foreach(['AI','ALL INCLUSIVE','все включено'] as $meal){$contract=anex_broad_price_meal($meal);broad_check(is_array($contract)&&$contract['canonical_key']==='ai');}
 broad_check(anex_broad_price_meal('UAI')['canonical_key']==='uai');
 broad_check(anex_broad_price_meal('AI-WITHOUT ALCOHOL')['canonical_key']==='ai:without_alcohol');
@@ -18,14 +18,14 @@ foreach(['BB','HB','RO'] as $meal)broad_check(anex_broad_price_meal($meal)['fami
 broad_check(anex_broad_price_meal('')===null);
 broad_check(anex_broad_price_money('100000',true)==='100000');broad_check(anex_broad_price_money('0',false)==='0');broad_check(anex_broad_price_money('0',true)===null);
 foreach(['-1','1e5','1,2','1.234'] as $bad)broad_check(anex_broad_price_money($bad,false)===null);
-$row=anex_broad_price_offer('tourvisor',1239,1239,'HEDEF RESORT HOTEL',ANEX_BROAD_PRICE_DATE,8,1,0,'AI','Standard Room','SGL','107391','RUB','2500');
-broad_check(is_array($row)&&$row['local_hotel_id']===1239&&$row['room_norm']==='standard room'&&$row['placement_norm']==='sgl');
+$row=anex_broad_price_offer('tourvisor',1239,1239,'HEDEF RESORT HOTEL',ANEX_BROAD_PRICE_DATE,7,2,0,'AI','Standard Room','DBL','107391','RUB','2500');
+broad_check(is_array($row)&&$row['local_hotel_id']===1239&&$row['room_norm']==='standard room'&&$row['placement_norm']==='dbl');
 broad_check($row['meal_family']==='ai'&&$row['meal_key']==='ai'&&$row['meal_qualifiers']===[]&&$row['meal_equivalence_verified']===false);
 broad_check($row['fuel_charge']==='2500'&&$row['fuel_inclusion_verified']===false&&$row['final_price_verified']===false);
-broad_check(anex_broad_price_offer('anex',0,8652,'X',ANEX_BROAD_PRICE_DATE,8,1,0,'AI','Standard','SGL','100000','RUB')===null);
-broad_check(anex_broad_price_offer('anex',1239,8652,'X',ANEX_BROAD_PRICE_DATE,8,1,0,'BB','Standard','SGL','100000','RUB')===null);
-broad_check(anex_broad_price_offer('anex',1239,8652,'X',ANEX_BROAD_PRICE_DATE,8,1,0,'UAI','Standard','SGL','100000','RUB')===null);
-broad_check(anex_broad_price_offer('anex',1239,8652,'X',ANEX_BROAD_PRICE_DATE,8,1,0,'AI-WITHOUT ALCOHOL','Standard','SGL','100000','RUB')===null);
+broad_check(anex_broad_price_offer('anex',0,8652,'X',ANEX_BROAD_PRICE_DATE,7,2,0,'AI','Standard','DBL','100000','RUB')===null);
+broad_check(anex_broad_price_offer('anex',1239,8652,'X',ANEX_BROAD_PRICE_DATE,7,2,0,'BB','Standard','DBL','100000','RUB')===null);
+broad_check(anex_broad_price_offer('anex',1239,8652,'X',ANEX_BROAD_PRICE_DATE,7,2,0,'UAI','Standard','DBL','100000','RUB')===null);
+broad_check(anex_broad_price_offer('anex',1239,8652,'X',ANEX_BROAD_PRICE_DATE,7,2,0,'AI-WITHOUT ALCOHOL','Standard','DBL','100000','RUB')===null);
 $initial=['status'=>'blocked','offers'=>[],'supplier_effect'=>'unknown_after_reservation','reused'=>false];$result=['offers'=>[$row],'received_offers'=>1];
 $done=anex_broad_price_completed($initial,$result);broad_check($done['status']==='completed'&&$done['offers']===$result['offers']&&$done['supplier_effect']==='read_only_search_completed');
 $reuse=anex_broad_price_reused($done);broad_check($reuse['reused']===true&&$reuse['offers']===$result['offers']);
