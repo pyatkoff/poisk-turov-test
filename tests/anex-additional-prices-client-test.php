@@ -73,7 +73,9 @@ $echo = $echoClient->additionalPricesDaily([
 ]);
 $assert(($echo['safe'] ?? null) === 'ok', 'safe supplier field retained');
 $assert(array_key_exists('echo', $echo) && $echo['echo'] === null, 'plain token echo redacted');
-$assert(($echo['nested']['echo'] ?? 'missing') === null, 'encoded token echo redacted');
+$assert(isset($echo['nested']) && is_array($echo['nested'])
+    && array_key_exists('echo', $echo['nested']) && $echo['nested']['echo'] === null,
+    'encoded token echo redacted');
 
 $expect('ANEX_B2B_INVALID_CRITERIA', static function (): void {
     (new AnyTourAnexAdditionalPricesClient('token', static function (): array { return []; }))
