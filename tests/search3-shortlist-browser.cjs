@@ -118,6 +118,36 @@ async function addOffer(page, offerId, keyboard = false) {
   }
 }
 
+async function openComparison(page, width, options = {}) {
+  const shortlist = page.locator('.search3-shortlist');
+  const body = shortlist.locator('.search3-shortlist__body');
+  const disclosure = shortlist.locator('.search3-shortlist-disclosure');
+  if (width <= 600) {
+    assert.equal(await disclosure.isVisible(), true, 'mobile comparison exposes one explicit disclosure');
+    assert.ok((await disclosure.boundingBox()).height >= 44, 'mobile comparison disclosure retains a 44px target');
+    if (options.assertCollapsed) {
+      assert.equal(await disclosure.getAttribute('aria-expanded'), 'false', 'mobile comparison starts collapsed');
+      assert.equal(await body.isVisible(), false, 'collapsed mobile comparison does not dominate the results flow');
+    }
+    if ((await disclosure.getAttribute('aria-expanded')) !== 'true') await disclosure.click();
+    assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'mobile comparison expands only on explicit request');
+    assert.equal(await body.isVisible(), true, 'explicit mobile disclosure reveals comparison content');
+    const geometry = await shortlist.locator('.search3-shortlist-item').evaluateAll(nodes => nodes.map(node => {
+      const rect = node.getBoundingClientRect();
+      const parent = node.parentElement.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, width: rect.width, parentLeft: parent.left, parentRight: parent.right, parentWidth: parent.width };
+    }));
+    geometry.forEach(item => {
+      assert.ok(item.width >= item.parentWidth - 3, 'opened mobile comparison cards use the full comparison width');
+      assert.ok(item.left >= item.parentLeft - 2 && item.right <= item.parentRight + 2, 'opened mobile cards are not clipped horizontally');
+    });
+  } else {
+    assert.equal(await disclosure.isVisible(), false, 'desktop comparison stays expanded without a redundant mobile disclosure');
+    assert.equal(await body.isVisible(), true, 'desktop comparison remains directly visible');
+  }
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'comparison creates no page-level horizontal overflow');
+}
+
 async function checkJourney(browser, width) {
   const { context, page, errors, posts } = await openPage(browser, width);
   try {
@@ -129,6 +159,7 @@ async function checkJourney(browser, width) {
     await addOffer(page, 'offer-standard', true);
     await addOffer(page, 'offer-family');
     await addOffer(page, 'offer-third');
+    await openComparison(page, width, { assertCollapsed: true });
     const shortlist = page.locator('.search3-shortlist');
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'shortlist accepts at most three exact snapshots');
     assert.equal(await shortlist.locator('[role="dialog"]').count(), 0, 'comparison remains inline and does not create a second focus trap');
@@ -193,6 +224,7 @@ async function checkJourney(browser, width) {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.V2Results && window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.search3Ready === '1');
     await page.waitForFunction(() => document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+    await openComparison(page, width);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 2, 'two exact snapshots survive reload');
     assert.equal(await page.locator('.search3-shortlist-select:enabled').count(), 0, 'persisted snapshots never grant selection authority before a current projection');
     assert.equal(await page.locator('.search3-shortlist-select').first().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(238, 241, 246)', 'stale comparison action is visibly disabled rather than orange');
@@ -207,9 +239,11 @@ async function checkJourney(browser, width) {
     await page.evaluate(({ key, value }) => localStorage.setItem(key, value), persistedBefore);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.V2Results && window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+    await openComparison(page, width);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 2, 'fixture restores persisted snapshots for the remaining selection checks');
 
     await render(page, 731);
+    await openComparison(page, width);
     assert.equal(await page.locator('.search3-shortlist-select:enabled').count(), 2, 'unique current-generation matches restore explicit selection authority');
     const choose = page.locator('.search3-shortlist-item[data-offer-id="offer-standard"] .search3-shortlist-select');
     await choose.focus(); await choose.press('Enter');
@@ -236,6 +270,7 @@ async function checkJourney(browser, width) {
     assert.equal(await page.evaluate(() => JSON.stringify(window.__shortlistSource).includes('DUPLICATE')), true, 'ambiguous fixture is present rather than silently filtered out');
 
     await render(page, 731);
+    await openComparison(page, width);
     await page.locator('.search3-shortlist-clear').focus();
     await page.locator('.search3-shortlist-clear').press('Enter');
     await page.waitForFunction(() => document.activeElement?.matches('.search3-shortlist-toggle[data-offer-id="offer-standard"]'));
@@ -257,6 +292,7 @@ async function checkStorageFailure(browser, width, mode) {
     await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
     await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard', true);
+    await openComparison(page, width);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 1, `${mode}: in-memory fallback retains the explicit snapshot`);
     assert.match(compact(await page.locator('.search3-shortlist-status').innerText()), /не сохран|только.*сеанс|хранилищ/i, `${mode}: non-persistence is explicit`);
     assert.equal(await page.evaluate(() => window.Search3Shortlist.persistent), false, `${mode}: public state reports fallback mode`);
