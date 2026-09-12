@@ -1,0 +1,237 @@
+name: MATCH residual ensemble CURRENT v2
+run-name: MATCH residual ensemble CURRENT v2 #1971
+
+on:
+  push:
+    branches:
+      - ops/match-residual-ensemble-current-1971-v2
+    paths:
+      - .github/match-residual-ensemble-review-1971-20260912-v2.arm
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: match-residual-ensemble-current-1971-v2
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-residual-ensemble-review-1971-20260912-v2
+  BASE_OPERATION_ID: hotel-match-residual-ensemble-base-1971-20260912-v2
+  STRICT_OPERATION_ID: hotel-match-residual-ensemble-strict-1971-20260912-v2
+  OUT_DIR: /tmp/match-residual-ensemble-current-v2
+  COORD_RUN_ID: '34591505927'
+  COORD_ARTIFACT_ID: '10195814890'
+  COORD_ARTIFACT_NAME: hotel-match-anex-direct-details-coordinate-review-1971-20260911-v1-result
+  COORD_RESULT_SHA256: cc95fac4494f1fbef26e3eadfdf751a4b3caf828752837be885c0e060df88bcc
+  SOLD_RUN_ID: '34589260627'
+  SOLD_ARTIFACT_ID: '10194949581'
+  SOLD_ARTIFACT_NAME: hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1-result
+  SOLD_RESULT_SHA256: 74504dd19773da26c34d4a63aed31774c8880efcfd97565d1cba69d8b5b09b42
+
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+          persist-credentials: false
+
+      - name: Validate reviewed supplier-free algorithm
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-residual-ensemble-review-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          for f in \
+            scripts/diagnostics/hotel_full_catalog_reconcile.php \
+            scripts/diagnostics/hotel_match_current_bulk_review.php \
+            scripts/diagnostics/hotel_match_current_strict_review.php \
+            scripts/diagnostics/hotel_match_residual_ensemble_review.php; do php -l "$f"; done
+          ! grep -Fq 'v2_data_tv_get' scripts/diagnostics/hotel_match_residual_ensemble_review.php
+          ! grep -Fq 'AnyTourAnexClient' scripts/diagnostics/hotel_match_residual_ensemble_review.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_residual_ensemble_review.php
+          grep -Fq 'START TRANSACTION READ ONLY' scripts/diagnostics/hotel_match_residual_ensemble_review.php
+          grep -Fq "['ANNEX','BEACH','GARDEN','NORTH','SOUTH']" scripts/diagnostics/hotel_match_residual_ensemble_review.php
+
+      - name: Fetch and verify immutable completed evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 700 -p "$OUT_DIR/evidence"
+          for prefix in COORD SOLD; do
+            eval artifact_id="\$${prefix}_ARTIFACT_ID"
+            eval artifact_name="\$${prefix}_ARTIFACT_NAME"
+            eval run_id="\$${prefix}_RUN_ID"
+            eval expected_sha="\$${prefix}_RESULT_SHA256"
+            lower="$(printf '%s' "$prefix" | tr '[:upper:]' '[:lower:]')"
+            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id" > "$OUT_DIR/evidence/${lower}-meta.json"
+            PREFIX="$prefix" LOWER="$lower" python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR'])/'evidence'; prefix=os.environ['PREFIX']; lower=os.environ['LOWER']
+          m=json.loads((root/f'{lower}-meta.json').read_text())
+          assert str(m['id'])==os.environ[prefix+'_ARTIFACT_ID']
+          assert m['name']==os.environ[prefix+'_ARTIFACT_NAME']
+          assert str(m['workflow_run']['id'])==os.environ[prefix+'_RUN_ID']
+          assert m.get('expired') is False
+          PY
+            gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$OUT_DIR/evidence/${lower}.zip"
+            mkdir "$OUT_DIR/evidence/${lower}"
+            unzip -q "$OUT_DIR/evidence/${lower}.zip" -d "$OUT_DIR/evidence/${lower}"
+            test -f "$OUT_DIR/evidence/${lower}/result.json"
+            echo "$expected_sha  $OUT_DIR/evidence/${lower}/result.json" | sha256sum -c -
+          done
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR'])/'evidence'
+          c=json.loads((root/'coord/result.json').read_text()); s=json.loads((root/'sold/result.json').read_text())
+          assert c['operation_id']=='hotel-match-anex-direct-details-coordinate-review-1971-20260911-v1' and c['status']=='completed'
+          assert c['database_writes']==0 and c['mapping_writes']==0 and c['supplier_calls']==0 and len(c['prepared'])==35
+          assert s['operation_id']=='hotel-match-anex-tourvisor-sold-date-details-review-1971-20260911-v1' and s['status']=='completed'
+          assert s['database_writes']==0 and len(s['prepared'])==3
+          PY
+
+      - name: Build immutable runtime copy with new operation ids only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT_DIR/package"
+          cp scripts/diagnostics/hotel_full_catalog_reconcile.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_current_bulk_review.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_current_strict_review.php "$OUT_DIR/package/"
+          cp scripts/diagnostics/hotel_match_residual_ensemble_review.php "$OUT_DIR/package/"
+          cp "$OUT_DIR/evidence/coord/result.json" "$OUT_DIR/package/coord-result.json"
+          cp "$OUT_DIR/evidence/sold/result.json" "$OUT_DIR/package/sold-result.json"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR'])/'package'
+          patches={
+            'hotel_match_current_bulk_review.php':[("const MBR_OPERATION = 'hotel-match-current-bulk-review-1971-20260911-v1';",f"const MBR_OPERATION = '{os.environ['BASE_OPERATION_ID']}';")],
+            'hotel_match_current_strict_review.php':[("const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';",f"const MSR_OPERATION = '{os.environ['STRICT_OPERATION_ID']}';")],
+            'hotel_match_residual_ensemble_review.php':[
+              ("const HMRE_OPERATION = 'hotel-match-residual-ensemble-review-1971-20260911-v1';",f"const HMRE_OPERATION = '{os.environ['OPERATION_ID']}';"),
+              ("const HMRE_BASE_OPERATION = 'hotel-match-residual-ensemble-base-1971-20260911-v1';",f"const HMRE_BASE_OPERATION = '{os.environ['BASE_OPERATION_ID']}';"),
+              ("const HMRE_STRICT_OPERATION = 'hotel-match-residual-ensemble-strict-1971-20260911-v1';",f"const HMRE_STRICT_OPERATION = '{os.environ['STRICT_OPERATION_ID']}';")]
+          }
+          for name,repls in patches.items():
+              p=root/name; text=p.read_text()
+              for old,new in repls:
+                  if text.count(old)!=1: raise SystemExit(f'patch_target_not_unique:{name}:{old}')
+                  text=text.replace(old,new)
+              p.write_text(text)
+          PY
+          for f in "$OUT_DIR"/package/*.php; do php -l "$f"; done
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' "$OUT_DIR/package/hotel_match_residual_ensemble_review.php"
+
+      - name: Persist durable reservation before CURRENT DB read
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); pkg=root/'package'
+          value={
+            'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_read','run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],
+            'mode':'entire_current_core8_residual_ensemble_read_only','providers':['anex','andromeda'],
+            'algorithm_sha256':hashlib.sha256((pkg/'hotel_match_residual_ensemble_review.php').read_bytes()).hexdigest(),
+            'coordinate_result_sha256':hashlib.sha256((pkg/'coord-result.json').read_bytes()).hexdigest(),
+            'sold_result_sha256':hashlib.sha256((pkg/'sold-result.json').read_bytes()).hexdigest(),
+            'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,
+            'historical_operations_replayed':False,'no_replay':True}
+          (root/'reservation.json').write_text(json.dumps(value,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-residual-ensemble-current-v2-reservation
+          path: ${{ env.OUT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Establish resilient SSH master and upload package
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/hmre2-key"; sock="$RUNNER_TEMP/hmre2.sock"; known="$RUNNER_TEMP/hmre2-known"; remote="/tmp/hmre2-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          connect_master(){ rm -f "$sock"; ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; }
+          ok=0; for attempt in 1 2 3 4 5; do if connect_master; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -s config.php && { test -s data/db-v1.php || test -s v2/data/db-v1.php; } && printf HMRE2_PREFLIGHT_OK' | grep -qx HMRE2_PREFLIGHT_OK
+          tar -C "$OUT_DIR/package" -czf - . | ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote' && mkdir -m 700 '$remote' && tar -xzf - -C '$remote'"
+          printf '%s\n' "$key" > "$RUNNER_TEMP/hmre2-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/hmre2-sockpath"; printf '%s\n' "$known" > "$RUNNER_TEMP/hmre2-knownpath"; printf '%s\n' "$remote" > "$RUNNER_TEMP/hmre2-remotepath"
+
+      - name: Execute one-shot entire CURRENT ensemble review
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/hmre2-keypath")"; sock="$(cat "$RUNNER_TEMP/hmre2-sockpath")"; known="$(cat "$RUNNER_TEMP/hmre2-knownpath")"; remote="$(cat "$RUNNER_TEMP/hmre2-remotepath")"
+          cleanup(){ ssh -S "$sock" -o ControlMaster=no "$USER_VALUE@$HOST_VALUE" "rm -rf '$remote'" >/dev/null 2>&1 || true; ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }; trap cleanup EXIT
+          if ! ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1; then
+            rm -f "$sock"; ok=0; for attempt in 1 2 3 4 5; do if ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          fi
+          set +e
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=1 -r 'define(\"FC_LIBRARY_ONLY\",true); \$root=realpath(getcwd()); require \$root.\"/config.php\"; require is_file(\$root.\"/data/db-v1.php\")?\$root.\"/data/db-v1.php\":\$root.\"/v2/data/db-v1.php\"; require \"$remote/hotel_match_residual_ensemble_review.php\"; \$coord=json_decode(file_get_contents(\"$remote/coord-result.json\"),true,128,JSON_THROW_ON_ERROR); \$sold=json_decode(file_get_contents(\"$remote/sold-result.json\"),true,128,JSON_THROW_ON_ERROR); \$db=v2_data_db(); \$base=mbr_review(\$db,\"$BASE_OPERATION_ID\"); \$strict=msr_review(\$db,\"$STRICT_OPERATION_ID\"); echo \"HMRE2_JSON:\".fc_json(hmre_review(\$db,\$base,\$strict,\$coord,\$sold,\"$OPERATION_ID\")).PHP_EOL;'" > "$OUT_DIR/live.stdout" 2> "$OUT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['OUT_DIR']); out=(root/'live.stdout').read_text(errors='replace'); err=(root/'live.stderr').read_text(errors='replace'); marker='HMRE2_JSON:'
+          line=next((x[len(marker):] for x in reversed(out.splitlines()) if x.startswith(marker)),None)
+          if line is None:
+              result={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'stderr_tail':err[-3000:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          else: result=json.loads(line)
+          result['source_sha']=os.environ['GITHUB_SHA']; result['run_id']=int(os.environ['GITHUB_RUN_ID']); result['remote_exit']=int(os.environ['RC']); result['no_replay']=True
+          raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (root/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only' if result.get('status')=='completed' and int(os.environ['RC'])==0 else 'unknown_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True,'counts':result.get('counts'),'coverage':result.get('coverage'),'dropped':result.get('dropped')}
+          (root/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if result.get('status')=='completed':
+              c=result['counts']; cov=result['coverage']; summary=(f"MATCH #1971 CURRENT residual ensemble `{result['operation_id']}` completed read-only / NO-REPLAY. Classified **{c['classified_total']}** residual rows: prepared **{c['auto_accept']}** = ANEX **{c['auto_anex']}** + Andromeda **{c['auto_andromeda']}** (live **{c['auto_live']}**), needs-extra **{c['needs_extra_evidence']}**, hard-conflict **{c['hard_conflict']}**, manual-last **{c['manual_last']}**. Evidence sources {json.dumps(result.get('auto_evidence_sources',{}),ensure_ascii=False,sort_keys=True)}; top reason counts {json.dumps(result.get('reason_counts',{}),ensure_ascii=False,sort_keys=True)}. Coverage: triple **{cov['all_three']}**, ANEX links **{cov['anex_links']}** / unique **{cov['anex_unique_local']}**, Andromeda unique **{cov['andromeda_unique_local']}**. Supplier/Tourvisor/DB/mapping writes/calls 0. Artifact follows.")
+          else: summary=f"MATCH #1971 CURRENT residual ensemble `{result.get('operation_id')}` is UNKNOWN / NO-REPLAY: `{result.get('reason')}`. No supplier/Tourvisor/DB/mapping write code paths; read receipt before any successor."
+          (root/'summary.md').write_text(summary+'\n'); print(summary)
+          if receipt['state']!='completed_read_only': raise SystemExit(2)
+          PY
+
+      - name: Preserve immutable final result and receipt
+        if: always()
+        id: final_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-residual-ensemble-current-v2-final
+          path: |
+            ${{ env.OUT_DIR }}/reservation.json
+            ${{ env.OUT_DIR }}/result.json
+            ${{ env.OUT_DIR }}/receipt.json
+            ${{ env.OUT_DIR }}/live.stderr
+            ${{ env.OUT_DIR }}/summary.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Record MATCH result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.final_artifact.outputs.artifact-id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$OUT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT_DIR/summary.md"
