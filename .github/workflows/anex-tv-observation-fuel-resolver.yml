@@ -1,0 +1,76 @@
+name: ANEX saved Tourvisor fuel resolver
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/anex_tv_observation_fuel_resolver.py'
+      - 'tests/anex_tv_observation_fuel_resolver_test.py'
+      - '.github/workflows/anex-tv-observation-fuel-resolver.yml'
+  push:
+    branches:
+      - 'ops/int-anex-tv-observation-fuel-resolver-20260913'
+    paths:
+      - '.github/ops/anex-tv-observation-fuel-resolver-20260913'
+permissions:
+  contents: read
+concurrency:
+  group: anex-tv-observation-fuel-resolver-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Focused resolver regression
+        run: |
+          python3 -B tests/anex_tv_observation_fuel_resolver_test.py
+          python3 -m py_compile scripts/diagnostics/anex_tv_observation_fuel_resolver.py
+  live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-tv-observation-fuel-resolver-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind exact reviewed source
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-tv-observation-fuel-resolver-20260913'
+          test "$(cat control/.github/ops/anex-tv-observation-fuel-resolver-20260913)" = "source=${SOURCE_SHA};operation=read-only-tv-observation-fuel-resolver;hotel=21753;date=2026-10-12;nights=7;party=2a;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Read saved Tourvisor observations only
+        id: resolver
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/tv-fuel-resolver"
+          python3 -B source/scripts/diagnostics/anex_tv_observation_fuel_resolver.py "$RUNNER_TEMP/tv-fuel-resolver"
+      - name: Preserve sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-tv-observation-fuel-resolver-${{ github.run_id }}
+          path: ${{ runner.temp }}/tv-fuel-resolver/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: steps.resolver.outcome != 'success'
+        run: exit 1
