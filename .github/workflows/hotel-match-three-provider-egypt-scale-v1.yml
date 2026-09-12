@@ -1,0 +1,183 @@
+name: MATCH three-provider Egypt scale v1
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-three-provider-egypt-scale-1971-20260912-v1.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-three-provider-egypt-scale-1971-20260912-v1
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - sid: s01
+            date: '2026-10-30'
+            nights: '7'
+          - sid: s02
+            date: '2026-11-13'
+            nights: '8'
+          - sid: s03
+            date: '2026-12-04'
+            nights: '9'
+    env:
+      FAMILY_ID: hotel-match-three-provider-egypt-scale-1971-20260912-v1
+      OPERATION_ID: hotel-match-three-provider-egypt-scale-1971-20260912-v1-${{ matrix.sid }}
+      SLICE_ID: ${{ matrix.sid }}
+      SEARCH_DATE: ${{ matrix.date }}
+      SEARCH_NIGHTS: ${{ matrix.nights }}
+      FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+      ARTIFACT_DIR: /tmp/match-three-provider-egypt-scale-v1-${{ matrix.sid }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify arm and derive exact frozen Egypt program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-three-provider-egypt-scale-1971-20260912-v1.arm)" = "$FAMILY_ID"
+          mkdir -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 \
+            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" \
+            -o "$ARTIFACT_DIR/frozen.php"
+          export FROZEN="$ARTIFACT_DIR/frozen.php" PROGRAM="$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          src=Path(os.environ['FROZEN']).read_text()
+          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
+          olddate="const M6_DATE = '2026-11-06';"
+          oldnights='const M6_NIGHTS = 7;'
+          replacements=[
+            (oldop,os.environ['OPERATION_ID']),
+            (olddate,"const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"),
+            (oldnights,'const M6_NIGHTS = '+os.environ['SEARCH_NIGHTS']+';'),
+            ("'countryId'=>4","'countryId'=>1"),
+            ("$lookup->execute([1,4]);","$lookup->execute([1,1]);"),
+            ("'country'=>'Turkey'","'country'=>'Egypt'"),
+          ]
+          out=src
+          for old,new in replacements:
+              if out.count(old)!=1: raise SystemExit('frozen derivation marker changed: '+old)
+              out=out.replace(old,new,1)
+          required=[
+            "const M6_TV_OPERATOR = 13;",
+            "'operatorIds'=>[M6_TV_OPERATOR]",
+            "'onlyDirect'=>false,'onlyCharter'=>false",
+            "if(!defined('TOURVISOR_ANEX_JWT'))",
+            "putenv('TOURVISOR_JWT='.$tvToken)",
+            "const M6_TV_CONTINUE_CAP = 8;",
+            "const M6_ANDROMEDA_PAGE_CAP = 100;",
+          ]
+          for needle in required:
+              if needle not in out: raise SystemExit('protected frozen contract missing: '+needle)
+          # Sanity: no ordinary credential lookup/substitution was introduced by derivation.
+          if "defined('TOURVISOR_JWT')" in out: raise SystemExit('ordinary credential fallback detected')
+          Path(os.environ['PROGRAM']).write_text(out)
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Establish resilient zero-supplier SSH master and preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-egypt-${SLICE_ID}-key"; sock="$RUNNER_TEMP/match-egypt-${SLICE_ID}.sock"; known="$RUNNER_TEMP/match-egypt-${SLICE_ID}-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          connect_master(){ rm -f "$sock"; ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; }
+          ok=0; for attempt in 1 2 3 4 5; do if connect_master; then ok=1; break; fi; sleep $((attempt*4)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && { test -f data/tourvisor-client-v1.php || test -f v2/data/tourvisor-client-v1.php; } && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php && printf MATCH_EGYPT_PREFLIGHT_OK' | grep -qx MATCH_EGYPT_PREFLIGHT_OK
+          printf '%s\n' "$key" > "$RUNNER_TEMP/match-egypt-${SLICE_ID}-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/match-egypt-${SLICE_ID}-sockpath"; printf '%s\n' "$known" > "$RUNNER_TEMP/match-egypt-${SLICE_ID}-knownpath"
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'program.php'
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country':'Egypt','country_id':1,'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'adults':2,'children':0,'currency':'RUB','tourvisor_operator_id':13},'credential_source':'TOURVISOR_ANEX_JWT_only','database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True,indent=2)+'\n').encode();(d/'reservation.json').write_bytes(raw);assert (d/'reservation.json').read_bytes()==raw
+          PY
+      - name: Preserve durable reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-egypt-scale-v1-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute synchronized full-page Egypt slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/match-egypt-${SLICE_ID}-keypath")";sock="$(cat "$RUNNER_TEMP/match-egypt-${SLICE_ID}-sockpath")";known="$(cat "$RUNNER_TEMP/match-egypt-${SLICE_ID}-knownpath")"
+          cleanup(){ ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }; trap cleanup EXIT
+          if ! ssh -S "$sock" -O check "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1; then
+            rm -f "$sock";ok=0;for attempt in 1 2 3 4 5;do if ssh -M -S "$sock" -fnNT -o ControlPersist=1200 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE";then ok=1;break;fi;sleep $((attempt*4));done;test "$ok" = 1
+          fi
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M' < "$ARTIFACT_DIR/program.php" > "$ARTIFACT_DIR/live.stdout" 2> "$ARTIFACT_DIR/live.stderr"
+          rc=$?;set -e;export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);out=(d/'live.stdout').read_text(errors='replace');err=(d/'live.stderr').read_text(errors='replace');prefix='MATCH111FULL_JSON:';lines=[z[len(prefix):] for z in out.splitlines() if z.startswith(prefix)]
+          if len(lines)!=1:data={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          else:
+              data=json.loads(lines[0]);data.update(source_sha=os.environ['GITHUB_SHA'],frozen_source_sha=os.environ['FROZEN_SOURCE_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=1,no_replay=True)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();(d/'result.json').write_bytes(raw)
+          if len(raw)>4000000:raise SystemExit('result_too_large')
+          good=(int(os.environ['RC'])==0 and data.get('status')=='completed' and data.get('operation_id')==os.environ['OPERATION_ID'] and data.get('database_writes')==0 and data.get('mapping_writes')==0 and data.get('booking_calls')==0 and data.get('lead_calls')==0)
+          receipt={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown'),'reason':data.get('reason'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'criteria':{'country':'Egypt','date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS'])},'database_writes':0,'mapping_writes':0,'no_replay':True};(d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          p=data.get('providers') or {};cmp=data.get('comparison') or {};tr=(cmp.get('unique_alias_triples') or {}).get('count');tv=(p.get('tourvisor') or {});an=(p.get('anex') or {});ad=(p.get('andromeda') or {})
+          summary=[f"MATCH #1971 Egypt synchronized slice `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. Egypt {os.environ['SEARCH_DATE']}/{os.environ['SEARCH_NIGHTS']}n."]
+          if good:summary.append(f"Tourvisor hotels **{tv.get('hotel_count')}** (continue {tv.get('continue_calls')}), direct ANEX **{an.get('hotel_count')}**, Andromeda **{ad.get('hotel_count')}**, unique exact alias triples **{tr}**. DB/mapping/booking/lead writes0.")
+          else:summary.append(f"Exact blocker/failure: `{data.get('reason')}` stage `{data.get('stage')}`; DB/mapping/booking/lead writes0. No replay.")
+          (d/'summary.md').write_text('\n'.join(summary)+'\n');print('\n'.join(summary))
+          if not good:raise SystemExit(2)
+          PY
+
+      - name: Preserve immutable slice result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-egypt-scale-v1-${{ matrix.sid }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+            ${{ env.ARTIFACT_DIR }}/receipt.json
+            ${{ env.ARTIFACT_DIR }}/summary.md
+            ${{ env.ARTIFACT_DIR }}/live.stderr
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record slice result
+        if: always() && hashFiles(format('{0}/summary.md', env.ARTIFACT_DIR)) != ''
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$ARTIFACT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
+      - name: Remove local SSH material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/match-egypt-${SLICE_ID}-key" "$RUNNER_TEMP/match-egypt-${SLICE_ID}-keypath" "$RUNNER_TEMP/match-egypt-${SLICE_ID}-sockpath" "$RUNNER_TEMP/match-egypt-${SLICE_ID}-knownpath"
