@@ -5,7 +5,10 @@ on:
     paths:
       - 'v2/results-renderer-v5.js'
       - 'v2/search3-shared-runtime.json'
+      - 'v2/assets/operator-logos/**'
       - 'tests/search3-renderer-date-display.test.js'
+      - 'tests/search3-hotel-operator-card.test.js'
+      - 'tests/search3-hotel-operator-card-browser.cjs'
       - 'tests/search3-current-results-browser.cjs'
       - '.github/workflows/search3-renderer-date-display.yml'
   workflow_dispatch:
@@ -19,11 +22,79 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - name: Install pinned Search3 build tools
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Inspect public operator logo candidates for this card package
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, html, json, os, re, urllib.parse, urllib.request
+          from pathlib import Path
+          out = Path(os.environ['RUNNER_TEMP']) / 'search3-brand-candidates'
+          out.mkdir()
+          pages = {'funsun':'https://fstravel.com/', 'anex':'https://anextour.ru/', 'intourist':'https://intourist.ru/', 'biblio-globus':'https://www.bgoperator.ru/'}
+          hosts = {'fstravel.com','www.fstravel.com','anextour.ru','www.anextour.ru','files.anextour.ru','files1.anextour.ru','intourist.ru','www.intourist.ru','bgoperator.ru','www.bgoperator.ru','api.selcdn.ru'}
+          rejected = {'https://files1.anextour.ru/content/images/main/anex-tour.svg','https://intourist.ru/static/images/logo_white.svg'}
+          class SafeRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  if urllib.parse.urlsplit(newurl).hostname not in hosts or newurl.lower() in rejected:
+                      raise ValueError('unapproved redirect')
+                  return super().redirect_request(req, fp, code, msg, headers, newurl)
+          opener = urllib.request.build_opener(SafeRedirect())
+          def get(url):
+              parsed = urllib.parse.urlsplit(url)
+              if parsed.scheme != 'https' or parsed.hostname not in hosts or url.lower() in rejected:
+                  raise ValueError('unapproved public resource')
+              with opener.open(urllib.request.Request(url, headers={'User-Agent':'AnyTour public brand asset review'}), timeout=15) as response:
+                  data = response.read(2000001)
+                  if len(data)>2000000: raise ValueError('resource too large')
+                  return data
+          evidence = []
+          for brand, url in pages.items():
+              record = {'brand':brand,'page':url,'candidates':[]}
+              evidence.append(record)
+              try:
+                  raw = get(url)
+                  text = raw.decode('utf-8', errors='replace')
+                  (out/(brand+'.html')).write_bytes(raw)
+                  # Candidate data only; it is never installed or executed.
+                  for index, match in enumerate(re.finditer(r'<svg\b[^>]*>.*?</svg>', text, re.I|re.S)):
+                      context = text[max(0,match.start()-500):match.start()]
+                      if not re.search(r'logo|brand', context+match.group()[:250], re.I): continue
+                      name = brand+'-inline-'+str(index)+'.svg'
+                      data = match.group().encode()
+                      (out/name).write_bytes(data)
+                      record['candidates'].append({'file':name,'source':url+'#inline-svg-'+str(index),'sha256':hashlib.sha256(data).hexdigest()})
+                      if len(record['candidates'])>=3: break
+                  urls = []
+                  for tag in re.findall(r'<(?:img|image|use)\b[^>]*>', text, re.I):
+                      if not re.search(r'logo|brand',tag,re.I): continue
+                      for value in re.findall(r'(?:src|href|xlink:href)=["\x27]([^"\x27]+)',tag,re.I):
+                          candidate = urllib.parse.urljoin(url,html.unescape(value))
+                          if candidate in urls or candidate.lower() in rejected: continue
+                          if urllib.parse.urlsplit(candidate).hostname not in hosts: continue
+                          if not re.search(r'\.(?:svg|png|webp)(?:\?|$)',candidate,re.I): continue
+                          urls.append(candidate)
+                  for index, candidate in enumerate(urls[:3]):
+                      try:
+                          data = get(candidate)
+                          suffix = Path(urllib.parse.urlsplit(candidate).path).suffix.lower()
+                          name = brand+'-linked-'+str(index)+suffix
+                          (out/name).write_bytes(data)
+                          record['candidates'].append({'file':name,'source':candidate,'sha256':hashlib.sha256(data).hexdigest()})
+                      except Exception as error:
+                          record.setdefault('asset_errors',[]).append({'source':candidate,'error':str(error)})
+              except Exception as error:
+                  record['page_error'] = str(error)
+          (out/'provenance.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(evidence,ensure_ascii=False,indent=2))
+          PY
       - name: Syntax check canonical renderer
         run: node --check v2/results-renderer-v5.js
       - name: Verify display-only date normalization
@@ -39,13 +110,27 @@ jobs:
           grep -Fq "formatTourDate" tests/search3-renderer-date-display.test.js
           grep -Fq "innerText(), '12.09.2026'" tests/search3-current-results-browser.cjs
       - name: Regenerate canonical shared runtime candidate
-        run: node scripts/build/search3-js/shared-runtime.cjs --write
-      - name: Upload canonical shared runtime candidate
+        run: |
+          python3 -B scripts/build/search3_assets.py --write
+          node scripts/build/search3-js/shared-runtime.cjs --write
+      - name: Upload exact card build inputs and candidates
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: search3-renderer-date-shared-runtime
-          path: v2/search3-shared-runtime.json
+          name: search3-card-inputs-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/search3-brand-candidates/
+            src/search3/
+            scripts/build/search3_assets.py
+            scripts/build/search3-js/
+            tests/search3-renderer-date-display.test.js
+            tests/search3-current-results-browser.cjs
+            tests/search3-shortlist-browser.cjs
+            tests/search3_production_presentation_test.py
+            docs/project/search3-production-import.json
+            docs/project/search3-shared-runtime-build.json
+            v2/search3-shared-runtime.json
           if-no-files-found: error
           retention-days: 3
       - name: Require committed shared runtime parity
-        run: git diff --exit-code -- v2/search3-shared-runtime.json
+        run: git diff --exit-code -- v2/search3-shared-runtime.json v2/search3-entry-v1.css v2/search3-results-filters-v1.css docs/project/search3-production-import.json
