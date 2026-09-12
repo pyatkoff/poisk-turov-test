@@ -1,0 +1,107 @@
+--- a/v2/results-renderer-v5.js
++++ b/v2/results-renderer-v5.js
+@@ -12,0 +13,14 @@
++// Exact display aliases only; provider/source never supplies operator identity.
++const operatorBrands=[
++  {key:'funsun',name:'FUN&SUN',aliases:['fun&sun','fun&sun (ru)','fun & sun','fun & sun (ru)','fun&sun россия','фансан','фан сан']},
++  {key:'anex',name:'ANEX',aliases:['anex','anex tour','анекс','анекс тур']},
++  {key:'intourist',name:'Интурист',aliases:['intourist','интурист','нтк интурист']},
++  {key:'biblio-globus',name:'Библио-Глобус',aliases:['библио-глобус','библио глобус','библиоглобус','biblio-globus','biblio globus']}
++];
++function operatorIdentity(t){const label=operatorName(t).replace(/\s+/g,' ').trim();if(!label)return null;const normalized=label.toLocaleLowerCase('ru-RU'),brand=operatorBrands.find(item=>item.aliases.includes(normalized));return brand?{key:brand.key,label:brand.name,logo:brand.key+(brand.key==='intourist'?'.png':'.svg')}:{key:'name:'+normalized,label,logo:''};}
++function operatorLogoBase(){const script=document.currentScript&&document.currentScript.src||document.querySelector('script[src*="bundle-v1.php"]')?.src;return script?new URL('assets/operator-logos/',script).pathname:'../assets/operator-logos/';}
++const operatorLogoRoot=operatorLogoBase();
++function operatorBadge(identity){return '<span class="hotel-operator"'+(identity.logo?' data-operator-brand="'+esc(identity.key)+'"':'')+'>'+(identity.logo?'<img class="hotel-operator-logo" src="'+esc(operatorLogoRoot+identity.logo)+'" alt="" width="100" height="36" loading="lazy">':'')+'<span class="hotel-operator-name">'+esc(identity.label)+'</span></span>';}
++function hotelOperators(h){const seen=new Map();(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const identity=operatorIdentity(t);if(identity&&!seen.has(identity.key))seen.set(identity.key,identity);});return Array.from(seen.values());}
++function hotelOperatorsHtml(h){const operators=hotelOperators(h);if(!operators.length)return'';return '<div class="hotel-operators"><span class="hotel-operators-label">Туроператоры</span><div class="hotel-operators-list">'+operators.slice(0,3).map(operatorBadge).join('')+(operators.length>3?'<span class="hotel-operator-more" title="'+esc(operators.slice(3).map(item=>item.label).join(', '))+'">Ещё '+(operators.length-3)+'</span>':'')+'</div></div>';}
++function operatorFact(t){const identity=operatorIdentity(t);return identity?'<span class="tour-fact tour-operator"><small>Оператор</small><b>'+operatorBadge(identity)+'</b></span>':'';}
+@@ -22 +36,10 @@
+-function hotelSummary(h){const tours=Array.isArray(h&&h.tours)?h.tours:[],dates=distinctValues(tours.map(t=>formatTourDate(t&&t.date))),nights=Array.from(new Set(tours.map(t=>Number(t&&t.nights||0)).filter(n=>Number.isFinite(n)&&n>0))).sort((a,b)=>a-b),meals=distinctValues(tours.map(mealSummaryLabel)),operators=distinctValues(tours.map(operatorName)),allCharter=tours.length>0&&tours.every(t=>t&&t.isCharter===true);let nightsLabel='';if(nights.length===1)nightsLabel=String(nights[0])+' ноч.';else if(nights.length>1)nightsLabel=String(nights[0])+'–'+String(nights[nights.length-1])+' ноч.';let meal='';if(meals.length===1)meal=meals[0];else if(meals.length===2)meal=meals.join(' · ');else if(meals.length>2)meal=String(meals.length)+' варианта питания';const operatorLabel=operators.length<=3?operators.join(' · '):operators.slice(0,3).join(' · ')+' · +'+String(operators.length-3);return{date:dates.length===1?dates[0]:dates.length>1?'Несколько дат вылета':'',nights:nightsLabel,meal,operators:operatorLabel,flight:allCharter?'Чартер':'',count:tours.length};}
++function hotelSummary(h){
++  const tours=Array.isArray(h&&h.tours)?h.tours:[],dates=distinctValues(tours.map(t=>formatTourDate(t&&t.date))),nights=Array.from(new Set(tours.map(t=>Number(t&&t.nights||0)).filter(n=>Number.isFinite(n)&&n>0))).sort((a,b)=>a-b),meals=distinctValues(tours.map(mealSummaryLabel)),operators=hotelOperators(h).map(item=>item.label);
++  const complete=predicate=>tours.length>0&&tours.every(predicate),dateComplete=complete(t=>!!formatTourDate(t&&t.date)),nightsComplete=complete(t=>Number.isFinite(Number(t&&t.nights))&&Number(t.nights)>0),mealComplete=complete(t=>!!mealSummaryLabel(t).trim());
++  const allCharter=complete(t=>t&&t.isCharter===true),someCharter=tours.some(t=>t&&t.isCharter===true);
++  const nightsLabel=!nightsComplete?'Уточняется':nights.length===1?String(nights[0])+' ноч.':String(nights[0])+'–'+String(nights[nights.length-1])+' ноч.';
++  const meal=!mealComplete?'Уточняется по варианту':meals.length<=2?meals.join(' · '):String(meals.length)+' варианта питания';
++  const partyComplete=complete(t=>t&&Number.isInteger(Number(t.adults))&&Number(t.adults)>0&&t.childs!==null&&t.childs!==undefined&&Number.isInteger(Number(t.childs))&&Number(t.childs)>=0),parties=partyComplete?distinctValues(tours.map(t=>String(t.adults)+':'+String(t.childs))):[];
++  let party='';if(parties.length===1){const [adults,children]=parties[0].split(':').map(Number);party=adults+' '+(adults===1?'взрослый':'взрослых')+(children?' · '+children+' '+(children===1?'ребёнок':children<5?'ребёнка':'детей'):'');}
++  return{date:dateComplete?(dates.length===1?dates[0]:'Несколько дат вылета'):'Дата уточняется',nights:nightsLabel,meal,operators:operators.length<=3?operators.join(' · '):operators.slice(0,3).join(' · ')+' · +'+String(operators.length-3),flight:allCharter?'Чартер':someCharter?'Возможны чартеры':'Уточняется по варианту',party,count:tours.length};
++}
+@@ -28 +51,2 @@
+-function hotelSummaryHtml(h){const summary=hotelSummary(h),facts=[tourFact('Вылет',summary.date),tourFact('Ночей',summary.nights),tourFact('Питание',summary.meal)].filter(Boolean).join(''),secondary=[summary.flight?tourFact('Перелёт',summary.flight):'',summary.operators?tourFact('Туроператоры',summary.operators):''].filter(Boolean).join('');return '<div class="tour-row hotel-trip-summary"><div class="tour-meta"><small>Доступные варианты</small>'+(facts?'<div class="tour-facts">'+facts+'</div>':'')+(secondary?'<div class="tour-secondary-facts">'+secondary+'</div>':'')+'</div><div class="tour-action"><small>За весь тур</small><b class="hotel-price">'+priceHtml(h&&h.price,'от ')+'</b></div></div>';}
++function hotelSummaryHtml(h){const summary=hotelSummary(h),facts=[tourFact('Вылет',summary.date),tourFact('Длительность',summary.nights),tourFact('Питание',summary.meal),tourFact('Перелёт',summary.flight)].join('');return '<div class="hotel-trip-summary"><div class="tour-facts">'+facts+'</div>'+hotelOperatorsHtml(h)+'<div class="hotel-summary-total"><div><small>За весь тур</small>'+(summary.party?'<span>'+esc(summary.party)+'</span>':'')+'</div><b class="hotel-price">'+priceHtml(h&&h.price,'от ')+'</b></div></div>';}
++
+@@ -32 +56 @@
+-function tourRow(t){const facts=[tourFact('Питание',mealLabel(t)),tourFact('Номер',textValue(t.roomType))].filter(Boolean).join(''),secondary=[tourFact('Источник',providerName(t)),tourFact('Оператор',operatorName(t)),tourFact('Размещение',textValue(t.placement)),t.isCharter?tourFact('Перелёт','Чартер'):''].filter(Boolean).join(''),nights=t.nights?' · '+String(t.nights)+' ноч.':'',date=formatTourDate(t.date)||'Уточняется';return '<div class="tour-row"><div class="tour-meta"><small>Дата вылета'+esc(nights)+'</small><strong>'+esc(date)+'</strong>'+(facts?'<div class="tour-facts">'+facts+'</div>':'')+(secondary?'<div class="tour-secondary-facts">'+secondary+'</div>':'')+providerDetailHtml(t)+'</div><div class="tour-action"><small>Итого за тур</small><b class="hotel-price">'+priceHtml(t.price,'')+'</b>'+tourAction(t)+'</div></div>';}
++function tourRow(t){const facts=[tourFact('Питание',mealLabel(t)),tourFact('Номер',textValue(t.roomType))].filter(Boolean).join(''),secondary=[tourFact('Источник',providerName(t)),operatorFact(t),tourFact('Размещение',textValue(t.placement)),t.isCharter?tourFact('Перелёт','Чартер'):''].filter(Boolean).join(''),nights=t.nights?' · '+String(t.nights)+' ноч.':'',date=formatTourDate(t.date)||'Уточняется';return '<div class="tour-row"><div class="tour-meta"><small>Дата вылета'+esc(nights)+'</small><strong>'+esc(date)+'</strong>'+(facts?'<div class="tour-facts">'+facts+'</div>':'')+(secondary?'<div class="tour-secondary-facts">'+secondary+'</div>':'')+providerDetailHtml(t)+'</div><div class="tour-action"><small>Итого за тур</small><b class="hotel-price">'+priceHtml(t.price,'')+'</b>'+tourAction(t)+'</div></div>';}
+@@ -35 +59 @@
+-function toursHtml(h){const tours=Array.isArray(h&&h.tours)?h.tours:[],key=hotelKey(h),expanded=key&&expandedHotels.has(key),primary=representativeTour(h),primaryIndex=tours.indexOf(primary);if(!tours.length)return'<div class="tour-loading">Нет доступных вариантов</div>';if(tours.length===1)return providerExpansionHtml(h)+tourRow(tours[0]);if(!expanded)return providerExpansionHtml(h)+hotelSummaryHtml(h)+'<button type="button" class="secondary tour-more-toggle" data-hotel-id="'+esc(key)+'" aria-expanded="false">Показать '+tourCountLabel(tours.length)+'</button>';const visible=[primary,...tours.filter((t,i)=>i!==primaryIndex)];return providerExpansionHtml(h)+visible.map(tourRow).join('')+'<button type="button" class="secondary tour-more-toggle" data-hotel-id="'+esc(key)+'" aria-expanded="true">Скрыть варианты</button>';}
++function toursHtml(h){const tours=Array.isArray(h&&h.tours)?h.tours:[],key=hotelKey(h),expanded=key&&expandedHotels.has(key),primary=representativeTour(h),primaryIndex=tours.indexOf(primary);if(!tours.length)return'<div class="tour-loading">Нет доступных вариантов</div>';if(tours.length===1)return providerExpansionHtml(h)+tourRow(tours[0]);const toggle='<button type="button" class="secondary tour-more-toggle" data-hotel-id="'+esc(key)+'" aria-expanded="'+(expanded?'true':'false')+'">'+(expanded?'Скрыть варианты':'Показать варианты · '+tours.length)+'</button>';if(!expanded)return hotelSummaryHtml(h)+toggle+providerExpansionHtml(h);const visible=[primary,...tours.filter((t,i)=>i!==primaryIndex)];return toggle+'<div class="hotel-offers-heading"><strong>Варианты тура</strong><span>'+esc(tourCountLabel(tours.length))+'</span></div>'+providerExpansionHtml(h)+visible.map(tourRow).join('');}
+@@ -62 +86 @@
+-const api={render,rerender,offerAlternatives,revealOfferAlternatives,sorted,tourRow,toursHtml,money,formatTourDate,hotelPhotoAlt,tourCountLabel,priceRank,representativeTour,collapsedTours,priceContext,hotelSummary,hotelSummaryHtml,decisionFacts,decisionFactsHtml,choiceHint,tourFact,textValue,mealLabel,providerName,tourAction,providerDetailHtml,initialTourLimit,activeRelaxations,emptyHtml,showPlainStatus,showSearchStatus,hideSearchStatus,state,version:5};window.V2Results=api;window.V2ResultsV5=api;
++const api={render,rerender,offerAlternatives,revealOfferAlternatives,sorted,tourRow,toursHtml,money,formatTourDate,hotelPhotoAlt,tourCountLabel,priceRank,representativeTour,collapsedTours,priceContext,hotelSummary,hotelSummaryHtml,operatorIdentity,hotelOperators,hotelOperatorsHtml,decisionFacts,decisionFactsHtml,choiceHint,tourFact,textValue,mealLabel,providerName,tourAction,providerDetailHtml,initialTourLimit,activeRelaxations,emptyHtml,showPlainStatus,showSearchStatus,hideSearchStatus,state,version:5};window.V2Results=api;window.V2ResultsV5=api;
+--- a/src/search3/styles/results-layout.css
++++ b/src/search3/styles/results-layout.css
+@@ -193,0 +194,18 @@
++& .hotel-trip-summary{display:grid;gap:16px;padding:16px 18px}
++& .hotel-trip-summary>.tour-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
++& .hotel-trip-summary .tour-fact{padding:10px 12px;border:1px solid var(--at-line-soft,#e9edf6);border-radius:10px;background:var(--at-soft,#f5f8ff)}
++& .hotel-trip-summary .tour-fact b{font-size:15px}
++& .hotel-operators{display:grid;gap:8px}
++& .hotel-operators-label{color:#526078;font-size:13px}
++& .hotel-operators-list{display:flex;align-items:stretch;flex-wrap:wrap;gap:8px}
++& .hotel-operator{display:inline-grid;grid-template-rows:36px auto;align-content:center;justify-items:center;gap:3px;max-width:100%;min-width:0;width:104px;padding:7px;border:1px solid var(--at-line,#e1e7f3);border-radius:10px;background:#fff}
++& .hotel-operator:not([data-operator-brand]){grid-template-rows:auto}
++& .hotel-operator-logo{display:block;width:100%;height:36px;object-fit:contain}
++& .hotel-operator[data-operator-brand=intourist] .hotel-operator-logo{padding:4px;border-radius:4px;background:#245e99}
++& .hotel-operator-name{font-size:11px;line-height:1.3;overflow-wrap:anywhere;text-align:center;color:#34425a}
++& .hotel-operator-more{display:grid;place-items:center;padding:8px;border-radius:10px;background:var(--at-soft,#f5f8ff);color:#526078;font-size:12px}
++& .hotel-summary-total{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;padding-top:14px;border-top:1px solid var(--at-line-soft,#e9edf6)}
++& .hotel-summary-total>div{display:grid;gap:3px;color:#526078;font-size:14px}
++& .hotel-summary-total .hotel-price{color:#2743cb;font-size:30px}
++& .hotel-offers-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px 14px;color:#17233b}
++& .hotel-offers-heading>span{color:#526078;font-size:13px}
+@@ -202,0 +221,3 @@
++& .tour-secondary-facts .tour-operator{align-items:center}
++& .tour-operator .hotel-operator{width:112px;grid-template-rows:28px auto;padding:4px 6px}
++& .tour-operator .hotel-operator-logo{height:28px}
+@@ -214 +235,2 @@
+-& .tour-more-toggle{justify-self:stretch;width:calc(100% - 36px);max-width:none;min-height:44px;margin:0 18px 14px;padding-inline:16px;border-color:#c4cfeb;background:var(--at-soft-blue,#eef2ff);color:#2743cb;font-weight:600}
++& .tour-more-toggle{justify-self:stretch;width:calc(100% - 36px);max-width:none;min-height:48px;margin:0 18px 16px;padding:12px 16px;border-color:var(--at-accent,#d83d00);background:var(--at-accent,#d83d00);color:#fff;font-size:16px;font-weight:700}
++& .tour-more-toggle[aria-expanded=true]{margin-top:14px;border-color:#c4cfeb;background:var(--at-soft-blue,#eef2ff);color:#2743cb}
+@@ -224 +246,2 @@
+-& .tour-more-toggle:hover,& .empty-edit-search:hover{background:#eef2ff}
++& .tour-more-toggle:hover{background:var(--at-accent-dark,#a93000)}
++& .tour-more-toggle[aria-expanded=true]:hover,& .empty-edit-search:hover{background:#eef2ff}
+@@ -228 +251 @@
+-& .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/7;max-height:190px}
++& .hotel-photo{flex:0 0 auto;width:100%;height:auto;min-height:0;aspect-ratio:16/9;max-height:260px}
+@@ -247,0 +271,6 @@
++& .hotel-trip-summary{padding:0 16px 16px;gap:14px}
++& .hotel-operators-list>.hotel-operator{width:calc((100% - 16px)/3)}
++& .hotel-trip-summary .tour-fact{padding:9px}
++& .hotel-trip-summary .tour-fact b{font-size:14px}
++& .hotel-summary-total .hotel-price{font-size:28px}
++& .hotel-offers-heading{padding-inline:16px}
+--- a/tests/search3-current-results-browser.cjs
++++ b/tests/search3-current-results-browser.cjs
+@@ -227 +227 @@
+-    assert.equal(await card.locator('.tour-row').count(), 1, 'accepted grouped Andromeda offers keep one compact hotel summary');
++    assert.equal(await card.locator('.tour-row').count(), 0, 'a grouped hotel summary is not a concrete provider offer');
+@@ -531 +531 @@
+-    assert.equal(await card.locator('.tour-row').count(), 1, 'multiple offers start with one aggregate row');
++    assert.equal(await card.locator('.tour-row').count(), 0, 'collapsed hotel contains no concrete offer rows');
+@@ -535,4 +535,4 @@
+-    assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать 3 варианта', 'disclosure states the total loaded offer count');
+-    assert.equal(await card.locator('.tour-meta>small').innerText(), 'Доступные варианты', 'summary is explicitly distinguished from one exact offer');
+-    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Вылет', '12.09.2026'], ['Ночей', '9 ноч.'], ['Питание', 'AI']], 'aggregate facts describe the shared departure, duration and meal');
+-    assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Туроператоры', 'OTHER OPERATOR · TEST OPERATOR']], 'summary does not misrepresent a single operator as common to all offers');
++    assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'disclosure states the total loaded offer count');
++    assert.equal(await card.locator('.tour-meta').count(), 0, 'hotel summary never uses the concrete offer owner');
++    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Вылет', '12.09.2026'], ['Длительность', '9 ноч.'], ['Питание', 'AI'], ['Перелёт', 'Уточняется по варианту']], 'aggregate facts describe the shared departure, duration and meal');
++    assert.deepEqual(await card.locator('.hotel-operators .hotel-operator-name').allTextContents(), ['OTHER OPERATOR', 'TEST OPERATOR'], 'summary contains actual operator names without guessing a brand');
+@@ -582 +582 @@
+-    assert.equal(await card.locator('.tour-row').count(), 1, 'actual toggle collapses');
++    assert.equal(await card.locator('.tour-row').count(), 0, 'actual toggle collapses back to hotel summary, not an offer');
+@@ -711,0 +712 @@
++      await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
