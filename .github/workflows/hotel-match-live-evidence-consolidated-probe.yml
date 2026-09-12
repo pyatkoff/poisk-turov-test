@@ -1,0 +1,78 @@
+name: MATCH live evidence consolidated probe
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-live-evidence-consolidated-probe-1971-20260912-v1.arm']
+permissions:
+  contents: read
+  issues: write
+env:
+  OPERATION_ID: hotel-match-live-evidence-consolidated-probe-1971-20260912-v1
+  ARTIFACT_DIR: /tmp/match-live-evidence-consolidated-probe
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate immutable arm
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-live-evidence-consolidated-probe-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_live_evidence_consolidated_probe.php
+          mkdir -m 700 -p "$ARTIFACT_DIR"
+      - name: Establish SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);key=rt/'matchconsprobe-key';sock=rt/'matchconsprobe.sock';known=rt/'matchconsprobe-known';raw=os.environ['KEY_VALUE'].strip();key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30); assert p.returncode==0
+          PY
+      - name: Persist reservation before DB access
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); p=Path('scripts/diagnostics/hotel_match_live_evidence_consolidated_probe.php').read_bytes(); r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','candidate_count':17,'program_sha256':hashlib.sha256(p).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}; (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-live-evidence-consolidated-probe-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          retention-days: 90
+      - name: Execute CURRENT probe
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/'matchconsprobe.sock';program=Path('scripts/diagnostics/hotel_match_live_evidence_consolidated_probe.php').read_text();p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M'],input=program,text=True,capture_output=True,timeout=600);prefix='MATCH_CONSOLIDATED_PROBE_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None);data=json.loads(line) if line else {'status':'unknown','remote_exit':p.returncode};data.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_commit=os.environ['GITHUB_SHA']);(d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'status':data.get('status'),'rows':len(data.get('rows',[]))}));
+          if data.get('status')!='completed': raise SystemExit(2)
+          PY
+      - name: Build receipt
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'result.json';data=json.loads(p.read_text()) if p.exists() else {'status':'unknown'};raw=p.read_bytes() if p.exists() else b'';(d/'receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':data.get('status','unknown'),'result_sha256':hashlib.sha256(raw).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-live-evidence-consolidated-probe-${{ github.run_id }}-result
+          path: ${{ env.ARTIFACT_DIR }}/
+          retention-days: 90
