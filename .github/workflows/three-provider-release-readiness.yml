@@ -25,6 +25,7 @@ jobs:
             tests/three-provider-offer-context-test.php \
             tests/three-provider-air-search-filter-test.php \
             tests/three-provider-geography-test.php \
+            tests/three-provider-departure-country-test.php \
             tests/three-provider-hotel-category-test.php \
             tests/three-provider-hotel-rating-test.php \
             tests/three-provider-hotel-services-test.php \
@@ -45,6 +46,7 @@ jobs:
               'app/integrations/three-provider-offer-context.php',
               'app/integrations/three-provider-air-search-filter.php',
               'app/integrations/three-provider-geography.php',
+              'app/integrations/three-provider-departure-country.php',
               'app/integrations/three-provider-hotel-category.php',
               'app/integrations/three-provider-hotel-rating.php',
               'app/integrations/three-provider-hotel-services.php',
@@ -90,6 +92,16 @@ jobs:
           assert "'cross_provider_equivalence_verified' => false" in geography
           assert "'identity_proof_from_geography' => false" in geography
           assert "? 'not_implemented'" in geography
+
+          departure_country = Path('app/integrations/three-provider-departure-country.php').read_text()
+          assert "'provider_specific_mapping_required' => true" in departure_country
+          assert "'local_numeric_id_is_supplier_id' => false" in departure_country
+          assert "'raw_supplier_numeric_id_universal' => false" in departure_country
+          assert "'cross_provider_equivalence_verified' => false" in departure_country
+          assert "'hotel_identity_proof_from_departure_country' => false" in departure_country
+          assert "'verified_exact_unique_dictionary_name'" in departure_country
+          assert "'verified_departure_scoped_exact_unique_dictionary_name'" in departure_country
+          assert "'allowed' => $mappingVerified" in departure_country
 
           category = Path('app/integrations/three-provider-hotel-category.php').read_text()
           assert "'supplier_label_equivalence_verified' => false" in category
