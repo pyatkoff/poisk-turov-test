@@ -27,7 +27,8 @@ jobs:
           assert "'arrival_airport'" in src
           assert "'direct_flight'" in src
           assert "'charter'" in src
-          assert "'scope' => 'catalog_only'" in src
+          assert "'catalog_only'" in src
+          assert "'not_verified'" in src
           assert "'status' => 'unknown'" in src
           assert "'allowed' => false" in src
           assert "'raw_numeric_id_universal' => false" in src
