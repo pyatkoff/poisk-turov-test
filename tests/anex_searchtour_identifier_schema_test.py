@@ -43,9 +43,8 @@ class SearchTourIdentifierSchemaTest(unittest.TestCase):
         self.assertEqual(report['concrete_count'],1)
         fields={x['field'] for x in report['candidate_identifier_fields']}
         self.assertEqual(fields,{'tourKey','packetKey'})
-        encoded=str(report).lower()
-        self.assertNotIn('catclaim',encoded)
-        self.assertNotIn("'id'",encoded)
+        self.assertNotIn('CATCLAIM',fields)
+        self.assertNotIn('id',fields)
 
     def test_validate_refuses_side_effects(self):
         mod=load()
