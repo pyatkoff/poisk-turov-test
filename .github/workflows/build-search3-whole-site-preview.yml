@@ -281,14 +281,25 @@ jobs:
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Detect results decision contract changes
-        id: results-contract
+      - name: Detect current-results decision contract changes
+        id: results-current
         shell: bash
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/behavior/results src/search3/behavior/summary-cta.js v2/search3-results-filters-v1.js tests/search3-current-results-browser.cjs tests/search3-shortlist-browser.cjs; then
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/manifest.json src/search3/behavior/results/local-hotel-filter.js src/search3/behavior/results/toolbar.js src/search3/behavior/summary-cta.js tests/search3-current-results-browser.cjs; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect shortlist contract changes
+        id: results-shortlist
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ steps.half-size-reset.outputs.active }}" != "true" ] && ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/manifest.json src/search3/behavior/results/shortlist.js tests/search3-shortlist-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -315,7 +326,7 @@ jobs:
           fi
 
       - name: Install browser geometry tooling
-        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-contract.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        if: steps.entry-owner.outputs.required == 'true' || steps.half-size-reset.outputs.active == 'true' || steps.selected-geometry.outputs.required == 'true' || steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
@@ -398,7 +409,7 @@ jobs:
           node tests/search3-flight-fallback-browser.cjs
 
       - name: Verify results browser tier
-        if: steps.results-contract.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
+        if: steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true'
         shell: bash
         env:
           SEARCH3_RESULTS_OUTPUT: ${{ runner.temp }}/search3-results-geometry
@@ -407,8 +418,8 @@ jobs:
         run: |
           set -euo pipefail
           export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
-          # Contract-only result changes keep the browser decision journey, while
-          # CSS/renderer geometry additionally pays for the entry geometry sweep.
+          # Each behavior owner pays for its primary browser journey. Renderer/CSS
+          # geometry changes still run both journeys plus the entry geometry sweep.
           cat > "$RUNNER_TEMP/search3-current-results-router.php" <<'PHP'
           <?php
           $entry = '/_preview/search3-site-candidate/poisk-turov/';
@@ -421,8 +432,12 @@ jobs:
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
-          node tests/search3-current-results-browser.cjs
-          node tests/search3-shortlist-browser.cjs
+          if [ "${{ steps.results-current.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
+            node tests/search3-current-results-browser.cjs
+          fi
+          if [ "${{ steps.results-shortlist.outputs.required }}" = "true" ] || [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
+            node tests/search3-shortlist-browser.cjs
+          fi
           if [ "${{ steps.results-geometry.outputs.required }}" = "true" ]; then
             node tests/search3-entry-owner-browser.cjs
             node tests/search3-entry-geometry-browser.cjs
@@ -456,7 +471,7 @@ jobs:
           retention-days: 30
 
       - name: Retain results browser evidence
-        if: always() && (steps.results-contract.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true')
+        if: always() && (steps.results-current.outputs.required == 'true' || steps.results-shortlist.outputs.required == 'true' || steps.results-geometry.outputs.required == 'true')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: search3-results-geometry-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
