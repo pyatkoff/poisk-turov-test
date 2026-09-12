@@ -1,0 +1,78 @@
+name: MATCH conflict and receipt readback 1971
+on:
+  push:
+    branches: [ops/match-conflict-readback-1971-20260912-v1]
+    paths: [.github/workflows/hotel-match-conflict-readback-1971-20260912.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-conflict-readback-1971-20260912, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-conflict-readback-1971-20260912-v1
+  OUT: /tmp/match-conflict-readback-1971
+jobs:
+  audit:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify read-only source and reserve immutable operation
+        run: |
+          set -euo pipefail
+          echo 'bd0f844ff3cd321d92300d66f79ebf824214a50b1e57e24f36b6f9fa0722a832  scripts/diagnostics/hotel_match_conflict_readback_1971_20260912.php' | sha256sum -c -
+          php -l scripts/diagnostics/hotel_match_conflict_readback_1971_20260912.php
+          php -d allow_url_fopen=0 scripts/diagnostics/hotel_match_conflict_readback_1971_20260912.php --self-test
+          mkdir -p "$OUT"
+          printf '{"operation_id":"%s","state":"reserved_before_db_access","source_sha":"%s","read_only":true,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_SHA" > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-conflict-audit-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-conflict-reservation-readback, merge-multiple: true}
+      - name: One READ ONLY snapshot and independent receipt readback
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-conflict-reservation-readback/reservation.json
+          key="$RUNNER_TEMP/match-audit-key"; known="$RUNNER_TEMP/match-audit-known"; sock="$RUNNER_TEMP/match-audit.sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known" "$RUNNER_TEMP/match-audit-stdout" "$RUNNER_TEMP/match-audit-stderr"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ok=0
+          for n in 1 2 3; do
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi
+            sleep 10
+          done
+          test "$ok" = 1
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=256M" < scripts/diagnostics/hotel_match_conflict_readback_1971_20260912.php > "$RUNNER_TEMP/match-audit-stdout" 2> "$RUNNER_TEMP/match-audit-stderr"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'p="$HOME/.anytoour-match/operations/hotel-match-conflict-readback-1971-20260912-v1"; if test -f "$p/result.json"; then cat "$p/result.json"; elif test -f "$p/failure.json"; then cat "$p/failure.json"; else printf "{\"status\":\"unknown_do_not_replay\"}\n"; fi' > "$OUT/server-result.json" 2>> "$RUNNER_TEMP/match-audit-stderr"
+          rr=$?
+          set -e
+          export RC="$rc" RR="$rr"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']);raw=(out/'server-result.json').read_bytes()
+          try: result=json.loads(raw)
+          except (ValueError,UnicodeError): result={'status':'unknown_do_not_replay'}
+          verified=(int(os.environ['RC'])==0 and int(os.environ['RR'])==0 and result.get('status')=='read_only_audit_complete' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and all(result.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls']))
+          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'server_receipt_verified':verified,'server_result_sha256':hashlib.sha256(raw).hexdigest(),'status':result.get('status'),'exit_code':int(os.environ['RC']),'readback_exit_code':int(os.environ['RR']),'no_replay':True}
+          (out/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          cases=[{'anex_hotel_id':r['anex_hotel_id'],'status':r['status'],'mappings':[{'local_id':m['catalog_hotel_id'],'enabled':m['enabled']} for m in r['mappings']]} for r in result.get('hotspots',[])]
+          summary=f"MATCH #1971 independent conflict audit `{os.environ['OPERATION_ID']}`: **{result.get('status')}**. Prior series rows {result.get('historical_row_count')}; CURRENT receipt/digest matches {result.get('current_verified')}, changed {result.get('current_changed')}. Hotspots `{cases}`. Server receipt verified `{verified}`. DB/mapping/supplier/Tourvisor writes/calls0. READBACK IS NOT PROOF OF IDENTITY CORRECTNESS. No automatic remediation; NO-REPLAY. Run {os.environ['GITHUB_RUN_ID']}."
+          if not verified: summary+=' Safe failure: '+str(result.get('safe_message','unknown'))+'.'
+          (out/'summary.md').write_text(summary+'\n');print(summary)
+          if not verified: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-conflict-audit-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record actual audit result
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true

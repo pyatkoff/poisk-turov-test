@@ -1,0 +1,68 @@
+name: MATCH Posh Club current correction 1971
+on:
+  push:
+    branches: [ops/match-conflict-readback-1971-20260912-v1]
+    paths: [.github/match-posh-club-current-correct-1971-v1.arm]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-posh-club-correct-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-posh-club-current-correct-1971-20260912-v1
+  OUT: /tmp/match-posh-correct-1971
+jobs:
+  apply:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate exact writer before server access
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_posh_club_current_correct.php
+          php scripts/diagnostics/hotel_match_posh_club_current_correct.php --self-test
+          php tests/hotel-match-posh-club-current-correct-test.php
+          grep -qx 'hotel-match-posh-club-current-correct-1971-20260912-v1' .github/match-posh-club-current-correct-1971-v1.arm
+          mkdir -p "$OUT"
+          printf '{"operation_id":"%s","state":"reserved_before_db_access","source_sha":"%s","owner_authorized":true,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_SHA" > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-posh-correct-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-posh-reservation-readback, merge-multiple: true}
+      - name: Execute exactly once and read durable server receipt
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-posh-reservation-readback/reservation.json
+          key="$RUNNER_TEMP/match-key"; known="$RUNNER_TEMP/match-known"; sock="$RUNNER_TEMP/match.sock"
+          cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=256M' < scripts/diagnostics/hotel_match_posh_club_current_correct.php > "$OUT/stdout.txt" 2> "$OUT/stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'p="$HOME/.anytoour-match/operations/hotel-match-posh-club-current-correct-1971-20260912-v1"; if test -f "$p/result.json"; then cat "$p/result.json"; elif test -f "$p/failure.json"; then cat "$p/failure.json"; else printf "{\"status\":\"unknown_do_not_replay\"}\n"; fi' > "$OUT/server-result.json"
+          rr=$?
+          set -e
+          export RC="$rc" RR="$rr"
+          python3 - <<'PY'
+          import json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']); result=json.loads((out/'server-result.json').read_text())
+          ok=(int(os.environ['RC'])==0 and int(os.environ['RR'])==0 and result.get('status')=='accepted' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('written_count')==3 and result.get('readback_verified') is True and result.get('database_writes')==3 and result.get('mapping_writes')==3 and result.get('supplier_calls')==0 and result.get('tourvisor_calls')==0 and result.get('crystal_bay_changed') is False and result.get('ordinary_sunrise_rows_changed') is False)
+          summary=f"MATCH #1971 owner-authorized Posh correction `{os.environ['OPERATION_ID']}`: status **{result.get('status')}**, written **{result.get('written_count')}**, readback `{result.get('readback_verified')}`, Crystal Bay changed `{result.get('crystal_bay_changed')}`, ordinary Sunrise rows changed `{result.get('ordinary_sunrise_rows_changed')}`. Supplier/Tourvisor calls 0/0. Run {os.environ['GITHUB_RUN_ID']}. NO-REPLAY."
+          (out/'summary.md').write_text(summary+'\n'); print(summary)
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-posh-correct-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record actual result
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true

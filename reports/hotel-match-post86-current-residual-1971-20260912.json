@@ -1,0 +1,92 @@
+{
+  "automatic_write_manifest": false,
+  "census": {
+    "artifact_id": 10300352238,
+    "artifact_zip_sha256": "427d3bee44e405edb36395a8b8efbee91a5d626f057d42674b9d1c68b45035fc",
+    "census_sha256": "78b710bb07500f448b62f6657dba9a68dee13fc8b0ac32c847a57ea502ea34db",
+    "generated_at_utc": "2026-09-12T14:57:45+00:00",
+    "operation_id": "hotel-match-core8-identity-census-1971-20260912-v3",
+    "run_id": 34700780122
+  },
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "no_replay": true,
+  "ordinary_sunrise_rows_must_not_change": true,
+  "posh_primary_alias_findings": [
+    {
+      "automatic_change": false,
+      "country": "Египет",
+      "current_local_id": 416,
+      "current_local_name": "SUNRISE CRYSTAL BAY RESORT",
+      "expected_current_evidence_sha256": "2e3a57be16ecbfab2f53dabf5894c60b8264ee0536ffd149c9bcabe15f73d267",
+      "external_hotel_id": "2000041085",
+      "proposed_local_id": null,
+      "proposed_local_name": null,
+      "source_alternate_name": "Sunrise Crystal Bay ",
+      "source_digest_matches": true,
+      "source_primary_name": "Posh Club By Sunrise Crystal Bay Resort",
+      "status": "defer_no_separate_posh_target_in_core8_snapshot",
+      "town": "Хургада"
+    },
+    {
+      "automatic_change": false,
+      "country": "Египет",
+      "current_local_id": 9373,
+      "current_local_name": "SUNRISE DIAMOND BEACH RESORT",
+      "expected_current_evidence_sha256": "afe13fa576700fce4bdcbc1b5054cc4acccccce0f13ec8c72287272d4aab417c",
+      "external_hotel_id": "2000042757",
+      "proposed_local_id": 132075,
+      "proposed_local_name": "POSH CLUB SUNRISE DIAMOND BEACH RESORT",
+      "source_alternate_name": "Sunrise Diamond Beach Resort",
+      "source_digest_matches": true,
+      "source_primary_name": "Posh Club by Sunrise Diamond Beach Resort Select",
+      "status": "requires_owner_authorization_and_current_full_revalidation",
+      "town": "Шарм Эль Шейх"
+    },
+    {
+      "automatic_change": false,
+      "country": "Египет",
+      "current_local_id": 9374,
+      "current_local_name": "SUNRISE ARABIAN BEACH RESORT",
+      "expected_current_evidence_sha256": "43f7c9bd859d8bd385f01fcbb33af8f19c7b8ff4adf024ff8f88d809256de0a0",
+      "external_hotel_id": "2000051422",
+      "proposed_local_id": 131024,
+      "proposed_local_name": "POSH CLUB SUNRISE ARABIAN BEACH RESORT",
+      "source_alternate_name": "Sunrise Arabian Beach Resort",
+      "source_digest_matches": true,
+      "source_primary_name": "Posh Club by Sunrise Arabian Beach Resort",
+      "status": "requires_owner_authorization_and_current_full_revalidation",
+      "town": "Шаркс Бей"
+    },
+    {
+      "automatic_change": false,
+      "country": "Египет",
+      "current_local_id": 81173,
+      "current_local_name": "SUNRISE WHITE HILLS RESORT",
+      "expected_current_evidence_sha256": "58a229ff984ac978b426df2437ab42f8a40e42f8315a2f1048aae70afb628157",
+      "external_hotel_id": "2000073047",
+      "proposed_local_id": 111423,
+      "proposed_local_name": "POSH CLUB SUNRISE WHITE HILLS RESORT",
+      "source_alternate_name": "Sunrise White Hills Sharm El Sheikh Resort",
+      "source_digest_matches": true,
+      "source_primary_name": "Posh Club by Sunrise White Hills ",
+      "status": "requires_owner_authorization_and_current_full_revalidation",
+      "town": "Шарм Эль Шейх"
+    }
+  ],
+  "residual": {
+    "anex_live_unresolved_ids": 64,
+    "anex_observed_total": 894,
+    "anex_unresolved_ids": [17097,16330,23894,34680,28882,32616,32692,32743,32783,32880,35275,43984,44573,45225,16605,30538,44939,44413,28869,32745,817,19226,37048,42927,815,1361,16232,5173,4158,28396,1286,1771,36906,37719,37721,780,1655,37012,30600,32572,44596,37885,37389,1772,30599,29446,32724,28933,29000,32355,33110,15072,32686,44562,45166,45226,45249,45259,45330,1767,29618,30424,32567,32577],
+    "definition": "Observed ANEX IDs without enabled mapping or accepted manual decision to an active core8 local hotel; not a list of64 distinct physical hotels; includes roulette/excursion products.",
+    "saved_search_occurrences": 1741
+  },
+  "schema_version": 1,
+  "status": "offline_review_of_completed_current_census",
+  "stored_row_counts": {
+    "andromeda_status_counts": {"accepted":8160,"conflict":12,"pending":1824},
+    "anex_mapping_rows": 14496
+  },
+  "supplier_calls": 0,
+  "tourvisor_calls": 0
+}

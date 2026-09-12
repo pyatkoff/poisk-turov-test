@@ -1,0 +1,189 @@
+name: MATCH Tourvisor high-yield TV+ANEX v2
+
+on:
+  push:
+    branches: ['ops/match-conflict-readback-1971-20260912-v1']
+    paths: ['.github/match-tourvisor-high-yield-tv-anex-1971-20260912-v2.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-tourvisor-high-yield-tv-anex-1971-v2
+  cancel-in-progress: false
+
+jobs:
+  slice:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPERATION_ID: hotel-match-tourvisor-high-yield-tv-anex-1971-20260912-v2
+      SEARCH_DATE: '2026-10-05'
+      SEARCH_NIGHTS: '7'
+      FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+      PREDECESSOR_RUN: '34703050646'
+      ARTIFACT_DIR: /tmp/match-tv-anex-high-yield-v2
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+
+      - name: Derive deeper paced TV+ANEX-only evidence program
+        run: |
+          set -euo pipefail
+          test "$(head -n1 .github/match-tourvisor-high-yield-tv-anex-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          mkdir -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" -o "$ARTIFACT_DIR/frozen.php"
+          export PROGRAM="$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['ARTIFACT_DIR'])/'frozen.php'; s=p.read_text()
+          reps=[
+            ('hotel-match-three-provider-111-full-pages-1971-20260911-v6',os.environ['OPERATION_ID']),
+            ("const M6_DATE = '2026-11-06';","const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"),
+            ('const M6_TV_CONTINUE_CAP = 8;','const M6_TV_CONTINUE_CAP = 12;'),
+            ('const M6_HOTEL_CAP = 5000;','const M6_HOTEL_CAP = 10000;'),
+            ('function m6_poll_tv(int $searchId,int $max=24): int {','function m6_poll_tv(int $searchId,int $max=40): int {'),
+            ("'tourvisor_operator_id'=>M6_TV_OPERATOR","'tourvisor_account_scope'=>'ANEX-only'"),
+            ("'operator_id'=>M6_TV_OPERATOR","'account_scope'=>'ANEX-only'"),
+            ('usleep(750000);','usleep(5000000);'),
+            ("try{v2_data_tv_get('/tours/search/'.$searchId.'/continue');","usleep(15000000);try{v2_data_tv_get('/tours/search/'.$searchId.'/continue');"),
+          ]
+          for a,b in reps:
+              if s.count(a)!=1: raise SystemExit('derivation marker changed: '+a)
+              s=s.replace(a,b,1)
+          op=",'operatorIds'=>[M6_TV_OPERATOR]"
+          if s.count(op)!=1: raise SystemExit('operatorIds marker changed')
+          s=s.replace(op,'',1)
+          start=s.split("$start=v2_data_tv_get('/tours/search'",1)[1].split(');',1)[0]
+          if 'operatorIds' in start: raise SystemExit('Tourvisor operatorIds still present')
+          marker='    // Andromeda: consume PAGE=1 through the latest PAGES_COUNT using the same private supplier sid.\n'
+          echo_marker="    echo 'MATCH111FULL_JSON:'.json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;\n"
+          if s.count(marker)!=1 or s.count(echo_marker)!=1: raise SystemExit('provider-tail marker changed')
+          i=s.index(marker); j=s.index(echo_marker,i)
+          replacement=(
+              "    // v2 deliberately stops after Tourvisor + direct ANEX. v1 terminally proved that a transient\n"
+              "    // Andromeda transport failure can suppress already-collected TV evidence. No Andromeda supplier call here.\n"
+              "    $indexes=['tourvisor'=>[],'anex'=>[]];\n"
+              "    foreach(['tourvisor'=>$tv,'anex'=>$anex] as $provider=>$hotels){\n"
+              "        foreach($hotels as $key=>$h){foreach(($h['aliases']??[]) as $alias){$indexes[$provider][$alias][]=$key;}}\n"
+              "    }\n"
+              "    $aliases=array_intersect(array_keys($indexes['tourvisor']),array_keys($indexes['anex']));sort($aliases,SORT_STRING);\n"
+              "    $pairs=[];$seen=[];\n"
+              "    foreach($aliases as $alias){\n"
+              "        $t=array_values(array_unique($indexes['tourvisor'][$alias]??[]));$a=array_values(array_unique($indexes['anex'][$alias]??[]));\n"
+              "        if(count($t)!==1||count($a)!==1)continue;\n"
+              "        $tk=$t[0];$ak=$a[0];$dedupe=$tk.'|'.$ak;if(isset($seen[$dedupe]))continue;$seen[$dedupe]=true;\n"
+              "        $pairs[]=['alias_key'=>$alias,\n"
+              "            'tourvisor'=>['id'=>$tv[$tk]['id'],'name'=>$tv[$tk]['name']],\n"
+              "            'anex'=>['id'=>$anex[$ak]['id'],'name'=>$anex[$ak]['name'],'local_id'=>$anex[$ak]['local_id']??null]];\n"
+              "    }\n"
+              "    $result['providers']['andromeda']=['status'=>'not_called','reason'=>'isolated_after_v1_ANDROMEDA_TRANSPORT_ERROR'];\n"
+              "    $result['comparison']=['unique_alias_tv_anex_pairs'=>['count'=>count($pairs),'rows'=>$pairs],\n"
+              "        'interpretation'=>'diagnostic exact unique alias evidence only; no mapping is created from availability or price'];\n"
+              "    $result['provider_calls']=['tourvisor_continue'=>$continueCalls,'andromeda_login'=>0,'andromeda_price_pages'=>0,\n"
+              "        'direct_anex_searchtour'=>'one bounded normalized price response plus dictionaries'];\n"
+          )
+          s=s[:i]+replacement+s[j:]
+          for marker2 in ['M6_TV_CONTINUE_CAP = 12','M6_HOTEL_CAP = 10000','int $max=40','usleep(5000000)','usleep(15000000)',"'andromeda_login'=>0"]:
+              if marker2 not in s: raise SystemExit('v2 marker missing: '+marker2)
+          if 'AnyTourAndromedaTransport' in s[s.index(replacement.splitlines()[0]):]: raise SystemExit('Andromeda executable tail survived')
+          if "TOURVISOR_ANEX_JWT" not in s or "putenv('TOURVISOR_JWT='.$tvToken)" not in s: raise SystemExit('separate credential contract missing')
+          Path(os.environ['PROGRAM']).write_text(s)
+          PY
+          php -l "$PROGRAM"
+
+      - name: Establish resilient SSH preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/match-tv-anex-key"; sock="$RUNNER_TEMP/match-tv-anex.sock"; known="$RUNNER_TEMP/match-tv-anex-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0; for attempt in 1 2 3 4 5; do rm -f "$sock"; if ssh -M -S "$sock" -fnNT -o ControlPersist=1800 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "$USER_VALUE@$HOST_VALUE"; then ok=1; break; fi; sleep $((attempt*5)); done; test "$ok" = 1
+          ssh -S "$sock" -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && printf MATCH_TV_ANEX_V2_PREFLIGHT_OK' | grep -qx MATCH_TV_ANEX_V2_PREFLIGHT_OK
+          printf '%s\n' "$key" > "$RUNNER_TEMP/match-tv-anex-keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/match-tv-anex-sockpath"
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); p=d/'program.php'
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'predecessor_run':int(os.environ['PREDECESSOR_RUN']),'predecessor_terminal_reason':'ANDROMEDA_TRANSPORT_ERROR','program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':os.environ['SEARCH_DATE'],'nights':7,'adults':2,'tourvisor_operator_ids':'OMITTED','tourvisor_credential':'TOURVISOR_ANEX_JWT_only','pre_search_cooldown_seconds':180,'poll_seconds':5,'pre_continue_seconds':15,'continue_cap':12,'hotel_cap':10000,'poll_budget':40,'andromeda_calls_expected':0},'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(x,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: match-tv-anex-v2-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.reserve.outputs.artifact-id }}
+          path: /tmp/match-tv-anex-v2-reservation-readback
+          merge-multiple: true
+      - name: Cool down before Tourvisor start
+        run: sleep 180
+
+      - name: Execute one high-yield TV+ANEX evidence slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          cmp "$ARTIFACT_DIR/reservation.json" /tmp/match-tv-anex-v2-reservation-readback/reservation.json
+          key="$(cat "$RUNNER_TEMP/match-tv-anex-keypath")"; sock="$(cat "$RUNNER_TEMP/match-tv-anex-sockpath")"
+          cleanup(){ ssh -S "$sock" -O exit "$USER_VALUE@$HOST_VALUE" >/dev/null 2>&1 || true; }; trap cleanup EXIT
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o BatchMode=yes "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M' < "$ARTIFACT_DIR/program.php" > "$ARTIFACT_DIR/live.stdout" 2> "$ARTIFACT_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']); out=(d/'live.stdout').read_text(errors='replace'); err=(d/'live.stderr').read_text(errors='replace'); pre='MATCH111FULL_JSON:'; lines=[x[len(pre):] for x in out.splitlines() if x.startswith(pre)]
+          if len(lines)==1:
+              data=json.loads(lines[0]); data.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_sha=os.environ['GITHUB_SHA'],tourvisor_operator_ids='OMITTED',tourvisor_credential='TOURVISOR_ANEX_JWT_only',collection_depth={'continue_cap':12,'hotel_cap':10000,'poll_budget':40,'poll_seconds':5,'pre_continue_seconds':15,'pre_search_cooldown_seconds':180},predecessor_run=int(os.environ['PREDECESSOR_RUN']),andromeda_calls_expected=0,no_replay=True)
+          else:
+              data={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(out.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(err.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'andromeda_calls_expected':0,'no_replay':True}
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (d/'result.json').write_bytes(raw)
+          good=int(os.environ['RC'])==0 and data.get('status')=='completed' and data.get('operation_id')==os.environ['OPERATION_ID'] and ((data.get('providers') or {}).get('andromeda') or {}).get('status')=='not_called'
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown'),'reason':data.get('reason'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'andromeda_calls':0,'supplier_evidence_only':True,'no_replay':True}; (d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          p=data.get('providers') or {}; cmp=data.get('comparison') or {}; tv=p.get('tourvisor') or {}; an=p.get('anex') or {}; pairs=(cmp.get('unique_alias_tv_anex_pairs') or {}).get('count')
+          summary=f"MATCH #1971 high-yield TV+ANEX v2 `{os.environ['OPERATION_ID']}`: **{receipt['state']}** / NO-REPLAY. Turkey {os.environ['SEARCH_DATE']}/7n; separate `TOURVISOR_ANEX_JWT`; `operatorIds` omitted. TV **{tv.get('hotel_count')}** (continues {tv.get('continue_calls')}, stop `{tv.get('stop_reason')}`), direct ANEX **{an.get('hotel_count')}**, exact unique TV↔ANEX pairs **{pairs}**. Andromeda calls **0** by design after predecessor transport failure. reason `{data.get('reason')}`. DB/mapping/booking/lead writes0."
+          (d/'summary.md').write_text(summary+'\n'); print(summary)
+          if not good: raise SystemExit(2)
+          PY
+
+      - name: Preserve immutable result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-anex-v2-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+            ${{ env.ARTIFACT_DIR }}/receipt.json
+            ${{ env.ARTIFACT_DIR }}/summary.md
+            ${{ env.ARTIFACT_DIR }}/live.stderr
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result
+        if: always() && hashFiles(format('{0}/summary.md', env.ARTIFACT_DIR)) != ''
+        env: {GH_TOKEN: '${{ github.token }}', ARTIFACT_ID: '${{ steps.artifact.outputs.artifact-id }}'}
+        run: |
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$ARTIFACT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
+      - name: Cleanup
+        if: always()
+        run: rm -f "$RUNNER_TEMP/match-tv-anex-key" "$RUNNER_TEMP/match-tv-anex-keypath" "$RUNNER_TEMP/match-tv-anex-sockpath" "$RUNNER_TEMP/match-tv-anex-known"
