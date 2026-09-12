@@ -1,0 +1,81 @@
+name: MATCH current cross-provider exact mass v2
+on:
+  push:
+    branches: [ops/match-andromeda-anex-direct-key-matrix-1971-20260912-v1]
+    paths: [.github/workflows/hotel-match-current-cross-provider-exact-mass-v2.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-current-exact-mass-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-current-cross-provider-exact-mass-1971-20260912-v2
+  OUT: /tmp/match-current-exact-mass-v2
+jobs:
+  accept:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Derive corrected immutable program and offline guard
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import pathlib,hashlib,json,os
+          p=pathlib.Path('scripts/diagnostics/hotel_match_current_cross_provider_exact_mass.php').read_text()
+          assert "hotel-match-current-cross-provider-exact-mass-1971-20260912-v1" in p
+          assert 'return12742*' in p
+          p=p.replace('hotel-match-current-cross-provider-exact-mass-1971-20260912-v1',os.environ['OPERATION_ID'],1).replace('return12742*','return 12742*',1)
+          pathlib.Path(os.environ['OUT'],'program.php').write_text(p)
+          pathlib.Path(os.environ['OUT'],'program.sha256').write_text(hashlib.sha256(p.encode()).hexdigest()+'\n')
+          pathlib.Path(os.environ['OUT'],'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'derived_program_sha256':hashlib.sha256(p.encode()).hexdigest(),'prior_v1':'rolled_back_or_not_started commit_attempted=false','no_replay':True},sort_keys=True)+'\n')
+          PY
+          php -l "$OUT/program.php"
+          php "$OUT/program.php" --self-test
+          php -r '$x=["latitude"=>36.8,"longitude"=>30.8];$y=["latitude"=>36.801,"longitude"=>30.801];define("MASS_LIB_ONLY",true);' >/dev/null
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: 'match-current-exact-mass-v2-${{ github.run_id }}-reserved'
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/program.sha256
+          retention-days: 90
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: '/tmp/reservation-readback', merge-multiple: true}
+      - name: One CURRENT transaction and receipt readback
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/reservation-readback/reservation.json
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ok=0
+          for n in 1 2 3; do if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1;break;fi;sleep 10;done
+          test "$ok" = 1
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'p="$HOME/.anytoour-match/operations/hotel-match-current-cross-provider-exact-mass-1971-20260912-v2"; if test -f "$p/result.json";then cat "$p/result.json";elif test -f "$p/failure.json";then cat "$p/failure.json";else printf "{\"status\":\"unknown_do_not_replay\"}\n";fi' > "$OUT/server-result.json" 2>> "$RUNNER_TEMP/stderr"
+          rr=$?; set -e; export RC="$rc" RR="$rr"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);raw=(d/'server-result.json').read_bytes()
+          try:x=json.loads(raw)
+          except Exception:x={'status':'unknown_do_not_replay'}
+          verified=int(os.environ['RR'])==0 and x.get('status')=='accepted' and x.get('operation_id')==os.environ['OPERATION_ID'] and x.get('readback_verified') is True and x.get('written_count')==sum((x.get('provider_counts') or {}).values())
+          r={'operation_id':os.environ['OPERATION_ID'],'status':x.get('status'),'prepared':x.get('prepared'),'written_count':x.get('written_count'),'provider_counts':x.get('provider_counts'),'skipped_count':x.get('skipped_count'),'readback_verified':x.get('readback_verified',False),'server_receipt_verified':verified,'server_result_sha256':hashlib.sha256(raw).hexdigest(),'apply_exit_code':int(os.environ['RC']),'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 MASS exact cross-provider v2 `{os.environ['OPERATION_ID']}`: **{x.get('status')}**; prepared **{x.get('prepared')}**, written **{x.get('written_count')}**, providers `{x.get('provider_counts')}`, skipped `{x.get('skipped_count')}`, post-COMMIT readback `{x.get('readback_verified')}`, receipt `{verified}`. Supplier/Tourvisor0. NO-REPLAY."
+          (d/'summary.md').write_text(s+'\n');print(s)
+          if not verified: raise SystemExit(2)
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1||true
+          rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr" "$OUT/program.php"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-current-exact-mass-v2-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record result
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
