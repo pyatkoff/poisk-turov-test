@@ -6,20 +6,15 @@ on:
       - 'scripts/diagnostics/anex_additional_prices_specimen.php'
       - 'tests/anex-additional-currency-specimen-test.php'
       - '.github/workflows/anex-additional-prices-specimen.yml'
-  workflow_dispatch:
-    inputs:
-      operation:
-        type: choice
-        options: ['anex-additional-currency-20260912-v1']
-        required: true
-      source_sha:
-        description: Exact merged INT source with successful applicable CI and Security
-        type: string
-        required: true
+  push:
+    branches:
+      - 'ops/int-anex-additional-green-gold-v6-20260912'
+    paths:
+      - '.github/ops/anex-additional-green-gold-v6-20260912'
 permissions:
   contents: read
 concurrency:
-  group: anex-additional-currency-${{ github.event_name == 'workflow_dispatch' && 'v1' || github.ref }}
+  group: anex-additional-green-gold-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   offline:
@@ -31,67 +26,75 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Verify bounded currency follow-up
+      - name: Verify bounded Green Gold AdditionalPricesDaily v6
         run: |
           php -l scripts/diagnostics/anex_additional_prices_specimen.php
           php tests/anex-additional-currency-specimen-test.php
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/diagnostics/anex_additional_prices_specimen.php').read_text()
-          assert "$root . '/config.php'" in s
-          assert "ANEX_API_TOKEN" in s
-          for required in ('SearchTour_TOWNFROMS', 'SearchTour_STATES', 'SearchTour_CURRENCIES',
-                           "'additional_prices_requests' => 0", "'price_search_requests' => 0",
-                           "'arithmetic_applied' => false", "'additional_currency_namespace_verified' => false",
-                           "'converted_currency' => null", "'supplier_replay_allowed' => false",
-                           "'unknown_reserved'", "@mkdir($directory, 0700)"):
+          for required in (
+              "ANEX_ADDITIONAL_GREEN_GOLD_OPERATION = 'anex-additional-green-gold-20260912-v6'",
+              'ANEX_ADDITIONAL_GREEN_GOLD_TOUR = 2637', "ANEX_ADDITIONAL_GREEN_GOLD_DATE = '2026-10-05'",
+              'ANEX_ADDITIONAL_GREEN_GOLD_NIGHTS = 7', 'ANEX_ADDITIONAL_GREEN_GOLD_CURRENCY = 3',
+              'new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN)', 'additionalPricesDaily',
+              "'page' => 1, 'pageSize' => 10", "'additional_prices_requests' => 0",
+              "'arithmetic_applied' => false", "'fuel_equivalence_verified' => false",
+              "'per_person_or_package' => 'unknown'", "'supplier_replay_allowed' => false",
+              "'unknown_reserved'", "@mkdir($directory, 0700)"):
               assert required in s, required
-          assert s.index("@mkdir($directory, 0700)") < s.index("$departure = anytour_anex_search3_dictionary_id")
-          for forbidden in ('ANEX_B2B_TOKEN', 'new AnyTourAnexAdditionalPricesClient', 'SearchTour_PRICES',
-                            'SearchTour_TOURS', 'curl_init', '->bron(', 'bron_ticket', 'INSERT INTO', 'UPDATE ', 'DELETE FROM'):
+          assert s.index("@mkdir($directory, 0700)") < s.index('new AnyTourAnexAdditionalPricesClient')
+          assert s.count('additionalPricesDaily(') == 1
+          for forbidden in ('SearchTour_PRICES', 'SearchTour_TOURS', 'SearchTour_CURRENCIES', '->bron(', 'bron_ticket',
+                            'INSERT INTO', 'UPDATE ', 'DELETE FROM', '119448 +', '29596 +'):
               assert forbidden not in s, forbidden
-          print('ANEX dictionary-only / money / booking / no-replay boundary: PASS')
+          print('ANEX Green Gold AdditionalPricesDaily v6 boundary: PASS')
           PY
 
   live:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/anex-search-adapter-20260907' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-green-gold-v6-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 7
     env:
+      SOURCE_SHA: bd67c67019ef0b0d8437dcb17333366a2df483f3
+      REQUESTED_OPERATION: anex-additional-green-gold-20260912-v6
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-      REQUESTED_OPERATION: ${{ inputs.operation }}
-      SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
-      - name: Bind explicit exact-source operation
-        run: |
-          test "$REQUESTED_OPERATION" = 'anex-additional-currency-20260912-v1'
-          printf '%s\n' "$SOURCE_SHA" | grep -Eq '^[0-9a-f]{40}$'
-          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.SOURCE_SHA }}
           path: source
           persist-credentials: false
-      - name: Reserve the dictionary operation
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Bind exact Green Gold AdditionalPricesDaily v6
+        run: |
+          test "$(cat control/.github/ops/anex-additional-green-gold-v6-20260912)" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};tour=2637;dateBeg=2026-10-05;nights=7;currency=3;page=1;pageSize=10;owner=2026-09-12"
+          test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Reserve runner-side operation before supplier access
         run: |
           mkdir -m 700 "$RUNNER_TEMP/specimen"
           python3 - <<'PY'
           import json, os
           from pathlib import Path
           value={'operation_id':os.environ['REQUESTED_OPERATION'],'source_sha':os.environ['SOURCE_SHA'],
-                 'state':'reserved','replay_allowed':False}
-          (Path(os.environ['RUNNER_TEMP'])/'specimen/reservation.json').write_text(json.dumps(value)+'\n')
+                 'state':'reserved','replay_allowed':False,'tour':2637,'dateBeg':'2026-10-05','nights':7,'currency':3}
+          (Path(os.environ['RUNNER_TEMP'])/'specimen/reservation.json').write_text(json.dumps(value,sort_keys=True)+'\n')
           PY
       - name: Preserve reservation before supplier access
         uses: actions/upload-artifact@v4
         with:
-          name: anex-additional-currency-reservation-${{ github.run_id }}
+          name: anex-additional-green-gold-v6-reservation-${{ github.run_id }}
           path: ${{ runner.temp }}/specimen/reservation.json
           if-no-files-found: error
           retention-days: 30
-      - name: Read current currency dictionary without replaying AdditionalPricesDaily
+      - name: Read exact Green Gold AdditionalPricesDaily page
         id: specimen
         continue-on-error: true
         run: |
@@ -105,7 +108,6 @@ jobs:
           key=outdir/'ssh_key'
           key.write_text(os.environ['ANYTOOUR_DEPLOY_SSH_KEY'].rstrip()+'\n'); key.chmod(0o600)
           command=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes',
-                   '-o','ControlMaster=auto','-o','ControlPersist=45','-o','ControlPath='+str(outdir/'ssh-%C'),
                    '-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(outdir/'known_hosts'),
                    '-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2',
                    '-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],
@@ -120,25 +122,26 @@ jobs:
               parsed=json.loads(result.stdout)
               if isinstance(parsed,dict): value=parsed
           except (subprocess.TimeoutExpired, ValueError):
-              pass  # Unknown execution is never retried; preserve the durable reservation.
+              pass
           finally:
               key.unlink(missing_ok=True)
           text=json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n'
-          assert 'Bearer ' not in text and 'ANEX_API_TOKEN' not in text and 'oauth_token' not in text
+          for forbidden in ('Bearer ', 'ANEX_B2B_TOKEN', 'ANEX_API_TOKEN', 'oauth_token'):
+              assert forbidden not in text
           (outdir/'result.json').write_text(text)
           valid=value.get('operation_id')==request['operation_id'] and value.get('source_sha')==request['source_sha']
           raise SystemExit(0 if valid and returncode==0 and value.get('status')=='completed' else 1)
           PY
-      - name: Preserve sanitized dictionary evidence
+      - name: Preserve sanitized AdditionalPricesDaily evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-additional-currency-${{ github.run_id }}
+          name: anex-additional-green-gold-v6-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/specimen/reservation.json
             ${{ runner.temp }}/specimen/result.json
           if-no-files-found: error
           retention-days: 30
-      - name: Fail after preservation when the dictionary read did not complete
+      - name: Fail after preservation when AdditionalPricesDaily did not complete
         if: steps.specimen.outcome != 'success'
         run: exit 1

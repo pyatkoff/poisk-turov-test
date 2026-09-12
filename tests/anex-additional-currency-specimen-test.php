@@ -2,47 +2,33 @@
 declare(strict_types=1);
 define('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY', true);
 require_once __DIR__ . '/../scripts/diagnostics/anex_additional_prices_specimen.php';
-
-function currency_check(bool $ok): void { if (!$ok) throw new RuntimeException('currency regression'); }
-function currency_reject(callable $call, string $expected): void {
-    try { $call(); } catch (RuntimeException $e) { currency_check($e->getMessage() === $expected); return; }
+function additional_check(bool $ok): void { if (!$ok) throw new RuntimeException('additional regression'); }
+function additional_reject(callable $call, string $expected): void {
+    try { $call(); } catch (RuntimeException $e) { additional_check($e->getMessage() === $expected); return; }
     throw new RuntimeException('expected rejection');
 }
-final class CurrencyFixtureClient {
-    public array $calls = [];
-    private array $rows;
-    public function __construct(array $rows) { $this->rows = $rows; }
-    public function request(string $action, array $params): array {
-        $this->calls[] = [$action, $params];
-        return $this->rows;
-    }
-}
-$client = new CurrencyFixtureClient([
-    ['id' => 1, 'name' => 'Unrelated'],
-    ['id' => '3', 'name' => 'Fixture currency', 'alias' => 'ZZZ', 'private' => 'must not escape'],
-]);
-$result = anytour_anex_additional_currency_evidence($client, 2, 4);
-currency_check($client->calls === [['SearchTour_CURRENCIES', [
-    'TOWNFROMINC' => 2, 'STATEINC' => 4, 'CHECKIN_BEG' => '20260920', 'CHECKIN_END' => '20260920',
-]]]);
-currency_check($result['status'] === 'completed' && $result['currency_reported'] === [
-    'id' => 3, 'name' => 'Fixture currency', 'nameAlt' => null, 'alias' => 'ZZZ', 'currencyISO' => null,
-]);
-currency_check($result['additional_currency_namespace_verified'] === false
-    && $result['converted_currency'] === null && $result['included_in_search_price'] === 'unknown'
-    && $result['fuel_equivalence_verified'] === false && $result['arithmetic_applied'] === false);
-foreach ([[], [['id' => 3]], [['id' => 3, 'name' => '<script>bad</script>']]] as $rows) {
-    currency_check(anytour_anex_additional_currency_evidence(new CurrencyFixtureClient($rows), 2, 4)['status'] === 'blocked');
-}
-currency_reject(static fn () => anytour_anex_additional_currency_evidence(new CurrencyFixtureClient([
-    ['id' => 3, 'name' => 'A'], ['id' => '3', 'name' => 'B'],
-]), 2, 4), 'ANEX_CURRENCY_AMBIGUOUS');
-currency_reject(static fn () => anytour_anex_additional_currency_evidence(new CurrencyFixtureClient(['currencies' => []]), 2, 4), 'ANEX_CURRENCY_DICTIONARY');
-currency_reject(static fn () => anytour_anex_additional_currency_evidence($client, 0, 4), 'ANEX_CURRENCY_CONTEXT');
-currency_check(count($client->calls) === 1);
-// The completed AdditionalPricesDaily operation cannot be executed through this runner.
-currency_reject(static fn () => anytour_anex_additional_specimen_run([
-    'operation_id' => 'anex-additional-prices-specimen-20260912-v4',
-    'date' => '2026-09-20', 'nights' => 7, 'tour' => 778, 'currency' => 3,
-]), 'ANEX_CURRENCY_INPUT');
-echo "ANEX additional currency evidence: PASS\n";
+additional_check(ANEX_ADDITIONAL_GREEN_GOLD_OPERATION === 'anex-additional-green-gold-20260912-v6');
+additional_check(ANEX_ADDITIONAL_GREEN_GOLD_TOUR === 2637 && ANEX_ADDITIONAL_GREEN_GOLD_DATE === '2026-10-05');
+additional_check(ANEX_ADDITIONAL_GREEN_GOLD_NIGHTS === 7 && ANEX_ADDITIONAL_GREEN_GOLD_CURRENCY === 3);
+$payload = [[
+    'additionalPriceAmount' => '250', 'keyAlias' => 'EUR', 'keyName' => 'Euro', 'pagesCount' => 121,
+    'programId' => '2637', 'programName' => 'Program', 'packetDateBeg' => '2026-10-05', 'packetDateEnd' => '2026-10-12',
+    'tourNights' => 7, 'hotelId' => null, 'hotelName' => null,
+    'partnerPriceAmount' => '119448', 'partnerPriceCurrency' => 'RUB', 'privateToken' => 'must not escape',
+]];
+$result = anytour_anex_additional_sanitize_payload($payload);
+additional_check($result['entry_count'] === 1 && $result['retained_entry_count'] === 1 && $result['truncated'] === false);
+additional_check($result['reported_additional_price_currencies'] === ['EUR']);
+additional_check($result['reported_pages_counts'] === [121]);
+$row = $result['rows'][0];
+additional_check($row['additional_price_amount'] === '250' && $row['additional_price_currency_alias'] === 'EUR');
+additional_check($row['program_id'] === '2637' && $row['tour_nights'] === '7');
+additional_check($row['partner_price_amount'] === '119448' && $row['partner_price_currency'] === 'RUB');
+additional_check(!array_key_exists('privateToken', $row));
+additional_check(anytour_anex_additional_sanitize_payload(json_encode($payload, JSON_THROW_ON_ERROR)) === $result);
+additional_reject(static fn () => anytour_anex_additional_sanitize_payload(['rows' => []]), 'ANEX_ADDITIONAL_RESPONSE');
+additional_reject(static fn () => anytour_anex_additional_sanitize_payload('not-json'), 'ANEX_ADDITIONAL_RESPONSE');
+additional_check(anytour_anex_additional_decimal('0') === '0' && anytour_anex_additional_decimal('12.50') === '12.50');
+additional_check(anytour_anex_additional_decimal('-1') === null && anytour_anex_additional_decimal('1e3') === null);
+additional_check(anytour_anex_additional_label('EUR', 24) === 'EUR' && anytour_anex_additional_label('<x>', 24) === null);
+echo "ANEX Green Gold AdditionalPricesDaily v6 guards: PASS\n";
