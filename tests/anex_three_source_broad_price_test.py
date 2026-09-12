@@ -11,16 +11,13 @@ def check(value):
     if not value:raise AssertionError(f'broad_price_py_{checks}')
 
 combined=mod.source();check(combined.startswith('declare(strict_types=1);\n'));check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
-check(mod.EXPERIMENT=='anex_three_source_broad_price_20260912_v5');check(mod.SPEC['date']=='2026-10-12');check(mod.SPEC['nights']==7 and mod.SPEC['adults']==2)
+check(mod.EXPERIMENT=='anex_three_source_broad_price_20260912_v6');check(mod.SPEC['date']=='2026-10-05');check(mod.SPEC['nights']==8 and mod.SPEC['adults']==2)
 
 def row(provider,local,room,price,fuel=None,program=None,currency_id=None):
-    value={'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'hotel_name':'Hotel','date':mod.SPEC['date'],'nights':7,'adults':2,'children':0,
-        'meal_family':'ai','meal_key':'ai','meal_qualifiers':[],'meal_equivalence_verified':False,
-        'meal_label':'AI','room':room,'room_norm':room.lower(),'placement':'DBL','placement_norm':'dbl','price':price,'currency':'RUB','fuel_charge':fuel,
-        'fuel_inclusion_verified':False,'final_price_verified':False}
-    if provider=='anex':
-        value['supplier_tour_program_id']=program
-        value['supplier_currency_id']=currency_id
+    value={'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'hotel_name':'Hotel','date':mod.SPEC['date'],'nights':8,'adults':2,'children':0,
+        'meal_family':'ai','meal_key':'ai','meal_qualifiers':[],'meal_equivalence_verified':False,'meal_label':'AI','room':room,'room_norm':room.lower(),'placement':'DBL','placement_norm':'dbl',
+        'price':price,'currency':'RUB','fuel_charge':fuel,'fuel_inclusion_verified':False,'final_price_verified':False}
+    if provider=='anex': value.update(supplier_tour_program_id=program,supplier_currency_id=currency_id)
     return value
 def coverage(provider):
     if provider=='anex': return {'state':'bounded','reason':'pricepage_1_only','page':1,'all_pages_retained':False}
@@ -30,11 +27,9 @@ def case(provider,rows):
     return {'schema_version':1,'experiment_id':mod.EXPERIMENT,'case_id':provider,'status':'completed','offers':rows,'details':{'coverage':coverage(provider)},'supplier_effect':'read_only_search_completed',
         'automatic_retry':False,'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'observation_writes_allowed':True,'reused':False}
 
-results={
- 'anex':case('anex',[row('anex',10,'standard','100000',program='778',currency_id='3'),row('anex',20,'family','120000',program='900',currency_id='3')]),
+results={'anex':case('anex',[row('anex',10,'standard','100000',program='778',currency_id='3'),row('anex',20,'family','120000',program='900',currency_id='3')]),
  'andromeda':case('andromeda',[row('andromeda',10,'standard','101000'),row('andromeda',20,'family','120500'),row('andromeda',30,'suite','140000')]),
- 'tourvisor':case('tourvisor',[row('tourvisor',10,'standard','102000','2500'),row('tourvisor',20,'family','121000','2200')]),
-}
+ 'tourvisor':case('tourvisor',[row('tourvisor',10,'standard','102000','2500'),row('tourvisor',20,'family','121000','2200')])}
 for name,value in results.items():check(mod.validate_case(value,name) is value)
 report=mod.comparison(results);check(report['triple_tuple_count']==2);check(report['pair_tuple_counts']['anex_tourvisor']==2);check(report['pair_tuple_counts']['anex_andromeda']==2);check(report['pair_tuple_counts']['andromeda_tourvisor']==2)
 check(report['provider_counts']['tourvisor']['fuel_reported_offers']==2);check(report['provider_counts']['anex']['program_id_observed_offers']==2)
