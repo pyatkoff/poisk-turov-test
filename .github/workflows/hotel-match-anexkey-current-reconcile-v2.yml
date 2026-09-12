@@ -1,0 +1,80 @@
+name: MATCH ANEX-key CURRENT reconcile v2
+on:
+  push:
+    branches: [ops/match-andromeda-anex-direct-key-matrix-1971-20260912-v1]
+    paths: [.github/workflows/hotel-match-anexkey-current-reconcile-v2.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-identity-current, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anexkey-current-reconcile-1971-20260912-v2
+  OUT: /tmp/match-anexkey-current-v2
+jobs:
+  reconcile:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 3, persist-credentials: false}
+      - name: Verify exact scope and helper
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only 83a0a99170126d348777e0bd39af387bbcbc951e HEAD | sort)" = $'.github/workflows/hotel-match-anexkey-current-reconcile-v2.yml\nscripts/diagnostics/hotel_match_anexkey_current_reconcile.php'
+          php -l scripts/diagnostics/hotel_match_anexkey_current_reconcile.php
+          php scripts/diagnostics/hotel_match_anexkey_current_reconcile.php --self-test
+          mkdir -p "$OUT" /tmp/evidence
+      - uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', repository: '${{ github.repository }}', run-id: 34696224011, artifact-ids: '10298811588', path: /tmp/evidence/aggregate}
+      - uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', repository: '${{ github.repository }}', run-id: 34696110868, artifact-ids: '10299280376', path: /tmp/evidence/s01}
+      - uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', repository: '${{ github.repository }}', run-id: 34696224011, artifact-ids: '10298622021', path: /tmp/evidence/s02}
+      - uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', repository: '${{ github.repository }}', run-id: 34696110868, artifact-ids: '10298981079', path: /tmp/evidence/s03}
+      - uses: actions/download-artifact@v4
+        with: {github-token: '${{ github.token }}', repository: '${{ github.repository }}', run-id: 34696224011, artifact-ids: '10297799368', path: /tmp/evidence/s04}
+      - name: Build conflict-aware immutable plan and reservation
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,hashlib,base64,os
+          ap=next(pathlib.Path('/tmp/evidence/aggregate').rglob('aggregate.json')); raw=ap.read_bytes(); a=json.loads(raw); assert a['status']=='completed' and a['distinct_exact_id_triples']==78
+          c={'anex':set(),'andromeda':set()}; src=[]
+          for sid in ['s01','s02','s03','s04']:
+            p=next(pathlib.Path('/tmp/evidence',sid).rglob('provider-result.json')); x=json.loads(p.read_text()); assert x['status']=='completed' and x['database_writes']==0
+            src.append({'slice':sid,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+            for q in x.get('bridge_conflicts') or []:
+              if q.get('side') in c:c[q['side']].add(str(q['id']))
+          plan={'operation_id':os.environ['OPERATION_ID'],'evidence_family':a['family_id'],'evidence_sha256':hashlib.sha256(raw).hexdigest(),'triples':a['triples'],'provider_conflicts':{k:sorted(v,key=int) for k,v in c.items()},'source_files':src,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}; pb=json.dumps(plan,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode(); pathlib.Path(os.environ['OUT'],'plan.json').write_bytes(pb)
+          s=pathlib.Path('scripts/diagnostics/hotel_match_anexkey_current_reconcile.php').read_text(); m='declare(strict_types=1);'; pathlib.Path(os.environ['OUT'],'capsule.php').write_text(s.replace(m,m+"\nconst HM_PLAN_B64='"+base64.b64encode(pb).decode()+"';",1)); r={'operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'plan_sha256':hashlib.sha256(pb).hexdigest(),'evidence_sha256':plan['evidence_sha256'],'provider_conflict_counts':{k:len(v) for k,v in c.items()},'state':'reserved_before_db_access','database_writes':0,'mapping_writes':0,'supplier_calls':0,'no_replay':True}; pathlib.Path(os.environ['OUT'],'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n'); print(json.dumps({'triples':78,'conflicts':r['provider_conflict_counts']},sort_keys=True))
+          PY
+          php -l "$OUT/capsule.php"
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: match-anexkey-current-v2-${{ github.run_id }}-reserved
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/plan.json
+          retention-days: 90
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/reservation-readback, merge-multiple: true}
+      - name: One CURRENT read-only transaction
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/reservation-readback/reservation.json; cmp "$OUT/plan.json" /tmp/reservation-readback/plan.json
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"; if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi; chmod 600 "$key"; ok=0; for n in 1 2 3; do if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi; sleep 10; done; test "$ok" = 1
+          set +e; ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=512M' < "$OUT/capsule.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"; rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes(); vals=[x[len('MATCH_CURRENT_JSON:'):] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_CURRENT_JSON:')]; x=json.loads(vals[-1]) if vals else {'status':'unknown','reason':'result_marker_missing'}; (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); assert int(os.environ['RC'])==0 and x.get('status')=='completed' and x.get('operation_id')==os.environ['OPERATION_ID'] and x.get('database_writes')==0 and x.get('supplier_calls')==0
+          safe=(x.get('counts') or {}).get('safe_missing_andromeda_side',0)+(x.get('counts') or {}).get('safe_missing_anex_side',0); s=f"MATCH #1971 direct operator-key CURRENT reconcile v2 COMPLETE/READ-ONLY. Examined **{x['examined']}** triples; buckets `{x['counts']}`. Safe missing-side candidates **{safe}** after provider-conflict/manual/exclusion/current-target guards. DB/mapping writes0; supplier/Tourvisor0. Run `{os.environ['GITHUB_RUN_ID']}`. Any acceptance uses NEW operation/current transaction/readback."; (d/'summary.md').write_text(s+'\n'); print(s)
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-anexkey-current-v2-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record result
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
