@@ -10,7 +10,7 @@ const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
 // replacements make every accepted rewrite explicit and fail closed on source drift.
 const rules = {
   'tour-controller-v4.js': {
-    sourceSha256: 'd256df8e26f9383ff29fc50f77c083d144678cc6e0e072fd34d07a03bec2fb03',
+    sourceSha256: '8dd62bbf3f023142f08f7f6f648f99d0aacb6d8197ca332d98f4c778aa369960',
     from: 'catch(_){};}try{',
     to: 'catch(_){}}try{'
   },
