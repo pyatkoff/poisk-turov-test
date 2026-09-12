@@ -1,0 +1,72 @@
+name: MATCH baseline-gap containment audit 1971
+on:
+  push:
+    branches: [ops/match-baseline-gap-containment-audit-1971-20260912-v1]
+    paths: [.github/match-baseline-gap-containment-audit-1971-20260912-v1.arm]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-baseline-gap-containment-audit-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-baseline-gap-containment-audit-1971-20260912-v1
+  OUT: /tmp/match-baseline-gap-containment-audit-1971-v1
+jobs:
+  audit:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Offline guards and immutable reservation
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-baseline-gap-containment-audit-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_baseline_gap_containment_audit.php
+          php tests/hotel-match-baseline-gap-containment-audit-test.php
+          mkdir -p "$OUT/bundle/scripts/diagnostics" "$OUT/bundle/reports" "$OUT/bundle/app/integrations"
+          cp scripts/diagnostics/hotel_match_baseline_gap_containment_audit.php "$OUT/bundle/scripts/diagnostics/program.php"
+          cp scripts/diagnostics/hotel_match_baseline_gap_current_audit.php "$OUT/bundle/scripts/diagnostics/base.php"
+          cp reports/hotel-match-baseline-gap-current-audit-1971.json "$OUT/bundle/reports/manifest.json"
+          cp app/integrations/anex-search-mapping-registry.php "$OUT/bundle/app/integrations/registry.php"
+          python3 - <<'PY'
+          import os,pathlib
+          d=pathlib.Path(os.environ['OUT'])/'bundle/scripts/diagnostics'
+          p=d/'program.php';s=p.read_text();a="require_once $root.'/scripts/diagnostics/hotel_match_baseline_gap_current_audit.php';";b="require_once $root.'/app/integrations/anex-search-mapping-registry.php';"
+          if s.count(a)!=1 or s.count(b)!=1: raise SystemExit('program patch drift')
+          s=s.replace(a,"require_once (string)getenv('HMBGC_BASE_PATH');",1).replace(b,"require_once (string)getenv('HMBGC_REGISTRY_PATH');",1);p.write_text(s)
+          q=d/'base.php';s=q.read_text();b="require_once $root.'/app/integrations/anex-search-mapping-registry.php';"
+          if s.count(b)!=1: raise SystemExit('base patch drift')
+          q.write_text(s.replace(b,"require_once (string)getenv('HMBGC_REGISTRY_PATH');",1))
+          PY
+          php -l "$OUT/bundle/scripts/diagnostics/program.php"; php -l "$OUT/bundle/scripts/diagnostics/base.php"
+          sha256sum "$OUT/bundle/scripts/diagnostics/program.php" "$OUT/bundle/scripts/diagnostics/base.php" "$OUT/bundle/reports/manifest.json" "$OUT/bundle/app/integrations/registry.php" > "$OUT/input.sha256"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);raw=d.joinpath('input.sha256').read_text();d.joinpath('reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(raw.encode()).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-baseline-gap-containment-audit-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-baseline-gap-containment-reservation, merge-multiple: true}
+      - name: Execute one CURRENT containment audit
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; cmp "$OUT/reservation.json" /tmp/match-baseline-gap-containment-reservation/reservation.json
+          key="$RUNNER_TEMP/k";known="$RUNNER_TEMP/known";sock="$RUNNER_TEMP/sock";cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1||true;rm -f "$key" "$known";};trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e; tar -C "$OUT/bundle" -cf - . | ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'tmp=$(mktemp -d);trap "rm -rf $tmp" EXIT;tar -xf - -C "$tmp"||exit 91;cd "$HOME/www/anytoour.ru"||exit 92;HMBGC_MANIFEST_PATH="$tmp/reports/manifest.json" HMBGC_BASE_PATH="$tmp/scripts/diagnostics/base.php" HMBGC_REGISTRY_PATH="$tmp/app/integrations/registry.php" php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M "$tmp/scripts/diagnostics/program.php"' > "$OUT/live.stdout" 2> "$OUT/live.stderr";rc=$?;set -e;export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']); rows=[x[11:] for x in d.joinpath('live.stdout').read_text(errors='replace').splitlines() if x.startswith('HMBGC_JSON:')];data=json.loads(rows[-1]) if rows else {'status':'unknown_do_not_replay','operation_id':os.environ['OPERATION_ID'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0};raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();d.joinpath('result.json').write_bytes(raw);good=int(os.environ['RC'])==0 and data.get('status')=='read_only_complete' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls']);r={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown_do_not_replay'),'source_sha':os.environ['GITHUB_SHA'],'remote_exit_code':int(os.environ['RC']),'result_sha256':hashlib.sha256(raw).hexdigest(),'safe_count':data.get('safe_count'),'counts':data.get('counts'),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};d.joinpath('receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n');d.joinpath('summary.md').write_text(f"MATCH #1971 containment CURRENT audit {r['state']}: safe={r['safe_count']} counts={r['counts']}; writes/supplier/TV=0; op {os.environ['OPERATION_ID']} NO-REPLAY.\n");print(d.joinpath('summary.md').read_text());raise SystemExit(0 if good else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-baseline-gap-containment-audit-${{ github.run_id }}-result', path: '${{ env.OUT }}', retention-days: 90}
+      - name: Record result
+        if: always() && hashFiles(format('{0}/summary.md', env.OUT)) != ''
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
