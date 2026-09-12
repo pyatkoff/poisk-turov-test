@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
       - name: Focused program1797 flight binding regression
         run: |
-          python3 -m pytest -q tests/anex_green_gold_1797_flight_bind_test.py
+          python3 -B tests/anex_green_gold_1797_flight_bind_test.py
           python3 -m py_compile scripts/diagnostics/anex_green_gold_1797_flight_bind.py
   live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-1797-flight-bind-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
