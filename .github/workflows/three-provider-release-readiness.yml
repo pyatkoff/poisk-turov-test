@@ -24,6 +24,7 @@ jobs:
             tests/three-provider-offer-contract-test.php \
             tests/three-provider-offer-context-test.php \
             tests/three-provider-air-search-filter-test.php \
+            tests/three-provider-geography-test.php \
             tests/three-provider-hotel-category-test.php \
             tests/three-provider-hotel-rating-test.php \
             tests/three-provider-hotel-services-test.php \
@@ -43,6 +44,7 @@ jobs:
               'app/integrations/three-provider-offer-contract.php',
               'app/integrations/three-provider-offer-context.php',
               'app/integrations/three-provider-air-search-filter.php',
+              'app/integrations/three-provider-geography.php',
               'app/integrations/three-provider-hotel-category.php',
               'app/integrations/three-provider-hotel-rating.php',
               'app/integrations/three-provider-hotel-services.php',
@@ -77,6 +79,17 @@ jobs:
           assert "'allowed' => false" in air
           assert "'raw_numeric_id_universal' => false" in air
           assert "'cross_provider_equivalence_verified' => false" in air
+
+          geography = Path('app/integrations/three-provider-geography.php').read_text()
+          assert "'status' => 'unknown'" in geography
+          assert "'allowed' => false" in geography
+          assert "'requires_verified_provider_mapping' => true" in geography
+          assert "'provider_specific_mapping_required' => true" in geography
+          assert "'supplier_geography_equivalence_verified' => false" in geography
+          assert "'raw_supplier_numeric_id_universal' => false" in geography
+          assert "'cross_provider_equivalence_verified' => false" in geography
+          assert "'identity_proof_from_geography' => false" in geography
+          assert "? 'not_implemented'" in geography
 
           category = Path('app/integrations/three-provider-hotel-category.php').read_text()
           assert "'supplier_label_equivalence_verified' => false" in category
