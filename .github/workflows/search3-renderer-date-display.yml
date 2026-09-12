@@ -1,0 +1,51 @@
+name: Search3 renderer date display
+
+on:
+  pull_request:
+    paths:
+      - 'v2/results-renderer-v5.js'
+      - 'v2/search3-shared-runtime.json'
+      - 'tests/search3-renderer-date-display.test.js'
+      - 'tests/search3-current-results-browser.cjs'
+      - '.github/workflows/search3-renderer-date-display.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renderer-date-display:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Syntax check canonical renderer
+        run: node --check v2/results-renderer-v5.js
+      - name: Verify display-only date normalization
+        run: node tests/search3-renderer-date-display.test.js
+      - name: Syntax check current-results visual contract
+        run: node --check tests/search3-current-results-browser.cjs
+      - name: Guard against timezone parsing and source mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eq 'new[[:space:]]+Date\(' v2/results-renderer-v5.js
+          grep -Fq "date=formatTourDate(t.date)" v2/results-renderer-v5.js
+          grep -Fq "formatTourDate" tests/search3-renderer-date-display.test.js
+          grep -Fq "innerText(), '12.09.2026'" tests/search3-current-results-browser.cjs
+      - name: Regenerate canonical shared runtime candidate
+        run: node scripts/build/search3-js/shared-runtime.cjs --write
+      - name: Upload canonical shared runtime candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-renderer-date-shared-runtime
+          path: v2/search3-shared-runtime.json
+          if-no-files-found: error
+          retention-days: 3
+      - name: Require committed shared runtime parity
+        run: git diff --exit-code -- v2/search3-shared-runtime.json
