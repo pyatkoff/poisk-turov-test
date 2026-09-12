@@ -1,0 +1,110 @@
+{
+  "schema": "hotel-match-large-residual-evidence/1",
+  "lane": "MATCH",
+  "issue": 1971,
+  "status": "large_residual_prepared_not_write_authority",
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "supplier_calls_in_reconciliation": 0,
+  "tourvisor_calls_in_reconciliation": 0,
+  "inputs": {
+    "geo_report": {
+      "source_sha": "c359cb47d075458d7506944a33e0370449f01b53",
+      "path": "reports/hotel-match-geo-context-review-20260912.json",
+      "prepared_count": 244,
+      "prepared_anex": 209,
+      "prepared_andromeda": 35,
+      "full_result_sha256": "f9b508ed91213f773f9e3f9253ba47bc4f8e01cf70496f3cf17e758bfa9ee35d"
+    },
+    "current_census": {
+      "run_id": 34700780122,
+      "artifact_id": 10300352238,
+      "generated_at_utc": "2026-09-12T14:57:45Z",
+      "mapping_rows": 14496,
+      "manual_decisions": 11,
+      "pair_exclusions": 0,
+      "andromeda_statuses": {"accepted": 8160, "pending": 1824, "conflict": 12},
+      "no_replay": true
+    },
+    "later_current_checks": {
+      "reader_current_run": 34705323780,
+      "reader_current_mapping_rows": 14496,
+      "post_reader_census_run": 34706858613,
+      "post_reader_live_unresolved_anex": 72,
+      "post_reader_live_occurrences": 1794,
+      "post_reader_andromeda_statuses": {"accepted": 8160, "pending": 1824, "conflict": 12}
+    }
+  },
+  "reconciliation": {
+    "geo_prepared_total": 244,
+    "already_accepted_same_target": 21,
+    "already_accepted_anex": 20,
+    "already_accepted_andromeda": 1,
+    "accepted_target_drift_observed": 0,
+    "residual_prepared_total": 223,
+    "residual_anex": 189,
+    "residual_andromeda": 34,
+    "method": "Take the immutable 244-pair geo evidence set; remove ANEX IDs already enabled in the 14:57 CURRENT census, manual decisions and pair exclusions; remove Andromeda identities already accepted/conflict. The later CURRENT checks retained the same ANEX mapping-row count and the same Andromeda status totals. This result is a prepared delta only: every row must be re-read in one fresh server-current transaction before any write."
+  },
+  "live_anex_geo_residual_priority": [
+    [32616, 17527, 52, "Martinenz Hotel."],
+    [30538, 17527, 51, "Martinenz Otel"],
+    [44413, 101819, 48, "The Barbarossa Hotel Istanbul"],
+    [780, 464, 26, "Steigenberger Golf Resort El Gouna"],
+    [44596, 28760, 18, "Metropark Hotel"],
+    [29618, 17317, 1, "Avicenna Hotel"],
+    [32577, 17689, 1, "Venera Hotel."]
+  ],
+  "live_priority_note": "These seven are the still-unaccepted members of the earlier 23-row live geo-evidence set after current-census reconciliation. Two ANEX Martinenz IDs point to the same physical local target; duplicate provider IDs are not automatically rejected, but each ID needs its own evidence and current guards.",
+  "live_offer_attempts": {
+    "v1": {
+      "run_id": 34708358602,
+      "state": "offline_failed_before_reservation_or_supplier_access",
+      "reason": "test_literal_interpolation",
+      "supplier_calls": 0,
+      "tourvisor_calls": 0,
+      "database_writes": 0,
+      "mapping_writes": 0,
+      "replay": false
+    },
+    "v2": {
+      "run_id": 34708463062,
+      "operation_id": "hotel-match-live-offer-evidence-1971-20260912-v2",
+      "artifact_id": 10301998676,
+      "state": "failed",
+      "reason": "ANEX_REQUEST_LIMIT",
+      "result_sha256": "a5c445d09f67d96ee88fb5f0a23707927a48cc95348bf0de2ba85be587f235e2",
+      "database_writes": 0,
+      "mapping_writes": 0,
+      "booking_calls": 0,
+      "lead_calls": 0,
+      "no_replay": true
+    },
+    "v3_blocker": "A paced successor was designed with 65-second cooldown and >=3.2 seconds between ANEX requests, but connector safety rejected creation/update of the secret-bearing workflow before any GitHub write or live operation. Do not bypass this restriction."
+  },
+  "saved_live_search_evidence": {
+    "tourvisor_only_run": 34703312373,
+    "tourvisor_unique_hotels": 47,
+    "tv_anex_run": 34703597330,
+    "direct_anex_unique_hotels": 300,
+    "known_strong_unaccepted_examples": [
+      [32880, 17443, "Grand Emin Hotel", "GRAND EMIN HOTEL LALELI"],
+      [44573, 59085, "Hotel The Rose Bouquetes", "THE ROSE BOUTIQUES SULTANAHMET"],
+      [32745, 70943, "Raimond Hotel", "RAIMOND HOTEL KUMKAPI"],
+      [30424, 17617, "Sarnic Hotel", "SARNIC HOTEL (OTTOMAN MANSION)"]
+    ],
+    "duplicate_blocked_example": "ANEX 28882 and 32743 are both Malkoc Hotel and both point toward TV 43528; do not blanket-accept or blanket-reject without provider-specific evidence.",
+    "qualifier_rejection_example": "ANEX 16330 Mira Beach Resort Bodrum must not be equated with TV 9250 BODRUM BEACH RESORT because meaningful qualifier Mira is absent."
+  },
+  "guards": {
+    "not_an_apply_manifest": true,
+    "fresh_server_current_transaction_required_before_any_write": true,
+    "manual_decisions_pair_exclusions_conflicts_existing_mappings_must_be_re_read": true,
+    "coordinate_conflict_over_5km_blocks_auto_accept": true,
+    "significant_qualifiers_preserved": true,
+    "price_and_price_sorted_rank_are_correlated_soft_evidence_only": true,
+    "completed_or_unknown_operations_never_replayed": true,
+    "v2_not_replayed": true,
+    "production_main_unchanged": true
+  }
+}
