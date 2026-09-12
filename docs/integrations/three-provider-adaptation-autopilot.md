@@ -137,6 +137,8 @@ Direct ANEX P4/P6 common-session boundary также уже source-complete: PR 
 
 Andromeda selected-quote durable replay теперь закрыт двумя последовательными guards: #2088 сохраняет `reserved` до любого supplier-вызова, навсегда запечатывает `reserved/unknown` и разрешает supplier-free replay только завершённого browser-safe результата после повторной проверки current retained offer/mapping endpoint-ом; #2090 merged в INT как `3b8acda85ac164f3e0dd5adf9303d9e411434e81` дополнительно валидирует сам persisted completed result перед сохранением и каждым replay. `search_price`, optional `package_price` и verified `final_price` обязаны оставаться отдельными точными `{amount,currency}` фактами с положительной decimal-суммой; malformed/zero/лишние money keys, несогласованные quote/flight states и повреждённый checkpoint fail closed. Это защита целостности persisted evidence, **не** новая price arithmetic и не повод повторять completed supplier chain.
 
+Canonical provider-neutral money handoff для доказанного Andromeda quote теперь source-complete: PR #2092 merged в INT как `510166858b4a4443e0fb2a869b92292cc2706aea`. `withVerifiedQuote()` принимает только неизменённый canonical search-money state, сохраняет `search_price`, optional `package_buyer_price` и `quote_price` как отдельные exact-source facts (`andromeda_search` / `andromeda_package` / `andromeda_quote`), ставит `final_price_verified=true` без delta/fuel/total arithmetic и оставляет `search_price_fuel_relation=unknown`. Tourvisor/direct ANEX quote enrichment остаётся unsupported до отдельного доказанного supplier contract.
+
 ---
 
 # 3. Приоритет очереди
@@ -379,6 +381,8 @@ Price change contract должен уметь вернуть:
 Exact selected-claim chain из §2.4 уже доказал изменение `124864 → 135643 RUB` после выбора обязательных рейсов и `calc`. Не запускать его повторно ради подтверждения. Следующая source задача — использовать уже существующий private verified-quote contract/handoff и сохранять exact-claim provenance; не превращать один sample в общую price arithmetic.
 
 Durable quote checkpoint также является частью price provenance: `reserved/unknown` никогда не разрешают повторный supplier call; completed replay допустим только для того же current context и только после строгой повторной валидации persisted browser-safe money/state payload. Повреждение persisted `search/package/final` money — blocker/local failure, а не повод автоматически делать новый quote.
+
+Canonical money layer после #2092 уже умеет перенести verified Andromeda quote в provider-neutral handoff без новой arithmetic: только неизменённый search-money state может получить optional `package_buyer_price` и verified `quote_price`; direct ANEX/Tourvisor остаются unsupported для такого enrichment. Следующий P5/P6 source gap — exact provenance/context envelope вокруг этого canonical money handoff, а не повтор supplier quote.
 
 Включение UI acceptance принадлежит SEARCH.
 
