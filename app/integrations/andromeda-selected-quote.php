@@ -34,6 +34,7 @@ final class AnyTourAndromedaSelectedQuote
                     'final_price_verified' => false,
                     'flight_selection_required' => true,
                     'flights' => $choice['public'],
+                    'fuel_surcharges_reported' => [],
                     'booking_enabled' => false,
                 ];
             }
@@ -62,6 +63,7 @@ final class AnyTourAndromedaSelectedQuote
             'final_price_verified' => true,
             'flight_selection_required' => false,
             'flights' => array_values(array_map([self::class, 'publicFlight'], $selectedFlights)),
+            'fuel_surcharges_reported' => self::fuelSurcharges($calculated),
             'booking_enabled' => false,
         ];
     }
@@ -105,6 +107,33 @@ final class AnyTourAndromedaSelectedQuote
             || preg_match('/[1-9]/', $amount) !== 1
             || !is_string($currency) || !preg_match('/^[A-Z0-9_]{2,8}$/D', $currency)) return null;
         return ['amount' => $amount, 'currency' => $currency];
+    }
+
+    /** Supplier-reported fuel services are evidence only; do not aggregate or apply them to prices here. */
+    private static function fuelSurcharges(array $claim): array
+    {
+        $doc = self::document($claim);
+        $out = [];
+        foreach (($doc['services'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['service'] ?? null)) continue;
+            foreach ($block['service'] as $service) {
+                if (!is_array($service)
+                    || (string)($service['servicetype'] ?? '') !== '8'
+                    || (string)($service['servicecategoryName'] ?? '') !== 'Топливный сбор') continue;
+                $amount = (string)($service['price'] ?? '');
+                $currency = $service['currencyAlias'] ?? null;
+                if (preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $amount) !== 1
+                    || !is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
+                $route = (string)($service['routeIndex'] ?? '');
+                $out[] = [
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'route_index' => in_array($route, ['0', '1'], true) ? $route : null,
+                    'source' => 'andromeda_claim_service',
+                ];
+            }
+        }
+        return $out;
     }
 
     /** Launch path: auto-select only exactly one required outbound and one required return. */
@@ -183,6 +212,29 @@ final class AnyTourAndromedaSelectedQuote
         return $out;
     }
 
+    /** Preserve a single supplier markup fact for one flight; cross-leg aggregation is intentionally unknown. */
+    private static function transportMarkup(array $flight): ?array
+    {
+        $facts = [];
+        foreach (($flight['details'] ?? []) as $block) {
+            if (!is_array($block) || !is_array($block['detail'] ?? null)) continue;
+            foreach ($block['detail'] as $detail) {
+                if (!is_array($detail)) continue;
+                $amount = (string)($detail['markup'] ?? '');
+                $currency = $detail['currency'] ?? null;
+                if (preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $amount) !== 1
+                    || !is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
+                $facts[$amount . "\0" . $currency] = ['amount' => $amount, 'currency' => $currency];
+            }
+        }
+        if (count($facts) !== 1) return null;
+        $fact = array_values($facts)[0];
+        return $fact + [
+            'source' => 'andromeda_transport_detail',
+            'aggregation' => 'unknown',
+        ];
+    }
+
     private static function publicFlight(array $flight): array
     {
         $out = [
@@ -192,6 +244,7 @@ final class AnyTourAndromedaSelectedQuote
             'dateend' => is_string($flight['dateend'] ?? null) ? $flight['dateend'] : null,
             'class' => is_string($flight['onlineClass'] ?? null) ? substr($flight['onlineClass'], 0, 80)
                 : (is_string($flight['class'] ?? null) ? substr($flight['class'], 0, 80) : null),
+            'transport_markup_reported' => self::transportMarkup($flight),
         ];
         foreach (['departure', 'arrival'] as $side) {
             $point = null;
