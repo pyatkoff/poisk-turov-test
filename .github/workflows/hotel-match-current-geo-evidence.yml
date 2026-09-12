@@ -2,12 +2,12 @@ name: MATCH CURRENT geo evidence 1971
 on:
   push:
     branches: [ops/match-current-geo-evidence-1971-20260912-v1]
-    paths: [.github/match-current-geo-evidence-1971-20260912-v1.arm]
+    paths: [.github/match-current-geo-evidence-1971-20260912-v2.arm]
 permissions: {contents: read, actions: read, issues: write}
-concurrency: {group: anytour-match-current-geo-evidence-1971-v1, cancel-in-progress: false}
+concurrency: {group: anytour-match-current-geo-evidence-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-current-geo-evidence-1971-20260912-v1
-  OUT: /tmp/match-current-geo-evidence-1971-v1
+  OPERATION_ID: hotel-match-current-geo-evidence-1971-20260912-v2
+  OUT: /tmp/match-current-geo-evidence-1971-v2
 jobs:
   evidence:
     if: github.run_attempt == 1
@@ -19,7 +19,7 @@ jobs:
       - name: Offline guards and immutable bundle
         run: |
           set -euo pipefail
-          test "$(cat .github/match-current-geo-evidence-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-current-geo-evidence-1971-20260912-v2.arm)" = "$OPERATION_ID"
           php -l scripts/diagnostics/hotel_match_current_geo_evidence.php
           php tests/hotel-match-current-geo-evidence-test.php
           mkdir -p "$OUT/bundle/scripts/diagnostics" "$OUT/bundle/reports" "$OUT/bundle/app/integrations"
@@ -29,26 +29,29 @@ jobs:
           python3 - <<'PY'
           import os,pathlib
           p=pathlib.Path(os.environ['OUT'])/'bundle/scripts/diagnostics/program.php';s=p.read_text()
-          old="const HMCGE_OPERATION='hotel-match-current-geo-evidence-1971-20260912-v1';"
-          if s.count(old)!=1: raise SystemExit('operation marker drift')
-          s=s.replace(old,"const HMCGE_OPERATION='"+os.environ['OPERATION_ID']+"';",1)
-          old="require_once $root.'/app/integrations/anex-search-mapping-registry.php';"
-          if s.count(old)!=1: raise SystemExit('registry marker drift')
-          p.write_text(s.replace(old,"require_once (string)getenv('HMCGE_REGISTRY_PATH');",1))
+          replacements=[
+            ("const HMCGE_OPERATION='hotel-match-current-geo-evidence-1971-20260912-v1';","const HMCGE_OPERATION='"+os.environ['OPERATION_ID']+"';"),
+            ("require_once $root.'/app/integrations/anex-search-mapping-registry.php';","require_once (string)getenv('HMCGE_REGISTRY_PATH');"),
+            ("foreach(array_keys($out) as $value)foreach($geo as $g){if($g===''||$value===$g)continue;if(str_starts_with($value,$g.' '))","foreach(array_keys($out) as $value)foreach($geo as $g){$value=(string)$value;$g=(string)$g;if($g===''||$value===$g)continue;if(str_starts_with($value,$g.' '))"),
+          ]
+          for old,new in replacements:
+              if s.count(old)!=1: raise SystemExit('program marker drift: '+old)
+              s=s.replace(old,new,1)
+          p.write_text(s)
           PY
           php -l "$OUT/bundle/scripts/diagnostics/program.php"
           sha256sum "$OUT/bundle/scripts/diagnostics/program.php" "$OUT/bundle/reports/manifest.json" "$OUT/bundle/app/integrations/registry.php" > "$OUT/input.sha256"
           python3 - <<'PY'
           import json,os,pathlib,hashlib
           d=pathlib.Path(os.environ['OUT']);inp=d.joinpath('input.sha256').read_text()
-          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(inp.encode()).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(inp.encode()).hexdigest(),'predecessor_operation':'hotel-match-current-geo-evidence-1971-20260912-v1','predecessor_state':'failed_type_guard_writes0','read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
           d.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         id: reserve
         with: {name: 'match-current-geo-evidence-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
       - uses: actions/download-artifact@v4
-        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-current-geo-evidence-reservation, merge-multiple: true}
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-current-geo-evidence-v2-reservation, merge-multiple: true}
       - name: Execute one CURRENT read-only evidence census
         env:
           KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
@@ -56,7 +59,7 @@ jobs:
           USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
         run: |
           set -euo pipefail
-          cmp "$OUT/reservation.json" /tmp/match-current-geo-evidence-reservation/reservation.json
+          cmp "$OUT/reservation.json" /tmp/match-current-geo-evidence-v2-reservation/reservation.json
           key="$RUNNER_TEMP/match-current-geo-key";known="$RUNNER_TEMP/match-current-geo-known";sock="$RUNNER_TEMP/match-current-geo.sock"
           cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true;rm -f "$key" "$known";};trap cleanup EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
@@ -72,7 +75,7 @@ jobs:
           raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();d.joinpath('result.json').write_bytes(raw)
           good=int(os.environ['RC'])==0 and data.get('status')=='read_only_complete' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls'])
           receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown_do_not_replay'),'source_sha':os.environ['GITHUB_SHA'],'remote_exit_code':int(os.environ['RC']),'result_sha256':hashlib.sha256(raw).hexdigest(),'no_replay':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0};d.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
-          c=data.get('counts') or {};summary=f"MATCH #1971 CURRENT geo evidence {receipt['state']}: safe_current_unique={data.get('safe_current_unique_total')}; ANEX={c.get('anex')}; Andromeda={c.get('andromeda')}; remote_rc={receipt['remote_exit_code']}; writes/supplier/TV=0; op {os.environ['OPERATION_ID']} NO-REPLAY."
+          c=data.get('counts') or {};summary=f"MATCH #1971 CURRENT geo evidence v2 {receipt['state']}: safe_current_unique={data.get('safe_current_unique_total')}; ANEX={c.get('anex')}; Andromeda={c.get('andromeda')}; remote_rc={receipt['remote_exit_code']}; writes/supplier/TV=0; op {os.environ['OPERATION_ID']} NO-REPLAY."
           d.joinpath('summary.md').write_text(summary+'\n');print(summary)
           if not good: raise SystemExit(2)
           PY
