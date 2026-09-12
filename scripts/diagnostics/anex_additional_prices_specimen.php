@@ -38,11 +38,18 @@ function anytour_anex_additional_http_get(string $token, array $criteria): array
     $ch=curl_init(ANEX_ADDITIONAL_GREEN_GOLD_ENDPOINT.'?'.anytour_anex_additional_query($criteria));
     if ($ch===false) throw new RuntimeException('ANEX_ADDITIONAL_CURL');
     $body='';$overflow=false;
-    curl_setopt_array($ch,[
-        CURLOPT_HTTPGET=>true,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>30,
-        CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_USERAGENT=>'TourismPlus',CURLOPT_HEADER=>false,
-        CURLOPT_HTTPHEADER=>['Accept: application/json','Authorization: Bearer '.$token],
-        CURLOPT_WRITEFUNCTION=>static function($handle,string $chunk)use(&$body,&$overflow):int{
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPGET => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_MAXREDIRS => 0,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
+        CURLOPT_USERAGENT => 'TourismPlus',
+        CURLOPT_HEADER => false,
+        CURLOPT_HTTPHEADER => ['Accept: application/json','Authorization: Bearer '.$token],
+        CURLOPT_WRITEFUNCTION => static function($handle,string $chunk)use(&$body,&$overflow):int{
             if(strlen($body)+strlen($chunk)>ANEX_ADDITIONAL_GREEN_GOLD_MAX_BYTES){$overflow=true;return 0;}$body.=$chunk;return strlen($chunk);
         },
     ]);
