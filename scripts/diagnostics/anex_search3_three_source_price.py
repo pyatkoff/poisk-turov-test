@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import time
 
 import anex_search3_gap_queue as gaps
 
@@ -28,28 +29,50 @@ def source():
     return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+new_body
 
 
+def _ssh_pre_auth_retryable(error):
+    progress=getattr(error,'progress',None)
+    return isinstance(error,gaps.SSHBatchError) \
+        and getattr(error,'reason_code',None)=='ssh_connection_closed' \
+        and isinstance(progress,dict) \
+        and progress.get('tcp_connected') is True \
+        and progress.get('authenticated') is False \
+        and progress.get('multiplexing_seen') is False \
+        and progress.get('command_sent') is False \
+        and progress.get('remote_exit_seen') is False
+
+
 def ssh_php_no_mux(source_text, request, maximum_bytes=4000000):
-    """No-mux transport; a non-zero exit may still contain our sanitized PHP JSON."""
+    """No-mux transport; retry once only when the connection dies before auth/command."""
     if maximum_bytes not in (65536,4000000): raise ValueError('unsupported_diagnostic_response_limit')
     names=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
     if any(not os.environ.get(name,'').strip() for name in names): raise ValueError('missing_ssh_configuration')
     host,user=(os.environ[name].strip() for name in names[1:])
     if host.startswith('-') or user.startswith('-') or any(c.isspace() for c in host+user): raise ValueError('invalid_ssh_target')
-    with tempfile.TemporaryDirectory(prefix='anex-three-price-',dir=os.environ.get('RUNNER_TEMP')) as temp:
-        key=Path(temp)/'ssh_key'; key.write_text(os.environ[names[0]].rstrip()+'\n'); key.chmod(0o600)
-        command=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none',
-                 '-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(temp)/'known_hosts'),'-o','ConnectTimeout=15',
-                 '-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=DEBUG1','-l',user,host,
-                 'cd "$HOME/www/anytoour.ru" && php -r '+shlex.quote(source_text)]
-        env={k:v for k,v in os.environ.items() if k not in names and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
-        result=subprocess.run(command,input=json.dumps(request,ensure_ascii=False),text=True,capture_output=True,timeout=310,env=env)
-    if len(result.stdout.encode('utf-8'))>maximum_bytes:
-        error=gaps.SSHBatchError(result.returncode,result.stderr,oversized=True); error.attempts=1; raise error
-    try: value=json.loads(result.stdout)
-    except Exception:
-        error=gaps.SSHBatchError(result.returncode,result.stderr); error.attempts=1; raise error from None
-    if not isinstance(value,dict): raise ValueError('three_source_remote_json_invalid')
-    return value
+
+    def invoke(attempt):
+        with tempfile.TemporaryDirectory(prefix='anex-three-price-',dir=os.environ.get('RUNNER_TEMP')) as temp:
+            key=Path(temp)/'ssh_key'; key.write_text(os.environ[names[0]].rstrip()+'\n'); key.chmod(0o600)
+            command=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none',
+                     '-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(Path(temp)/'known_hosts'),'-o','ConnectTimeout=15',
+                     '-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=DEBUG1','-l',user,host,
+                     'cd "$HOME/www/anytoour.ru" && php -r '+shlex.quote(source_text)]
+            env={k:v for k,v in os.environ.items() if k not in names and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+            result=subprocess.run(command,input=json.dumps(request,ensure_ascii=False),text=True,capture_output=True,timeout=310,env=env)
+        if len(result.stdout.encode('utf-8'))>maximum_bytes:
+            error=gaps.SSHBatchError(result.returncode,result.stderr,oversized=True); error.attempts=attempt; raise error
+        try: value=json.loads(result.stdout)
+        except Exception:
+            error=gaps.SSHBatchError(result.returncode,result.stderr); error.attempts=attempt; raise error from None
+        if not isinstance(value,dict): raise ValueError('three_source_remote_json_invalid')
+        return value
+
+    try:
+        return invoke(1)
+    except gaps.SSHBatchError as error:
+        if not _ssh_pre_auth_retryable(error):
+            raise
+        time.sleep(2)
+        return invoke(2)
 
 
 def validate_case(value,case_id):
@@ -130,7 +153,7 @@ def run(output):
             'spec':SPEC,'case_statuses':{k:v['status'] for k,v in results.items()},'comparison':compare(results),
             'fuel_policy':{'tourvisor':'price and fuelCharge separate; do not add automatically','anex':'search price unverified; AdditionalPricesDaily separate pending evidence',
                            'andromeda':'action=price has no documented separate fuel field; search price unverified'},
-            'transport_policy':'ControlMaster=no after supplier-free preflight 34540781410','effects':{'booking_calls':0,'broninit_calls':0,'mapping_writes':0},
+            'transport_policy':'ControlMaster=no; one retry only for connection-close before auth/command','effects':{'booking_calls':0,'broninit_calls':0,'mapping_writes':0},
             'unknown_replay_allowed':False}
     save(output/'report.json',report); return report
 
