@@ -111,7 +111,7 @@ jobs:
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_SELECTED_ACCEPTANCE_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
-          node tests/search3-selected-current-acceptance.cjs
+          GITHUB_SHA="$SEARCH3_SELECTED_SOURCE_SHA" node tests/search3-selected-current-acceptance.cjs
 
       - name: Retain exact selected and lead evidence
         if: always()
