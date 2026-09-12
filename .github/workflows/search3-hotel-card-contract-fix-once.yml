@@ -1,0 +1,77 @@
+name: Search3 hotel-card contract fix once
+
+on:
+  push:
+    branches:
+      - ux/search3-hotel-card-summary-20260912
+    paths:
+      - '.github/workflows/search3-hotel-card-contract-fix-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/search3-hotel-card-summary-20260912
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply bounded renderer contract fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('v2/results-renderer-v5.js')
+          s = p.read_text()
+          replacements = [
+              (
+                  "function priceContext(h){const summary=hotelSummary(h);return[summary.date,summary.nights,summary.meal].filter(Boolean).join(' · ');}",
+                  "function priceContext(h){const tour=representativeTour(h),parts=[],date=formatTourDate(tour.date);if(date)parts.push(date);if(tour.nights)parts.push(String(tour.nights)+' ноч.');const meal=mealLabel(tour);if(meal)parts.push(meal);return parts.join(' · ');}",
+              ),
+              (
+                  "function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length===1?'1 вариант тура':tours.length>1?tourCountLabel(tours.length)+' тура':'';}",
+                  "function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length===1?'1 вариант тура':tours.length>1?tourCountLabel(tours.length)+' для сравнения':'';}",
+              ),
+          ]
+          for old, new in replacements:
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one match, got {count}: {old[:80]}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Verify focused renderer contracts
+        run: |
+          node --check v2/results-renderer-v5.js
+          node tests/search3-meal-owner.cjs
+          node tests/search3-honest-results-controls.cjs
+          node tests/search3-hotel-card-summary.test.js
+          node tests/search3-renderer-date-display.test.js
+      - name: Regenerate canonical shared runtime
+        run: |
+          node scripts/build/search3-js/shared-runtime.cjs --write
+          node scripts/build/search3-js/shared-runtime.cjs --check
+      - name: Require bounded diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fxq 'v2/results-renderer-v5.js'
+          printf '%s\n' "${changed[@]}" | grep -Fxq 'v2/search3-shared-runtime.json'
+      - name: Commit bounded fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- v2/results-renderer-v5.js v2/search3-shared-runtime.json
+          git commit -m "SEARCH: preserve hotel-card display contracts"
+          git push origin HEAD:ux/search3-hotel-card-summary-20260912
