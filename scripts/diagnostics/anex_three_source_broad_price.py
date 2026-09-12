@@ -6,11 +6,11 @@ import sys
 
 from anex_search3_three_source_price import ssh_php_no_mux, transport_failure
 
-EXPERIMENT='anex_three_source_green_gold_20260912_v7'
+EXPERIMENT='anex_three_source_green_gold_20260912_v8'
 CASES=('anex','andromeda','tourvisor')
 TARGET_LOCAL_HOTEL_ID=21753
 TARGET_ANEX_HOTEL_ID='25084'
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-19','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-09-28','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def source():

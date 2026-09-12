@@ -11,7 +11,7 @@ def check(value):
     if not value:raise AssertionError(f'broad_price_py_{checks}')
 
 combined=mod.source();check(combined.startswith('declare(strict_types=1);\n'));check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
-check(mod.EXPERIMENT=='anex_three_source_green_gold_20260912_v7');check(mod.SPEC['date']=='2026-10-19');check(mod.SPEC['nights']==7 and mod.SPEC['adults']==2)
+check(mod.EXPERIMENT=='anex_three_source_green_gold_20260912_v8');check(mod.SPEC['date']=='2026-09-28');check(mod.SPEC['nights']==7 and mod.SPEC['adults']==2)
 check(mod.TARGET_LOCAL_HOTEL_ID==21753 and mod.TARGET_ANEX_HOTEL_ID=='25084')
 
 def row(provider,room,price,fuel=None,program=None,currency_id=None,local=None,external=None):
@@ -62,4 +62,4 @@ check(mod.validate_case(unknown,'anex') is unknown)
 bad=case('anex',[row('anex','standard','100000',program='900',currency_id='3')]);bad['mapping_writes']=1
 try:mod.validate_case(bad,'anex');check(False)
 except ValueError:check(True)
-print(f'Green Gold three-source Python guards: {checks} checks passed; network=0')
+print(f'Green Gold v8 three-source Python guards: {checks} checks passed; network=0')
