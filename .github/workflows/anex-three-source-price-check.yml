@@ -10,6 +10,10 @@ on:
       - 'scripts/diagnostics/anex_additional_parity_v3.py'
       - 'tests/anex-additional-parity-v3-smoke.php'
       - 'tests/anex_additional_parity_v3_test.py'
+      - 'scripts/diagnostics/anex_concrete_fuel_binding.php'
+      - 'scripts/diagnostics/anex_concrete_fuel_binding.py'
+      - 'tests/anex-concrete-fuel-binding-smoke.php'
+      - 'tests/anex_concrete_fuel_binding_test.py'
       - 'app/integrations/anex-additional-prices-client.php'
       - '.github/workflows/anex-three-source-price-check.yml'
   push:
@@ -17,10 +21,12 @@ on:
       - 'ops/int-anex-three-source-price-v2-20260911'
       - 'ops/int-anex-additional-parity-v3-fixed-20260912'
       - 'ops/int-anex-additional-program2637-20260912'
+      - 'ops/int-anex-concrete-fuel-binding-20260912'
     paths:
       - '.github/ops/anex-three-source-price-v2-20260911'
       - '.github/ops/anex-additional-parity-v3-20260912'
       - '.github/ops/anex-additional-program2637-20260912'
+      - '.github/ops/anex-concrete-fuel-binding-20260912'
 permissions:
   contents: read
 concurrency:
@@ -46,6 +52,10 @@ jobs:
           php -l tests/anex-additional-parity-v3-smoke.php
           php -d allow_url_fopen=0 tests/anex-additional-parity-v3-smoke.php
           python3 -B tests/anex_additional_parity_v3_test.py
+          php -l scripts/diagnostics/anex_concrete_fuel_binding.php
+          php -l tests/anex-concrete-fuel-binding-smoke.php
+          php -d allow_url_fopen=0 tests/anex-concrete-fuel-binding-smoke.php
+          python3 -B tests/anex_concrete_fuel_binding_test.py
           python3 - <<'PY'
           from pathlib import Path
           oldphp=Path('scripts/diagnostics/anex_search3_three_source_price.php').read_text()
@@ -64,10 +74,20 @@ jobs:
           assert "'price_arithmetic_applied':False" in py and "'universal_formula_verified':False" in py
           for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
               assert forbidden not in php
+          binding=Path('scripts/diagnostics/anex_concrete_fuel_binding.php').read_text()
+          binding_py=Path('scripts/diagnostics/anex_concrete_fuel_binding.py').read_text()
+          assert "ANEX_CONCRETE_FUEL_EXPERIMENT = 'anex_concrete_fuel_binding_20260912_v1'" in binding
+          assert "ANEX_CONCRETE_FUEL_DATE = '2026-10-19'" in binding
+          assert '->expand(' in binding and '->flights(' in binding
+          assert "'tour_flights_requested'=>false" in binding
+          assert "'production_price_arithmetic_applied':False" in binding_py
+          for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
+              assert forbidden not in binding
           workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
           assert 'ops/int-anex-three-source-price-v2-20260911' in workflow
           assert 'ops/int-anex-additional-parity-v3-fixed-20260912' in workflow
-          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 2
+          assert 'ops/int-anex-concrete-fuel-binding-20260912' in workflow
+          assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 3
           print('ANEX price/additional parity static boundaries: PASS')
           PY
   live_v2:
@@ -210,4 +230,52 @@ jobs:
           retention-days: 30
       - name: Fail after evidence preservation when program read did not complete
         if: steps.parity.outcome != 'success'
+        run: exit 1
+  live_concrete_fuel_binding:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-concrete-fuel-binding-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind concrete fuel receipt to exact reviewed source parent
+        id: control
+        run: |
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-concrete-fuel-binding-20260912'
+          test "$(cat control/.github/ops/anex-concrete-fuel-binding-20260912)" = "source=${SOURCE_SHA};operation=read-only-anex-concrete-fuel-binding;scenario=Turkey-2026-10-19-7n-2a-AI-GREEN-GOLD-concrete-expand-flights-TV-B2B;owner=2026-09-12"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Run one new concrete-offer fuel binding scenario
+        id: binding
+        continue-on-error: true
+        run: |
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.control.outputs.source }}'
+          mkdir -m 700 "$RUNNER_TEMP/concrete-fuel-binding"
+          python3 -B source/scripts/diagnostics/anex_concrete_fuel_binding.py "$RUNNER_TEMP/concrete-fuel-binding"
+      - name: Preserve sanitized concrete binding evidence even on refusal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-concrete-fuel-binding-${{ github.run_id }}
+          path: ${{ runner.temp }}/concrete-fuel-binding/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when concrete binding did not complete
+        if: steps.binding.outcome != 'success'
         run: exit 1
