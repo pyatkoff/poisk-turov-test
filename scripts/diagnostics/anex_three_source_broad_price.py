@@ -76,7 +76,7 @@ def save(path,value):
 
 def run(output):
     php=source()
-    value=validate_case(ssh_php_no_mux(php,dict(SPEC,case_id='anex'),maximum_bytes=2000000),'anex')
+    value=validate_case(ssh_php_no_mux(php,dict(SPEC,case_id='anex'),maximum_bytes=4000000),'anex')
     save(output/'anex.json',value)
     status=value['status']
     details=value.get('details',{}) if isinstance(value.get('details'),dict) else {}
