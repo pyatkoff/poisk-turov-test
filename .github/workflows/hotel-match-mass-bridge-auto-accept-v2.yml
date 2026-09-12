@@ -1,0 +1,30 @@
+name: MATCH mass bridge auto accept v2
+on:
+  push:
+    branches: ['ops/match-mass-bridge-1971-20260912']
+    paths: ['.github/match-mass-bridge-auto-accept-1971-20260912-v2.arm']
+permissions: {contents: read, actions: read}
+env: {OP: hotel-match-mass-bridge-auto-accept-1971-20260912-v2, OUT: /tmp/massbridgev2}
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Freeze and reserve
+        run: |
+          set -euo pipefail; test "$GITHUB_RUN_ATTEMPT" = 1; test "$GITHUB_RUN_NUMBER" = 1; test "$(cat .github/match-mass-bridge-auto-accept-1971-20260912-v2.arm)" = "$OP"; mkdir -m 700 -p "$OUT"; sed 's/hotel-match-mass-bridge-auto-accept-1971-20260912-v1/hotel-match-mass-bridge-auto-accept-1971-20260912-v2/' scripts/diagnostics/hotel_match_mass_bridge_auto_accept_v1.php > "$OUT/program.php"; php -l "$OUT/program.php"; printf '{"operation_id":"%s","state":"reserved_before_db_access","source_artifact_id":10029330453,"source_json_sha256":"1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445","run_id":%s,"run_attempt":1,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}\n' "$OP" "$GITHUB_RUN_ID" > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'massbridge-v2-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Restore source and execute
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail; gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10029330453/zip" > "$OUT/x.zip"; unzip -q "$OUT/x.zip" -d "$OUT/x"; test "$(sha256sum "$OUT/x/anex-hotel-catalog-match.json"|cut -d' ' -f1)" = 1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi;chmod 600 "$key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15); ok=0; for a in 1 2 3 4 5;do if ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php';then ok=1;break;fi;sleep $((a*12));done;test "$ok" = 1; scp "${opts[@]}" "$OUT/program.php" "$USER_VALUE@$HOST_VALUE:/tmp/massbridgev2.php"; set +e; ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M /tmp/massbridgev2.php; rc=$?; rm -f /tmp/massbridgev2.php; exit $rc' < "$OUT/x/anex-hotel-catalog-match.json" > "$OUT/stdout" 2> "$OUT/stderr"; rc=$?; set -e; grep '^MATCH_MASS_AUTO:' "$OUT/stdout"|tail -1|sed 's/^MATCH_MASS_AUTO://' > "$OUT/result.json" || true; test "$rc" = 0; grep -q '"status":"accepted"' "$OUT/result.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'massbridge-v2-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
