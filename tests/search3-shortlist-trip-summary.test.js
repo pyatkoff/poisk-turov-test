@@ -19,8 +19,8 @@ function functionLine(name) {
 const displayDateSource = functionLine('displayDate');
 assert.doesNotMatch(displayDateSource, /new\s+Date\s*\(|Date\.parse/, 'customer-facing departure formatting must stay date-only and timezone-free');
 assert.match(source, /date:tour\.date/, 'the exact saved snapshot must retain the original provider date value');
-assert.match(source, /\['Вылет',displayDate\(item\.date\)\]/, 'rendered comparison must format the saved departure without mutating it');
-assert.match(source, /\['Туристы',partyLabel\(item\)\]/, 'rendered comparison must expose the saved party composition');
+assert.match(source, /\['date','Вылет',displayDate\(item\.date\)\]/, 'rendered comparison must format the saved departure without mutating it');
+assert.match(source, /\['party','Туристы',partyLabel\(item\)\]/, 'rendered comparison must expose the saved party composition');
 
 const dateSandbox = {
   text(value) {
@@ -54,5 +54,25 @@ assert.deepEqual(Array.from(partySandbox.values), [
   'Уточняется'
 ]);
 
-assert.doesNotMatch(source, /window\.Search3Shortlist=.*displayDate|window\.Search3Shortlist=.*partyLabel/, 'presentation helpers stay private; shortlist public API is not expanded');
+const compareSandbox = {
+  text(value) {
+    return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  },
+  saved: [
+    { hotelName: 'Отель с вариантами номера', country: 'Турция', region: 'Анталья', date: '2026-09-12', nights: 9, adults: 2, childs: 0, meal: 'Всё включено', room: 'STANDARD', placement: 'DBL', operator: 'TEST OPERATOR', observedPrice: 120000 },
+    { hotelName: 'Отель с вариантами номера', country: 'Турция', region: 'Анталья', date: '2026-09-12', nights: 9, adults: 2, childs: 0, meal: 'Всё включено', room: 'FAMILY', placement: 'DBL', operator: 'TEST OPERATOR', observedPrice: 125000 },
+    { hotelName: 'Третий отель', country: 'Турция', region: 'Кемер', date: '2026-09-12', nights: 9, adults: 2, childs: 0, meal: 'Всё включено', room: 'DELUXE', placement: 'DBL', operator: 'TEST OPERATOR', observedPrice: 130000 }
+  ]
+};
+vm.createContext(compareSandbox);
+vm.runInContext(`${functionLine('compareState')}; const state = compareState(); this.values = { labels: state.labels, keys: Array.from(state.different), minimumPrice: state.minimumPrice };`, compareSandbox);
+assert.deepEqual(Array.from(compareSandbox.values.labels), ['отель', 'курорт', 'номер', 'цена при сохранении'], 'comparison summary names only saved dimensions that actually differ');
+assert.deepEqual(Array.from(compareSandbox.values.keys), ['hotel', 'region', 'room', 'price'], 'common meal/date/night/party/operator values are not falsely marked as differences');
+assert.equal(compareSandbox.values.minimumPrice, 120000, 'minimum comparison price is derived only from saved historical snapshots');
+assert.match(source, /Различаются: /, 'comparison renders a concise saved-difference summary');
+assert.match(source, /Цена при сохранении · минимум среди сохранённых/, 'lowest saved price is explicitly historical comparison context');
+assert.match(source, /compare\.different\.has\(fact\[0\]\).*' · отличается'/, 'differing saved fact rows are labelled semantically without a CSS-only cue');
+for (const forbidden of ['fetch(', 'XMLHttpRequest', 'searchTour', 'loadOffers']) assert.equal(source.includes(forbidden), false, `comparison must not supplier re-query via ${forbidden}`);
+
+assert.doesNotMatch(source, /window\.Search3Shortlist=.*displayDate|window\.Search3Shortlist=.*partyLabel|window\.Search3Shortlist=.*compareState/, 'presentation helpers stay private; shortlist public API is not expanded');
 console.log('search3 shortlist trip summary: ok');
