@@ -13,10 +13,13 @@ on:
 permissions:
   contents: read
 
+env:
+  PREVIEW_BASE: /_preview/search3-site-candidate
+
 jobs:
   primary-catalog-hydration:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,3 +46,69 @@ jobs:
           retention-days: 3
       - name: Require committed shared runtime parity
         run: git diff --exit-code -- v2/search3-shared-runtime.json
+
+      - name: Build exact isolated entry visual fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/search3-primary-catalog-site"
+          payload="$root$PREVIEW_BASE"
+          mkdir -p "$payload"
+          rsync -a \
+            --exclude='*.md' \
+            --exclude='_preview/' \
+            --exclude='api.php' \
+            --exclude='api-v2.php' \
+            --exclude='lead-adapter.php' \
+            --exclude='lead-adapter-v2.php' \
+            --exclude='lead-bridge-v1.php' \
+            --exclude='lead-receiver-v1.php' \
+            --exclude='lead-price-v1.php' \
+            --exclude='lead-idempotency-v1.php' \
+            v2/ "$payload/"
+          cp "$payload/index.php" "$payload/search-page-v2.php"
+          cp "$payload/home-entry-v1.php" "$payload/index.php"
+          python3 -B scripts/build/search3_site_preview_isolation.py "$payload"
+          test -f "$payload/poisk-turov/index.php"
+          test ! -e "$payload/api-v2.php"
+          test ! -e "$payload/lead-adapter-v2.php"
+          find "$payload" -type f -name '*.php' -print0 | xargs -0 -r -n 1 -P 2 php -l >/dev/null
+          find "$payload" -type f -name '*.js' -print0 | xargs -0 -r -n 1 -P 2 node --check >/dev/null
+
+      - name: Install Chromium for exact visual acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/search3-primary-catalog-tools" --no-audit --no-fund --no-save playwright@1.55.0
+          "$RUNNER_TEMP/search3-primary-catalog-tools/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Verify exact served primary-form geometry
+        shell: bash
+        env:
+          SEARCH3_VISUAL_BASE: http://127.0.0.1:8099/_preview/search3-site-candidate
+          SEARCH3_RESULTS_OUTPUT: ${{ runner.temp }}/search3-primary-catalog-evidence
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/search3-primary-catalog-tools/node_modules"
+          cat > "$RUNNER_TEMP/search3-primary-catalog-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8099 -t "$RUNNER_TEMP/search3-primary-catalog-site" "$RUNNER_TEMP/search3-primary-catalog-router.php" >"$RUNNER_TEMP/search3-primary-catalog-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
+          node tests/search3-entry-geometry-browser.cjs
+
+      - name: Retain exact primary-form screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-primary-catalog-entry-visual-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-primary-catalog-evidence/native-form/
+          if-no-files-found: error
+          retention-days: 30
