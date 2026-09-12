@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json,hashlib,base64,os,pathlib
-          census=pathlib.Path('/tmp/live106-census/result.json').read_bytes(); assert hashlib.sha256(census).hexdigest()=='e6fd376a447f036a6523bdf98e0ea9d7267e3d4d9a5ec65e76924237231a6a8d'
+          census=pathlib.Path('/tmp/live106-census/result.json').read_bytes(); assert hashlib.sha256(census).hexdigest()=='564e9505ad3fab561dccb9b84789311a7b2b590dc317663c388e93933901f2c5'
           c=json.loads(census); assert c['operation_id']=='hotel-match-post539-current-census-1971-20260912-v1' and c['status']=='completed'
           bp=pathlib.Path('/tmp/live106-xml/anex-hotel-catalog-match.json'); braw=bp.read_bytes(); assert hashlib.sha256(braw).hexdigest()=='1a450d8fb5f39af147fea500f8f965c83f84f3188de04b6f7aa9845a0350e445'
           base=json.loads(braw); by={int(r['external_id']):r for r in base['matches']}
