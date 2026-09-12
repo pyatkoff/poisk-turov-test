@@ -11,7 +11,7 @@ on:
       - '.github/workflows/search3-filter-rail-short-viewport.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   PREVIEW_BASE: /_preview/search3-site-candidate
@@ -26,7 +26,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -40,21 +40,6 @@ jobs:
           python3 -B scripts/build/search3_assets.py --write
           python3 -B scripts/build/search3_assets.py --check
           node scripts/build/search3-js/shared-runtime.cjs --check
-
-      - name: Persist exact generated materialization on bootstrap branch
-        if: github.event.pull_request.draft && github.head_ref == 'ux/search3-shortlist-mobile-carousel-20260912'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- v2/search3-results-filters-v1.css docs/project/search3-production-import.json; then
-            echo SEARCH3_BOOTSTRAP_MATERIALIZATION_ALREADY_CURRENT
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add v2/search3-results-filters-v1.css docs/project/search3-production-import.json
-          git commit -m 'SEARCH: materialize mobile shortlist generated CSS'
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
 
       - name: Build local isolated preview
         shell: bash
