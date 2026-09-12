@@ -15,7 +15,7 @@ on:
   push:
     branches:
       - 'ops/int-anex-three-source-price-v2-20260911'
-      - 'ops/int-anex-additional-parity-v3-20260912'
+      - 'ops/int-anex-additional-parity-v3-fixed-20260912'
     paths:
       - '.github/ops/anex-three-source-price-v2-20260911'
       - '.github/ops/anex-additional-parity-v3-20260912'
@@ -64,7 +64,7 @@ jobs:
               assert forbidden not in php
           workflow=Path('.github/workflows/anex-three-source-price-check.yml').read_text()
           assert 'ops/int-anex-three-source-price-v2-20260911' in workflow
-          assert 'ops/int-anex-additional-parity-v3-20260912' in workflow
+          assert 'ops/int-anex-additional-parity-v3-fixed-20260912' in workflow
           assert 'cancel-in-progress: false' in workflow and workflow.count('if: always()') >= 2
           print('ANEX price/additional parity static boundaries: PASS')
           PY
@@ -111,11 +111,11 @@ jobs:
         if: steps.parity.outcome != 'success'
         run: exit 1
   live_additional_v3:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-parity-v3-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-additional-parity-v3-fixed-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      SOURCE_SHA: 1506e6f7c021fb5351dbb3d8144a05075bb6793c
+      SOURCE_SHA: dbdd2793bdb593e8e0ff01b6b385c884362b96b2
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
