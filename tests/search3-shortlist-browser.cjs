@@ -92,6 +92,20 @@ async function openFilters(page, width) {
   if (width < 1025) await page.locator('.search3-mobile-filter-panel summary').click();
 }
 
+async function discloseMatchingOffers(page) {
+  const card = page.locator('#results [data-hotel-id="offer-hotel"]');
+  assert.equal(await card.locator('.hotel-trip-summary').count(), 1, 'matching multi-offer hotel starts with an aggregate');
+  assert.equal(await card.locator('.direct-tour,.search3-shortlist-toggle').count(), 0, 'an undisclosed aggregate cannot select or save a fabricated representative');
+  assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), 'от120000₽', 'RO90k is excluded from the matching aggregate minimum');
+  const disclosure = card.locator('.tour-more-toggle');
+  assert.ok((await disclosure.boundingBox()).height >= 44, 'offer disclosure retains a 44px target');
+  await disclosure.focus();
+  await disclosure.press('Enter');
+  assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'keyboard disclosure exposes its expanded state');
+  assert.equal(await disclosure.evaluate(node => node === document.activeElement), true, 'disclosure retains focus before saving a particular offer');
+  assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['offer-standard', 'offer-family'], 'explicit expansion contains only the exact matching AI offers, representative first');
+}
+
 async function addOffer(page, offerId, keyboard = false) {
   const button = page.locator(`.search3-shortlist-toggle[data-offer-id="${offerId}"]`);
   await button.waitFor();
@@ -111,11 +125,8 @@ async function checkJourney(browser, width) {
     await openFilters(page, width);
     const meal = page.locator('.search3-meal-filter select');
     await meal.selectOption('meal:all-inclusive');
-    const card = page.locator('#results [data-hotel-id="offer-hotel"]');
-    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['offer-standard'], 'RO90k is excluded and STANDARD AI120k remains the representative');
+    await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard', true);
-    await card.locator('.tour-more-toggle').press('Enter');
-    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['offer-standard', 'offer-family'], 'expanded projection contains only complete AI offers');
     await addOffer(page, 'offer-family');
     await addOffer(page, 'offer-third');
     const shortlist = page.locator('.search3-shortlist');
@@ -244,6 +255,7 @@ async function checkStorageFailure(browser, width, mode) {
     await render(page, 731);
     await openFilters(page, width);
     await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
+    await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard', true);
     assert.equal(await page.locator('.search3-shortlist-item').count(), 1, `${mode}: in-memory fallback retains the explicit snapshot`);
     assert.match(compact(await page.locator('.search3-shortlist-status').innerText()), /не сохран|только.*сеанс|хранилищ/i, `${mode}: non-persistence is explicit`);
@@ -273,6 +285,7 @@ async function checkCorruptStorage(browser, width) {
     await render(page, 731);
     await openFilters(page, width);
     await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
+    await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard');
     assert.equal(await page.locator('#results .hotel-card').count(), 3, 'corrupt storage cannot break search rendering');
     assert.deepEqual(posts, []); assert.deepEqual(errors, []);
