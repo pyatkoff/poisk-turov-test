@@ -526,7 +526,7 @@ async function run(browser, width, previous) {
     assert.ok((await card.locator('.direct-tour').boundingBox()).height >= 44, 'real selection action retains a full touch target');
     assert.match(await card.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName expands the abbreviation in offer facts');
     assert.equal(await card.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
-    assert.equal(await card.locator('.tour-meta>strong').innerText(), tour.date, 'compact facts preserve the actual departure date');
+    assert.equal(await card.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
     assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW']], 'primary comparison facts keep their labels and original values');
     assert.deepEqual(await card.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR'], ['Размещение', 'DBL']], 'source and operator remain distinct while secondary facts keep unambiguous labels');
     const { photo, body } = await card.evaluate(node => {
