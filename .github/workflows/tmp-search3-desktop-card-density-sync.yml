@@ -1,0 +1,130 @@
+name: Temporary Search3 desktop card density sync
+
+on:
+  push:
+    branches:
+      - ux/search3-desktop-card-density-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/search3-desktop-card-density-20260912
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply bounded wide-desktop card geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/search3/styles/results-layout.css')
+          s = p.read_text()
+          old = """@media(min-width:1200px){
+&:not(.search3-selected-open) .v2-shell{max-width:1360px;padding-inline:24px}
+& .results-layout:has(#results>*){grid-template-columns:250px minmax(0,1fr);gap:24px}
+& .results-filter-rail{gap:14px;padding:16px}
+}"""
+          new = """@media(min-width:1200px){
+&:not(.search3-selected-open) .v2-shell{max-width:1360px;padding-inline:24px}
+& .results-layout:has(#results>*){grid-template-columns:250px minmax(0,1fr);gap:24px}
+& .results-filter-rail{gap:14px;padding:16px}
+& #results{gap:18px}
+& #results .hotel-main{grid-template-columns:minmax(220px,28%) minmax(0,1fr)}
+& #results .hotel-body{padding-inline:22px}
+& #results .tour-row{grid-template-columns:minmax(0,1fr) minmax(230px,250px);gap:18px;padding-block:12px}
+}"""
+          if s.count(old) != 1:
+              raise SystemExit('wide desktop results block drifted')
+          p.write_text(s.replace(old, new, 1))
+
+          t = Path('tests/search3-filter-rail-short-viewport-browser.cjs')
+          s = t.read_text()
+          old = """        workspaceGap: document.querySelector('#results').getBoundingClientRect().left - rect.right
+      };"""
+          new = """        workspaceGap: document.querySelector('#results').getBoundingClientRect().left - rect.right,
+        card: (() => {
+          const card = document.querySelector('#results .hotel-card');
+          const main = card.querySelector('.hotel-main');
+          const photo = card.querySelector('.hotel-photo');
+          const body = card.querySelector('.hotel-body');
+          const row = card.querySelector('.tour-row');
+          const meta = row.querySelector('.tour-meta');
+          const action = row.querySelector('.tour-action');
+          const cta = action.querySelector('.direct-tour');
+          const box = node => node.getBoundingClientRect();
+          return {
+            width: box(card).width,
+            mainWidth: box(main).width,
+            photoWidth: box(photo).width,
+            bodyWidth: box(body).width,
+            rowWidth: box(row).width,
+            metaWidth: box(meta).width,
+            actionWidth: box(action).width,
+            ctaHeight: box(cta).height
+          };
+        })()
+      };"""
+          if s.count(old) != 1:
+              raise SystemExit('card metric insertion point drifted')
+          s = s.replace(old, new, 1)
+          old = """      assert.ok(initial.resultsWidth >= initial.railWidth * 3.4, `${width}: results remain the dominant decision surface: ${JSON.stringify(initial)}`);
+    }
+
+    const focusables"""
+          new = """      assert.ok(initial.resultsWidth >= initial.railWidth * 3.4, `${width}: results remain the dominant decision surface: ${JSON.stringify(initial)}`);
+      const card = initial.card;
+      assert.ok(card.photoWidth / card.mainWidth >= 0.24 && card.photoWidth / card.mainWidth <= 0.29, `${width}: hotel media is supportive rather than dominant on wide desktop: ${JSON.stringify(card)}`);
+      assert.ok(card.bodyWidth >= card.photoWidth * 2.35, `${width}: hotel copy owns the wide desktop summary surface: ${JSON.stringify(card)}`);
+      assert.ok(card.actionWidth >= 228 && card.actionWidth <= 252, `${width}: price/CTA decision column stays bounded: ${JSON.stringify(card)}`);
+      assert.ok(card.metaWidth >= card.actionWidth * 2, `${width}: offer facts remain the dominant row surface: ${JSON.stringify(card)}`);
+      assert.ok(card.ctaHeight >= 44, `${width}: primary tour action keeps its accessible target: ${JSON.stringify(card)}`);
+    }
+
+    const focusables"""
+          if s.count(old) != 1:
+              raise SystemExit('card assertion insertion point drifted')
+          t.write_text(s.replace(old, new, 1))
+          PY
+      - name: Materialize canonical Search3 assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node scripts/build/search3-js/shared-runtime.cjs --check
+      - name: Sync reviewed results CSS import hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          asset = Path('v2/search3-results-filters-v1.css')
+          p = Path('docs/project/search3-production-import.json')
+          data = json.loads(p.read_text())
+          digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+          data['assets']['search3-results-filters-v1.css']['productionSha256'] = digest
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+          print(digest)
+          PY
+      - name: Commit bounded package and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/tmp-search3-desktop-card-density-sync.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/search3/styles/results-layout.css v2/search3-results-filters-v1.css docs/project/search3-production-import.json tests/search3-filter-rail-short-viewport-browser.cjs .github/workflows/tmp-search3-desktop-card-density-sync.yml
+          git diff --cached --check
+          git commit -m 'SEARCH: rebalance wide desktop result cards'
+          git push origin HEAD:ux/search3-desktop-card-density-20260912
