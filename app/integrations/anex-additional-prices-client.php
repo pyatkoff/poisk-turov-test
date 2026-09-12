@@ -152,7 +152,10 @@ final class AnyTourAnexAdditionalPricesClient
         return $criteria;
     }
 
-    /** Fail closed if supplier rows do not belong to the exact requested program/date/night/currency context. */
+    /**
+     * Fail closed unless supplier rows match the exact requested B2B tour/date/night/currency context.
+     * Matching here does not establish any binding between the B2B tour id and SearchTour tourKey.
+     */
     private function validateResponseContext(array $payload, array $criteria): void
     {
         $rows = $payload['data'] ?? null;
