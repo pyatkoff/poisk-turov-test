@@ -1,0 +1,233 @@
+name: MATCH Andromeda core8 live discovery v23
+
+on:
+  push:
+    branches: ['ops/match-live-priority-v21-20260912']
+    paths: ['.github/match-andromeda-core8-live-discovery-1971-20260912-v23.arm']
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+concurrency:
+  group: anytour-match-andromeda-core8-live-discovery-v23
+  cancel-in-progress: false
+
+env:
+  FAMILY_ID: hotel-match-andromeda-core8-live-discovery-1971-20260912-v23
+  FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - sid: s01
+            country_id: '12'
+            country_name: Sri Lanka
+            date: '2026-10-22'
+            nights: '7'
+          - sid: s02
+            country_id: '16'
+            country_name: Vietnam
+            date: '2026-10-29'
+            nights: '7'
+          - sid: s03
+            country_id: '9'
+            country_name: UAE
+            date: '2026-10-20'
+            nights: '7'
+          - sid: s04
+            country_id: '8'
+            country_name: Maldives
+            date: '2026-10-24'
+            nights: '7'
+          - sid: s05
+            country_id: '2'
+            country_name: Thailand
+            date: '2026-11-05'
+            nights: '7'
+          - sid: s06
+            country_id: '10'
+            country_name: Cuba
+            date: '2026-11-12'
+            nights: '7'
+    env:
+      SLICE_ID: ${{ matrix.sid }}
+      COUNTRY_ID: ${{ matrix.country_id }}
+      COUNTRY_NAME: ${{ matrix.country_name }}
+      SEARCH_DATE: ${{ matrix.date }}
+      SEARCH_NIGHTS: ${{ matrix.nights }}
+      OPERATION_ID: hotel-match-andromeda-core8-live-discovery-1971-20260912-v23-${{ matrix.sid }}
+      ARTIFACT_DIR: /tmp/match-andromeda-core8-v23-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Derive Andromeda-only diagnostic from frozen reviewed source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-andromeda-core8-live-discovery-1971-20260912-v23.arm)" = "$FAMILY_ID"
+          mkdir -m 700 -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 \
+            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" \
+            -o "$ARTIFACT_DIR/frozen.php"
+          export FROZEN="$ARTIFACT_DIR/frozen.php" PROGRAM="$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          p=Path(os.environ['FROZEN']).read_text()
+          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
+          olddate="const M6_DATE = '2026-11-06';"
+          oldnights='const M6_NIGHTS = 7;'
+          assert p.count(oldop)==1 and p.count(olddate)==1 and p.count(oldnights)==1
+          p=p.replace(oldop,os.environ['OPERATION_ID'])
+          p=p.replace(olddate,"const M6_DATE = '"+os.environ['SEARCH_DATE']+"';")
+          p=p.replace(oldnights,'const M6_NIGHTS = '+os.environ['SEARCH_NIGHTS']+';')
+          p=p.replace("'countryId'=>4","'countryId'=>"+os.environ['COUNTRY_ID'])
+          p=p.replace("$lookup->execute([1,4]);","$lookup->execute([1,"+os.environ['COUNTRY_ID']+"]);")
+          p=p.replace("'country'=>'Turkey'","'country'=>'"+os.environ['COUNTRY_NAME']+"'")
+          p=p.replace("'tourvisor_operator_id'=>M6_TV_OPERATOR,",'')
+          # Strip Tourvisor + direct ANEX execution blocks entirely; leave unchanged Andromeda runtime/paging.
+          tv_start='    // Tourvisor: high-limit cached result read + bounded explicit continue rounds until the hotel set stops growing.\n'
+          andr_start='    // Andromeda: consume PAGE=1 through the latest PAGES_COUNT using the same private supplier sid.\n'
+          assert p.count(tv_start)==1 and p.count(andr_start)==1
+          a=p.index(tv_start); c=p.index(andr_start,a); p=p[:a]+p[c:]
+          # Remove unused clients/credentials from bootstrap so this operation cannot select Tourvisor/direct-ANEX accounts.
+          p=re.sub(r"\n\s*\$anexPrivate=.*?if\(is_file\(\$anexPrivate\)\)require_once \$anexPrivate;","",p,count=1)
+          p=re.sub(r"\n\s*\$app=.*?foreach\(\['anex-search','anex-search-mapping-registry'\].*?;\n","\n",p,count=1)
+          p=re.sub(r"\n\s*\$tvClient=.*?require_once \$tvClient;\n","\n",p,count=1)
+          oldcomp="    $triples=m6_common_triples($tv,$anex,$andr);$result['comparison']=['unique_alias_triples'=>['count'=>count($triples),'rows'=>$triples],'interpretation'=>'diagnostic identity evidence only; no mapping is created from availability or price'];\n    $result['provider_calls']=['tourvisor_continue'=>$continueCalls,'andromeda_login'=>1,'andromeda_price_pages'=>count($pageStats),'direct_anex_searchtour'=>'one bounded normalized price response plus dictionaries'];"
+          newcomp="    $result['comparison']=['andromeda_anex_operator_unique_hotels'=>['count'=>count($andr),'rows'=>array_values($andr)],'interpretation'=>'Andromeda ANEX-operator live sellability/identity evidence only; no mapping is created from availability or price'];\n    $result['provider_calls']=['tourvisor_http_calls'=>0,'tourvisor_search_slices'=>0,'direct_anex_calls'=>0,'andromeda_login'=>1,'andromeda_price_pages'=>count($pageStats)];"
+          assert p.count(oldcomp)==1
+          p=p.replace(oldcomp,newcomp,1)
+          strict="declare(strict_types=1);\n"
+          fatal=("register_shutdown_function(static function(): void {\n"
+                 "    $e=error_get_last();\n"
+                 "    if(!is_array($e) || !in_array((int)($e['type']??0),[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR,E_USER_ERROR],true)) return;\n"
+                 "    echo 'MATCH111FULL_JSON:'.json_encode(['status'=>'failed','stage'=>'fatal','reason'=>'php_fatal','operation_id'=>'"+os.environ['OPERATION_ID']+"','database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'tourvisor_http_calls'=>0,'tourvisor_search_slices'=>0,'direct_anex_calls'=>0,'token_values_recorded'=>false,'raw_provider_bodies_recorded'=>false],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;\n"
+                 "});\n")
+          assert p.count(strict)==1
+          p=p.replace(strict,strict+fatal,1)
+          Path(os.environ['PROGRAM']).write_text(p)
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+          ! grep -Fq "TOURVISOR_ANEX_JWT" "$ARTIFACT_DIR/program.php"
+          ! grep -Fq "v2_data_tv_get" "$ARTIFACT_DIR/program.php"
+          ! grep -Fq "new AnyTourAnexClient" "$ARTIFACT_DIR/program.php"
+
+      - name: Establish zero-supplier SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);sid=os.environ['SLICE_ID'];key=rt/('match-andr-v23-key-'+sid);sock=rt/('match-andr-v23-'+sid+'.sock');known=rt/('match-andr-v23-known-'+sid);raw=os.environ['KEY_VALUE'].strip();key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=1200']+common,text=True,capture_output=True,timeout=30)
+              if p.returncode==0:
+                  q=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && test -f config.php && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php && printf MATCH_ANDR_V23_OK'],text=True,capture_output=True,timeout=30)
+                  if q.returncode==0 and q.stdout.strip()=='MATCH_ANDR_V23_OK':ok=True;break
+              time.sleep(2)
+          if not ok:raise SystemExit('ssh preflight failed before reservation')
+          PY
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'program.php';r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country_id':int(os.environ['COUNTRY_ID']),'country':os.environ['COUNTRY_NAME'],'date':os.environ['SEARCH_DATE'],'nights':int(os.environ['SEARCH_NIGHTS']),'adults':2,'children':0},'providers':['andromeda_anex_operator_all_pages'],'tourvisor_http_calls':0,'tourvisor_search_slices':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};(d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-andromeda-core8-v23-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          retention-days: 90
+
+      - name: Execute Andromeda ANEX-operator discovery slice
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          sleep 8
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/('match-andr-v23-'+os.environ['SLICE_ID']+'.sock');program=(d/'program.php').read_text();p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M'],input=program,text=True,capture_output=True,timeout=900);prefix='MATCH111FULL_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None);data=json.loads(line) if line else {'status':'unknown','stage':'remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'tourvisor_http_calls':0,'tourvisor_search_slices':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};data.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_sha=os.environ['GITHUB_SHA'],slice_id=os.environ['SLICE_ID']);(d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n');(d/'live.stderr').write_text(p.stderr[-12000:]);print(json.dumps({'slice':os.environ['SLICE_ID'],'status':data.get('status'),'reason':data.get('reason'),'hotels':((data.get('providers') or {}).get('andromeda') or {}).get('hotel_count')},ensure_ascii=False));
+          if data.get('status')!='completed': raise SystemExit(2)
+          PY
+
+      - name: Build immutable receipt
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'result.json';data=json.loads(p.read_text()) if p.exists() else {'status':'unknown'};raw=p.read_bytes() if p.exists() else b'';prov=(data.get('providers') or {}).get('andromeda') or {};r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':data.get('status','unknown'),'reason':data.get('reason'),'hotel_count':prov.get('hotel_count'),'page_count':len(prov.get('pages') or prov.get('rounds') or []),'result_sha256':hashlib.sha256(raw).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'tourvisor_http_calls':0,'tourvisor_search_slices':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True};(d/'receipt.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve immutable result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-andromeda-core8-v23-${{ matrix.sid }}-${{ github.run_id }}-result
+          path: ${{ env.ARTIFACT_DIR }}/
+          retention-days: 90
+
+  aggregate:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: slice
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: match-andromeda-core8-v23-*-result
+          path: /tmp/v23
+          merge-multiple: false
+      - name: Aggregate live identity evidence
+        run: |
+          python3 - <<'PY'
+          import json,glob,os
+          from pathlib import Path
+          rows=[];unique={};unresolved={};completed=failed=0;calls=0
+          for f in glob.glob('/tmp/v23/**/result.json',recursive=True):
+              d=json.loads(Path(f).read_text());prov=(d.get('providers') or {}).get('andromeda') or {};status=d.get('status');completed+=status=='completed';failed+=status!='completed';pc=d.get('provider_calls') or {};calls+=int(pc.get('andromeda_login') or 0)+int(pc.get('andromeda_price_pages') or 0);hotels=prov.get('hotels') or []
+              info={'slice_id':d.get('slice_id'),'status':status,'reason':d.get('reason'),'criteria':d.get('criteria'),'hotel_count':prov.get('hotel_count'),'hotels':hotels};rows.append(info)
+              if status=='completed':
+                  for h in hotels:
+                      k=str(h.get('id') or '');
+                      if not k:continue
+                      unique[k]=h
+                      if h.get('local_id') in (None,'',0,'0'):unresolved[k]=h
+          out={'status':'completed','family_id':os.environ.get('FAMILY_ID','hotel-match-andromeda-core8-live-discovery-1971-20260912-v23'),'run_id':int(os.environ['GITHUB_RUN_ID']),'slices_completed':completed,'slices_failed':failed,'unique_andromeda_hotels':len(unique),'unique_unresolved_local_id_null':len(unresolved),'supplier_call_upper_count':calls,'tourvisor_http_calls':0,'tourvisor_search_slices':0,'direct_anex_calls':0,'database_writes':0,'mapping_writes':0,'slices':rows,'unresolved_hotels':list(unresolved.values())[:5000],'no_replay':True};Path('/tmp/v23-aggregate.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({k:out[k] for k in ['slices_completed','slices_failed','unique_andromeda_hotels','unique_unresolved_local_id_null','supplier_call_upper_count']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-andromeda-core8-v23-${{ github.run_id }}-aggregate
+          path: /tmp/v23-aggregate.json
+          retention-days: 90
+      - name: Record aggregate result in MATCH issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          d=json.loads(Path('/tmp/v23-aggregate.json').read_text());body=f"MATCH #1971 Andromeda ANEX-operator core8 live discovery v23: completed slices **{d['slices_completed']}/6**, failed **{d['slices_failed']}**; unique live Andromeda hotels **{d['unique_andromeda_hotels']}**, CURRENT search response unresolved/local_id=null **{d['unique_unresolved_local_id_null']}**. Supplier call upper count **{d['supplier_call_upper_count']}**; Tourvisor/direct-ANEX calls 0; DB/mapping writes 0. Run `{os.environ['GITHUB_RUN_ID']}`. These are immutable live evidence only; next step is one server-current bulk identity reconciliation, not direct acceptance from availability.";subprocess.run(['gh','issue','comment','1971','--repo',os.environ['GITHUB_REPOSITORY'],'--body',body],check=True)
+          PY
