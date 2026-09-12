@@ -1,0 +1,69 @@
+name: MATCH supplier resort cohort probe v1
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-supplier-resort-cohort-probe-1971-20260912-v1.arm']
+permissions: {contents: read, actions: read, issues: write}
+concurrency:
+  group: anytour-match-supplier-resort-cohort-probe-v1
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      OPERATION_ID: hotel-match-supplier-resort-cohort-probe-1971-20260912-v1
+      OUT: /tmp/match-resort-cohort-probe
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Verify arm and read CURRENT schema/catalog metadata
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-supplier-resort-cohort-probe-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/mrc-key"; known="$RUNNER_TEMP/mrc-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          cat > "$OUT/probe.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require_once getcwd().'/config.php';
+          $db=is_file(getcwd().'/data/db-v1.php')?getcwd().'/data/db-v1.php':getcwd().'/v2/data/db-v1.php'; require_once $db; $pdo=v2_data_db();
+          $tables=$pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND (LOWER(table_name) LIKE '%anex%' OR LOWER(table_name) LIKE '%andromeda%' OR LOWER(table_name) LIKE '%hotel%') ORDER BY table_name")->fetchAll(PDO::FETCH_COLUMN);
+          $out=['operation_id'=>'hotel-match-supplier-resort-cohort-probe-1971-20260912-v1','status'=>'completed','tables'=>[],'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true];
+          foreach($tables as $t){$q=$pdo->prepare("SELECT column_name,data_type FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? ORDER BY ordinal_position");$q->execute([$t]);$cols=$q->fetchAll(PDO::FETCH_ASSOC);$names=array_column($cols,'column_name');$interesting=array_values(array_filter($names,fn($x)=>preg_match('/provider|supplier|external|hotel|country|region|resort|town|city|geo|lat|lon|name|local|status/i',$x)));if($interesting)$out['tables'][]=['table'=>$t,'columns'=>$interesting];}
+          foreach(['catalog_hotels','catalog_regions','catalog_subregions'] as $t){if(in_array($t,$tables,true)){try{$out['counts'][$t]=(int)$pdo->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();}catch(Throwable $e){}}}
+          echo 'MATCH_RESORT_COHORT_JSON:'.json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+          PHP
+          set +e
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=15 "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$OUT/probe.php" > "$OUT/stdout" 2> "$OUT/stderr"
+          rc=$?; set -e; test "$rc" = 0
+          grep '^MATCH_RESORT_COHORT_JSON:' "$OUT/stdout" | tail -1 | sed 's/^MATCH_RESORT_COHORT_JSON://' > "$OUT/result.json"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          d=Path(os.environ['OUT']); x=json.loads((d/'result.json').read_text());
+          assert x['status']=='completed' and x['database_writes']==0 and x['supplier_calls']==0
+          lines=[f"MATCH #1971 supplier resort cohort probe completed / NO-REPLAY. Candidate tables with geography/identity columns: {len(x['tables'])}. DB/mapping/supplier/Tourvisor writes/calls 0."]
+          for t in x['tables']: lines.append(f"- {t['table']}: {', '.join(t['columns'])}")
+          (d/'summary.md').write_text('\n'.join(lines)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-supplier-resort-cohort-probe-v1-${{ github.run_id }}
+          path: |
+            ${{ env.OUT }}/result.json
+            ${{ env.OUT }}/summary.md
+            ${{ env.OUT }}/stderr
+          retention-days: 90
+      - name: Record
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md"
