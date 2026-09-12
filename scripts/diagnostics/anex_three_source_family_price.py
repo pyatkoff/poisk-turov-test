@@ -22,27 +22,33 @@ def _replace(text, old, new, minimum=1):
 
 
 def source():
-    """Adapt the already-reviewed v2 runner; do not fork transport/API code."""
+    """Adapt only the three-source section; paired transport/helper code stays byte-equivalent."""
     text=base.source()
-    text=_replace(text,"anex_three_source_price_20260911_v2",EXPERIMENT)
-    text=_replace(text,"2026-09-27",SPEC['date'])
-    text=_replace(text,"20260927","20261029")
-    text=_replace(text,"($value['nights'] ?? null) !== 7","($value['nights'] ?? null) !== 9")
-    text=_replace(text,"($value['child_ages'] ?? null) !== []","($value['child_ages'] ?? null) !== [7]")
-    text=_replace(text,"(int)$nights !== 7","(int)$nights !== 9")
-    text=_replace(text,"(int)$children !== 0","(int)$children !== 1")
-    text=_replace(text,"'nights'=>7","'nights'=>9")
-    text=_replace(text,"'children'=>0,'child_ages'=>[]","'children'=>1,'child_ages'=>[7]")
-    text=_replace(text,"'nightsFrom'=>7,'nightsTo'=>7","'nightsFrom'=>9,'nightsTo'=>9")
-    text=_replace(text,"'childs'=>[]","'childs'=>[7]")
-    text=_replace(text,"'CHILD'=>0","'CHILD'=>1,'AGES'=>'7'")
-    # Output rows and a few supplier/request arrays retain literal child count separately.
-    text=_replace(text,"'children'=>0","'children'=>1")
-    if '2026-09-27' in text or '20260927' in text or "'nights'=>7" in text:
-        raise ValueError('family_source_old_scenario_leaked')
-    for required in (EXPERIMENT,SPEC['date'],"'childs'=>[7]","'AGES'=>'7'","'nightsFrom'=>9,'nightsTo'=>9"):
-        if required not in text: raise ValueError('family_source_incomplete')
-    return text
+    marker="const ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_price_20260911_v2';"
+    if text.count(marker)!=1: raise ValueError('family_source_marker_changed')
+    prefix,suffix=text.split(marker,1)
+    suffix=marker+suffix
+    suffix=_replace(suffix,"anex_three_source_price_20260911_v2",EXPERIMENT)
+    suffix=_replace(suffix,"2026-09-27",SPEC['date'])
+    suffix=_replace(suffix,"20260927","20261029")
+    suffix=_replace(suffix,"($value['nights'] ?? null) !== 7","($value['nights'] ?? null) !== 9")
+    suffix=_replace(suffix,"($value['child_ages'] ?? null) !== []","($value['child_ages'] ?? null) !== [7]")
+    suffix=_replace(suffix,"(int)$nights !== 7","(int)$nights !== 9")
+    suffix=_replace(suffix,"(int)$children !== 0","(int)$children !== 1")
+    suffix=_replace(suffix,"'nights'=>7","'nights'=>9")
+    suffix=_replace(suffix,"'children'=>0,'child_ages'=>[]","'children'=>1,'child_ages'=>[7]")
+    suffix=_replace(suffix,"'nightsFrom'=>7,'nightsTo'=>7","'nightsFrom'=>9,'nightsTo'=>9")
+    suffix=_replace(suffix,"'nights_from'=>7,'nights_till'=>7","'nights_from'=>9,'nights_till'=>9")
+    suffix=_replace(suffix,"'childs'=>[]","'childs'=>[7]")
+    suffix=_replace(suffix,"'CHILD'=>0","'CHILD'=>1,'AGES'=>'7'")
+    suffix=_replace(suffix,"'children'=>0","'children'=>1")
+    suffix=_replace(suffix,"'three-price-20260911-v2'","'three-price-family-20260913-v1'")
+    suffix=_replace(suffix,"'generation'=>26091102","'generation'=>26091301")
+    leaks=("2026-09-27","20260927","'nights'=>7","'nightsFrom'=>7","'nights_from'=>7","'children'=>0","'childs'=>[]","'CHILD'=>0")
+    if any(value in suffix for value in leaks): raise ValueError('family_source_old_scenario_leaked')
+    required=(EXPERIMENT,SPEC['date'],"'childs'=>[7]","'AGES'=>'7'","'nightsFrom'=>9,'nightsTo'=>9","'nights_from'=>9,'nights_till'=>9","'children'=>1")
+    if any(value not in suffix for value in required): raise ValueError('family_source_incomplete')
+    return prefix+suffix
 
 
 def validate_case(value,case_id):
