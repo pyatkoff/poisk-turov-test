@@ -1,0 +1,243 @@
+name: MATCH three-provider recovery block v3
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-three-provider-recovery-block-1971-20260912-v3.arm']
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+concurrency:
+  group: anytour-match-three-provider-recovery-block-1971-20260912-v3
+  cancel-in-progress: false
+
+env:
+  FAMILY_ID: hotel-match-three-provider-111-recovery-block-1971-20260912-v3
+  FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
+
+jobs:
+  slice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        include:
+          - sid: s01
+            date: '2026-12-11'
+          - sid: s02
+            date: '2026-12-18'
+          - sid: s03
+            date: '2027-01-01'
+          - sid: s04
+            date: '2027-01-15'
+          - sid: s05
+            date: '2027-01-29'
+          - sid: s06
+            date: '2027-02-12'
+          - sid: s07
+            date: '2027-02-26'
+          - sid: s08
+            date: '2027-03-12'
+          - sid: s09
+            date: '2027-03-19'
+          - sid: s10
+            date: '2027-03-26'
+    env:
+      SLICE_ID: ${{ matrix.sid }}
+      SEARCH_DATE: ${{ matrix.date }}
+      OPERATION_ID: hotel-match-three-provider-111-recovery-block-1971-20260912-v3-${{ matrix.sid }}
+      ARTIFACT_DIR: /tmp/match-three-provider-recovery-block-v3-${{ matrix.sid }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify immutable arm and derive frozen program
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-three-provider-recovery-block-1971-20260912-v3.arm)" = "$FAMILY_ID"
+          mkdir -m 700 -p "$ARTIFACT_DIR"
+          curl -fsSL --retry 2 --retry-delay 1 \
+            "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" \
+            -o "$ARTIFACT_DIR/frozen.php"
+          export FROZEN="$ARTIFACT_DIR/frozen.php" PROGRAM="$ARTIFACT_DIR/program.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          src=Path(os.environ['FROZEN']).read_text()
+          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
+          olddate="const M6_DATE = '2026-11-06';"
+          newdate="const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"
+          assert src.count(oldop)==1 and src.count(olddate)==1
+          out=src.replace(oldop,os.environ['OPERATION_ID']).replace(olddate,newdate)
+          assert out.replace(os.environ['OPERATION_ID'],oldop).replace(newdate,olddate)==src
+          required=[
+            "const M6_NIGHTS = 7;","const M6_TV_OPERATOR = 13;",
+            "'departureId'=>1,'countryId'=>4","'onlyDirect'=>false,'onlyCharter'=>false",
+            "'operatorIds'=>[M6_TV_OPERATOR]","if(!defined('TOURVISOR_ANEX_JWT'))",
+            "putenv('TOURVISOR_JWT='.$tvToken)"
+          ]
+          for needle in required: assert needle in out,needle
+          Path(os.environ['PROGRAM']).write_text(out)
+          print('MATCH_RECOVERY_BLOCK_V3_DERIVATION_OK',os.environ['SLICE_ID'],os.environ['SEARCH_DATE'])
+          PY
+          php -l "$ARTIFACT_DIR/program.php"
+
+      - name: Establish zero-supplier SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);sid=os.environ['SLICE_ID'];key=rt/('recovery-block-v3-key-'+sid);sock=rt/('recovery-block-v3-'+sid+'.sock');known=rt/('recovery-block-v3-known-'+sid)
+          raw=os.environ['KEY_VALUE'].strip(); key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30)
+              if p.returncode==0:
+                  q=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && test -f config.php && { test -f data/tourvisor-client-v1.php || test -f v2/data/tourvisor-client-v1.php; } && test -f _preview/search3-anex-candidate/api-andromeda-search3-preview.php && printf MATCH_RECOVERY_BLOCK_V3_PREFLIGHT_OK'],text=True,capture_output=True,timeout=30)
+                  if q.returncode==0 and q.stdout.strip()=='MATCH_RECOVERY_BLOCK_V3_PREFLIGHT_OK':ok=True;break
+              time.sleep(2)
+          if not ok:raise SystemExit('ssh preflight failed before reservation')
+          PY
+
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'program.php'
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'program_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'criteria':{'departure':'Moscow','country':'Turkey','date':os.environ['SEARCH_DATE'],'nights':7,'adults':2,'children':0,'tourvisor_operator_id':13},'first_supplier_call':'tourvisor_departures_smoke_separate_anex_credential','supplier_retry_budget':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-recovery-block-v3-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          path: ${{ env.ARTIFACT_DIR }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: One-call explicit ANEX Tourvisor credential smoke
+        id: smoke
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/('recovery-block-v3-'+os.environ['SLICE_ID']+'.sock')
+          op=os.environ['OPERATION_ID']
+          php=f'''<?php
+          declare(strict_types=1); ini_set('display_errors','0'); ini_set('log_errors','0');
+          $r=['operation_id'=>'{op}','stage'=>'tourvisor_departures_smoke','status'=>'unknown','tourvisor_http_calls'=>1,'tv_search_slices'=>0,'search_starts'=>0,'anex_calls'=>0,'andromeda_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'ordinary_credential_substituted'=>false,'supplier_retry_count'=>0,'no_replay'=>true];
+          try{{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');require_once $root.'/config.php';if(!defined('TOURVISOR_ANEX_JWT'))throw new RuntimeException('anex_credential_missing');$token=trim((string)constant('TOURVISOR_ANEX_JWT'));if(stripos($token,'Bearer ')===0)$token=trim(substr($token,7));if($token==='')throw new RuntimeException('anex_credential_empty');putenv('TOURVISOR_JWT='.$token);$client=is_file($root.'/data/tourvisor-client-v1.php')?$root.'/data/tourvisor-client-v1.php':$root.'/v2/data/tourvisor-client-v1.php';require_once $client;$x=v2_data_tv_get('/departures');$rows=array_is_list($x)?$x:((is_array($x['departures']??null))?$x['departures']:((is_array($x['data']??null))?$x['data']:[]));$r['status']='healthy';$r['departure_rows']=count($rows);}}catch(Throwable $e){{$m=$e->getMessage();if(strpos($m,'429')!==false){{$r['status']='blocked';$r['reason']='tourvisor_rate_limited_429';}}else{{$r['status']='failed';$r['reason']='tourvisor_smoke_failed';if(preg_match('/HTTP\\s+(\\d{{3}})/',$m,$mm))$r['http_status']=(int)$mm[1];}}}} echo 'MATCH_RECOVERY_BLOCK_V3_SMOKE:'.json_encode($r,JSON_UNESCAPED_SLASHES).PHP_EOL; ?>'''
+          p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=php,text=True,capture_output=True,timeout=90)
+          prefix='MATCH_RECOVERY_BLOCK_V3_SMOKE:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None)
+          data=json.loads(line) if line else {'operation_id':op,'stage':'tourvisor_departures_smoke','status':'unknown','reason':'smoke_result_marker_missing','remote_exit':p.returncode,'tourvisor_http_calls':0,'tv_search_slices':0,'search_starts':0,'anex_calls':0,'andromeda_calls':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'ordinary_credential_substituted':False,'no_replay':True}
+          (d/'smoke.json').write_text(json.dumps(data,sort_keys=True,indent=2)+'\n')
+          healthy=(p.returncode==0 and data.get('status')=='healthy' and data.get('ordinary_credential_substituted') is False and data.get('search_starts')==0 and data.get('anex_calls')==0 and data.get('andromeda_calls')==0)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('healthy='+('true' if healthy else 'false')+'\n')
+          print(json.dumps({'slice':os.environ['SLICE_ID'],'status':data.get('status'),'reason':data.get('reason'),'departure_rows':data.get('departure_rows')},sort_keys=True))
+          PY
+
+      - name: Execute exact frozen synchronized full-page slice
+        if: steps.smoke.outputs.healthy == 'true'
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/('recovery-block-v3-'+os.environ['SLICE_ID']+'.sock');program=(d/'program.php').read_text()
+          p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M'],input=program,text=True,capture_output=True,timeout=780)
+          prefix='MATCH111FULL_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None)
+          if line is None:data={'status':'unknown','stage':'full_slice_remote_execution','reason':'result_marker_missing','operation_id':os.environ['OPERATION_ID'],'remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(p.stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          else:
+              data=json.loads(line);data.update(source_sha=os.environ['GITHUB_SHA'],frozen_source_sha=os.environ['FROZEN_SOURCE_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=1,no_replay=True)
+          (d/'result.json').write_text(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          q=data.get('providers') or {};print(json.dumps({'slice':os.environ['SLICE_ID'],'status':data.get('status'),'tourvisor_hotels':(q.get('tourvisor') or {}).get('hotel_count'),'tourvisor_continue_calls':(q.get('tourvisor') or {}).get('continue_calls'),'anex_hotels':(q.get('anex') or {}).get('hotel_count'),'andromeda_hotels':(q.get('andromeda') or {}).get('hotel_count'),'triples':(((data.get('comparison') or {}).get('unique_alias_triples') or {}).get('count'))},sort_keys=True))
+          PY
+
+      - name: Build receipt and summary
+        if: always()
+        id: receipt
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);smoke=json.loads((d/'smoke.json').read_text()) if (d/'smoke.json').exists() else {'status':'unknown','reason':'smoke_missing','tourvisor_http_calls':0};full=json.loads((d/'result.json').read_text()) if (d/'result.json').exists() else None
+          if smoke.get('status')!='healthy':status=smoke.get('status','unknown');reason=smoke.get('reason');body=smoke
+          elif full is not None:status=full.get('status','unknown');reason=full.get('reason');body=full
+          else:status='unknown';reason='full_result_missing_after_healthy_smoke';body={}
+          raw=(json.dumps(body,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+          p=(full or {}).get('providers') or {};tv=p.get('tourvisor') or {};an=p.get('anex') or {};ad=p.get('andromeda') or {};triples=((((full or {}).get('comparison') or {}).get('unique_alias_triples') or {}).get('count'))
+          tv_http=1+int(tv.get('http_calls') or 0);tv_slices=1 if status=='completed' else 0
+          receipt={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'slice_id':os.environ['SLICE_ID'],'state':status,'reason':reason,'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'criteria':{'departure':'Moscow','country':'Turkey','date':os.environ['SEARCH_DATE'],'nights':7,'adults':2,'children':0,'tourvisor_operator_id':13},'smoke_status':smoke.get('status'),'result_sha256':hashlib.sha256(raw).hexdigest(),'tv_search_slices':tv_slices,'tv_http_calls':tv_http,'tourvisor_hotels':tv.get('hotel_count'),'tourvisor_continue_calls':tv.get('continue_calls'),'anex_hotels':an.get('hotel_count'),'andromeda_hotels':ad.get('hotel_count'),'exact_alias_triples':triples,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'ordinary_credential_substituted':False,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          if status=='completed':summary=f"MATCH #1971 recovery block `{os.environ['OPERATION_ID']}`: **completed** / NO-REPLAY. Turkey {os.environ['SEARCH_DATE']}/7n: TV **{tv.get('hotel_count')}** (continue {tv.get('continue_calls')}), ANEX **{an.get('hotel_count')}**, Andromeda **{ad.get('hotel_count')}**, exact triples **{triples}**. tv_search_slices=1; DB/mapping/booking/lead writes0."
+          else:summary=f"MATCH #1971 recovery block `{os.environ['OPERATION_ID']}`: **{status}** / NO-REPLAY; reason `{reason}`. No ordinary Tourvisor credential substitution. tv_search_slices=0; DB/mapping/booking/lead writes0."
+          (d/'summary.md').write_text(summary+'\n')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('state='+status+'\n')
+          print(summary)
+          PY
+
+      - name: Preserve immutable result
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-recovery-block-v3-${{ matrix.sid }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/smoke.json
+            ${{ env.ARTIFACT_DIR }}/result.json
+            ${{ env.ARTIFACT_DIR }}/receipt.json
+            ${{ env.ARTIFACT_DIR }}/summary.md
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Record sanitized slice result
+        if: always() && steps.artifact.outputs.artifact-id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$ARTIFACT_DIR/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$ARTIFACT_DIR/summary.md"
+
+      - name: Fail fast on blocked/failed/unknown slice
+        if: always()
+        run: |
+          state="${{ steps.receipt.outputs.state }}"
+          test "$state" = completed
+
+      - name: Close SSH control master
+        if: always()
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+        run: |
+          SOCK="$RUNNER_TEMP/recovery-block-v3-${SLICE_ID}.sock"
+          if [ -S "$SOCK" ]; then ssh -S "$SOCK" -O exit "$HOST_VALUE" >/dev/null 2>&1 || true; fi
+          rm -f "$RUNNER_TEMP/recovery-block-v3-key-${SLICE_ID}" "$SOCK"
