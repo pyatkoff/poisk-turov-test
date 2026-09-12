@@ -31,7 +31,7 @@ jobs:
           replacements = [
               (
                   "function priceContext(h){const summary=hotelSummary(h);return[summary.date,summary.nights,summary.meal].filter(Boolean).join(' · ');}",
-                  "function priceContext(h){const tour=representativeTour(h),parts=[],date=formatTourDate(tour.date);if(date)parts.push(date);if(tour.nights)parts.push(String(tour.nights)+' ноч.');const meal=mealLabel(tour);if(meal)parts.push(meal);return parts.join(' · ');}",
+                  "function priceContext(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];if(tours.length>1){const summary=hotelSummary(h);return[summary.date,summary.nights,summary.meal].filter(Boolean).join(' · ');}const tour=representativeTour(h),parts=[],date=formatTourDate(tour.date);if(date)parts.push(date);if(tour.nights)parts.push(String(tour.nights)+' ноч.');const meal=mealLabel(tour);if(meal)parts.push(meal);return parts.join(' · ');}",
               ),
               (
                   "function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];return tours.length===1?'1 вариант тура':tours.length>1?tourCountLabel(tours.length)+' тура':'';}",
