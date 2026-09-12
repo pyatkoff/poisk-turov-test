@@ -28,6 +28,12 @@ jobs:
           assert "'quote_price' => null" in src
           assert "'final_price_verified' => false" in src
           assert "'arithmetic_applied' => false" in src
+          assert 'function withVerifiedQuote' in src
+          assert "THREE_PROVIDER_MONEY_QUOTE_CAPABILITY" in src
+          assert "self::moneyFact($packageBuyerPrice, false, 'andromeda', 'package')" in src
+          assert "self::moneyFact($quotePrice, false, 'andromeda', 'quote')" in src
+          assert "$next['final_price_verified'] = true" in src
+          assert "$next['arithmetic_applied'] = false" in src
           assert "$source !== $provider . '_' . $expectedKind" in src
           assert "strpos($source" not in src
           assert "'tourvisor' => ['fuel' => true, 'additional' => false]" in src

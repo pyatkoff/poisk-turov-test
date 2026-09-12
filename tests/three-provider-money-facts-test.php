@@ -44,6 +44,78 @@ money_check($andromeda['package_buyer_price']===null);
 money_check($andromeda['quote_price']===null);
 money_check($andromeda['final_price_verified']===false);
 
+$quoted=AnyTourThreeProviderMoneyFacts::withVerifiedQuote(
+    $andromeda,
+    ['amount'=>'124864','currency'=>'RUB','source'=>'andromeda_package'],
+    ['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']
+);
+money_check($quoted['search_price']===$andromeda['search_price']);
+money_check($quoted['package_buyer_price']['amount']==='124864');
+money_check($quoted['quote_price']['amount']==='135643');
+money_check($quoted['final_price_verified']===true);
+money_check($quoted['search_price_fuel_relation']==='unknown');
+money_check($quoted['arithmetic_applied']===false);
+money_check($andromeda['package_buyer_price']===null&&$andromeda['quote_price']===null);
+money_check(!array_key_exists('delta',$quoted)&&!array_key_exists('total_price',$quoted));
+
+$quotedNoPackage=AnyTourThreeProviderMoneyFacts::withVerifiedQuote(
+    $andromeda,
+    null,
+    ['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']
+);
+money_check($quotedNoPackage['package_buyer_price']===null);
+money_check($quotedNoPackage['quote_price']['amount']==='135643');
+money_check($quotedNoPackage['final_price_verified']===true);
+
+foreach ([$tv,$anex] as $unsupported) {
+    try {
+        AnyTourThreeProviderMoneyFacts::withVerifiedQuote(
+            $unsupported,
+            null,
+            ['amount'=>'1','currency'=>'RUB','source'=>$unsupported['provider'].'_quote']
+        );
+        money_check(false);
+    } catch (InvalidArgumentException $e) {
+        money_check($e->getMessage()==='THREE_PROVIDER_MONEY_QUOTE_CAPABILITY');
+    }
+}
+
+$badQuoteCases=[
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,['amount'=>'124864','currency'=>'RUB','source'=>'andromeda_quote'],['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']),
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,['amount'=>'0','currency'=>'RUB','source'=>'andromeda_package'],['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']),
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,null,['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_package']),
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,null,['amount'=>'0','currency'=>'RUB','source'=>'andromeda_quote']),
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,null,['amount'=>'135643.001','currency'=>'RUB','source'=>'andromeda_quote']),
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,null,['amount'=>'135643','currency'=>'rub','source'=>'andromeda_quote']),
+    fn()=>AnyTourThreeProviderMoneyFacts::withVerifiedQuote($andromeda,null,['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote','delta'=>'10779']),
+];
+foreach($badQuoteCases as $case){try{$case();money_check(false);}catch(InvalidArgumentException $e){money_check(true);}}
+
+$tamperedSearch=$andromeda;
+$tamperedSearch['final_price_verified']=true;
+try {
+    AnyTourThreeProviderMoneyFacts::withVerifiedQuote($tamperedSearch,null,['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']);
+    money_check(false);
+} catch (InvalidArgumentException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_MONEY_SEARCH_STATE');
+}
+$tamperedSearch=$andromeda;
+$tamperedSearch['search_price']['source']='tourvisor_search';
+try {
+    AnyTourThreeProviderMoneyFacts::withVerifiedQuote($tamperedSearch,null,['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']);
+    money_check(false);
+} catch (InvalidArgumentException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_MONEY_SEARCH_STATE');
+}
+$tamperedSearch=$andromeda;
+$tamperedSearch['unexpected']='x';
+try {
+    AnyTourThreeProviderMoneyFacts::withVerifiedQuote($tamperedSearch,null,['amount'=>'135643','currency'=>'RUB','source'=>'andromeda_quote']);
+    money_check(false);
+} catch (InvalidArgumentException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_MONEY_SEARCH_STATE');
+}
+
 $zeroFuel=AnyTourThreeProviderMoneyFacts::fromSearch(
     'tourvisor',
     ['amount'=>'100000','currency'=>'RUB','source'=>'tourvisor_search'],
