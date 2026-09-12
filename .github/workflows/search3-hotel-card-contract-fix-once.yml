@@ -22,12 +22,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Apply bounded renderer contract fixes
+      - name: Apply bounded renderer and test contract fixes
         shell: python
         run: |
           from pathlib import Path
-          p = Path('v2/results-renderer-v5.js')
-          s = p.read_text()
+          renderer = Path('v2/results-renderer-v5.js')
+          s = renderer.read_text()
           replacements = [
               (
                   "function priceContext(h){const summary=hotelSummary(h);return[summary.date,summary.nights,summary.meal].filter(Boolean).join(' · ');}",
@@ -41,9 +41,18 @@ jobs:
           for old, new in replacements:
               count = s.count(old)
               if count != 1:
-                  raise SystemExit(f'expected exactly one match, got {count}: {old[:80]}')
+                  raise SystemExit(f'expected exactly one renderer match, got {count}: {old[:80]}')
               s = s.replace(old, new, 1)
-          p.write_text(s)
+          renderer.write_text(s)
+
+          test_path = Path('tests/search3-hotel-card-summary.test.js')
+          t = test_path.read_text()
+          old = "assert.equal(api.choiceHint(multi), '3 варианта тура');"
+          new = "assert.equal(api.choiceHint(multi), '3 варианта для сравнения');"
+          count = t.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one summary-test match, got {count}')
+          test_path.write_text(t.replace(old, new, 1))
       - name: Install pinned Search3 build tools
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
       - name: Verify focused renderer contracts
@@ -63,15 +72,16 @@ jobs:
           set -euo pipefail
           mapfile -t changed < <(git diff --name-only)
           printf '%s\n' "${changed[@]}"
-          test "${#changed[@]}" -eq 2
+          test "${#changed[@]}" -eq 3
           printf '%s\n' "${changed[@]}" | grep -Fxq 'v2/results-renderer-v5.js'
           printf '%s\n' "${changed[@]}" | grep -Fxq 'v2/search3-shared-runtime.json'
+          printf '%s\n' "${changed[@]}" | grep -Fxq 'tests/search3-hotel-card-summary.test.js'
       - name: Commit bounded fix
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- v2/results-renderer-v5.js v2/search3-shared-runtime.json
+          git add -- v2/results-renderer-v5.js v2/search3-shared-runtime.json tests/search3-hotel-card-summary.test.js
           git commit -m "SEARCH: preserve hotel-card display contracts"
           git push origin HEAD:ux/search3-hotel-card-summary-20260912
