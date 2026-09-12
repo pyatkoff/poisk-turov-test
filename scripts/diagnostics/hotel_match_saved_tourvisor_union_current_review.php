@@ -3,7 +3,7 @@ declare(strict_types=1);
 if(!defined('FC_LIBRARY_ONLY'))define('FC_LIBRARY_ONLY',true);
 require_once __DIR__.'/hotel_match_anex_andromeda_mutual_graph_review.php';
 
-const HMSU_OPERATION='hotel-match-saved-tourvisor-union-current-review-1971-20260912-v1';
+const HMSU_OPERATION='hotel-match-saved-tourvisor-union-current-review-1971-20260912-v2';
 const HMSU_EVIDENCE_SHA256='3abb228949ea1f60656c2ddfe68bcfc68897e05f01866a08c02faac35efed9bb';
 const HMSU_COUNTRY_ID=4;
 const HMSU_COORD_BLOCK_M=5000.0;
