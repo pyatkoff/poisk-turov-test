@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""One bounded Green Gold ANEX-only program/fuel observation across three sources."""
+"""One bounded direct-ANEX Green Gold program observation."""
 import json
 from pathlib import Path
 import sys
 
 from anex_search3_three_source_price import ssh_php_no_mux, transport_failure
 
-EXPERIMENT='anex_three_source_green_gold_20260912_v8'
-CASES=('anex','andromeda','tourvisor')
+EXPERIMENT='anex_green_gold_program_20260912_v9'
+CASES=('anex',)
 TARGET_LOCAL_HOTEL_ID=21753
 TARGET_ANEX_HOTEL_ID='25084'
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-09-28','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-05','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def source():
@@ -28,29 +28,15 @@ def source():
     return "declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"+old[5:]+'\n'+strict_body(meal)+'\n'+strict_body(new)
 
 
-def validate_coverage(value,case_id):
-    details=value.get('details')
-    if not isinstance(details,dict) or not isinstance(details.get('coverage'),dict): raise ValueError('broad_coverage_invalid')
-    coverage=details['coverage']
-    if case_id=='anex':
-        if coverage.get('state')!='bounded' or coverage.get('reason')!='pricepage_1_target_hotel_only' or coverage.get('all_pages_retained') is not False: raise ValueError('broad_coverage_invalid')
-    elif case_id=='andromeda':
-        if coverage.get('state') not in ('partial','complete'): raise ValueError('broad_coverage_invalid')
-        if coverage.get('state')=='complete' and (coverage.get('all_pages_retained') is not True or coverage.get('reason')!='all_advertised_target_hotel_pages_retained'): raise ValueError('broad_coverage_invalid')
-        if coverage.get('state')=='partial' and (coverage.get('all_pages_retained') is not False or coverage.get('reason')!='target_hotel_page_1_only'): raise ValueError('broad_coverage_invalid')
-    elif case_id=='tourvisor':
-        if coverage.get('state')!='bounded' or coverage.get('reason')!='status_without_continue_no_growth' or coverage.get('all_pages_retained') is not False: raise ValueError('broad_coverage_invalid')
-    return coverage
-
-
 def _provider_id(value):
     return value is None or (isinstance(value,str) and value.isdigit() and not value.startswith('0') and len(value)<=18)
 
 
 def validate_case(value,case_id):
-    if not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('experiment_id')!=EXPERIMENT or value.get('case_id')!=case_id \
-            or value.get('automatic_retry') is not False or value.get('booking_calls')!=0 or value.get('broninit_calls')!=0 \
-            or value.get('mapping_writes')!=0 or value.get('observation_writes_allowed') is not True: raise ValueError('broad_case_invalid')
+    if case_id!='anex' or not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('experiment_id')!=EXPERIMENT or value.get('case_id')!='anex' \
+            or value.get('automatic_retry') is not False or value.get('booking_calls')!=0 or value.get('broninit_calls')!=0 or value.get('mapping_writes')!=0 \
+            or value.get('observation_writes_allowed') is not False:
+        raise ValueError('broad_case_invalid')
     status=value.get('status')
     if status=='unknown':
         if value.get('supplier_effect')!='unknown': raise ValueError('broad_unknown_invalid')
@@ -58,91 +44,51 @@ def validate_case(value,case_id):
     if status=='blocked':
         if value.get('supplier_effect')!='none': raise ValueError('broad_blocked_invalid')
         return value
-    if status!='completed' or value.get('supplier_effect')!='read_only_search_completed' or not isinstance(value.get('offers'),list) or len(value['offers'])>1500: raise ValueError('broad_case_invalid')
-    validate_coverage(value,case_id)
+    details=value.get('details')
+    if status!='completed' or value.get('supplier_effect')!='read_only_search_completed' or not isinstance(value.get('offers'),list) or not isinstance(details,dict):
+        raise ValueError('broad_case_invalid')
+    coverage=details.get('coverage')
+    if not isinstance(coverage,dict) or coverage.get('state')!='bounded' or coverage.get('reason')!='pricepage_1_target_hotel_only' or coverage.get('all_pages_retained') is not False:
+        raise ValueError('broad_coverage_invalid')
     for row in value['offers']:
-        if not isinstance(row,dict) or row.get('provider')!=case_id or row.get('local_hotel_id')!=TARGET_LOCAL_HOTEL_ID \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=SPEC['nights'] or row.get('adults')!=SPEC['adults'] or row.get('children')!=0 \
-                or row.get('meal_family')!='ai' or row.get('meal_key')!='ai' or row.get('meal_qualifiers')!=[] or row.get('meal_equivalence_verified') is not False \
-                or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) or not isinstance(row.get('room_norm'),str) \
-                or not isinstance(row.get('placement_norm'),str) or row.get('fuel_inclusion_verified') is not False or row.get('final_price_verified') is not False:
+        if not isinstance(row,dict) or row.get('provider')!='anex' or row.get('local_hotel_id')!=TARGET_LOCAL_HOTEL_ID or row.get('external_hotel_id')!=TARGET_ANEX_HOTEL_ID \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=7 or row.get('adults')!=2 or row.get('children')!=0 or row.get('meal_key')!='ai' \
+                or row.get('currency')!='RUB' or not isinstance(row.get('price'),str) or row.get('fuel_charge') is not None \
+                or row.get('fuel_inclusion_verified') is not False or row.get('final_price_verified') is not False \
+                or not _provider_id(row.get('supplier_tour_program_id')) or not _provider_id(row.get('supplier_currency_id')):
             raise ValueError('broad_offer_invalid')
-        if case_id=='anex':
-            if row.get('external_hotel_id')!=TARGET_ANEX_HOTEL_ID or 'supplier_tour_program_id' not in row or 'supplier_currency_id' not in row \
-                    or not _provider_id(row.get('supplier_tour_program_id')) or not _provider_id(row.get('supplier_currency_id')):
-                raise ValueError('broad_program_invalid')
+    pairs=details.get('program_pairs')
+    if not isinstance(pairs,list): raise ValueError('broad_program_pairs_invalid')
+    for pair in pairs:
+        if not isinstance(pair,dict) or not _provider_id(pair.get('tour')) or not _provider_id(pair.get('currency')) or pair.get('tour') is None:
+            raise ValueError('broad_program_pairs_invalid')
+    saved=details.get('saved_cross_source_context')
+    if saved!={'date':'2026-10-05','andromeda_search_price':'119952','tourvisor_display_price':'149548','tourvisor_fuel_charge':'29596','requeried':False}:
+        raise ValueError('broad_saved_context_invalid')
     return value
 
 
-def key(row): return (row['local_hotel_id'],row['date'],row['nights'],row['adults'],row['children'],row['meal_key'],row['room_norm'])
-
-def index(results):
-    out={case:{} for case in CASES}
-    for case,value in results.items():
-        if value.get('status')!='completed': continue
-        for row in value['offers']: out[case].setdefault(key(row),[]).append(row)
-    return out
-
-
-def program_fuel_cohorts(idx,triple):
-    cohorts={}
-    for item in triple:
-        for anex in idx['anex'][item]:
-            program=anex.get('supplier_tour_program_id');currency=anex.get('supplier_currency_id')
-            if program is None: continue
-            cohort=cohorts.setdefault((program,currency),{'supplier_tour_program_id':program,'supplier_currency_id':currency,'local_hotel_ids':set(),'hotel_names':set(),'tourvisor_fuel_charges':set(),'aligned_tuple_count':0})
-            cohort['local_hotel_ids'].add(item[0])
-            if isinstance(anex.get('hotel_name'),str) and anex['hotel_name']: cohort['hotel_names'].add(anex['hotel_name'])
-            cohort['aligned_tuple_count']+=1
-            for tv in idx['tourvisor'][item]:
-                fuel=tv.get('fuel_charge')
-                if fuel is not None: cohort['tourvisor_fuel_charges'].add(fuel)
-    out=[]
-    for item in cohorts.values():
-        out.append({'supplier_tour_program_id':item['supplier_tour_program_id'],'supplier_currency_id':item['supplier_currency_id'],'local_hotel_ids':sorted(item['local_hotel_ids']),
-            'hotel_names':sorted(item['hotel_names']),'tourvisor_fuel_charges':sorted(item['tourvisor_fuel_charges']),'aligned_tuple_count':item['aligned_tuple_count'],
-            'fuel_equivalence_verified':False,'arithmetic_applied':False})
-    return sorted(out,key=lambda row:(int(row['supplier_tour_program_id']),str(row['supplier_currency_id'])))
-
-
-def comparison(results):
-    idx=index(results);sets={case:set(idx[case]) for case in CASES};triple=sets['anex']&sets['andromeda']&sets['tourvisor']
-    pairs={'anex_andromeda':sets['anex']&sets['andromeda'],'anex_tourvisor':sets['anex']&sets['tourvisor'],'andromeda_tourvisor':sets['andromeda']&sets['tourvisor']}
-    examples=[]
-    for item in sorted(triple,key=str)[:30]:
-        examples.append({'basis':'same_current_local_hotel_date_party_canonical_meal_key_and_room','identical_supplier_package_verified':False,'fuel_inclusion_verified':False,
-            'key':{'local_hotel_id':item[0],'date':item[1],'nights':item[2],'adults':item[3],'children':item[4],'meal_key':item[5],'room_norm':item[6]},'offers':{case:idx[case][item] for case in CASES}})
-    pair_examples={}
-    for name,items in pairs.items():
-        if name=='anex_andromeda': a,b='anex','andromeda'
-        elif name=='anex_tourvisor': a,b='anex','tourvisor'
-        else: a,b='andromeda','tourvisor'
-        pair_examples[name]=[{'key':{'local_hotel_id':item[0],'date':item[1],'nights':item[2],'adults':item[3],'children':item[4],'meal_key':item[5],'room_norm':item[6]},'offers':{a:idx[a][item],b:idx[b][item]},'identical_supplier_package_verified':False} for item in sorted(items-triple,key=str)[:20]]
-    counts={case:{'offers':len(results.get(case,{}).get('offers',[])),'unique_tuples':len(sets[case]),'fuel_reported_offers':sum(1 for row in results.get(case,{}).get('offers',[]) if row.get('fuel_charge') is not None),
-        'program_id_observed_offers':sum(1 for row in results.get(case,{}).get('offers',[]) if row.get('supplier_tour_program_id') is not None),'coverage_state':results.get(case,{}).get('details',{}).get('coverage',{}).get('state')} for case in CASES}
-    return {'target_local_hotel_id':TARGET_LOCAL_HOTEL_ID,'target_anex_hotel_id':TARGET_ANEX_HOTEL_ID,'provider_counts':counts,'triple_tuple_count':len(triple),
-        'pair_tuple_counts':{name:len(items) for name,items in pairs.items()},'triple_examples':examples,'pair_only_examples':pair_examples,
-        'anex_program_fuel_cohorts':program_fuel_cohorts(idx,triple),'interpretation':'Green Gold display-level comparison only; ANEX tourKey is provider-scoped cohort evidence; price equality never proves package identity and fuel is never added automatically'}
-
-
 def save(path,value):
-    path.parent.mkdir(parents=True,exist_ok=True);tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n');tmp.replace(path)
+    path.parent.mkdir(parents=True,exist_ok=True)
+    tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2)+'\n');tmp.replace(path)
     if json.loads(path.read_text())!=value: raise ValueError('broad_report_readback')
 
 
 def run(output):
-    php=source();results={}
-    for case in CASES:
-        value=validate_case(ssh_php_no_mux(php,dict(SPEC,case_id=case),maximum_bytes=4000000),case);results[case]=value;save(output/f'{case}.json',value)
-        if value['status']!='completed': break
-    all_done=len(results)==3 and all(value['status']=='completed' for value in results.values())
-    unresolved={'target_local_hotel_id':TARGET_LOCAL_HOTEL_ID,'target_anex_hotel_id':TARGET_ANEX_HOTEL_ID,
-        'anex_unmapped_received':results.get('anex',{}).get('details',{}).get('unmapped_received'),'anex_program_id_observed_offers':results.get('anex',{}).get('details',{}).get('program_id_observed_offers'),
-        'andromeda_received_offers':results.get('andromeda',{}).get('details',{}).get('received_offers'),'andromeda_mapped_offers':results.get('andromeda',{}).get('details',{}).get('mapped_offers'),
-        'coverage_states':{case:results.get(case,{}).get('details',{}).get('coverage',{}).get('state') for case in CASES}}
-    report={'schema_version':1,'experiment_id':EXPERIMENT,'status':'completed' if all_done else next((v['status'] for v in results.values() if v['status']!='completed'),'unconfirmed'),
-        'spec':SPEC,'case_statuses':{k:v['status'] for k,v in results.items()},'comparison':comparison(results),'observation_summary':unresolved,'effects':{'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'observation_writes_allowed':True},
-        'unknown_replay_allowed':False,'p3_matching_external':True};save(output/'report.json',report);return report
+    php=source()
+    value=validate_case(ssh_php_no_mux(php,dict(SPEC,case_id='anex'),maximum_bytes=2000000),'anex')
+    save(output/'anex.json',value)
+    status=value['status']
+    details=value.get('details',{}) if isinstance(value.get('details'),dict) else {}
+    offers=value.get('offers',[]) if isinstance(value.get('offers'),list) else []
+    program_pairs=details.get('program_pairs',[]) if isinstance(details.get('program_pairs'),list) else []
+    report={'schema_version':1,'experiment_id':EXPERIMENT,'status':status,'spec':SPEC,
+        'target_local_hotel_id':TARGET_LOCAL_HOTEL_ID,'target_anex_hotel_id':TARGET_ANEX_HOTEL_ID,
+        'offer_count':len(offers),'program_pairs':program_pairs,'offers':offers[:20],
+        'saved_cross_source_context':details.get('saved_cross_source_context'),
+        'effects':{'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'observation_writes':0},
+        'additional_prices_called':False,'andromeda_requeried':False,'tourvisor_requeried':False,'unknown_replay_allowed':False}
+    save(output/'report.json',report);return report
 
 
 def main():
