@@ -92,7 +92,9 @@ Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current acce
 
 #2265 inspected six concrete SearchTour rows. Доступны provider-scoped `tourKey`, `programTypeKey`, `spoKey`, `partnerIncomingKey`, `packetType`, `currencyKey` и другие поля, но отдельного поля, явно связывающего SearchTour с B2B `AdditionalPricesDaily.tour`, не найдено. `tour`/`tourAlt` там являются labels, а не доказанным B2B id. Не пробовать `programTypeKey`, `spoKey` или другие числа как B2B `tour` по догадке.
 
-Текущий точный P0 blocker: нужен **authoritative ANEX B2B tour dictionary/lookup либо supplier-issued binding** от concrete SearchTour/CATCLAIM/freight package к `AdditionalPricesDaily.tour`. До этого direct-ANEX production fuel arithmetic выключена, новые blind numeric `tour` probes запрещены, отсутствующий fuel остаётся `unknown`. Если authoritative binding недоступен, следующий независимый полезный шаг — genuinely new P1 observation scenario при green budget/owner-control; P2/P4/P6/P7 ради заполнения очереди не расширять.
+#2267 закрыл ещё один direct read-only путь: one-shot SearchTour search+expand по exact GREEN GOLD cohort завершён COMPLETE/NO-REPLAY, и у всех шести concrete rows под `freights` нет ни одного money/surcharge-like значения (`money=[]`). Ранее FreightMonitor также не дал money. Поэтому SearchTour + FreightMonitor read-only schemas не содержат недостающие `20846/29184` как готовый exact fuel fact.
+
+Текущий точный P0 blocker: нужен **authoritative ANEX B2B tour dictionary/lookup либо supplier-issued binding** от concrete SearchTour/CATCLAIM/freight package к `AdditionalPricesDaily.tour`. До этого direct-ANEX production fuel arithmetic выключена, новые blind numeric `tour` probes запрещены, отсутствующий fuel остаётся `unknown`. Saved Tourvisor observations можно исследовать как отдельное zero-new-supplier evidence, но они не становятся direct-ANEX supplier authority и не разрешают runtime arithmetic. Если authoritative binding недоступен, следующий независимый полезный шаг — genuinely new P1 observation scenario при green budget/owner-control; P2/P4/P6/P7 ради заполнения очереди не расширять.
 
 ## 5. Закрытые source-side contracts — второй слой не создавать
 
@@ -213,7 +215,7 @@ Andromeda current source доказывает отдельный provider-specif
 #2118 merged `3fd3b8ae4bb63bfaa3f3514dd586d10bafe4dbf7`; exact head `b33d3266f787158012cfe6eb81b6d85e9162d61e`.
 Focused `34677474785` SUCCESS: 101; aggregate `34677474771` SUCCESS; Security `34677474772` SUCCESS.
 
-- direct ANEX current search fixes `PRICEPAGE=1`; without a verified total-page/continuation contract its observed rows are `bounded`, never automatically exhaustive`;
+- direct ANEX current search fixes `PRICEPAGE=1`; without a verified total-page/continuation contract its observed rows are `bounded`, never automatically exhaustive;
 - Andromeda result is `complete` only when one exact search context retains every advertised page `1..PAGES_COUNT`; page 1 of N is `partial`;
 - Tourvisor `status=complete` alone does not prove result exhaustion; canonical `complete` requires an explicit continuation round and verified no-growth evidence;
 - bounded/partial rows remain useful observations, but counts from different providers are not proven comparable;
@@ -229,7 +231,7 @@ Aggregate exact head `731403082238bcad0685a85d3deda1af384612fa`: run `3467890844
 - immutable scenario lineage is mandatory: `operation_id`, scenario revision, criteria digest, source SHA and relative checkpoint path;
 - external hotel ID remains an opaque provider-scoped string, including numeric-looking IDs/leading zeroes;
 - `local_hotel_id=null` is explicit `unmapped` evidence only; actually available name/country/geography/star/coords may travel to #1759/#996, never as mapping authority;
-- supplier labels, coordinates, counts/coverage and price similarity are not hotel/package/price-equivalence proof;
+- supplier labels, coordinates, counts/coverage и price similarity are not hotel/package/price-equivalence proof;
 - observation contract sets mapping/identity decision and replay authority false;
 - P7 runs this suite with PHP warnings promoted to failures; no network/DB/booking primitives are allowed in the aggregate boundary.
 
