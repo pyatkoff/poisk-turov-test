@@ -1,0 +1,37 @@
+name: Three-provider hotel types
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-hotel-types.php'
+      - 'tests/three-provider-hotel-types-test.php'
+      - '.github/workflows/three-provider-hotel-types-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate hotel type semantics without network
+        run: |
+          php -l app/integrations/three-provider-hotel-types.php
+          php -l tests/three-provider-hotel-types-test.php
+          php -d allow_url_fopen=0 tests/three-provider-hotel-types-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-hotel-types.php').read_text()
+          assert "'status' => 'local_only'" in src
+          assert "'allowed' => false" in src
+          assert "'source' => $canonicalKnown ? 'current_local_identity' : null" in src
+          assert "'supplier_type_equivalence_verified' => false" in src
+          assert "'raw_supplier_numeric_id_universal' => false" in src
+          assert "'cross_provider_equivalence_verified' => false" in src
+          assert "'identity_proof_from_types' => false" in src
+          for forbidden in ('curl_', 'PDO', 'mysqli_', 'bron(', 'bron_ticket', 'booking', 'file_get_contents('):
+              assert forbidden not in src
+          print('Three-provider hotel-types static boundary: PASS')
+          PY
