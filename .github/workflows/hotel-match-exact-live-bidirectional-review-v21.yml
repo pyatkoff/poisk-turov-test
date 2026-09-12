@@ -1,0 +1,123 @@
+name: MATCH exact live bidirectional review v21
+
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-exact-live-bidirectional-1971-20260912-v21.arm']
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  OPERATION_ID: hotel-match-exact-live-bidirectional-review-1971-20260912-v21
+  ARTIFACT_DIR: /tmp/match-bidir-v21
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate immutable arm and source
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = '1'
+          test "$(cat .github/match-exact-live-bidirectional-1971-20260912-v21.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_exact_live_bidirectional_review_v21.php
+          mkdir -m 700 -p "$ARTIFACT_DIR" /tmp/v19src
+      - name: Build 28-row input from immutable v19
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10295002749/zip" > /tmp/v19.zip
+          unzip -q /tmp/v19.zip -d /tmp/v19src
+          python3 - <<'PY'
+          import json,pathlib
+          r=json.loads(pathlib.Path('/tmp/v19src/result.json').read_text())
+          rows=[x for x in r['rows'] if x.get('bucket') in ('needs_extra','anex_only')]
+          assert len(rows)==28, (len(rows), {b:sum(x.get('bucket')==b for x in r['rows']) for b in ('needs_extra','anex_only')})
+          pathlib.Path('/tmp/match-bidir-v21/input.json').write_text(json.dumps({'rows':rows},ensure_ascii=False,separators=(',',':'))+'\n')
+          print('rows',len(rows),'reverse',sum(x.get('bucket')=='needs_extra' for x in rows),'forward',sum(x.get('bucket')=='anex_only' for x in rows))
+          PY
+      - name: Establish SSH master
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,os,subprocess,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);key=rt/'match-v21-key';sock=rt/'match-v21.sock';known=rt/'match-v21-known';raw=os.environ['KEY_VALUE'].strip();key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+          common=['-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE']]
+          ok=False
+          for _ in range(3):
+              try:sock.unlink()
+              except FileNotFoundError:pass
+              p=subprocess.run(['ssh','-M','-S',str(sock),'-fnNT','-o','ControlPersist=900']+common,text=True,capture_output=True,timeout=30)
+              if p.returncode==0:
+                  q=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],'cd "$HOME/www/anytoour.ru" && test -f config.php && printf MATCH_V21_OK'],text=True,capture_output=True,timeout=30)
+                  if q.returncode==0 and q.stdout.strip()=='MATCH_V21_OK':ok=True;break
+              time.sleep(2)
+          if not ok: raise SystemExit('ssh preflight failed')
+          PY
+      - name: Persist immutable reservation before DB access
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);prog=Path('scripts/diagnostics/hotel_match_exact_live_bidirectional_review_v21.php').read_bytes();inp=(d/'input.json').read_bytes();r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','candidate_count':28,'program_sha256':hashlib.sha256(prog).hexdigest(),'input_sha256':hashlib.sha256(inp).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};(d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-bidir-v21-${{ github.run_id }}-reserved
+          path: |
+            ${{ env.ARTIFACT_DIR }}/reservation.json
+            ${{ env.ARTIFACT_DIR }}/input.json
+          retention-days: 90
+      - name: Execute CURRENT bidirectional review
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);sock=Path(os.environ['RUNNER_TEMP'])/'match-v21.sock';prog=Path('scripts/diagnostics/hotel_match_exact_live_bidirectional_review_v21.php');remote='/tmp/match_bidir_v21.php'
+          cp=subprocess.run(['scp','-o','ControlMaster=no','-o','ControlPath='+str(sock),str(prog),f"{os.environ['USER_VALUE']}@{os.environ['HOST_VALUE']}:{remote}"],text=True,capture_output=True,timeout=60)
+          if cp.returncode!=0: raise SystemExit('scp failed')
+          p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',os.environ['USER_VALUE'],os.environ['HOST_VALUE'],f'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M {remote}; rc=$?; rm -f {remote}; exit $rc'],input=(d/'input.json').read_text(),text=True,capture_output=True,timeout=600)
+          prefix='MATCH_BIDIR_JSON:';line=next((z[len(prefix):] for z in reversed(p.stdout.splitlines()) if z.startswith(prefix)),None);out=json.loads(line) if line else {'status':'unknown','reason':'result_marker_missing','remote_exit':p.returncode,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};out.update(run_id=int(os.environ['GITHUB_RUN_ID']),source_commit=os.environ['GITHUB_SHA']);(d/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'status':out.get('status'),'counts':out.get('counts')},ensure_ascii=False))
+          if out.get('status')!='completed': raise SystemExit(2)
+          PY
+      - name: Build receipt
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          d=Path(os.environ['ARTIFACT_DIR']);p=d/'result.json';data=json.loads(p.read_text()) if p.exists() else {'status':'unknown'};raw=p.read_bytes() if p.exists() else b'';(d/'receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':data.get('status','unknown'),'counts':data.get('counts'),'result_sha256':hashlib.sha256(raw).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True,indent=2)+'\n')
+          PY
+      - name: Preserve result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-bidir-v21-${{ github.run_id }}-result
+          path: ${{ env.ARTIFACT_DIR }}/
+          retention-days: 90
+      - name: Record result in MATCH issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          p=Path(os.environ['ARTIFACT_DIR'])/'result.json';d=json.loads(p.read_text()) if p.exists() else {'status':'unknown'};body=f"MATCH #1971 accelerated bidirectional CURRENT review `{os.environ['OPERATION_ID']}`: **{d.get('status')}**; counts `{d.get('counts')}` over 28 immutable v19 rows (23 reverse deferred + 5 forward ANEX→Andromeda bridges). Supplier/Tourvisor/DB/mapping writes 0. Run `{os.environ['GITHUB_RUN_ID']}`. Any apply requires NEW operation + CURRENT guards + transaction + post-COMMIT readback.";subprocess.run(['gh','issue','comment','1971','--repo',os.environ['GITHUB_REPOSITORY'],'--body',body],check=True)
+          PY
