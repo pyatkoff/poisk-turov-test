@@ -1,0 +1,60 @@
+name: Search3 Desktop Form Geometry
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths:
+      - 'src/search3/styles/entry-native-controls.css'
+      - 'v2/search3-entry-v1.css'
+      - 'docs/project/search3-production-import.json'
+      - 'scripts/build/search3_assets.py'
+      - 'scripts/build/search3-js/**'
+      - 'tests/search3-entry-geometry-browser.cjs'
+      - '.github/workflows/search3-desktop-form-geometry.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-builder-readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+
+      - name: Regenerate canonical Search3 assets
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --write
+          sha256sum v2/search3-entry-v1.css | tee search3-entry-v1.sha256
+          cp v2/search3-entry-v1.css search3-entry-v1.generated.css
+          cp docs/project/search3-production-import.json search3-production-import.generated.json
+
+      - name: Retain exact generated desktop-form evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-desktop-form-generated-${{ github.event.pull_request.head.sha }}
+          path: |
+            search3-entry-v1.generated.css
+            search3-entry-v1.sha256
+            search3-production-import.generated.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify committed source-generated parity
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- v2/search3-entry-v1.css docs/project/search3-production-import.json
+          python3 -B scripts/build/search3_assets.py --check
+          echo SEARCH3_DESKTOP_FORM_GENERATED_PARITY_OK
