@@ -7,17 +7,25 @@ require __DIR__ . '/../scripts/diagnostics/anex_concrete_fuel_binding.php';
 
 $checks=0;
 $assert=static function(bool $ok,string $message)use(&$checks):void{if(!$ok)throw new RuntimeException('FAIL:'.$message);++$checks;};
-$spec=['experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'country'=>'Turkey','date'=>'2026-10-19','nights'=>7,
-    'adults'=>2,'child_ages'=>[],'meal_family'=>'ai','currency'=>'RUB'];
-$assert(anex_concrete_fuel_input($spec)===$spec,'exact new scenario');
-$bad=$spec;$bad['date']='2026-10-12';
-try{anex_concrete_fuel_input($bad);$assert(false,'old date accepted');}catch(RuntimeException $e){$assert($e->getMessage()==='CONCRETE_FUEL_INVALID_INPUT','old case not replayed');}
+$retained=['schema_version'=>1,'experiment_id'=>'anex_additional_program2637_20260912_v1','status'=>'completed',
+    'supplier_replay_allowed'=>false,'request'=>['currency'=>3,'dateBeg'=>'2026-10-12','nights'=>7,'page'=>1,'pageSize'=>10,'tour'=>2637],
+    'payload'=>['data'=>[['cashrate'=>104.23,'currency'=>3,'dateBeg'=>'2026-10-12T00:00:00','nights'=>7,
+        'price_adult'=>140,'price_chd'=>140,'price_converted_adult'=>14592.2,'price_converted_chd'=>14592.2,'tour'=>2637]],
+        'totalCount'=>1,'totalPages'=>1],
+    'result_sha256'=>ANEX_CONCRETE_FUEL_RETAINED_SHA256,'artifact_id'=>10304744621,'run_id'=>34716809979];
+$spec=['experiment_id'=>ANEX_CONCRETE_FUEL_EXPERIMENT,'country'=>'Turkey','date'=>'2026-10-12','nights'=>7,
+    'adults'=>2,'child_ages'=>[],'meal_family'=>'ai','currency'=>'RUB','retained_additional'=>$retained];
+$assert(anex_concrete_fuel_input($spec)===$spec,'exact retained scenario');
+$bad=$spec;$bad['date']='2026-10-19';
+try{anex_concrete_fuel_input($bad);$assert(false,'sealed v1 date accepted');}catch(RuntimeException $e){$assert($e->getMessage()==='CONCRETE_FUEL_INVALID_INPUT','sealed v1 not replayed');}
+$bad=$spec;$bad['retained_additional']['request']['tour']=778;
+try{anex_concrete_fuel_input($bad);$assert(false,'wrong retained program accepted');}catch(RuntimeException $e){$assert($e->getMessage()==='CONCRETE_FUEL_RETAINED_CONTEXT','retained context bound');}
 $assert(anex_concrete_fuel_ai('AI-WITHOUT ALCOHOL'),'ai family');
 $assert(anex_concrete_fuel_decimal(14592.2)==='14592.2'&&anex_concrete_fuel_decimal(-1)===null,'decimal facts');
 $rows=[['id'=>3,'currencyISO'=>'RUB'],['id'=>4,'currencyISO'=>'USD']];
 $assert(anex_concrete_fuel_dictionary_id($rows,['RUB','RUR'])===3,'unique dictionary');
 
-$offer=['kind'=>'group_minimum','hotel'=>['external_id'=>'25084'],'checkin'=>'2026-10-19','nights'=>7,'adults'=>2,'children'=>0,
+$offer=['kind'=>'group_minimum','hotel'=>['external_id'=>'25084'],'checkin'=>'2026-10-12','nights'=>7,'adults'=>2,'children'=>0,
     'meal'=>'AI','room'=>'STANDARD ROOM','hotel_place'=>'DBL','price'=>['amount'=>'119448','currency'=>'RUB'],'converted_price'=>null,
     'supplier_tour_program_id'=>'2637','supplier_currency_id'=>'3','availability'=>['hotel'=>'Y']];
 $summary=anex_concrete_fuel_offer_summary($offer);
@@ -27,7 +35,7 @@ $assert($concrete!==null&&$concrete['kind']==='concrete'&&$concrete['supplier_to
 $wrong=$offer;$wrong['hotel']['external_id']='1';
 $assert(anex_concrete_fuel_offer_summary($wrong)===null,'wrong hotel rejected');
 
-$routes=anex_concrete_fuel_routes(['routes'=>[['date'=>'2026-10-19','from'=>'Moscow','to'=>'Izmir','options'=>[[
+$routes=anex_concrete_fuel_routes(['routes'=>[['date'=>'2026-10-12','from'=>'Moscow','to'=>'Izmir','options'=>[[
     'name'=>'SU123','carrier'=>'Airline','departure'=>['airport_code'=>'SVO','time'=>'10:00'],
     'arrival'=>['airport_code'=>'ADB','time'=>'15:00'],'itinerary_details_available'=>true,
     'classes'=>[['name'=>'economy','availability'=>'Y','baggage'=>'20']]
@@ -44,7 +52,8 @@ try{
 }finally{foreach(scandir($tmp) as $name)if($name!=='.'&&$name!=='..')unlink($tmp.'/'.$name);rmdir($tmp);}
 
 $php=file_get_contents(__DIR__.'/../scripts/diagnostics/anex_concrete_fuel_binding.php');
-foreach(['->bron(','bron_ticket','broninit(','->calc(','INSERT INTO anex_hotel_search_mappings','UPDATE anex_hotel_search_mappings'] as $forbidden)$assert(strpos($php,$forbidden)===false,'forbidden '.$forbidden);
+foreach(['->bron(','bron_ticket','broninit(','->calc(','additionalPricesDaily','AnyTourAnexAdditionalPricesClient','ANEX_B2B_TOKEN','INSERT INTO anex_hotel_search_mappings','UPDATE anex_hotel_search_mappings'] as $forbidden)$assert(strpos($php,$forbidden)===false,'forbidden '.$forbidden);
 $assert(strpos($php,'->expand(')!==false&&strpos($php,'->flights(')!==false,'existing concrete runtime consumers used');
 $assert(strpos($php,"'tour_flights_requested'=>false")!==false,'no Tourvisor flight refresh yet');
-echo "ANEX concrete fuel binding smoke: {$checks} checks passed; network=0.\n";
+$assert(strpos($php,"'additional_prices_requests'=>0")!==false,'no B2B replay');
+echo "ANEX concrete fuel binding v2 smoke: {$checks} checks passed; network=0.\n";
