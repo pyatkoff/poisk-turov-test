@@ -1,0 +1,60 @@
+name: MATCH current exact cross-provider census v1
+on:
+  push:
+    branches: [ops/match-current-exact-census-1971-20260912-v1]
+    paths: [.github/workflows/hotel-match-current-cross-provider-exact-census-1971-v1.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-current-exact-census-1971-v1, cancel-in-progress: false}
+env:
+  OUT: /tmp/match-current-exact-census-1971-v1
+jobs:
+  census:
+    if: github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Offline guards
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_cross_provider_exact_census_1971_20260912_v1.php
+          php scripts/diagnostics/hotel_match_current_cross_provider_exact_census_1971_20260912_v1.php --self-test
+          mkdir -p "$OUT"
+      - name: Read current DB once
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ok=0
+          for n in 1 2 3; do if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi; sleep 10; done
+          test "$ok" = 1
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M' < scripts/diagnostics/hotel_match_current_cross_provider_exact_census_1971_20260912_v1.php > "$OUT/raw.txt"
+          python3 - <<'PY'
+          import json,pathlib
+          d=pathlib.Path('/tmp/match-current-exact-census-1971-v1')
+          raw=(d/'raw.txt').read_text().strip()
+          p='MATCH_EXACT_CENSUS:'
+          if not raw.startswith(p): raise SystemExit('bad_output')
+          x=json.loads(raw[len(p):])
+          if x.get('status')!='ok' or not x.get('read_only') or x.get('database_writes')!=0 or x.get('mapping_writes')!=0: raise SystemExit('guard_failed')
+          (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          c=x.get('provider_counts') or {}; cov=x.get('coverage') or {}; by=x.get('by_country') or {}
+          s=(f"MATCH #1971 CURRENT-DB exact cross-provider census: prepared **{x.get('safe_count')}** safe rows "
+             f"(ANEX **{c.get('anex',0)}**, Andromeda **{c.get('andromeda',0)}**), live-observed safe **{x.get('live_safe_count')}**, "
+             f"collision demotions **{x.get('demoted_collision_count')}**. Core8 by country `{by}`. "
+             f"Current coverage: ANEX links {cov.get('anex_links')}, ANEX unique {cov.get('anex_unique_local')}, "
+             f"Andromeda unique {cov.get('andromeda_unique_local')}, triple {cov.get('triple')}. "
+             f"READ-ONLY: DB/mapping writes 0; ANEX/Andromeda/TV calls 0/0/0, tv slices/http 0/0.")
+          (d/'summary.md').write_text(s+'\n'); print(s)
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true
+          rm -f "$key" "$known" "$OUT/raw.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-current-exact-census-1971-v1-${{ github.run_id }}', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record census
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
