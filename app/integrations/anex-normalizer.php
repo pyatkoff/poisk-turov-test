@@ -152,6 +152,9 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
     return [
         'offer_key' => 'anex_online:' . hash('sha256', $kind . "\0" . $supplierId),
         'supplier_offer_id' => $supplierId,
+        // SearchTour_PRICES tourKey is a provider-scoped tour/program reference.
+        // It is retained only for server-side AdditionalPricesDaily association.
+        'supplier_tour_program_id' => anytour_anex_normalizer_id($row['tourKey'] ?? null),
         'provider' => 'anex',
         'supplier_namespace' => 'anex_online',
         'kind' => $kind,
