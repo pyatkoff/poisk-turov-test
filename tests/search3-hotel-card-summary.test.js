@@ -41,19 +41,23 @@ assert.deepEqual(api.hotelSummary(multi), {
   nights: '7–10 ноч.',
   meal: 'BB · AI',
   operators: 'FUN&SUN · ANEX',
-  flight: '',
+  flight: 'Возможны чартеры',
+  party: '',
   count: 3,
 });
 assert.equal(api.priceContext(multi), '16.09.2026 · 7–10 ноч. · BB · AI');
 const collapsed = api.toursHtml(multi);
-assert.match(collapsed, /Доступные варианты/);
+assert.match(collapsed, /class="hotel-trip-summary"/);
+assert.doesNotMatch(collapsed, /Доступные варианты/, 'collapsed hotel has one current aggregate summary');
 assert.match(collapsed, /7–10 ноч\./);
 assert.match(collapsed, /BB · AI/);
-assert.match(collapsed, /FUN&amp;SUN · ANEX/);
+assert.match(collapsed, /data-operator-brand="funsun"/);
+assert.match(collapsed, /data-operator-brand="anex"/);
 assert.match(collapsed, /от 62(?:\s| )?400/);
-assert.match(collapsed, /Показать 3 варианта/);
+assert.match(collapsed, /Показать варианты · 3/);
 assert.doesNotMatch(collapsed, /Завтраки/);
-assert.doesNotMatch(collapsed, /Чартер/);
+assert.match(collapsed, /Возможны чартеры/);
+assert.doesNotMatch(collapsed, />Чартер</, 'mixed offers cannot promise a charter on every variant');
 assert.doesNotMatch(collapsed, /2 взрослых/);
 assert.doesNotMatch(collapsed, /direct-tour/);
 
@@ -63,6 +67,17 @@ const allCharter = {
 };
 assert.equal(api.hotelSummary(allCharter).flight, 'Чартер');
 assert.match(api.toursHtml(allCharter), /Чартер/);
+
+// Unknown or mixed package facts must not become a uniform hotel promise.
+const noCharterFact = { ...multi, tours: multi.tours.map(({ isCharter, ...tour }) => tour) };
+assert.equal(api.hotelSummary(noCharterFact).flight, 'Уточняется по варианту');
+const family = { ...multi, tours: multi.tours.map(tour => ({ ...tour, adults: 2, childs: 1 })) };
+assert.equal(api.hotelSummary(family).party, '2 взрослых · 1 ребёнок');
+const mixedParty = { ...family, tours: [family.tours[0], { ...family.tours[1], childs: 0 }] };
+assert.equal(api.hotelSummary(mixedParty).party, '', 'different placements are described only on their exact offer');
+assert.doesNotMatch(api.toursHtml(mixedParty), /2 взрослых|1 ребёнок/);
+assert.equal(api.hotelSummary({ ...multi, tours: [] }).count, 0);
+assert.match(api.toursHtml({ ...multi, tours: [] }), /Нет доступных вариантов/);
 
 const differentDates = {
   ...multi,
