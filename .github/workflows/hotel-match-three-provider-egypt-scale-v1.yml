@@ -1,9 +1,9 @@
-name: MATCH three-provider Egypt scale v1
+name: MATCH three-provider Egypt scale v2
 
 on:
   push:
     branches: ['ops/match-residual-ensemble-current-1971-v2']
-    paths: ['.github/match-three-provider-egypt-scale-1971-20260912-v1.arm']
+    paths: ['.github/match-three-provider-egypt-scale-1971-20260912-v2.arm']
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: anytour-match-three-provider-egypt-scale-1971-20260912-v1
+  group: anytour-match-three-provider-egypt-scale-1971-20260912-v2
   cancel-in-progress: false
 
 jobs:
@@ -33,13 +33,13 @@ jobs:
             date: '2026-12-04'
             nights: '9'
     env:
-      FAMILY_ID: hotel-match-three-provider-egypt-scale-1971-20260912-v1
-      OPERATION_ID: hotel-match-three-provider-egypt-scale-1971-20260912-v1-${{ matrix.sid }}
+      FAMILY_ID: hotel-match-three-provider-egypt-scale-1971-20260912-v2
+      OPERATION_ID: hotel-match-three-provider-egypt-scale-1971-20260912-v2-${{ matrix.sid }}
       SLICE_ID: ${{ matrix.sid }}
       SEARCH_DATE: ${{ matrix.date }}
       SEARCH_NIGHTS: ${{ matrix.nights }}
       FROZEN_SOURCE_SHA: cf15ed59aecc19c2f24950868dcff9d9c99f4ee0
-      ARTIFACT_DIR: /tmp/match-three-provider-egypt-scale-v1-${{ matrix.sid }}
+      ARTIFACT_DIR: /tmp/match-three-provider-egypt-scale-v2-${{ matrix.sid }}
 
     steps:
       - uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = '1'
-          test "$(cat .github/match-three-provider-egypt-scale-1971-20260912-v1.arm)" = "$FAMILY_ID"
+          test "$(cat .github/match-three-provider-egypt-scale-1971-20260912-v2.arm)" = "$FAMILY_ID"
           mkdir -p "$ARTIFACT_DIR"
           curl -fsSL --retry 2 --retry-delay 1 \
             "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" \
@@ -60,21 +60,20 @@ jobs:
           import os
           from pathlib import Path
           src=Path(os.environ['FROZEN']).read_text()
-          oldop='hotel-match-three-provider-111-full-pages-1971-20260911-v6'
-          olddate="const M6_DATE = '2026-11-06';"
-          oldnights='const M6_NIGHTS = 7;'
-          replacements=[
-            (oldop,os.environ['OPERATION_ID']),
-            (olddate,"const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"),
-            (oldnights,'const M6_NIGHTS = '+os.environ['SEARCH_NIGHTS']+';'),
-            ("'countryId'=>4","'countryId'=>1"),
+          out=src
+          singles=[
+            ('hotel-match-three-provider-111-full-pages-1971-20260911-v6',os.environ['OPERATION_ID']),
+            ("const M6_DATE = '2026-11-06';","const M6_DATE = '"+os.environ['SEARCH_DATE']+"';"),
+            ('const M6_NIGHTS = 7;','const M6_NIGHTS = '+os.environ['SEARCH_NIGHTS']+';'),
             ("$lookup->execute([1,4]);","$lookup->execute([1,1]);"),
             ("'country'=>'Turkey'","'country'=>'Egypt'"),
           ]
-          out=src
-          for old,new in replacements:
+          for old,new in singles:
               if out.count(old)!=1: raise SystemExit('frozen derivation marker changed: '+old)
               out=out.replace(old,new,1)
+          country="'countryId'=>4"
+          if out.count(country)!=2: raise SystemExit('expected exactly two countryId markers')
+          out=out.replace(country,"'countryId'=>1")
           required=[
             "const M6_TV_OPERATOR = 13;",
             "'operatorIds'=>[M6_TV_OPERATOR]",
@@ -83,10 +82,12 @@ jobs:
             "putenv('TOURVISOR_JWT='.$tvToken)",
             "const M6_TV_CONTINUE_CAP = 8;",
             "const M6_ANDROMEDA_PAGE_CAP = 100;",
+            "'countryId'=>1",
+            "$lookup->execute([1,1]);",
+            "'country'=>'Egypt'",
           ]
           for needle in required:
               if needle not in out: raise SystemExit('protected frozen contract missing: '+needle)
-          # Sanity: no ordinary credential lookup/substitution was introduced by derivation.
           if "defined('TOURVISOR_JWT')" in out: raise SystemExit('ordinary credential fallback detected')
           Path(os.environ['PROGRAM']).write_text(out)
           PY
@@ -120,7 +121,7 @@ jobs:
       - name: Preserve durable reservation
         uses: actions/upload-artifact@v4
         with:
-          name: match-egypt-scale-v1-${{ matrix.sid }}-${{ github.run_id }}-reserved
+          name: match-egypt-scale-v2-${{ matrix.sid }}-${{ github.run_id }}-reserved
           path: ${{ env.ARTIFACT_DIR }}/reservation.json
           if-no-files-found: error
           retention-days: 90
@@ -163,7 +164,7 @@ jobs:
         id: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: match-egypt-scale-v1-${{ matrix.sid }}-${{ github.run_id }}-final
+          name: match-egypt-scale-v2-${{ matrix.sid }}-${{ github.run_id }}-final
           path: |
             ${{ env.ARTIFACT_DIR }}/reservation.json
             ${{ env.ARTIFACT_DIR }}/result.json
