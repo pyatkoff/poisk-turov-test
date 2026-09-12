@@ -1,0 +1,51 @@
+name: MATCH live4 exact bridge accept v2
+on:
+  push:
+    branches: ['ops/match-mass-bridge-1971-20260912']
+    paths: ['.github/match-live4-exact-bridge-accept-1971-20260912-v2.arm']
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-live4-accept-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-live4-exact-bridge-accept-1971-20260912-v2
+  OUT: /tmp/match-live4-accept-v2
+jobs:
+  accept:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate and reserve
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-live4-exact-bridge-accept-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_live4_exact_bridge_accept_v2.php
+          mkdir -p "$OUT"
+          printf '{"operation_id":"%s","state":"reserved_before_db_access","run_id":%s,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'live4-accept-v2-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute guarded write and readback
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20)
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < scripts/diagnostics/hotel_match_live4_exact_bridge_accept_v2.php > "$OUT/stdout" 2> "$OUT/stderr"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d=pathlib.Path(os.environ['OUT']); raw=(d/'stdout').read_bytes(); lines=[x[len(b'LIVE4_ACCEPT_V2:'):] for x in raw.splitlines() if x.startswith(b'LIVE4_ACCEPT_V2:')]
+          x=json.loads(lines[-1]) if lines else {'status':'failed','safe_message':'marker_missing'}
+          (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 live4 accept v2: **{x.get('status')}**; planned/written **{x.get('planned')}/{x.get('written')}**, readback **{x.get('readback')}**, pairs `{x.get('pairs')}`. supplier/Tourvisor calls 0; NO-REPLAY. Run `{os.environ['GITHUB_RUN_ID']}`."
+          (d/'summary.md').write_text(s+'\n'); print(s)
+          raise SystemExit(0 if x.get('status')=='accepted' and x.get('written')==4 and x.get('readback') is True else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'live4-accept-v2-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
