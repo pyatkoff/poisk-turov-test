@@ -13,11 +13,15 @@ require_once __DIR__.'/../app/integrations/andromeda-selected-quote.php';
 
 $checks=0;
 $money=static fn(string $amount):array => [['buyerClaimMoney'=>[['net'=>$amount,'currency'=>'RUB']]]];
+$operatorMoney=static fn(string $usd,string $rub):array => [['money'=>[
+    ['price'=>$usd,'net'=>$usd,'currency'=>'USD','rate'=>'1','isClaimCurrency'=>'true'],
+    ['price'=>$rub,'net'=>$rub,'currency'=>'RUB','rate'=>'89.83','isClaimCurrency'=>'false'],
+]]];
 $package=[
     'version'=>'1.01',
     'claimDocument'=>[0=>[
         'catalogKey'=>'catalog-reduced','condition'=>'ccOffer','freightExternal'=>1,
-        'buyerMoneys'=>$money('124864'),'transports'=>[null],
+        'buyerMoneys'=>$money('124864'),'moneys'=>$operatorMoney('1390','124864'),'transports'=>[null],
     ]],
     'variants'=>[], 'groups'=>[],
 ];
@@ -49,7 +53,7 @@ $fuelServices=[['service'=>[
     ['type'=>'stOther','servicetype'=>'9','servicecategoryName'=>'Не топливо','price'=>'999','currencyAlias'=>'USD','routeIndex'=>'0','uid'=>'other_service'],
 ]]];
 $reserved=0;$seen=[];
-$request=static function(string $url,string $post)use(&$seen,$getFlights,$fuelServices):array{
+$request=static function(string $url,string $post)use(&$seen,$getFlights,$fuelServices,$money,$operatorMoney):array{
     parse_str((string)parse_url($url,PHP_URL_QUERY),$q);
     if(($q['version']??null)!=='1.01'||!in_array($q['action']??null,['get_flights','changeservice','calc'],true))throw new RuntimeException('BAD_ACTION');
     parse_str($post,$form);$claim=json_decode($form['claim']??'',true,64,JSON_THROW_ON_ERROR);
@@ -60,7 +64,8 @@ $request=static function(string $url,string $post)use(&$seen,$getFlights,$fuelSe
         $reply=$claim;
     }else{
         $reply=$claim;
-        $reply['claimDocument'][0]['buyerMoneys']=[["buyerClaimMoney"=>[["net"=>'135643',"currency"=>'RUB']]]];
+        $reply['claimDocument'][0]['buyerMoneys']=$money('135643');
+        $reply['claimDocument'][0]['moneys']=$operatorMoney('1510','135643');
         $reply['claimDocument'][0]['services']=$fuelServices;
     }
     return ['status'=>200,'body'=>json_encode($reply,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)];
@@ -80,6 +85,10 @@ if(($result['fuel_surcharges_reported']??null)!==[
     ['amount'=>'80','currency'=>'USD','route_index'=>'0','source'=>'andromeda_claim_service'],
     ['amount'=>'80','currency'=>'USD','route_index'=>'1','source'=>'andromeda_claim_service'],
 ])throw new RuntimeException('fuel services');++$checks;
+if(($result['operator_currency_rates_reported']??null)!==[
+    ['currency'=>'USD','rate'=>'1','is_claim_currency'=>true,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
+    ['currency'=>'RUB','rate'=>'89.83','is_claim_currency'=>false,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
+])throw new RuntimeException('operator rates');++$checks;
 if(isset($result['fuel_total'])||isset($result['surcharge_total'])||isset($result['price_with_fuel']))throw new RuntimeException('synthetic arithmetic');++$checks;
 $encoded=json_encode($result,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
 foreach(['opaque-claiminc','out_uid','back_uid','fuel_out','fuel_back','other_service','private-request-0','private-request-1','private-offer','SID_test_123','catalog-reduced'] as $secret)if(str_contains($encoded,$secret))throw new RuntimeException('private leak '.$secret);++$checks;
@@ -97,20 +106,26 @@ $choice=AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient(
 if(($choice['state']??null)!=='flight_selection_required'||($choice['final_price_verified']??null)!==false)throw new RuntimeException('ambiguous state');++$checks;
 if($seen2!==['get_flights']||$reserved2!==1)throw new RuntimeException('ambiguous calls');++$checks;
 if(($choice['fuel_surcharges_reported']??null)!==[])throw new RuntimeException('ambiguous fuel');++$checks;
+if(($choice['operator_currency_rates_reported']??null)!==[
+    ['currency'=>'USD','rate'=>'1','is_claim_currency'=>true,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
+    ['currency'=>'RUB','rate'=>'89.83','is_claim_currency'=>false,'source'=>'andromeda_claim_money','arithmetic_applied'=>false],
+])throw new RuntimeException('ambiguous rates');++$checks;
 if(str_contains(json_encode($choice,JSON_THROW_ON_ERROR),'out_two'))throw new RuntimeException('uid leak');++$checks;
 
 $noFlight=$package;$noFlight['claimDocument'][0]['freightExternal']=0;$noFlight['claimDocument'][0]['transports']=[];
 $reserved3=0;$seen3=[];
 $actions3=new AnyTourAndromedaClaimActions('SID_test_789',static function()use(&$reserved3){++$reserved3;},
-    static function(string $url,string $post)use(&$seen3):array{
+    static function(string $url,string $post)use(&$seen3,$money,$operatorMoney):array{
         parse_str((string)parse_url($url,PHP_URL_QUERY),$q);$seen3[]=$q['action']??null;
         if(($q['action']??null)!=='calc')throw new RuntimeException('NO_FLIGHT_BAD_ACTION');
         parse_str($post,$form);$claim=json_decode($form['claim'],true,64,JSON_THROW_ON_ERROR);
-        $claim['claimDocument'][0]['buyerMoneys']=[["buyerClaimMoney"=>[["net"=>'130000',"currency"=>'RUB']]]];
+        $claim['claimDocument'][0]['buyerMoneys']=$money('130000');
+        $claim['claimDocument'][0]['moneys']=$operatorMoney('1447.18','130000');
         return ['status'=>200,'body'=>json_encode($claim,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)];
     });
 $direct=AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient($noFlight),$actions3);
 if(($direct['final_price']['amount']??null)!=='130000'||$seen3!==['calc']||$reserved3!==1)throw new RuntimeException('direct calc');++$checks;
 if(($direct['fuel_surcharges_reported']??null)!==[])throw new RuntimeException('direct fuel');++$checks;
+if(($direct['operator_currency_rates_reported'][1]['rate']??null)!=='89.83')throw new RuntimeException('direct rates');++$checks;
 
 print("Andromeda selected quote: {$checks} checks passed\n");
