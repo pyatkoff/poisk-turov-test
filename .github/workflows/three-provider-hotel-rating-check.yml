@@ -1,0 +1,37 @@
+name: Three-provider hotel rating
+on:
+  pull_request:
+    paths:
+      - 'app/integrations/three-provider-hotel-rating.php'
+      - 'tests/three-provider-hotel-rating-test.php'
+      - '.github/workflows/three-provider-hotel-rating-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Validate hotel rating semantics without network
+        run: |
+          php -l app/integrations/three-provider-hotel-rating.php
+          php -l tests/three-provider-hotel-rating-test.php
+          php -d allow_url_fopen=0 tests/three-provider-hotel-rating-test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('app/integrations/three-provider-hotel-rating.php').read_text()
+          assert "'status' => 'local_only'" in src
+          assert "'allowed' => false" in src
+          assert "'source' => $canonicalKnown ? 'current_local_identity' : null" in src
+          assert "'supplier_rating_equivalence_verified' => false" in src
+          assert "'raw_supplier_numeric_value_universal' => false" in src
+          assert "'cross_provider_equivalence_verified' => false" in src
+          assert "'identity_proof_from_rating' => false" in src
+          for forbidden in ('curl_', 'PDO', 'mysqli_', 'bron(', 'bron_ticket', 'booking', 'file_get_contents('):
+              assert forbidden not in src
+          print('Three-provider hotel-rating static boundary: PASS')
+          PY
