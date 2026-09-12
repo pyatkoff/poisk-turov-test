@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""One bounded concrete-offer ANEX fuel/additional binding experiment."""
+"""Bind one concrete ANEX offer to retained AdditionalPricesDaily evidence without replay."""
 from decimal import Decimal, InvalidOperation
+import hashlib
 import json
 from pathlib import Path
 import sys
 
 import anex_search3_three_source_price as transport
 
-EXPERIMENT='anex_concrete_fuel_binding_20260912_v1'
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-19','nights':7,'adults':2,
-      'child_ages':[],'meal_family':'ai','currency':'RUB'}
+EXPERIMENT='anex_concrete_fuel_binding_20260912_v2'
+RETAINED_SHA256='940a8677c0084a99e0c1f36baaa9e7301d1afef65d89c06a39c64f8799e11163'
+BASE_SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-12','nights':7,'adults':2,
+           'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def php_body(path: Path, strict=True) -> str:
@@ -35,12 +37,11 @@ def source() -> str:
     search=php_body(root/'app'/'integrations'/'anex-search.php')
     search='\n'.join(line for line in search.splitlines() if not line.startswith("require_once __DIR__"))+'\n'
     registry=php_body(root/'app'/'integrations'/'anex-search-mapping-registry.php')
-    additional=php_body(root/'app'/'integrations'/'anex-additional-prices-client.php')
     binding=php_body(diag/'anex_concrete_fuel_binding.php')
     return ("declare(strict_types=1);\n"
             "define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"
             "define('ANYTOUR_ANEX_CONCRETE_FUEL_LIBRARY_ONLY', true);\n"
-            +paired+'\n'+client+'\n'+normalizer+'\n'+search+'\n'+registry+'\n'+additional+'\n'+binding
+            +paired+'\n'+client+'\n'+normalizer+'\n'+search+'\n'+registry+'\n'+binding
             +'\n$report=anex_concrete_fuel_main(); echo json_encode($report,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\\n"; exit(($report["status"]??null)==="completed"?0:1);')
 
 
@@ -54,20 +55,54 @@ def decimal(value):
     return None
 
 
+def retained_additional(path: Path):
+    raw=path.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!=RETAINED_SHA256:
+        raise ValueError('retained_additional_digest_invalid')
+    value=json.loads(raw)
+    if not isinstance(value,dict) or value.get('schema_version')!=1 \
+       or value.get('experiment_id')!='anex_additional_program2637_20260912_v1' \
+       or value.get('status')!='completed' or value.get('supplier_replay_allowed') is not False \
+       or value.get('additional_prices_requests')!=1 or value.get('direct_anex_requests')!=0 \
+       or value.get('tourvisor_requests')!=0 or value.get('booking_calls')!=0 \
+       or value.get('broninit_calls')!=0 or value.get('mapping_writes')!=0:
+        raise ValueError('retained_additional_contract_invalid')
+    context=value.get('additional_request_context')
+    expected={'currency':3,'dateBeg':'2026-10-12','nights':7,'page':1,'pageSize':10,'tour':2637}
+    if context!=expected:
+        raise ValueError('retained_additional_context_invalid')
+    payload=value.get('additional_prices')
+    if not isinstance(payload,dict) or payload.get('totalCount')!=1 or payload.get('totalPages')!=1:
+        raise ValueError('retained_additional_payload_invalid')
+    rows=payload.get('data')
+    if not isinstance(rows,list) or len(rows)!=1 or not isinstance(rows[0],dict):
+        raise ValueError('retained_additional_payload_invalid')
+    row=rows[0]
+    if row.get('tour')!=2637 or row.get('currency')!=3 or row.get('nights')!=7 \
+       or row.get('dateBeg')!='2026-10-12T00:00:00':
+        raise ValueError('retained_additional_row_context_invalid')
+    for field in ('price_adult','price_chd','cashrate','price_converted_adult','price_converted_chd'):
+        if decimal(row.get(field)) is None:
+            raise ValueError('retained_additional_money_invalid')
+    return {'schema_version':1,'experiment_id':value['experiment_id'],'status':'completed',
+            'supplier_replay_allowed':False,'request':context,'payload':payload,
+            'result_sha256':RETAINED_SHA256,'artifact_id':10304744621,'run_id':34716809979}
+
+
 def validate(value):
     if not isinstance(value,dict) or value.get('schema_version')!=1 or value.get('experiment_id')!=EXPERIMENT:
         raise ValueError('concrete_fuel_result_invalid')
     if value.get('automatic_retry') is not False or value.get('supplier_replay_allowed') is not False:
         raise ValueError('concrete_fuel_replay_invalid')
-    for field in ('booking_calls','broninit_calls','mapping_writes','andromeda_requests'):
+    for field in ('booking_calls','broninit_calls','mapping_writes','andromeda_requests','additional_prices_requests'):
         if value.get(field)!=0: raise ValueError('concrete_fuel_effect_invalid')
     if value.get('status') not in ('completed','unknown','blocked'):
         raise ValueError('concrete_fuel_status_invalid')
     if value.get('status')=='completed':
-        if value.get('supplier_effect')!='read_only_search_expand_flights_additional_tv_completed':
+        if value.get('supplier_effect')!='read_only_search_expand_flights_tv_with_retained_additional_completed':
             raise ValueError('concrete_fuel_completion_invalid')
-        if value.get('additional_prices_requests')!=1:
-            raise ValueError('concrete_fuel_b2b_count_invalid')
+        if value.get('additional_source')!='retained_completed_operation':
+            raise ValueError('concrete_fuel_retained_source_invalid')
         if not isinstance(value.get('group_minimum'),dict) or not isinstance(value.get('selected_concrete'),dict):
             raise ValueError('concrete_fuel_offer_invalid')
         if value['selected_concrete'].get('kind')!='concrete': raise ValueError('concrete_fuel_not_concrete')
@@ -84,7 +119,7 @@ def validate(value):
 
 def analyze(value):
     report={'schema_version':1,'experiment_id':EXPERIMENT,'status':value.get('status'),
-            'spec':SPEC,'supplier_replay_allowed':False,'production_price_arithmetic_applied':False,
+            'spec':BASE_SPEC,'supplier_replay_allowed':False,'production_price_arithmetic_applied':False,
             'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'andromeda_requests':0,
             'evidence':None}
     if value.get('status')!='completed':
@@ -115,11 +150,12 @@ def analyze(value):
             pair=(option.get('departure_airport'),option.get('arrival_airport'))
             if all(isinstance(x,str) and x for x in pair) and list(pair) not in airports: airports.append(list(pair))
     report['requests']={'anex':value.get('anex_requests'),'tourvisor':value.get('tourvisor_requests'),
-                        'additional_prices':value.get('additional_prices_requests'),'andromeda':0}
+                        'additional_prices':0,'andromeda':0}
     report['evidence']={
         'state':'observed','group_kind':group.get('kind'),'group_minimum_price':group.get('price'),
         'selected_concrete_price':selected.get('price'),'selected_program':selected.get('supplier_tour_program_id'),
         'selected_native_currency_id':selected.get('supplier_currency_id'),'selected_room_norm':selected.get('room_norm'),
+        'additional_source':'retained_completed_operation','additional_result_sha256':value.get('additional_result_sha256'),
         'additional_converted_adult':str(adult) if adult is not None else None,
         'candidate_two_adult_supplement':str(supplement) if supplement is not None else None,
         'concrete_total_candidate':str(concrete_price+supplement) if concrete_price is not None and supplement is not None else None,
@@ -140,16 +176,18 @@ def save(path,value):
     if json.loads(path.read_text())!=value: raise ValueError('concrete_fuel_report_readback')
 
 
-def run(output):
-    value=transport.ssh_php_no_mux(source(),SPEC,maximum_bytes=4000000)
+def run(output, retained_path):
+    retained=retained_additional(retained_path)
+    spec=dict(BASE_SPEC); spec['retained_additional']=retained
+    value=transport.ssh_php_no_mux(source(),spec,maximum_bytes=4000000)
     value=validate(value);save(output/'result.json',value);report=analyze(value);save(output/'report.json',report);return report
 
 
 def main():
-    if len(sys.argv)!=2: raise SystemExit('usage: anex_concrete_fuel_binding.py OUTPUT_DIR')
-    output=Path(sys.argv[1])
+    if len(sys.argv)!=3: raise SystemExit('usage: anex_concrete_fuel_binding.py OUTPUT_DIR RETAINED_RESULT_JSON')
+    output=Path(sys.argv[1]); retained_path=Path(sys.argv[2])
     try:
-        report=run(output);print(json.dumps(report,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if report['status']=='completed' else 1)
+        report=run(output,retained_path);print(json.dumps(report,ensure_ascii=False,sort_keys=True));raise SystemExit(0 if report['status']=='completed' else 1)
     except SystemExit: raise
     except Exception as exc:
         report=transport.transport_failure(exc) if type(exc).__name__=='SSHBatchError' else {
