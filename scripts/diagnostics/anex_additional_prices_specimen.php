@@ -25,6 +25,11 @@ function anytour_anex_additional_text($value, int $limit = 160): ?string
     if (!is_string($value) || $value === '' || strlen($value) > $limit || preg_match('/[\x00-\x1f\x7f<>]/', $value)) return null;
     return $value;
 }
+function anytour_anex_additional_context_date($value): ?string
+{
+    if (!is_string($value) || !preg_match('/\A(\d{4}-\d{2}-\d{2})(?:T00:00:00)?\z/D', $value, $match)) return null;
+    return $match[1];
+}
 function anytour_anex_additional_query(array $criteria): string
 {
     $expected=['tour'=>2637,'dateBeg'=>'2026-10-05','nights'=>7,'currency'=>3,'page'=>1,'pageSize'=>10];
@@ -93,6 +98,21 @@ function anytour_anex_additional_sanitize_payload($payload): array
     return ['total_count'=>$totalCount,'total_pages'=>$totalPages,'retained_row_count'=>count($rows),'rows'=>$rows,'truncated'=>count($payload['data'])>100,
         'contract'=>'additional_prices_daily_envelope_v4_observed','unit_semantics'=>'passenger_category_rate_fields_observed_application_rule_unknown'];
 }
+/** Fail closed unless every retained supplier row belongs to the exact server-side request context. */
+function anytour_anex_additional_validate_context(array $safe, array $criteria): array
+{
+    $tour=anytour_anex_additional_provider_id($criteria['tour']??null);$currency=anytour_anex_additional_provider_id($criteria['currency']??null);
+    $date=anytour_anex_additional_context_date($criteria['dateBeg']??null);$nights=$criteria['nights']??null;if(is_string($nights)&&ctype_digit($nights))$nights=(int)$nights;
+    if($tour===null||$currency===null||$date===null||!is_int($nights)||$nights<1||$nights>60)throw new RuntimeException('ANEX_ADDITIONAL_CRITERIA');
+    if(!isset($safe['rows'])||!is_array($safe['rows']))throw new RuntimeException('ANEX_ADDITIONAL_RESPONSE');
+    foreach($safe['rows'] as $row){
+        if(!is_array($row)||($row['tour']??null)!==$tour||($row['currency']??null)!==$currency||anytour_anex_additional_context_date($row['date_beg']??null)!==$date||($row['nights']??null)!==$nights){
+            throw new RuntimeException('ANEX_ADDITIONAL_CONTEXT');
+        }
+    }
+    $safe['context_verified']=true;
+    return $safe;
+}
 function anytour_anex_additional_specimen_run(array $input): array
 {
     if(PHP_SAPI!=='cli'||array_keys($input)!==['operation_id','source_sha']||$input['operation_id']!==ANEX_ADDITIONAL_GREEN_GOLD_OPERATION||!is_string($input['source_sha'])||!preg_match('/\A[a-f0-9]{40}\z/D',$input['source_sha']))throw new RuntimeException('ANEX_ADDITIONAL_INPUT');
@@ -109,7 +129,7 @@ function anytour_anex_additional_specimen_run(array $input): array
     $result=['schema_version'=>1]+$input+['observed_at'=>gmdate('c'),'supplier_replay_allowed'=>false,'criteria'=>$criteria,'additional_prices_requests'=>0,'booking_calls'=>0,'mapping_writes'=>0,
         'search_price_current'=>['amount'=>'119448','currency'=>'RUB','source'=>'direct_anex_v10'],'historical_tourvisor_context'=>['display_price'=>'149548','fuel_charge'=>'29596','currency'=>'RUB','stale_for_arithmetic'=>true]];
     try{
-        $http=anytour_anex_additional_http_get(ANEX_B2B_TOKEN,$criteria);$result['additional_prices_requests']=1;$safe=anytour_anex_additional_sanitize_payload($http['body']);
+        $http=anytour_anex_additional_http_get(ANEX_B2B_TOKEN,$criteria);$result['additional_prices_requests']=1;$safe=anytour_anex_additional_sanitize_payload($http['body']);$safe=anytour_anex_additional_validate_context($safe,$criteria);
         $result+=['status'=>'completed','additional_prices'=>$safe,'request_diagnostics'=>$http['diagnostics'],'money_semantics'=>[
             'request_currency_key'=>3,'request_currency_label'=>null,'additional_currency_namespace_verified'=>false,'per_person_or_package'=>'unknown','direction_specific'=>false,
             'selected_flight_specific'=>false,'fuel_only'=>false,'included_in_search_price'=>'unknown','package_identity_verified'=>false,'fuel_equivalence_verified'=>false,'final_price_verified'=>false,'arithmetic_applied'=>false]];
