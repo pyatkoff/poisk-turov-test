@@ -1,0 +1,94 @@
+name: MATCH strong prewrite audit 1971
+on:
+  push:
+    branches: [ops/match-strong-prewrite-audit-1971-20260912-v1]
+    paths: [.github/match-strong-prewrite-audit-1971-20260912-v1.arm]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-strong-prewrite-audit-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-strong-prewrite-audit-1971-20260912-v1
+  OUT: /tmp/match-strong-prewrite-audit-1971-v1
+jobs:
+  audit:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Offline guards and immutable bundle
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-strong-prewrite-audit-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_strong_prewrite_audit.php
+          php tests/hotel-match-strong-prewrite-audit-test.php
+          mkdir -p "$OUT/bundle/scripts/diagnostics" "$OUT/bundle/reports" "$OUT/bundle/app/integrations"
+          cp scripts/diagnostics/hotel_match_strong_prewrite_audit.php "$OUT/bundle/scripts/diagnostics/program.php"
+          cp reports/hotel-match-current-strong-prewrite-1971.json "$OUT/bundle/reports/manifest.json"
+          cp app/integrations/anex-search-mapping-registry.php "$OUT/bundle/app/integrations/registry.php"
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path(os.environ['OUT'])/'bundle/scripts/diagnostics/program.php';s=p.read_text()
+          old="const HMPW_OPERATION='hotel-match-strong-prewrite-audit-1971-20260912-v1';"
+          if s.count(old)!=1: raise SystemExit('operation marker drift')
+          s=s.replace(old,"const HMPW_OPERATION='"+os.environ['OPERATION_ID']+"';",1)
+          old="require_once $root.'/app/integrations/anex-search-mapping-registry.php';"
+          if s.count(old)!=1: raise SystemExit('registry marker drift')
+          p.write_text(s.replace(old,"require_once (string)getenv('HMPW_REGISTRY_PATH');",1))
+          PY
+          php -l "$OUT/bundle/scripts/diagnostics/program.php"
+          sha256sum "$OUT/bundle/scripts/diagnostics/program.php" "$OUT/bundle/reports/manifest.json" "$OUT/bundle/app/integrations/registry.php" > "$OUT/input.sha256"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);inp=d.joinpath('input.sha256').read_text()
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(inp.encode()).hexdigest(),'evidence_result_sha256':'0195a9965c881ce1367da98cf2b21183eea7fe502cb824c64912084f9d649040','read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          d.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with: {name: 'match-strong-prewrite-audit-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - uses: actions/download-artifact@v4
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-strong-prewrite-audit-reservation, merge-multiple: true}
+      - name: Execute one CURRENT strict read-only audit
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          cmp "$OUT/reservation.json" /tmp/match-strong-prewrite-audit-reservation/reservation.json
+          key="$RUNNER_TEMP/match-prewrite-key";known="$RUNNER_TEMP/match-prewrite-known";sock="$RUNNER_TEMP/match-prewrite.sock"
+          cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true;rm -f "$key" "$known";};trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          tar -C "$OUT/bundle" -cf - . | ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'tmp=$(mktemp -d);trap "rm -rf $tmp" EXIT;tar -xf - -C "$tmp"||exit 91;cd "$HOME/www/anytoour.ru"||exit 92;HMPW_MANIFEST_PATH="$tmp/reports/manifest.json" HMPW_REGISTRY_PATH="$tmp/app/integrations/registry.php" php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M "$tmp/scripts/diagnostics/program.php"' > "$OUT/live.stdout" 2> "$OUT/live.stderr"
+          rc=$?;set -e;export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);lines=d.joinpath('live.stdout').read_text(errors='replace').splitlines();rows=[x[10:] for x in lines if x.startswith('HMPW_JSON:')]
+          data=json.loads(rows[-1]) if rows else {'status':'unknown_do_not_replay','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0}
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();d.joinpath('result.json').write_bytes(raw)
+          good=int(os.environ['RC'])==0 and data.get('status')=='read_only_complete' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls'])
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown_do_not_replay'),'source_sha':os.environ['GITHUB_SHA'],'remote_exit_code':int(os.environ['RC']),'result_sha256':hashlib.sha256(raw).hexdigest(),'no_replay':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0};d.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          summary=f"MATCH #1971 strong prewrite audit {receipt['state']}: safe={data.get('safe_count')}/28; counts={data.get('counts')}; remote_rc={receipt['remote_exit_code']}; writes/supplier/TV=0; op {os.environ['OPERATION_ID']} NO-REPLAY."
+          d.joinpath('summary.md').write_text(summary+'\n');print(summary)
+          if not good: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-strong-prewrite-audit-${{ github.run_id }}-result
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/result.json
+            ${{ env.OUT }}/receipt.json
+            ${{ env.OUT }}/summary.md
+            ${{ env.OUT }}/live.stdout
+            ${{ env.OUT }}/live.stderr
+          retention-days: 90
+      - name: Record result
+        if: always() && hashFiles(format('{0}/summary.md', env.OUT)) != ''
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
