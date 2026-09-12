@@ -1,0 +1,57 @@
+name: MATCH core8 CURRENT bulk reconcile v1
+on:
+  push:
+    branches: ['ops/match-residual-ensemble-current-1971-v2']
+    paths: ['.github/match-core8-current-bulk-reconcile-1971-20260912-v1.arm']
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-core8-current-bulk-reconcile-v1, cancel-in-progress: false}
+env: {OPERATION_ID: 'hotel-match-core8-current-bulk-reconcile-1971-20260912-v1', OUT: '/tmp/match-core8-current-bulk-v1'}
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate and establish SSH
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-core8-current-bulk-reconcile-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          php -l scripts/diagnostics/hotel_match_core8_current_bulk_reconcile_v1.php
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/core8-key";sock="$RUNNER_TEMP/core8.sock";known="$RUNNER_TEMP/core8-known"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key"; sleep 20; ok=0
+          for a in 1 2 3 4 5; do rm -f "$sock"; if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER_VALUE@$HOST_VALUE"; then if ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && test -f config.php && printf OK' | grep -qx OK; then ok=1;break;fi;fi;sleep 12;done
+          test "$ok" = 1
+          printf '%s\n' "$sock" > "$OUT/sock"
+          printf '%s\n' '{"operation_id":"hotel-match-core8-current-bulk-reconcile-1971-20260912-v1","state":"reserved_before_db_access","scope":"full_unresolved_anex_vs_core8_current","database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}' > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-core8-current-bulk-v1-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute CURRENT read-only mass pass
+        env: {HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          sock="$(cat "$OUT/sock")"; set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1536M' < scripts/diagnostics/hotel_match_core8_current_bulk_reconcile_v1.php > "$OUT/stdout" 2> "$OUT/stderr"; rc=$?; set -e
+          grep '^CORE8_BULK:' "$OUT/stdout"|tail -1|sed 's/^CORE8_BULK://' > "$OUT/result.json" || true
+          export RC="$rc"
+          python3 - <<'PY'
+          import json,os,hashlib
+          from pathlib import Path
+          d=Path(os.environ['OUT']);p=d/'result.json';x=json.loads(p.read_text()) if p.exists() and p.stat().st_size else {'status':'unknown','safe_message':'marker_missing'};raw=p.read_bytes() if p.exists() else b''
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':x.get('status'),'catalog_anex_rows':x.get('catalog_anex_rows'),'protected_anex_rows':x.get('protected_anex_rows'),'safe_count':x.get('safe_count'),'needs_extra_count':x.get('needs_extra_count'),'result_sha256':hashlib.sha256(raw).hexdigest(),'run_id':int(os.environ['GITHUB_RUN_ID']),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (d/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 core8 CURRENT bulk reconcile: **{x.get('status')}**. Scanned ANEX `{x.get('catalog_anex_rows')}`, protected `{x.get('protected_anex_rows')}`, prepared safe **{x.get('safe_count')}**, needs-extra `{x.get('needs_extra_count')}`. DB/mapping/supplier/Tourvisor writes/calls 0. Run `{os.environ['GITHUB_RUN_ID']}`. NO-REPLAY."
+          (d/'summary.md').write_text(s+'\n');print(s)
+          raise SystemExit(0 if int(os.environ['RC'])==0 and x.get('status')=='completed' else 2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-core8-current-bulk-v1-${{ github.run_id }}-result', path: '${{ env.OUT }}/', retention-days: 90}
+      - name: Record
+        if: always()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: test -f "$OUT/summary.md" && gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$OUT/summary.md" || true
