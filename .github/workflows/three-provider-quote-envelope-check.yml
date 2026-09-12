@@ -8,6 +8,7 @@ on:
       - 'app/integrations/three-provider-offer-contract.php'
       - 'app/integrations/three-provider-operator.php'
       - 'tests/three-provider-quote-envelope-test.php'
+      - 'tests/three-provider-quote-reported-facts-test.php'
       - '.github/workflows/three-provider-quote-envelope-check.yml'
 permissions:
   contents: read
@@ -24,7 +25,9 @@ jobs:
         run: |
           php -l app/integrations/three-provider-quote-envelope.php
           php -l tests/three-provider-quote-envelope-test.php
+          php -l tests/three-provider-quote-reported-facts-test.php
           php -d allow_url_fopen=0 tests/three-provider-quote-envelope-test.php
+          php -d allow_url_fopen=0 tests/three-provider-quote-reported-facts-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-quote-envelope.php').read_text()
@@ -36,6 +39,10 @@ jobs:
           assert "'selection_state' => 'disabled'" in src
           assert "'booking_enabled' => false" in src
           assert "'search_price_fuel_relation'" not in src
+          assert "'fuel_surcharges_reported'" in src
+          assert "'operator_currency_rates_reported'" in src
+          assert "'calc_money_facts_reported'" in src
+          assert "'transport_markups_reported'" in src
           for forbidden in ('curl_', 'file_get_contents(', 'PDO', 'bron(', 'bron_ticket', 'supplier_offer_id', 'claiminc'):
               assert forbidden not in src
           print('Three-provider quote envelope static boundary: PASS')
