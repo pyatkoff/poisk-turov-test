@@ -83,7 +83,9 @@ Money facts всегда раздельны:
 - strict money provenance и `observed_at`;
 - canonical offer envelope/dedupe/context guards;
 - air-search capability boundary: catalog/discovery evidence отдельно от upstream supplier-search filtering;
-- stars/category evidence boundary: supplier label observational only, canonical category только через current accepted local identity.
+- stars/category evidence boundary: supplier label observational only, canonical category только через current accepted local identity;
+- hotel rating: local-only canonical fact, supplier score observational only;
+- hotel services/amenities: local-only canonical list, supplier labels/codes observational only.
 
 ### Direct ANEX
 
@@ -161,6 +163,39 @@ Canonical P2 boundary для stars/category:
 
 Не создавать второй category wrapper ради тех же правил. Новое supplier evidence может повышать только явно доказанный provider-specific capability, не identity authority.
 
+### Hotel rating semantics
+
+#2107 merged `1bbf4e538115a29c10c7c539d783552cdc6827d5`; exact PR head `bacbd6023bee5bb19084b8fdf33b1fbcd01c2221`.
+Focused run `34671228420` SUCCESS: 69 checks. Security `34671228371` SUCCESS.
+
+Canonical P2 boundary для customer/hotel rating:
+
+- rating остаётся local Search3/catalog facet;
+- canonical rating имеет status `verified` только из current accepted local identity и валидного local `>0..5` значения;
+- supplier/raw score (`4.7`, `9.2/10`, label и т.п.) сохраняется только как bounded observation;
+- supplier rating нельзя автоматически масштабировать/нормализовать в local rating;
+- generic upstream supplier filter запрещён (`local_only`, `allowed=false`);
+- numeric-looking supplier score не универсален;
+- cross-provider equivalence=false;
+- совпадение rating никогда не является hotel identity proof.
+
+### Hotel services/amenities semantics
+
+#2108 merged `c095df6b5094e442a3e0066121d5df2f66bc2992`; exact final PR head `9e4b7aa95897a2f9ddf3e3e065df8d9ecfe35135`.
+Focused run `34673612499` SUCCESS: 67 checks. Aggregate `34673612490` SUCCESS. Security `34673612515` SUCCESS.
+
+Canonical P2 boundary для hotel services/amenities:
+
+- canonical services — local Search3/catalog list и имеют status `verified` только при current accepted local identity и явно предоставленном local list;
+- explicit local empty list отличается от unknown/null;
+- supplier labels/codes/lists сохраняются только как bounded observations;
+- supplier service code/ID не универсален и не переводится автоматически в local service;
+- cross-provider equivalence=false;
+- generic upstream supplier filtering запрещён (`local_only`, `allowed=false`);
+- service similarity никогда не является hotel identity proof и не создаёт mapping write.
+
+Первый aggregate CI на PR корректно обнаружил PHP key coercion numeric-string supplier code (`"77"` → integer key). Реализация исправлена на strict string-preserving dedupe; финальный exact head зелёный. Не возвращаться к associative-key dedupe, которое меняет тип opaque supplier code.
+
 ## 5. P6 source handoff — DONE
 
 #2096 merged `13fef359e80b7eb24c6569b76433babbb44c2dbe`.
@@ -182,8 +217,10 @@ Receiving wiring, renderer/controller/selected-state и публикация п�
 
 Base gate #2097 merged `d37b7eff514354a773ea773c75fd782c1312bf87`.
 Air-semantics extension #2101 merged `828cab90b39a51879433c266f90d2c6bd1617912`.
-Hotel-category extension #2104 merged `94d4f4a4247bad1a9155391ba9af71e2c1385f81`; exact PR head `36ee05156dfe5144e7b9816da9caa6ae3d211c0b`.
-Latest aggregate readiness run `34668552695` SUCCESS; Security `34668552687` SUCCESS.
+Hotel-category extension #2104 merged `94d4f4a4247bad1a9155391ba9af71e2c1385f81`.
+Hotel-rating extension #2107 merged `1bbf4e538115a29c10c7c539d783552cdc6827d5`.
+Hotel-services extension #2108 merged `c095df6b5094e442a3e0066121d5df2f66bc2992`; exact PR head `9e4b7aa95897a2f9ddf3e3e065df8d9ecfe35135`.
+Latest aggregate readiness run `34673612490` SUCCESS; Security `34673612515` SUCCESS.
 
 На одном exact head без network/secrets/DB прошли:
 
@@ -192,12 +229,14 @@ Latest aggregate readiness run `34668552695` SUCCESS; Security `34668552687` SUC
 - retained context: 33;
 - air search/filter semantics: 114;
 - hotel stars/category semantics: 57;
+- hotel rating semantics: 69;
+- hotel services semantics: 67;
 - verified quote envelope: 54;
 - INT→SEARCH handoff: 97;
 - direct ANEX saved-offer bridge: 115;
-- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled, air upstream filtering fail-closed, supplier category labels не получают identity/canonical authority.
+- static boundary: no network/DB/booking primitives, no synthetic arithmetic, selection/booking disabled, air upstream filtering fail-closed, supplier category/rating/services facts не получают identity/canonical authority.
 
-Итого aggregate contract matrix: **719 checks**.
+Итого aggregate contract matrix: **855 checks**.
 
 Это означает **source-side readiness INT contracts**, а не production approval и не UI/publication acceptance.
 
@@ -209,7 +248,7 @@ Latest aggregate readiness run `34668552695` SUCCESS; Security `34668552687` SUC
 
 P3 identity/matching никогда не становится fallback-задачей INT.
 
-После #2096/#2097/#2100/#2101/#2103/#2104 запрещено создавать второй quote/handoff/air-filter/category wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
+После #2096/#2097/#2100/#2101/#2103/#2104/#2107/#2108 запрещено создавать второй quote/handoff/air-filter/category/rating/services wrapper ради активности. Следующая INT работа допустима только если даёт новый evidence/value.
 
 ### P0/P1 — следующий eligible work
 
@@ -250,7 +289,9 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 | region/resort/subregion | не отправлять upstream без verified mapping |
 | hotel | current accepted identity либо observation; P3 writes external |
 | stars/category | raw supplier label = observation only; canonical 1..5 только из current accepted local identity; no identity/equivalence proof |
-| rating/services/types | local_only, пока supplier capability не доказана |
+| rating | local_only/closed; canonical 0..5 only from current accepted local identity; supplier score observation only |
+| services | local_only/closed; canonical list only from current accepted local identity; supplier labels/codes observation only |
+| types | local_only пока supplier capability не доказана; это следующий ещё не закрытый member прежней `rating/services/types` группы |
 | meal | raw + canonical key; verified families only |
 | room/placement | raw + normalized; placement separate до parity |
 | operator | provider != operator; supplier codes private |
