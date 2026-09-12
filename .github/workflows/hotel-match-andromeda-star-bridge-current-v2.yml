@@ -1,18 +1,18 @@
-name: MATCH Andromeda star bridge CURRENT v2
-run-name: MATCH Andromeda star bridge CURRENT #1971 v2
+name: MATCH Andromeda star bridge CURRENT v3
+run-name: MATCH Andromeda star bridge CURRENT #1971 v3
 on:
   push:
     branches: ['ops/match-andromeda-star-bridge-current-1971-v2']
-    paths: ['.github/match-andromeda-star-bridge-current-1971-v2.arm']
+    paths: ['.github/match-andromeda-star-bridge-current-1971-v3.arm']
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: hotel-match-andromeda-star-bridge-current-1971-v2
+  group: hotel-match-andromeda-star-bridge-current-1971-v3
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-star-bridge-review-1971-20260912-v2
+  OPERATION_ID: hotel-match-andromeda-star-bridge-review-1971-20260912-v3
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -38,7 +38,7 @@ jobs:
           assert 'same_provider_target_claim_blocks' in s
           for bad in ('INSERT INTO','UPDATE ','DELETE FROM','REPLACE INTO','curl_init','https://','http://'):
               assert bad.lower() not in s.lower(), bad
-          print('MATCH_STAR_BRIDGE_CURRENT_V2_SCOPE_OK')
+          print('MATCH_STAR_BRIDGE_CURRENT_V3_SCOPE_OK')
           PY
   review:
     needs: validate
@@ -51,8 +51,8 @@ jobs:
       - name: Verify immutable arm
         run: |
           set -euo pipefail
-          test "$(cat .github/match-andromeda-star-bridge-current-1971-v2.arm)" = "$OPERATION_ID"
-      - name: Prepare SSH key and zero-DB preflight
+          test "$(cat .github/match-andromeda-star-bridge-current-1971-v3.arm)" = "$OPERATION_ID"
+      - name: Prepare SSH key and bounded zero-DB preflight
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -64,8 +64,16 @@ jobs:
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_STAR_BRIDGE_PREFLIGHT_OK')"
-          test "$out" = MATCH_STAR_BRIDGE_PREFLIGHT_OK
+          ok=0
+          for attempt in 1 2 3; do
+            set +e
+            out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru"; { test -f data/db-v1.php || test -f v2/data/db-v1.php; }; printf MATCH_STAR_BRIDGE_PREFLIGHT_OK' 2>"$RUNNER_TEMP/preflight.err")"
+            rc=$?
+            set -e
+            if [[ $rc -eq 0 && "$out" == MATCH_STAR_BRIDGE_PREFLIGHT_OK ]]; then ok=1; break; fi
+            sleep $((attempt * 2))
+          done
+          test "$ok" = 1
       - name: Reserve before CURRENT DB access
         run: |
           set -euo pipefail
@@ -81,8 +89,8 @@ jobs:
       - name: Preserve durable reservation
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-andromeda-star-bridge-review-1971-20260912-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-andromeda-star-bridge-review-1971-20260912-v2/reservation.json
+          name: hotel-match-andromeda-star-bridge-review-1971-20260912-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-bridge-review-1971-20260912-v3/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Run server-CURRENT read-only mass review
@@ -103,7 +111,7 @@ jobs:
           bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
           review=body('scripts/diagnostics/hotel_match_andromeda_star_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
           old="const HMASBR_OPERATION = 'hotel-match-andromeda-star-bridge-review-1971-20260911-v1';"
-          new="const HMASBR_OPERATION = 'hotel-match-andromeda-star-bridge-review-1971-20260912-v2';"
+          new="const HMASBR_OPERATION = 'hotel-match-andromeda-star-bridge-review-1971-20260912-v3';"
           if review.count(old)!=1: raise RuntimeError('operation_constant_not_unique')
           review=review.replace(old,new,1)
           wrapper=r'''
@@ -134,8 +142,8 @@ jobs:
         id: result_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hotel-match-andromeda-star-bridge-review-1971-20260912-v2-result
-          path: ${{ runner.temp }}/hotel-match-andromeda-star-bridge-review-1971-20260912-v2/
+          name: hotel-match-andromeda-star-bridge-review-1971-20260912-v3-result
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-bridge-review-1971-20260912-v3/
           if-no-files-found: warn
           retention-days: 90
       - name: Record MATCH result
