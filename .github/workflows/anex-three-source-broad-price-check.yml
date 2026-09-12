@@ -10,8 +10,10 @@ on:
   push:
     branches:
       - 'ops/int-anex-green-gold-program-v8-20260912'
+      - 'ops/int-anex-transport-preflight-v2-20260912'
     paths:
       - '.github/ops/anex-three-source-green-gold-v8-20260912'
+      - '.github/ops/anex-transport-preflight-v2-20260912'
 permissions:
   contents: read
 concurrency:
@@ -52,9 +54,40 @@ jobs:
           assert 'program_fuel_cohorts' in py and 'anex_program_fuel_cohorts' in py and 'p3_matching_external' in py
           workflow=Path('.github/workflows/anex-three-source-broad-price-check.yml').read_text()
           assert 'ops/int-anex-green-gold-program-v8-20260912' in workflow
+          assert 'ops/int-anex-transport-preflight-v2-20260912' in workflow
+          assert 'Verify SSH transport without supplier access' in workflow
           assert 'cancel-in-progress: false' in workflow and 'if: always()' in workflow
           print('Green Gold three-source v8 static boundary: PASS')
           PY
+  transport_preflight:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-transport-preflight-v2-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Bind exact transport preflight
+        run: |
+          test "$(cat .github/ops/anex-transport-preflight-v2-20260912)" = "operation=int-anex-transport-preflight-v2;source=cd4bb352a765b11396070dc69ea9b9fec1589d8d;owner=2026-09-12;suppliers=0"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+      - name: Verify SSH transport without supplier access
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -T 10 -H "$ANYTOOUR_DEPLOY_HOST" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          out="$(ssh -o BatchMode=yes -o ConnectTimeout=15 -o ConnectionAttempts=1 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 "$ANYTOOUR_DEPLOY_USER@$ANYTOOUR_DEPLOY_HOST" 'printf "INT_TRANSPORT_OK\\n"; pwd')"
+          printf '%s\n' "$out"
+          test "$(printf '%s\n' "$out" | sed -n '1p')" = 'INT_TRANSPORT_OK'
   live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-green-gold-program-v8-20260912' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
