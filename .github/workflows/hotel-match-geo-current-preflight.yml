@@ -2,12 +2,12 @@ name: MATCH geo CURRENT preflight 1971
 on:
   push:
     branches: [ops/match-geo-current-preflight-1971-20260912-v1]
-    paths: [.github/match-geo-current-preflight-1971-20260912-v1.arm]
+    paths: [.github/match-geo-current-preflight-1971-20260912-v2.arm]
 permissions: {contents: read, actions: read, issues: write}
-concurrency: {group: anytour-match-geo-current-preflight-1971-v1, cancel-in-progress: false}
+concurrency: {group: anytour-match-geo-current-preflight-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-geo-current-preflight-1971-20260912-v1
-  OUT: /tmp/match-geo-current-preflight-1971
+  OPERATION_ID: hotel-match-geo-current-preflight-1971-20260912-v2
+  OUT: /tmp/match-geo-current-preflight-1971-v2
 jobs:
   preflight:
     if: github.run_attempt == 1
@@ -19,22 +19,38 @@ jobs:
       - name: Offline guards and immutable reservation
         run: |
           set -euo pipefail
-          test "$(cat .github/match-geo-current-preflight-1971-20260912-v1.arm)" = "$OPERATION_ID"
+          test "$(cat .github/match-geo-current-preflight-1971-20260912-v2.arm)" = "$OPERATION_ID"
           php -l scripts/diagnostics/hotel_match_geo_current_preflight.php
           php tests/hotel-match-geo-current-preflight-test.php
-          mkdir -p "$OUT"
-          sha256sum scripts/diagnostics/hotel_match_geo_current_preflight.php reports/hotel-match-geo-current-preflight-manifest-1971.json > "$OUT/input.sha256"
+          mkdir -p "$OUT/bundle/scripts/diagnostics" "$OUT/bundle/reports" "$OUT/bundle/app/integrations"
+          cp scripts/diagnostics/hotel_match_geo_current_preflight.php "$OUT/bundle/scripts/diagnostics/program.php"
+          cp reports/hotel-match-geo-current-preflight-manifest-1971.json "$OUT/bundle/reports/manifest.json"
+          cp app/integrations/anex-search-mapping-registry.php "$OUT/bundle/app/integrations/registry.php"
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path(os.environ['OUT'])/'bundle/scripts/diagnostics/program.php';s=p.read_text()
+          old="const HMGP_OPERATION = 'hotel-match-geo-current-preflight-1971-20260912-v1';"
+          new="const HMGP_OPERATION = '"+os.environ['OPERATION_ID']+"';"
+          if s.count(old)!=1: raise SystemExit('operation marker drift')
+          s=s.replace(old,new,1)
+          old="require_once $root.'/app/integrations/anex-search-mapping-registry.php';"
+          new="require_once (string)getenv('HMGP_REGISTRY_PATH');"
+          if s.count(old)!=1: raise SystemExit('registry marker drift')
+          p.write_text(s.replace(old,new,1))
+          PY
+          php -l "$OUT/bundle/scripts/diagnostics/program.php"
+          sha256sum "$OUT/bundle/scripts/diagnostics/program.php" "$OUT/bundle/reports/manifest.json" "$OUT/bundle/app/integrations/registry.php" > "$OUT/input.sha256"
           python3 - <<'PY'
           import json,os,pathlib,hashlib
           p=pathlib.Path(os.environ['OUT']); inp=p.joinpath('input.sha256').read_text()
-          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(inp.encode()).hexdigest(),'read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','source_sha':os.environ['GITHUB_SHA'],'input_digest':hashlib.sha256(inp.encode()).hexdigest(),'predecessor_operation':'hotel-match-geo-current-preflight-1971-20260912-v1','predecessor_state':'unknown_after_reserved_wrapper_exit','read_only':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
           p.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         id: reserve
         with: {name: 'match-geo-current-preflight-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
       - uses: actions/download-artifact@v4
-        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-geo-current-preflight-reservation, merge-multiple: true}
+        with: {artifact-ids: '${{ steps.reserve.outputs.artifact-id }}', path: /tmp/match-geo-current-preflight-v2-reservation, merge-multiple: true}
       - name: Execute one CURRENT read-only snapshot
         env:
           KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
@@ -42,21 +58,23 @@ jobs:
           USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
         run: |
           set -euo pipefail
-          cmp "$OUT/reservation.json" /tmp/match-geo-current-preflight-reservation/reservation.json
+          cmp "$OUT/reservation.json" /tmp/match-geo-current-preflight-v2-reservation/reservation.json
           key="$RUNNER_TEMP/match-geo-key"; known="$RUNNER_TEMP/match-geo-known"; sock="$RUNNER_TEMP/match-geo.sock"
           cleanup(){ ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }; trap cleanup EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           ssh -M -S "$sock" -fnNT -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
-          tar -cf - scripts/diagnostics/hotel_match_geo_current_preflight.php reports/hotel-match-geo-current-preflight-manifest-1971.json | ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'set -e; tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; tar -xf - -C "$tmp"; cd "$HOME/www/anytoour.ru"; HMGP_MANIFEST_PATH="$tmp/reports/hotel-match-geo-current-preflight-manifest-1971.json" php -d display_errors=0 -d log_errors=0 "$tmp/scripts/diagnostics/hotel_match_geo_current_preflight.php"' > "$OUT/live.stdout" 2> "$OUT/live.stderr"
+          set +e
+          tar -C "$OUT/bundle" -cf - . | ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; tar -xf - -C "$tmp" || exit 91; cd "$HOME/www/anytoour.ru" || exit 92; HMGP_MANIFEST_PATH="$tmp/reports/manifest.json" HMGP_REGISTRY_PATH="$tmp/app/integrations/registry.php" php -d display_errors=0 -d log_errors=0 "$tmp/scripts/diagnostics/program.php"' > "$OUT/live.stdout" 2> "$OUT/live.stderr"
+          rc=$?; set -e; export RC="$rc"
           python3 - <<'PY'
           import json,os,pathlib,hashlib
-          d=pathlib.Path(os.environ['OUT']); lines=d.joinpath('live.stdout').read_text(errors='replace').splitlines(); rows=[x[10:] for x in lines if x.startswith('HMGP_JSON:')]
-          data=json.loads(rows[-1]) if rows else {'status':'unknown_do_not_replay','operation_id':os.environ['OPERATION_ID'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0}
+          d=pathlib.Path(os.environ['OUT']);lines=d.joinpath('live.stdout').read_text(errors='replace').splitlines();rows=[x[10:] for x in lines if x.startswith('HMGP_JSON:')]
+          data=json.loads(rows[-1]) if rows else {'status':'unknown_do_not_replay','operation_id':os.environ['OPERATION_ID'],'reason':'result_marker_missing','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0}
           raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode();d.joinpath('result.json').write_bytes(raw)
-          good=data.get('status')=='read_only_complete' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls'])
-          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown_do_not_replay'),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'no_replay':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0};d.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
-          c=data.get('counts') or {};summary=f"MATCH #1971 geo CURRENT preflight {receipt['state']}: manifest244; unresolved={data.get('current_unresolved_total')}; already_same={data.get('current_already_same_total')}; ANEX={c.get('anex')}; Andromeda={c.get('andromeda')}; writes/supplier/TV=0. Operation {os.environ['OPERATION_ID']} NO-REPLAY."
+          good=int(os.environ['RC'])==0 and data.get('status')=='read_only_complete' and data.get('operation_id')==os.environ['OPERATION_ID'] and all(data.get(k)==0 for k in ['database_writes','mapping_writes','supplier_calls','tourvisor_calls'])
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if good else data.get('status','unknown_do_not_replay'),'source_sha':os.environ['GITHUB_SHA'],'remote_exit_code':int(os.environ['RC']),'result_sha256':hashlib.sha256(raw).hexdigest(),'no_replay':True,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0};d.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          c=data.get('counts') or {};summary=f"MATCH #1971 geo CURRENT preflight v2 {receipt['state']}: manifest244; unresolved={data.get('current_unresolved_total')}; already_same={data.get('current_already_same_total')}; ANEX={c.get('anex')}; Andromeda={c.get('andromeda')}; remote_rc={receipt['remote_exit_code']}; writes/supplier/TV=0. Operation {os.environ['OPERATION_ID']} NO-REPLAY."
           d.joinpath('summary.md').write_text(summary+'\n');print(summary)
           if not good: raise SystemExit(2)
           PY
@@ -69,6 +87,7 @@ jobs:
             ${{ env.OUT }}/result.json
             ${{ env.OUT }}/receipt.json
             ${{ env.OUT }}/summary.md
+            ${{ env.OUT }}/live.stdout
             ${{ env.OUT }}/live.stderr
           retention-days: 90
       - name: Record result
