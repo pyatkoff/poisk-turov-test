@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   slice:
-    if: github.run_attempt == 1 && github.run_number == 1
+    if: github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -33,7 +33,7 @@ jobs:
       - name: Derive deeper paced TV+ANEX-only evidence program
         run: |
           set -euo pipefail
-          test "$(cat .github/match-tourvisor-high-yield-tv-anex-1971-20260912-v2.arm)" = "$OPERATION_ID"
+          test "$(head -n1 .github/match-tourvisor-high-yield-tv-anex-1971-20260912-v2.arm)" = "$OPERATION_ID"
           mkdir -p "$ARTIFACT_DIR"
           curl -fsSL --retry 2 --retry-delay 1 "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$FROZEN_SOURCE_SHA/scripts/diagnostics/hotel_match_three_provider_111_full_pages_v6.php" -o "$ARTIFACT_DIR/frozen.php"
           export PROGRAM="$ARTIFACT_DIR/program.php"
