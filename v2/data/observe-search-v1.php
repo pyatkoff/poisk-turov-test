@@ -1,5 +1,5 @@
 <?php
-/** Accept a completed search id, refetch trusted Tourvisor rows and persist price observations. */
+/** Accept a completed search id, refetch trusted Tourvisor rows and persist price + operator identity observations. */
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
@@ -66,6 +66,7 @@ ignore_user_abort(true);
 try {
     require_once __DIR__ . '/tourvisor-client-v1.php';
     require_once __DIR__ . '/price-observer-v1.php';
+    require_once __DIR__ . '/operator-identity-observer-v1.php';
 
     $rows = v2_data_tv_get('/tours/search/' . $searchId, ['limit' => 100]);
     if (!array_is_list($rows)) {
@@ -82,15 +83,25 @@ try {
         $trusted[] = $hotel;
     }
 
-    $result = v2_data_observe_search_results($trusted, [
+    $context = [
         'searchId' => $searchId,
         'departureId' => $departureId,
         'countryId' => $countryId,
         'adults' => $adults,
         'childs' => $childs,
         'currency' => 'RUB',
-    ]);
-    error_log('ANYTOUR_PRICE_OBSERVER search=' . $searchId . ' rows=' . count($trusted) . ' written=' . (int)($result['written'] ?? 0) . ' ignored=' . (int)($result['ignored'] ?? 0));
+        'source' => 'user_search',
+    ];
+    $result = v2_data_observe_search_results($trusted, $context);
+    $identity = v2_data_observe_operator_identities($trusted, $context);
+    error_log(
+        'ANYTOUR_PRICE_OBSERVER search=' . $searchId .
+        ' rows=' . count($trusted) .
+        ' written=' . (int)($result['written'] ?? 0) .
+        ' ignored=' . (int)($result['ignored'] ?? 0) .
+        ' identity_seen=' . (int)($identity['seen'] ?? 0) .
+        ' identity_written=' . (int)($identity['written'] ?? 0)
+    );
 } catch (Throwable $e) {
     // Persistence is deliberately fail-open: a data-layer failure must never
     // affect the completed live search that triggered this background request.
