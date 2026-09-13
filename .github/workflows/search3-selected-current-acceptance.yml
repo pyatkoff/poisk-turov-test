@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/search3/acceptance/selected-lead-current.json'
       - 'tests/search3-selected-current-acceptance.cjs'
+      - 'tests/search3-screenreader-current-acceptance.cjs'
       - 'v2/tour-controller-v4.js'
       - 'v2/search3-results-filters-v1.css'
       - 'v2/search3-selected-flow-v2.js'
@@ -52,6 +53,7 @@ jobs:
           git diff --check
           python3 -B scripts/build/search3_assets.py --check
           node --check tests/search3-selected-current-acceptance.cjs
+          node --check tests/search3-screenreader-current-acceptance.cjs
           php tests/search3-shared-runtime-smoke.php
           php tests/search-handoff-smoke.php
 
@@ -112,6 +114,7 @@ jobs:
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_SELECTED_ACCEPTANCE_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done
           GITHUB_SHA="$SEARCH3_SELECTED_SOURCE_SHA" node tests/search3-selected-current-acceptance.cjs
+          GITHUB_SHA="$SEARCH3_SELECTED_SOURCE_SHA" node tests/search3-screenreader-current-acceptance.cjs
 
       - name: Retain exact selected and lead evidence
         if: always()
