@@ -2,18 +2,18 @@ name: MATCH Andromeda star semantics
 run-name: MATCH Andromeda star semantics #1971
 on:
   push:
-    branches: ['feat/match-andromeda-star-semantics-1971-20260913-v1']
-    paths: ['.github/match-andromeda-star-semantics-1971-20260913-v1.arm']
+    branches: ['feat/match-andromeda-star-semantics-1971-20260913-v3']
+    paths: ['.github/match-andromeda-star-semantics-1971-20260913-v3.arm']
 permissions:
   contents: read
   issues: write
 concurrency:
-  group: match-andromeda-star-semantics-1971-20260913-v1
+  group: match-andromeda-star-semantics-1971-20260913-v3
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-star-semantics-1971-20260913-v1
-  STRICT_OPERATION_ID: hotel-match-andromeda-star-semantics-strict-1971-20260913-v1
-  BULK_OPERATION_ID: hotel-match-andromeda-star-semantics-bulk-1971-20260913-v1
+  OPERATION_ID: hotel-match-andromeda-star-semantics-1971-20260913-v3
+  STRICT_OPERATION_ID: hotel-match-andromeda-star-semantics-strict-1971-20260913-v3
+  BULK_OPERATION_ID: hotel-match-andromeda-star-semantics-bulk-1971-20260913-v3
   HISTORICAL_SOURCE: d397e795335f3a7c0b4878ce38029e22c0dd6f11
   EXPECTED_BULK_BLOB: 4ef3e150bfbec625d1baf1c425e2a2cd6999e875
   EXPECTED_STRICT_BLOB: 9c08276f69a3c827e2a03ed3a01188b57d21fb0a
@@ -68,8 +68,8 @@ jobs:
       - name: Preserve reservation before SSH
         uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-star-semantics-1971-20260913-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v1/reservation.json
+          name: match-andromeda-star-semantics-1971-20260913-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v3/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Run CURRENT semantics audit
@@ -102,7 +102,7 @@ jobs:
               p=subprocess.run(cmd,text=True,capture_output=True,timeout=540,env=clean)
           try: result=json.loads(p.stdout)
           except Exception:
-              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'failed','exit_code':p.returncode,'stderr_tail':p.stderr[-1400:],'database_writes':0,'mapping_writes':0,'supplier_calls':0},sort_keys=True)+'\n'); raise
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'failed','exit_code':p.returncode,'stderr_tail':p.stderr[-1400:],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0},sort_keys=True)+'\n'); raise
           raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'review.json').write_bytes(raw)
           if p.returncode!=0 or result.get('status')!='completed' or result.get('database_writes')!=0 or result.get('supplier_calls')!=0: raise RuntimeError('audit_not_completed')
           receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'review_sha256':hashlib.sha256(raw).hexdigest(),'accepted_examined':result['accepted_examined'],'accepted_parsed_star':result['accepted_parsed_star'],'star_mismatch_blocked_rows':result['star_mismatch_blocked_rows'],'blocked_semantic_status_counts':result['blocked_semantic_status_counts'],'blocked_field_counts':result['blocked_field_counts'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0}
@@ -115,8 +115,8 @@ jobs:
         id: result
         uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-star-semantics-1971-20260913-v1-result
-          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v1/
+          name: match-andromeda-star-semantics-1971-20260913-v3-result
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v3/
           if-no-files-found: warn
           retention-days: 90
       - name: Record result
