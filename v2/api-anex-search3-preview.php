@@ -40,7 +40,7 @@ function anytour_anex_search3_operator_scope(PDO $pdo, $values): string
     if ($values === []) return 'all';
     $wanted = [];
     foreach ($values as $value) {
-        if (!is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) {
+        if (is_bool($value) || !is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) {
             throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
         }
         $wanted[(string) $value] = true;
@@ -122,7 +122,7 @@ function anytour_anex_search3_dictionary($client, string $action, array $params,
 function anytour_anex_search3_core(array $params): array
 {
     foreach (['departureId', 'countryId'] as $key) {
-        if (!is_scalar($params[$key] ?? null) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $params[$key])) {
+        if (is_bool($params[$key] ?? null) || !is_scalar($params[$key] ?? null) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $params[$key])) {
             throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
         }
     }
@@ -156,7 +156,7 @@ function anytour_anex_search3_core(array $params): array
     foreach (['hotelIds', 'regionIds', 'subregionIds'] as $key) {
         $values = $params[$key] ?? [];
         if (!is_array($values) || count($values) > 30) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
-        foreach ($values as $value) if (!is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
+        foreach ($values as $value) if (is_bool($value) || !is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
     }
     if (($params['currency'] ?? 'RUB') !== 'RUB') throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
     return anytour_anex_search3_week($core);
