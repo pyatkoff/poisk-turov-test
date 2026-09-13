@@ -15,6 +15,7 @@ const price = read('v2/flight-price-sync-v1.js');
 assert.match(price, /function valueOfPrice\(v\)/, 'canonical price owner retains numeric extraction');
 assert.match(price, /new CustomEvent\('v2:tour-price-updated'/, 'canonical price owner retains update event');
 assert.match(price, /Стоимость с выбранным рейсом/, 'selected price keeps confirmed flight total');
+assert.match(price, /return value\?money\(value\)\+' ₽':'без доплаты'/, 'selected flight fee distinguishes explicit zero from a missing fee');
 const controller = read('v2/tour-controller-v4.js');
 assert.match(controller, /leadPayload\(new FormData\(form\)\)/, 'canonical controller retains lead payload');
 const lead = read('v2/lead-form-guard-v1.js');

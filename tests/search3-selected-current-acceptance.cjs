@@ -25,6 +25,7 @@ const tour = {
   placement: 'DBL + CHD',
   operator: { name: 'ANEX Tour' },
   isCharter: true,
+  fuelCharge: 0,
   picture,
   hotelDescription: 'Проверочное описание выбранного отеля. '.repeat(14)
 };
@@ -111,6 +112,8 @@ async function run(browser, width) {
     assert.equal(columnCount(detail.headColumns), expected.selected_head_columns, `selected header columns at ${width}`);
     assert.equal(columnCount(detail.factColumns), expected.fact_columns, `selected fact columns at ${width}`);
     assert.deepEqual(detail.facts.map(item => item.label), contract.required_fact_labels, 'selected facts stay complete and ordered');
+    assert.equal(detail.facts.find(item => item.label === 'Топливный сбор')?.value, 'без доплаты',
+      'selected summary distinguishes an explicit zero fuel charge from an unknown fee');
     assert.match(detail.price.replace(/\s/g, ''), /148500₽/, 'selected total stays visible');
     assert.equal(detail.title, 'SUNRISE Resort & Spa', 'selected hotel identity stays visible');
     assert.equal(detail.dateText, '05.10.2026', 'selected date uses the canonical renderer display');
