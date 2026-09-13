@@ -2,7 +2,7 @@
 declare(strict_types=1);
 if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_match_star_semantics_current_review.php';
-const HMLGS_OPERATION='hotel-match-learned-geo-star-review-2333-20260913-v4';
+const HMLGS_OPERATION='hotel-match-learned-geo-star-review-2333-20260913-v5';
 function hmlgs_latin(string $v): string {$v=mb_strtolower($v,'UTF-8');return strtr($v,['щ'=>'shch','ш'=>'sh','ч'=>'ch','ц'=>'ts','ю'=>'yu','я'=>'ya','ё'=>'e','ж'=>'zh','х'=>'kh','а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u','ф'=>'f','ы'=>'y','э'=>'e','ь'=>'','ъ'=>'']);}
 function hmlgs_place_key(string $v): string {return fc_norm(hmlgs_latin(trim($v)));}
 function hmlgs_target_keys(array $h): array {$out=[];foreach([(string)($h['region_name']??''),(string)($h['subregion_name']??'')] as $v){$k=hmlgs_place_key($v);if($k!=='')$out[$k]=1;}return array_keys($out);}
