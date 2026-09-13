@@ -1,0 +1,13 @@
+operation_id=hotel-match-current-direct-operator-key-1971-20260913-v1
+claim=996#5652051567
+mode=current_db_read_only_direct_operator_key
+source_merge=44641d4613a73384cb571436679983104290bca2
+source_artifact_id=10109677472
+source_price_sha256=c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9
+pairs_sha256=4cf57e2710b140366e0731796376a760945f58f1ebf9f90e4ebaa06b839259ee
+input_pairs=14
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
