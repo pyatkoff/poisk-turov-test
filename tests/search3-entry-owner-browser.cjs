@@ -6,6 +6,63 @@ const path = require('node:path');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
 fs.mkdirSync(output, { recursive: true });
+async function checkLocalHistory(page) {
+  const documents = [];
+  const trackDocument = request => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents.push(request.url());
+  };
+  page.on('request', trackDocument);
+  try {
+    const before = await page.evaluate(() => {
+      const lifecycle = window.V2SearchLifecycle, form = document.getElementById('tourSearch');
+      const field = form.elements.price_from, original = field.value;
+      field.value = String(Number(original || 0) + 1);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      window.__localHistoryAudit = { lifecycle, form, original, api: window.V2Runtime.api, calls: 0, traversals: 0 };
+      window.V2Runtime.api = async () => { window.__localHistoryAudit.calls++; throw new Error('Unexpected local-history supplier call'); };
+      const before = { url: location.href, state: history.state, params: lifecycle.params(), generation: lifecycle.generation, dirty: lifecycle.dirty };
+      history.pushState({ localHistoryFixture: true }, '', location.href);
+      location.hash = 'search3-history-check';
+      return before;
+    });
+    await page.waitForFunction(() => location.hash === '#search3-history-check');
+    const states = [];
+    // Native fragment Back/Forward, then a same-URL history.state Back/Forward.
+    // Finish on the original entry so subsequent different-query checks keep their meaning.
+    for (const direction of ['back', 'forward', 'back', 'back', 'forward', 'back']) {
+      states.push(await page.evaluate(async direction => {
+        await new Promise(resolve => {
+          window.addEventListener('popstate', () => requestAnimationFrame(() => requestAnimationFrame(resolve)), { once: true });
+          history[direction]();
+        });
+        const audit = window.__localHistoryAudit;
+        audit.traversals++;
+        return { url: location.href, state: history.state, sameDocument: audit.form === document.getElementById('tourSearch'), sameLifecycle: audit.lifecycle === window.V2SearchLifecycle, params: window.V2SearchLifecycle.params(), generation: window.V2SearchLifecycle.generation, dirty: window.V2SearchLifecycle.dirty, calls: audit.calls };
+      }, direction));
+    }
+    for (const state of states) {
+      assert.equal(state.sameDocument, true, 'local history retains the native form document');
+      assert.equal(state.sameLifecycle, true, 'local history retains the existing lifecycle instance');
+      assert.deepEqual(state.params, before.params, 'local history preserves unsubmitted form edits');
+      assert.equal(state.generation, before.generation, 'local history does not restart search generation');
+      assert.equal(state.dirty, before.dirty, 'local history preserves the current search state');
+      assert.equal(state.calls, 0, 'local history does not call the supplier boundary');
+    }
+    assert.equal(new URL(states[1].url).hash, '#search3-history-check');
+    assert.deepEqual(states[3].state, before.state, 'same-URL Back restores the original history state');
+    assert.deepEqual(states[4].state, { localHistoryFixture: true }, 'same-URL Forward reaches the local state');
+    assert.equal(states[5].url, before.url);
+    assert.deepEqual(states[5].state, before.state);
+    assert.deepEqual(documents, [], 'fragment and same-query navigation sends no document request');
+    await page.evaluate(() => {
+      const audit = window.__localHistoryAudit;
+      audit.form.elements.price_from.value = audit.original;
+      window.V2Runtime.api = audit.api;
+      delete window.__localHistoryAudit;
+    });
+    return { before, states, documentRequests: documents.length };
+  } finally { page.off('request', trackDocument); }
+}
 async function checkUrlRoundTrip(page, width, blocked) {
   const submitted = await page.evaluate(async () => {
     const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
@@ -43,6 +100,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   assert.equal(saved.searchParams.get('child_count'), '2');
   for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'operator', 'phone', 'email', 'consent', 'random_secret']) assert.equal(saved.searchParams.has(name), false, 'stale alias, supplier restriction or private field is excluded: ' + name);
   assert.equal(saved.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(saved.hash, '#parameters');
+  const firstLocalHistory = await checkLocalHistory(page);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle && document.querySelectorAll('#childAges select').length === 2 && document.querySelector('#childAges select').value === '0');
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
@@ -81,6 +139,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   for (const name of [...cleared.optional, 'child_age[]', 'hotel_service[]', 'onlyDirect', 'onlyCharter']) assert.equal(reset.searchParams.has(name), false, 'cleared restriction cannot return from URL: ' + name);
   assert.equal(reset.searchParams.get('child_count'), '0');
   assert.equal(reset.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(reset.hash, '#parameters');
+  const secondLocalHistory = await checkLocalHistory(page);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle);
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
@@ -99,7 +158,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   await page.waitForFunction(expected => location.href === expected && document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle, cleared.url);
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
   assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'Forward restores the newer cleared search exactly once');
-  fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, submittedReload, cleared, blocked, navigation: ['reload', 'back', 'forward'], supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
+  fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, submittedReload, cleared, firstLocalHistory, secondLocalHistory, blocked, navigation: ['reload', 'back', 'forward'], supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
 }
 async function run(browser, width) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
