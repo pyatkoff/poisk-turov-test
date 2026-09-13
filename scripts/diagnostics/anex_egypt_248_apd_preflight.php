@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const ANEX_EGYPT_248_APD_PREFLIGHT_OPERATION = 'anex-egypt-248-apd-preflight-20260914-v1';
+const ANEX_EGYPT_248_APD_PREFLIGHT_OPERATION = 'anex-egypt-248-apd-preflight-20260914-v2';
 const ANEX_EGYPT_248_APD_SEMANTIC_OPERATION = 'anex-egypt-248-apd-retained-20260914-v1';
 const ANEX_EGYPT_248_APD_PREFLIGHT_LOCAL_HOTEL = 248;
 const ANEX_EGYPT_248_APD_PREFLIGHT_EXTERNAL_HOTEL = '10449';
@@ -32,6 +32,7 @@ function anex_egypt_248_apd_preflight_main(array $input): array
         'status' => 'blocked',
         'blocker_stage' => 'input',
         'blocker_category' => 'invalid_input',
+        'integration_component' => null,
         'supplier_calls' => 0,
         'additional_prices_calls' => 0,
         'tourvisor_calls' => 0,
@@ -78,19 +79,25 @@ function anex_egypt_248_apd_preflight_main(array $input): array
 
         $stage = 'integration_source';
         $integrationFiles = [
-            $preview . '/app/integrations/anex-search.php',
-            $preview . '/app/integrations/anex-search-mapping-registry.php',
-            $preview . '/app/integrations/anex-additional-prices-client.php',
+            'anex_search' => $preview . '/app/integrations/anex-search.php',
+            'mapping_registry' => $preview . '/app/integrations/anex-search-mapping-registry.php',
+            'additional_prices_client' => $preview . '/app/integrations/anex-additional-prices-client.php',
         ];
-        foreach ($integrationFiles as $integrationFile) {
-            if (!is_file($integrationFile) || !is_readable($integrationFile)) {
-                throw new RuntimeException('PREFLIGHT_INTEGRATION_SOURCE');
-            }
+        $presence = [];
+        foreach ($integrationFiles as $component => $integrationFile) {
+            $presence[$component] = is_file($integrationFile) && is_readable($integrationFile);
+        }
+        $out['integration_source_presence'] = $presence;
+        foreach ($integrationFiles as $component => $integrationFile) {
+            $out['integration_component'] = $component;
+            if (!$presence[$component]) throw new RuntimeException('PREFLIGHT_INTEGRATION_SOURCE');
             require_once $integrationFile;
         }
         if (!class_exists('AnyTourAnexSearchMappingRegistry')) {
+            $out['integration_component'] = 'mapping_registry';
             throw new RuntimeException('PREFLIGHT_INTEGRATION_SOURCE');
         }
+        $out['integration_component'] = null;
 
         $stage = 'tokens';
         $searchTokenReady = defined('ANEX_API_TOKEN') && is_string(ANEX_API_TOKEN) && trim(ANEX_API_TOKEN) !== '';
