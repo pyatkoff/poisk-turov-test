@@ -396,6 +396,10 @@ async function checkSearchRecovery(browser, width) {
     assert.deepEqual(storedQuery.getAll('child_age[]'), ['0', '17']);
     assert.deepEqual(storedQuery.getAll('hotel_service[]'), ['11', '22']);
     assert.equal(/utm_|yclid|phone|consent|token|cookie|payload/i.test(saved.searchQuery), false, 'persistent search conditions exclude attribution, contacts and raw data');
+    const editSearch = page.locator('#resultsSearchEdit');
+    assert.equal(await editSearch.getAttribute('aria-expanded'), 'false', 'populated results keep the canonical search editor collapsed');
+    await editSearch.click();
+    assert.equal(await editSearch.getAttribute('aria-expanded'), 'true', 'editing the current search uses the existing disclosure control');
     await page.locator('#tourSearch [name=count_people]').selectOption('3');
     await openComparison(page, width);
     const restore = page.locator('.search3-shortlist-restore');
