@@ -1,0 +1,27 @@
+name: MATCH residual accept compose check v1
+on:
+  push:
+    branches: [ops/match-residual-accept-compose-check-1971-20260913-v1]
+    paths: [.github/workflows/hotel-match-residual-accept-compose-check-v1.yml]
+permissions: {contents: read}
+jobs:
+  compose:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Compose exact remote payload and lint
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib
+          P=pathlib.Path
+          def body(path):
+            x=P(path).read_text();x=x[5:] if x.startswith('<?php') else x;return x.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php');audit=body('scripts/diagnostics/hotel_match_residual_evidence_audit.php');writer=body('scripts/diagnostics/hotel_match_residual_evidence_accept.php').replace("require_once __DIR__.'/hotel_match_residual_evidence_audit.php';",'',1).replace("const HMREA_OPERATION='hotel-match-residual-evidence-accept-1971-20260913-v1';","const HMREA_OPERATION='hotel-match-residual-evidence-accept-1971-20260913-v3';",1).replace("[$id,$t,'human_reviewed',$digest,$md]","[$id,$t,FC_POLICY,$digest,$md]",1)
+          wrapper="$stage='bootstrap';try{$root=realpath(getcwd());$dbHelper='/tmp/db.php';$stage='accept';echo 'lint';}catch(Throwable $e){echo 'fail';}"
+          P('/tmp/composed.php').write_text('<?php\n'+helper+'\n'+audit+'\n'+writer+'\n'+wrapper)
+          PY
+          php -l /tmp/composed.php
