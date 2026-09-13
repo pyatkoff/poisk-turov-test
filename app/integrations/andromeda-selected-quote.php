@@ -105,9 +105,9 @@ final class AnyTourAndromedaSelectedQuote
             foreach ($block['buyerClaimMoney'] as $money) if (is_array($money)) $rows[] = $money;
         }
         if (count($rows) !== 1) return null;
-        $amount = (string)($rows[0]['net'] ?? '');
+        $amount = self::moneyFactValue($rows[0]['net'] ?? null);
         $currency = $rows[0]['currency'] ?? null;
-        if (!preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $amount)
+        if ($amount === null
             || preg_match('/[1-9]/', $amount) !== 1
             || !is_string($currency) || !preg_match('/^[A-Z0-9_]{2,8}$/D', $currency)) return null;
         return ['amount' => $amount, 'currency' => $currency];
@@ -123,9 +123,10 @@ final class AnyTourAndromedaSelectedQuote
             foreach ($block['money'] as $money) {
                 if (!is_array($money)) continue;
                 $currency = $money['currency'] ?? null;
-                $rate = (string)($money['rate'] ?? '');
+                $rate = $money['rate'] ?? null;
+                if (is_int($rate) || (is_float($rate) && is_finite($rate))) $rate = (string)$rate;
                 if (!is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1
-                    || preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,6})?$/D', $rate) !== 1
+                    || !is_string($rate) || preg_match('/^(?:0|[1-9][0-9]{0,8})(?:\.[0-9]{1,6})?$/D', $rate) !== 1
                     || preg_match('/[1-9]/', $rate) !== 1) continue;
                 $isClaimCurrency = (string)($money['isClaimCurrency'] ?? '');
                 $row = [
@@ -189,9 +190,9 @@ final class AnyTourAndromedaSelectedQuote
                 if (!is_array($service)
                     || (string)($service['servicetype'] ?? '') !== '8'
                     || (string)($service['servicecategoryName'] ?? '') !== 'Топливный сбор') continue;
-                $amount = (string)($service['price'] ?? '');
+                $amount = self::moneyFactValue($service['price'] ?? null);
                 $currency = $service['currencyAlias'] ?? null;
-                if (preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $amount) !== 1
+                if ($amount === null
                     || !is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
                 $route = (string)($service['routeIndex'] ?? '');
                 $out[] = [
@@ -289,9 +290,9 @@ final class AnyTourAndromedaSelectedQuote
             if (!is_array($block) || !is_array($block['detail'] ?? null)) continue;
             foreach ($block['detail'] as $detail) {
                 if (!is_array($detail)) continue;
-                $amount = (string)($detail['markup'] ?? '');
+                $amount = self::moneyFactValue($detail['markup'] ?? null);
                 $currency = $detail['currency'] ?? null;
-                if (preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $amount) !== 1
+                if ($amount === null
                     || !is_string($currency) || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
                 $facts[$amount . "\0" . $currency] = ['amount' => $amount, 'currency' => $currency];
             }

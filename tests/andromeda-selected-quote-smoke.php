@@ -141,4 +141,68 @@ if(($direct['calc_money_facts_reported']??null)!==[
     ['currency'=>'RUB','gross_amount'=>'130000','net_amount'=>'130000','commissionable_amount'=>null,'commission_amount'=>null,'source'=>'andromeda_calc_money','arithmetic_applied'=>false],
 ])throw new RuntimeException('direct calc facts');++$checks;
 
+// Malformed JSON money must not become a verified one-ruble quote via (string)true.
+// Exercise the actual quote entrypoint and ClaimActions with an offline callback.
+$scalarQuote=static function($packageNet,$finalNet,$optionalAmount,$rate)use($resolved,$noFlight,$getFlights,$fuelServices):array{
+    $input=$noFlight;
+    $input['claimDocument'][0]['buyerMoneys'][0]['buyerClaimMoney'][0]['net']=$packageNet;
+    $flight=$getFlights['variants'][0]['transports'][0]['transport'][0];
+    $flight['details'][0]['detail'][0]['markup']=$optionalAmount;
+    $input['claimDocument'][0]['transports']=[['transport'=>[$flight]]];
+    $reply=$input;
+    $reply['claimDocument'][0]['buyerMoneys'][0]['buyerClaimMoney'][0]['net']=$finalNet;
+    $reply['claimDocument'][0]['services']=[['service'=>[$fuelServices[0]['service'][0]]]];
+    $reply['claimDocument'][0]['services'][0]['service'][0]['price']=$optionalAmount;
+    $reply['claimDocument'][0]['moneys']=[['money'=>[
+        ['price'=>'100','net'=>'100','currency'=>'USD','rate'=>$rate,'isClaimCurrency'=>'true'],
+    ]]];
+    $calls=[];$reservations=0;
+    $actions=new AnyTourAndromedaClaimActions('SID_scalar_test',static function()use(&$reservations){++$reservations;},
+        static function(string $url,string $post)use(&$calls,$reply):array{
+            parse_str((string)parse_url($url,PHP_URL_QUERY),$q);$calls[]=$q['action']??null;
+            if(($q['action']??null)!=='calc')throw new RuntimeException('SCALAR_UNEXPECTED_ACTION');
+            return ['status'=>200,'body'=>json_encode($reply,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)];
+        });
+    try{return AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient($input),$actions);}
+    finally{if($calls!==['calc']||$reservations!==1)throw new RuntimeException('SCALAR_RETRY_OR_MISSING_RESERVATION');}
+};
+set_error_handler(static function(int $severity,string $message,string $file,int $line):never{
+    throw new ErrorException($message,0,$severity,$file,$line);
+});
+try{
+    foreach([true,false,null,[],['amount'=>'1'],'not-money'] as $invalid){
+        try{
+            $scalarQuote('124864',$invalid,'80','89.83');
+            throw new RuntimeException('INVALID_MONEY_BECAME_VERIFIED');
+        }catch(RuntimeException $e){
+            if($e->getMessage()!=='ANDROMEDA_FINAL_PRICE_MISSING')throw $e;
+        }
+        ++$checks;
+        $typed=$scalarQuote($invalid,'130000',$invalid,$invalid);
+        if($typed['package_price']!==null||$typed['final_price']!==['amount'=>'130000','currency'=>'RUB']
+            ||$typed['final_price_verified']!==true||$typed['booking_enabled']!==false
+            ||$typed['fuel_surcharges_reported']!==[]||$typed['operator_currency_rates_reported']!==[]
+            ||$typed['flights'][0]['transport_markup_reported']!==null)throw new RuntimeException('INVALID_FACT_COERCED');
+        ++$checks;
+    }
+    foreach([1,80.5,'80.50'] as $valid){
+        $typed=$scalarQuote($valid,$valid,$valid,'1.234567');
+        if($typed['final_price']!==['amount'=>(string)$valid,'currency'=>'RUB']
+            ||$typed['package_price']!==$typed['final_price']
+            ||$typed['fuel_surcharges_reported'][0]['amount']!==(string)$valid
+            ||$typed['flights'][0]['transport_markup_reported']['amount']!==(string)$valid
+            ||$typed['operator_currency_rates_reported'][0]['rate']!=='1.234567'
+            ||$typed['operator_currency_rates_reported'][0]['arithmetic_applied']!==false
+            ||$typed['search_price']!==$resolved['offer']['price'])throw new RuntimeException('VALID_MONEY_CHANGED');
+        ++$checks;
+    }
+    foreach([0,0.0,'0.00'] as $zero){
+        $typed=$scalarQuote('124864','130000',$zero,89.83);
+        if($typed['fuel_surcharges_reported'][0]['amount']!==(string)$zero
+            ||$typed['flights'][0]['transport_markup_reported']['amount']!==(string)$zero
+            ||$typed['operator_currency_rates_reported'][0]['rate']!=='89.83')throw new RuntimeException('EXPLICIT_ZERO_OR_NUMERIC_RATE_LOST');
+        ++$checks;
+    }
+}finally{restore_error_handler();}
+
 print("Andromeda selected quote: {$checks} checks passed\n");

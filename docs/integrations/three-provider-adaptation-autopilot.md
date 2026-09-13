@@ -82,6 +82,13 @@ Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current acce
 
 `final_price_verified=true` относится только к exact verified claim. Это доказывает, что search/package и calc quote могут отличаться, но не доказывает fuel formula.
 
+2026-09-13: в существующем `AnyTourAndromedaSelectedQuote` устранено приведение
+boolean money к строке `"1"`: buyer net, fuel service price и transport markup
+используют прежний строгий `moneyFactValue`; rate проверяет тип до своей шестизначной
+decimal-грамматики. Некорректный final net не даёт verified quote; некорректные
+доплаты/курсы не становятся денежными фактами. Валидные числа/строки и явный нулевой
+сбор сохранены. Это source-only regression fix, не новый supplier evidence или deploy.
+
 ### 4.1 AdditionalPricesDaily — текущий P0 blocker
 
 #2236/#2237 дали первый bounded cohort: для B2B `tour=778` ставка `13549.9 RUB/adult`, две взрослые ставки `27099.8`, сопоставимый Tourvisor fuel/delta `27100`. Это evidence применимости adult-rate внутри этого cohort, а не разрешение округлять, складывать или переносить формулу на другие предложения.
@@ -263,7 +270,7 @@ Latest exact-head gate после #2122:
 - INT→SEARCH handoff: 97;
 - direct ANEX bridge: 115.
 
-Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts and unmapped observation evidence не получают universal/mapping authority.
+Aggregate `34678908441` SUCCESS: **1348 offline contract checks**. Security `34678908436` SUCCESS. Static boundary: no network/DB/booking primitives; no synthetic arithmetic; selection/booking disabled; provider-specific IDs, bounded result counts и unmapped observation evidence не получают universal/mapping authority.
 
 Это source-side readiness, не production approval и не UI/publication acceptance.
 
