@@ -333,6 +333,93 @@ async function checkIntermediateGeometry(browser, width) {
     return { sourceSha, width, geometry, posts: 0 };
   } finally { await context.close(); }
 }
+async function checkSearchRecovery(browser, width) {
+  const { context, page, errors, posts } = await openPage(browser, width);
+  const supplierRequests = [];
+  const record = request => {
+    const action = new URL(request.url()).searchParams.get('action');
+    if (['search_start', 'search_status', 'search_results', 'tour', 'flights'].includes(action)) supplierRequests.push(action);
+  };
+  page.on('request', record);
+  try {
+    const date = offset => { const value = new Date(); value.setUTCDate(value.getUTCDate() + offset); return value.toISOString().slice(0, 10); };
+    const query = new URLSearchParams({ from: '1', country: '4', dateFrom: date(30), dateTo: date(33), daysFrom: '7', daysTill: '9', count_people: '2', child_count: '2', arrival: '2', region: '99', subregion: '101', hotel: '555', hotel_type: '2', stars: '5', rating: '4', food: '7', price_from: '100000', price_till: '200000', onlyDirect: '1', onlyCharter: '1', operator: '88', utm_campaign: 'original', yclid: 'original-click' });
+    query.append('child_age[]', '0'); query.append('child_age[]', '17');
+    query.append('hotel_service[]', '11'); query.append('hotel_service[]', '22');
+    const recoveryHotel = { ...hotel, id: '555' };
+    const recoveryItems = [{ ...recoveryHotel, price: 120000, tours: [standard, family].map(value => ({ ...value, hotel: recoveryHotel, date: query.get('dateFrom'), childs: 2, operator: { id: 88, name: 'TEST OPERATOR' } })) }];
+    const initial = await page.evaluate(async ({ query, items }) => {
+      history.replaceState(null, '', location.pathname + '?' + query);
+      window.V2SearchLifecycle.hydrateUrlState();
+      window.__recoveryFixtureCalls = [];
+      window.V2Runtime.api = async (action, params) => {
+        window.__recoveryFixtureCalls.push(action);
+        if (action === 'search_start') return { searchId: 981 };
+        if (action === 'search_status') return { progress: 100, status: 'complete' };
+        if (action === 'search_results') return items;
+        throw new Error('unexpected recovery fixture action: ' + action);
+      };
+      await window.V2SearchLifecycle.submit();
+      return window.V2SearchLifecycle.snapshot;
+    }, { query: query.toString(), items: recoveryItems });
+    await page.waitForFunction(() => window.V2SearchLifecycle.searchId === 981 && !window.V2SearchLifecycle.pending && document.querySelector('#results .hotel-card'));
+    assert.deepEqual(await page.evaluate(() => window.__recoveryFixtureCalls), ['search_start', 'search_status', 'search_results'], 'fixture enters the actual validated lifecycle once');
+    await page.locator('#results .tour-more-toggle').click();
+    await addOffer(page, 'offer-standard');
+    const saved = (await page.evaluate(() => window.Search3Shortlist.items()))[0];
+    const storedQuery = new URLSearchParams(saved.searchQuery);
+    assert.ok(saved.searchQuery, 'validated search conditions are saved with the exact offer');
+    assert.equal(storedQuery.get('operator'), '88', 'explicit secondary operator survives recovery without becoming a default primary criterion');
+    assert.deepEqual(storedQuery.getAll('child_age[]'), ['0', '17']);
+    assert.deepEqual(storedQuery.getAll('hotel_service[]'), ['11', '22']);
+    assert.equal(/utm_|yclid|phone|consent|token|cookie|payload/i.test(saved.searchQuery), false, 'persistent search conditions exclude attribution, contacts and raw data');
+    await page.locator('#tourSearch [name=count_people]').selectOption('3');
+    await openComparison(page, width);
+    const restore = page.locator('.search3-shortlist-restore');
+    assert.equal(await restore.textContent(), 'Восстановить поиск');
+    assert.equal((await page.evaluate(() => window.Search3Shortlist.items()))[0].searchQuery, saved.searchQuery, 'editing the current form cannot overwrite the saved search');
+    const geometry = await restore.evaluate(node => { const r = node.getBoundingClientRect(); return { width: r.width, height: r.height, overflow: document.documentElement.scrollWidth > innerWidth + 2 }; });
+    assert.ok(geometry.height >= 44 && geometry.width > 0);
+    assert.equal(geometry.overflow, false);
+    await page.locator('.search3-shortlist').screenshot({ path: path.join(output, `shortlist-search-recovery-${width}.png`), animations: 'disabled' });
+    await page.evaluate(() => {
+      const url = new URL(location.href); url.searchParams.set('utm_campaign', 'current'); url.searchParams.set('yclid', 'current-click'); history.replaceState(null, '', url);
+    });
+    await restore.focus(); await restore.press('Enter');
+    await page.waitForURL(url => url.searchParams.get('search3_restore') === '1');
+    await page.waitForFunction(() => window.Search3Shortlist && window.V2SearchLifecycle && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+    await page.waitForFunction(() => document.activeElement === document.querySelector('#tourSearch [name=from]'));
+    const restored = await page.evaluate(() => ({ params: window.V2SearchLifecycle.params(), pending: window.V2SearchLifecycle.pending, searchId: window.V2SearchLifecycle.searchId }));
+    assert.deepEqual(restored.params, initial, 'canonical hydration recovers the exact original primary/advanced values and child ages');
+    assert.equal(restored.searchId, 0); assert.equal(restored.pending, false, 'restoring conditions does not automatically submit a supplier search');
+    assert.equal(new URL(page.url()).origin, new URL(base).origin);
+    assert.equal(new URL(page.url()).pathname, new URL(base + '/poisk-turov/').pathname, 'recovery remains on the same isolated search route');
+    assert.equal(new URL(page.url()).searchParams.get('utm_campaign'), 'current');
+    assert.equal(new URL(page.url()).searchParams.get('yclid'), 'current-click', 'navigation preserves current attribution without replaying the saved click');
+    assert.equal(await page.locator('#results .direct-tour').count(), 0, 'a restored form cannot select the historical offer');
+    const rawSaved = await page.evaluate(() => ({ key: window.Search3Shortlist.storageKey, items: window.Search3Shortlist.items() }));
+    const past = new URLSearchParams(saved.searchQuery); past.set('dateFrom', '2000-01-01'); past.set('dateTo', '2000-01-02');
+    await page.evaluate(({ rawSaved, query }) => { rawSaved.items[0].searchQuery = query; localStorage.setItem(rawSaved.key, JSON.stringify(rawSaved.items)); }, { rawSaved, query: past.toString() });
+    await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+    await openComparison(page, width); await page.locator('.search3-shortlist-restore').click();
+    await page.waitForFunction(() => document.activeElement === document.querySelector('#tourSearch [name=dateFrom]') && document.activeElement.getAttribute('aria-invalid') === 'true');
+    assert.equal(await page.locator('#tourSearch [name=dateFrom]').inputValue(), '2000-01-01', 'past dates remain explicit for user correction');
+    assert.equal(await page.evaluate(() => window.V2SearchLifecycle.searchId), 0, 'past saved dates cannot initiate a search');
+    for (const invalid of [saved.searchQuery + '&phone=not-allowed', saved.searchQuery + '&country=5', 'https://example.invalid/?from=1', 'x'.repeat(4097)]) {
+      await page.evaluate(({ rawSaved, invalid }) => { rawSaved.items[0].searchQuery = invalid; localStorage.setItem(rawSaved.key, JSON.stringify(rawSaved.items)); }, { rawSaved, invalid });
+      await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => window.Search3Shortlist && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
+      await openComparison(page, width);
+      assert.equal(await page.locator('.search3-shortlist-item').count(), 1, 'invalid recovery metadata preserves the historical comparison record');
+      assert.equal(await page.locator('.search3-shortlist-restore').count(), 0, 'invalid recovery query cannot create navigation or search authority');
+      assert.equal((await page.evaluate(() => window.Search3Shortlist.items()))[0].searchQuery, undefined);
+    }
+    assert.deepEqual(supplierRequests, []); assert.deepEqual(posts, []); assert.deepEqual(errors, []);
+    return { sourceSha, width, restore: true, exactConditions: true, childAges: [0, 17], draftPreserved: true, attributionNotStored: true, currentAttributionPreserved: true, pastDateFocus: true, invalidQueries: 4, geometry, supplierRequests: 0, posts: 0 };
+  } finally { page.off('request', record); await context.close(); }
+}
+
 async function checkStorageFailure(browser, width, mode) {
   const { context, page, errors, posts } = await openPage(browser, width, mode);
   try {
@@ -383,6 +470,7 @@ async function checkCorruptStorage(browser, width) {
   try {
     for (const width of [375, 1440]) {
       evidence.push(await checkJourney(browser, width));
+      evidence.push(await checkSearchRecovery(browser, width));
       evidence.push(await checkStorageFailure(browser, width, 'blocked'));
       evidence.push(await checkStorageFailure(browser, width, 'quota'));
       evidence.push(await checkCorruptStorage(browser, width));
