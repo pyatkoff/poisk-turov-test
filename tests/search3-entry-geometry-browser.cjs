@@ -122,6 +122,34 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 120
           assert.ok(state.dateControls.every(item => item.width >= 200));
           assert.ok(state.submit.width <= 281, 'desktop CTA is not oversized');
         }
+        const budget = [];
+        for (const bounds of [['155500', '200750'], ['0', '1'], ['', '']]) {
+          await page.locator('[name=price_from]').fill(bounds[0]);
+          await page.locator('[name=price_till]').fill(bounds[1]);
+          const observed = await page.evaluate(() => {
+            const form = document.forms.tourSearch, data = new FormData(form), params = window.V2SearchLifecycle.params();
+            return {
+              values: [data.get('price_from'), data.get('price_till')],
+              nativeValid: [form.elements.price_from.checkValidity(), form.elements.price_till.checkValidity()],
+              searchValues: [params.priceFrom, params.priceTo],
+              validation: window.V2SearchLifecycle.validate(params),
+            };
+          });
+          assert.deepEqual(observed.values, bounds, 'native form keeps the exact RUB budget');
+          assert.deepEqual(observed.nativeValid, [true, true], 'whole-ruble budgets need not be multiples of 1000');
+          assert.deepEqual(observed.searchValues, bounds, 'existing search parameters receive the typed values without rounding');
+          assert.equal(observed.validation, '', 'valid exact, zero and unset bounds retain lifecycle acceptance');
+          budget.push(observed);
+        }
+        await page.locator('[name=price_from]').fill('-1');
+        assert.equal(await page.locator('[name=price_from]').evaluate(node => node.checkValidity()), false, 'negative minimum remains invalid');
+        await page.locator('[name=price_from]').fill('155500');
+        await page.locator('[name=price_till]').fill('155499');
+        assert.equal(await page.evaluate(() => window.V2SearchLifecycle.validate(window.V2SearchLifecycle.params())), 'Максимальная цена не может быть меньше минимальной.', 'reversed bounds retain the current validation');
+        await page.locator('[name=price_till]').fill('200750');
+        if ([375, 1440].includes(width)) {
+          await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-exact-budget-${width}.png`), animations: 'disabled' });
+        }
         const party = [];
         for (const count of [1, 2, 3, 0]) {
           await page.locator('[name=child_count]').selectOption(String(count));
@@ -168,7 +196,7 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 120
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-expanded-${width}.png`), animations: 'disabled' });
         assert.deepEqual(errors, []);
-        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ source_sha: sourceSha, width, party, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
+        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ source_sha: sourceSha, width, party, budget, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
       } finally { await page.close(); }
     }
   } finally { await browser.close(); }
