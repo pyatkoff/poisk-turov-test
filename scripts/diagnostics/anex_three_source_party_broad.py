@@ -64,7 +64,6 @@ def source():
         "anex_three_price_offer('andromeda',$localId,(string)$localId,")
 
     forbidden=(party.EXPERIMENT,"'three-price-party-20260913-v2'","'generation'=>26091302",
-               "'selection_basis'=>'current_unique_triple_mapping'",
                "'hotelIds'=>[(int)$subject['local_hotel_id']]","'hotel_ids'=>[(string)$subject['anex_hotel_id']]",
                "(int)($hotel['id']??0)!==(int)$subject['local_hotel_id']",
                "($offer['hotel']['local_id']??null)!==(int)$subject['local_hotel_id'])",
@@ -75,7 +74,7 @@ def source():
         raise ValueError('party_broad_selected_filter_leaked')
     required=(EXPERIMENT,SPEC['date'],"'nightsFrom'=>8","'nightsTo'=>8","'adults'=>3","'ADULT'=>3",
               "'hotelIds'=>[]","'received_offers'=>count($result['offers'])","'unmapped_received'=>$unmapped",
-              "current_unique_triple_mapping_anchor_only","three-price-party-broad-20260913-v1")
+              "'selection_basis'=>'current_unique_triple_mapping_anchor_only'","three-price-party-broad-20260913-v1")
     if any(value not in text for value in required):
         raise ValueError('party_broad_source_incomplete')
     return text
