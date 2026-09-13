@@ -327,7 +327,10 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     if ($criteria['child_ages']) $dated['AGES'] = implode(',', $criteria['child_ages']);
     $criteria['currency_id'] = anytour_anex_search3_dictionary_id(
         anytour_anex_search3_dictionary($client, 'SearchTour_CURRENCIES', $dated, $cache), ['RUB', 'RUR', 'Рубль', 'Рубли', 'Руб']);
-    $resolver = AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
+    $registry = AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
+    $resolver = $registry->previewResolver();
+    $hotelIds = $registry->previewHotelIds($params['hotelIds'] ?? []);
+    if ($hotelIds !== []) $criteria['hotel_ids'] = $hotelIds;
     $session = $state === null ? null : [];
     $result = anytour_anex_search3_prices($client, $resolver, $criteria, $session);
     // Bound the first page before catalog hydration; cheapest RUB offers first.
