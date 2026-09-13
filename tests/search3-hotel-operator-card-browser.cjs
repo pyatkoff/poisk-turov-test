@@ -92,7 +92,7 @@ module.exports=async function checkOperatorCards(page,width,output){
           assert.ok(Math.abs(row.select.y-row.compare.y)<2,'mobile selection and comparison share one action row');
           assert.ok(row.price.right<=row.action.right+1&&row.select.right<=row.action.right+1&&row.compare.right<=row.action.right+1,'mobile price and both actions stay inside the canonical action group');
           assert.ok(row.select.right<=row.compare.x+1,'mobile actions do not overlap');
-          if(inspectedWidth>=375)assert.ok(Math.abs(row.price.y-row.select.y)<2,'375/390 keep price and both actions in one compact row');
+          if(inspectedWidth>=375)assert.ok(Math.abs((row.price.y+row.price.height/2)-(row.select.y+row.select.height/2))<2,'375/390 vertically center price and both actions in one compact row');
           else assert.ok(row.select.y>=row.price.bottom-1,'320 keeps one price row followed by one shared action row');
           assert.equal(row.overflow,false,'mobile exact offer row has no overflow');
         }
