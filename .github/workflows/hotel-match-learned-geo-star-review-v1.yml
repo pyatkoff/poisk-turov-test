@@ -1,0 +1,46 @@
+name: MATCH GLOBAL learned geo star-soft v1
+on:
+  push:
+    branches: [ops/match-global-current-review-2333-20260913-v1]
+    paths: [.github/match-learned-geo-star-review-2333-20260913-v1.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-learned-geo-star-review-2333-20260913-v1}
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate read-only source
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_learned_geo_star_review.php
+          test "$(cat .github/match-learned-geo-star-review-2333-20260913-v1.arm)" = "$OPERATION_ID"
+      - name: SSH key
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail
+          printf '%s' "$SSH_KEY" > "$RUNNER_TEMP/key"; chmod 600 "$RUNNER_TEMP/key"
+      - name: Run CURRENT read-only learned geography review
+        env: {SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess
+          P=pathlib.Path
+          files=['hotel_full_catalog_reconcile.php','hotel_match_current_bulk_review.php','hotel_match_current_strict_review.php','hotel_match_live_priority_review.php','hotel_match_star_semantics_current_review.php','hotel_match_learned_geo_star_review.php']
+          source='<?php\n'
+          for f in files:
+            x=P('scripts/diagnostics/'+f).read_text();x=x[5:] if x.startswith('<?php') else x;x=x.replace('declare(strict_types=1);','',1)
+            for req in ["if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n", "require_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n", "require_once __DIR__ . '/hotel_match_current_bulk_review.php';\n", "require_once __DIR__ . '/hotel_match_current_strict_review.php';\n", "require_once __DIR__ . '/hotel_match_live_priority_review.php';\n", "require_once __DIR__ . '/hotel_match_star_semantics_current_review.php';\n"]: x=x.replace(req,'',1)
+            source+=x+'\n'
+          source+="$root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$out=hmlgs_review($db,'hotel-match-learned-geo-star-review-2333-20260913-v1');echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),\"\\n\";"
+          cmd=['ssh','-T','-i',os.environ['RUNNER_TEMP']+'/key','-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',os.environ['SSH_USER'],os.environ['SSH_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M']
+          p=subprocess.run(cmd,input=source,text=True,capture_output=True,timeout=600)
+          if p.returncode!=0: raise SystemExit(p.returncode)
+          v=json.loads(p.stdout);P('learned-geo-star-result.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'stats':v.get('stats'),'accepted_training_rows':v.get('accepted_training_rows'),'learned_place_keys':v.get('learned_place_keys')},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-learned-geo-star-v1-${{ github.run_id }}', path: learned-geo-star-result.json, retention-days: 90}
