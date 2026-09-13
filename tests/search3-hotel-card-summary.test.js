@@ -102,6 +102,18 @@ assert.equal(api.hotelSummary(family).party, '2 взрослых · 1 ребён
 const mixedParty = { ...family, tours: [family.tours[0], { ...family.tours[1], childs: 0 }] };
 assert.equal(api.hotelSummary(mixedParty).party, '', 'different placements are described only on their exact offer');
 assert.doesNotMatch(api.toursHtml(mixedParty), /2 взрослых|1 ребёнок/);
+for(const [adults,childs,label] of [[2,0,'2 взрослых'],[2,1,'2 взрослых · 1 ребёнок'],[1,2,'1 взрослый · 2 ребёнка'],['3','0','3 взрослых']]){
+  const offer=Object.freeze({...multi.tours[0],adults,childs});
+  assert.ok(api.tourRow(offer).includes('<small>Туристы</small><b>'+label+'</b>'),'each exact offer says whom its price covers');
+  assert.equal(api.hotelSummary({tours:[offer]}).party,label,'summary and exact row use the same validated party label');
+}
+for(const counts of [{adults:2},{adults:2,childs:null},{adults:2,childs:''},{adults:2,childs:false},{adults:2,childs:-1},{adults:2,childs:1.5},{adults:0,childs:0},{adults:true,childs:0},{adults:'unknown',childs:0}]){
+  const offer=Object.freeze({...multi.tours[0],...counts});
+  assert.doesNotMatch(api.tourRow(offer), /<small>Туристы<\/small>/,'incomplete or invalid supplier counts never become a fabricated party');
+  assert.equal(api.hotelSummary({tours:[offer]}).party,'','unknown party is not filled from another offer or the form');
+}
+assert.match(api.tourRow(mixedParty.tours[0]),/2 взрослых · 1 ребёнок/);
+assert.match(api.tourRow(mixedParty.tours[1]),/<small>Туристы<\/small><b>2 взрослых<\/b>/);
 assert.equal(api.hotelSummary({ ...multi, tours: [] }).count, 0);
 assert.match(api.toursHtml({ ...multi, tours: [] }), /Нет доступных вариантов/);
 
