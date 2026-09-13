@@ -419,7 +419,7 @@ supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferre
 
 ## Завершённые пакеты и граница URL-состояния, 2026-09-13
 
-Сверено с release [be7f5fe8](https://github.com/pyatkoff/poisk-turov-test/commit/be7f5fe884937b32f06232e9cd56bb136a9ffad4), свежими #996/#1646,
+Сверено с release [8a78a709](https://github.com/pyatkoff/poisk-turov-test/commit/8a78a709061de18f1ac5028b3dd6ca1f42e2e111), свежими #996/#1646,
 открытыми PR и exact CI. Таблица ниже уточняет результаты предыдущих датированных
 разделов; их старые «открыто» и pending-формулировки не являются новой очередью.
 
@@ -433,7 +433,11 @@ supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferre
 | #2282 | Повреждённые даты из URL получают существующий fallback до PHP-парсера; обычные даты/aliases/семья/ночи сохранены | [82f2d936](https://github.com/pyatkoff/poisk-turov-test/commit/82f2d93627079d6f9e2df723471c15d39facd88d) → [283f3db7](https://github.com/pyatkoff/poisk-turov-test/commit/283f3db732e57a450339cdecf818cbdd193f6b32); [baseline fatal и final green](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649537573) |
 | #2285 | Primary-бюджет принимает точные суммы в рублях: 155500–200750 больше не блокируются native step=1000. Суммы не округляются; legacy step сохранён | [4fb09556](https://github.com/pyatkoff/poisk-turov-test/commit/4fb095560d45dd9d39d8a92c751a0cd41a321e93) → [be7f5fe8](https://github.com/pyatkoff/poisk-turov-test/commit/be7f5fe884937b32f06232e9cd56bb136a9ffad4); [точная визуальная приёмка](https://github.com/pyatkoff/poisk-turov-test/pull/2285#issuecomment-5649653514) |
 
-Все семь пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
+| #2300 | Полная primary-форма остаётся видимой при выдаче, календаре, loading/empty/error; старые hide/show rules и editing-class handlers удалены. Selected сохраняет свой режим | [a7b385e7](https://github.com/pyatkoff/poisk-turov-test/commit/a7b385e713d7e93dc40b7fb08ea636f276950b99) → [f15d1c30](https://github.com/pyatkoff/poisk-turov-test/commit/f15d1c30792609b921496c069cdd43010ff0fa60); [375/1024/1440 и viewport 1440×700](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5651977581), [10-file readback](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652001024) |
+| #2303 | Текущие условия сохраняются в URL; reload/Back/Forward восстанавливают семью, даты, ночи, питание и точный бюджет. Operator/provider/source, произвольные query keys, PII и consent не входят в initial query | [fbf7179e](https://github.com/pyatkoff/poisk-turov-test/commit/fbf7179e9188d8411b6de5d1eb6ea02105757eb1) → [df35e478](https://github.com/pyatkoff/poisk-turov-test/commit/df35e4783992e54772bd049e2cfb1addde289a5d); [375/1440 exact URL receipts и visual](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652068394) |
+| #2305 | Operator facet и карточки используют существующую operatorIdentity; aliases не дробят бренд, один отель с разными операторами получает выбор, неполные данные скрывают/сбрасывают facet. Provider и operator пересекаются на одном offer | [98187c75](https://github.com/pyatkoff/poisk-turov-test/commit/98187c75178e715ae8ada098482b6e8cfbe380b5) → [8a78a709](https://github.com/pyatkoff/poisk-turov-test/commit/8a78a709061de18f1ac5028b3dd6ca1f42e2e111); [visual/JSON 375/1440](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652082095), [URL/operator exact readback](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652089991) |
+
+Все десять пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
 navigation 34727758774 и Security 34727654231 успешны; оба merged файла
 прочитаны обратно и совпали с checked source. Выполнены 15 ширин, 60 состояний
 семьи и exact/zero/unset/negative/reversed budget guards. Геометрический стенд
@@ -441,55 +445,62 @@ navigation 34727758774 и Security 34727654231 успешны; оба merged ф�
 только fixture departure=1/country=4; FormData и price-поля lifecycle взяты
 из настоящей served-формы. Это не проверка живой supplier availability.
 
-Приёмку exact изображений #2261/#2276/#2285 выполнил исполнитель с рабочим
+Приёмку exact изображений #2261/#2276/#2285/#2300/#2303/#2305 выполнил исполнитель с рабочим
 доступом к артефактам; ссылки выше сохраняют происхождение подтверждения.
 Локальный HTTP 403 при чтении артефакта не обходился. Успешный CI без просмотра
 изображений не был засчитан как визуальная приёмка.
 
-### Сохраняющийся дефект постоянной OTA-формы
+### Постоянная форма и единственный URL owner
 
-На проверенной release `be7f5fe884937b32f06232e9cd56bb136a9ffad4`
-`src/search3/styles/results-layout.css` скрывает `#tourSearch`, когда в
-`#results` есть карточки; `src/search3/behavior/search-form.js` возвращает
-форму через `search3-editing-search`. Это расходится с поручением владельца
-о постоянно доступной полной primary-форме страницы поиска.
+Подтверждённое скрытие формы закрыто в #2300: accepted native grid сохранён,
+`#tourSearch` больше не зависит от наличия карточек/placeholder в results.
+«Изменить поиск» переводит фокус к существующему departure control; второй формы
+и нового CSS owner нет. Исходная 1440-short full-page картинка была дубликатом;
+приёмка использует исправленный exact viewport PNG 1440×700 из artifact
+10314345889. Его ZIP SHA-256:
+`70b9a57d5e135d7e2158fcd61ee8dcf29f1bb6984e9302bb86724d7698b053ed`.
 
-Следующий связный UI-пакет должен убрать заменяемые hide/show rules и ненужные
-class handlers в этих владельцах, сохранив одну native-форму, FormData, календарь,
-rail и selected flow. Нужна приёмка form+results на затронутых mobile/desktop
-ширинах, промежуточных breakpoint и коротком экране, keyboard/focus и
-loading/empty/error; локальные действия не запускают supplier search.
-Нового CSS/form owner не создавать. Shared import/runtime handoff ниже
-остаётся условием этого source/generated/hash пакета.
+В #2303 остаётся существующая цепочка:
+`v2/index.php` / `form-defaults.php` → native FormData →
+`search-lifecycle-v6.js` validation → URL → snapshot → прежний `search_start`.
+`boot()` по-прежнему ожидает catalogs.init и hydrateUrlState;
+`url-primary-catalog-sync-v1.js` не переносился и не дублировался.
+Manual changed conditions создают одну history entry, boot canonicalization
+заменяет текущую. Один lifecycle-owned popstate восстанавливает документ
+через прежний SSR/catalog/auto-search путь. История, attribution и fragment
+проверены; operator не переносится в initial query. Реальные supplier/lead
+запросы в стенде заблокированы, вызовы submit проверены через runtime stub.
 
-### Установленная граница следующего URL-пакета
+Первый URL head `65675159` не закрывал полную приёмку; он заменён accepted
+`fbf7179e` с Back/Forward, исключением operator и non-null source SHA
+в сохранённых URL receipts. Artifact 10314735429, ZIP SHA-256:
+`2a6c1f6b772e14d40bf2893f274580297d82ee6b7d1a01a2c044a00f56f93a77`.
+Приёмка не доказывает все возможные history transitions:
+[review same-query/fragment-only popstate](https://github.com/pyatkoff/poisk-turov-test/pull/2303#issuecomment-5652061881)
+остаётся точным непроверенным остатком. Не объявлять его выполненным по
+обычному reload/Back/Forward сценарию и не запускать лишний supplier search
+при локальном изменении состояния.
 
-На этой release прослежены фактические владельцы:
+### Остаток подготовки и следующий продуктовый шаг
 
-- `v2/index.php` и `form-defaults.php` дают единственную native-форму и SSR defaults.
-- `search-lifecycle-v6.js::params()` читает её FormData. Capture submit-handler
-  вызывает `preventDefault/stopImmediatePropagation`; внутри `submit()` идут
-  validation → snapshot → существующий `search_start`. Независимый второй
-  submit-owner не нужен.
-- `boot()` ожидает `catalogs.init()`, затем применяет `hydrateUrlState()`;
-  явные входные ссылки могут запустить поиск по существующему auto-контракту.
-  `url-primary-catalog-sync-v1.js` уже согласует primary/destination catalogs
-  внутри init. Его перенос или дублирование не является решением URL writer.
-- Обратной записи условий в history и обработки Back/Forward в этих owners
-  пока нет. Оба JS-файла входят в 17 entries существующего
-  `v2/search3-shared-runtime.json`; их изменение требует общего generated-пакета.
+Старый selected-date-v4 claim больше не блокирует форму/URL/generated import:
+владелец явно передал общие файлы, что
+[зафиксировано в #996](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5651885647).
+Старая branch/work сохранена; selected-date остаётся отдельным roadmap пунктом.
+Перед новым shared edit по-прежнему нужны свежие release/PR/CI и один exact writer.
 
-Остаток технического этапа ограничен URL round-trip и единой существующей
-operator/meal display логикой. На момент проверки claim
-[selected-date-v4](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5648815213)
-не получил явного handoff: branch всё ещё на исходном
-`857f9a141c1e827425f16c79a831822907668ce9`, implementation PR отсутствует.
-[Запрос передачи общих файлов](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5649490209)
-сохранён. Возраст claim сам по себе не разрешает второго writer.
-После передачи нужен один canonical source/generated/hash пакет, с сохранением
-date/night aliases, child ages 0/17, пустых границ бюджета и уже имеющихся query
-параметров аналитики; персональные данные/lead draft/consent в URL не записывать.
-Local result filters не должны запускать supplier search.
+Разные operator display keys закрыты #2305 без новой таблицы aliases/matching.
+Exact artifact 10314326197, ZIP SHA-256:
+`1d2adcb9cc83135dbb56e53dce10b980d2a64de8b3c3571cd9b29c1b50cfea1b`.
+Исходные offer/provider identities и цены не меняются; local facets не
+вызывают supplier search. Нижеследующее остаётся в существующем SEARCH roadmap:
+
+- Проверка same-query history transition выше; остальная URL приёмка не повторяется.
+- Meal summary: не считать aliases разными вариантами и не смешивать AI/UAI/Soft AI.
+- Calendar focus/scroll на rerender — отдельный существующий writer/PR #2302;
+  читать его свежий статус, не создавать второй calendar owner.
+- Country-wide hotel-name UX, плотность карточек, compare, selected, lead handoff
+  и цельная mobile/desktop acceptance по уже зафиксированным 12 критериям.
 
 ### Публикация и уровень готовности
 
@@ -502,7 +513,7 @@ Local result filters не должны запускать supplier search.
 переигрывать публикацию или ослаблять guard нельзя.
 
 Карта owners/build и перечисленные corrections завершены и не перезапускаются.
-Оставшиеся URL/display packages остаются открытыми; весь refactor-pass и
+Указанные непроверенные state/display и продуктовые пункты остаются открытыми; весь refactor-pass и
 12 осей ≥9.5 не объявляются завершёнными. Новый числовой балл не назначен.
 CHECKED/MERGED не означает preview-published или production-approved.
 Physical Safari/iPhone остаётся deferred; production/main и защищённые

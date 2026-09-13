@@ -463,7 +463,7 @@ async function run(browser, width, previous) {
       assert.equal(await localHotelFilter.evaluate(node => node.parentElement.className), 'search3-mobile-filter-panel__body', 'tablet and mobile reuse the current controls inside one disclosure');
       assert.equal(await actions.isVisible(), true);
     }
-    await localOperatorSelect.selectOption('test operator');
+    await localOperatorSelect.selectOption('name:test operator');
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
@@ -535,7 +535,7 @@ async function run(browser, width, previous) {
     await page.waitForFunction(() => document.activeElement?.matches('.search3-hotel-filter input'));
     assert.equal(await localCategorySelect.inputValue(), '0', 'common keyboard reset clears the active category');
     assert.equal(await localHotelInput.evaluate(node => node === document.activeElement), true, 'common keyboard reset returns focus to the first visible filter');
-    await localOperatorSelect.selectOption('test operator');
+    await localOperatorSelect.selectOption('name:test operator');
     await page.evaluate(items => window.V2Results.render(items), [hotels[0], { ...hotels[1], tours: [{ ...hotels[1].tours[0], operator: null }] }]);
     assert.equal(await localOperatorFilter.isVisible(), false, 'operator facet hides when any loaded offer lacks its operator label');
     assert.equal(await localOperatorSelect.inputValue(), '', 'incomplete operator data resets the local choice');
