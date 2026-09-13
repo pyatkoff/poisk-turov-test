@@ -1,0 +1,96 @@
+name: MATCH GLOBAL provider name bridge accept v1
+on:
+  push:
+    branches: ['ops/match-global-current-review-2333-20260913-v1']
+    paths:
+      - '.github/workflows/hotel-match-global-provider-name-accept-v1.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-global-provider-name-accept-2333-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-provider-name-bridge-accept-2333-20260913-v1
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate guarded writer
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_provider_name_bridge_accept.php
+          grep -Fq "decision_status='pending' AND local_hotel_id IS NULL" scripts/diagnostics/hotel_match_provider_name_bridge_accept.php
+          grep -Fq "candidate_scope_limit" scripts/diagnostics/hotel_match_provider_name_bridge_accept.php
+          grep -Fq "post_commit_readback_failed" scripts/diagnostics/hotel_match_provider_name_bridge_accept.php
+          ! grep -Eiq '\b(DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_provider_name_bridge_accept.php
+      - name: Reserve immutable write before SSH
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['STATE']);(p/'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'server_current_guarded_provider_name_bridge_write','historical_operations_replayed':False,'no_replay':True},sort_keys=True)+'\n')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-global-provider-name-accept-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-provider-name-bridge-accept-2333-20260913-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Prepare SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi; chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Build reviewed payload
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['STATE'])
+          def body(path):
+              s=Path(path).read_text()
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          pend=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          trans=body('scripts/diagnostics/hotel_match_translit_exact_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          bridge=body('scripts/diagnostics/hotel_match_provider_name_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_translit_exact_review.php';\n",'',1)
+          accept=body('scripts/diagnostics/hotel_match_provider_name_bridge_accept.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_provider_name_bridge_review.php';\n",'',1)
+          wrapper="$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');require_once $root.'/config.php';require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();echo fc_json(hmpnba_accept($db,HMPNBA_OPERATION)),\"\\n\";"
+          (p/'payload.php').write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+pend+'\n'+live+'\n'+trans+'\n'+bridge+'\n'+accept+'\n'+wrapper)
+          PYTHON
+      - name: Apply exactly once from CURRENT DB
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          key="$RUNNER_TEMP/key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15); remote="/tmp/match-provider-accept-${GITHUB_RUN_ID}.php"; trap 'ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -f '$remote'" >/dev/null 2>&1 || true' EXIT
+          scp "${opts[@]}" "$STATE/payload.php" "$USER_VALUE@$HOST_VALUE:$remote"
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=0 -r 'include \"$remote\";'" > "$STATE/result.json"
+          python3 - <<'PYTHON'
+          import json,os,hashlib
+          from pathlib import Path
+          p=Path(os.environ['STATE']);x=json.loads((p/'result.json').read_text());ok=x.get('status')=='completed' and x.get('committed') is True and x.get('readback_verified') is True and x.get('supplier_calls')==0 and 0<=int(x.get('database_writes',99))<=10
+          (p/'receipt.json').write_text(json.dumps({'operation_id':x.get('operation_id'),'state':'completed' if ok else 'failed','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':x.get('database_writes'),'committed':x.get('committed'),'readback_verified':x.get('readback_verified'),'supplier_calls':x.get('supplier_calls'),'accepted':x.get('accepted',[]),'coverage_before':x.get('coverage_before'),'coverage_after':x.get('coverage_after')},ensure_ascii=False,sort_keys=True)+'\n')
+          if not ok: raise SystemExit('guarded write failed terminal validation')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-global-provider-name-accept-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-provider-name-bridge-accept-2333-20260913-v1/
+          if-no-files-found: error
+          retention-days: 90
