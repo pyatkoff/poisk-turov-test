@@ -77,11 +77,17 @@ function anex_egypt_248_apd_preflight_main(array $input): array
         require_once $private . '/search3-preview.php';
 
         $stage = 'integration_source';
-        $registryFile = $preview . '/app/integrations/anex-search-mapping-registry.php';
-        if (!is_file($registryFile) || !is_readable($registryFile)) {
-            throw new RuntimeException('PREFLIGHT_INTEGRATION_SOURCE');
+        $integrationFiles = [
+            $preview . '/app/integrations/anex-search.php',
+            $preview . '/app/integrations/anex-search-mapping-registry.php',
+            $preview . '/app/integrations/anex-additional-prices-client.php',
+        ];
+        foreach ($integrationFiles as $integrationFile) {
+            if (!is_file($integrationFile) || !is_readable($integrationFile)) {
+                throw new RuntimeException('PREFLIGHT_INTEGRATION_SOURCE');
+            }
+            require_once $integrationFile;
         }
-        require_once $registryFile;
         if (!class_exists('AnyTourAnexSearchMappingRegistry')) {
             throw new RuntimeException('PREFLIGHT_INTEGRATION_SOURCE');
         }
