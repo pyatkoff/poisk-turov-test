@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One bounded P1 family scenario using the existing three-source search transport."""
+"""One bounded P1 three-adult scenario using the existing three-source search transport."""
 from decimal import Decimal, InvalidOperation
 import json
 import os
@@ -9,16 +9,16 @@ import sys
 
 import anex_search3_three_source_price as base
 
-EXPERIMENT='anex_three_source_family_price_20260913_v1'
+EXPERIMENT='anex_three_source_family_price_20260913_v2'
 CASES=base.CASES
-SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-29','nights':9,
-      'adults':2,'child_ages':[7],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-10-20','nights':8,
+      'adults':3,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def _replace(text, old, new, minimum=1):
     count=text.count(old)
     if count < minimum:
-        raise ValueError('family_source_contract_changed')
+        raise ValueError('party_source_contract_changed')
     return text.replace(old,new)
 
 
@@ -26,29 +26,33 @@ def source():
     """Adapt only the three-source section; paired transport/helper code stays byte-equivalent."""
     text=base.source()
     marker="const ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_price_20260911_v2';"
-    if text.count(marker)!=1: raise ValueError('family_source_marker_changed')
+    if text.count(marker)!=1: raise ValueError('party_source_marker_changed')
     prefix,suffix=text.split(marker,1)
     suffix=marker+suffix
     suffix=_replace(suffix,"anex_three_source_price_20260911_v2",EXPERIMENT)
     suffix=_replace(suffix,"2026-09-27",SPEC['date'])
-    suffix=_replace(suffix,"20260927","20261029")
-    suffix=_replace(suffix,"($value['nights'] ?? null) !== 7","($value['nights'] ?? null) !== 9")
-    suffix=_replace(suffix,"($value['child_ages'] ?? null) !== []","($value['child_ages'] ?? null) !== [7]")
-    suffix=_replace(suffix,"(int)$nights !== 7","(int)$nights !== 9")
-    suffix=_replace(suffix,"(int)$children !== 0","(int)$children !== 1")
-    suffix=_replace(suffix,"'nights'=>7","'nights'=>9")
-    suffix=_replace(suffix,"'children'=>0,'child_ages'=>[]","'children'=>1,'child_ages'=>[7]")
-    suffix=_replace(suffix,"'nightsFrom'=>7,'nightsTo'=>7","'nightsFrom'=>9,'nightsTo'=>9")
-    suffix=_replace(suffix,"'nights_from'=>7,'nights_till'=>7","'nights_from'=>9,'nights_till'=>9")
-    suffix=_replace(suffix,"'childs'=>[]","'childs'=>[7]")
-    suffix=_replace(suffix,"'CHILD'=>0","'CHILD'=>1,'AGES'=>'7'")
-    suffix=_replace(suffix,"'children'=>0","'children'=>1")
-    suffix=_replace(suffix,"'three-price-20260911-v2'","'three-price-family-20260913-v1'")
-    suffix=_replace(suffix,"'generation'=>26091102","'generation'=>26091301")
-    leaks=("2026-09-27","20260927","'nights'=>7","'nightsFrom'=>7","'nights_from'=>7","'children'=>0","'childs'=>[]","'CHILD'=>0")
-    if any(value in suffix for value in leaks): raise ValueError('family_source_old_scenario_leaked')
-    required=(EXPERIMENT,SPEC['date'],"'childs'=>[7]","'AGES'=>'7'","'nightsFrom'=>9,'nightsTo'=>9","'nights_from'=>9,'nights_till'=>9","'children'=>1")
-    if any(value not in suffix for value in required): raise ValueError('family_source_incomplete')
+    suffix=_replace(suffix,"20260927","20261020")
+    suffix=_replace(suffix,"($value['nights'] ?? null) !== 7","($value['nights'] ?? null) !== 8")
+    suffix=_replace(suffix,"($value['adults'] ?? null) !== 2","($value['adults'] ?? null) !== 3")
+    suffix=_replace(suffix,"(int)$nights !== 7","(int)$nights !== 8")
+    suffix=_replace(suffix,"(int)$adults !== 2","(int)$adults !== 3")
+    suffix=_replace(suffix,"'nights'=>7","'nights'=>8")
+    suffix=_replace(suffix,"'adults'=>2","'adults'=>3")
+    suffix=_replace(suffix,"'nightsFrom'=>7","'nightsFrom'=>8")
+    suffix=_replace(suffix,"'nightsTo'=>7","'nightsTo'=>8")
+    suffix=_replace(suffix,"'nights_from'=>7","'nights_from'=>8")
+    suffix=_replace(suffix,"'nights_till'=>7","'nights_till'=>8")
+    suffix=_replace(suffix,"'ADULT'=>2","'ADULT'=>3")
+    suffix=_replace(suffix,"$tour['adults']??2","$tour['adults']??3")
+    suffix=_replace(suffix,"'three-price-20260911-v2'","'three-price-party-20260913-v2'")
+    suffix=_replace(suffix,"'generation'=>26091102","'generation'=>26091302")
+    leaks=("2026-09-27","20260927","($value['nights'] ?? null) !== 7","($value['adults'] ?? null) !== 2",
+           "(int)$nights !== 7","(int)$adults !== 2","'nights'=>7","'adults'=>2",
+           "'nightsFrom'=>7","'nightsTo'=>7","'nights_from'=>7","'nights_till'=>7","'ADULT'=>2","$tour['adults']??2")
+    if any(value in suffix for value in leaks): raise ValueError('party_source_old_scenario_leaked')
+    required=(EXPERIMENT,SPEC['date'],"'nightsFrom'=>8","'nightsTo'=>8","'nights_from'=>8","'nights_till'=>8",
+              "'adults'=>3","'ADULT'=>3","'children'=>0","'childs'=>[]","'CHILD'=>0")
+    if any(value not in suffix for value in required): raise ValueError('party_source_incomplete')
     return prefix+suffix
 
 
@@ -56,29 +60,29 @@ def validate_case(value,case_id):
     common=(isinstance(value,dict) and value.get('schema_version')==1 and value.get('experiment_id')==EXPERIMENT
             and value.get('case_id')==case_id and value.get('automatic_retry') is False
             and value.get('booking_calls')==0 and value.get('broninit_calls')==0 and value.get('mapping_writes')==0)
-    if not common: raise ValueError('family_case_invalid')
+    if not common: raise ValueError('party_case_invalid')
     status=value.get('status')
     if status=='blocked':
         reason=value.get('reason')
         if value.get('supplier_effect')!='none' or not isinstance(reason,str) or re.fullmatch(r'(?:THREE_PRICE|ANEX|ANDROMEDA)_[A-Z0-9_]{1,80}',reason) is None:
-            raise ValueError('family_blocked_invalid')
+            raise ValueError('party_blocked_invalid')
         return value
     if status=='unknown':
-        if value.get('supplier_effect')!='unknown': raise ValueError('family_unknown_invalid')
+        if value.get('supplier_effect')!='unknown': raise ValueError('party_unknown_invalid')
         return value
     if status!='completed' or value.get('supplier_effect')!='read_only_search_completed' \
             or not isinstance(value.get('subject'),dict) or not isinstance(value.get('offers'),list) or len(value['offers'])>2000:
-        raise ValueError('family_case_invalid')
+        raise ValueError('party_case_invalid')
     subject=value['subject']
     required={'local_hotel_id','anex_hotel_id','andromeda_hotel_id','hotel_name','selection_basis','anex_observation_count'}
-    if set(subject)!=required or subject.get('selection_basis')!='current_unique_triple_mapping': raise ValueError('family_subject_invalid')
+    if set(subject)!=required or subject.get('selection_basis')!='current_unique_triple_mapping': raise ValueError('party_subject_invalid')
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or row.get('local_hotel_id')!=subject['local_hotel_id'] \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=9 or row.get('adults')!=2 or row.get('children')!=1 \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=8 or row.get('adults')!=3 or row.get('children')!=0 \
                 or row.get('meal_family')!='ai' or row.get('currency')!='RUB' or row.get('fuel_inclusion_verified') is not False \
                 or row.get('final_price_verified') is not False or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str):
-            raise ValueError('family_offer_invalid')
+            raise ValueError('party_offer_invalid')
     return value
 
 
@@ -115,18 +119,18 @@ def load_resume(resume):
     """Reuse only a contiguous prefix of already-completed immutable case evidence."""
     if resume is None: return {}
     resume=Path(resume)
-    if not resume.is_dir(): raise ValueError('family_resume_dir_missing')
+    if not resume.is_dir(): raise ValueError('party_resume_dir_missing')
     results={};missing_seen=False
     for case in CASES:
         path=resume/f'{case}.json'
         if not path.exists():
             missing_seen=True
             continue
-        if missing_seen: raise ValueError('family_resume_noncontiguous')
+        if missing_seen: raise ValueError('party_resume_noncontiguous')
         try: value=json.loads(path.read_text())
-        except Exception: raise ValueError('family_resume_json_invalid') from None
+        except Exception: raise ValueError('party_resume_json_invalid') from None
         value=validate_case(value,case)
-        if value.get('status')!='completed': raise ValueError('family_resume_case_not_completed')
+        if value.get('status')!='completed': raise ValueError('party_resume_case_not_completed')
         results[case]=value
     return results
 
@@ -138,8 +142,8 @@ def build_report(results,status,reused_cases,transport=None):
             'resume_completed_cases':list(reused_cases),
             'resume_run_id':os.environ.get('ANEX_FAMILY_RESUME_RUN_ID') if reused_cases else None,
             'comparison':base.compare(results),'fuel_resolver_coverage':resolver_coverage(results),
-            'p1_scope':'materially different family search matrix; current unique triple-mapped subject only',
-            'unmapped_evidence_policy':'none generated by this hotel-scoped scenario; matching remains external #1759',
+            'p1_scope':'materially different 3-adult 8-night search matrix; current unique triple-mapped subject only',
+            'unmapped_evidence_policy':'hotel-scoped scenario does not create new identities; matching remains external #1759',
             'effects':{'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'additional_prices_calls':0},
             'supplier_replay_requested':False,'unknown_replay_allowed':False}
     if transport is not None: report['transport_failure']=transport
