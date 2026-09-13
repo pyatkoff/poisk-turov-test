@@ -1,0 +1,130 @@
+name: MATCH Andromeda star semantics
+run-name: MATCH Andromeda star semantics #1971
+on:
+  push:
+    branches: ['feat/match-andromeda-star-semantics-1971-20260913-v1']
+    paths: ['.github/match-andromeda-star-semantics-1971-20260913-v1.arm']
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-andromeda-star-semantics-1971-20260913-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-andromeda-star-semantics-1971-20260913-v1
+  STRICT_OPERATION_ID: hotel-match-andromeda-star-semantics-strict-1971-20260913-v1
+  BULK_OPERATION_ID: hotel-match-andromeda-star-semantics-bulk-1971-20260913-v1
+  HISTORICAL_SOURCE: d397e795335f3a7c0b4878ce38029e22c0dd6f11
+  EXPECTED_BULK_BLOB: 4ef3e150bfbec625d1baf1c425e2a2cd6999e875
+  EXPECTED_STRICT_BLOB: 9c08276f69a3c827e2a03ed3a01188b57d21fb0a
+jobs:
+  audit:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate immutable inputs and semantic rules
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l scripts/diagnostics/hotel_match_andromeda_star_semantics.php
+          php tests/hotel_match_andromeda_star_semantics_test.php
+          git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$HISTORICAL_SOURCE"
+          git show "$HISTORICAL_SOURCE:scripts/diagnostics/hotel_match_current_bulk_review.php" > "$RUNNER_TEMP/bulk.php"
+          git show "$HISTORICAL_SOURCE:scripts/diagnostics/hotel_match_current_strict_review.php" > "$RUNNER_TEMP/strict.php"
+          test "$(git hash-object "$RUNNER_TEMP/bulk.php")" = "$EXPECTED_BULK_BLOB"
+          test "$(git hash-object "$RUNNER_TEMP/strict.php")" = "$EXPECTED_STRICT_BLOB"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP']); bulk=(p/'bulk.php').read_text(); strict=(p/'strict.php').read_text()
+          old="const MBR_OPERATION = 'hotel-match-current-bulk-review-1971-20260911-v1';"; new=f"const MBR_OPERATION = '{os.environ['BULK_OPERATION_ID']}';"
+          if bulk.count(old)!=1: raise SystemExit('bulk operation drift')
+          bulk=bulk.replace(old,new)
+          old="const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';"; new=f"const MSR_OPERATION = '{os.environ['STRICT_OPERATION_ID']}';"
+          if strict.count(old)!=1: raise SystemExit('strict operation drift')
+          strict=strict.replace(old,new)
+          needle="'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'candidates'=>$candidates,"
+          if strict.count(needle)!=1: raise SystemExit('strict blocked return drift')
+          strict=strict.replace(needle,"'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'blocked_rows'=>$blocked,'candidates'=>$candidates,")
+          (p/'bulk-current.php').write_text(bulk); (p/'strict-current.php').write_text(strict)
+          PY
+          php -l "$RUNNER_TEMP/bulk-current.php"
+          php -l "$RUNNER_TEMP/strict-current.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_andromeda_star_semantics.php
+      - name: Reserve immutable read operation
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          (s/'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_read_only_andromeda_star_semantics','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - name: Preserve reservation before SSH
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-andromeda-star-semantics-1971-20260913-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run CURRENT semantics audit
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']); state=rt/os.environ['OPERATION_ID']
+          def body(x):
+              if x.startswith('<?php'): x=x[5:]
+              return x.replace('declare(strict_types=1);','',1)
+          helper=body(Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text())
+          bulk=body((rt/'bulk-current.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strict=body((rt/'strict-current.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          audit=body(Path('scripts/diagnostics/hotel_match_andromeda_star_semantics.php').read_text())
+          op=json.dumps(os.environ['OPERATION_ID']); sop=json.dumps(os.environ['STRICT_OPERATION_ID'])
+          wrapper="$root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root'); $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php')); if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper'); require_once $dbHelper; $db=v2_data_db(); $strict=msr_review($db,"+sop+"); $out=hmstar_audit($db,$strict,"+op+"); echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";"
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+strict+'\n'+audit+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(k,'').strip() for k in req): raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-star-',dir=os.environ['RUNNER_TEMP']) as td:
+              key=Path(td)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600); known=Path(td)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]],os.environ[req[1]],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')}
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=540,env=clean)
+          try: result=json.loads(p.stdout)
+          except Exception:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'failed','exit_code':p.returncode,'stderr_tail':p.stderr[-1400:],'database_writes':0,'mapping_writes':0,'supplier_calls':0},sort_keys=True)+'\n'); raise
+          raw=(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'review.json').write_bytes(raw)
+          if p.returncode!=0 or result.get('status')!='completed' or result.get('database_writes')!=0 or result.get('supplier_calls')!=0: raise RuntimeError('audit_not_completed')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'review_sha256':hashlib.sha256(raw).hexdigest(),'accepted_examined':result['accepted_examined'],'accepted_parsed_star':result['accepted_parsed_star'],'star_mismatch_blocked_rows':result['star_mismatch_blocked_rows'],'blocked_semantic_status_counts':result['blocked_semantic_status_counts'],'blocked_field_counts':result['blocked_field_counts'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          text=f"MATCH #1971 CURRENT Andromeda star semantics `{os.environ['OPERATION_ID']}` completed read-only. Calibrated explicit numeric star/category semantics on **{result['accepted_examined']} accepted identities** (**{result['accepted_parsed_star']}** expose a parseable trusted field; `starKey` excluded). CURRENT strict `numeric_star_guard_mismatch` tail: **{result['star_mismatch_blocked_rows']}** rows. Semantic statuses: `{json.dumps(result['blocked_semantic_status_counts'],ensure_ascii=False,sort_keys=True)}`. DB/mapping writes **0**, supplier/Tourvisor calls **0**."
+          (state/'summary.md').write_text(text+'\n'); print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - name: Preserve review and receipt
+        if: always()
+        id: result
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-andromeda-star-semantics-1971-20260913-v1-result
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          printf '\nResult artifact `%s`; durable reservation artifact existed before SSH.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
