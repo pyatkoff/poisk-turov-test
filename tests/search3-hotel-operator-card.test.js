@@ -50,7 +50,14 @@ const fallback=api.hotelOperatorsHtml({tours:[{operator:'<img onerror="bad()">'}
 assert.doesNotMatch(fallback,/<img /);
 assert.match(fallback,/&lt;img/,'unknown names are escaped, not interpreted as markup');
 const overflow=api.hotelOperatorsHtml({tours:[tour,other,{...tour,operator:'Интурист'},{...tour,operator:'Библио Глобус'},{...tour,operator:'LOCAL OPERATOR'}]});
-assert.match(overflow,/aria-label="Ещё 2 туроператоров: Библио-Глобус, LOCAL OPERATOR">\+2</,'overflow preserves accessible operator names while the visual remains compact');
+assert.match(overflow,/<details class="hotel-operator-more"><summary aria-label="Другие туроператоры: 2">\+2<\/summary>/,'overflow uses an operable native disclosure');
+assert.match(overflow,/data-operator-brand="biblio-globus"/,'remaining known operators keep their original artwork');
+assert.match(overflow,/>LOCAL OPERATOR<\/span>/,'unknown names are actual readable text');
+assert.doesNotMatch(overflow,/title=/,'operator names do not depend on a hover tooltip');
+const unsafeOverflow=api.hotelOperatorsHtml({tours:[tour,other,{operator:'Интурист'},{operator:'<img onerror="bad()">'}]});
+assert.match(unsafeOverflow,/&lt;img onerror=&quot;bad\(\)&quot;&gt;/,'expanded unknown labels are escaped');
+assert.doesNotMatch(unsafeOverflow,/<img onerror/);
+assert.doesNotMatch(summary,/hotel-operator-more/,'two known operators need no extra disclosure');
 assert.equal(api.hotelSummary({...hotel,tours:[{...tour,isCharter:false},{...other,isCharter:false}]}).flight,'Регулярные рейсы');
 assert.equal(api.hotelSummary({...hotel,tours:[tour,{...other,isCharter:undefined}]}).flight,'Уточняется по варианту');
 assert.doesNotMatch(api.tourRow({...tour,provider:'andromeda',selectionEnabled:false}),/class="direct-tour"/,'existing provider selection guard stays authoritative');
