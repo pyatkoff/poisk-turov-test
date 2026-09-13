@@ -20,7 +20,11 @@ $pdo->exec("INSERT INTO catalog_departures VALUES(1,'Москва',1)");
 $pdo->exec("INSERT INTO catalog_hotels VALUES(900,'Cache Hotel',4,'Турция',10,'Анталья',11,'Кемер',5,4.7,1,NULL)");
 $pdo->exec("INSERT INTO andromeda_hotel_identities VALUES('andromeda_catalog','3414',900,'accepted')");
 $saved=['local_country_id'=>4,'townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'name'=>'Москва']]]],
-    'all'=>['params'=>['STATEINC'=>5],'payload'=>['HOTELS'=>[['id'=>3414,'name'=>'Cache Hotel']],'OPERATORS'=>[]]],
+    'all'=>['params'=>['STATEINC'=>5],'payload'=>[
+        'HOTELS'=>[['id'=>3414,'name'=>'Cache Hotel']],'OPERATORS'=>[],
+        'MEAL'=>[['id'=>5,'name'=>'AI','alias'=>'Все включено'],['id'=>7,'name'=>'UAI','alias'=>'Ультра все включено']],
+        'STARS'=>[['id'=>2,'name'=>'2*'],['id'=>3,'name'=>'3*'],['id'=>4,'name'=>'4*'],['id'=>5,'name'=>'5*']]
+    ]],
     'excluded_operator_ids'=>[]];
 $params=['departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-09-22','dateTo'=>'2026-09-22','nightsFrom'=>7,'nightsTo'=>7,
     'adults'=>2,'childs'=>[],'meal'=>'7','currency'=>'RUB','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],
