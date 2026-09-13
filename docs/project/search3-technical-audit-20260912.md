@@ -466,3 +466,78 @@ PR в #996. Весь refactor-pass пока **не закрыт**: следую�
 контракты/claims и брать следующий незавершённый пункт. Производственные approvals,
 supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferred
 сохраняют прежние границы.
+
+
+## Завершённые пакеты и граница URL-состояния, 2026-09-13
+
+Сверено с release [be7f5fe8](https://github.com/pyatkoff/poisk-turov-test/commit/be7f5fe884937b32f06232e9cd56bb136a9ffad4), свежими #996/#1646,
+открытыми PR и exact CI. Таблица ниже уточняет результаты предыдущих датированных
+разделов; их старые «открыто» и pending-формулировки не являются новой очередью.
+
+| Пакет | Подтверждённый результат | Source / release merge и evidence |
+| --- | --- | --- |
+| #2272 | Удалён отключённый test owner; 17 текущих guards проходят. Повторять эту очистку не нужно | [ec0620a4](https://github.com/pyatkoff/poisk-turov-test/commit/ec0620a43199875dd3351adc792e16bcda37c46d) → [281c17ff](https://github.com/pyatkoff/poisk-turov-test/commit/281c17ff3533ce7a32a4bb5f63aef390ab848d30); Security 34724871213, whole-site 34724871206 |
+| #2279 | Существующий hotel-summary test актуализирован и действительно подключён к renderer CI; runtime не менялся | [eb203d8c](https://github.com/pyatkoff/poisk-turov-test/commit/eb203d8c826ae5a0f4bf61c4ff6b07f9ef5e9fea) → [37523e78](https://github.com/pyatkoff/poisk-turov-test/commit/37523e7837a7f2461602adcd92f24fb1bcfba6b2); Security 34726053737, renderer 34726053747 |
+| #2261 | Desktop-family geometry исправлена в canonical CSS; 1–2 возраста выровнены в ограниченной группе, третий переносится внутри неё | [e9b89fcb](https://github.com/pyatkoff/poisk-turov-test/commit/e9b89fcb7137d0942a76d642a76531fb28affcd1) → [a4e591c1](https://github.com/pyatkoff/poisk-turov-test/commit/a4e591c10800fb13b7a0fe9705fc3f494a1e8078); [точные ширины и визуальный receipt](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649482828) |
+| #2276 | Выбор open/closed календаря сохраняется через локальные 0/1/restored dates; новый поиск сохраняет первоначальное раскрытие | [bb8d9711](https://github.com/pyatkoff/poisk-turov-test/commit/bb8d971123ae23a98566bce7caf7783f2e481180) → [0758836b](https://github.com/pyatkoff/poisk-turov-test/commit/0758836b54d3fd4b1ee0c8f41599cc4db1e2b2b7); [375/1440 visual и green CI](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649576503) |
+| #2282 | Повреждённые даты из URL получают существующий fallback до PHP-парсера; обычные даты/aliases/семья/ночи сохранены | [82f2d936](https://github.com/pyatkoff/poisk-turov-test/commit/82f2d93627079d6f9e2df723471c15d39facd88d) → [283f3db7](https://github.com/pyatkoff/poisk-turov-test/commit/283f3db732e57a450339cdecf818cbdd193f6b32); [baseline fatal и final green](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649537573) |
+| #2285 | Primary-бюджет принимает точные суммы в рублях: 155500–200750 больше не блокируются native step=1000. Суммы не округляются; legacy step сохранён | [4fb09556](https://github.com/pyatkoff/poisk-turov-test/commit/4fb095560d45dd9d39d8a92c751a0cd41a321e93) → [be7f5fe8](https://github.com/pyatkoff/poisk-turov-test/commit/be7f5fe884937b32f06232e9cd56bb136a9ffad4); [точная визуальная приёмка](https://github.com/pyatkoff/poisk-turov-test/pull/2285#issuecomment-5649653514) |
+
+Все шесть пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
+navigation 34727758774 и Security 34727654231 успешны; оба merged файла
+прочитаны обратно и совпали с checked source. Выполнены 15 ширин, 60 состояний
+семьи и exact/zero/unset/negative/reversed budget guards. Геометрический стенд
+намеренно блокирует справочники: для чистой проверки budget validator заданы
+только fixture departure=1/country=4; FormData и price-поля lifecycle взяты
+из настоящей served-формы. Это не проверка живой supplier availability.
+
+Приёмку exact изображений #2261/#2276/#2285 выполнил исполнитель с рабочим
+доступом к артефактам; ссылки выше сохраняют происхождение подтверждения.
+Локальный HTTP 403 при чтении артефакта не обходился. Успешный CI без просмотра
+изображений не был засчитан как визуальная приёмка.
+
+### Установленная граница следующего URL-пакета
+
+На этой release прослежены фактические владельцы:
+
+- `v2/index.php` и `form-defaults.php` дают единственную native-форму и SSR defaults.
+- `search-lifecycle-v6.js::params()` читает её FormData. Capture submit-handler
+  вызывает `preventDefault/stopImmediatePropagation`; внутри `submit()` идут
+  validation → snapshot → существующий `search_start`. Независимый второй
+  submit-owner не нужен.
+- `boot()` ожидает `catalogs.init()`, затем применяет `hydrateUrlState()`;
+  явные входные ссылки могут запустить поиск по существующему auto-контракту.
+  `url-primary-catalog-sync-v1.js` уже согласует primary/destination catalogs
+  внутри init. Его перенос или дублирование не является решением URL writer.
+- Обратной записи условий в history и обработки Back/Forward в этих owners
+  пока нет. Оба JS-файла входят в 17 entries существующего
+  `v2/search3-shared-runtime.json`; их изменение требует общего generated-пакета.
+
+Остаток технического этапа ограничен URL round-trip и единой существующей
+operator/meal display логикой. На момент проверки claim
+[selected-date-v4](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5648815213)
+не получил явного handoff: branch всё ещё на исходном
+`857f9a141c1e827425f16c79a831822907668ce9`, implementation PR отсутствует.
+[Запрос передачи общих файлов](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5649490209)
+сохранён. Возраст claim сам по себе не разрешает второго writer.
+После передачи нужен один canonical source/generated/hash пакет, с сохранением
+date/night aliases, child ages 0/17, пустых границ бюджета и уже имеющихся query
+параметров аналитики; персональные данные/lead draft/consent в URL не записывать.
+Local result filters не должны запускать supplier search.
+
+### Публикация и уровень готовности
+
+[Receipt run 34726731028](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5649576434)
+подтверждает `failed_not_accepted`, `rollback=rolled_back` и
+`production_unchanged=true`. После активации накопленного preview проверка
+`production_lead_health` ожидала `v2-hmac-bridge-bitrix-lead`, а read-only
+ответ содержал `v2-direct-bitrix-lead`. Прежний preview восстановлен.
+Эта зависимость требует отдельного решения владельца lead-контракта;
+переигрывать публикацию или ослаблять guard нельзя.
+
+Карта owners/build и перечисленные corrections завершены и не перезапускаются.
+Оставшиеся URL/display packages остаются открытыми; весь refactor-pass и
+12 осей ≥9.5 не объявляются завершёнными. Новый числовой балл не назначен.
+CHECKED/MERGED не означает preview-published или production-approved.
+Physical Safari/iPhone остаётся deferred; production/main и защищённые
+supplier/price/lead/analytics/matching/content/SITE/SEO границы сохранены.
