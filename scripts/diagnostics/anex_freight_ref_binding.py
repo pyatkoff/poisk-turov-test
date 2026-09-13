@@ -6,6 +6,7 @@ sealed/no-replay after the 2026-09-13 incident and must not be reintroduced here
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -15,6 +16,7 @@ SEALED_EVIDENCE = {
     'run_id': 34741215794,
     'artifact_id': 10312404322,
     'artifact_sha256': 'a2851f86f0bc0db2d68f179e403cf4e2aad5958d5789e764496503609782f699',
+    'result_sha256': '8f59f55a58ac84bb268a5f94924fad3d1093d4379ab0af84670547aae6b09e0f',
     'disposition': 'sealed_prohibited_replay_not_new_p0_evidence',
 }
 ZERO_EFFECT_FIELDS = (
@@ -111,20 +113,27 @@ def summarize(value):
         'anex_requests': value.get('anex_requests'),
         'selected_concrete': value.get('selected_concrete'),
         'ref_binding': value.get('ref_binding'),
-        'sealed_evidence': dict(SEALED_EVIDENCE),
-        'note': 'Saved-result validation only; no supplier/SSH/DB calls, no replay, no B2B/TV/Andromeda/booking and no price arithmetic.',
+        # Semantic validity alone never proves origin from the sealed artifact.
+        'sealed_evidence': None,
+        'note': 'Request counts describe the saved result, not this read. Saved-result validation only; no supplier/SSH/DB calls, no replay, no B2B/TV/Andromeda/booking and no price arithmetic.',
     }
 
 
 def load_saved(path):
+    """Return a report attributed only when the single input buffer matches the pin."""
     path = Path(path)
     if not path.is_file():
         raise ValueError('freight_ref_binding_saved_result_missing')
     try:
-        value = json.loads(path.read_text(encoding='utf-8'))
+        raw = path.read_bytes()
+        value = json.loads(raw.decode('utf-8'))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError('freight_ref_binding_saved_result_invalid') from exc
-    return validate(value)
+    report = summarize(value)
+    report['input_sha256'] = hashlib.sha256(raw).hexdigest()
+    if report['input_sha256'] == SEALED_EVIDENCE['result_sha256']:
+        report['sealed_evidence'] = dict(SEALED_EVIDENCE)
+    return report
 
 
 def main(argv=None):
@@ -132,7 +141,7 @@ def main(argv=None):
     if len(args) != 1:
         raise SystemExit('usage: anex_freight_ref_binding.py SAVED_RESULT_JSON')
     try:
-        report = summarize(load_saved(args[0]))
+        report = load_saved(args[0])
     except ValueError as exc:
         print(json.dumps({'status': 'invalid_saved_result', 'reason': str(exc)}, sort_keys=True))
         raise SystemExit(1)

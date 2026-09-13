@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import json
 import subprocess
 import sys
@@ -80,6 +81,7 @@ class FreightRefBindingTest(unittest.TestCase):
         self.assertFalse(report['additional_prices_tour_binding_verified'])
         self.assertFalse(report['selected_transport_verified'])
         self.assertFalse(report['production_price_arithmetic_applied'])
+        self.assertIsNone(report['sealed_evidence'])
 
     def test_completed_non_overlap_is_valid_falsification(self):
         value = completed_result()
@@ -100,13 +102,17 @@ class FreightRefBindingTest(unittest.TestCase):
         self.assertEqual(report['status'], 'unknown')
         self.assertEqual(report['reason'], 'FREIGHT_REF_BINDING_SEARCH_EMPTY')
         self.assertFalse(report['supplier_replay_allowed'])
-        self.assertEqual(report['sealed_evidence']['artifact_id'], 10312404322)
-        self.assertEqual(report['sealed_evidence']['disposition'], 'sealed_prohibited_replay_not_new_p0_evidence')
+        # Validating a dictionary does not establish its artifact provenance.
+        self.assertIsNone(report['sealed_evidence'])
 
     def test_reader_cli_has_no_transport_or_output_checkpoint(self):
         with tempfile.TemporaryDirectory() as td:
             source = Path(td) / 'result.json'
-            source.write_text(json.dumps(SEALED_UNKNOWN), encoding='utf-8')
+            # These bytes exactly match result.json from the sealed artifact.
+            raw = (json.dumps(SEALED_UNKNOWN, sort_keys=True, indent=2) + '\n').encode('utf-8')
+            self.assertEqual(hashlib.sha256(raw).hexdigest(),
+                             '8f59f55a58ac84bb268a5f94924fad3d1093d4379ab0af84670547aae6b09e0f')
+            source.write_bytes(raw)
             proc = subprocess.run(
                 [sys.executable, '-B', str(DIAG / 'anex_freight_ref_binding.py'), str(source)],
                 check=False, capture_output=True, text=True,
@@ -114,7 +120,38 @@ class FreightRefBindingTest(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stderr)
             report = json.loads(proc.stdout)
             self.assertEqual(report['status'], 'unknown')
+            self.assertEqual(report['input_sha256'], hashlib.sha256(raw).hexdigest())
+            self.assertEqual(report['sealed_evidence']['artifact_id'], 10312404322)
+            self.assertEqual(report['sealed_evidence']['disposition'],
+                             'sealed_prohibited_replay_not_new_p0_evidence')
+            self.assertEqual(report['anex_requests'], 4)  # historical, not new calls
+            self.assertEqual(source.read_bytes(), raw)
             self.assertEqual(sorted(Path(td).iterdir()), [source])
+
+    def test_cli_does_not_attribute_synthetic_changed_or_forged_input(self):
+        variants = {
+            'synthetic_completed': completed_result(),
+            'changed_unknown': dict(SEALED_UNKNOWN, elapsed_ms=3971),
+            'forged_provenance': dict(SEALED_UNKNOWN, sealed_evidence=dict(binding.SEALED_EVIDENCE)),
+        }
+        with tempfile.TemporaryDirectory() as td:
+            source = Path(td) / 'result.json'
+            for name, value in variants.items():
+                with self.subTest(name=name):
+                    raw = (json.dumps(value, sort_keys=True, indent=2) + '\n').encode('utf-8')
+                    source.write_bytes(raw)
+                    proc = subprocess.run(
+                        [sys.executable, '-B', str(DIAG / 'anex_freight_ref_binding.py'), str(source)],
+                        check=False, capture_output=True, text=True,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    report = json.loads(proc.stdout)
+                    self.assertEqual(report['status'], value['status'])
+                    self.assertIsNone(report['sealed_evidence'])
+                    self.assertEqual(report['input_sha256'], hashlib.sha256(raw).hexdigest())
+                    self.assertFalse(report['supplier_replay_allowed'])
+                    self.assertEqual(source.read_bytes(), raw)
+                    self.assertEqual(sorted(Path(td).iterdir()), [source])
 
     def test_money_booking_and_network_boundaries_are_absent(self):
         text = (DIAG / 'anex_freight_ref_binding.py').read_text(encoding='utf-8')
