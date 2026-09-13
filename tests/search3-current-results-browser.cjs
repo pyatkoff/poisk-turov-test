@@ -372,7 +372,7 @@ async function run(browser, width, previous) {
         await page.setViewportSize({ width, height: 700 });
         await checkPrimaryForm(page, 'short desktop results');
         await snapshot(page);
-        await page.screenshot({ path: path.join(output, 'primary-with-results-1440-short.png'), fullPage: true });
+        await page.screenshot({ path: path.join(output, 'primary-with-results-1440-short.png') });
         await page.setViewportSize({ width, height: 1000 });
       }
     }
