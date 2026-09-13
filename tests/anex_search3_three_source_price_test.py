@@ -17,10 +17,16 @@ def check(value):
 combined=mod.source(); check(combined.startswith('declare(strict_types=1);\n'))
 check(combined.count('declare(strict_types=1);')==1); check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
 check(mod.EXPERIMENT=='anex_three_source_price_20260911_v2'); check(mod.SPEC['date']=='2026-09-27')
+check(set(mod.SCENARIOS)=={'turkey-20260911-v2','egypt-20260913-v1'})
+check(mod.SCENARIOS['egypt-20260913-v1']=={'experiment_id':'anex_three_source_price_20260913_egypt_v1','country':'Egypt','date':'2026-10-21','nights':7,'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'})
+mod.activate_scenario('egypt-20260913-v1'); check(mod.EXPERIMENT=='anex_three_source_price_20260913_egypt_v1'); check(mod.SPEC['country']=='Egypt' and mod.SPEC['date']=='2026-10-21')
+try: mod.activate_scenario('egypt-guess'); check(False)
+except ValueError: check(True)
+mod.activate_scenario('turkey-20260911-v2')
 
 subject={'local_hotel_id':6319,'anex_hotel_id':8121,'andromeda_hotel_id':'9001','hotel_name':'APERION BEACH','selection_basis':'current_unique_triple_mapping','anex_observation_count':9}
 def row(provider,price,room='standard',placement='dbl',fuel=None):
-    return {'provider':provider,'local_hotel_id':6319,'external_hotel_id':'1','date':mod.SPEC['date'],'nights':7,'adults':2,'children':0,'meal_family':'ai','meal_label':'AI','room':'Standard','room_norm':room,'placement':'DBL','placement_norm':placement,'price':price,'currency':'RUB','fuel_charge':fuel,'fuel_inclusion_verified':False,'final_price_verified':False}
+    return {'provider':provider,'local_hotel_id':6319,'external_hotel_id':'1','date':mod.SPEC['date'],'nights':mod.SPEC['nights'],'adults':mod.SPEC['adults'],'children':len(mod.SPEC['child_ages']),'meal_family':mod.SPEC['meal_family'],'meal_label':'AI','room':'Standard','room_norm':room,'placement':'DBL','placement_norm':placement,'price':price,'currency':mod.SPEC['currency'],'fuel_charge':fuel,'fuel_inclusion_verified':False,'final_price_verified':False}
 def result(provider,price,fuel=None):
     return {'schema_version':1,'experiment_id':mod.EXPERIMENT,'case_id':provider,'status':'completed','subject':subject,'offers':[row(provider,price,fuel=fuel)],'details':{},'supplier_effect':'read_only_search_completed','reused':False,'automatic_retry':False,'booking_calls':0,'broninit_calls':0,'mapping_writes':0}
 
@@ -80,5 +86,8 @@ mod.subprocess.run=fake_started
 try: mod.ssh_php_no_mux('echo 1;',{'case':'fixture'}); check(False)
 except Exception as exc:
     check(type(exc).__name__=='SSHBatchError'); check(len(started_calls)==1)
+
+mod.activate_scenario('egypt-20260913-v1')
+egypt_result=result('anex','120000'); check(egypt_result['experiment_id']=='anex_three_source_price_20260913_egypt_v1'); check(egypt_result['offers'][0]['date']=='2026-10-21'); check(mod.validate_case(egypt_result,'anex') is egypt_result)
 
 print(f'Three-source ANEX price Python guards: {checks} checks passed; network=0')
