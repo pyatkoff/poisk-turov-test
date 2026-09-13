@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed ANEX-only price comparison across direct ANEX, Andromeda and Tourvisor."""
+"""Fixed allowlisted ANEX-only price comparison across direct ANEX, Andromeda and Tourvisor."""
 import json
 import os
 from pathlib import Path
@@ -14,8 +14,29 @@ import anex_search3_gap_queue as gaps
 
 EXPERIMENT = 'anex_three_source_price_20260911_v2'
 CASES = ('anex', 'andromeda', 'tourvisor')
-SPEC = {'experiment_id':EXPERIMENT,'country':'Turkey','date':'2026-09-27','nights':7,
-        'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SCENARIOS = {
+    'turkey-20260911-v2': {
+        'experiment_id': EXPERIMENT,
+        'country':'Turkey','date':'2026-09-27','nights':7,'adults':2,'child_ages':[],
+        'meal_family':'ai','currency':'RUB',
+    },
+    'egypt-20260913-v1': {
+        'experiment_id':'anex_three_source_price_20260913_egypt_v1',
+        'country':'Egypt','date':'2026-10-21','nights':7,'adults':2,'child_ages':[],
+        'meal_family':'ai','currency':'RUB',
+    },
+}
+SPEC = dict(SCENARIOS['turkey-20260911-v2'])
+SPEC['experiment_id'] = EXPERIMENT
+
+
+def activate_scenario(name):
+    global EXPERIMENT, SPEC
+    if name not in SCENARIOS:
+        raise ValueError('three_source_scenario_invalid')
+    SPEC = dict(SCENARIOS[name])
+    EXPERIMENT = SPEC['experiment_id']
+    return SPEC
 
 
 def source():
@@ -95,9 +116,9 @@ def validate_case(value,case_id):
     if set(subject)!=required or subject.get('selection_basis')!='current_unique_triple_mapping': raise ValueError('three_source_subject_invalid')
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or row.get('local_hotel_id')!=subject['local_hotel_id'] \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=7 or row.get('adults')!=2 or row.get('children')!=0 \
-                or row.get('meal_family')!='ai' or row.get('currency')!='RUB' or row.get('fuel_inclusion_verified') is not False \
-                or row.get('final_price_verified') is not False or not isinstance(row.get('price'),str) \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=SPEC['nights'] or row.get('adults')!=SPEC['adults'] \
+                or row.get('children')!=len(SPEC['child_ages']) or row.get('meal_family')!=SPEC['meal_family'] or row.get('currency')!=SPEC['currency'] \
+                or row.get('fuel_inclusion_verified') is not False or row.get('final_price_verified') is not False or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str):
             raise ValueError('three_source_offer_invalid')
     return value
@@ -145,12 +166,13 @@ def transport_failure(exc):
 
 def run(output):
     php=source(); results={}
+    request=dict(SPEC); request['experiment_id']=EXPERIMENT
     for case in CASES:
-        value=validate_case(ssh_php_no_mux(php,dict(SPEC,case_id=case)),case); results[case]=value; save(output/f'{case}.json',value)
+        value=validate_case(ssh_php_no_mux(php,dict(request,case_id=case)),case); results[case]=value; save(output/f'{case}.json',value)
         if value['status']!='completed': break
     all_done=len(results)==len(CASES) and all(v['status']=='completed' for v in results.values())
     report={'schema_version':1,'experiment_id':EXPERIMENT,'status':'completed' if all_done else next(v['status'] for v in results.values() if v['status']!='completed'),
-            'spec':SPEC,'case_statuses':{k:v['status'] for k,v in results.items()},'comparison':compare(results),
+            'spec':request,'case_statuses':{k:v['status'] for k,v in results.items()},'comparison':compare(results),
             'fuel_policy':{'tourvisor':'price and fuelCharge separate; do not add automatically','anex':'search price unverified; AdditionalPricesDaily separate pending evidence',
                            'andromeda':'action=price has no documented separate fuel field; search price unverified'},
             'transport_policy':'ControlMaster=no; one retry only for connection-close before auth/command','effects':{'booking_calls':0,'broninit_calls':0,'mapping_writes':0},
@@ -159,9 +181,16 @@ def run(output):
 
 
 def main():
-    if len(sys.argv)!=2: raise SystemExit('usage: anex_search3_three_source_price.py OUTPUT_DIR')
-    output=Path(sys.argv[1])
+    args=sys.argv[1:]
+    scenario='turkey-20260911-v2'
+    if len(args)==3 and args[0]=='--scenario':
+        scenario=args[1]; output=Path(args[2])
+    elif len(args)==1:
+        output=Path(args[0])
+    else:
+        raise SystemExit('usage: anex_search3_three_source_price.py [--scenario NAME] OUTPUT_DIR')
     try:
+        activate_scenario(scenario)
         report=run(output); print(json.dumps(report,ensure_ascii=False,sort_keys=True)); raise SystemExit(0 if report['status']=='completed' else 1)
     except SystemExit: raise
     except Exception as exc:
