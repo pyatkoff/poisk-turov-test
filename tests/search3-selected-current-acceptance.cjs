@@ -108,7 +108,7 @@ async function run(browser, width) {
     assert.match(detail.price.replace(/\s/g, ''), /148500₽/, 'selected total stays visible');
     assert.equal(detail.title, 'SUNRISE Resort & Spa', 'selected hotel identity stays visible');
     assert.equal(detail.dateText, '05.10.2026', 'selected date uses the canonical renderer display');
-    assert.notEqual(detail.dateText, selectedTour.date, 'selected date never exposes the raw supplier ISO value');
+    assert.notEqual(detail.dateText, tour.date, 'selected date never exposes the raw supplier ISO value');
     assert.equal(detail.searchVisible, contract.invariants.selected_search_form_visible, 'selected state does not duplicate the search form');
     assert.equal(detail.overflow, contract.invariants.horizontal_overflow, `selected detail has no horizontal overflow at ${width}`);
     assert.ok(detail.rootWidth <= width + 2, 'selected root is bounded by the viewport');
