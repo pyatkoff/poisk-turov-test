@@ -1,6 +1,6 @@
 (function(){'use strict';
 if(window.V2LeadUiRaceGuardV1)return;
-let leadPending=false;
+let leadPending=false,leadCompleted=false;
 function tourId(){const controller=window.V2TourController,tour=controller&&controller.currentTour;return String(tour&&tour.id||'');}
 function searchId(){const runtime=window.V2Runtime,state=runtime&&runtime.state;return Number(state&&state.searchId||0);}
 function eventTourId(event){return String(event&&event.detail&&event.detail.tourId||'');}
@@ -14,19 +14,20 @@ function returnAction(){const root=selectedRoot();return root&&root.querySelecto
 function tourActions(){return Array.from(document.querySelectorAll('.direct-tour'));}
 function stickySearchActions(){return Array.from(document.querySelectorAll('.mobile-search-sticky-submit'));}
 function setFlightLocked(locked){const box=flightChoices();if(!box)return false;box.inert=!!locked;if(locked){box.setAttribute('aria-busy','true');box.dataset.leadSubmitLocked='1';}else{box.removeAttribute('aria-busy');delete box.dataset.leadSubmitLocked;}return true;}
-function setReturnLocked(locked){const action=returnAction();if(!action)return false;action.disabled=!!locked;if(locked){action.setAttribute('aria-disabled','true');action.dataset.leadSubmitLocked='1';}else{action.removeAttribute('aria-disabled');delete action.dataset.leadSubmitLocked;}return true;}
+function setReturnLocked(locked){const root=selectedRoot();if(!root)return false;const actions=root.querySelectorAll('.back-results,.other-hotel-offers');actions.forEach(action=>{if(locked){if(action.disabled)return;action.disabled=true;action.setAttribute('aria-disabled','true');action.dataset.leadSubmitLocked='1';return;}if(action.dataset.leadSubmitLocked!=='1')return;action.disabled=false;action.removeAttribute('aria-disabled');delete action.dataset.leadSubmitLocked;});return actions.length>0;}
 function setTourActionsLocked(locked){tourActions().forEach(action=>{if(locked){if(action.disabled)return;action.disabled=true;action.setAttribute('aria-disabled','true');action.dataset.leadSubmitLocked='1';return;}if(action.dataset.leadSubmitLocked!=='1')return;action.disabled=false;action.removeAttribute('aria-disabled');delete action.dataset.leadSubmitLocked;});}
 function setSearchLocked(locked){const form=searchForm();if(form){if(locked){if(!form.inert){form.inert=true;form.setAttribute('aria-busy','true');form.dataset.leadSubmitLocked='1';}}else if(form.dataset.leadSubmitLocked==='1'){form.inert=false;form.removeAttribute('aria-busy');delete form.dataset.leadSubmitLocked;}}stickySearchActions().forEach(action=>{if(locked){if(action.disabled)return;action.disabled=true;action.setAttribute('aria-disabled','true');action.dataset.leadSubmitLocked='1';return;}if(action.dataset.leadSubmitLocked!=='1')return;action.disabled=false;action.removeAttribute('aria-disabled');delete action.dataset.leadSubmitLocked;});}
 function setPendingLocked(locked){setFlightLocked(locked);setReturnLocked(locked);setTourActionsLocked(locked);setSearchLocked(locked);}
-function startPending(){leadPending=true;setPendingLocked(true);}
-function clearPending(){leadPending=false;setPendingLocked(false);}
+function startPending(){leadPending=true;leadCompleted=false;setPendingLocked(true);}
+function clearPending(){leadPending=false;leadCompleted=false;setPendingLocked(false);}
 function handleError(event){if(protect(event))clearPending();}
-function handleSuccess(event){protect(event);}
+function handleSuccess(event){if(protect(event))leadCompleted=true;}
 function handleSearchReset(){if(leadPending){setPendingLocked(true);return false;}clearPending();return true;}
 function handleSearchSubmit(event){const form=event&&event.target;if(!leadPending||!form||form.id!=='tourSearch')return true;if(typeof event.preventDefault==='function')event.preventDefault();if(typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();return false;}
 window.addEventListener('v2:lead-started',startPending);
 window.addEventListener('v2:lead-error',handleError);
 window.addEventListener('v2:lead-success',handleSuccess);
+window.addEventListener('click',event=>{const action=event.target&&event.target.closest&&event.target.closest('.lead-success-back'),root=selectedRoot();if(leadCompleted&&action&&root&&root.contains(action))clearPending();},true);
 window.addEventListener('v2:tour-selected',()=>{if(!leadPending)setPendingLocked(false);});
 window.addEventListener('v2:search-reset',handleSearchReset);
 window.addEventListener('submit',handleSearchSubmit,true);
