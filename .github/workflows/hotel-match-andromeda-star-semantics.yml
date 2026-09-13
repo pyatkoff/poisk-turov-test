@@ -150,7 +150,10 @@ jobs:
               echo hmss_json($out),"\n";
           } catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
           '''
-          code="define('FC_LIBRARY_ONLY',true); putenv('STRICT_OPERATION_ID='+getenv('STRICT_OPERATION_ID')); putenv('OPERATION_ID='+getenv('OPERATION_ID'));\n"+h+'\n'+b+'\n'+s+'\n'+wrapper
+          prefix="define('FC_LIBRARY_ONLY',true);\n"
+          prefix+="putenv("+json.dumps("STRICT_OPERATION_ID="+os.environ['STRICT_OPERATION_ID'])+");\n"
+          prefix+="putenv("+json.dumps("OPERATION_ID="+os.environ['OPERATION_ID'])+");\n"
+          code=prefix+h+'\n'+b+'\n'+s+'\n'+wrapper
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
           if any(not os.environ.get(k,'').strip() for k in req): raise RuntimeError('ssh_secret_missing')
           with tempfile.TemporaryDirectory(prefix='match-star-',dir=os.environ['RUNNER_TEMP']) as td:
