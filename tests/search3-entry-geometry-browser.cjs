@@ -132,20 +132,21 @@ const widths = [350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 120
               values: [data.get('price_from'), data.get('price_till')],
               nativeValid: [form.elements.price_from.checkValidity(), form.elements.price_till.checkValidity()],
               searchValues: [params.priceFrom, params.priceTo],
-              validation: window.V2SearchLifecycle.validate(params),
+              // Catalog I/O is deliberately blocked here; use only a fixed route prerequisite for the budget validator.
+              validation: window.V2SearchLifecycle.validate({ ...params, departureId: '1', countryId: '4' }),
             };
           });
           assert.deepEqual(observed.values, bounds, 'native form keeps the exact RUB budget');
           assert.deepEqual(observed.nativeValid, [true, true], 'whole-ruble budgets need not be multiples of 1000');
           assert.deepEqual(observed.searchValues, bounds, 'existing search parameters receive the typed values without rounding');
-          assert.equal(observed.validation, '', 'valid exact, zero and unset bounds retain lifecycle acceptance');
+          assert.equal(observed.validation, '', 'exact, zero and unset bounds pass the current validator with a fixed route');
           budget.push(observed);
         }
         await page.locator('[name=price_from]').fill('-1');
         assert.equal(await page.locator('[name=price_from]').evaluate(node => node.checkValidity()), false, 'negative minimum remains invalid');
         await page.locator('[name=price_from]').fill('155500');
         await page.locator('[name=price_till]').fill('155499');
-        assert.equal(await page.evaluate(() => window.V2SearchLifecycle.validate(window.V2SearchLifecycle.params())), 'Максимальная цена не может быть меньше минимальной.', 'reversed bounds retain the current validation');
+        assert.equal(await page.evaluate(() => window.V2SearchLifecycle.validate({ ...window.V2SearchLifecycle.params(), departureId: '1', countryId: '4' })), 'Максимальная цена не может быть меньше минимальной.', 'reversed bounds retain the current validation');
         await page.locator('[name=price_till]').fill('200750');
         if ([375, 1440].includes(width)) {
           await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-exact-budget-${width}.png`), animations: 'disabled' });
