@@ -15,4 +15,8 @@ $assert($f['samples']===50&&$f['agreements']===49&&$f['semantic_status']==='stro
 $bucket=[];for($i=0;$i<20;$i++)hmstar_add($bucket,4,$i<16?4:5);$f=hmstar_finish($bucket);
 $assert($f['semantic_status']==='inconsistent_with_local_category','inconsistent_threshold');
 $assert(hmstar_semantic_status(19,19)==='insufficient_sample','sample_floor');
+$calibration=[];hmstar_add($calibration['identity_evidence:starName'][4],4,4);
+$assert($calibration['identity_evidence:starName'][4]['samples']===1&&$calibration['identity_evidence:starName'][4]['agreements']===1,'uninitialized_nested_bucket');
+$fieldTotals=[];hmstar_add($fieldTotals['latest_search_observation:star'],5,4);
+$assert($fieldTotals['latest_search_observation:star']['samples']===1&&$fieldTotals['latest_search_observation:star']['mismatches']===1,'uninitialized_field_bucket');
 echo "hotel_match_andromeda_star_semantics_test: {$checks} checks PASS\n";
