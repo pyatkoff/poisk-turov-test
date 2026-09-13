@@ -1,0 +1,102 @@
+name: MATCH current saved ANEX bridge reconcile v3
+on:
+  push:
+    branches: ['ops/match-current-saved-anex-bridge-reconcile-1971-20260913-v3']
+    paths: ['.github/match-current-saved-anex-bridge-reconcile-1971-20260913-v3.arm']
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-current-saved-anex-bridge-reconcile-1971-20260913-v3
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-saved-anex-bridge-reconcile-1971-20260913-v3
+jobs:
+  current-read-only:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false}
+      - name: Reserve immutable operation
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          s.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: match-current-saved-anex-bridge-reconcile-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-current-saved-anex-bridge-reconcile-1971-20260913-v3/reservation.json
+          retention-days: 90
+      - name: Reconcile typed saved bridge evidence in both directions
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];op=json.dumps(os.environ['OPERATION_ID'])
+          php=r'''<?php
+          declare(strict_types=1);$stage='bootstrap';
+          function nkey(string $s):string{$s=mb_strtolower(trim($s),'UTF-8');$s=str_replace('ё','е',$s);$s=preg_replace('/\b(?:ex|hotel|hotels|resort|resorts|spa)\b/u',' ',$s)??$s;$s=preg_replace('/[^\p{L}\p{N}]+/u',' ',$s)??$s;$s=preg_replace('/\s+/u',' ',trim($s))??$s;return trim($s);}
+          function toks(string $s):array{$g=['hotel'=>1,'hotels'=>1,'resort'=>1,'resorts'=>1,'spa'=>1,'ex'=>1];$o=[];foreach(explode(' ',nkey($s)) as $t)if($t!==''&&!isset($g[$t]))$o[$t]=1;return array_keys($o);}
+          function quals(array $names):array{$q=['annex'=>1,'beach'=>1,'garden'=>1,'gardens'=>1,'north'=>1,'south'=>1,'posh'=>1,'adult'=>1,'adults'=>1,'pool'=>1,'sea'=>1,'prestige'=>1,'aquamarine'=>1,'aqua'=>1,'family'=>1,'club'=>1];$o=[];foreach($names as $n)foreach(toks((string)$n) as $t)if(isset($q[$t]))$o[$t]=1;$k=array_keys($o);sort($k);return $k;}
+          function distm($a,$b,$c,$d):?float{foreach([$a,$b,$c,$d] as $v)if($v===null||!is_numeric($v))return null;$r=6371000.0;$p1=deg2rad((float)$a);$p2=deg2rad((float)$c);$dp=$p2-$p1;$dl=deg2rad((float)$d-(float)$b);$x=sin($dp/2)**2+cos($p1)*cos($p2)*sin($dl/2)**2;return 2*$r*asin(min(1,sqrt($x)));}
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$h||strpos($h,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');$stage='load';
+          $hot=[];$aliases=[];foreach($db->query('SELECT h.id,h.country_id,h.name,h.normalized_name,h.region_name,h.subregion_name,h.category,COALESCE(d.latitude,h.latitude) latitude,COALESCE(d.longitude,h.longitude) longitude FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.country_id IN (1,2,4,8,9,10,12,16) AND h.is_active=1')->fetchAll(PDO::FETCH_ASSOC) as $r){$id=(int)$r['id'];$hot[$id]=$r;$aliases[$id]=array_values(array_filter([(string)$r['name'],(string)$r['normalized_name']]));}
+          foreach($db->query('SELECT a.hotel_id,a.alias,a.normalized_alias FROM hotel_aliases a JOIN catalog_hotels h ON h.id=a.hotel_id WHERE h.country_id IN (1,2,4,8,9,10,12,16) AND h.is_active=1')->fetchAll(PDO::FETCH_ASSOC) as $r){$id=(int)$r['hotel_id'];foreach(['alias','normalized_alias'] as $k)if(trim((string)$r[$k])!=='')$aliases[$id][]=(string)$r[$k];}
+          $manual=[];foreach($db->query('SELECT anex_hotel_id,decision_status,catalog_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_ASSOC) as $r)$manual[(int)$r['anex_hotel_id']]=$r;
+          $maps=[];$anOcc=[];$anAcc=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id,enabled,scope,approval_policy FROM anex_hotel_search_mappings')->fetchAll(PDO::FETCH_ASSOC) as $r){$aid=(int)$r['anex_hotel_id'];$maps[$aid][]=$r;if((int)$r['enabled']===1&&$r['scope']==='preview'&&$r['approval_policy']==='current_db_guarded_v1'){$lid=(int)$r['catalog_hotel_id'];$anAcc[$aid]=$lid;$anOcc[$lid][$aid]=1;}}
+          foreach($manual as $aid=>$r)if(($r['decision_status']??'')==='accepted'&&$r['catalog_hotel_id']!==null){$lid=(int)$r['catalog_hotel_id'];$anAcc[$aid]=$lid;$anOcc[$lid][$aid]=1;}
+          $excluded=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $r)$excluded[(int)$r['anex_hotel_id']][(int)$r['catalog_hotel_id']]=1;
+          $ast=[];foreach($db->query('SELECT * FROM anex_hotels')->fetchAll(PDO::FETCH_ASSOC) as $r)$ast[(int)$r['anex_hotel_id']]=$r;
+          $aobs=[];foreach($db->query('SELECT * FROM anex_search_hotel_observations ORDER BY search_count DESC,last_seen_utc DESC')->fetchAll(PDO::FETCH_ASSOC) as $r){$aid=(int)$r['anex_hotel_id'];if(!isset($aobs[$aid]))$aobs[$aid]=$r;}
+          $and=[];$andOcc=[];foreach($db->query("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' ORDER BY external_hotel_id")->fetchAll(PDO::FETCH_ASSOC) as $r){$did=(string)$r['external_hotel_id'];$and[$did]=$r;if(($r['decision_status']??'')==='accepted'&&$r['local_hotel_id']!==null)$andOcc[(int)$r['local_hotel_id']][$did]=1;}
+          $dobs=[];foreach($db->query("SELECT * FROM andromeda_search_hotel_observations WHERE supplier_namespace='andromeda_catalog' ORDER BY observed_at_utc DESC")->fetchAll(PDO::FETCH_ASSOC) as $r){$did=(string)$r['external_hotel_id'];if(!isset($dobs[$did]))$dobs[$did]=$r;}
+          $raw=[];$shape=[];$add=function(string $did,int $aid,?int $saved,string $path)use(&$raw){if($aid>0)$raw[]=['did'=>$did,'aid'=>$aid,'saved'=>$saved,'path'=>$path];};
+          foreach($and as $did=>$r){try{$e=json_decode((string)$r['evidence_json'],true,128,JSON_THROW_ON_ERROR);}catch(Throwable $x){continue;}if(!is_array($e))continue;$bs=$e['anex_bridges']??[];if(is_array($bs))foreach($bs as $b){if(!is_array($b))continue;$aid=null;foreach(['anex_id','id'] as $k)if(isset($b[$k])&&is_scalar($b[$k])&&filter_var($b[$k],FILTER_VALIDATE_INT)!==false){$aid=(int)$b[$k];break;}if(!$aid)continue;$saved=null;foreach(['local_id','catalog_hotel_id'] as $k)if(isset($b[$k])&&is_scalar($b[$k])&&filter_var($b[$k],FILTER_VALIDATE_INT)!==false){$saved=(int)$b[$k];break;}$add((string)$did,$aid,$saved,'anex_bridges');}
+          foreach([['promotion','anex_hotel_id',['local_hotel_id','target_local_hotel_id','target']],['proof','anex_id',['local_id','local_hotel_id']]] as $sp){$p=$e[$sp[0]]??null;if(!is_array($p)||!isset($p[$sp[1]])||!is_scalar($p[$sp[1]])||filter_var($p[$sp[1]],FILTER_VALIDATE_INT)===false)continue;$saved=null;foreach($sp[2] as $k)if(isset($p[$k])&&is_scalar($p[$k])&&filter_var($p[$k],FILTER_VALIDATE_INT)!==false){$saved=(int)$p[$k];break;}$add((string)$did,(int)$p[$sp[1]],$saved,$sp[0].'.'.$sp[1]);}
+          if(isset($e['anex_hotel_id'])&&is_scalar($e['anex_hotel_id'])&&filter_var($e['anex_hotel_id'],FILTER_VALIDATE_INT)!==false){$saved=isset($e['local_hotel_id'])&&is_scalar($e['local_hotel_id'])&&filter_var($e['local_hotel_id'],FILTER_VALIDATE_INT)!==false?(int)$e['local_hotel_id']:null;$add((string)$did,(int)$e['anex_hotel_id'],$saved,'anex_hotel_id');}}
+          $grp=[];foreach($raw as $r){$k=$r['did'].'|'.$r['aid'];$grp[$k]['did']=$r['did'];$grp[$k]['aid']=$r['aid'];$grp[$k]['paths'][$r['path']]=1;if($r['saved']!==null)$grp[$k]['saved'][$r['saved']]=1;}
+          $rows=[];$counts=[];$pathCounts=[];$stage='reconcile';foreach($grp as $g){$did=$g['did'];$aid=(int)$g['aid'];$ar=$and[$did]??null;if(!$ar)continue;$dl=(($ar['decision_status']??'')==='accepted'&&$ar['local_hotel_id']!==null)?(int)$ar['local_hotel_id']:null;$al=$anAcc[$aid]??null;$saved=array_keys($g['saved']??[]);$paths=array_keys($g['paths']??[]);sort($paths);foreach($paths as $p)$pathCounts[$p]=($pathCounts[$p]??0)+1;$status='unresolved_both';$target=$al??$dl; if(count($saved)>1)$status='saved_target_conflict';elseif($al!==null&&$dl!==null)$status=$al===$dl?'already_same_local':'direct_conflict';elseif($al!==null)$status=(($ar['decision_status']??'')==='pending')?'candidate_andromeda':'andromeda_hold';elseif($dl!==null)$status='candidate_anex';else $status='unresolved_both';
+          $reasons=[];$distance=null;$nameCommon=0;$qualConflict=false;$starSignal=null;
+          if($status==='candidate_anex'&&$target!==null){$tr=$hot[$target]??null;if(!$tr){$status='inactive_target';$reasons[]='inactive_target';}else{if($saved&&((int)$saved[0]!==$target)){$status='saved_target_conflict';$reasons[]='saved_target_conflict';}if(isset($manual[$aid])){$status='manual_hold';$reasons[]='manual_decision_present';}if(isset($maps[$aid])){$status='existing_mapping_hold';$reasons[]='existing_mapping_present';}if(isset($excluded[$aid][$target])){$status='pair_excluded';$reasons[]='pair_excluded';}if(isset($anOcc[$target])){$status='provider_occupancy_hold';$reasons[]='anex_target_occupied';}
+          $ao=$aobs[$aid]??[];$as=$ast[$aid]??[];$anames=array_values(array_filter([(string)($ao['hotel_name']??''),(string)($as['api_name']??''),(string)($as['xml_name']??''),(string)($as['xml_alternate_name']??'')]));$tn=$aliases[$target]??[];$at=[];$tt=[];foreach($anames as $n)foreach(toks($n) as $t)$at[$t]=1;foreach($tn as $n)foreach(toks($n) as $t)$tt[$t]=1;$nameCommon=count(array_intersect_key($at,$tt));$aq=quals($anames);$tq=quals($tn);$qualConflict=$aq&&$tq&&$aq!==$tq;if($qualConflict){$status='qualifier_conflict';$reasons[]='qualifier_conflict';}
+          $ac=(int)($ao['country_id']??0);if($ac>0&&$ac!==(int)$tr['country_id']){$status='country_conflict';$reasons[]='country_conflict';}
+          $alat=$ao['latitude']??($as['api_latitude']??null);$alon=$ao['longitude']??($as['api_longitude']??null);$distance=distm($alat,$alon,$tr['latitude'],$tr['longitude']);if($distance!==null&&$distance>5000){$status='coordinate_conflict';$reasons[]='coordinate_conflict';}
+          if($status==='candidate_anex'&&$nameCommon===0&&$distance===null&&!$saved){$status='needs_independent_evidence';$reasons[]='no_current_name_geo_or_saved_target';}
+          $src=json_decode((string)$ar['evidence_json'],true);$sc=null;if(is_array($src)&&isset($src['source'])&&is_array($src['source']))$sc=$src['source']['category']??null;if($sc!==null&&is_numeric($sc)&&$tr['category']!==null)$starSignal=((int)$sc===(int)$tr['category'])?'same':'different';}}
+          $counts[$status]=($counts[$status]??0)+1;$rows[]=['andromeda_hotel_id'=>$did,'anex_hotel_id'=>$aid,'paths'=>$paths,'saved_target_local_ids'=>$saved,'current_anex_local_id'=>$al,'current_andromeda_local_id'=>$dl,'target_local_id'=>$target,'status'=>$status,'reason_codes'=>$reasons,'current_name_common_tokens'=>$nameCommon,'qualifier_conflict'=>$qualConflict,'distance_m'=>$distance===null?null:(int)round($distance),'star_signal'=>$starSignal,'not_write_authority'=>true];}
+          ksort($counts);ksort($pathCounts);usort($rows,static fn($a,$b)=>strcmp($a['status'],$b['status'])?:($a['anex_hotel_id']<=>$b['anex_hotel_id'])?:strcmp($a['andromeda_hotel_id'],$b['andromeda_hotel_id']));$db->commit();echo json_encode(['schema'=>'hotel-match-current-saved-anex-bridge-reconcile/3','status'=>'completed','operation_id'=>__OP__,'raw_evidence_rows'=>count($raw),'provider_pairs'=>count($grp),'status_counts'=>$counts,'source_path_counts'=>$pathCounts,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          }catch(Throwable $e){if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->rollBack();echo json_encode(['schema'=>'hotel-match-current-saved-anex-bridge-reconcile/3','status'=>'diagnostic_failure','operation_id'=>__OP__,'stage'=>$stage,'exception_class'=>get_class($e),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}
+          '''.replace('__OP__',op)
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host,user=os.environ[req[1]].strip(),os.environ[req[2]].strip();remote='cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=512M'
+          with tempfile.TemporaryDirectory(prefix='match-saved-bridge-v3-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=Path(td)/'key';raw=os.environ[req[0]].strip();key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);known=Path(td)/'known_hosts';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',user,host,remote];clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')};p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=480,env=clean)
+          try:v=json.loads(p.stdout) if p.returncode==0 else None
+          except Exception:v=None
+          if not isinstance(v,dict):raise RuntimeError('no_json')
+          data=(json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(data);receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_reconcile','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(data).hexdigest(),'application_status':v.get('status'),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};state.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n');state.joinpath('summary.md').write_text(f"MATCH #1971 CURRENT saved direct-key reconcile v3: raw={v.get('raw_evidence_rows')}, pairs={v.get('provider_pairs')}, status={json.dumps(v.get('status_counts') or {},sort_keys=True,separators=(',',':'))}. DB/mapping writes0; supplier/Tourvisor calls0; NO-REPLAY.\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        id: result
+        with:
+          name: match-current-saved-anex-bridge-reconcile-v3-result
+          path: ${{ runner.temp }}/hotel-match-current-saved-anex-bridge-reconcile-1971-20260913-v3/
+          retention-days: 90
+      - name: Record reconcile
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf '\nResult artifact `%s`; reservation artifact `%s` existed before SSH.\n' '${{ steps.result.outputs.artifact-id }}' '${{ steps.reserve.outputs.artifact-id }}' >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
