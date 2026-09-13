@@ -299,7 +299,11 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-action .direct-tour{grid-column:2;grid-row:1/3;width:auto;margin-top:0;padding-inline:14px}
 & .tour-action>.tour-selection-note{grid-column:1/-1}
 & .tour-action>.provider-detail-toggle{grid-column:1/-1}
-& .search3-shortlist-toggle{grid-column:1/-1}
+& .tour-action:has(.search3-shortlist-toggle){grid-template-columns:minmax(0,1fr) auto auto;gap:5px 8px}
+& .tour-action:has(.search3-shortlist-toggle)>small{display:none}
+& .tour-action:has(.search3-shortlist-toggle)>.hotel-price{grid-column:1;grid-row:1}
+& .tour-action:has(.search3-shortlist-toggle)>.direct-tour{grid-column:2;grid-row:1;width:auto;padding-inline:10px}
+& .tour-action:has(.search3-shortlist-toggle)>.search3-shortlist-toggle{grid-column:3;grid-row:1;width:auto;padding-inline:8px}
 }
 @media(max-width:430px){
 & .hotel-photo:has(.photo-placeholder){padding-inline:16px}
@@ -321,8 +325,15 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-action{grid-template-columns:minmax(0,1fr) minmax(128px,42%);gap:3px 10px;padding-top:8px}
 & .tour-action>small,& .tour-action>.hotel-price{grid-column:1}
 & .tour-action .direct-tour{grid-column:2;grid-row:1/3;width:auto;margin-top:0;padding-inline:10px}
+& .tour-action:has(.search3-shortlist-toggle){grid-template-columns:minmax(0,1fr) auto auto;gap:4px 6px}
 & .tour-more-toggle{max-width:calc(100% - 32px);margin-inline:16px}
 & .empty-actionable{padding:20px}
+}
+@media(max-width:350px){
+& .tour-action:has(.search3-shortlist-toggle){grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
+& .tour-action:has(.search3-shortlist-toggle)>.hotel-price{grid-column:1/-1;grid-row:1}
+& .tour-action:has(.search3-shortlist-toggle)>.direct-tour{grid-column:1;grid-row:2;width:100%}
+& .tour-action:has(.search3-shortlist-toggle)>.search3-shortlist-toggle{grid-column:2;grid-row:2;width:100%}
 }
 }
 
