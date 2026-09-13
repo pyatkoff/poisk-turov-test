@@ -1,0 +1,52 @@
+name: MATCH Surmeli anchor repair v2
+on:
+  push:
+    branches: [ops/match-surmeli-anchor-repair-1971-20260913-v2]
+    paths: [.github/match-surmeli-anchor-repair-1971-20260913-v2.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-surmeli-anchor-repair-1971-20260913-v2}
+jobs:
+  repair:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve before SSH
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          printf '%s\n' '{"operation_id":"hotel-match-surmeli-anchor-repair-1971-20260913-v2","state":"reserved_before_ssh","prior_v1_verified_zero_writes":true,"disable_orphan":34395,"repair_live":31364,"target_local":17657,"old_live_local":99969,"planned_writes":2,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}' > "$RUNNER_TEMP/$OPERATION_ID/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-surmeli-anchor-repair-v2-reservation, path: '${{ runner.temp }}/hotel-match-surmeli-anchor-repair-1971-20260913-v2/reservation.json', retention-days: 90}
+      - name: Repair CURRENT Surmeli anchors direct SSH
+        id: write
+        continue-on-error: true
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path; state=P(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          php='''<?php
+          $op='hotel-match-surmeli-anchor-repair-1971-20260913-v2';$committed=false;try{$root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET SESSION innodb_lock_wait_timeout=20');$db->beginTransaction();
+          $q=$db->prepare('SELECT * FROM anex_hotel_search_mappings WHERE anex_hotel_id IN (31364,34395) ORDER BY anex_hotel_id FOR UPDATE');$q->execute();$maps=[];foreach($q->fetchAll(PDO::FETCH_ASSOC)as$r)$maps[(int)$r['anex_hotel_id']]=$r;if(count($maps)!==2||(int)$maps[31364]['catalog_hotel_id']!==99969||(int)$maps[31364]['enabled']!==1||(int)$maps[34395]['catalog_hotel_id']!==17657||(int)$maps[34395]['enabled']!==1)throw new RuntimeException('mapping_state_changed');
+          $q=$db->prepare('SELECT * FROM anex_hotels WHERE anex_hotel_id IN (31364,34395) ORDER BY anex_hotel_id FOR UPDATE');$q->execute();$src=[];foreach($q->fetchAll(PDO::FETCH_ASSOC)as$r)$src[(int)$r['anex_hotel_id']]=$r;if(!isset($src[31364])||isset($src[34395]))throw new RuntimeException('source_presence_changed');$s=$src[31364];$sj=json_decode((string)$s['supplier_record_json'],true);if($s['api_country']!=='Турция'||$s['api_region']!=='Стамбул'||mb_stripos((string)$s['api_town'],'Шишли')===false||(int)($sj['xml']['id']??0)!==31364||(int)($sj['api']['id']??0)!==31364)throw new RuntimeException('live_identity_changed');
+          $q=$db->prepare('SELECT * FROM anex_hotel_auto_matches WHERE anex_hotel_id=31364 FOR UPDATE');$q->execute();$am=$q->fetch(PDO::FETCH_ASSOC);if(!$am||$am['api_xml_relation']!=='same_record'||(int)$am['suggested_catalog_hotel_id']!==17657)throw new RuntimeException('auto_match_changed');$q=$db->prepare('SELECT candidate_rank,catalog_hotel_id,distance_m FROM anex_hotel_candidates WHERE anex_hotel_id=31364 ORDER BY candidate_rank FOR UPDATE');$q->execute();$c=$q->fetchAll(PDO::FETCH_ASSOC);if(!$c||(int)$c[0]['candidate_rank']!==1||(int)$c[0]['catalog_hotel_id']!==17657||(float)$c[0]['distance_m']>20)throw new RuntimeException('rank1_changed');
+          foreach(['anex_hotel_decisions','anex_search_hotel_observations','anex_review_audit','anex_review_dossiers','anex_review_state','anex_review_pair_exclusions']as$t){$q=$db->prepare("SELECT COUNT(*) FROM `$t` WHERE anex_hotel_id=34395");$q->execute();if((int)$q->fetchColumn()!==0)throw new RuntimeException('orphan_evidence_'.$t);} $q=$db->prepare('SELECT COUNT(*) FROM anex_review_pair_exclusions WHERE anex_hotel_id=31364 AND catalog_hotel_id=17657');$q->execute();if((int)$q->fetchColumn()!==0)throw new RuntimeException('target_excluded');
+          $od=hash('sha256',$op.'|disable-orphan-34395');$q=$db->prepare('UPDATE anex_hotel_search_mappings SET enabled=0,mapping_digest=? WHERE anex_hotel_id=34395 AND catalog_hotel_id=17657 AND enabled=1');$q->execute([$od]);if($q->rowCount()!==1)throw new RuntimeException('orphan_disable_failed');$sd=hash('sha256',json_encode(['operation_id'=>$op,'anex_hotel_id'=>31364,'from'=>99969,'to'=>17657,'rule'=>'same_record_rank1_7_6m','disabled_orphan'=>34395],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));$md=hash('sha256',$op.'|repair-live-31364');$q=$db->prepare("UPDATE anex_hotel_search_mappings SET catalog_hotel_id=17657,match_class='strong_candidate',source_row_digest=?,mapping_digest=?,enabled=1 WHERE anex_hotel_id=31364 AND catalog_hotel_id=99969 AND enabled=1");$q->execute([$sd,$md]);if($q->rowCount()!==1)throw new RuntimeException('live_repair_failed');$db->commit();$committed=true;
+          $q=$db->prepare('SELECT anex_hotel_id,catalog_hotel_id,enabled,source_row_digest,mapping_digest FROM anex_hotel_search_mappings WHERE anex_hotel_id IN (31364,34395) ORDER BY anex_hotel_id');$q->execute();$rb=[];foreach($q->fetchAll(PDO::FETCH_ASSOC)as$r)$rb[(int)$r['anex_hotel_id']]=$r;$ok=isset($rb[31364],$rb[34395])&&(int)$rb[31364]['catalog_hotel_id']===17657&&(int)$rb[31364]['enabled']===1&&hash_equals($sd,(string)$rb[31364]['source_row_digest'])&&(int)$rb[34395]['enabled']===0&&hash_equals($od,(string)$rb[34395]['mapping_digest']);echo json_encode(['status'=>$ok?'completed':'readback_failed','operation_id'=>$op,'database_writes'=>2,'mapping_writes'=>2,'supplier_calls'=>0,'tourvisor_calls'=>0,'committed'=>true,'readback_verified'=>$ok,'rows'=>$rb,'no_replay'=>true],JSON_UNESCAPED_SLASHES),"\n";}catch(Throwable$e){if(isset($db)&&$db->inTransaction())$db->rollBack();echo json_encode(['status'=>'failed','operation_id'=>$op,'reason'=>$e->getMessage(),'database_writes'=>$committed?'unknown':0,'mapping_writes'=>$committed?'unknown':0,'supplier_calls'=>0,'tourvisor_calls'=>0,'committed'=>$committed,'readback_verified'=>false,'no_replay'=>true]),"\n";}?>'''
+          raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='surmeli-repair2-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'];p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=300)
+          if p.returncode!=0:state.joinpath('blocker.json').write_text(json.dumps({'state':'unknown_after_single_remote_execution_no_replay','remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest()})+'\n');raise SystemExit(3)
+          v=json.loads(p.stdout);raw_result=(json.dumps(v,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw_result);ok=v.get('status')=='completed' and v.get('committed') is True and v.get('readback_verified') is True and v.get('database_writes')==2 and v.get('mapping_writes')==2;state.joinpath('receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified' if ok else ('unknown_committed' if v.get('committed') else 'known_rolled_back'),'result_sha256':hashlib.sha256(raw_result).hexdigest(),'no_replay':True},sort_keys=True)+'\n');
+          if not ok:raise SystemExit(4)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-surmeli-anchor-repair-v2-${{ github.run_id }}', path: '${{ runner.temp }}/hotel-match-surmeli-anchor-repair-1971-20260913-v2/', retention-days: 90}
+      - name: Terminal gate
+        if: steps.write.outcome != 'success'
+        run: exit 1
