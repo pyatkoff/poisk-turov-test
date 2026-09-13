@@ -148,7 +148,7 @@ function anytour_anex_search3_core(array $params): array
     anytour_anex_search3_meal_families($params['meal'] ?? '');
     if (!in_array((string) ($params['hotelRating'] ?? ''), ['', '2', '3', '4', '5'], true)) throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
     foreach (['hotelCategory', 'hotelRating', 'priceFrom', 'priceTo'] as $key) {
-        if (isset($params[$key]) && $params[$key] !== '' && (!is_scalar($params[$key])
+        if (isset($params[$key]) && $params[$key] !== '' && (is_bool($params[$key]) || !is_scalar($params[$key])
             || !preg_match('/\A[0-9]{1,12}(?:\.[0-9]{1,2})?\z/D', (string) $params[$key]))) {
             throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
         }
