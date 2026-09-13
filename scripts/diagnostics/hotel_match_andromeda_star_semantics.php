@@ -34,8 +34,9 @@ function hmstar_semantic_status(int $samples, int $agreements): string
     return 'inconsistent_with_local_category';
 }
 
-function hmstar_add(array &$bucket, int $sourceCategory, int $targetCategory): void
+function hmstar_add(?array &$bucket, int $sourceCategory, int $targetCategory): void
 {
+    if ($bucket===null) $bucket=[];
     $bucket['samples']=($bucket['samples']??0)+1;
     if ($sourceCategory===$targetCategory) $bucket['agreements']=($bucket['agreements']??0)+1;
     else $bucket['mismatches']=($bucket['mismatches']??0)+1;
