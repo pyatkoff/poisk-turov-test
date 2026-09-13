@@ -1,0 +1,111 @@
+name: MATCH current supplier bridge v1
+on:
+  push:
+    branches: ['feat/match-current-supplier-bridge-live-1971-20260913-v1']
+    paths: ['.github/match-current-supplier-bridge-1971-20260913-v1.arm']
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-current-supplier-bridge-1971-20260913-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-supplier-bridge-1971-20260913-v1
+jobs:
+  current-read-only:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Validate exact read-only source
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_supplier_bridge.php
+          php tests/hotel_match_current_supplier_bridge_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_current_supplier_bridge.php
+      - name: Reserve immutable audit
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          p.joinpath('reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_read_only_supplier_bridge','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-current-supplier-bridge-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-current-supplier-bridge-1971-20260913-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run server-CURRENT bridge audit
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess,tempfile,time
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP']);state=rt/os.environ['OPERATION_ID']
+          def body(x):
+              if x.startswith('<?php'):x=x[5:]
+              return x.replace('declare(strict_types=1);','',1)
+          helper=body(Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text())
+          bridge=body(Path('scripts/diagnostics/hotel_match_current_supplier_bridge.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          op=json.dumps(os.environ['OPERATION_ID'])
+          wrapper=r'''$stage='bootstrap';try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $dbHelper;$db=v2_data_db();$stage='supplier_bridge';$out=hmsb_review($db,__OP__);echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}catch(Throwable $e){$code=(string)$e->getCode();if(!preg_match('/^[A-Za-z0-9_.-]{1,16}$/D',$code))$code='other';$class=get_class($e);if(!in_array($class,['PDOException','RuntimeException','LogicException','InvalidArgumentException','Error','TypeError'],true))$class='other';echo json_encode(['schema'=>'hotel-match-current-supplier-bridge/1','status'=>'diagnostic_failure','operation_id'=>__OP__,'stage'=>$stage,'exception_class'=>$class,'exception_code'=>$code,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}'''.replace('__OP__',op)
+          source='<?php\n'+"define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bridge+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          if any(not os.environ.get(k,'').strip() for k in req):raise RuntimeError('ssh_secret_missing')
+          host,user=os.environ[req[1]].strip(),os.environ[req[2]].strip();remote='cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'
+          def prog(s):return{'tcp_connected':'debug1: Connection established.' in s,'authenticated':'Authenticated to ' in s or 'debug1: Authentication succeeded' in s,'multiplexing_seen':'mux_client' in s or 'multiplexing control connection' in s,'command_sent':'debug1: Sending command:' in s,'remote_exit_seen':'debug1: Exit status ' in s}
+          def why(s):
+              t=s.lower()
+              for c,marks in [('ssh_authentication_failed',('permission denied','too many authentication failures')),('ssh_connection_timeout',('connection timed out','operation timed out')),('ssh_connection_refused',('connection refused',)),('ssh_connection_closed',('connection reset','connection closed','closed by remote host','broken pipe','kex_exchange_identification','banner exchange')),('ssh_session_rejected',('exec request failed','shell request failed','session open refused','administratively prohibited'))]:
+                  if any(m in t for m in marks):return c
+              return'ssh_exit_nonzero'
+          attempts=[];result=None
+          with tempfile.TemporaryDirectory(prefix='match-supplier-bridge-',dir=os.environ['RUNNER_TEMP']) as td:
+              key=Path(td)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(td)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=DEBUG1','-l',user,host,remote]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              for attempt in (1,2):
+                  p=subprocess.run(cmd,input=source,text=True,capture_output=True,timeout=540,env=clean);sp=prog(p.stderr);rc=why(p.stderr) if p.returncode else'ok';attempts.append({'attempt':attempt,'exit_code':p.returncode,'stdout_bytes':len(p.stdout.encode()),'reason_code':rc,'ssh_progress':sp})
+                  if p.returncode==0:result=p;break
+                  retry=attempt==1 and p.returncode==255 and rc=='ssh_connection_closed' and sp['tcp_connected'] and not any(sp[k] for k in ('authenticated','multiplexing_seen','command_sent','remote_exit_seen')) and not p.stdout
+                  if retry:time.sleep(2);continue
+                  result=p;break
+          try:value=json.loads(result.stdout) if result is not None and result.returncode==0 else None
+          except Exception:value=None
+          if not isinstance(value,dict):
+              state.joinpath('blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'transport_or_process_unknown_no_replay','attempts':attempts,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n');raise RuntimeError('audit_no_json')
+          raw=(json.dumps(value,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw)
+          accepted=value.get('status') in ('completed','diagnostic_failure') and all(value.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls'))
+          if not accepted:raise RuntimeError('audit_result_invalid')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_audit','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'application_status':value.get('status'),'stage':value.get('stage'),'exception_class':value.get('exception_class'),'exception_code':value.get('exception_code'),'attempts':attempts,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};state.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if value.get('status')=='completed':summary=f"MATCH #1971 CURRENT supplier bridge: stats={json.dumps(value.get('stats') or {},sort_keys=True,separators=(',',':'))}, status={json.dumps(value.get('status_counts') or {},sort_keys=True,separators=(',',':'))}, providers={json.dumps(value.get('provider_status_counts') or {},sort_keys=True,separators=(',',':'))}."
+          else:summary=f"MATCH #1971 supplier bridge sanitized failure: stage=`{value.get('stage')}`, exception=`{value.get('exception_class')}`, code=`{value.get('exception_code')}`."
+          state.joinpath('summary.md').write_text(summary+' DB/mapping writes0; supplier/Tourvisor calls0; no mapping authority.\n');print(json.dumps(receipt,sort_keys=True))
+          PY
+      - name: Preserve audit receipt
+        if: always()
+        id: result
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-supplier-bridge-v1-result
+          path: ${{ runner.temp }}/hotel-match-current-supplier-bridge-1971-20260913-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record audit
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf '\nResult artifact `%s`; durable reservation was persisted before SSH.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
