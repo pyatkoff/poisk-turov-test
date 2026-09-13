@@ -96,9 +96,10 @@ async function openFilters(page, width) {
 
 async function discloseMatchingOffers(page) {
   const card = page.locator('#results [data-hotel-id="offer-hotel"]');
-  assert.equal(await card.locator('.hotel-trip-summary').count(), 1, 'matching multi-offer hotel starts with an aggregate');
-  assert.equal(await card.locator('.direct-tour,.search3-shortlist-toggle').count(), 0, 'an undisclosed aggregate cannot select or save a fabricated representative');
-  assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), 'от120000₽', 'RO90k is excluded from the matching aggregate minimum');
+  assert.equal(await card.locator('.tour-row').count(), 1, 'matching multi-offer hotel starts with its exact primary offer');
+  assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), 'offer-standard', 'selection belongs to the displayed primary offer');
+  assert.equal(await card.locator('.search3-shortlist-toggle').getAttribute('data-offer-id'), 'offer-standard', 'comparison saves that same exact offer');
+  assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), '120000₽', 'RO90k is excluded and the displayed AI offer has its own price');
   const disclosure = card.locator('.tour-more-toggle');
   assert.ok((await disclosure.boundingBox()).height >= 44, 'offer disclosure retains a 44px target');
   await disclosure.focus();

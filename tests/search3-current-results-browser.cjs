@@ -171,7 +171,9 @@ async function checkExactOfferParty(page, width, previous) {
     window.__partyOriginal=freeze(item);window.V2Results.render([window.__partyOriginal]);
   },item);
   const card=page.locator('.hotel-card[data-hotel-id="party-hotel"]');
-  assert.doesNotMatch(await card.innerText(),/2 взрослых|1 ребёнок|2 ребёнка/,'mixed/unknown parties are not presented as one hotel-wide promise');
+  assert.equal(await card.locator('.tour-row .direct-tour').getAttribute('data-tid'),'party-0');
+  assert.match(await card.locator('.tour-row').innerText(),/2 взрослых/,'collapsed exact price names its own party');
+  assert.doesNotMatch(await card.locator('.tour-row').innerText(),/1 ребёнок|2 ребёнка/,'other offers cannot supply the displayed party');
   await card.locator('.tour-more-toggle').click();
   const rows=card.locator('.tour-row');
   for(let index=0;index<parties.length;index++){
