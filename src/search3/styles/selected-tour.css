@@ -2,3 +2,6 @@
 
 /* The legacy selected-tour shell is retired; retain only the native media bound. */
 .selected-picture img{max-width:100%}
+
+/* Keep the lead step out of the visual flow until the explicit flight handoff. */
+#selectedTour:not(.search3-lead-entry) .lead-form{display:none}
