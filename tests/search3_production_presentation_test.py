@@ -298,6 +298,10 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 self.assertEqual(source.count(fuel_helper), 1, 'one reviewed flight fuel display helper')
                 self.assertEqual(source.count(current_variant), 1, 'one reviewed flight fuel variant renderer')
                 source = source.replace(fuel_helper, b'', 1).replace(current_variant, original_variant, 1)
+                selected_fuel = b"esc(flightFuelText(t))"
+                original_selected_fuel = b"(t.fuelCharge?money(t.fuelCharge)+' \xe2\x82\xbd':'\xe2\x80\x94')"
+                self.assertEqual(source.count(selected_fuel), 1, 'one selected-tour fuel display owner')
+                source = source.replace(selected_fuel, original_selected_fuel, 1)
                 # Reviewed flight segment date display only. The lead serializer
                 # below keeps dep.date/arr.date untouched; reversing this exact
                 # display function recovers the protected controller.
@@ -327,6 +331,12 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 self.assertEqual(source.count(label_restore), 1, 'one selection action label restore')
                 source = source.replace(label_capture, b'', 1).replace(
                     label_restore, "button.textContent='Выбрать';".encode(), 1)
+            elif name == 'flight-price-sync-v1.js':
+                fuel_display = ("function fuelText(source){if(!source||!Object.prototype.hasOwnProperty.call(source,'fuelCharge')||source.fuelCharge===null||source.fuelCharge==='')return'уточняется';const fuel=source.fuelCharge,raw=fuel&&typeof fuel==='object'&&fuel.value!==undefined?fuel.value:fuel,value=Number(raw);if(!Number.isFinite(value)||value<0)return'уточняется';return value?money(value)+' ₽':'без доплаты';}\n"
+                                "function renderFuel(source){const fact=fuelFact(),valueEl=fact&&fact.querySelector('b');if(!valueEl)return;valueEl.textContent=fuelText(source);}").encode()
+                original_fuel_display = "function renderFuel(source){if(!source||!Object.prototype.hasOwnProperty.call(source,'fuelCharge'))return;const fact=fuelFact(),valueEl=fact&&fact.querySelector('b');if(!valueEl)return;const value=valueOfPrice(source.fuelCharge);valueEl.textContent=value?money(value)+' ₽':'—';}".encode()
+                self.assertEqual(source.count(fuel_display), 1, 'one selected flight-fee display owner')
+                source = source.replace(fuel_display, original_fuel_display, 1)
             digest = hashlib.sha256(source).hexdigest()
             self.assertEqual(digest, protected[name], name)
             for closure in closures:
