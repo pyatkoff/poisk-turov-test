@@ -1,7 +1,9 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../app/integrations/anex-additional-prices-batch.php';
+require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
+require_once __DIR__ . '/../app/integrations/anex-additional-prices-client.php';
+require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 $checks = 0;
 $assert = static function ($condition, string $message) use (&$checks): void {
@@ -12,15 +14,44 @@ $assert = static function ($condition, string $message) use (&$checks): void {
 $ref1 = 'anex_online:' . str_repeat('a', 64);
 $ref2 = 'anex_online:' . str_repeat('b', 64);
 $ref3 = 'anex_online:' . str_repeat('c', 64);
-$offer = static function (string $ref, int $localId, string $externalId, string $checkin, int $nights): array {
+$offer = static function (string $ref, int $localId, string $externalId, string $checkin, int $nights,
+    string $price = '100000'): array {
     return [
         'offer_key' => $ref,
+        'provider' => 'anex',
+        'supplier_namespace' => 'anex_online',
         'kind' => 'concrete',
-        'hotel' => ['external_id' => $externalId, 'local_id' => $localId],
+        'hotel' => [
+            'external_id' => $externalId,
+            'local_id' => $localId,
+            'mapping_status' => 'resolved',
+            'name' => 'TEST HOTEL ' . $localId,
+            'star' => '4',
+            'country' => null,
+            'region' => null,
+            'town' => 'Side',
+            'external_town_id' => '12',
+        ],
         'checkin' => $checkin,
+        'checkout' => (new DateTimeImmutable($checkin))->modify('+' . $nights . ' days')->format('Y-m-d'),
         'nights' => $nights,
+        'adults' => 2,
+        'children' => 0,
+        'infants' => null,
+        'meal' => 'AI',
+        'external_meal_id' => '7',
+        'room' => 'STANDARD',
+        'external_room_id' => '10',
+        'hotel_place' => 'DBL',
+        'external_hotel_place_id' => '2',
+        'price' => ['amount' => $price, 'currency' => 'RUB'],
+        'converted_price' => null,
+        'availability' => ['hotel' => 'Y', 'flight_outbound_economy' => 'Y', 'flight_return_economy' => 'Y'],
+        'supplier_booking_flag' => true,
+        'final_price_verified' => false,
     ];
 };
+
 $state = [
     'gateway' => [
         'saved_offers' => ['offers' => [
@@ -134,4 +165,183 @@ try { anytour_anex_additional_prices_batch_plan([['offer_ref' => $ref1, 'local_h
 catch (InvalidArgumentException $e) { $failed = $e->getMessage() === 'ANEX_INVALID_SESSION'; }
 $assert($failed, 'local hotel identity mismatch fails closed');
 
-echo "ANEX additional-prices batch planner/executor: {$checks} checks passed; network=0\n";
+// Real runtime consumer: the existing Search3 endpoint batches visible retained offers.
+$searchRef = str_repeat('d', 32);
+$runtimeState = [
+    'generation' => 11,
+    'params' => [
+        'countryId' => 1, 'hotelIds' => [], 'regionIds' => [], 'subregionIds' => [],
+        'hotelRating' => '', 'hotelCategory' => '', 'meal' => '', 'priceFrom' => '', 'priceTo' => '',
+    ],
+    'gateway' => [
+        'saved_offers' => [
+            'search_ref' => $searchRef,
+            'created_at' => 1789220000,
+            'expires_at' => 1789220900,
+            'offers' => [
+                $ref1 => ['offer' => $offer($ref1, 101, '8101', '2026-10-05', 7, '100000'),
+                    'supplier_tour_program_id' => '2637', 'supplier_currency_id' => '1'],
+                $ref2 => ['offer' => $offer($ref2, 102, '8102', '2026-10-05', 7, '110000'),
+                    'supplier_tour_program_id' => '2637', 'supplier_currency_id' => '1'],
+                $ref3 => ['offer' => $offer($ref3, 103, '8103', '2026-10-06', 7, '120000'),
+                    'supplier_tour_program_id' => '1797', 'supplier_currency_id' => '1'],
+            ],
+        ],
+        'search' => ['offers' => [
+            ['offer_key' => $ref1, 'kind' => 'concrete', 'hotel_external_id' => '8101'],
+            ['offer_key' => $ref2, 'kind' => 'concrete', 'hotel_external_id' => '8102'],
+            ['offer_key' => $ref3, 'kind' => 'concrete', 'hotel_external_id' => '8103'],
+        ]],
+    ],
+    'expansions' => [],
+    'additional_prices' => [],
+];
+$runtimeRequest = [
+    'action' => 'additional_prices_batch',
+    'generation' => 11,
+    'search_ref' => $searchRef,
+    'items' => [
+        ['offer_ref' => $ref1, 'local_hotel_id' => 101],
+        ['offer_ref' => $ref2, 'local_hotel_id' => 102],
+        ['offer_ref' => $ref3, 'local_hotel_id' => 103],
+    ],
+];
+$resolver = static function (string $namespace, $external): ?int {
+    if ($namespace !== 'anex_online') return null;
+    return ['8101' => 101, '8102' => 102, '8103' => 103][(string) $external] ?? null;
+};
+$metadata = static function (array $offers): array {
+    $rows = [];
+    foreach ($offers as $entry) {
+        $id = $entry['hotel']['local_id'];
+        $rows[$id] = [
+            'id' => $id,
+            'name' => 'TEST HOTEL ' . $id,
+            'country_id' => 1,
+            'country_name' => 'Turkey',
+            'region_id' => 2,
+            'region_name' => 'Side',
+            'subregion_id' => 3,
+            'subregion_name' => 'Kizilagac',
+            'category' => 4,
+            'rating' => 4.5,
+        ];
+    }
+    return $rows;
+};
+$clock = static function (): int { return 1789220100; };
+$runtimeCheckpoints = 0;
+$runtimeCheckpoint = static function (array &$current) use (&$runtimeCheckpoints, $assert): void {
+    ++$runtimeCheckpoints;
+    $unknown = array_filter($current['additional_prices'] ?? [], static function ($attempt): bool {
+        return is_array($attempt) && ($attempt['status'] ?? null) === 'unknown';
+    });
+    $assert(count($unknown) >= 1, 'endpoint checkpoints unknown context before B2B read');
+};
+$factoryCalls = 0;
+$transportCalls = [];
+$additionalFactory = static function () use (&$factoryCalls, &$transportCalls): AnyTourAnexAdditionalPricesClient {
+    ++$factoryCalls;
+    return new AnyTourAnexAdditionalPricesClient('test-token',
+        static function (string $url, array $headers, array $options) use (&$transportCalls): array {
+            parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+            $transportCalls[] = $query;
+            $tour = (int) ($query['tour'] ?? 0);
+            $rate = $tour === 2637 ? '1000' : ($tour === 1797 ? '2000' : null);
+            if ($rate === null) throw new RuntimeException('UNEXPECTED_TOUR');
+            return ['status' => 200, 'body' => json_encode([
+                'data' => [[
+                    'price_adult' => $rate,
+                    'price_chd' => '500',
+                    'cashrate' => '1',
+                    'price_converted_adult' => $rate,
+                    'price_converted_chd' => '500',
+                    'tour' => $tour,
+                    'currency' => (int) $query['currency'],
+                    'dateBeg' => $query['dateBeg'],
+                    'nights' => (int) $query['nights'],
+                ]],
+                'totalCount' => 1,
+                'totalPages' => 1,
+            ], JSON_THROW_ON_ERROR)];
+        });
+};
+
+$runtime = anytour_anex_search3_additional_batch($runtimeRequest, $runtimeState, $resolver, $metadata,
+    $clock, $runtimeCheckpoint, $additionalFactory);
+$assert($runtime['status'] === 'additional_prices_batch' && count($runtime['offers']) === 3,
+    'existing endpoint returns one bounded batch response');
+$assert($factoryCalls === 2 && count($transportCalls) === 2 && $runtimeCheckpoints === 2,
+    'three visible offers use two deduplicated B2B contexts');
+$assert($runtime['offers'][0]['additional_prices']['party_surcharge']['amount'] === '2000'
+    && $runtime['offers'][0]['additional_prices']['search_plus_additional']['amount'] === '102000',
+    'first offer applies its retained party surcharge');
+$assert($runtime['offers'][1]['additional_prices']['party_surcharge']['amount'] === '2000'
+    && $runtime['offers'][1]['additional_prices']['search_plus_additional']['amount'] === '112000',
+    'shared APD context is applied to second offer base price independently');
+$assert($runtime['offers'][2]['additional_prices']['party_surcharge']['amount'] === '4000'
+    && $runtime['offers'][2]['additional_prices']['search_plus_additional']['amount'] === '124000',
+    'second APD context is applied to its retained offer');
+$assert($runtime['offers'][0]['additional_prices']['fuel_equivalence_verified'] === false
+    && $runtime['offers'][0]['additional_prices']['final_price_verified'] === false,
+    'batch does not claim Tourvisor fuel equivalence or final quote');
+$publicJson = json_encode($runtime, JSON_THROW_ON_ERROR);
+$assert(strpos($publicJson, '2637') === false && strpos($publicJson, '1797') === false
+    && strpos($publicJson, 'context_digest') === false && strpos($publicJson, 'supplier_currency_id') === false,
+    'private supplier context never crosses batch response');
+
+$cachedRuntime = anytour_anex_search3_additional_batch($runtimeRequest, $runtimeState, $resolver, $metadata,
+    $clock, $runtimeCheckpoint, $additionalFactory);
+$assert($factoryCalls === 2 && count($transportCalls) === 2 && $runtimeCheckpoints === 2,
+    'repeating completed visible batch is fully supplier-free');
+$assert($cachedRuntime['offers'][0]['additional_prices']['search_plus_additional']['amount'] === '102000'
+    && $cachedRuntime['offers'][2]['additional_prices']['search_plus_additional']['amount'] === '124000',
+    'cached endpoint response reapplies per-offer arithmetic');
+
+$runtimeUnknown = $runtimeState;
+$sharedDigest = hash('sha256', implode("\0", ['2637', '1', '2026-10-05', '7']));
+$runtimeUnknown['additional_prices'][$sharedDigest] = ['status' => 'unknown'];
+$beforeFactory = $factoryCalls;
+$beforeTransport = count($transportCalls);
+$unknownRuntime = anytour_anex_search3_additional_batch($runtimeRequest, $runtimeUnknown, $resolver, $metadata,
+    $clock, $runtimeCheckpoint, $additionalFactory);
+$assert($factoryCalls === $beforeFactory && count($transportCalls) === $beforeTransport,
+    'unknown APD context is not replayed through endpoint');
+$assert($unknownRuntime['offers'][0]['status'] === 'additional_prices_unknown'
+    && $unknownRuntime['offers'][1]['status'] === 'additional_prices_unknown'
+    && $unknownRuntime['offers'][2]['status'] === 'additional_prices',
+    'unknown shared context affects only its visible offers');
+
+$changedResolver = static function (string $namespace, $external): ?int {
+    if ((string) $external === '8102') return 999;
+    return ['8101' => 101, '8103' => 103][(string) $external] ?? null;
+};
+$beforeFactory = $factoryCalls;
+$changed = anytour_anex_search3_additional_batch($runtimeRequest, $runtimeState, $changedResolver, $metadata,
+    $clock, $runtimeCheckpoint, $additionalFactory);
+$assert($changed['status'] === 'identity_changed' && $factoryCalls === $beforeFactory,
+    'current identity drift blocks batch before B2B transport');
+
+$missingMetadata = static function (array $offers): array {
+    return [101 => ['id' => 101, 'name' => 'TEST HOTEL 101', 'country_id' => 1, 'country_name' => 'Turkey',
+        'region_id' => 2, 'region_name' => 'Side', 'subregion_id' => 3, 'subregion_name' => 'Kizilagac',
+        'category' => 4, 'rating' => 4.5]];
+};
+$beforeFactory = $factoryCalls;
+$notAvailable = anytour_anex_search3_additional_batch($runtimeRequest, $runtimeState, $resolver, $missingMetadata,
+    $clock, $runtimeCheckpoint, $additionalFactory);
+$assert($notAvailable['status'] === 'not_available' && $factoryCalls === $beforeFactory,
+    'current catalog/filter loss blocks batch before B2B transport');
+
+$tooManyRequest = $runtimeRequest;
+$tooManyRequest['items'] = array_fill(0, 7, ['offer_ref' => $ref1, 'local_hotel_id' => 101]);
+$failed = false;
+try {
+    anytour_anex_search3_additional_batch($tooManyRequest, $runtimeState, $resolver, $metadata,
+        $clock, $runtimeCheckpoint, $additionalFactory);
+} catch (InvalidArgumentException $e) {
+    $failed = $e->getMessage() === 'ANEX_INVALID_ADDITIONAL_BATCH';
+}
+$assert($failed, 'real endpoint preserves hard max-six batch bound');
+
+echo "ANEX additional-prices batch endpoint: {$checks} checks passed; live_network=0\n";
