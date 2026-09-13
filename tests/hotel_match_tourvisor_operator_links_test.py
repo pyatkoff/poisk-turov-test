@@ -60,6 +60,7 @@ def test_country_conflict_rejected():
 def test_missing_link_rejected():
     r = mod.build(queue(), [tv_row(link=None)], "2026-09-20")
     assert r["operator_link_ready"] == 0
+    assert r["rejected"][0]["reason"] == "missing_or_invalid_operator_link"
 
 
 def test_foreign_host_rejected():
