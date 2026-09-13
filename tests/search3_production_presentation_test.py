@@ -89,8 +89,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             self.assertIn(event, form)
         self.assertIn("setAttribute('aria-busy'", form)
-        self.assertIn("classList.add('search3-editing-search')", form)
-        self.assertIn('&.search3-selected-open :is(.results-tools,.results-layout){display:none!important}', results)
+        self.assertNotIn('search3-editing-search', form + results + compiled)
+        self.assertNotIn('search3-editing-search', (ROOT / 'v2/results-renderer-v5.js').read_text())
+        self.assertIn('&.search3-selected-open :is(#tourSearch,.results-tools,.results-layout){display:none!important}', results)
         self.assertIn(':has(#results>*)', results)
         self.assertNotIn('search3-results-active', compiled)
         self.assertNotIn('search3-has-results', compiled)
