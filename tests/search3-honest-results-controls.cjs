@@ -25,8 +25,8 @@ assert.match(renderer, /if\(m==='rating'\)/);
 assert.match(renderer, /if\(m==='stars'\)/);
 assert.ok(renderer.includes("return tours.length===1?'1 вариант тура':'';"),
   'one offer keeps its label; multi-offer count belongs to the disclosure or comparison header');
-assert.ok(renderer.includes("'Показать варианты · '+tours.length") && renderer.includes("esc(tourCountLabel(tours.length))+' тура</strong>'"),
-  'both collapsed and expanded comparison retain the truthful loaded offer count');
+assert.ok(renderer.includes("'Показать варианты · '+tours.length") && renderer.includes("esc(tourCountLabel(tours.length))+'</strong>'"),
+  'collapsed and expanded states each retain one grammatically correct loaded-offer count');
 assert.match(
   page,
   /<\?php if\(!v2_search3_enabled\(\)\):\?><div class="results-view-switch"[\s\S]*?<\?php endif;\?>/,

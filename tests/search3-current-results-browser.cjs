@@ -183,7 +183,7 @@ async function checkExpandedDensity(page, width, previous) {
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Enter');
     assert.equal(await card.locator('.hotel-trip-summary,.hotel-summary-total').count(), 0, 'expanded comparison replaces the aggregate facts and total');
-    assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов тура', 'one count belongs to the comparison header');
+    assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов', 'one grammatically correct count belongs to the comparison header');
     assert.equal(await card.locator('.hotel-price').count(), 10, 'one exact price per offer, no duplicate minimum');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.map(value => value.id), 'all exact offer actions retain their original identity and order');
     assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.map(value => value.price), 'each displayed price remains the original supplier amount');
@@ -298,7 +298,7 @@ async function checkMealFacet(page, width, previous) {
     assert.ok((await a.locator('.tour-more-toggle').boundingBox()).height >= 44, 'matching-offer disclosure keeps a full touch target');
     await a.locator('.tour-more-toggle').focus();
     await a.locator('.tour-more-toggle').press('Enter');
-    assert.equal(await a.locator('.hotel-offers-heading>strong').innerText(), '3 варианта тура', 'expanded count also describes only matching AI aliases');
+    assert.equal(await a.locator('.hotel-offers-heading>strong').innerText(), '3 варианта', 'expanded count also describes only matching AI aliases');
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
     assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
@@ -936,7 +936,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
     let minimumReadiness = null, expandedDensity = null;
-    if ([375, 1440].includes(width)) {
+    if ([375, 390, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);
@@ -951,11 +951,11 @@ async function run(browser, width, previous) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [375, 760, 761, 999, 1000, 1024, 1025, 1440]) {
+    for (const width of [375, 390, 760, 761, 999, 1000, 1024, 1025, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=16 widths=375,760,761,999,1000,1024,1025,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=18 widths=375,390,760,761,999,1000,1024,1025,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });

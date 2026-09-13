@@ -41,7 +41,7 @@ assert.deepEqual(api.hotelSummary(multi), {
   nights: '7–10 ноч.',
   meal: 'Завтрак · Всё включено',
   operators: 'FUN&SUN · ANEX',
-  flight: 'Возможны чартеры',
+  flight: 'Уточняется по варианту',
   party: '',
   count: 3,
 });
@@ -56,7 +56,7 @@ assert.match(collapsed, /data-operator-brand="anex"/);
 assert.match(collapsed, /от 62(?:\s| )?400/);
 assert.match(collapsed, /Показать варианты · 3/);
 assert.doesNotMatch(collapsed, /Завтраки/);
-assert.match(collapsed, /Возможны чартеры/);
+assert.match(collapsed, /Уточняется по варианту/);
 assert.doesNotMatch(collapsed, />Чартер</, 'mixed offers cannot promise a charter on every variant');
 assert.doesNotMatch(collapsed, /2 взрослых/);
 assert.doesNotMatch(collapsed, /direct-tour/);
@@ -91,8 +91,8 @@ const allCharter = {
   ...multi,
   tours: multi.tours.map((tour, index) => ({ ...tour, id: 'charter-' + index, isCharter: true })),
 };
-assert.equal(api.hotelSummary(allCharter).flight, 'Чартер');
-assert.match(api.toursHtml(allCharter), /Чартер/);
+assert.equal(api.hotelSummary(allCharter).flight, 'Чартеры');
+assert.match(api.toursHtml(allCharter), /Чартеры/);
 
 // Unknown or mixed package facts must not become a uniform hotel promise.
 const noCharterFact = { ...multi, tours: multi.tours.map(({ isCharter, ...tour }) => tour) };
