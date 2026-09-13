@@ -27,3 +27,4 @@ display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;pa
 @media(max-width:430px){& .search-group--route{grid-template-columns:1fr}}
 @media(max-width:350px){& .search-group,& .search-preferences,& .child-ages{grid-template-columns:1fr}& .child-age{grid-column:auto!important}& .search-preference{grid-column:auto}}
 }
+.search3-candidate #tourSearch[data-search3-view=summary]{display:none}
