@@ -419,7 +419,7 @@ supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferre
 
 ## Завершённые пакеты и граница URL-состояния, 2026-09-13
 
-Сверено с release [8a78a709](https://github.com/pyatkoff/poisk-turov-test/commit/8a78a709061de18f1ac5028b3dd6ca1f42e2e111), свежими #996/#1646,
+Сверено с release [59ba5ab2](https://github.com/pyatkoff/poisk-turov-test/commit/59ba5ab242e4916f8e0c4d9d04c69def4b035b62), свежими #996/#1646,
 открытыми PR и exact CI. Таблица ниже уточняет результаты предыдущих датированных
 разделов; их старые «открыто» и pending-формулировки не являются новой очередью.
 
@@ -432,12 +432,11 @@ supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferre
 | #2276 | Выбор open/closed календаря сохраняется через локальные 0/1/restored dates; новый поиск сохраняет первоначальное раскрытие | [bb8d9711](https://github.com/pyatkoff/poisk-turov-test/commit/bb8d971123ae23a98566bce7caf7783f2e481180) → [0758836b](https://github.com/pyatkoff/poisk-turov-test/commit/0758836b54d3fd4b1ee0c8f41599cc4db1e2b2b7); [375/1440 visual и green CI](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649576503) |
 | #2282 | Повреждённые даты из URL получают существующий fallback до PHP-парсера; обычные даты/aliases/семья/ночи сохранены | [82f2d936](https://github.com/pyatkoff/poisk-turov-test/commit/82f2d93627079d6f9e2df723471c15d39facd88d) → [283f3db7](https://github.com/pyatkoff/poisk-turov-test/commit/283f3db732e57a450339cdecf818cbdd193f6b32); [baseline fatal и final green](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649537573) |
 | #2285 | Primary-бюджет принимает точные суммы в рублях: 155500–200750 больше не блокируются native step=1000. Суммы не округляются; legacy step сохранён | [4fb09556](https://github.com/pyatkoff/poisk-turov-test/commit/4fb095560d45dd9d39d8a92c751a0cd41a321e93) → [be7f5fe8](https://github.com/pyatkoff/poisk-turov-test/commit/be7f5fe884937b32f06232e9cd56bb136a9ffad4); [точная визуальная приёмка](https://github.com/pyatkoff/poisk-turov-test/pull/2285#issuecomment-5649653514) |
-
 | #2300 | Полная primary-форма остаётся видимой при выдаче, календаре, loading/empty/error; старые hide/show rules и editing-class handlers удалены. Selected сохраняет свой режим | [a7b385e7](https://github.com/pyatkoff/poisk-turov-test/commit/a7b385e713d7e93dc40b7fb08ea636f276950b99) → [f15d1c30](https://github.com/pyatkoff/poisk-turov-test/commit/f15d1c30792609b921496c069cdd43010ff0fa60); [375/1024/1440 и viewport 1440×700](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5651977581), [10-file readback](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652001024) |
 | #2303 | Текущие условия сохраняются в URL; reload/Back/Forward восстанавливают семью, даты, ночи, питание и точный бюджет. Operator/provider/source, произвольные query keys, PII и consent не входят в initial query | [fbf7179e](https://github.com/pyatkoff/poisk-turov-test/commit/fbf7179e9188d8411b6de5d1eb6ea02105757eb1) → [df35e478](https://github.com/pyatkoff/poisk-turov-test/commit/df35e4783992e54772bd049e2cfb1addde289a5d); [375/1440 exact URL receipts и visual](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652068394) |
 | #2305 | Operator facet и карточки используют существующую operatorIdentity; aliases не дробят бренд, один отель с разными операторами получает выбор, неполные данные скрывают/сбрасывают facet. Provider и operator пересекаются на одном offer | [98187c75](https://github.com/pyatkoff/poisk-turov-test/commit/98187c75178e715ae8ada098482b6e8cfbe380b5) → [8a78a709](https://github.com/pyatkoff/poisk-turov-test/commit/8a78a709061de18f1ac5028b3dd6ca1f42e2e111); [visual/JSON 375/1440](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652082095), [URL/operator exact readback](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652089991) |
 
-Все десять пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
+Перечисленные выше десять пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
 navigation 34727758774 и Security 34727654231 успешны; оба merged файла
 прочитаны обратно и совпали с checked source. Выполнены 15 ширин, 60 состояний
 семьи и exact/zero/unset/negative/reversed budget guards. Геометрический стенд
@@ -475,11 +474,26 @@ Manual changed conditions создают одну history entry, boot canonicali
 `fbf7179e` с Back/Forward, исключением operator и non-null source SHA
 в сохранённых URL receipts. Artifact 10314735429, ZIP SHA-256:
 `2a6c1f6b772e14d40bf2893f274580297d82ee6b7d1a01a2c044a00f56f93a77`.
-Приёмка не доказывает все возможные history transitions:
+Первоначальная приёмка не доказывала все возможные history transitions:
 [review same-query/fragment-only popstate](https://github.com/pyatkoff/poisk-turov-test/pull/2303#issuecomment-5652061881)
-остаётся точным непроверенным остатком. Не объявлять его выполненным по
-обычному reload/Back/Forward сценарию и не запускать лишний supplier search
-при локальном изменении состояния.
+закрыт отдельным runtime-пакетом #2309, а не обычным reload/Back/Forward сценарием.
+Lifecycle хранит текущие pathname+query; одинаковые условия и fragment-only
+переходы не перезагружают документ и не запускают supplier search. Изменённые
+условия сохраняют прежний SSR/catalog/auto-search путь.
+
+Source [fd6a19d9](https://github.com/pyatkoff/poisk-turov-test/commit/fd6a19d92fd692d1d40c910d1518135ccff5d34b)
+merged как [af825040](https://github.com/pyatkoff/poisk-turov-test/commit/af8250402349106619a21bcf4cd11577c86d3ff6).
+Security 34748134659 и whole-site 34748134666 успешны. Exact artifact 10314827179,
+ZIP SHA-256 `5cf4afa07ac897d78d1e640295cce164772a924849b2005366ce73b9b675ccf3`.
+На 375/1440 после каждого из двух submit проверены шесть native history transitions:
+сохранены document/form/lifecycle, незавершённое редактирование бюджета и generation;
+дополнительных document requests и supplier calls нет. Ошибочная ожидаемая длина
+forward stack исправлена в тесте по реальному history contract, без ослабления
+проверок переходов. [JSON/functional receipt](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652267481)
+и [трёхфайловый exact readback](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652314386)
+подтверждены. **Просмотр PNG этого exact source остаётся pending**; функциональный
+receipt явно не заявляет визуальную приёмку. #2309 CHECKED functional + MERGED,
+не preview-published и не production-approved.
 
 ### Остаток подготовки и следующий продуктовый шаг
 
@@ -495,12 +509,57 @@ Exact artifact 10314326197, ZIP SHA-256:
 Исходные offer/provider identities и цены не меняются; local facets не
 вызывают supplier search. Нижеследующее остаётся в существующем SEARCH roadmap:
 
-- Проверка same-query history transition выше; остальная URL приёмка не повторяется.
-- Meal summary: не считать aliases разными вариантами и не смешивать AI/UAI/Soft AI.
-- Calendar focus/scroll на rerender — отдельный существующий writer/PR #2302;
-  читать его свежий статус, не создавать второй calendar owner.
+- URL/history исправлены #2303/#2309; pending PNG #2309 выше, не повторная реализация.
+- Meal summary/facet используют единственную renderer identity после #2310
+  (source `64a9e621e518f1ed9923a89ba26e871079146fee`, merge `6d60c2deef01d77e4d058ae38c9f4186653a16de`).
+  Положительный alias receipt не закрывал отрицательные случаи: `Premium All Inclusive`,
+  `Breakfast and dinner`, `Not all inclusive` ошибочно попадали в обычные AI/BB buckets.
+  [Подтверждённый review](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652330521)
+  остаётся до exact acceptance отдельного [#2312](https://github.com/pyatkoff/poisk-turov-test/pull/2312).
+  Не создавать второй classifier и не считать неизвестные supplier labels стандартным питанием.
+- Calendar focus/scroll завершён #2302: source `9c1df07259f24017af85dd462268aeecddc56241`,
+  merge `333b24af6bd5ee096b8415b8046264aad777694f`; Security 34747862225 и whole-site
+  34747862153 успешны. [Exact visual/functional receipt](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652246649)
+  покрывает 375/1440 screenshots и семь widths 375/1024/1025/1101/1199/1200/1440:
+  сохранён фокус/scroll при rerender, удалённая дата получает безопасный fallback,
+  чужой фокус не перехватывается. Три файла прочитаны обратно в принятом release;
+  второй calendar owner или повтор этого исправления не нужны.
 - Country-wide hotel-name UX, плотность карточек, compare, selected, lead handoff
   и цельная mobile/desktop acceptance по уже зафиксированным 12 критериям.
+
+### Сравнение: адаптивная сетка #2313
+
+[PR #2313](https://github.com/pyatkoff/poisk-turov-test/pull/2313), source
+`b3bb1f527c9dd3f493c43638d3a3f3dc1ae0ea6a`, исправляет фиксированные три колонки
+в существующем `src/search3/styles/results-layout.css`. Для двух предложений
+строка заполнена, одна карточка ограничена 640px, три переносятся при нехватке
+места. Мобильное раскрытие и текущий JS owner сохранены. Изменены только CSS source,
+его generated output, соответствующий import hash и существующий shortlist browser test.
+Generated CSS вырос на 74 bytes; остальные семь assets совпадают с базой.
+
+Security 34749285397, whole-site 34749285180, shortlist 34749285233,
+selected/lead 34749285256 и short-desktop rail 34749285289 успешны.
+Browser artifact 10315142628, ZIP SHA-256
+`f08ec4a1623bfb6d98483b401a8a0464a522923b82f5c92c41c084c6eb194ec1`;
+site artifact 10315620863, ZIP SHA-256
+`148d425f6b031c460a955bb59a9270e6bb12bb9478411831efc498b476efac5e`.
+`shortlist-contract.json` содержит exact source SHA и 18 состояний 1/2/3 предложения
+на 375/600/601/768/1024/1440. Проверены containment, 44px actions, заполнение строки,
+существующие storage/stale/exact identity/selection/keyboard сценарии; реальные
+supplier/lead requests заблокированы. На 1440 две карточки по 629px заполняют 1270px
+с промежутком 12px; на 768 третья карточка переносится, на 375 остаётся один столбец.
+
+**CHECKED + MERGED**, release merge
+`59ba5ab242e4916f8e0c4d9d04c69def4b035b62`.
+[Независимый visual receipt](https://github.com/pyatkoff/poisk-turov-test/issues/996#issuecomment-5652432540)
+подтверждает личный просмотр exact PNG для всех затронутых ширин, включая
+1/2/3 карточки на 375/1440 и границу 600/601. Проверены композиция, отсутствие
+обрезания и пустой зарезервированной колонки, пропорции CTA/remove. Приёмку выполнил
+исполнитель с рабочим доступом к артефакту; это не заявление о личном просмотре
+изображений исполнителем, у которого artifact transport ранее вернул HTTP 403.
+Все четыре merged файла прочитаны обратно и byte-exact совпадают с checked head.
+Принята только геометрия сравнения; общий compare axis и весь Search3 не получили
+автоматических 9.5. Опубликованный preview содержит более старый source.
 
 ### Публикация и уровень готовности
 
