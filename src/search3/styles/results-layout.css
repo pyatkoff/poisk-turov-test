@@ -330,16 +330,9 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .empty-actionable{padding:20px}
 }
 @media(min-width:351px) and (max-width:700px){
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle){grid-template-columns:minmax(0,1fr) minmax(132px,42%);grid-template-areas:"facts facts" "operators operators" "label toggle" "price toggle" "note note";gap:14px 10px;padding:0 16px 16px}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>.hotel-trip-summary{display:contents}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>.hotel-trip-summary>.tour-facts{grid-area:facts;margin:0}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>.hotel-trip-summary>.hotel-operators{grid-area:operators}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle) .hotel-summary-total{display:contents}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle) .hotel-summary-total>div{grid-area:label;align-self:end}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle) .hotel-summary-total>.hotel-price{grid-area:price;align-self:start;min-width:0;font-size:clamp(24px,7vw,28px)}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>.tour-more-toggle{grid-area:toggle;align-self:stretch;justify-self:stretch;max-width:100%;margin:0;padding:8px 10px;line-height:1.25;overflow-wrap:anywhere}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>.hotel-trip-summary>.tour-selection-note{grid-area:note}
-& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>:is(.provider-detail,.tour-selection-note){grid-column:1/-1;margin-inline:0}
+& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle){position:relative}
+& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle) .hotel-summary-total{padding-right:min(46%,256px)}
+& .hotel-tours:has(>.hotel-trip-summary+ .tour-more-toggle)>.tour-more-toggle{position:absolute;right:16px;bottom:16px;width:min(42%,240px);height:72px;margin:0;padding:8px 10px;line-height:1.25}
 }
 @media(max-width:350px){
 & .tour-action:has(.search3-shortlist-toggle){grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
