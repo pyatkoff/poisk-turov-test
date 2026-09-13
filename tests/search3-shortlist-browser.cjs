@@ -449,6 +449,46 @@ async function checkSearchRecovery(browser, width) {
   } finally { page.off('request', record); await context.close(); }
 }
 
+async function checkDisplayIdentity(browser, width) {
+  const { context, page, errors, posts } = await openPage(browser, width);
+  const aliases = [
+    { ...standard, id: 'alias-a', date: '2026-09-12', meal: { name: 'AI' }, operator: 'ANEX TOUR' },
+    { ...standard, id: 'alias-b', price: 125000, date: '12.09.2026', meal: { fullName: 'Всё включено' }, operator: 'Анекс' },
+    { ...standard, id: 'alias-c', price: 130000, date: '2026-09-12T04:30:00Z', meal: { fullName: 'All Inclusive' }, operator: 'ANEX' }
+  ];
+  const source = [{ ...hotel, price: 120000, tours: aliases }];
+  const requests = [], record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
+  page.on('request', record);
+  try {
+    await render(page, 851, source);
+    await page.locator('#results .tour-more-toggle').click();
+    for (const offer of aliases) await addOffer(page, offer.id);
+    await openComparison(page, width);
+    const shortlist = page.locator('.search3-shortlist');
+    const before = await page.evaluate(() => ({ records: window.Search3Shortlist.items(), stored: localStorage.getItem(window.Search3Shortlist.storageKey) }));
+    assert.deepEqual(before.records.map(item => [item.date, item.meal, item.operator]), aliases.map(item => [item.date, item.meal.fullName || item.meal.name, item.operator]), 'saved snapshots retain original supplier labels');
+    assert.equal(await shortlist.locator('.search3-shortlist__differences').innerText(), 'Различаются: цена при сохранении.', 'equivalent names and displayed dates do not create false differences');
+    assert.equal(await shortlist.locator('dt').evaluateAll(nodes => nodes.some(node => node.textContent.includes('отличается'))), false, 'full view does not incorrectly mark equivalent facts');
+    const toggle = shortlist.locator('.search3-shortlist-view-toggle');
+    await toggle.focus(); await toggle.press('Enter');
+    await page.waitForFunction(() => window.Search3Shortlist.differencesOnly && document.activeElement?.matches('.search3-shortlist-view-toggle'));
+    assert.equal(await shortlist.locator('.search3-shortlist__common .search3-shortlist-item__facts>div').count(), 7, 'seven equivalent facts are shown once');
+    assert.equal(await shortlist.locator('.search3-shortlist-item .search3-shortlist-item__facts>div').count(), 0, 'only differences omits equivalent per-offer facts');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__price strong').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), [120000, 125000, 130000], 'each original historical price remains visible');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-select').evaluateAll(nodes => nodes.map(node => [node.dataset.offerId, node.disabled])), [['alias-a', false], ['alias-b', false], ['alias-c', false]], 'current exact offer actions retain their identity and availability');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+    await shortlist.screenshot({ path: path.join(output, `shortlist-equivalent-facts-${width}.png`), animations: 'disabled' });
+    await toggle.press('Enter');
+    await page.waitForFunction(() => !window.Search3Shortlist.differencesOnly && document.activeElement?.matches('.search3-shortlist-view-toggle'));
+    assert.equal(await shortlist.locator('.search3-shortlist-item .search3-shortlist-item__facts>div').count(), 21, 'full view restores all original conditions');
+    assert.deepEqual(await page.evaluate(() => ({ records: window.Search3Shortlist.items(), stored: localStorage.getItem(window.Search3Shortlist.storageKey) })), before, 'view switches never rewrite saved records or storage');
+    assert.deepEqual(await page.evaluate(() => window.__shortlistSource), source, 'comparison leaves canonical source offers untouched');
+    assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [], 'changing comparison view does not select or recheck an offer');
+    assert.deepEqual(requests, []); assert.deepEqual(posts, []); assert.deepEqual(errors, []);
+    return { sourceSha, width, displayIdentity: { commonFacts: 7, originalLabelsPreserved: true, historicalPrices: [120000, 125000, 130000], exactOfferIds: ['alias-a', 'alias-b', 'alias-c'], keyboard: true, storageUnchanged: true }, supplierRequests: 0, leads: 0 };
+  } finally { page.off('request', record); await context.close(); }
+}
+
 async function checkStorageFailure(browser, width, mode) {
   const { context, page, errors, posts } = await openPage(browser, width, mode);
   try {
@@ -500,6 +540,7 @@ async function checkCorruptStorage(browser, width) {
     for (const width of [375, 1440]) {
       evidence.push(await checkJourney(browser, width));
       evidence.push(await checkSearchRecovery(browser, width));
+      evidence.push(await checkDisplayIdentity(browser, width));
       evidence.push(await checkStorageFailure(browser, width, 'blocked'));
       evidence.push(await checkStorageFailure(browser, width, 'quota'));
       evidence.push(await checkCorruptStorage(browser, width));

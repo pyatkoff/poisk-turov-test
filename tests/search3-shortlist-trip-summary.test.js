@@ -56,7 +56,14 @@ assert.deepEqual(Array.from(partySandbox.values), [
   'Уточняется'
 ]);
 
+const rendererSandbox = {
+  window: { addEventListener() {}, dispatchEvent() {} },
+  document: { readyState: 'loading', documentElement: { dataset: {} }, body: null, addEventListener() {}, getElementById() { return null; }, querySelector() { return null; } }
+};
+vm.createContext(rendererSandbox);
+vm.runInContext(fs.readFileSync(path.join(root, 'v2/results-renderer-v5.js'), 'utf8'), rendererSandbox);
 const compareSandbox = {
+  window: rendererSandbox.window,
   text(value) {
     return String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
   },
@@ -67,10 +74,29 @@ const compareSandbox = {
   ]
 };
 vm.createContext(compareSandbox);
-vm.runInContext(`${functionLine('compareState')}; const state = compareState(); this.values = { labels: state.labels, keys: Array.from(state.different), minimumPrice: state.minimumPrice };`, compareSandbox);
+vm.runInContext(`${displayDateSource}; ${functionLine('comparisonIdentity')}; ${functionLine('compareState')}; const state = compareState(); this.values = { labels: state.labels, keys: Array.from(state.different), minimumPrice: state.minimumPrice };`, compareSandbox);
 assert.deepEqual(Array.from(compareSandbox.values.labels), ['отель', 'курорт', 'номер', 'цена при сохранении'], 'comparison summary names only saved dimensions that actually differ');
 assert.deepEqual(Array.from(compareSandbox.values.keys), ['hotel', 'region', 'room', 'price'], 'common meal/date/night/party/operator values are not falsely marked as differences');
 assert.equal(compareSandbox.values.minimumPrice, 120000, 'minimum comparison price is derived only from saved historical snapshots');
+const same = { ...compareSandbox.saved[0], meal: 'AI', operator: 'ANEX TOUR' };
+const compare = records => {
+  compareSandbox.saved = records;
+  const before = JSON.stringify(records);
+  const result = vm.runInContext('compareState()', compareSandbox);
+  assert.equal(JSON.stringify(records), before, 'display comparison never rewrites saved records or prices');
+  return { keys: Array.from(result.different), common: Array.from(result.commonKeys) };
+};
+assert.deepEqual(compare([
+  same,
+  { ...same, date: '12.09.2026', meal: 'Всё включено', operator: 'Анекс' },
+  { ...same, date: '2026-09-12T04:30:00Z', meal: 'All Inclusive', operator: 'ANEX' }
+]), { keys: [], common: ['date', 'nights', 'party', 'meal', 'room', 'placement', 'operator'] }, 'equivalent displayed dates, reviewed meal and operator aliases do not create false differences');
+for (const meal of ['UAI', 'Soft AI', 'Not all inclusive', 'Premium All Inclusive']) {
+  assert.deepEqual(compare([same, { ...same, meal }]).keys, ['meal'], meal + ' retains its distinct conditions');
+}
+assert.deepEqual(compare([same, { ...same, operator: 'ANEX SERVICES' }]).keys, ['operator'], 'similar unknown operator names are never guessed to be the reviewed brand');
+assert.deepEqual(compare([same, { ...same, operator: '' }]).keys, ['operator'], 'missing operator is not filled from another record');
+assert.deepEqual(compare([same, { ...same, date: '2026-09-13', meal: 'BB' }]).keys, ['date', 'meal'], 'different dates and meals remain visible');
 assert.match(source, /Различаются: /, 'comparison renders a concise saved-difference summary');
 assert.match(source, /Цена при сохранении · минимум среди сохранённых/, 'lowest saved price is explicitly historical comparison context');
 assert.match(source, /compare\.different\.has\(fact\[0\]\).*' · отличается'/, 'differing saved fact rows are labelled semantically without a CSS-only cue');
