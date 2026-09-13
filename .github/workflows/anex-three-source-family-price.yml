@@ -6,14 +6,18 @@ on:
       - 'tests/anex_three_source_family_price_test.py'
       - 'scripts/diagnostics/anex_three_source_party_control.py'
       - 'tests/anex_three_source_party_control_test.py'
+      - 'scripts/diagnostics/anex_three_source_party_broad.py'
+      - 'tests/anex_three_source_party_broad_test.py'
       - '.github/workflows/anex-three-source-family-price.yml'
   push:
     branches:
       - 'ops/int-anex-three-source-party-v2-20260913'
       - 'ops/int-anex-three-source-party-control-v1-20260913'
+      - 'ops/int-anex-three-source-party-broad-v1-20260913'
     paths:
       - '.github/ops/anex-three-source-party-v2-20260913'
       - '.github/ops/anex-three-source-party-control-v1-20260913'
+      - '.github/ops/anex-three-source-party-broad-v1-20260913'
 permissions:
   contents: read
 concurrency:
@@ -29,11 +33,12 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Focused selected-party scenario regressions
+      - name: Focused selected-party and broad scenario regressions
         run: |
           python3 -B tests/anex_three_source_family_price_test.py
           python3 -B tests/anex_three_source_party_control_test.py
-          python3 -m py_compile scripts/diagnostics/anex_three_source_family_price.py scripts/diagnostics/anex_three_source_party_control.py
+          python3 -B tests/anex_three_source_party_broad_test.py
+          python3 -m py_compile scripts/diagnostics/anex_three_source_family_price.py scripts/diagnostics/anex_three_source_party_control.py scripts/diagnostics/anex_three_source_party_broad.py
   live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-party-v2-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
@@ -127,4 +132,51 @@ jobs:
           retention-days: 30
       - name: Fail after evidence preservation
         if: steps.control_run.outcome != 'success'
+        run: exit 1
+  live_broad:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-party-broad-v1-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind exact reviewed broad three-adult source
+        id: control
+        run: |
+          MARKER='control/.github/ops/anex-three-source-party-broad-v1-20260913'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-three-source-party-broad-v1-20260913'
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-party-broad-v1;scenario=Turkey-2026-10-20-8n-3a-AI-broad;owner=2026-09-13"
+          git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Run one fresh broad three-adult three-source scenario
+        id: broad_run
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/party-broad"
+          python3 -B source/scripts/diagnostics/anex_three_source_party_broad.py "$RUNNER_TEMP/party-broad"
+      - name: Preserve sanitized broad three-adult evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-three-source-party-broad-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/party-broad/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: steps.broad_run.outcome != 'success'
         run: exit 1
