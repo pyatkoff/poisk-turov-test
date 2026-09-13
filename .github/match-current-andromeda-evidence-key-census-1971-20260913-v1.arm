@@ -1,0 +1,9 @@
+operation_id=hotel-match-current-andromeda-evidence-key-census-1971-20260913-v1
+claim=996#5652093076
+mode=current_db_read_only_evidence_key_census
+source_feature=44641d4613a73384cb571436679983104290bca2
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
