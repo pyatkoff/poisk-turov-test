@@ -1,0 +1,15 @@
+name: MATCH strict coordinate anchor accept (completed)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  completed:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo 'Operation hotel-match-coordinate-anchor-accept-1971-20260911-v1 is completed and permanently NO-REPLAY.'
+          echo 'Live write trigger is disarmed. Run 34581155863, artifact 10191656567, writes 17.'

@@ -1,0 +1,78 @@
+name: MATCH ANEX-only Egypt saturation #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths: ['.github/workflows/hotel-match-production-gateway-current-jwt-1971.yml']
+permissions: {contents: read}
+env:
+  OPERATION_ID: hotel-match-tv-anex-egypt-saturation-1971-20260912-v1
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Saturate five adjacent dates
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$state"
+          base='https://anytoour.ru/api-v2.php'
+          printf '%s\n' '{"operation_id":"hotel-match-tv-anex-egypt-saturation-1971-20260912-v1","state":"reserved","criteria":{"departureId":1,"countryId":1,"dates":["2026-10-18","2026-10-19","2026-10-20","2026-10-21","2026-10-22"],"nights":7,"adults":2,"operatorIds":[13]},"database_writes":0,"mapping_writes":0,"lead_calls":0,"booking_calls":0,"no_replay":true}' > "$state/reservation.json"
+          : > "$state/dates.ndjson"
+          for date in 2026-10-18 2026-10-19 2026-10-20 2026-10-21 2026-10-22; do
+            curl -fsSL --connect-timeout 15 --max-time 70 "$base?action=search_start&departureId=1&countryId=1&dateFrom=$date&dateTo=$date&nightsFrom=7&nightsTo=7&adults=2&currency=RUB&onlyCharter=false&onlyDirect=false&operatorIds=13" -o "$state/start-$date.json"
+            sid=$(python3 - "$state/start-$date.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1])); print(int(d.get('searchId') or d.get('id') or 0))
+          PY
+            )
+            test "$sid" -gt 0
+            prev=-1; stable=0; iterations=0
+            for i in $(seq 1 12); do
+              iterations=$i
+              sleep 2
+              curl -fsSL --connect-timeout 15 --max-time 50 "$base?action=search_status&searchId=$sid" -o "$state/status-$date-$i.json"
+              curl -fsSL --connect-timeout 15 --max-time 70 "$base?action=search_results&searchId=$sid&limit=100" -o "$state/results-$date-$i.json"
+              count=$(python3 - "$state/results-$date-$i.json" <<'PY'
+          import json,sys
+          d=json.load(open(sys.argv[1])); print(len({str(x.get('id')) for x in d if isinstance(x,dict) and x.get('id')} ) if isinstance(d,list) else 0)
+          PY
+              )
+              if [ "$count" -eq 0 ] && [ "$prev" -gt 0 ]; then break; fi
+              if [ "$count" -eq "$prev" ]; then stable=$((stable+1)); else stable=0; fi
+              if [ "$stable" -ge 1 ]; then break; fi
+              prev=$count
+              curl -fsSL --connect-timeout 15 --max-time 70 "$base?action=search_continue&searchId=$sid" -o "$state/continue-$date-$i.json" || true
+            done
+            # use last non-empty result for this date
+            export STATE="$state" DATE="$date" SID="$sid" ITER="$iterations"
+            python3 - <<'PY' >> "$state/dates.ndjson"
+          import json,os,glob
+          state=os.environ['STATE']; date=os.environ['DATE']; sid=int(os.environ['SID'])
+          files=sorted(glob.glob(f'{state}/results-{date}-*.json'), key=lambda p:int(p.rsplit('-',1)[-1].split('.')[0]))
+          best=[]
+          for p in files:
+              try:d=json.load(open(p))
+              except:continue
+              if isinstance(d,list) and len(d)>len(best): best=d
+          hotels={str(h.get('id')):h.get('name') for h in best if isinstance(h,dict) and h.get('id') and h.get('name')}
+          print(json.dumps({'date':date,'searchId':sid,'unique_hotel_ids':len(hotels),'hotels':hotels,'iterations':int(os.environ['ITER'])},ensure_ascii=False,sort_keys=True))
+          PY
+          done
+          export STATE="$state"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['STATE']); rows=[json.loads(x) for x in (s/'dates.ndjson').read_text().splitlines() if x.strip()]
+          union={}
+          for r in rows: union.update(r['hotels'])
+          out={'operation_id':os.environ['OPERATION_ID'],'status':'completed','dates':[{'date':r['date'],'searchId':r['searchId'],'unique_hotel_ids':r['unique_hotel_ids'],'iterations':r['iterations']} for r in rows],'union_unique_hotel_ids':len(union),'union_hotels':union,'search_starts':len(rows),'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True}
+          (s/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'operation_id':out['operation_id'],'status':out['status'],'dates':out['dates'],'union_unique_hotel_ids':out['union_unique_hotel_ids'],'search_starts':out['search_starts'],'database_writes':0,'mapping_writes':0},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-tv-anex-egypt-saturation-v1
+          path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
+          if-no-files-found: error
+          retention-days: 90
