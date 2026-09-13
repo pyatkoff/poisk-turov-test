@@ -76,9 +76,9 @@ jobs:
           assert zlib.decompress(base64.b64decode(encoded)).decode('utf-8') == original
           assert len(compact.encode('utf-8')) < 120000, (len(original.encode('utf-8')),len(compact.encode('utf-8')))
           workflow=Path('.github/workflows/anex-freight-schema-check.yml').read_text()
-          assert 'ops/int-anex-freight-schema-20260913' in workflow
-          assert 'ops/int-anex-freight-ref-binding-fix-20260913' in workflow
-          assert 'ops/int-anex-freight-ref-binding-20260913' not in workflow
+          assert "      - 'ops/int-anex-freight-schema-20260913'" in workflow
+          assert "      - 'ops/int-anex-freight-ref-binding-fix-20260913'" in workflow
+          assert "      - 'ops/int-anex-freight-ref-binding-20260913'\n" not in workflow
           assert 'cancel-in-progress: false' in workflow
           print('ANEX FreightMonitor/ref-binding static boundary + compact argv transport: PASS', len(original.encode('utf-8')), len(compact.encode('utf-8')))
           PY
