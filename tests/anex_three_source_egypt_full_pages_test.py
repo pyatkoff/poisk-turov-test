@@ -23,6 +23,25 @@ ok("'three-price-egypt-full-pages-20260913-v1'" in php and "'generation'=>260913
 ok("for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)" in php and "$request['page']=$pageNo" in php,'Andromeda establishes page1 then walks pages sequentially')
 ok("'pages_loaded'=>$pagesLoaded" in php and "$receivedTotal+=(int)($result['received_offers']??0)" in php,'Andromeda page coverage is accumulated')
 ok("'hotelIds'=>[]" in php and "current_unique_triple_mapping_anchor_only" in php,'broad scope remains no-hotel-filter with identity anchor only')
+ok("'page_context_missing'=>'PAGE_CONTEXT_MISSING'" in php
+   and "'previous_page_missing'=>'PREVIOUS_PAGE_MISSING'" in php
+   and "'page_outside_latest_response'=>'PAGE_OUTSIDE_LATEST_RESPONSE'" in php
+   and "'page_session_expired'=>'PAGE_SESSION_EXPIRED'" in php
+   and "'supplier_unavailable'=>'SUPPLIER_UNAVAILABLE'" in php,
+   'known Andromeda pagination/runtime failures have fixed safe categories')
+ok("$pageError instanceof OverflowException&&$pageMessage==='monthly_quota_exhausted'" in php
+   and "$pageCategory='MONTHLY_QUOTA'" in php
+   and "$pageError instanceof DomainException" in php
+   and "$pageCategory='PROVIDER_CONTEXT'" in php
+   and "$pageError instanceof InvalidArgumentException" in php
+   and "$pageCategory='INVALID_REQUEST_CONTEXT'" in php
+   and "$pageError instanceof JsonException" in php
+   and "$pageCategory='STATE_JSON_INVALID'" in php
+   and "$pageCategory='RUNTIME_EXCEPTION'" in php,
+   'remaining page failures collapse to bounded typed categories')
+ok("throw new RuntimeException('THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageCategory)" in php
+   and "'THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageMessage" not in php,
+   'page number and category survive outer sanitizer without exposing raw exception text')
 
 anchor={'local_hotel_id':158,'anex_hotel_id':1275,'andromeda_hotel_id':'103544','hotel_name':'EGYPT ANCHOR',
         'selection_basis':'current_unique_triple_mapping_anchor_only','anex_observation_count':12}
