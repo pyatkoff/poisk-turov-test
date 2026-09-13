@@ -3,18 +3,18 @@ run-name: MATCH Andromeda star semantics #1971
 on:
   push:
     branches: ['feat/match-star-semantics-1971-20260913']
-    paths: ['.github/match-andromeda-star-semantics-1971-20260913-v1.arm']
+    paths: ['.github/match-andromeda-star-semantics-1971-20260913-v2.arm']
 permissions:
   contents: read
   actions: read
   issues: write
 concurrency:
-  group: match-andromeda-star-semantics-1971-20260913-v1
+  group: match-andromeda-star-semantics-1971-20260913-v2
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-star-semantics-1971-20260913-v1
-  STRICT_OPERATION_ID: hotel-match-andromeda-star-semantics-strict-1971-20260913-v1
-  BULK_OPERATION_ID: hotel-match-andromeda-star-semantics-bulk-1971-20260913-v1
+  OPERATION_ID: hotel-match-andromeda-star-semantics-1971-20260913-v2
+  STRICT_OPERATION_ID: hotel-match-andromeda-star-semantics-strict-1971-20260913-v2
+  BULK_OPERATION_ID: hotel-match-andromeda-star-semantics-bulk-1971-20260913-v2
   HISTORICAL_SOURCE: d397e795335f3a7c0b4878ce38029e22c0dd6f11
   EXPECTED_BULK_BLOB: 4ef3e150bfbec625d1baf1c425e2a2cd6999e875
   EXPECTED_STRICT_BLOB: 9c08276f69a3c827e2a03ed3a01188b57d21fb0a
@@ -28,39 +28,41 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-      - name: Reconstruct pinned read-only strict libraries
+      - name: Validate and reconstruct pinned read-only libraries
         run: |
           set -euo pipefail
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l scripts/diagnostics/hotel_match_andromeda_star_semantics.php
+          php -l tests/hotel_match_andromeda_star_semantics_test.php
+          php tests/hotel_match_andromeda_star_semantics_test.php
           git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$HISTORICAL_SOURCE"
           git show "$HISTORICAL_SOURCE:scripts/diagnostics/hotel_match_current_bulk_review.php" > "$RUNNER_TEMP/bulk.php"
           git show "$HISTORICAL_SOURCE:scripts/diagnostics/hotel_match_current_strict_review.php" > "$RUNNER_TEMP/strict.php"
           test "$(git hash-object "$RUNNER_TEMP/bulk.php")" = "$EXPECTED_BULK_BLOB"
           test "$(git hash-object "$RUNNER_TEMP/strict.php")" = "$EXPECTED_STRICT_BLOB"
-          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
           python3 - <<'PY'
           import os
           from pathlib import Path
           p=Path(os.environ['RUNNER_TEMP'])
-          bulk=(p/'bulk.php').read_text()
-          strict=(p/'strict.php').read_text()
+          bulk=(p/'bulk.php').read_text(); strict=(p/'strict.php').read_text()
           old="const MBR_OPERATION = 'hotel-match-current-bulk-review-1971-20260911-v1';"
           new=f"const MBR_OPERATION = '{os.environ['BULK_OPERATION_ID']}';"
           if bulk.count(old)!=1: raise SystemExit('bulk operation constant drift')
           bulk=bulk.replace(old,new)
-          old2="const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';"
-          new2=f"const MSR_OPERATION = '{os.environ['STRICT_OPERATION_ID']}';"
-          if strict.count(old2)!=1: raise SystemExit('strict operation constant drift')
-          strict=strict.replace(old2,new2)
+          old="const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';"
+          new=f"const MSR_OPERATION = '{os.environ['STRICT_OPERATION_ID']}';"
+          if strict.count(old)!=1: raise SystemExit('strict operation constant drift')
+          strict=strict.replace(old,new)
           needle="'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'candidates'=>$candidates,"
           repl="'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'blocked_rows'=>$blocked,'candidates'=>$candidates,"
           if strict.count(needle)!=1: raise SystemExit('strict blocked return drift')
           strict=strict.replace(needle,repl)
-          (p/'bulk-current.php').write_text(bulk)
-          (p/'strict-current.php').write_text(strict)
+          (p/'bulk-current.php').write_text(bulk); (p/'strict-current.php').write_text(strict)
           PY
           php -l "$RUNNER_TEMP/bulk-current.php"
           php -l "$RUNNER_TEMP/strict-current.php"
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' "$RUNNER_TEMP/strict-current.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_andromeda_star_semantics.php
       - name: Reserve immutable read operation
         run: |
           set -euo pipefail
@@ -69,17 +71,17 @@ jobs:
           import json,os
           from pathlib import Path
           s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
-          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'historical_source':os.environ['HISTORICAL_SOURCE'],'historical_bulk_blob':os.environ['EXPECTED_BULK_BLOB'],'historical_strict_blob':os.environ['EXPECTED_STRICT_BLOB'],'mode':'current_db_read_only_star_semantics','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'predecessor_operation':'hotel-match-andromeda-star-semantics-1971-20260913-v1','predecessor_state':'failed_pre_auth_no_replay','mode':'current_db_read_only_star_semantics','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
           (s/'reservation.json').write_text(json.dumps(x,sort_keys=True)+'\n')
           PY
-      - name: Preserve reservation before current DB read
+      - name: Preserve reservation before SSH
         uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-star-semantics-1971-20260913-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v1/reservation.json
+          name: match-andromeda-star-semantics-1971-20260913-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Audit CURRENT star semantics and numeric mismatch tail
+      - name: Audit CURRENT star semantics
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -90,73 +92,19 @@ jobs:
           import hashlib,json,os,shlex,subprocess,tempfile
           from pathlib import Path
           rt=Path(os.environ['RUNNER_TEMP']); state=rt/os.environ['OPERATION_ID']
-          helper=Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text()
-          bulk=(rt/'bulk-current.php').read_text(); strict=(rt/'strict-current.php').read_text()
           def body(x):
               if x.startswith('<?php'): x=x[5:]
               return x.replace('declare(strict_types=1);','',1)
-          h=body(helper); b=body(bulk); s=body(strict)
-          b=b.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
-          s=s.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
-          wrapper=r'''
-          function hmss_json($v){return json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
-          function hmss_star(array $source): ?array {
-              foreach (['category','star','stars','starName','star_name'] as $key) {
-                  if (!array_key_exists($key,$source)) continue;
-                  $raw=trim((string)$source[$key]);
-                  if (preg_match('/^([1-5])(?:\s*(?:\*|★|stars?))?$/iu',$raw,$m)) return ['field'=>$key,'raw'=>$raw,'numeric'=>(int)$m[1]];
-              }
-              return null;
-          }
-          function hmss_evidence($raw): array {
-              if (!is_string($raw) || trim($raw)==='') return [];
-              $v=json_decode($raw,true); return is_array($v)?$v:[];
-          }
-          $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');
-          $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php')); if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper'); require_once $dbHelper;
-          $db=v2_data_db();
-          $strict=msr_review($db,getenv('STRICT_OPERATION_ID'));
-          if(($strict['status']??'')!=='completed') throw new RuntimeException('strict_failed');
-          $mismatch=array_values(array_filter($strict['blocked_rows']??[],static fn($r)=>($r['provider']??'')==='andromeda'&&($r['reason']??'')==='numeric_star_guard_mismatch'));
-          $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'); $db->exec('START TRANSACTION READ ONLY');
-          try {
-              $latest=[];
-              foreach($db->query("SELECT * FROM andromeda_search_hotel_observations WHERE supplier_namespace='andromeda_catalog' ORDER BY observed_at_utc DESC,external_hotel_id")->fetchAll(PDO::FETCH_ASSOC) as $o){$e=(string)$o['external_hotel_id'];if(!isset($latest[$e]))$latest[$e]=$o;}
-              $rows=$db->query("SELECT i.external_hotel_id,i.local_hotel_id,i.decision_status,i.evidence_json,i.catalog_sha256,h.country_id,h.category FROM andromeda_hotel_identities i LEFT JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.supplier_namespace='andromeda_catalog' ORDER BY i.decision_status,i.external_hotel_id")->fetchAll(PDO::FETCH_ASSOC);
-              $accepted=['total'=>0,'with_numeric'=>0,'agree'=>0,'mismatch'=>0,'missing_local_category'=>0,'by_field'=>[],'difference_histogram'=>[],'starKey_values'=>[],'starKey_gt5'=>0];
-              $identity=[];
-              foreach($rows as $r){
-                  $e=(string)$r['external_hotel_id'];$identity[$e]=$r;
-                  if(($r['decision_status']??'')!=='accepted'||!$r['local_hotel_id'])continue;
-                  $country=(int)($r['country_id']??0); if(!isset(MBR_CORE8[$country]))continue;
-                  $accepted['total']++;
-                  $ev=hmss_evidence($r['evidence_json']??'');$src=$ev['source']??[];if(!is_array($src))$src=[];
-                  $obs=$latest[$e]??[];$star=hmss_star($src)??hmss_star(is_array($obs)?$obs:[]);
-                  $sk=$src['starKey']??($obs['starKey']??null);if($sk!==null&&$sk!==''){$k=(string)$sk;$accepted['starKey_values'][$k]=($accepted['starKey_values'][$k]??0)+1;if(is_numeric($sk)&&(int)$sk>5)$accepted['starKey_gt5']++;}
-                  if($star===null)continue;$accepted['with_numeric']++;$field=$star['field'];$accepted['by_field'][$field]['total']=($accepted['by_field'][$field]['total']??0)+1;
-                  $lc=$r['category']===null?null:(int)$r['category'];if($lc===null){$accepted['missing_local_category']++;continue;}
-                  $diff=$star['numeric']-$lc;$dk=(string)$diff;$accepted['difference_histogram'][$dk]=($accepted['difference_histogram'][$dk]??0)+1;
-                  if($diff===0){$accepted['agree']++;$accepted['by_field'][$field]['agree']=($accepted['by_field'][$field]['agree']??0)+1;}else{$accepted['mismatch']++;$accepted['by_field'][$field]['mismatch']=($accepted['by_field'][$field]['mismatch']??0)+1;}
-              }
-              ksort($accepted['by_field']);ksort($accepted['difference_histogram'],SORT_NUMERIC);arsort($accepted['starKey_values']);$accepted['starKey_values']=array_slice($accepted['starKey_values'],0,30,true);
-              $cases=[];$kind=['strict_unique'=>0,'ranked'=>0];$fields=[];$diffs=[];
-              foreach($mismatch as $r){$e=(string)$r['external_id'];$id=$identity[$e]??[];$ev=hmss_evidence($id['evidence_json']??'');$src=$ev['source']??[];if(!is_array($src))$src=[];$obs=$latest[$e]??[];$star=hmss_star($src)??hmss_star(is_array($obs)?$obs:[]);$field=$star['field']??'unknown';$raw=$star['raw']??null;$numeric=$star['numeric']??($r['source_category']??null);$target=$r['target']??[];$tc=$target['category']??null;$d=($numeric!==null&&$tc!==null)?((int)$numeric-(int)$tc):null;$dk=$d===null?'null':(string)$d;$diffs[$dk]=($diffs[$dk]??0)+1;$fields[$field]=($fields[$field]??0)+1;$k=isset($r['best'])?'ranked':'strict_unique';$kind[$k]++;
-                  $cases[]=['external_id'=>$e,'country_id'=>(int)($r['country_id']??0),'source_names'=>$r['source_names']??[],'source_places'=>$r['source_places']??[],'star_field'=>$field,'star_raw'=>$raw,'source_category'=>$numeric,'target_category'=>$tc,'category_difference'=>$d,'match_kind'=>$k,'best'=>$r['best']??null,'margin'=>$r['margin']??null,'target'=>$target,'catalog_sha256'=>$r['catalog_sha256']??null];
-              }
-              ksort($fields);ksort($diffs,SORT_NUMERIC);
-              usort($cases,static fn($a,$b)=>$a['country_id']<=>$b['country_id'] ?: strcmp($a['match_kind'],$b['match_kind']) ?: strcmp($a['external_id'],$b['external_id']));
-              $db->commit();
-              $out=['schema'=>'hotel-match-andromeda-star-semantics/1','status'=>'completed','operation_id'=>getenv('OPERATION_ID'),'strict_operation_id'=>getenv('STRICT_OPERATION_ID'),'mode'=>'current_db_read_only','database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'accepted_semantics'=>$accepted,'numeric_star_guard_mismatch_count'=>count($mismatch),'mismatch_match_kind'=>$kind,'mismatch_field_counts'=>$fields,'mismatch_difference_histogram'=>$diffs,'mismatch_rows'=>$cases,'strict_blocked_reasons'=>$strict['blocked_reasons']??[],'strict_candidates_count'=>count($strict['candidates']??[]),'guards'=>['star_equality_is_not_identity_authority'=>true,'no_matching_semantics_changed'=>true,'accepted_manual_exclusions_mappings_unchanged'=>true,'separate_read_only_snapshots'=>true]];
-              echo hmss_json($out),"\n";
-          } catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
-          '''
-          prefix="define('FC_LIBRARY_ONLY',true);\n"
-          prefix+="putenv("+json.dumps("STRICT_OPERATION_ID="+os.environ['STRICT_OPERATION_ID'])+");\n"
-          prefix+="putenv("+json.dumps("OPERATION_ID="+os.environ['OPERATION_ID'])+");\n"
-          code=prefix+h+'\n'+b+'\n'+s+'\n'+wrapper
+          helper=body(Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text())
+          bulk=body((rt/'bulk-current.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strict=body((rt/'strict-current.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          audit=body(Path('scripts/diagnostics/hotel_match_andromeda_star_semantics.php').read_text())
+          op=json.dumps(os.environ['OPERATION_ID']); sop=json.dumps(os.environ['STRICT_OPERATION_ID'])
+          wrapper="$root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root'); $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php')); if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper'); require_once $dbHelper; $db=v2_data_db(); $out=hmss_audit($db,"+sop+","+op+"); echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";"
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+strict+'\n'+audit+'\n'+wrapper
           req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
           if any(not os.environ.get(k,'').strip() for k in req): raise RuntimeError('ssh_secret_missing')
-          with tempfile.TemporaryDirectory(prefix='match-star-',dir=os.environ['RUNNER_TEMP']) as td:
+          with tempfile.TemporaryDirectory(prefix='match-star-v2-',dir=os.environ['RUNNER_TEMP']) as td:
               key=Path(td)/'key'; key.write_text(os.environ[req[0]].rstrip()+'\n'); key.chmod(0o600); known=Path(td)/'known_hosts'
               cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',os.environ[req[2]],os.environ[req[1]],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
               clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_')}
@@ -169,17 +117,16 @@ jobs:
           a=result['accepted_semantics']; receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'audit_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'accepted_total':a['total'],'accepted_with_numeric':a['with_numeric'],'accepted_agree':a['agree'],'accepted_mismatch':a['mismatch'],'starKey_gt5':a['starKey_gt5'],'numeric_star_guard_mismatch_count':result['numeric_star_guard_mismatch_count'],'mismatch_match_kind':result['mismatch_match_kind'],'mismatch_field_counts':result['mismatch_field_counts']}
           (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
           rate=(100.0*a['mismatch']/max(1,a['agree']+a['mismatch']))
-          text=f"MATCH #1971 CURRENT Andromeda star-semantics audit `{os.environ['OPERATION_ID']}` completed read-only. Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`. Accepted core8 identities examined **{a['total']}**; parseable numeric star/category **{a['with_numeric']}**, agree with current local category **{a['agree']}**, mismatch **{a['mismatch']}** ({rate:.1f}% of comparable accepted rows). Raw `starKey>5` observations: **{a['starKey_gt5']}**. CURRENT strict numeric-star blocker rows: **{result['numeric_star_guard_mismatch_count']}** = strict-name **{result['mismatch_match_kind']['strict_unique']}** + ranked/fuzzy **{result['mismatch_match_kind']['ranked']}**. DB/mapping writes **0**, supplier/Tourvisor calls **0**. No matching semantics changed; use this dossier to decide whether the numeric field may remain an absolute guard."
-          (state/'summary.md').write_text(text+'\n')
-          print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          text=f"MATCH #1971 CURRENT Andromeda star-semantics audit `{os.environ['OPERATION_ID']}` completed read-only. Run `{os.environ['GITHUB_RUN_ID']}`, source `{os.environ['GITHUB_SHA']}`. Accepted core8 identities examined **{a['total']}**; parseable numeric star/category **{a['with_numeric']}**, agree **{a['agree']}**, mismatch **{a['mismatch']}** ({rate:.1f}% of comparable accepted rows). Raw `starKey>5`: **{a['starKey_gt5']}**. CURRENT numeric-star blocker **{result['numeric_star_guard_mismatch_count']}** = strict-name **{result['mismatch_match_kind']['strict_unique']}** + ranked **{result['mismatch_match_kind']['ranked']}**. DB/mapping writes **0**, supplier/Tourvisor calls **0**."
+          (state/'summary.md').write_text(text+'\n'); print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
           PY
-      - name: Preserve star-semantics dossier and receipt
+      - name: Preserve dossier and receipt
         if: always()
         id: result
         uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-star-semantics-1971-20260913-v1-result
-          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v1/
+          name: match-andromeda-star-semantics-1971-20260913-v2-result
+          path: ${{ runner.temp }}/hotel-match-andromeda-star-semantics-1971-20260913-v2/
           if-no-files-found: warn
           retention-days: 90
       - name: Record substantive result
