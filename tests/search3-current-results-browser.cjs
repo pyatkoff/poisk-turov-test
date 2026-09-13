@@ -162,6 +162,31 @@ async function checkMinimumReadiness(page, width, previous) {
   } finally { page.off('request', record); }
 }
 
+async function checkExactOfferParty(page, width, previous) {
+  const parties=[{adults:2,childs:0},{adults:2,childs:1},{adults:1,childs:2},{adults:2,childs:null}],labels=['2 взрослых','2 взрослых · 1 ребёнок','1 взрослый · 2 ребёнка',''];
+  const item={...hotels[0],id:'party-hotel',price:71000,tours:parties.map((party,index)=>({...tour,...party,id:'party-'+index,price:71000+index*1000}))};
+  await page.evaluate(item=>{
+    window.Search3LocalHotelFilter.reset();
+    const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
+    window.__partyOriginal=freeze(item);window.V2Results.render([window.__partyOriginal]);
+  },item);
+  const card=page.locator('.hotel-card[data-hotel-id="party-hotel"]');
+  assert.doesNotMatch(await card.innerText(),/2 взрослых|1 ребёнок|2 ребёнка/,'mixed/unknown parties are not presented as one hotel-wide promise');
+  await card.locator('.tour-more-toggle').click();
+  const rows=card.locator('.tour-row');
+  for(let index=0;index<parties.length;index++){
+    const row=rows.nth(index);
+    assert.equal(await row.locator('.direct-tour').getAttribute('data-tid'),'party-'+index);
+    assert.equal(await row.locator('.hotel-price').innerText().then(text=>Number(text.replace(/\D/g,''))),item.tours[index].price);
+    assert.equal(await row.getByText('Туристы',{exact:true}).count(),labels[index]?1:0);
+    if(labels[index])assert.equal(await row.getByText(labels[index],{exact:true}).isVisible(),true,'exact party is readable alongside its own offer price');
+    assert.equal(await row.evaluate(node=>node.scrollWidth>node.clientWidth+1),false);
+  }
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+  assert.equal(await page.evaluate(()=>JSON.stringify(window.__partyOriginal)),JSON.stringify(item),'party display does not mutate the supplier offer');
+  if(!previous)await card.screenshot({path:path.join(output,`exact-offer-party-${width}.png`),animations:'disabled'});
+}
+
 async function checkExpandedDensity(page, width, previous) {
   // The owner supplied a physical-iPhone capture with ten offers. Reproduce
   // that density in the current owner without calling a supplier or a lead.
@@ -939,6 +964,7 @@ async function run(browser, width, previous) {
     if ([375, 390, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
+      await checkExactOfferParty(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);
       await checkAndromedaExpansion(page, width, previous, andromeda);
       await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
