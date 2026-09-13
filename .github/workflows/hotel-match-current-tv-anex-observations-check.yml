@@ -1,12 +1,5 @@
 name: MATCH CURRENT Tourvisor observation to ANEX direct-key check
 on:
-  push:
-    branches:
-      - 'feat/match-current-tv-anex-observations-1971-20260913'
-    paths:
-      - 'scripts/diagnostics/hotel_match_current_tv_anex_observations.php'
-      - 'tests/hotel_match_current_tv_anex_observations_test.php'
-      - '.github/workflows/hotel-match-current-tv-anex-observations-check.yml'
   pull_request:
     paths:
       - 'scripts/diagnostics/hotel_match_current_tv_anex_observations.php'
