@@ -396,12 +396,13 @@ async function checkSelectedLoadRecovery(page, width) {
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
+  const widths = Object.keys(contract.widths).map(Number);
   const evidence = { source: process.env.GITHUB_SHA || '', contract, widths: {} };
   try {
-    for (const width of Object.keys(contract.widths).map(Number)) evidence.widths[width] = await run(browser, width);
+    for (const width of widths) evidence.widths[width] = await run(browser, width);
   } finally {
     await browser.close();
     fs.writeFileSync(path.join(output, 'selected-lead-current.json'), JSON.stringify(evidence, null, 2) + '\n');
   }
-  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=12 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440 load_recovery_widths=375,1440');
+  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + widths.join(',') + ' screenshots=' + (widths.length * 2 + 4) + ' reflow_200pct_equivalent=1440_to_720 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440 load_recovery_widths=375,1440');
 })().catch(error => { console.error(error); process.exitCode = 1; });
