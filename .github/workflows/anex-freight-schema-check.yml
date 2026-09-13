@@ -10,10 +10,10 @@ on:
   push:
     branches:
       - 'ops/int-anex-freight-schema-20260913'
-      - 'ops/int-anex-freight-ref-binding-20260913'
+      - 'ops/int-anex-freight-ref-binding-fix-20260913'
     paths:
       - '.github/ops/anex-freight-schema-20260913'
-      - '.github/ops/anex-freight-ref-binding-20260913'
+      - '.github/ops/anex-freight-ref-binding-fix-20260913'
 permissions:
   contents: read
 concurrency:
@@ -51,7 +51,12 @@ jobs:
           PY
           php -l /tmp/anex-freight-ref-binding.php
           python3 - <<'PY'
+          import base64
+          import zlib
           from pathlib import Path
+          import sys
+          sys.path.insert(0, 'scripts/diagnostics')
+          import anex_freight_ref_binding as binding_module
           src=Path('scripts/diagnostics/anex_freight_schema_capture.py').read_text()
           assert "EXPERIMENT='anex_freight_schema_20260913_v1'" in src
           assert "'program':'2637'" in src and "'hotel_external_id':'25084'" in src
@@ -65,11 +70,17 @@ jobs:
           assert "supplier_freight_refs" in binding and "FreightMonitor_FREIGHTSBYPACKET" in binding
           for forbidden in ('AdditionalPricesDaily','bron_ticket','->bron(','broninit(','->calc('):
               assert forbidden not in binding
+          original=binding_module.php_source()
+          encoded=base64.b64encode(zlib.compress(original.encode('utf-8'),9)).decode('ascii')
+          compact="$src=gzuncompress(base64_decode('"+encoded+"'));if($src===false){fwrite(STDERR,'FREIGHT_REF_BINDING_SOURCE_DECODE');exit(97);}eval($src);"
+          assert zlib.decompress(base64.b64decode(encoded)).decode('utf-8') == original
+          assert len(compact.encode('utf-8')) < 120000, (len(original.encode('utf-8')),len(compact.encode('utf-8')))
           workflow=Path('.github/workflows/anex-freight-schema-check.yml').read_text()
           assert 'ops/int-anex-freight-schema-20260913' in workflow
-          assert 'ops/int-anex-freight-ref-binding-20260913' in workflow
+          assert 'ops/int-anex-freight-ref-binding-fix-20260913' in workflow
+          assert 'ops/int-anex-freight-ref-binding-20260913' not in workflow
           assert 'cancel-in-progress: false' in workflow
-          print('ANEX FreightMonitor/ref-binding static boundary: PASS')
+          print('ANEX FreightMonitor/ref-binding static boundary + compact argv transport: PASS', len(original.encode('utf-8')), len(compact.encode('utf-8')))
           PY
   live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-freight-schema-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
@@ -120,7 +131,7 @@ jobs:
         if: steps.capture.outcome != 'success'
         run: exit 1
   ref-binding-live:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-freight-ref-binding-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-freight-ref-binding-fix-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -140,8 +151,8 @@ jobs:
         id: control
         run: |
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-freight-ref-binding-20260913'
-          test "$(cat control/.github/ops/anex-freight-ref-binding-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-freight-ref-binding;scenario=Turkey-2026-10-19-7n-2a-AI-GREEN-GOLD-exact-hotel;owner=2026-09-13"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-freight-ref-binding-fix-20260913'
+          test "$(cat control/.github/ops/anex-freight-ref-binding-fix-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-freight-ref-binding;scenario=Turkey-2026-10-19-7n-2a-AI-GREEN-GOLD-exact-hotel;owner=2026-09-13"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
@@ -155,7 +166,24 @@ jobs:
         run: |
           test "$(git -C source rev-parse HEAD)" = '${{ steps.control.outputs.source }}'
           mkdir -m 700 "$RUNNER_TEMP/freight-ref-binding"
-          python3 -B source/scripts/diagnostics/anex_freight_ref_binding.py "$RUNNER_TEMP/freight-ref-binding"
+          python3 -B - "$RUNNER_TEMP/freight-ref-binding" <<'PY'
+          import base64
+          import sys
+          import zlib
+          sys.path.insert(0,'source/scripts/diagnostics')
+          import anex_freight_ref_binding as binding
+          import anex_search3_three_source_price as transport
+          raw_transport=transport.ssh_php_no_mux
+          def compact_transport(source_text,request,maximum_bytes=4000000):
+              encoded=base64.b64encode(zlib.compress(source_text.encode('utf-8'),9)).decode('ascii')
+              compact="$src=gzuncompress(base64_decode('"+encoded+"'));if($src===false){fwrite(STDERR,'FREIGHT_REF_BINDING_SOURCE_DECODE');exit(97);}eval($src);"
+              if len(compact.encode('utf-8')) >= 120000:
+                  raise ValueError('freight_ref_binding_compact_source_too_large')
+              return raw_transport(compact,request,maximum_bytes=maximum_bytes)
+          transport.ssh_php_no_mux=compact_transport
+          sys.argv=[binding.__file__,sys.argv[1]]
+          binding.main()
+          PY
       - name: Preserve sanitized ref-binding evidence even on refusal
         if: always()
         uses: actions/upload-artifact@v4
