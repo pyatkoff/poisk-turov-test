@@ -10,6 +10,8 @@ const output = process.env.SEARCH3_RESULTS_OUTPUT || process.env.SEARCH3_GEOMETR
 assert.ok(base && new URL(base).hostname === '127.0.0.1', 'fixture must use the isolated local payload');
 assert.ok(output, 'shortlist evidence output required');
 fs.mkdirSync(output, { recursive: true });
+const sourceSha = process.env.SEARCH3_SOURCE_SHA;
+assert.match(sourceSha || '', /^[a-f0-9]{40}$/, 'comparison geometry requires exact source provenance');
 
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360"><path fill="#9ac7df" d="M0 0h600v360H0z"/></svg>');
 const hotel = { id: 'offer-hotel', name: 'Отель с вариантами номера', country: { name: 'Турция' }, region: { name: 'Анталья' }, category: 5, picturelink: picture };
@@ -148,6 +150,34 @@ async function openComparison(page, width, options = {}) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'comparison creates no page-level horizontal overflow');
 }
 
+async function checkComparisonGeometry(page, width, count) {
+  const shortlist = page.locator('.search3-shortlist'), disclosure = shortlist.locator('.search3-shortlist-disclosure');
+  const wasClosed = width <= 600 && await disclosure.getAttribute('aria-expanded') === 'false';
+  await openComparison(page, width);
+  await page.evaluate(() => document.fonts.ready);
+  const geometry = await shortlist.locator('.search3-shortlist__items').evaluate(list => {
+    const rect = node => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right }; };
+    return { grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap), cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(rect) })) };
+  });
+  assert.equal(geometry.cards.length, count);
+  for (const card of geometry.cards) {
+    assert.ok(card.x >= geometry.grid.x - 1 && card.right <= geometry.grid.right + 1, 'every comparison card stays inside its grid');
+    assert.ok(card.actions.every(action => action.height >= 44 && action.x >= card.x && action.right <= card.right), 'actions remain visible, contained and touch-sized');
+  }
+  if (count === 1) {
+    assert.ok(geometry.cards[0].width <= 641, 'one saved offer stays bounded instead of becoming a giant card');
+    assert.ok(geometry.cards[0].width >= Math.min(640, geometry.grid.width) - 2, 'one saved offer uses the available bounded width');
+  } else if (width <= 600) {
+    assert.ok(geometry.cards.every(card => Math.abs(card.width - geometry.grid.width) < 2), 'mobile cards use one full-width column');
+    assert.ok(geometry.cards.every((card, index, cards) => !index || card.y >= cards[index - 1].y + cards[index - 1].height), 'mobile comparison stacks cards without overlap');
+  } else if (count === 2 && width >= 768 || count === 3 && width >= 1200) {
+    assert.ok(geometry.cards.every(card => Math.abs(card.y - geometry.cards[0].y) < 2), 'available desktop columns stay aligned');
+    assert.ok(Math.abs(geometry.cards.reduce((sum, card) => sum + card.width, 0) + geometry.gap * (count - 1) - geometry.grid.width) < 3, 'saved cards fill the row without a phantom empty column');
+  }
+  await shortlist.screenshot({ path: path.join(output, `shortlist-${width}-${['', 'one', 'two', 'three'][count]}.png`), animations: 'disabled' });
+  if (wasClosed) await disclosure.click();
+  return { sourceSha, width, count, ...geometry };
+}
 async function checkJourney(browser, width) {
   const { context, page, errors, posts } = await openPage(browser, width);
   try {
@@ -157,7 +187,9 @@ async function checkJourney(browser, width) {
     await meal.selectOption('meal:all-inclusive');
     await discloseMatchingOffers(page);
     await addOffer(page, 'offer-standard', true);
+    const one = await checkComparisonGeometry(page, width, 1);
     await addOffer(page, 'offer-family');
+    const two = await checkComparisonGeometry(page, width, 2);
     await addOffer(page, 'offer-third');
     await openComparison(page, width, { assertCollapsed: true });
     const shortlist = page.locator('.search3-shortlist');
@@ -215,7 +247,7 @@ async function checkJourney(browser, width) {
     } else {
       assert.ok(visual.remove.x > visual.select.x, 'desktop actions retain a compact primary/secondary row');
     }
-    await shortlist.screenshot({ path: path.join(output, `shortlist-${width}-three.png`), animations: 'disabled' });
+    const three = await checkComparisonGeometry(page, width, 3);
 
     await shortlist.locator('.search3-shortlist-item[data-offer-id="offer-third"] .search3-shortlist-remove').click();
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 2, 'remove keeps the other exact snapshots');
@@ -280,10 +312,27 @@ async function checkJourney(browser, width) {
     assert.equal(await page.evaluate(() => JSON.stringify(window.__shortlistSource[0].tours.map(item => [item.id, item.price, item.roomType]))), JSON.stringify(items[0].tours.map(item => [item.id, item.price, item.roomType])), 'source projection remains immutable');
     assert.deepEqual(posts, [], 'shortlist never sends POST or a real lead');
     assert.deepEqual(errors, [], 'shortlist journey has no page errors');
-    return { width, exactOffers: ['offer-standard', 'offer-family'], prices: [120000, 125000], max: 3, reload: true, staleBlocked: true, duplicateBlocked: true, keyboard: true, focusReturn: true, posts: 0 };
+    return { sourceSha, width, geometry: [one, two, three], exactOffers: ['offer-standard', 'offer-family'], prices: [120000, 125000], max: 3, reload: true, staleBlocked: true, duplicateBlocked: true, keyboard: true, focusReturn: true, posts: 0 };
   } finally { await context.close(); }
 }
 
+async function checkIntermediateGeometry(browser, width) {
+  const { context, page, errors, posts } = await openPage(browser, width);
+  try {
+    await render(page, 731);
+    await openFilters(page, width);
+    await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
+    await discloseMatchingOffers(page);
+    const geometry = [];
+    for (const [index, id] of ['offer-standard', 'offer-family', 'offer-third'].entries()) {
+      await addOffer(page, id);
+      geometry.push(await checkComparisonGeometry(page, width, index + 1));
+    }
+    assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [], 'comparison geometry never requests tour or flight data');
+    assert.deepEqual(posts, []); assert.deepEqual(errors, []);
+    return { sourceSha, width, geometry, posts: 0 };
+  } finally { await context.close(); }
+}
 async function checkStorageFailure(browser, width, mode) {
   const { context, page, errors, posts } = await openPage(browser, width, mode);
   try {
@@ -338,6 +387,7 @@ async function checkCorruptStorage(browser, width) {
       evidence.push(await checkStorageFailure(browser, width, 'quota'));
       evidence.push(await checkCorruptStorage(browser, width));
     }
+    for (const width of [600, 601, 768, 1024]) evidence.push(await checkIntermediateGeometry(browser, width));
   } finally { await browser.close(); }
   fs.writeFileSync(path.join(output, 'shortlist-contract.json'), JSON.stringify(evidence, null, 2));
   console.log('SEARCH3_SHORTLIST_OK ' + JSON.stringify(evidence));
