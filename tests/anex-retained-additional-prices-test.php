@@ -185,6 +185,79 @@ $assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown', 'malform
 $unknown = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
 $assert($unknown['status'] === 'additional_prices_unknown', 'malformed money is not replayed');
 
+$cacheDir = sys_get_temp_dir() . '/anytour-anex-apd-single-' . bin2hex(random_bytes(6));
+if (!mkdir($cacheDir, 0700, true) && !is_dir($cacheDir)) throw new RuntimeException('FAIL: cache fixture directory');
+$criteria = ['page' => 1, 'pageSize' => 10, 'tour' => 987654321, 'dateBeg' => '2026-09-20', 'nights' => 7, 'currency' => 345];
+$seedTransportCalls = 0;
+$seedClient = new AnyTourAnexAdditionalPricesClient('test-token',
+    static function () use (&$seedTransportCalls): array {
+        ++$seedTransportCalls;
+        throw new RuntimeException('seed transport failure');
+    }, $cacheDir, $clock);
+$seedFailed = false;
+try { $seedClient->additionalPricesDaily($criteria); }
+catch (RuntimeException $error) { $seedFailed = $error->getMessage() === 'ANEX_B2B_TRANSPORT_ERROR'; }
+$assert($seedFailed && $seedTransportCalls === 1 && $seedClient->requestsMade() === 1,
+    'first process leaves a durable same-day shared unknown after transport failure');
+
+$state = $stateTemplate;
+$dailyFactoryCalls = 0;
+$dailyTransportCalls = 0;
+$dailyCheckpoints = 0;
+$dailyClient = null;
+$dailyCheckpoint = static function (array &$state) use (&$dailyCheckpoints, $assert): void {
+    ++$dailyCheckpoints;
+    $attempts = array_values($state['additional_prices'] ?? []);
+    $assert(count($attempts) === 1 && ($attempts[0]['status'] ?? null) === 'unknown',
+        'single retained action reserves session unknown before shared-cache read');
+};
+$dailyFactory = static function () use (&$dailyFactoryCalls, &$dailyTransportCalls, &$dailyClient, $cacheDir, $clock) {
+    ++$dailyFactoryCalls;
+    return $dailyClient = new AnyTourAnexAdditionalPricesClient('test-token',
+        static function () use (&$dailyTransportCalls): array {
+            ++$dailyTransportCalls;
+            throw new RuntimeException('shared unknown must prevent transport');
+        }, $cacheDir, $clock);
+};
+$dailyUnknown = anytour_anex_search3_followup(
+    $request, $state, $resolver, $directFactory, $metadata, $clock, $dailyCheckpoint, $dailyFactory);
+$assert($dailyUnknown['status'] === 'additional_prices_unknown'
+    && $dailyFactoryCalls === 1 && $dailyTransportCalls === 0 && $dailyCheckpoints === 1
+    && $dailyClient instanceof AnyTourAnexAdditionalPricesClient && $dailyClient->requestsMade() === 0,
+    'same-day shared unknown is a normal unknown result with zero supplier replay');
+$attempts = array_values($state['additional_prices']);
+$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown',
+    'shared daily unknown keeps the single-offer session attempt unknown');
+$dailyAgain = anytour_anex_search3_followup(
+    $request, $state, $resolver, $directFactory, $metadata, $clock, $dailyCheckpoint, $dailyFactory);
+$assert($dailyAgain['status'] === 'additional_prices_unknown'
+    && $dailyFactoryCalls === 1 && $dailyTransportCalls === 0 && $dailyCheckpoints === 1,
+    'same session does not re-open a shared or supplier attempt after daily unknown');
+foreach (glob($cacheDir . '/*/*') ?: [] as $path) @unlink($path);
+foreach (glob($cacheDir . '/*') ?: [] as $path) is_dir($path) ? @rmdir($path) : @unlink($path);
+@rmdir($cacheDir);
+
+$state = $stateTemplate;
+$freshTransportCalls = 0;
+$freshTransportFactory = static function () use (&$freshTransportCalls) {
+    return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$freshTransportCalls): array {
+        ++$freshTransportCalls;
+        throw new RuntimeException('fresh transport failure');
+    });
+};
+$freshTransportFailed = false;
+try {
+    anytour_anex_search3_followup(
+        $request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $freshTransportFactory);
+} catch (RuntimeException $error) {
+    $freshTransportFailed = $error->getMessage() === 'ANEX_B2B_TRANSPORT_ERROR';
+}
+$assert($freshTransportFailed && $freshTransportCalls === 1,
+    'fresh transport failure still propagates and is not converted to cached unknown');
+$attempts = array_values($state['additional_prices']);
+$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown',
+    'fresh transport failure remains durable no-replay unknown');
+
 $state = $stateTemplate;
 $state['gateway']['saved_offers']['offers'][$offerRef]['supplier_currency_id'] = null;
 $missing = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
