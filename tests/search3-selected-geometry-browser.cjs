@@ -147,8 +147,12 @@ async function checkOfferJourney(page,width){
     };
     await selectMeal();
     const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
-    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard'],'collapsed filtered card selects the complete STANDARD AI offer');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),[],'collapsed multi-offer card does not expose an arbitrary direct choice');
+    assert.equal(await card.locator('.tour-more-toggle').innerText(),'Показать варианты · 2','collapsed filtered card states the two complete AI offers');
+    await card.locator('.tour-more-toggle').click();
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard','offer-family'],'expanded filtered card exposes both complete AI offers');
     const selectOffer=async(id,price,room)=>{
+      if(!await card.locator('.direct-tour[data-tid="'+id+'"]').count())await card.locator('.tour-more-toggle').click();
       await card.locator('.direct-tour[data-tid="'+id+'"]').click();
       await root.locator('.search3-flight-continue button').waitFor();
       assert.equal(await page.evaluate(()=>window.V2TourController.currentTour.id),id,'selected identity matches the clicked complete offer');
@@ -252,9 +256,7 @@ async function run(browser, width, previous) {
       window.V2TourController.selectTour(tour.id);
     },{tour,flights});
     await page.waitForSelector('#selectedTour .flight-variant');
-    await page.waitForFunction(previous
-      ? ()=>window.Search3SelectedFlowV2
-      : ()=>window.V2FlightEmptyRecoveryV1);
+    await page.waitForFunction(()=>window.V2FlightEmptyRecoveryV1);
     await page.waitForSelector('#selectedTour .search3-flight-continue button');
     await page.waitForFunction(()=>document.body.classList.contains('search3-selected-open'));
     const prefix=(previous?'baseline':'current')+'-'+width;
@@ -337,10 +339,6 @@ async function run(browser, width, previous) {
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="0"]')?.classList.contains('is-selected'));
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
-    if(previous){
-      await page.waitForSelector('#selectedTour.search3-final-review .search3-summary-submit');
-      await page.locator('#selectedTour .search3-summary-submit').click();
-    }
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
     states.lead=await capture(page,prefix+'-lead');
     assert.equal(await page.locator('#selectedTour .lead-form button[type=submit]').isVisible(),true,'lead submit remains reachable');

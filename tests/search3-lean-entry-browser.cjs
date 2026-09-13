@@ -111,11 +111,11 @@ async function inspect(browser, width, previous) {
       assert.equal(meal.quickChoices, 0, 'retired quick-choice surface is absent');
       if(width===375||width===1440) {
         await page.evaluate(() => window.V2Results.render([{id:'edit-fixture',name:'Проверочный отель',tours:[],price:148500}]));
-        assert.equal((await state()).visible,false,'results collapse the form');
+        assert.equal((await state()).visible,true,'results retain the full OTA form');
         await page.locator('#resultsSearchEdit').click();
         assert.ok((await state()).visible,'result summary edit restores the native form');
         await page.evaluate(() => window.V2Results.render([]));
-        assert.equal((await state()).visible,false,'new empty results close the previous editor');
+        assert.equal((await state()).visible,true,'new empty results retain the full OTA form');
         await page.locator('.empty-edit-search').click();
         assert.ok((await state()).visible,'empty-result edit restores the native form');
       }

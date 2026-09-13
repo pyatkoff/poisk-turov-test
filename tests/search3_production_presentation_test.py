@@ -45,7 +45,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertLessEqual((ROOT / 'v2/search3-results-cards-v2.css').stat().st_size, 1)
         self.assertEqual(
             (ROOT / 'v2/search3-selected-flow-v2.css').read_text(),
-            '.selected-picture img{max-width:100%}\n',
+            '.selected-picture img{max-width:100%}'
+            '#selectedTour:not(.search3-lead-entry) .lead-form{display:none}\n',
         )
         results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
         self.assertIn(
