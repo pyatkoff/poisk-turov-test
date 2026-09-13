@@ -1,0 +1,9 @@
+operation_id=hotel-match-star-mismatch-provenance-1971-20260913-v8
+claim=996#5651628838
+mode=current_db_read_only_star_mismatch_provenance
+source_fix_merge=1ffffa21526a4fa285b3c5fc46058d2a79a31636
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
