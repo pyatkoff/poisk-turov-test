@@ -14,6 +14,8 @@ on:
       - 'tests/anex_three_source_egypt_broad_test.py'
       - 'scripts/diagnostics/anex_three_source_egypt_andromeda_page2.py'
       - 'tests/anex_three_source_egypt_andromeda_page2_test.py'
+      - 'scripts/diagnostics/anex_three_source_egypt_full_pages.py'
+      - 'tests/anex_three_source_egypt_full_pages_test.py'
       - '.github/workflows/anex-three-source-family-price.yml'
   push:
     branches:
@@ -23,6 +25,7 @@ on:
       - 'ops/int-anex-three-source-family-broad-v1-20260913'
       - 'ops/int-anex-three-source-egypt-broad-v1-20260913'
       - 'ops/int-egypt-andromeda-page2-v1-20260913'
+      - 'ops/int-egypt-full-pages-v1-20260913'
     paths:
       - '.github/ops/anex-three-source-party-v2-20260913'
       - '.github/ops/anex-three-source-party-control-v1-20260913'
@@ -30,6 +33,7 @@ on:
       - '.github/ops/anex-three-source-family-broad-v1-20260913'
       - '.github/ops/anex-three-source-egypt-broad-v1-20260913'
       - '.github/ops/anex-egypt-andromeda-page2-v1-20260913'
+      - '.github/ops/anex-egypt-full-pages-v1-20260913'
 permissions:
   contents: read
 concurrency:
@@ -53,7 +57,8 @@ jobs:
           python3 -B tests/anex_three_source_family_broad_test.py
           python3 -B tests/anex_three_source_egypt_broad_test.py
           python3 -B tests/anex_three_source_egypt_andromeda_page2_test.py
-          python3 -m py_compile scripts/diagnostics/anex_three_source_family_price.py scripts/diagnostics/anex_three_source_party_control.py scripts/diagnostics/anex_three_source_party_broad.py scripts/diagnostics/anex_three_source_family_broad.py scripts/diagnostics/anex_three_source_egypt_broad.py scripts/diagnostics/anex_three_source_egypt_andromeda_page2.py
+          python3 -B tests/anex_three_source_egypt_full_pages_test.py
+          python3 -m py_compile scripts/diagnostics/anex_three_source_family_price.py scripts/diagnostics/anex_three_source_party_control.py scripts/diagnostics/anex_three_source_party_broad.py scripts/diagnostics/anex_three_source_family_broad.py scripts/diagnostics/anex_three_source_egypt_broad.py scripts/diagnostics/anex_three_source_egypt_andromeda_page2.py scripts/diagnostics/anex_three_source_egypt_full_pages.py
   live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-anex-three-source-party-v2-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
     runs-on: ubuntu-latest
@@ -335,4 +340,51 @@ jobs:
           retention-days: 30
       - name: Fail after evidence preservation
         if: steps.page2_run.outcome != 'success'
+        run: exit 1
+  live_egypt_full_pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ops/int-egypt-full-pages-v1-20260913' && github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind exact reviewed Egypt full-pages source
+        id: control
+        run: |
+          MARKER='control/.github/ops/anex-egypt-full-pages-v1-20260913'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-full-pages-v1-20260913'
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-full-pages-v1;scenario=Egypt-2026-11-12-9n-2a-AI-full-pages;owner=2026-09-13"
+          git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Run one fresh full-paged Egypt three-source scenario
+        id: full_run
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/egypt-full-pages"
+          python3 -B source/scripts/diagnostics/anex_three_source_egypt_full_pages.py "$RUNNER_TEMP/egypt-full-pages"
+      - name: Preserve sanitized full-paged Egypt evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-egypt-full-pages-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/egypt-full-pages/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation
+        if: steps.full_run.outcome != 'success'
         run: exit 1
