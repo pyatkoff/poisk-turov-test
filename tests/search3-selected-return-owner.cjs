@@ -6,8 +6,13 @@ const vm = require('node:vm');
 (async function () {
   const source = fs.readFileSync(path.join(__dirname, '../v2/tour-controller-v4.js'), 'utf8');
   const documentEvents = new Map();
+  const windowEvents = new Map();
   const frames = [];
   const returned = [];
+  const flightEvents = [];
+  const pendingTours = new Map();
+  const pendingFlights = new Map();
+  let deferResponses = false;
   let listedButtons = [];
   let tourShouldFail = false;
   let revealTarget = null;
@@ -93,7 +98,13 @@ const vm = require('node:vm');
     },
     V2Runtime: {
       state: {},
-      api(actionName) {
+      api(actionName, params) {
+        if (deferResponses && ['tour', 'flights'].includes(actionName)) {
+          const pending = actionName === 'tour' ? pendingTours : pendingFlights;
+          const id = String(params.tourId);
+          assert.equal(pending.has(id), false, 'a pending request is not duplicated');
+          return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+        }
         if (actionName === 'tour' && tourShouldFail) return Promise.reject(new Error('fixture failure'));
         if (actionName === 'tour') return Promise.resolve({
           id: 17,
@@ -105,8 +116,11 @@ const vm = require('node:vm');
         throw new Error('unexpected API action');
       }
     },
-    addEventListener() {},
-    dispatchEvent(event) { if (event.type === 'v2:tour-returned') returned.push(event.detail); }
+    addEventListener(name, handler) { windowEvents.set(name, handler); },
+    dispatchEvent(event) {
+      if (event.type === 'v2:tour-returned') returned.push(event.detail);
+      if (event.type === 'v2:flight-selected') flightEvents.push(event.detail);
+    }
   };
   vm.runInNewContext(source, {
     window,
@@ -197,5 +211,66 @@ const vm = require('node:vm');
   assert.equal(failed.textContent, 'Повторить загрузку тура', 'failed request restores the exact retry label');
   assert.match(selected.innerHTML, /Не удалось загрузить выбранный тур: fixture failure/);
 
-  console.log('PASS: current tour controller owns exact source, collapsed disclosure recovery and fallback return lifecycle');
+  deferResponses = true;
+  tourShouldFail = false;
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+  const finishTour = async (id, error) => {
+    const request = pendingTours.get(id);
+    assert.ok(request, 'test resolves only a requested tour');
+    pendingTours.delete(id);
+    if (error) request.reject(new Error(error));
+    else request.resolve({ id, hotel: { name: 'Hotel ' + id }, price: 100 });
+    await flush();
+  };
+  const finishFlights = async id => {
+    const request = pendingFlights.get(id);
+    assert.ok(request, 'test resolves only requested flight variants');
+    pendingFlights.delete(id);
+    request.resolve([{ id: 'flight-' + id, isDefault: true, price: { value: 100 } }]);
+    await flush();
+  };
+  const choose = id => { window.V2TourController.selectTour(id); };
+
+  choose('older-success');
+  choose('newer-success');
+  await finishTour('newer-success');
+  await finishFlights('newer-success');
+  const newerMarkup = selected.innerHTML;
+  await finishTour('older-success');
+  assert.equal(window.V2TourController.currentTour.id, 'newer-success', 'late tour success never replaces the newer choice');
+  assert.equal(selected.innerHTML, newerMarkup, 'late success cannot redraw the newer selected view');
+  assert.equal(pendingFlights.has('older-success'), false, 'stale tour success cannot start a flight lookup');
+
+  choose('older-error');
+  choose('newer-after-error');
+  await finishTour('newer-after-error');
+  await finishFlights('newer-after-error');
+  const beforeOldError = selected.innerHTML;
+  await finishTour('older-error', 'late old request failure');
+  assert.equal(window.V2TourController.currentTour.id, 'newer-after-error', 'late failure keeps the newer exact tour');
+  assert.equal(selected.innerHTML, beforeOldError, 'late failure cannot replace current facts with an error panel');
+
+  choose('before-search-reset');
+  windowEvents.get('v2:search-reset')();
+  assert.equal(window.V2TourController.currentTour, null, 'search reset immediately invalidates the selected offer');
+  await finishTour('before-search-reset');
+  assert.equal(window.V2TourController.currentTour, null, 'a pending response cannot revive an offer after search reset');
+  assert.equal(pendingFlights.has('before-search-reset'), false, 'reset-invalidated tour cannot start a flight request');
+
+  choose('old-flight');
+  await finishTour('old-flight');
+  choose('current-flight');
+  await finishTour('current-flight');
+  const eventsBeforeCurrentFlight = flightEvents.length;
+  await finishFlights('current-flight');
+  assert.equal(flightEvents.length, eventsBeforeCurrentFlight + 1);
+  assert.equal(flightEvents.at(-1).tour.id, 'current-flight');
+  assert.equal(flightEvents.at(-1).flight.id, 'flight-current-flight');
+  await finishFlights('old-flight');
+  assert.equal(flightEvents.length, eventsBeforeCurrentFlight + 1, 'late flight variants cannot emit selection for the wrong tour');
+  assert.equal(window.V2TourController.currentTour.id, 'current-flight');
+  assert.equal(pendingTours.size, 0);
+  assert.equal(pendingFlights.size, 0);
+
+  console.log('PASS: current tour controller owns exact source, collapsed disclosure recovery, fallback return and stale tour/flight response isolation');
 })();
