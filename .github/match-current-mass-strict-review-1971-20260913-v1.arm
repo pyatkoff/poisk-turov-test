@@ -1,0 +1,9 @@
+operation_id=hotel-match-current-mass-strict-review-1971-20260913-v1
+source_base=8b5145538ee5e9b5d9bdf44d9e4b95f995293205
+claim=996#5649798725
+mode=current_db_repeatable_read_strict
+no_replay=true
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
