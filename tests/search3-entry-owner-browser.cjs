@@ -6,6 +6,81 @@ const path = require('node:path');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_ENTRY_OWNER_OUTPUT;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
 fs.mkdirSync(output, { recursive: true });
+async function checkUrlRoundTrip(page, width, blocked) {
+  const submitted = await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
+    const date = new Date(); date.setDate(date.getDate() + 3);
+    const future = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const values = { from: '1', country: '4', dateFrom: future, dateTo: future, daysFrom: '8', daysTill: '9', count_people: '4', arrival: '77', region: '11', subregion: '12', hotel: '123', operator: '42', hotel_type: '2', stars: '4', rating: '5', food: '7', price_from: '155500', price_till: '200750' };
+    for (const [name, value] of Object.entries(values)) {
+      const field = form.elements[name];
+      if (field.tagName === 'SELECT' && ![...field.options].some(option => option.value === value)) field.add(new Option('Проверочный вариант ' + value, value));
+      field.value = value;
+    }
+    form.elements.child_count.value = '2'; window.V2Catalogs.renderChildAges();
+    [...form.querySelectorAll('[name="child_age[]"]')].forEach((field, i) => field.value = ['0', '17'][i]);
+    form.elements.onlyDirect.checked = true; form.elements.onlyCharter.checked = false;
+    document.getElementById('hotelServices').innerHTML = '<input type="checkbox" name="hotel_service[]" value="9" checked><input type="checkbox" name="hotel_service[]" value="10" checked>';
+    for (const name of ['phone', 'email', 'consent']) {
+      const field = document.createElement('input'); field.type = 'hidden'; field.name = name; field.value = 'fixture-private'; form.append(field);
+    }
+    history.replaceState({ retained: 'entry-fixture' }, '', location.pathname + '?utm_source=entry-fixture&date_from=2000-01-01&days_from=1&child_age=9&only_charter=1#parameters');
+    const historyLength = history.length, expected = lifecycle.params(), calls = [];
+    window.V2Runtime.api = async (action, params) => { calls.push({ action, params }); return { searchId: 701 }; };
+    await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
+    return { values, expected, calls, historyLength, afterLength: history.length, state: history.state, url: location.href };
+  });
+  assert.deepEqual(submitted.calls, [{ action: 'search_start', params: submitted.expected }], 'URL persistence preserves exactly one canonical supplier boundary call and its payload');
+  assert.equal(submitted.afterLength, submitted.historyLength, 'search conditions do not add navigation entries');
+  assert.deepEqual(submitted.state, { retained: 'entry-fixture' }, 'existing history state is retained');
+  const saved = new URL(submitted.url);
+  for (const [name, value] of Object.entries(submitted.values)) assert.equal(saved.searchParams.get(name), value, 'URL retains exact ' + name);
+  assert.deepEqual(saved.searchParams.getAll('child_age[]'), ['0', '17'], 'both boundary child ages retain their order');
+  assert.deepEqual(saved.searchParams.getAll('hotel_service[]'), ['9', '10'], 'all selected services are retained');
+  assert.equal(saved.searchParams.get('onlyDirect'), '1');
+  assert.equal(saved.searchParams.get('child_count'), '2');
+  for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'phone', 'email', 'consent']) assert.equal(saved.searchParams.has(name), false, 'stale alias, unchecked flag or private field is excluded: ' + name);
+  assert.equal(saved.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(saved.hash, '#parameters');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle && document.querySelectorAll('#childAges select').length === 2 && document.querySelector('#childAges select').value === '0');
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submitted.expected, 'reload restores the exact submitted conditions through existing catalog/URL hydration');
+  await page.screenshot({ path: path.join(output, `url-restored-${width}.png`), fullPage: true });
+  const cleared = await page.evaluate(async () => {
+    const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
+    const optional = ['arrival', 'region', 'subregion', 'hotel', 'operator', 'hotel_type', 'stars', 'rating', 'food', 'price_from', 'price_till'];
+    optional.forEach(name => form.elements[name].value = '');
+    form.elements.child_count.value = '0'; window.V2Catalogs.renderChildAges();
+    form.querySelectorAll('[name="hotel_service[]"]').forEach(field => field.checked = false);
+    form.elements.onlyDirect.checked = false; form.elements.onlyCharter.checked = false;
+    const before = location.href, date = form.elements.dateFrom.value, calls = [];
+    window.V2Runtime.api = async (action, params) => { calls.push({ action, params }); return { searchId: 702 }; };
+    form.elements.dateFrom.value = '';
+    await lifecycle.submit();
+    const invalid = { calls: calls.length, unchanged: location.href === before };
+    form.elements.dateFrom.value = date;
+    const replace = history.replaceState;
+    history.replaceState = () => { throw new DOMException('Fixture history denial', 'SecurityError'); };
+    await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
+    const historyDenied = { calls: calls.length, unchanged: location.href === before };
+    history.replaceState = replace;
+    const expected = lifecycle.params();
+    await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
+    return { optional, invalid, historyDenied, expected, calls, url: location.href };
+  });
+  assert.deepEqual(cleared.invalid, { calls: 0, unchanged: true }, 'invalid conditions do not update URL or start supplier search');
+  assert.deepEqual(cleared.historyDenied, { calls: 1, unchanged: true }, 'unavailable browser history does not interrupt the ordinary search');
+  assert.deepEqual(cleared.calls, Array.from({ length: 2 }, () => ({ action: 'search_start', params: cleared.expected })), 'history availability does not alter the supplier payload or duplicate a submission');
+  const reset = new URL(cleared.url);
+  for (const name of [...cleared.optional, 'child_age[]', 'hotel_service[]', 'onlyDirect', 'onlyCharter']) assert.equal(reset.searchParams.has(name), false, 'cleared restriction cannot return from URL: ' + name);
+  assert.equal(reset.searchParams.get('child_count'), '0');
+  assert.equal(reset.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(reset.hash, '#parameters');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle);
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'second reload retains zero children and cleared secondary filters');
+  fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, cleared, blocked, supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
+}
 async function run(browser, width) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
   const errors = [], blocked = [];
@@ -247,6 +322,8 @@ async function run(browser, width) {
     assert.equal(await calendar.isVisible(), false, 'one date does not invent a price comparison');
     await require('./search3-calendar-readability.cjs')(page, width, output);
     assert.deepEqual(errors, [], 'calendar interaction has no page errors');
+    if ([375, 1440].includes(width)) await checkUrlRoundTrip(page, width, blocked);
+    assert.deepEqual(errors, [], 'URL round trip has no page errors');
   } finally { await page.close(); }
 }
 // Existing homepage controls, offline catalogs, no real search/lead navigation.
