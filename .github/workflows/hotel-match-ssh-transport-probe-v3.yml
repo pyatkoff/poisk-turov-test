@@ -1,0 +1,68 @@
+name: MATCH SSH transport recovery probe v3
+on:
+  push:
+    branches: [ops/match-ssh-probe-1971-20260913-v3]
+    paths: [.github/match-ssh-transport-probe-1971-20260913-v3.arm]
+permissions: {contents: read}
+concurrency: {group: anytour-match-ssh-transport-probe-1971-v3, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-ssh-transport-probe-1971-20260913-v3
+jobs:
+  probe:
+    if: github.run_attempt == 1 && github.run_number == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Bind exact harmless operation
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-ssh-transport-probe-1971-20260913-v3.arm)" = "$OPERATION_ID"
+      - name: Probe SSH and build sanitized evidence
+        id: probe
+        continue-on-error: true
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          test -n "$KEY" && test -n "$HOST" && test -n "$USER"
+          key="$RUNNER_TEMP/match-probe-key"; known="$RUNNER_TEMP/match-probe-known"; out="$RUNNER_TEMP/match-probe-out"; err="$RUNNER_TEMP/match-probe-err"; report="$RUNNER_TEMP/match-probe.json"
+          trap 'rm -f "$key" "$known" "$out" "$err"' EXIT
+          umask 077
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST" 'printf MATCH_SSH_PROBE_OK' >"$out" 2>"$err"
+          rc=$?
+          set -e
+          export RC="$rc" OUTFILE="$out" ERRFILE="$err" REPORT="$report"
+          python3 - <<'PY'
+          import json,os,pathlib,re
+          rc=int(os.environ['RC']); out=pathlib.Path(os.environ['OUTFILE']).read_text(errors='replace'); err=pathlib.Path(os.environ['ERRFILE']).read_text(errors='replace').lower()
+          stdout_ok=(out=='MATCH_SSH_PROBE_OK')
+          if rc==0 and stdout_ok: cls='authenticated_command_ok'
+          elif 'permission denied' in err: cls='authentication_denied'
+          elif 'connection closed' in err or 'connection reset' in err: cls='connection_closed_pre_command'
+          elif 'timed out' in err or 'timeout' in err: cls='connection_timeout'
+          elif 'no route to host' in err or 'network is unreachable' in err: cls='network_unreachable'
+          elif 'connection refused' in err: cls='connection_refused'
+          else: cls='ssh_failed_other'
+          safe={'operation_id':os.environ['OPERATION_ID'],'exit_code':rc,'stdout_ok':stdout_ok,'classification':cls,'stderr_present':bool(err.strip()),'database_calls':0,'supplier_calls':0,'tourvisor_calls':0,'runtime_mutations':0,'no_replay':True}
+          pathlib.Path(os.environ['REPORT']).write_text(json.dumps(safe,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(safe,sort_keys=True))
+          raise SystemExit(0 if rc==0 and stdout_ok else 2)
+          PY
+      - name: Preserve sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-ssh-transport-probe-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/match-probe.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Terminal gate
+        if: steps.probe.outcome != 'success'
+        run: exit 1
