@@ -89,6 +89,15 @@ decimal-грамматики. Некорректный final net не даёт v
 доплаты/курсы не становятся денежными фактами. Валидные числа/строки и явный нулевой
 сбор сохранены. Это source-only regression fix, не новый supplier evidence или deploy.
 
+2026-09-13: устранён воспроизводимый HTTP→supplier дефект состава туристов/ночей в
+`anytour_andromeda_search3_params`: `adults=true` превращался в `ADULT=1`, дробные
+и частично числовые значения усекались, `childs=[true]` давал `AGES=1`.
+До формирования supplier params используется уже существующий строгий integer parser;
+корректные целые числа/числовые строки, возраст 0 и порядок возрастов сохранены.
+Регрессия и mock supplier wire входят в существующий filter-request smoke.
+Это source-only исправление контекста цены, без нового модуля, supplier evidence,
+изменений money arithmetic, mapping, replay, booking или публикации.
+
 ### 4.1 AdditionalPricesDaily — текущий P0 blocker
 
 #2236/#2237 дали первый bounded cohort: для B2B `tour=778` ставка `13549.9 RUB/adult`, две взрослые ставки `27099.8`, сопоставимый Tourvisor fuel/delta `27100`. Это evidence применимости adult-rate внутри этого cohort, а не разрешение округлять, складывать или переносить формулу на другие предложения.

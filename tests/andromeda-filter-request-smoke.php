@@ -91,3 +91,34 @@ try{anytour_andromeda_search3_params($subregion,$pdo,$missingDestination);throw 
 $bad=$saved;$bad['all']['payload']['MEAL']=array_values(array_filter($bad['all']['payload']['MEAL'],fn($row)=>$row['name']!=='UAI'));
 try{$request=$base;$request['params']['meal']='7';anytour_andromeda_search3_params($request,$pdo,$bad);throw new RuntimeException('incomplete AI family dictionary accepted');}catch(DomainException $expected){}
 echo "Andromeda upstream filters: meals + minimum stars + operators + resort geography passed\n";
+
+// Regression: raw JSON types must not silently change the priced party or stay.
+foreach([
+ ['adults',true],['adults',2.9],['adults','2adults'],
+ ['nightsFrom',7.9],['nightsTo',7.9],['nightsTo','7days'],
+ ['childs',[true]],['childs',[7.5]],['childs',['7years']],['childs',['unexpected'=>7]],
+] as [$key,$value]){
+ $request=$base;$request['params'][$key]=$value;
+ try{
+  anytour_andromeda_search3_params($request,$pdo,$saved);
+  throw new RuntimeException('malformed '.$key.' was converted into another search context');
+ }catch(InvalidArgumentException $expected){}
+}
+$family=$base;
+$family['params']=array_replace($family['params'],['adults'=>'2','nightsFrom'=>'7','nightsTo'=>'7','childs'=>['0','17']]);
+$familyParams=anytour_andromeda_search3_params($family,$pdo,$saved);
+$integerFamily=$family;
+$integerFamily['params']=array_replace($integerFamily['params'],['adults'=>2,'nightsFrom'=>7,'nightsTo'=>7,'childs'=>[0,17]]);
+if($familyParams!==anytour_andromeda_search3_params($integerFamily,$pdo,$saved))
+ throw new RuntimeException('canonical numeric strings changed valid family criteria');
+$wire=[];
+$client=new AnyTourAndromedaClient(static function($url,$options)use(&$wire){
+ parse_str(parse_url($url,PHP_URL_QUERY),$query);$wire[]=$query;
+ return ['status'=>200,'body'=>json_encode(['PAGE'=>1,'PAGES_COUNT'=>0,'PRICES'=>[]])];
+},true);
+$client->restorePrivateSession(['sid'=>'family_types_fixture','expires'=>time()+60]);
+$client->price($familyParams);
+if(count($wire)!==1||$wire[0]['ADULT']!=='2'||$wire[0]['CHILD']!=='2'||$wire[0]['AGES']!=='0,17'
+ ||$wire[0]['NIGHTS_FROM']!=='7'||$wire[0]['NIGHTS_TILL']!=='7')
+ throw new RuntimeException('validated family changed at the mock supplier boundary');
+echo "Andromeda party/stay: malformed inputs rejected; exact family ages and numeric strings preserved\n";

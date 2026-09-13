@@ -154,12 +154,21 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
         if(!$date || $date->format('Y-m-d')!==$value || $value<gmdate('Y-m-d'))throw new InvalidArgumentException();
         $dates[]=$date->format('Ymd');
     }
+    // Validate before conversion: boolean/fractional/partial values must not price a different party or stay.
+    $adults=anytour_anex_normalizer_integer($p['adults']??null,1,6);
+    $nightsFrom=anytour_anex_normalizer_integer($p['nightsFrom']??null,1,28);
+    $nightsTo=anytour_anex_normalizer_integer($p['nightsTo']??null,1,28);
+    if($adults===null||$nightsFrom===null||$nightsTo===null)throw new InvalidArgumentException();
     $ages=$p['childs']??[];
-    if(!is_array($ages)||count($ages)>3)throw new InvalidArgumentException();
-    foreach($ages as $age)if(!is_scalar($age)||!ctype_digit((string)$age)||(int)$age>17)throw new InvalidArgumentException();
+    if(!is_array($ages)||count($ages)>3||($ages!==[]&&array_keys($ages)!==range(0,count($ages)-1)))throw new InvalidArgumentException();
+    foreach($ages as &$age){
+        $age=anytour_anex_normalizer_integer($age,0,17);
+        if($age===null)throw new InvalidArgumentException();
+    }
+    unset($age);
     $params=['TOWNFROMINC'=>$departure,'STATEINC'=>(int)($saved['all']['params']['STATEINC']??3),'CHECKIN_BEG'=>$dates[0],'CHECKIN_END'=>$dates[1],
-        'NIGHTS_FROM'=>(int)($p['nightsFrom']??0),'NIGHTS_TILL'=>(int)($p['nightsTo']??0),
-        'ADULT'=>(int)($p['adults']??0),'CHILD'=>count($ages),'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>$request['page']??1];
+        'NIGHTS_FROM'=>$nightsFrom,'NIGHTS_TILL'=>$nightsTo,
+        'ADULT'=>$adults,'CHILD'=>count($ages),'CURRENCYINC'=>643,'PACKETTYPE'=>0,'PAGE'=>$request['page']??1];
     if($ages)$params['AGES']=implode(',',$ages);
     if($meal!==null)$params['MEAL']=$meal;
     if($stars!==null)$params['STARS']=$stars;
