@@ -1,0 +1,112 @@
+name: MATCH current Andromeda evidence-key census v1
+on:
+  push:
+    branches: ['ops/match-current-andromeda-evidence-key-census-1971-20260913-v1']
+    paths: ['.github/match-current-andromeda-evidence-key-census-1971-20260913-v1.arm']
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-current-andromeda-evidence-key-census-1971-20260913-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-andromeda-evidence-key-census-1971-20260913-v1
+jobs:
+  current-read-only:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Reserve immutable operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          s.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: match-current-andromeda-evidence-key-census-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-current-andromeda-evidence-key-census-1971-20260913-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run sanitized CURRENT evidence-key census
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,tempfile,time
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; op=json.dumps(os.environ['OPERATION_ID'])
+          php=r'''<?php
+          declare(strict_types=1);
+          $stage='bootstrap';
+          try{
+            $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('root');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php')); if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0) throw new RuntimeException('db_helper');
+            require_once $dbHelper; $db=v2_data_db(); $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION); $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'); $db->exec('START TRANSACTION READ ONLY');
+            $stage='identity_census'; $rows=$db->query("SELECT external_hotel_id,decision_status,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' ORDER BY external_hotel_id")->fetchAll(PDO::FETCH_ASSOC);
+            $paths=[]; $valid=0; $invalid=0; $walk=null;
+            $walk=function($v,string $path,string $external) use (&$walk,&$paths): void {
+              if(is_array($v)){
+                foreach($v as $k=>$child){$key=is_int($k)?'[]':preg_replace('/[^A-Za-z0-9_.-]+/','_',substr((string)$k,0,80));$p=$path===''?$key:$path.'.'.$key;if(strlen($p)<=240)$walk($child,$p,$external);} return;
+              }
+              $type=is_int($v)?'int':(is_float($v)?'float':(is_bool($v)?'bool':(is_string($v)?'string':($v===null?'null':'other'))));
+              if(!isset($paths[$path]))$paths[$path]=['count'=>0,'types'=>[],'numeric_count'=>0,'numeric_unique'=>[],'equals_external'=>0,'nonempty_string'=>0];
+              $paths[$path]['count']++; $paths[$path]['types'][$type]=($paths[$path]['types'][$type]??0)+1;
+              if(is_string($v)&&trim($v)!=='')$paths[$path]['nonempty_string']++;
+              $sv=is_int($v)?(string)$v:(is_string($v)?trim($v):''); if($sv!==''&&preg_match('/^[0-9]{1,20}$/D',$sv)){$paths[$path]['numeric_count']++;if(count($paths[$path]['numeric_unique'])<12000)$paths[$path]['numeric_unique'][$sv]=true;if(ltrim($sv,'0')===ltrim($external,'0'))$paths[$path]['equals_external']++;}
+            };
+            $status=[];
+            foreach($rows as $r){$status[(string)$r['decision_status']]=($status[(string)$r['decision_status']]??0)+1;try{$ev=json_decode((string)($r['evidence_json']??''),true,128,JSON_THROW_ON_ERROR);if(!is_array($ev)){$invalid++;continue;}$valid++;$walk($ev,'',(string)$r['external_hotel_id']);}catch(Throwable $e){$invalid++;}}
+            $out=[]; foreach($paths as $path=>$s){ksort($s['types']);$out[]=['path'=>$path,'count'=>$s['count'],'types'=>$s['types'],'numeric_count'=>$s['numeric_count'],'numeric_unique'=>count($s['numeric_unique']),'equals_external'=>$s['equals_external'],'nonempty_string'=>$s['nonempty_string']];}
+            usort($out,static fn($a,$b)=>$b['count']<=>$a['count']?:strcmp($a['path'],$b['path'])); if(count($out)>300)$out=array_slice($out,0,300);
+            ksort($status); $db->commit(); echo json_encode(['schema'=>'hotel-match-andromeda-evidence-key-census/1','status'=>'completed','operation_id'=>__OP__,'identity_rows'=>count($rows),'valid_evidence_json'=>$valid,'invalid_evidence_json'=>$invalid,'decision_status_counts'=>$status,'path_count'=>count($paths),'paths'=>$out,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          }catch(Throwable $e){if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->rollBack();$class=get_class($e);if(!in_array($class,['PDOException','RuntimeException','LogicException','InvalidArgumentException','Error','TypeError'],true))$class='other';echo json_encode(['schema'=>'hotel-match-andromeda-evidence-key-census/1','status'=>'diagnostic_failure','operation_id'=>__OP__,'stage'=>$stage,'exception_class'=>$class,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}
+          '''.replace('__OP__',op)
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');
+          if any(not os.environ.get(k,'').strip() for k in req): raise RuntimeError('ssh_secret_missing')
+          host,user=os.environ[req[1]].strip(),os.environ[req[2]].strip(); remote='cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=512M'
+          def prog(s): return {'tcp_connected':'debug1: Connection established.' in s,'authenticated':'Authenticated to ' in s or 'debug1: Authentication succeeded' in s,'command_sent':'debug1: Sending command:' in s,'remote_exit_seen':'debug1: Exit status ' in s,'multiplexing_seen':'mux_client' in s}
+          attempts=[]; result=None
+          with tempfile.TemporaryDirectory(prefix='match-key-census-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=Path(td)/'key'; raw=os.environ[req[0]].strip(); key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw)); key.chmod(0o600); known=Path(td)/'known_hosts'
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=DEBUG1','-l',user,host,remote]
+            clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+            p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=480,env=clean); attempts=[{'attempt':1,'exit_code':p.returncode,'stdout_bytes':len(p.stdout.encode()),'ssh_progress':prog(p.stderr)}]; result=p
+          try: value=json.loads(result.stdout) if result.returncode==0 else None
+          except Exception: value=None
+          if not isinstance(value,dict): state.joinpath('blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'unknown_no_replay','attempts':attempts,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n'); raise RuntimeError('census_no_json')
+          raw=(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); state.joinpath('result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_census','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'application_status':value.get('status'),'attempts':attempts,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}; state.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          keypaths=[x for x in value.get('paths',[]) if any(t in x.get('path','').lower() for t in ('hotel','operator','original','key'))]
+          state.joinpath('summary.md').write_text(f"MATCH #1971 CURRENT Andromeda evidence-key census: identities={value.get('identity_rows')}, valid_json={value.get('valid_evidence_json')}, key-like paths={len(keypaths)}, total_paths={value.get('path_count')}. DB/mapping writes0; supplier/Tourvisor calls0; NO-REPLAY.\n")
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        id: result
+        with:
+          name: match-current-andromeda-evidence-key-census-v1-result
+          path: ${{ runner.temp }}/hotel-match-current-andromeda-evidence-key-census-1971-20260913-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record census
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf '\nResult artifact `%s`; reservation artifact `%s` existed before SSH.\n' '${{ steps.result.outputs.artifact-id }}' '${{ steps.reserve.outputs.artifact-id }}' >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
