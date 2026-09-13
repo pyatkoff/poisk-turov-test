@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const page = fs.readFileSync(path.join(root, 'v2/index.php'), 'utf8');
@@ -56,8 +57,40 @@ assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)")
 assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,providerField,ratingField,seaField];}'),
   'desktop and mobile share decision-first filter order: hotel, resort, stars, meal, budget, operator, source, rating, sea');
 
-assert.ok(priceCalendar.includes("expanded=previous?previous.open:(compact||window.matchMedia('(min-width:701px)').matches)"),
-  'Search3 price calendar is immediately visible on first mobile render while later rerenders preserve the customer disclosure state');
+{
+  const listeners = new Map();
+  let details = null, markup = '';
+  const box = {
+    hidden: true,
+    querySelector(selector) { assert.equal(selector, 'details'); return details; },
+    get innerHTML() { return markup; },
+    set innerHTML(value) { markup = value; details = value.includes('<details') ? { open: value.includes('<details open>') } : null; }
+  };
+  const window = { addEventListener(name, fn) { listeners.set(name, fn); }, matchMedia() { return { matches: false }; } };
+  const document = { getElementById(id) { assert.equal(id, 'currentPriceCalendar'); return box; }, body: { classList: { contains() { return true; } } }, addEventListener() {} };
+  vm.runInNewContext(priceCalendar, { window, document, Intl });
+  const api = window.V2CurrentPriceCalendar;
+  const items = [{ tours: [{ date: '2099-09-01', price: 150000 }, { date: '2099-09-02', price: 140000 }, { date: '2099-09-03', price: 145000 }] }];
+  listeners.get('v2:search-complete')({ detail: { items } });
+  assert.equal(details.open, true);
+  for (const open of [false, true]) {
+    details.open = open;
+    for (const filtered of [[], [{ tours: items[0].tours.slice(0, 1) }]]) {
+      listeners.get('search3:local-results-filtered')({ detail: { items: filtered } });
+      assert.equal(box.hidden, true);
+      assert.equal(markup, '');
+      listeners.get('search3:local-results-filtered')({ detail: { items } });
+      assert.equal(details.open, open, `disclosure ${open} survives ${filtered.length ? 'one date' : 'zero dates'}`);
+    }
+    listeners.get('v2:search-continued')({ detail: { items } });
+    assert.equal(details.open, open);
+  }
+  details.open = false;
+  listeners.get('v2:search-started')({ detail: {} });
+  listeners.get('v2:search-complete')({ detail: { items } });
+  assert.equal(details.open, true, 'new search restores initial expanded contract');
+  assert.equal(api.collect(items).length, 3);
+}
 assert.ok(priceCalendar.includes("head=compact?'summary':'div'"),
   'Search3 keeps one native disclosure owner instead of creating a second mobile calendar UI');
 assert.ok(priceCalendar.includes('window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:3}'),

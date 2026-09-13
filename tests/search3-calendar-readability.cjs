@@ -2,6 +2,47 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+async function checkDisclosureState(page, width, output) {
+  const calendar = page.locator('#currentPriceCalendar');
+  const items = [{ tours: [
+    { date: '2099-09-01', price: 150000 },
+    { date: '2099-09-02', price: 140000 },
+    { date: '2099-09-03', price: 145000 },
+  ] }];
+  const emit = (name, values) => page.evaluate(({ name, values }) => {
+    window.dispatchEvent(new CustomEvent(name, { detail: { items: values } }));
+  }, { name, values });
+  const expanded = () => calendar.locator('details').evaluate(node => node.open);
+  await emit('v2:search-started', []);
+  await emit('v2:search-complete', items);
+  assert.equal(await expanded(), true, 'each Search3 width starts with an open calendar');
+  const records = [];
+  for (const open of [false, true]) {
+    if (await expanded() !== open) await calendar.locator('summary').click();
+    for (const count of [0, 1]) {
+      const filtered = count ? [{ tours: items[0].tours.slice(0, count) }] : [];
+      await emit('search3:local-results-filtered', filtered);
+      assert.equal(await calendar.evaluate(node => node.hidden), true, 'insufficient dates hide the calendar');
+      assert.equal(await calendar.innerHTML(), '', 'hidden calendar retains no old prices or actionable dates');
+      await emit('search3:local-results-filtered', items);
+      assert.equal(await calendar.evaluate(node => node.hidden), false);
+      assert.equal(await expanded(), open, `user disclosure choice survives ${count} dates and local reset`);
+      assert.equal(await calendar.locator('[data-calendar-date]').count(), 3);
+      records.push({ open, transientDates: count, restoredDates: 3 });
+    }
+    await emit('v2:search-continued', items);
+    assert.equal(await expanded(), open, 'progressive completion preserves the same disclosure choice');
+    if ([375, 1440].includes(width)) await calendar.screenshot({ path: path.join(output, `calendar-disclosure-${width}-${open ? 'open' : 'closed'}.png`) });
+  }
+  await calendar.locator('summary').click();
+  assert.equal(await expanded(), false);
+  await emit('v2:search-started', []);
+  await emit('v2:search-complete', items);
+  assert.equal(await expanded(), true, 'new search restores the initial open contract');
+  await emit('v2:search-reset', []);
+  assert.equal(await calendar.evaluate(node => node.hidden), true);
+  return { records, progressiveChoicePreserved: true, newSearchInitiallyOpen: true };
+}
 async function checkDateIntegrity(page, width, output) {
   const cases = [
     ['2028-02-29', '2028-02-29'], ['29.02.2028', '2028-02-29'],
@@ -66,6 +107,7 @@ async function checkDateIntegrity(page, width, output) {
 }
 module.exports = async function calendarReadability(page, width, output) {
   const calendar = page.locator('#currentPriceCalendar');
+  const disclosure = await checkDisclosureState(page, width, output);
   await page.mouse.move(0, 0);
   const records = [];
   const tours = Array.from({ length: 21 }, (_, index) => ({
@@ -134,6 +176,6 @@ module.exports = async function calendarReadability(page, width, output) {
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
   const dateIntegrity = await checkDateIntegrity(page, width, output);
-  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
+  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
   await page.evaluate(() => window.V2CurrentPriceCalendar.clear());
 };
