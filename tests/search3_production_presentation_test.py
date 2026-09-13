@@ -133,7 +133,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn('search3-direct-control', native)
         for marker in ('.results-layout', '.direct-tour', '[hidden]'):
             self.assertIn(marker, results)
-        self.assertNotIn('.v2-product-hero', results)
+        self.assertIn('&.search3-selected-open .v2-product-hero{display:none!important}', results)
         self.assertIn('& .v2-shell a{', results)
         self.assertIn('& .v2-shell :focus-visible{', results)
         self.assertNotIn('.at-global-header', results)
