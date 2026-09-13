@@ -640,8 +640,15 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
             throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
         }
-        $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10, 'tour' => (int) $tour,
-            'dateBeg' => $checkin, 'nights' => $nights, 'currency' => (int) $currency]);
+        try {
+            $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10, 'tour' => (int) $tour,
+                'dateBeg' => $checkin, 'nights' => $nights, 'currency' => (int) $currency]);
+        } catch (RuntimeException $error) {
+            if ($error->getMessage() === 'ANEX_B2B_DAILY_UNKNOWN') {
+                return array_replace($reply, ['status' => 'additional_prices_unknown']);
+            }
+            throw $error;
+        }
         if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
         $evidence = anytour_anex_search3_additional_evidence($payload);
         $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $clock());
