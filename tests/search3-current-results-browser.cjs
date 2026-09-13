@@ -61,6 +61,49 @@ async function snapshot(page) {
     return { html: result.innerHTML, nodes, overflow, offenders };
   });
 }
+async function checkToolbarLayout(page, width, previous) {
+  const tools = page.locator('#resultsTools'), edit = tools.locator('#resultsSearchEdit');
+  const sort = tools.locator('#sortResults'), panel = tools.locator('.search3-mobile-filter-panel');
+  const measure = () => tools.evaluate(node => {
+    const origin = node.getBoundingClientRect();
+    const box = element => { const r = element.getBoundingClientRect(); return { x: Math.round((r.x-origin.x)*100)/100, y: Math.round((r.y-origin.y)*100)/100, width: Math.round(r.width*100)/100, height: Math.round(r.height*100)/100 }; };
+    const disclosure = node.querySelector('.search3-mobile-filter-panel:not([hidden])');
+    return { width: origin.width, height: origin.height, actions: box(node.querySelector('.results-tools__actions')), edit: box(node.querySelector('#resultsSearchEdit')), sort: box(node.querySelector('#sortResults')), panel: disclosure && box(disclosure), summary: disclosure && box(disclosure.querySelector('summary')) };
+  });
+  await page.evaluate(() => document.fonts.ready);
+  const closed = await measure();
+  for (const control of [closed.edit, closed.sort, closed.summary].filter(Boolean)) {
+    assert.ok(control.height >= 44 && control.width > 0, 'toolbar retains visible 44px controls');
+    assert.ok(control.x >= 0 && control.x + control.width <= closed.width + 1, 'toolbar controls stay inside their container');
+  }
+  if (width > 600) {
+    const controls = width >= 760 && width <= 1024 ? [closed.edit, closed.sort, closed.summary] : [closed.edit, closed.sort];
+    const bottom = controls[0].y + controls[0].height;
+    assert.ok(controls.every(control => Math.abs(control.y + control.height - bottom) < 3), 'toolbar actions align in one usable row');
+    if (width >= 760 && width <= 1024) assert.ok(closed.actions.height <= 76, 'tablet toolbar has no empty edit row or separate filter/sort rows');
+  } else {
+    assert.ok(closed.edit.width < closed.actions.width - 24, 'mobile edit remains a compact secondary action');
+    assert.ok(closed.sort.y >= closed.edit.y + closed.edit.height && closed.summary.y >= closed.sort.y + closed.sort.height, 'mobile controls follow their readable visual order');
+  }
+  if (!previous && [375, 1024, 1025, 1440].includes(width)) await tools.screenshot({ path: path.join(output, `toolbar-${width}-closed.png`), animations: 'disabled' });
+  await edit.focus(); await edit.press('Tab');
+  assert.equal(await sort.evaluate(node => node === document.activeElement), true, 'keyboard moves from edit directly to the adjacent sort control');
+  let opened = null;
+  if (width <= 1024) {
+    const summary = panel.locator('summary');
+    await sort.press('Tab');
+    assert.equal(await summary.evaluate(node => node === document.activeElement), true, 'filter disclosure follows sort in both DOM and visual order');
+    await summary.press('Enter');
+    assert.equal(await panel.evaluate(node => node.open), true);
+    opened = await measure();
+    assert.ok(Math.abs(opened.panel.width-opened.actions.width) < 2 && Math.abs(opened.panel.x-opened.actions.x) < 2, 'opened filters use the full toolbar width');
+    assert.ok(opened.panel.y >= Math.max(opened.edit.y+opened.edit.height, opened.sort.y+opened.sort.height), 'opened filter body follows the toolbar controls');
+    if (!previous && width === 1024) await tools.screenshot({ path: path.join(output, 'toolbar-1024-open.png'), animations: 'disabled' });
+    await summary.press('Enter');
+    assert.equal(await panel.evaluate(node => node.open), false, 'inspection restores the closed disclosure');
+  }
+  return { closed, opened };
+}
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
@@ -392,6 +435,12 @@ async function run(browser, width, previous) {
     await page.waitForSelector('#results .direct-tour');
     const primaryParameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
     await checkPrimaryForm(page, 'first results');
+    const toolbarLayout = await checkToolbarLayout(page, width, previous);
+    if (width === 760) {
+      await page.setViewportSize({ width: 759, height: 1000 });
+      toolbarLayout.belowTablet = await checkToolbarLayout(page, 759, previous);
+      await page.setViewportSize({ width, height: 1000 });
+    }
     if (!previous && [375, 1024, 1440].includes(width)) {
       await snapshot(page);
       await page.screenshot({ path: path.join(output, `primary-with-results-${width}.png`), fullPage: true });
@@ -774,7 +823,7 @@ async function run(browser, width, previous) {
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
-    return { sourceSha, primaryForm: 'visible-through-results-calendar-loading-local-empty-error', collapsed, expanded, logoSource };
+    return { sourceSha, primaryForm: 'visible-through-results-calendar-loading-local-empty-error', toolbarLayout, collapsed, expanded, logoSource };
   } finally { await page.close(); }
 }
 (async () => {
