@@ -214,8 +214,9 @@ async function checkJourney(browser, width) {
     const commonText = compact(await shortlist.locator('.search3-shortlist__common').innerText());
     for (const label of ['Вылет', 'Ночей', 'Туристы', 'Питание', 'Размещение', 'Оператор']) assert.match(commonText, new RegExp(label), `shared ${label} is rendered once`);
     assert.equal(await shortlist.locator('.search3-shortlist__common .search3-shortlist-item__facts>div').count(), 6, 'six identical displayed facts move to one shared group');
-    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts').evaluateAll(nodes => nodes.map(node => node.children.length)), [1, 1, 1], 'each offer keeps only its differing room fact');
-    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts dd').allTextContents(), ['STANDARD', 'FAMILY', 'DELUXE'], 'different exact room facts remain attached to their offers');
+    const offerFacts = shortlist.locator('.search3-shortlist-item .search3-shortlist-item__facts');
+    assert.deepEqual(await offerFacts.evaluateAll(nodes => nodes.map(node => node.children.length)), [1, 1, 1], 'each offer keeps only its differing room fact');
+    assert.deepEqual(await offerFacts.locator('dd').allTextContents(), ['STANDARD', 'FAMILY', 'DELUXE'], 'different exact room facts remain attached to their offers');
     assert.equal(await shortlist.locator('.search3-shortlist-item__price').count(), 3, 'historical price remains per offer in differences view');
     assert.equal(await shortlist.locator('.search3-shortlist-item__actions').count(), 3, 'exact actions remain per offer in differences view');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'differences view creates no horizontal overflow');
@@ -223,7 +224,7 @@ async function checkJourney(browser, width) {
     await differences.press('Enter');
     await page.waitForFunction(() => window.Search3Shortlist.differencesOnly === false && document.activeElement?.matches('.search3-shortlist-view-toggle'));
     assert.equal(await shortlist.locator('.search3-shortlist__common').count(), 0, 'full view removes the shared-facts presentation');
-    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts').evaluateAll(nodes => nodes.map(node => node.children.length)), [7, 7, 7], 'one action restores every exact condition per offer');
+    assert.deepEqual(await offerFacts.evaluateAll(nodes => nodes.map(node => node.children.length)), [7, 7, 7], 'one action restores every exact condition per offer');
 
     const snapshots = await shortlist.locator('.search3-shortlist-item').evaluateAll(nodes => nodes.map(node => ({ offerId: node.dataset.offerId, text: node.textContent.replace(/\s+/g, ' ').trim() })));
     assert.match(snapshots[0].text, /STANDARD/); assert.match(snapshots[0].text, /Всё включено/); assert.match(snapshots[0].text.replace(/\s/g, ''), /120000₽/);
