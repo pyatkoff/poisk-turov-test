@@ -936,7 +936,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
     let minimumReadiness = null, expandedDensity = null;
-    if ([375, 1440].includes(width)) {
+    if ([375, 390, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);
@@ -951,11 +951,11 @@ async function run(browser, width, previous) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [375, 760, 761, 999, 1000, 1024, 1025, 1440]) {
+    for (const width of [375, 390, 760, 761, 999, 1000, 1024, 1025, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=16 widths=375,760,761,999,1000,1024,1025,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=18 widths=375,390,760,761,999,1000,1024,1025,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });

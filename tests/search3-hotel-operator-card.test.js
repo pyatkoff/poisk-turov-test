@@ -15,7 +15,7 @@ const hotel=freeze({id:'hotel',name:'Проверочный отель',price:62
 const original=JSON.stringify(hotel);
 assert.equal(api.hotelSummary(hotel).nights,'7–10 ноч.');
 assert.equal(api.hotelSummary(hotel).meal,'Завтрак · Всё включено');
-assert.equal(api.hotelSummary(hotel).flight,'Возможны чартеры');
+assert.equal(api.hotelSummary(hotel).flight,'Разные варианты перелёта');
 assert.equal(api.hotelSummary(hotel).party,'2 взрослых');
 assert.equal(api.hotelSummary(hotel).date,'16.09.2026');
 assert.equal(api.hotelSummary({...hotel,tours:[tour,{...other,date:'2026-09-17'}]}).date,'Несколько дат вылета');
@@ -33,11 +33,12 @@ assert.match(summary,/data-operator-brand="anex"/);
 assert.doesNotMatch(summary,/intourist|biblio-globus/,'do not add operators absent from this hotel');
 for(const offer of [tour,other]){
   const row=api.tourRow(offer);
-  assert.doesNotMatch(row,/от |7–10|Возможны чартеры|Завтрак · Всё включено/,'individual offer never inherits aggregate fields');
+  assert.doesNotMatch(row,/от |7–10|Разные варианты перелёта|Завтрак · Всё включено/,'individual offer never inherits aggregate fields');
   assert.match(row,new RegExp(' · '+offer.nights+' ноч\\.'));
   assert.ok(row.includes('data-tid="'+offer.id+'"'));
   assert.ok(row.includes(api.money(offer.price)));
   assert.ok(row.includes(offer.meal.fullName));
+  assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
 }
 assert.equal(api.operatorIdentity({provider:'anex'}),null,'provider is not tour operator');
@@ -48,6 +49,10 @@ assert.equal(api.hotelOperators({tours:[tour,{...tour,operator:'FUN&SUN'},other]
 const fallback=api.hotelOperatorsHtml({tours:[{operator:'<img onerror="bad()">'}]});
 assert.doesNotMatch(fallback,/<img /);
 assert.match(fallback,/&lt;img/,'unknown names are escaped, not interpreted as markup');
+const overflow=api.hotelOperatorsHtml({tours:[tour,other,{...tour,operator:'Интурист'},{...tour,operator:'Библио Глобус'},{...tour,operator:'LOCAL OPERATOR'}]});
+assert.match(overflow,/aria-label="Ещё 2 туроператоров: Библио-Глобус, LOCAL OPERATOR">\+2</,'overflow preserves accessible operator names while the visual remains compact');
+assert.equal(api.hotelSummary({...hotel,tours:[{...tour,isCharter:false},{...other,isCharter:false}]}).flight,'Регулярные рейсы');
+assert.equal(api.hotelSummary({...hotel,tours:[tour,{...other,isCharter:undefined}]}).flight,'Уточняется по варианту');
 assert.doesNotMatch(api.tourRow({...tour,provider:'andromeda',selectionEnabled:false}),/class="direct-tour"/,'existing provider selection guard stays authoritative');
 assert.equal(JSON.stringify(hotel),original,'frozen original identities, dates, prices and parameters are unchanged');
 const assets=path.join(__dirname,'../v2/assets/operator-logos');
