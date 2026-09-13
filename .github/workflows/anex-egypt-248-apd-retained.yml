@@ -1,14 +1,14 @@
-name: ANEX Egypt retained APD v1
+name: ANEX Egypt retained APD v2
 on:
   push:
     branches:
-      - 'ops/int-egypt-248-apd-retained-v1-20260914'
+      - 'ops/int-egypt-248-apd-retained-v2-20260914'
     paths:
-      - '.github/ops/anex-egypt-248-apd-retained-v1-20260914'
+      - '.github/ops/anex-egypt-248-apd-retained-v2-20260914'
 permissions:
   contents: read
 concurrency:
-  group: anex-egypt-248-apd-retained-v1-${{ github.ref }}
+  group: anex-egypt-248-apd-retained-v2-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   live:
@@ -30,10 +30,10 @@ jobs:
       - name: Bind exact reviewed Egypt retained APD source
         id: control
         run: |
-          MARKER='control/.github/ops/anex-egypt-248-apd-retained-v1-20260914'
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-248-apd-retained-v1-20260914'
+          MARKER='control/.github/ops/anex-egypt-248-apd-retained-v2-20260914'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-248-apd-retained-v2-20260914'
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};scenario=Egypt-local248-anex10449-2026-12-07-10n-3a-AI-garden-room;owner=2026-09-14"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};scenario=Egypt-local248-anex10449-2026-12-07-10n-3a-AI-garden-room;owner=2026-09-14;runner=v2"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
           ref: ${{ steps.control.outputs.source }}
           path: source
           persist-credentials: false
-      - name: Run one fresh retained-offer APD operation
+      - name: Run unconsumed retained-offer APD operation
         id: retained_apd
         continue-on-error: true
         env:
@@ -56,14 +56,19 @@ jobs:
           source=Path('source/scripts/diagnostics/anex_egypt_248_apd_retained.php').read_text()
           assert source.startswith('<?php\n')
           body=source[6:]
+          strict="declare(strict_types=1);\n"
+          assert body.startswith(strict)
+          body=body[len(strict):]
           bootstrap=("$_SERVER['SCRIPT_FILENAME']='';"
                      "$preview=realpath(getenv('HOME').'/www/anytoour.ru/_preview/search3-anex-candidate');"
                      "if(!$preview)throw new RuntimeException('ANEX_EGYPT_APD_RUNTIME');"
                      "require_once $preview.'/api-anex-search3-preview.php';")
+          code=strict+bootstrap+body
+          assert code.startswith('declare(strict_types=1);')
           command=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none',
                    '-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(out/'known_hosts'),'-o','ConnectTimeout=15',
                    '-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',os.environ['ANYTOOUR_DEPLOY_USER'],os.environ['ANYTOOUR_DEPLOY_HOST'],
-                   'cd "$HOME/www/anytoour.ru" && php -r '+shlex.quote(bootstrap+body)]
+                   'cd "$HOME/www/anytoour.ru" && php -r '+shlex.quote(code)]
           request={'operation_id':os.environ['REQUESTED_OPERATION'],'source_sha':os.environ['SOURCE_SHA']}
           value={'schema_version':1,'operation_id':os.environ['REQUESTED_OPERATION'],'status':'transport_unconfirmed','supplier_replay_allowed':False}
           rc=1
@@ -87,7 +92,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-egypt-248-apd-retained-v1-${{ github.run_id }}
+          name: anex-egypt-248-apd-retained-v2-${{ github.run_id }}
           path: ${{ runner.temp }}/egypt-retained-apd/result.json
           if-no-files-found: error
           retention-days: 30

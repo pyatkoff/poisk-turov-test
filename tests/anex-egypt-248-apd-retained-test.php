@@ -71,4 +71,13 @@ $assert(strpos($source, "'fuel_equivalence_verified' => false") !== false
 $assert(strpos($source, '->bron(') === false && strpos($source, 'bron_ticket') === false,
     'diagnostic contains no booking call');
 
+$workflow = file_get_contents(__DIR__ . '/../.github/workflows/anex-egypt-248-apd-retained.yml');
+$assert(is_string($workflow) && strpos($workflow, "strict=\"declare(strict_types=1);\\n\"") !== false,
+    'runner extracts strict_types as an explicit first statement');
+$assert(strpos($workflow, 'code=strict+bootstrap+body') !== false
+    && strpos($workflow, 'shlex.quote(code)') !== false,
+    'runner composes and executes strict_types before bootstrap/body');
+$assert(strpos($workflow, 'shlex.quote(bootstrap+body)') === false,
+    'regressed bootstrap-before-strict composition is absent');
+
 echo "ANEX Egypt retained APD: {$checks} checks passed; network=0\n";
