@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One fresh broad Egypt three-source scenario with complete advertised Andromeda pagination."""
+"""One fresh broad Egypt family scenario with complete advertised Andromeda pagination."""
 import json
 from pathlib import Path
 import re
@@ -7,10 +7,10 @@ import sys
 
 import anex_three_source_egypt_broad as egypt
 
-EXPERIMENT='anex_three_source_egypt_full_pages_20260914_v2'
+EXPERIMENT='anex_three_source_egypt_full_pages_20260914_v3'
 CASES=egypt.CASES
-SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-12-07','nights':10,
-      'adults':3,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-12-14','nights':9,
+      'adults':2,'child_ages':[7],'meal_family':'ai','currency':'RUB'}
 
 
 def _replace(text,old,new,minimum=1):
@@ -21,25 +21,26 @@ def _replace(text,old,new,minimum=1):
 
 
 def source():
-    """Use one new scenario and let its Andromeda case establish page1 then walk advertised pages."""
+    """Use one new family scenario and let Andromeda establish page1 then walk advertised pages."""
     text=egypt.source()
     text=_replace(text,egypt.EXPERIMENT,EXPERIMENT)
     text=_replace(text,'2026-11-03',SPEC['date'])
-    text=_replace(text,'20261103','20261207')
-    text=_replace(text,"($value['nights'] ?? null) !== 8","($value['nights'] ?? null) !== 10")
-    text=_replace(text,"(int)$nights !== 8","(int)$nights !== 10")
-    text=_replace(text,"'nights'=>8","'nights'=>10")
-    text=_replace(text,"'nightsFrom'=>8","'nightsFrom'=>10")
-    text=_replace(text,"'nightsTo'=>8","'nightsTo'=>10")
-    text=_replace(text,"'nights_from'=>8","'nights_from'=>10")
-    text=_replace(text,"'nights_till'=>8","'nights_till'=>10")
-    text=_replace(text,"($value['adults'] ?? null) !== 2","($value['adults'] ?? null) !== 3")
-    text=_replace(text,"(int)$adults !== 2","(int)$adults !== 3")
-    text=_replace(text,"'adults'=>2","'adults'=>3")
-    text=_replace(text,"'ADULT'=>2","'ADULT'=>3")
-    text=_replace(text,"$tour['adults']??2","$tour['adults']??3")
-    text=_replace(text,"'three-price-egypt-broad-20260913-v1'","'three-price-egypt-full-pages-20260914-v2'")
-    text=_replace(text,"'generation'=>26091306","'generation'=>26091401")
+    text=_replace(text,'20261103','20261214')
+    text=_replace(text,"($value['nights'] ?? null) !== 8","($value['nights'] ?? null) !== 9")
+    text=_replace(text,"(int)$nights !== 8","(int)$nights !== 9")
+    text=_replace(text,"'nights'=>8","'nights'=>9")
+    text=_replace(text,"'nightsFrom'=>8","'nightsFrom'=>9")
+    text=_replace(text,"'nightsTo'=>8","'nightsTo'=>9")
+    text=_replace(text,"'nights_from'=>8","'nights_from'=>9")
+    text=_replace(text,"'nights_till'=>8","'nights_till'=>9")
+    text=_replace(text,"($value['child_ages'] ?? null) !== []","($value['child_ages'] ?? null) !== [7]")
+    text=_replace(text,"(int)$children !== 0","(int)$children !== 1")
+    text=_replace(text,"'children'=>0,'child_ages'=>[]","'children'=>1,'child_ages'=>[7]")
+    text=_replace(text,"'childs'=>[]","'childs'=>[7]")
+    text=_replace(text,"'CHILD'=>0","'CHILD'=>1,'AGES'=>'7'")
+    text=_replace(text,"'children'=>0","'children'=>1")
+    text=_replace(text,"'three-price-egypt-broad-20260913-v1'","'three-price-egypt-family-full-pages-20260914-v3'")
+    text=_replace(text,"'generation'=>26091306","'generation'=>26091402")
 
     single="$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);$offers=[];"
     paged=("$offers=[];$receivedTotal=0;$mappedTotal=0;$pagesCount=1;$pagesLoaded=0;"
@@ -67,13 +68,14 @@ def source():
 
     leaks=(egypt.EXPERIMENT,'2026-11-03','20261103',"($value['nights'] ?? null) !== 8","(int)$nights !== 8",
            "'nights'=>8","'nightsFrom'=>8","'nightsTo'=>8","'nights_from'=>8","'nights_till'=>8",
-           "($value['adults'] ?? null) !== 2","(int)$adults !== 2","'adults'=>2","'ADULT'=>2","$tour['adults']??2",
+           "($value['child_ages'] ?? null) !== []","(int)$children !== 0","'children'=>0","'childs'=>[]","'CHILD'=>0",
            "'three-price-egypt-broad-20260913-v1'","'generation'=>26091306",single)
     if any(value in text for value in leaks):
         raise ValueError('egypt_full_pages_old_scenario_leaked')
-    required=(EXPERIMENT,"'Egypt'","'Египет'",SPEC['date'],'20261207',"'nightsFrom'=>10","'nightsTo'=>10",
-              "'nights_from'=>10","'nights_till'=>10","'adults'=>3","'ADULT'=>3","'hotelIds'=>[]",
-              "'three-price-egypt-full-pages-20260914-v2'","'generation'=>26091401",
+    required=(EXPERIMENT,"'Egypt'","'Египет'",SPEC['date'],'20261214',"'nightsFrom'=>9","'nightsTo'=>9",
+              "'nights_from'=>9","'nights_till'=>9","'adults'=>2","'ADULT'=>2","'children'=>1",
+              "'childs'=>[7]","'CHILD'=>1,'AGES'=>'7'","'hotelIds'=>[]",
+              "'three-price-egypt-family-full-pages-20260914-v3'","'generation'=>26091402",
               "for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)","'pages_loaded'=>$pagesLoaded",
               "'page_context_missing'=>'PAGE_CONTEXT_MISSING'","'supplier_unavailable'=>'SUPPLIER_UNAVAILABLE'",
               "'THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageCategory")
@@ -112,7 +114,7 @@ def validate_case(value,case_id):
             raise ValueError('egypt_full_pages_pagination_incomplete')
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or not isinstance(row.get('local_hotel_id'),int) or row['local_hotel_id']<1 \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=10 or row.get('adults')!=3 or row.get('children')!=0 \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=9 or row.get('adults')!=2 or row.get('children')!=1 \
                 or row.get('meal_family')!='ai' or row.get('currency')!='RUB' or row.get('fuel_inclusion_verified') is not False \
                 or row.get('final_price_verified') is not False or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str):
@@ -137,7 +139,7 @@ def build_report(results,status,transport=None):
                                    'anex_unmapped_received':direct.get('unmapped_received'),'andromeda_received_offers':andromeda.get('received_offers'),
                                    'andromeda_mapped_offers':andromeda.get('mapped_offers'),'andromeda_pages_count':andromeda.get('pages_count'),
                                    'andromeda_pages_loaded':andromeda.get('pages_loaded')},
-            'p1_scope':'broad Egypt cross-provider coverage with complete advertised Andromeda pagination',
+            'p1_scope':'broad Egypt 2-adult plus child7 cross-provider coverage with complete advertised Andromeda pagination',
             'anchor_policy':'current unique triple identity is checkpoint/current-context anchor only and is not sent as a hotel filter',
             'unmapped_evidence_policy':'observation evidence only; matching remains external #1759',
             'money_policy':'search price, Tourvisor fuelCharge, AdditionalPricesDaily, package and quote/final remain separate facts',

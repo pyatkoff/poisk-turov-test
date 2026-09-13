@@ -1,14 +1,14 @@
-name: ANEX Egypt full-pages v2
+name: ANEX Egypt family full-pages v3
 on:
   push:
     branches:
-      - 'ops/int-egypt-full-pages-v2-20260914'
+      - 'ops/int-egypt-family-full-pages-v3-20260914'
     paths:
-      - '.github/ops/anex-egypt-full-pages-v2-20260914'
+      - '.github/ops/anex-egypt-family-full-pages-v3-20260914'
 permissions:
   contents: read
 concurrency:
-  group: anex-egypt-full-pages-v2-${{ github.ref }}
+  group: anex-egypt-family-full-pages-v3-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   live:
@@ -26,13 +26,13 @@ jobs:
           path: control
           fetch-depth: 2
           persist-credentials: false
-      - name: Bind exact reviewed Egypt full-pages v2 source
+      - name: Bind exact reviewed Egypt family full-pages v3 source
         id: control
         run: |
-          MARKER='control/.github/ops/anex-egypt-full-pages-v2-20260914'
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-full-pages-v2-20260914'
+          MARKER='control/.github/ops/anex-egypt-family-full-pages-v3-20260914'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-family-full-pages-v3-20260914'
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-full-pages-v2;scenario=Egypt-2026-12-07-10n-3a-AI-full-pages;owner=2026-09-14"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-family-full-pages-v3;scenario=Egypt-2026-12-14-9n-2a-child7-AI-full-pages;owner=2026-09-14"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
@@ -41,18 +41,18 @@ jobs:
           ref: ${{ steps.control.outputs.source }}
           path: source
           persist-credentials: false
-      - name: Run one fresh full-paged Egypt three-adult scenario
+      - name: Run one fresh full-paged Egypt family scenario
         id: full_run
         continue-on-error: true
         run: |
-          mkdir -m 700 "$RUNNER_TEMP/egypt-full-pages-v2"
-          python3 -B source/scripts/diagnostics/anex_three_source_egypt_full_pages.py "$RUNNER_TEMP/egypt-full-pages-v2"
-      - name: Preserve sanitized full-paged Egypt v2 evidence
+          mkdir -m 700 "$RUNNER_TEMP/egypt-family-full-pages-v3"
+          python3 -B source/scripts/diagnostics/anex_three_source_egypt_full_pages.py "$RUNNER_TEMP/egypt-family-full-pages-v3"
+      - name: Preserve sanitized full-paged Egypt family v3 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-egypt-full-pages-v2-${{ github.run_id }}
-          path: ${{ runner.temp }}/egypt-full-pages-v2/
+          name: anex-egypt-family-full-pages-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/egypt-family-full-pages-v3/
           if-no-files-found: error
           retention-days: 30
       - name: Fail after evidence preservation
