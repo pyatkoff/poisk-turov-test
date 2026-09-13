@@ -1,0 +1,164 @@
+{
+  "collision_dossiers": [
+    {
+      "accepted_candidate_name": "GRAND EMIN HOTEL LALELI",
+      "accepted_candidate_tv_id": "17443",
+      "anex_hotel_id": "32880",
+      "anex_name": "Grand Emin Hotel.",
+      "collision_dates": [
+        "2026-10-05",
+        "2026-11-13",
+        "2026-11-27",
+        "2026-12-18",
+        "2026-12-25",
+        "2027-01-15"
+      ],
+      "collision_name": "GRAND EMIR",
+      "collision_tv_id": "17444",
+      "exact_saved_dates": [
+        "2026-10-05"
+      ],
+      "reason": "EMIN and EMIR are distinct meaningful tokens; higher recurrence cannot override exact EMIN evidence",
+      "status": "name_collision_hold_for_recurrence_only"
+    }
+  ],
+  "counts": {
+    "any_saved_tv_candidate_ids": 9,
+    "any_saved_tv_candidate_occurrences": 308,
+    "duplicate_family_ids": 2,
+    "physical_residual_ids": 61,
+    "physical_residual_occurrences": 1445,
+    "repeatable_same_tv_id_ids": 7,
+    "repeatable_same_tv_id_occurrences": 206,
+    "repeatable_unambiguous_ids": 5,
+    "repeatable_unambiguous_occurrences": 102,
+    "snapshot_unique_dates": 9
+  },
+  "policy": {
+    "database_writes": 0,
+    "duplicate_provider_ids_same_tv_target": "hold",
+    "future_write": "NEW CURRENT guarded transaction + preservation guards + per-row post-COMMIT readback",
+    "hotelcode_still_required": "operator/card→ANEX hotelCode or equivalent independent direct identity evidence before mapping",
+    "mapping_writes": 0,
+    "network_calls": 0,
+    "repeatability_is_prioritization_not_identity": true,
+    "saved_data_only": true,
+    "unique_dates_not_artifact_count": true
+  },
+  "repeatable_rows": [
+    {
+      "anex_hotel_id": "28882",
+      "anex_name": "Malkoc Hotel",
+      "duplicate_anex_ids": ["28882", "32743"],
+      "relations": ["one_token_plus_geo"],
+      "search_count": 52,
+      "status": "duplicate_provider_family_hold",
+      "support_dates": ["2026-10-05", "2026-10-30", "2026-11-27", "2026-12-11", "2026-12-18", "2026-12-25"],
+      "tourvisor_hotel_id": "43528",
+      "tourvisor_name": "MALKOC HOTEL LALELI",
+      "unique_date_support": 6
+    },
+    {
+      "anex_hotel_id": "32743",
+      "anex_name": "Malkoc Hotel.",
+      "duplicate_anex_ids": ["28882", "32743"],
+      "relations": ["one_token_plus_geo"],
+      "search_count": 52,
+      "status": "duplicate_provider_family_hold",
+      "support_dates": ["2026-10-05", "2026-10-30", "2026-11-27", "2026-12-11", "2026-12-18", "2026-12-25"],
+      "tourvisor_hotel_id": "43528",
+      "tourvisor_name": "MALKOC HOTEL LALELI",
+      "unique_date_support": 6
+    },
+    {
+      "anex_hotel_id": "44573",
+      "anex_name": "Hotel The Rose Bouquetes",
+      "relations": ["near_spelling"],
+      "search_count": 52,
+      "status": "repeatable_saved_tv_candidate_only",
+      "support_dates": ["2026-10-05", "2026-10-30", "2026-11-13"],
+      "tourvisor_hotel_id": "59085",
+      "tourvisor_name": "THE ROSE BOUTIQUES SULTANAHMET",
+      "unique_date_support": 3
+    },
+    {
+      "anex_hotel_id": "32745",
+      "anex_name": "Raimond Hotel.",
+      "relations": ["one_token_plus_geo"],
+      "search_count": 45,
+      "status": "repeatable_saved_tv_candidate_only",
+      "support_dates": ["2026-10-05", "2026-10-30", "2026-11-13", "2026-11-27", "2026-12-11", "2026-12-18", "2026-12-25", "2027-01-01", "2027-01-15"],
+      "tourvisor_hotel_id": "70943",
+      "tourvisor_name": "RAIMOND HOTEL KUMKAPI",
+      "unique_date_support": 9
+    },
+    {
+      "anex_hotel_id": "30424",
+      "anex_name": "Sarnic Hotel",
+      "relations": ["exact_tokens"],
+      "search_count": 3,
+      "status": "repeatable_saved_tv_candidate_only",
+      "support_dates": ["2026-10-05", "2026-12-25", "2027-01-01", "2027-01-15"],
+      "tourvisor_hotel_id": "17617",
+      "tourvisor_name": "SARNIC HOTEL (OTTOMAN MANSION)",
+      "unique_date_support": 4
+    },
+    {
+      "anex_hotel_id": "29092",
+      "anex_name": "Adora Hotel",
+      "relations": ["exact_tokens"],
+      "search_count": 1,
+      "status": "repeatable_saved_tv_candidate_only",
+      "support_dates": ["2026-11-13", "2026-11-27", "2026-12-11", "2026-12-18", "2026-12-25"],
+      "tourvisor_hotel_id": "17272",
+      "tourvisor_name": "ADORA HOTEL",
+      "unique_date_support": 5
+    },
+    {
+      "anex_hotel_id": "29430",
+      "anex_name": "The Galataport Hotel",
+      "relations": ["exact_tokens"],
+      "search_count": 1,
+      "status": "repeatable_saved_tv_candidate_only",
+      "support_dates": ["2026-10-30", "2026-11-13", "2026-11-27", "2026-12-11", "2026-12-18", "2026-12-25", "2027-01-01", "2027-01-15"],
+      "tourvisor_hotel_id": "71266",
+      "tourvisor_name": "GALATOWER (EX.THE GALATAPORT HOTEL)",
+      "unique_date_support": 8
+    }
+  ],
+  "schema": "hotel-match-saved-tourvisor-saturation/1",
+  "single_date_rows": [
+    {
+      "anex_hotel_id": "32880",
+      "anex_name": "Grand Emin Hotel.",
+      "relations": ["source_plus_geo"],
+      "search_count": 52,
+      "support_dates": ["2026-10-05"],
+      "tourvisor_hotel_id": "17443",
+      "tourvisor_name": "GRAND EMIN HOTEL LALELI",
+      "unique_date_support": 1
+    },
+    {
+      "anex_hotel_id": "32692",
+      "anex_name": "Almina Inn Hotel.",
+      "relations": ["source_plus_geo"],
+      "search_count": 50,
+      "support_dates": ["2027-01-15"],
+      "tourvisor_hotel_id": "70291",
+      "tourvisor_name": "ALMINA INN BEYAZIT",
+      "unique_date_support": 1
+    }
+  ],
+  "snapshot_provenance_by_date": {
+    "2026-10-05": ["tv_anex_v2.zip", "tv_high_yield_v2.zip"],
+    "2026-10-30": ["tv_union_1.zip"],
+    "2026-11-13": ["tv_union_2.zip"],
+    "2026-11-27": ["tv_wide_1.zip"],
+    "2026-12-11": ["tv_union_3.zip"],
+    "2026-12-18": ["tv_union_4.zip"],
+    "2026-12-25": ["tv_wide_2.zip"],
+    "2027-01-01": ["tv_union_5.zip"],
+    "2027-01-15": ["tv_union_6.zip"]
+  },
+  "status": "prepared_only_not_write_authority"
+}
