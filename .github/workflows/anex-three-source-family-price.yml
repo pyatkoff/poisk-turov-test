@@ -77,7 +77,7 @@ jobs:
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
           test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-party-v2;scenario=Turkey-2026-10-20-8n-3a-AI;owner=2026-09-13"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          test -n "$ANYTOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOUR_DEPLOY_HOST" && test -n "$ANYTOUR_DEPLOY_USER"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
@@ -106,9 +106,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      ANYTOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
-      ANYTOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-      ANYTOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,7 +124,7 @@ jobs:
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
           test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-party-control-v1;scenario=Turkey-2026-10-20-8n-2a-AI;owner=2026-09-13"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          test -n "$ANYTOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOUR_DEPLOY_HOST" && test -n "$ANYTOUR_DEPLOY_USER"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
@@ -153,9 +153,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      ANYTOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
-      ANYTOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-      ANYTOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -171,7 +171,7 @@ jobs:
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
           test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-party-broad-v1;scenario=Turkey-2026-10-20-8n-3a-AI-broad;owner=2026-09-13"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          test -n "$ANYTOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOUR_DEPLOY_HOST" && test -n "$ANYTOUR_DEPLOY_USER"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
@@ -200,9 +200,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      ANYTOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
-      ANYTOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-      ANYTOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -218,7 +218,7 @@ jobs:
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
           test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-family-broad-v1;scenario=Turkey-2026-10-29-9n-2a-child7-AI-broad;owner=2026-09-13"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          test -n "$ANYTOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOUR_DEPLOY_HOST" && test -n "$ANYTOUR_DEPLOY_USER"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
@@ -247,9 +247,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     env:
-      ANYTOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
-      ANYTOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-      ANYTOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -265,7 +265,7 @@ jobs:
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
           test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-broad-v1;scenario=Egypt-2026-11-03-8n-2a-AI-broad;owner=2026-09-13"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          test -n "$ANYTOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOUR_DEPLOY_HOST" && test -n "$ANYTOUR_DEPLOY_USER"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
@@ -294,9 +294,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     env:
-      ANYTOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOUR_DEPLOY_SSH_KEY }}
-      ANYTOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-      ANYTOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -312,7 +312,7 @@ jobs:
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
           test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-andromeda-egypt-broad-page2-v1;scenario=Egypt-2026-11-03-8n-2a-AI-andromeda-page2;owner=2026-09-13"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
-          test -n "$ANYTOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOUR_DEPLOY_HOST" && test -n "$ANYTOUR_DEPLOY_USER"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
