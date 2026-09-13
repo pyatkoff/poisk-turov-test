@@ -78,8 +78,12 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
     }
-    await card.locator('[data-operator-brand="biblio-globus"]').first().scrollIntoViewIfNeeded();
-    await page.waitForFunction(()=>Array.from(document.querySelectorAll('[data-hotel-id="brand-hotel"] .hotel-operator-logo')).every(img=>img.complete&&img.naturalWidth>0));
+    for(const brand of ['funsun','anex','intourist','biblio-globus']){
+      const logo=card.locator('[data-operator-brand="'+brand+'"] .hotel-operator-logo').first();
+      await logo.scrollIntoViewIfNeeded();
+      await logo.evaluate(img=>img.decode());
+      assert.equal(await logo.evaluate(img=>img.complete&&img.naturalWidth>0),true,'visible original '+brand+' artwork loads');
+    }
     assert.deepEqual([...new Set(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)))].sort(),['anex','biblio-globus','funsun','intourist']);
     assert.equal(await card.locator('.hotel-operator:not([data-operator-brand]) img').count(),0,'unknown operators keep a text fallback');
     const mobileComposition=[];
