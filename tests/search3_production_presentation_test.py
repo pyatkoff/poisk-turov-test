@@ -152,9 +152,13 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn('& :is(.main-fields,.search-preferences){grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;display:grid}', native)
         self.assertNotIn('@media(min-width:1200px){& .main-fields{', native)
         self.assertIn('@media(min-width:1200px){& .search-preferences{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}', native)
-        self.assertIn('@media(max-width:700px){grid-template-columns:minmax(0,1fr);& .main-fields{grid-template-columns:1fr}& .search-submit{grid-column:1;width:100%;margin-left:0}', native)
+        self.assertIn('@media(max-width:700px){grid-template-columns:minmax(0,1fr);& .main-fields{grid-template-columns:1fr}', native)
+        self.assertIn('& .child-ages{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}', native)
+        self.assertIn('& .child-age:last-child:nth-child(odd){grid-column:1/-1}', native)
+        self.assertIn('& .search-submit{grid-column:1;width:100%;margin-left:0}', native)
         self.assertIn('@media(max-width:430px){& .search-group--route{grid-template-columns:1fr}', native)
-        self.assertIn('@media(max-width:350px){& .search-group{grid-template-columns:1fr}', native)
+        self.assertIn('@media(max-width:350px){& .search-group,& .search-preferences,& .child-ages{grid-template-columns:1fr}', native)
+        self.assertIn('& .child-age{grid-column:auto!important}', native)
         self.assertNotIn('.ds2-site-footer', results)
 
     def test_native_nights_have_one_rendered_owner_and_legacy_stays_unchanged(self):
