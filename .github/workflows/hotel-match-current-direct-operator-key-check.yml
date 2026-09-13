@@ -1,0 +1,63 @@
+name: MATCH current direct operator-key offline check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_current_direct_operator_key.php'
+      - 'tests/hotel_match_current_direct_operator_key_test.php'
+      - '.github/workflows/hotel-match-current-direct-operator-key-check.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Validate pure CURRENT classifier
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_direct_operator_key.php
+          php -l tests/hotel_match_current_direct_operator_key_test.php
+          php tests/hotel_match_current_direct_operator_key_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_current_direct_operator_key.php
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: pyatkoff/poisk-turov-test
+          run-id: 34365549508
+          artifact-ids: 10109677472
+          merge-multiple: true
+          path: ${{ runner.temp }}/andromeda-anex-saved
+      - name: Verify pinned direct-key evidence contract
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,re,urllib.parse
+          from pathlib import Path
+          src=Path(os.environ['RUNNER_TEMP'])/'andromeda-anex-saved'/'price.json'
+          raw=src.read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='c4e0722837b12a8c3979972a1145d6d0e43d50539efebbd7e68a416590dad6a9'
+          doc=json.loads(raw)
+          assert doc['params']['STATEINC']==3 and doc['params']['OPERATORS']=='5'
+          rows=doc['payload']['PRICES']; ordinary=[]; quarantined=[]
+          for row in rows:
+              assert int(row['operatorKey'])==5
+              if int(row['isOperatorHotelKey'])==1:
+                  quarantined.append(row); continue
+              aid=int(row['original']['hotelKey']); did=str(row['hotelKey'])
+              host=urllib.parse.urlparse(row['hotelUrl']).hostname
+              assert host=='agent.anextour.ru'
+              assert re.search(rf'/5\.{aid}\.{re.escape(did)}\.jpg(?:$|[?#])',row['hotelImage'])
+              ordinary.append((aid,did,row['hotel'],row['town'],row['hotelUrl'],row['hotelImage']))
+          unique={x[:2]:x for x in ordinary}
+          assert len(rows)==50 and len(ordinary)==46 and len(quarantined)==4 and len(unique)==14
+          pairs=[{'anex_hotel_id':a,'andromeda_hotel_id':d,'country_id':1,'hotel_name':n,'town':t,'hotel_url':u,'image_url':i,'operator_key':5,'operator_scoped':False} for (a,d),(a,d,n,t,u,i) in sorted(unique.items())]
+          dest=Path(os.environ['RUNNER_TEMP'])/'direct-pairs.json';dest.write_text(json.dumps(pairs,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps({'ordinary_rows':46,'quarantined_rows':4,'unique_direct_pairs':14,'pairs_sha256':hashlib.sha256(dest.read_bytes()).hexdigest()},sort_keys=True))
+          PY
+          php -r '$pairs=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/direct-pairs.json"),true,64,JSON_THROW_ON_ERROR);define("FC_LIBRARY_ONLY",true);require "scripts/diagnostics/hotel_match_current_direct_operator_key.php";foreach($pairs as $p)hmok_pair_input($p);echo "direct_pair_contract: PASS\n";'
