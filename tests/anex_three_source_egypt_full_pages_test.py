@@ -17,9 +17,10 @@ def ok(value,message):
 
 php=full.source()
 ok(full.EXPERIMENT in php and full.egypt.EXPERIMENT not in php,'fresh full-page experiment bound')
-ok("2026-11-12" in php and "20261112" in php and "2026-11-03" not in php,'new date replaces sealed Egypt date')
-ok("'nightsFrom'=>9" in php and "'nightsTo'=>9" in php and "'nights_from'=>9" in php and "'nights_till'=>9" in php,'nine-night stay reaches all providers')
-ok("'three-price-egypt-full-pages-20260913-v1'" in php and "'generation'=>26091308" in php,'new operation/session generation bound')
+ok("2026-12-07" in php and "20261207" in php and "2026-11-03" not in php,'new date replaces sealed Egypt date')
+ok("'nightsFrom'=>10" in php and "'nightsTo'=>10" in php and "'nights_from'=>10" in php and "'nights_till'=>10" in php,'ten-night stay reaches all providers')
+ok("'adults'=>3" in php and "'ADULT'=>3" in php and "($value['adults'] ?? null) !== 3" in php,'three-adult party reaches all provider and validation paths')
+ok("'three-price-egypt-full-pages-20260914-v2'" in php and "'generation'=>26091401" in php,'new operation/session generation bound')
 ok("for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)" in php and "$request['page']=$pageNo" in php,'Andromeda establishes page1 then walks pages sequentially')
 ok("'pages_loaded'=>$pagesLoaded" in php and "$receivedTotal+=(int)($result['received_offers']??0)" in php,'Andromeda page coverage is accumulated')
 ok("'hotelIds'=>[]" in php and "current_unique_triple_mapping_anchor_only" in php,'broad scope remains no-hotel-filter with identity anchor only')
@@ -46,9 +47,9 @@ ok("throw new RuntimeException('THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageCa
 anchor={'local_hotel_id':158,'anex_hotel_id':1275,'andromeda_hotel_id':'103544','hotel_name':'EGYPT ANCHOR',
         'selection_basis':'current_unique_triple_mapping_anchor_only','anex_observation_count':12}
 def offer(provider,local,price,fuel=None):
-    return {'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'date':'2026-11-12','nights':9,
-            'adults':2,'children':0,'meal_family':'ai','meal_label':'AI','room':'Standard Room','room_norm':'standard room',
-            'placement':'DBL','placement_norm':'dbl','price':price,'currency':'RUB','fuel_charge':fuel,
+    return {'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'date':'2026-12-07','nights':10,
+            'adults':3,'children':0,'meal_family':'ai','meal_label':'AI','room':'Standard Room','room_norm':'standard room',
+            'placement':'TRPL','placement_norm':'trpl','price':price,'currency':'RUB','fuel_charge':fuel,
             'fuel_inclusion_verified':False,'final_price_verified':False}
 def case(provider,offers,details=None):
     return {'schema_version':1,'experiment_id':full.EXPERIMENT,'case_id':provider,'automatic_retry':False,
