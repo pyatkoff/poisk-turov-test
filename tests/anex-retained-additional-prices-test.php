@@ -65,8 +65,8 @@ $additionalFactory = static function () use (&$factoryCalls, &$transportCalls) {
         static function (string $url, array $headers, array $options) use (&$transportCalls): array {
             $transportCalls[] = ['url' => $url, 'headers' => $headers, 'options' => $options];
             return ['status' => 200, 'body' => json_encode(['data' => [[
-                'price_adult' => '120', 'price_chd' => '120', 'cashrate' => '104.23',
-                'price_converted_adult' => '12507.6', 'price_converted_chd' => '12507.6',
+                'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
+                'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
                 'tour' => 987654321, 'currency' => 345, 'dateBeg' => '2026-09-20T00:00:00', 'nights' => 7,
             ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
         });
@@ -82,13 +82,22 @@ $assert(strpos($transportCalls[0]['url'], 'tour=987654321') !== false
     && strpos($transportCalls[0]['url'], 'currency=345') !== false, 'private retained criteria drive real client request');
 $evidence = $result['additional_prices'];
 $assert($evidence['rows'][0]['price_adult'] === '120' && $evidence['rows'][0]['cashrate'] === '104.23'
-    && $evidence['rows'][0]['price_converted_adult'] === '12507.6', 'money facts preserved as decimals');
+    && $evidence['rows'][0]['price_converted_adult'] === '12507.6', 'raw supplier money facts preserved');
 $assert($evidence['scope'] === 'tour_program_date_nights_currency' && $evidence['offer_specific'] === false,
-    'scope does not overclaim offer specificity');
-$assert($evidence['currency'] === null && $evidence['converted_currency'] === null
-    && $evidence['per_person_or_package'] === 'unknown', 'currency and application semantics stay unknown');
-$assert($evidence['fuel_equivalence_verified'] === false && $evidence['included_in_search_price'] === 'unknown'
-    && $evidence['arithmetic_applied'] === false && $evidence['final_price_verified'] === false, 'no price or fuel inference');
+    'supplier scope remains program/date based');
+$assert($evidence['converted_currency'] === 'RUB' && $evidence['per_person_or_package'] === 'per_person_by_party_type',
+    'retained party application identifies converted per-person rates');
+$assert($evidence['fuel_equivalence_verified'] === false && $evidence['included_in_search_price'] === false
+    && $evidence['arithmetic_applied'] === true && $evidence['final_price_verified'] === false,
+    'program addition is applied without claiming Tourvisor fuel or final quote equivalence');
+$assert($evidence['party'] === ['adults' => 2, 'children' => 0]
+    && $evidence['rates']['adult'] === ['amount' => '12507.6', 'currency' => 'RUB']
+    && $evidence['rates']['child'] === null, 'two-adult party uses adult program rate only');
+$assert($evidence['party_surcharge'] === ['amount' => '25015.2', 'currency' => 'RUB', 'source' => 'anex_b2b_additional_prices_daily'],
+    'two-adult program surcharge summed exactly');
+$assert($evidence['search_price'] === ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search']
+    && $evidence['search_plus_additional']['amount'] === '125015.2'
+    && $evidence['search_plus_additional']['currency'] === 'RUB', 'base search price and price with additional stay separate');
 $json = json_encode($result, JSON_THROW_ON_ERROR);
 $assert(strpos($json, '987654321') === false && strpos($json, '"currency":345') === false,
     'private supplier criteria do not cross public result');
@@ -96,6 +105,32 @@ $assert(strpos($json, '987654321') === false && strpos($json, '"currency":345') 
 $again = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
 $assert($again['status'] === 'additional_prices' && $factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1,
     'completed evidence is supplier-free cached read');
+$assert($again['additional_prices']['party_surcharge']['amount'] === '25015.2'
+    && $again['additional_prices']['search_plus_additional']['amount'] === '125015.2', 'cached raw evidence reapplies the same party arithmetic');
+
+$childOffer = $offer;
+$childOffer['children'] = 1;
+$childApplied = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
+    'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
+    'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
+]], 'totalCount' => 1]), $childOffer);
+$assert($childApplied['party_surcharge']['amount'] === '31269'
+    && $childApplied['search_plus_additional']['amount'] === '131269', 'child program rate is added once for one child');
+$missingChild = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
+    'price_adult' => '120', 'cashrate' => '104.23', 'price_converted_adult' => '12507.6',
+]], 'totalCount' => 1]), $childOffer);
+$assert($missingChild['application_state'] === 'unknown' && $missingChild['party_surcharge'] === null
+    && $missingChild['search_plus_additional'] === null && $missingChild['arithmetic_applied'] === false,
+    'missing child rate is unknown and never treated as zero');
+$ambiguous = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
+    'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
+    'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
+], [
+    'price_adult' => '121', 'price_chd' => '61', 'cashrate' => '104.23',
+    'price_converted_adult' => '12611.83', 'price_converted_chd' => '6358.03',
+]], 'totalCount' => 2]), $offer);
+$assert($ambiguous['application_state'] === 'unknown' && $ambiguous['arithmetic_applied'] === false,
+    'multiple program/date rate rows do not choose one silently');
 
 $state = $stateTemplate;
 $mismatchFactoryCalls = 0;
@@ -105,8 +140,8 @@ $mismatchFactory = static function () use (&$mismatchFactoryCalls, &$mismatchTra
     return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$mismatchTransportCalls): array {
         ++$mismatchTransportCalls;
         return ['status' => 200, 'body' => json_encode(['data' => [[
-            'price_adult' => '120', 'price_chd' => '120', 'cashrate' => '104.23',
-            'price_converted_adult' => '12507.6', 'price_converted_chd' => '12507.6',
+            'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
+            'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
             'tour' => 987654320, 'currency' => 345, 'dateBeg' => '2026-09-20', 'nights' => 7,
         ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
     });
@@ -162,4 +197,4 @@ $state['gateway']['search']['offers'][0]['kind'] = 'group_minimum';
 $group = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
 $assert($group['status'] === 'not_concrete' && $state['additional_prices'] === [], 'group minimum cannot request additional evidence');
 
-echo "ANEX retained additional-prices real-client binding: {$checks} checks passed; network=0\n";
+echo "ANEX retained additional-prices party arithmetic: {$checks} checks passed; network=0\n";
