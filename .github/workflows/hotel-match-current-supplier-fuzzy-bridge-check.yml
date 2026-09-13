@@ -1,0 +1,26 @@
+name: MATCH current supplier fuzzy bridge offline check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php'
+      - 'tests/hotel_match_current_supplier_fuzzy_bridge_test.php'
+      - '.github/workflows/hotel-match-current-supplier-fuzzy-bridge-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Validate read-only fuzzy bridge
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php
+          php -l tests/hotel_match_current_supplier_fuzzy_bridge_test.php
+          php tests/hotel_match_current_supplier_fuzzy_bridge_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_current_supplier_fuzzy_bridge.php
