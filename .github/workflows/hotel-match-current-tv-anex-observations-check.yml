@@ -1,0 +1,32 @@
+name: MATCH CURRENT Tourvisor observation to ANEX direct-key check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_current_tv_anex_observations.php'
+      - 'tests/hotel_match_current_tv_anex_observations_test.php'
+      - '.github/workflows/hotel-match-current-tv-anex-observations-check.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Validate exact pure CURRENT observation classifier
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          php -l scripts/diagnostics/hotel_match_current_tv_anex_observations.php
+          php -l tests/hotel_match_current_tv_anex_observations_test.php
+          php tests/hotel_match_current_tv_anex_observations_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_current_tv_anex_observations.php
+          grep -Fq 'tour_operator_identity_observations' scripts/diagnostics/hotel_match_current_tv_anex_observations.php
+          grep -Fq "['hotellist','hotelcode','hotel_code']" scripts/diagnostics/hotel_match_current_tv_anex_observations.php
