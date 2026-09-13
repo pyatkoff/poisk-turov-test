@@ -65,15 +65,72 @@ def operator_is_anex(operator: object) -> bool:
     return any(norm_name(name) in ANEX_NAMES for name in names if name)
 
 
+def country_id(value: object) -> int | None:
+    return positive_int(value.get("id") if isinstance(value, dict) else value)
+
+
 def flatten_results(payload: object) -> list[dict]:
-    if isinstance(payload, list):
-        return [row for row in payload if isinstance(row, dict)]
+    """Expand native hotel/tours groups without replacing a child's hotel identity.
+
+    Legacy flat saved rows remain supported. An ambiguous envelope or malformed
+    group is not an empty search and must stop before producing any evidence.
+    """
     if isinstance(payload, dict):
-        for key in ("results", "tours", "items", "data"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                return [row for row in value if isinstance(row, dict)]
-    raise ValueError("UNSUPPORTED_TOURVISOR_RESULTS_SHAPE")
+        envelopes = [payload[key] for key in ("hotels", "results", "tours", "items", "data")
+                     if key in payload]
+        if len(envelopes) != 1 or not isinstance(envelopes[0], list):
+            raise ValueError("UNSUPPORTED_TOURVISOR_RESULTS_SHAPE")
+        payload = envelopes[0]
+    if not isinstance(payload, list):
+        raise ValueError("UNSUPPORTED_TOURVISOR_RESULTS_SHAPE")
+    rows = []
+    for row in payload:
+        if not isinstance(row, dict):
+            raise ValueError("INVALID_TOURVISOR_RESULT_ROW")
+        if "tours" not in row:
+            if not isinstance(row.get("hotel"), dict):
+                raise ValueError("MISSING_TOURVISOR_HOTEL_TOURS")
+            rows.append(row)
+            continue
+        if "hotel" in row or positive_int(row.get("id")) is None or not isinstance(row["tours"], list):
+            raise ValueError("INVALID_TOURVISOR_HOTEL_GROUP")
+        hotel = {key: value for key, value in row.items() if key != "tours"}
+        for tour in row["tours"]:
+            if not isinstance(tour, dict) or "hotel" in tour:
+                raise ValueError("AMBIGUOUS_GROUPED_TOUR_HOTEL")
+            if "country" in tour and (country_id(tour["country"]) is None
+                                      or country_id(tour["country"]) != country_id(hotel.get("country"))):
+                raise ValueError("GROUPED_TOUR_COUNTRY_CONFLICT")
+            rows.append(dict(tour, hotel=hotel))
+    return rows
+
+
+def coordinates(hotel: dict) -> tuple[object, object]:
+    """Keep an actual complete pair, not one latitude/longitude from each source.
+
+    Top-level coordinates are native search evidence; common is a legacy source.
+    Conflicting sources are withheld, not silently resolved by field precedence.
+    """
+    import math
+    common = hotel.get("common") if isinstance(hotel.get("common"), dict) else {}
+    pairs = []
+    for source in (hotel, common):
+        raw = (source.get("latitude"), source.get("longitude"))
+        if all(v is None or v == "" for v in raw):
+            continue
+        try:
+            if any(isinstance(v, bool) for v in raw):
+                raise ValueError()
+            lat, lon = map(float, raw)
+            if not math.isfinite(lat) or not math.isfinite(lon) or not -90 <= lat <= 90 or not -180 <= lon <= 180:
+                raise ValueError()
+        except (ValueError, TypeError, OverflowError):
+            raise ValueError("invalid_coordinates") from None
+        pairs.append((raw, (lat, lon)))
+    if len(pairs) == 2 and any(not math.isclose(a, b, rel_tol=0, abs_tol=1e-6)
+                               for a, b in zip(pairs[0][1], pairs[1][1])):
+        raise ValueError("coordinate_source_conflict")
+    return pairs[0][0] if pairs else (None, None)
 
 
 def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
@@ -90,15 +147,15 @@ def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
             continue
         anex_id = positive_int(row.get("anex_hotel_id"))
         local_id = positive_int(row.get("proposed_local_id") or row.get("local_hotel_id"))
-        country_id = positive_int(row.get("country_id"))
+        target_country_id = positive_int(row.get("country_id"))
         if anex_id is None or local_id is None:
             continue
-        if country_id is not None and country_id not in CORE8_IDS:
+        if target_country_id not in CORE8_IDS:
             continue
         targets.setdefault(local_id, []).append({
             "anex_hotel_id": anex_id,
             "local_hotel_id": local_id,
-            "country_id": country_id,
+            "country_id": target_country_id,
             "expected_name": row.get("target_name") or row.get("hotel_name"),
             "search_count": int(row.get("search_count") or 0),
         })
@@ -115,14 +172,23 @@ def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
         local_id = positive_int(hotel.get("id"))
         if local_id is None or local_id not in targets:
             continue
-        country = hotel.get("country") if isinstance(hotel.get("country"), dict) else result.get("country")
-        tv_country_id = positive_int(country.get("id")) if isinstance(country, dict) else None
+        tv_country_id = country_id(hotel["country"] if "country" in hotel else result.get("country"))
+        result_country_id = country_id(result.get("country"))
+        coordinate_error = None
+        try:
+            latitude, longitude = coordinates(hotel)
+        except ValueError as exc:
+            latitude = longitude = None
+            coordinate_error = str(exc)
         link = safe_operator_link(result.get("operatorLink"))
         tour_id = str(result.get("id") or "").strip()
         for target in targets[local_id]:
             reason = None
-            if target["country_id"] is not None and tv_country_id != target["country_id"]:
+            if (tv_country_id != target["country_id"]
+                    or ("country" in result and result_country_id != tv_country_id)):
                 reason = "country_conflict"
+            elif coordinate_error:
+                reason = coordinate_error
             elif not tour_id:
                 reason = "missing_tour_id"
             elif link is None:
@@ -134,7 +200,6 @@ def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
                 rejected.append({"anex_hotel_id": target["anex_hotel_id"], "local_hotel_id": local_id, "reason": reason})
                 continue
             seen.add(key)
-            common = hotel.get("common") if isinstance(hotel.get("common"), dict) else {}
             region = hotel.get("region") if isinstance(hotel.get("region"), dict) else {}
             sub = hotel.get("subRegion") if isinstance(hotel.get("subRegion"), dict) else {}
             captures.append({
@@ -152,8 +217,8 @@ def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
                 "tourvisor_region_name": region.get("name"),
                 "tourvisor_subregion_id": positive_int(sub.get("id")),
                 "tourvisor_subregion_name": sub.get("name"),
-                "tourvisor_latitude": common.get("latitude"),
-                "tourvisor_longitude": common.get("longitude"),
+                "tourvisor_latitude": latitude,
+                "tourvisor_longitude": longitude,
                 "search_count": target["search_count"],
                 "status": "operator_link_ready_for_anex_card_hotelcode",
                 "not_write_authority": True,
@@ -179,6 +244,8 @@ def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
         "supplier_calls": 0,
         "tourvisor_calls": 0,
         "expected_date": expected_date,
+        "source_queue_sha256": sha(queue),
+        "source_results_sha256": sha(tv_payload),
         "input_result_rows": len(rows),
         "queue_targets": sum(len(v) for v in targets.values()),
         "operator_link_ready": len(final),
