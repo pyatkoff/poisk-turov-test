@@ -44,6 +44,43 @@ function anytour_andromeda_search3_stars(array $saved,$value): ?string {
     return implode(',',$ids);
 }
 
+/** Tourvisor operator names are provider-neutral handoff; numeric IDs never cross provider boundaries. */
+function anytour_andromeda_search3_operator_aliases(string $name): array {
+    $normalized=anytour_anex_search3_name($name);
+    $aliases=[$name,preg_replace('/\s*\([^)]*\)\s*$/u','',$name)];
+    if(str_contains($normalized,'anex')||str_contains($normalized,'анекс'))$aliases=array_merge($aliases,['ANEX','ANEX TOUR','Анекс Тур']);
+    if(str_contains($normalized,'fun sun')||str_contains($normalized,'фан сан'))$aliases=array_merge($aliases,['FUN&SUN','FUN SUN','Fun&Sun (RU)']);
+    if(str_contains($normalized,'библио глобус')||str_contains($normalized,'biblio globus'))$aliases=array_merge($aliases,['Библио-Глобус','Библио Глобус','Biblio Globus']);
+    if(str_contains($normalized,'интурист')||str_contains($normalized,'intourist'))$aliases=array_merge($aliases,['Интурист','Intourist']);
+    return array_values(array_unique(array_filter($aliases,static fn($v)=>is_string($v)&&trim($v)!=='')));
+}
+
+/** Resolve Search3/Tourvisor operator IDs through observed Tourvisor names, then saved Andromeda OPERATORS. */
+function anytour_andromeda_search3_operators(array $saved,array $values,PDO $pdo): ?string {
+    if(!$values)return null;
+    if(count($values)>30)throw new InvalidArgumentException();
+    $wanted=[];
+    foreach($values as $value){
+        if(!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
+        $wanted[(string)$value]=true;
+    }
+    try{
+        $query=$pdo->prepare('SELECT operator_id,operator_name FROM tour_operator_identity_observations WHERE operator_id IN ('.implode(',',array_fill(0,count($wanted),'?')).") AND operator_name IS NOT NULL AND operator_name<>'' ORDER BY last_seen_at DESC,id DESC");
+        $query->execute(array_keys($wanted));
+        $names=[];
+        foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row){$id=(string)$row['operator_id'];if(isset($wanted[$id])&&!isset($names[$id]))$names[$id]=(string)$row['operator_name'];}
+    }catch(Throwable $ignored){throw new DomainException('operator_dictionary_missing');}
+    $rows=$saved['all']['payload']['OPERATORS']??null;
+    if(!is_array($rows))throw new DomainException('operator_dictionary_missing');
+    $ids=[];
+    foreach(array_keys($wanted) as $id){
+        if(!isset($names[$id])||trim($names[$id])==='')throw new DomainException('operator_not_loaded');
+        $ids[]=anytour_andromeda_search3_dictionary_id($rows,anytour_andromeda_search3_operator_aliases($names[$id]),'operator_not_loaded');
+    }
+    $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
+    return implode(',',$ids);
+}
+
 /** Restrict upstream only with complete accepted catalog coverage; otherwise retain local filtering. */
 function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $saved): ?string {
     if(!$localIds)return null;
@@ -69,11 +106,14 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     $p=$request['params'];
     $country=(int)($saved['local_country_id']??1);
     if((string)($p['countryId']??'')!==(string)$country) throw new DomainException('country_not_loaded');
-    foreach(['arrivalId','operatorIds','hotelServices','hotelTypes'] as $key) if(!empty($p[$key]))throw new DomainException('filter_not_supported');
+    foreach(['arrivalId','hotelServices','hotelTypes'] as $key) if(!empty($p[$key]))throw new DomainException('filter_not_supported');
     foreach(['onlyDirect','onlyCharter'] as $key) if(!in_array($p[$key]??false,[false,'false',0,'0',''],true))throw new DomainException('filter_not_supported');
     if(($p['currency']??'RUB')!=='RUB')throw new DomainException('filter_not_supported');
     $meal=anytour_andromeda_search3_meal($saved,$p['meal']??'');
     $stars=anytour_andromeda_search3_stars($saved,$p['hotelCategory']??'');
+    $operatorValues=$p['operatorIds']??[];
+    if(!is_array($operatorValues))throw new InvalidArgumentException();
+    $operatorFilter=anytour_andromeda_search3_operators($saved,$operatorValues,$pdo);
     foreach(['hotelIds','regionIds','subregionIds'] as $key){
         if(isset($p[$key]) && (!is_array($p[$key]) || count($p[$key])>30))throw new InvalidArgumentException();
         foreach($p[$key]??[] as $id)if(!is_scalar($id)||!ctype_digit((string)$id))throw new InvalidArgumentException();
@@ -106,8 +146,14 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
         if(!$operators)throw new DomainException('no_operators');
         $params['OPERATORS']=implode(',',$operators);
     }
+    if($operatorFilter!==null){
+        $selected=explode(',',$operatorFilter);
+        if(array_intersect($selected,array_map('strval',$excluded)))throw new DomainException('operator_not_supported');
+        $params['OPERATORS']=$operatorFilter;
+    }
     if (isset($request['andromeda_operator_ids'])) {
-        if ($request['andromeda_operator_ids'] !== ['5'] || in_array('5',array_map('strval',$excluded),true)) throw new DomainException('operator_not_supported');
+        if ($request['andromeda_operator_ids'] !== ['5'] || in_array('5',array_map('strval',$excluded),true)
+            || ($operatorFilter!==null && $operatorFilter!=='5')) throw new DomainException('operator_not_supported');
         $params['OPERATORS']='5';
     }
     $hotels=anytour_andromeda_search3_hotels($p['hotelIds']??[],$pdo,$saved);
