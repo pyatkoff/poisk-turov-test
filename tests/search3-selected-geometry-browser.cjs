@@ -147,8 +147,12 @@ async function checkOfferJourney(page,width){
     };
     await selectMeal();
     const card=page.locator('#results .hotel-card[data-hotel-id="offer-hotel"]'),root=page.locator('#selectedTour');
-    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard'],'collapsed filtered card selects the complete STANDARD AI offer');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),[],'collapsed multi-offer card does not expose an arbitrary direct choice');
+    assert.equal(await card.locator('.tour-more-toggle').innerText(),'Показать варианты · 2','collapsed filtered card states the two complete AI offers');
+    await card.locator('.tour-more-toggle').click();
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes=>nodes.map(node=>node.dataset.tid)),['offer-standard','offer-family'],'expanded filtered card exposes both complete AI offers');
     const selectOffer=async(id,price,room)=>{
+      if(!await card.locator('.direct-tour[data-tid="'+id+'"]').count())await card.locator('.tour-more-toggle').click();
       await card.locator('.direct-tour[data-tid="'+id+'"]').click();
       await root.locator('.search3-flight-continue button').waitFor();
       assert.equal(await page.evaluate(()=>window.V2TourController.currentTour.id),id,'selected identity matches the clicked complete offer');
