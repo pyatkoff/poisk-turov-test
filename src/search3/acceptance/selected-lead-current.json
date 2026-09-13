@@ -26,11 +26,16 @@
     "real_supplier_requests": 0,
     "real_lead_requests": 0,
     "lead_focus_target": "phone",
-    "selected_search_form_visible": false
+    "selected_search_form_visible": false,
+    "flight_fuel_display": [
+      "Топливный сбор: уточняется",
+      "Топливный сбор: без доплаты",
+      "Топливный сбор: 1 400 ₽"
+    ]
   },
   "diagnostics": {
-    "selected_date_display": "capture_only",
-    "known_raw_date_backlog": true,
+    "selected_date_display": "canonical_dd_mm_yyyy",
+    "known_raw_date_backlog": false,
     "physical_safari_iphone": "deferred"
   }
 }

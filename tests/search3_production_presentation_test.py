@@ -278,6 +278,27 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
                 source = source.replace(display, original, 1)
+                # Reviewed selected-tour date display only. The supplier ISO value
+                # remains unchanged in state and the lead payload; reversing these
+                # two exact fragments recovers the protected controller.
+                date_display = b",date=window.V2Results&&typeof window.V2Results.formatTourDate==='function'?window.V2Results.formatTourDate(t.date):t.date;return"
+                date_original = b";return"
+                date_value = b"esc(date||'\xe2\x80\x94')"
+                raw_date_value = b"esc(t.date||'\xe2\x80\x94')"
+                self.assertEqual(source.count(date_display), 1, 'one canonical selected date formatter call')
+                self.assertEqual(source.count(date_value), 1, 'one formatted selected date value')
+                source = source.replace(date_display, date_original, 1).replace(date_value, raw_date_value, 1)
+                # Reviewed flight-fee display correction only. It distinguishes
+                # missing, explicit zero and positive values without changing
+                # the raw fee, selected total, arithmetic or lead payload.
+                fuel_helper = b"function flightFuelText(v){if(!v||!Object.prototype.hasOwnProperty.call(v,'fuelCharge')||v.fuelCharge===null||v.fuelCharge==='')return'\xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f';const fuel=v.fuelCharge,raw=fuel&&typeof fuel==='object'&&fuel.value!==undefined?fuel.value:fuel,n=Number(raw);if(!Number.isFinite(n)||n<0)return'\xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f';return n?money(n)+' \xe2\x82\xbd':'\xd0\xb1\xd0\xb5\xd0\xb7 \xd0\xb4\xd0\xbe\xd0\xbf\xd0\xbb\xd0\xb0\xd1\x82\xd1\x8b';}\n"
+                current_variant = b"function variantHtml(v,i){const p=v&&v.price||{},price=p&&p.value!==undefined?p.value:p||0,fuelText=flightFuelText(v);return '<div class=\"flight-variant'+(i===selectedFlightIndex?' is-selected':'')+'\" data-flight-index=\"'+i+'\"><label class=\"flight-choice\"><input type=\"radio\" name=\"v2flight\" value=\"'+i+'\"'+(i===selectedFlightIndex?' checked':'')+'><span>\xd0\x92\xd0\xb0\xd1\x80\xd0\xb8\xd0\xb0\xd0\xbd\xd1\x82 '+(i+1)+(v&&v.isDefault?' \xc2\xb7 \xd1\x80\xd0\xb5\xd0\xba\xd0\xbe\xd0\xbc\xd0\xb5\xd0\xbd\xd0\xb4\xd1\x83\xd0\xb5\xd0\xbc\xd1\x8b\xd0\xb9':'')+'</span><b>'+money(price)+' \xe2\x82\xbd</b></label>'+((v&&Array.isArray(v.forward)?v.forward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd1\x82\xd1\x83\xd0\xb4\xd0\xb0':'\xd0\xa2\xd1\x83\xd0\xb4\xd0\xb0')).join(''))+((v&&Array.isArray(v.backward)?v.backward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd0\xbe\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe':'\xd0\x9e\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe')).join(''))+'<div class=\"flight-fuel\">\xd0\xa2\xd0\xbe\xd0\xbf\xd0\xbb\xd0\xb8\xd0\xb2\xd0\xbd\xd1\x8b\xd0\xb9 \xd1\x81\xd0\xb1\xd0\xbe\xd1\x80: '+esc(fuelText)+'</div></div>'; }".replace(b"; }", b";}")
+                original_variant = b"function variantHtml(v,i){const p=v&&v.price||{},fuel=v&&v.fuelCharge||{},price=p&&p.value!==undefined?p.value:p||0,fuelValue=fuel&&fuel.value!==undefined?fuel.value:fuel||0;return '<div class=\"flight-variant'+(i===selectedFlightIndex?' is-selected':'')+'\" data-flight-index=\"'+i+'\"><label class=\"flight-choice\"><input type=\"radio\" name=\"v2flight\" value=\"'+i+'\"'+(i===selectedFlightIndex?' checked':'')+'><span>\xd0\x92\xd0\xb0\xd1\x80\xd0\xb8\xd0\xb0\xd0\xbd\xd1\x82 '+(i+1)+(v&&v.isDefault?' \xc2\xb7 \xd1\x80\xd0\xb5\xd0\xba\xd0\xbe\xd0\xbc\xd0\xb5\xd0\xbd\xd0\xb4\xd1\x83\xd0\xb5\xd0\xbc\xd1\x8b\xd0\xb9':'')+'</span><b>'+money(price)+' \xe2\x82\xbd</b></label>'+((v&&Array.isArray(v.forward)?v.forward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd1\x82\xd1\x83\xd0\xb4\xd0\xb0':'\xd0\xa2\xd1\x83\xd0\xb4\xd0\xb0')).join(''))+((v&&Array.isArray(v.backward)?v.backward:[]).map((f,n)=>segmentHtml(f,n?'\xd0\x9f\xd0\xb5\xd1\x80\xd0\xb5\xd1\x81\xd0\xb0\xd0\xb4\xd0\xba\xd0\xb0 \xd0\xbe\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe':'\xd0\x9e\xd0\xb1\xd1\x80\xd0\xb0\xd1\x82\xd0\xbd\xd0\xbe')).join(''))+(fuelValue?'<div class=\"flight-fuel\">\xd0\xa2\xd0\xbe\xd0\xbf\xd0\xbb\xd0\xb8\xd0\xb2\xd0\xbd\xd1\x8b\xd0\xb9 \xd1\x81\xd0\xb1\xd0\xbe\xd1\x80: '+money(fuelValue)+' \xe2\x82\xbd</div>':'')+'</div>'; }".replace(b"; }", b";}")
+                self.assertEqual(source.count(fuel_helper), 1, 'one reviewed flight fuel display helper')
+                self.assertEqual(source.count(current_variant), 1, 'one reviewed flight fuel variant renderer')
+                source = source.replace(fuel_helper, b'', 1).replace(current_variant, original_variant, 1)
+                self.assertTrue(source.endswith(b'})();\n'), 'reviewed controller keeps one canonical final line break')
+                source = source[:-1]
                 # Reviewed presentation-state fix: preserve the renderer's exact
                 # action label while the existing selection request is pending.
                 # Reversing both fragments recovers the protected controller.
