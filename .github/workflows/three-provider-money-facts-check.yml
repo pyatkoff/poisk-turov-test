@@ -4,8 +4,10 @@ on:
     paths:
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/anex-additional-prices-client.php'
+      - 'scripts/diagnostics/anex_egypt_248_apd_retained.php'
       - 'tests/three-provider-money-facts-test.php'
       - 'tests/anex-additional-prices-client-test.php'
+      - 'tests/anex-egypt-248-apd-retained-test.php'
       - '.github/workflows/three-provider-money-facts-check.yml'
 permissions:
   contents: read
@@ -22,10 +24,13 @@ jobs:
         run: |
           php -l app/integrations/three-provider-money-facts.php
           php -l app/integrations/anex-additional-prices-client.php
+          php -l scripts/diagnostics/anex_egypt_248_apd_retained.php
           php -l tests/three-provider-money-facts-test.php
           php -l tests/anex-additional-prices-client-test.php
+          php -l tests/anex-egypt-248-apd-retained-test.php
           php -d allow_url_fopen=0 tests/three-provider-money-facts-test.php
           php -d allow_url_fopen=0 tests/anex-additional-prices-client-test.php
+          php -d allow_url_fopen=0 tests/anex-egypt-248-apd-retained-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-money-facts.php').read_text()
