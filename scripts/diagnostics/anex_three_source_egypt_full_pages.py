@@ -38,8 +38,18 @@ def source():
 
     single="$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);$offers=[];"
     paged=("$offers=[];$receivedTotal=0;$mappedTotal=0;$pagesCount=1;$pagesLoaded=0;"
+           "$andromedaPageErrorCategories=['page_context_missing'=>'PAGE_CONTEXT_MISSING','previous_page_missing'=>'PREVIOUS_PAGE_MISSING',"
+           "'page_outside_latest_response'=>'PAGE_OUTSIDE_LATEST_RESPONSE','page_session_expired'=>'PAGE_SESSION_EXPIRED',"
+           "'supplier_unavailable'=>'SUPPLIER_UNAVAILABLE'];"
            "for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo){$request['page']=$pageNo;"
-           "$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);++$pagesLoaded;"
+           "try{$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);}catch(Throwable $pageError){"
+           "$pageMessage=$pageError->getMessage();$pageCategory=$andromedaPageErrorCategories[$pageMessage]??null;"
+           "if($pageCategory===null){if($pageError instanceof OverflowException&&$pageMessage==='monthly_quota_exhausted')$pageCategory='MONTHLY_QUOTA';"
+           "elseif($pageError instanceof DomainException)$pageCategory='PROVIDER_CONTEXT';"
+           "elseif($pageError instanceof InvalidArgumentException)$pageCategory='INVALID_REQUEST_CONTEXT';"
+           "elseif($pageError instanceof JsonException)$pageCategory='STATE_JSON_INVALID';"
+           "else $pageCategory='RUNTIME_EXCEPTION';}"
+           "throw new RuntimeException('THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageCategory);}++$pagesLoaded;"
            "$receivedTotal+=(int)($result['received_offers']??0);$mappedTotal+=(int)($result['mapped_offers']??0);"
            "$advertised=(int)($result['pages_count']??1);if($advertised<1||$advertised>5)throw new RuntimeException('THREE_PRICE_ANDROMEDA_PAGE_COUNT');"
            "$pagesCount=max($pagesCount,$advertised);")
@@ -58,7 +68,9 @@ def source():
     required=(EXPERIMENT,"'Egypt'","'Египет'",SPEC['date'],'20261112',"'nightsFrom'=>9","'nightsTo'=>9",
               "'nights_from'=>9","'nights_till'=>9","'adults'=>2","'ADULT'=>2","'hotelIds'=>[]",
               "'three-price-egypt-full-pages-20260913-v1'","'generation'=>26091308",
-              "for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)","'pages_loaded'=>$pagesLoaded")
+              "for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)","'pages_loaded'=>$pagesLoaded",
+              "'page_context_missing'=>'PAGE_CONTEXT_MISSING'","'supplier_unavailable'=>'SUPPLIER_UNAVAILABLE'",
+              "'THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageCategory")
     if any(value not in text for value in required):
         raise ValueError('egypt_full_pages_source_incomplete')
     return text
