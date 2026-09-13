@@ -1,0 +1,45 @@
+name: MATCH GLOBAL star-soft standalone v6
+on:
+  push:
+    branches: [ops/match-global-current-review-2333-20260913-v1]
+    paths: [.github/match-star-soft-standalone-2333-20260913-v6.arm]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: CURRENT standalone read-only star-soft audit
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,pathlib,subprocess,tempfile,time
+          php=r'''<?php
+          function n($v){$v=mb_strtolower(trim((string)$v),'UTF-8');$v=strtr($v,['щ'=>'shch','ш'=>'sh','ч'=>'ch','ц'=>'ts','ю'=>'yu','я'=>'ya','ё'=>'e','ж'=>'zh','х'=>'kh','а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u','ф'=>'f','ы'=>'y','э'=>'e','ь'=>'','ъ'=>'']);$v=preg_replace('/[^a-z0-9]+/',' ',$v);return trim(preg_replace('/\s+/',' ',$v));}
+          $root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');
+          $pairs=[
+           ['id'=>'2000025168','target'=>111606,'places'=>['Фатих']],['id'=>'2000025283','target'=>17479,'places'=>['Фатих']],['id'=>'2000034746','target'=>128649,'places'=>['Нячанг']],['id'=>'2000088483','target'=>45746,'places'=>['Гаафу Даалу Атолл','Мальдивский Архипелаг']],['id'=>'2000091283','target'=>43658,'places'=>['Нилавели','Восточная провинция']],['id'=>'2000091333','target'=>128822,'places'=>['Фатих']],['id'=>'2000091577','target'=>101234,'places'=>['Фатих']],['id'=>'2000091609','target'=>101473,'places'=>['Фатих']],['id'=>'2000099004','target'=>23727,'places'=>['Дананг']],['id'=>'2000120927','target'=>132688,'places'=>['Дананг']],['id'=>'84074','target'=>102567,'places'=>['Кадыкёй']]
+          ];
+          $hotels=[];foreach($db->query('SELECT id,name,region_name,subregion_name,category FROM catalog_hotels WHERE is_active=1')->fetchAll(PDO::FETCH_ASSOC) as $h)$hotels[(int)$h['id']]=$h;
+          $learn=[];$train=0;foreach($db->query("SELECT local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC) as $r){$lid=(int)$r['local_hotel_id'];if(!isset($hotels[$lid]))continue;$e=json_decode((string)$r['evidence_json'],true);if(!is_array($e))$e=[];$src=$e['source']??($e['prior_evidence']['source']??[]);$geo=$e['geography']??($e['prior_evidence']['geography']??[]);$places=[];foreach([is_array($src)?($src['town']??''):'',is_array($geo)?($geo['town']??''):'',is_array($geo)?($geo['parent']??''):''] as $p){$k=n($p);if($k!=='')$places[$k]=1;}$targets=[];foreach([$hotels[$lid]['region_name']??'',$hotels[$lid]['subregion_name']??''] as $p){$k=n($p);if($k!=='')$targets[$k]=1;}if(!$places||!$targets)continue;$train++;foreach(array_keys($places) as $p)foreach(array_keys($targets) as $t)$learn[$p][$t]=($learn[$p][$t]??0)+1;}
+          $q=$db->prepare("SELECT external_hotel_id,decision_status,local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=?");$out=[];
+          foreach($pairs as $p){$q->execute([$p['id']]);$cur=$q->fetch(PDO::FETCH_ASSOC);if(!$cur||(string)$cur['decision_status']!=='pending'||$cur['local_hotel_id']!==null)continue;$h=$hotels[$p['target']]??null;if(!$h)continue;$targetKeys=[];foreach([$h['region_name']??'',$h['subregion_name']??''] as $x){$k=n($x);if($k!=='')$targetKeys[$k]=1;}$best=null;foreach($p['places'] as $sp){$pk=n($sp);if($pk===''||empty($learn[$pk]))continue;$total=array_sum($learn[$pk]);foreach($learn[$pk] as $tk=>$cnt){if(!isset($targetKeys[$tk]))continue;$conf=$total?$cnt/$total:0;$x=['source_place'=>$sp,'source_key'=>$pk,'target_key'=>$tk,'support'=>$cnt,'total'=>$total,'confidence'=>round($conf,6)];if($best===null||$x['confidence']>$best['confidence']||($x['confidence']===$best['confidence']&&$x['support']>$best['support']))$best=$x;}}$out[]=['external_id'=>$p['id'],'target'=>$h,'source_places'=>$p['places'],'learned_geo'=>$best,'strong'=>$best!==null&&$best['support']>=3&&$best['confidence']>=0.80];}
+          $db->commit();echo json_encode(['status'=>'completed','operation_id'=>'hotel-match-star-soft-standalone-2333-20260913-v6','training_rows'=>$train,'learned_place_keys'=>count($learn),'rows'=>$out,'database_writes'=>0,'supplier_calls'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          ?>'''
+          P=pathlib.Path;raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='starsoft6-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';sock=P(td)/'sock';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);base=['ssh','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR'];ok=False
+            for _ in range(3):
+              p=subprocess.run(base+['-M','-S',str(sock),'-fnNT','-o','ControlPersist=600','-l',user,host],capture_output=True,text=True,timeout=40)
+              if p.returncode==0:ok=True;break
+              time.sleep(8)
+            if not ok:raise SystemExit(2)
+            p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=php,text=True,capture_output=True,timeout=420);subprocess.run(['ssh','-S',str(sock),'-O','exit',host],capture_output=True,timeout=20)
+          if p.returncode!=0:raise SystemExit(3)
+          v=json.loads(p.stdout);P('star-soft-v6.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'rows':len(v['rows']),'strong':sum(1 for r in v['rows'] if r['strong']),'training_rows':v['training_rows'],'learned_place_keys':v['learned_place_keys']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-star-soft-v6-${{ github.run_id }}', path: star-soft-v6.json, retention-days: 90}
