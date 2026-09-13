@@ -26,29 +26,21 @@ v19_throws(static fn()=>hmacav19_validate_manifest($bad),'manifest_intent_contra
 $bad=$m;$bad['explicitly_excluded']=[];
 v19_throws(static fn()=>hmacav19_validate_manifest($bad),'manifest_exclusion_missing');
 
-$first=$m['intents'][0];$aid=(int)$first['anex_hotel_id'];$target=(int)$first['target_local_hotel_id'];
-$strong=['prepared'=>[['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'rule'=>'direct_details_strong_name_margin_geo']]];
-$coord=['prepared'=>[['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'rule'=>'two_token_direct_coordinate']]];
-// Build a manifest-shaped single-case by retaining 22 rows, while making all other rows
-// deliberately satisfy their declared lane requirements with synthetic current rows.
 function v19_synthetic_lanes(array $m): array {
     $s=[];$c=[];foreach($m['intents'] as $i){$row=['anex_hotel_id'=>(int)$i['anex_hotel_id'],'target_local_hotel_id'=>(int)$i['target_local_hotel_id']];if($i['strong_rule']!==null)$s[]=$row+['rule'=>$i['strong_rule']];if($i['coordinate_rule']!==null)$c[]=$row+['rule'=>$i['coordinate_rule']];}return [['prepared'=>$s],['prepared'=>$c]];
 }
 [$allStrong,$allCoord]=v19_synthetic_lanes($m);$gate=hmacav19_review_gate($m,$allStrong,$allCoord);
 v19_assert(count($gate)===22,'gate count');foreach($gate as $g)v19_assert($g['status']==='eligible','expected eligible');
 
-// Required strong evidence disappearing must fail closed.
 $oneStrong=$allStrong;foreach($oneStrong['prepared'] as $k=>$r)if((int)$r['anex_hotel_id']===32880){unset($oneStrong['prepared'][$k]);break;}$oneStrong['prepared']=array_values($oneStrong['prepared']);
 $gate=hmacav19_review_gate($m,$oneStrong,$allCoord);v19_assert($gate[32880]['status']==='withheld'&&$gate[32880]['reason']==='strong_evidence_missing','missing strong');
-// Required coordinate evidence disappearing must fail closed.
 $oneCoord=$allCoord;foreach($oneCoord['prepared'] as $k=>$r)if((int)$r['anex_hotel_id']===23894){unset($oneCoord['prepared'][$k]);break;}$oneCoord['prepared']=array_values($oneCoord['prepared']);
 $gate=hmacav19_review_gate($m,$allStrong,$oneCoord);v19_assert($gate[23894]['status']==='withheld'&&$gate[23894]['reason']==='coordinate_evidence_missing','missing coord');
-// A current target drift from either lane is never accepted.
 $drift=$allStrong;foreach($drift['prepared'] as &$r)if((int)$r['anex_hotel_id']===32880){$r['target_local_hotel_id']=999999;break;}unset($r);
 $gate=hmacav19_review_gate($m,$drift,$allCoord);v19_assert($gate[32880]['reason']==='strong_target_drift','strong drift');
-// If two current lanes disagree, lane conflict wins.
-$drift=$allCoord;foreach($drift['prepared'] as &$r)if((int)$r['anex_hotel_id']===16330){$r['target_local_hotel_id']=999999;break;}unset($r);
-$gate=hmacav19_review_gate($m,$allStrong,$drift);v19_assert($gate[16330]['reason']==='lane_conflict','lane conflict');
+// 16691 has both strong and coordinate lanes; make only the coordinate lane disagree.
+$drift=$allCoord;foreach($drift['prepared'] as &$r)if((int)$r['anex_hotel_id']===16691){$r['target_local_hotel_id']=999999;break;}unset($r);
+$gate=hmacav19_review_gate($m,$allStrong,$drift);v19_assert($gate[16691]['reason']==='lane_conflict','lane conflict');
 
 $source=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_anex_current_detail_accept_v19.php');
 foreach(['REPEATABLE READ','FOR UPDATE','current_state_changed_after_review','manual_or_conflict_protected','existing_mapping_protected','pair_exclusion_protected','same_provider_target_occupied','andromeda_bridge_drift','live_observation_drift','post_commit_readback_failed','unknown_after_commit','INSERT INTO anex_hotel_search_mappings'] as $required)v19_assert(str_contains($source,$required),'missing static guard '.$required);
