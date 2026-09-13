@@ -1,0 +1,80 @@
+name: ANEX three-source Egypt P1 observation
+on:
+  push:
+    branches:
+      - 'ops/int-anex-three-source-egypt-20260913'
+    paths:
+      - '.github/ops/anex-three-source-egypt-20260913'
+permissions:
+  contents: read
+concurrency:
+  group: anex-three-source-egypt-p1-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  live:
+    if: github.run_attempt == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+      ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Bind marker to exact reviewed source parent
+        id: control
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git -C control rev-parse HEAD^)"
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-three-source-egypt-20260913'
+          test "$(cat control/.github/ops/anex-three-source-egypt-20260913)" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-v1;scenario=Egypt-2026-10-21-7n-2a-AI;owner=2026-09-13"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.control.outputs.source }}
+          path: source
+          persist-credentials: false
+      - name: Verify exact scenario source without network
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C source rev-parse HEAD)" = '${{ steps.control.outputs.source }}'
+          php -l source/scripts/diagnostics/anex_search3_three_source_price.php
+          php -l source/tests/anex-search3-three-source-price-smoke.php
+          php -d allow_url_fopen=0 source/tests/anex-search3-three-source-price-smoke.php
+          python3 -B source/tests/anex_search3_three_source_price_test.py
+          python3 - <<'PY'
+          from pathlib import Path
+          php=Path('source/scripts/diagnostics/anex_search3_three_source_price.php').read_text()
+          py=Path('source/scripts/diagnostics/anex_search3_three_source_price.py').read_text()
+          assert "ANEX_THREE_PRICE_EGYPT_EXPERIMENT = 'anex_three_source_price_20260913_egypt_v1'" in php
+          assert "'country'=>'Egypt','date'=>'2026-10-21','nights'=>7" in php
+          assert "'egypt-20260913-v1'" in py and "'date':'2026-10-21'" in py
+          for forbidden in ('->bron(', 'bron_ticket', 'broninit(', '->calc(', 'AnyTourAnexAdditionalPricesClient', 'INSERT INTO anex_hotel_search_mappings', 'UPDATE anex_hotel_search_mappings'):
+              assert forbidden not in php
+          print('Egypt P1 one-shot source boundary: PASS')
+          PY
+      - name: Run one fresh Egypt three-source observation
+        id: parity
+        continue-on-error: true
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/three-source-egypt"
+          python3 -B source/scripts/diagnostics/anex_search3_three_source_price.py --scenario egypt-20260913-v1 "$RUNNER_TEMP/three-source-egypt"
+      - name: Preserve sanitized Egypt P1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-three-source-egypt-p1-${{ github.run_id }}
+          path: ${{ runner.temp }}/three-source-egypt/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail after evidence preservation when observation did not complete
+        if: steps.parity.outcome != 'success'
+        run: exit 1
