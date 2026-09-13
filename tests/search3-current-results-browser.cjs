@@ -7,7 +7,9 @@ const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 const root = path.resolve(__dirname, '..');
 const base = process.env.SEARCH3_VISUAL_BASE, output = process.env.SEARCH3_RESULTS_OUTPUT;
+const sourceSha = process.env.SEARCH3_SOURCE_SHA;
 assert.ok(base && new URL(base).hostname === '127.0.0.1' && output);
+assert.match(sourceSha || '', /^[a-f0-9]{40}$/, 'current results evidence requires the exact source SHA');
 fs.mkdirSync(output, { recursive: true });
 const names = JSON.parse(execFileSync('php', ['-r', 'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'], { cwd: root, encoding: 'utf8' }));
 const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n;\n');
@@ -25,6 +27,15 @@ const calendarHotels = [
   ] },
   { id: 'calendar-b', tours: [{ ...tour, id: 'calendar-b1', date: '2026-09-12', price: 148500 }] }
 ];
+async function checkPrimaryForm(page, state) {
+  const form = page.locator('#tourSearch');
+  assert.equal(await form.count(), 1, state + ': one canonical form owner');
+  assert.equal(await form.isVisible(), true, state + ': primary form stays visible without an edit action');
+  for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
+    assert.equal(await form.locator(`[name="${name}"]`).isVisible(), true, state + ': primary control ' + name + ' remains visible');
+  }
+  assert.equal(await form.locator('[name=operator]').isVisible(), false, state + ': supplier operator remains secondary');
+}
 async function snapshot(page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
@@ -352,11 +363,26 @@ async function run(browser, width, previous) {
     }
     await page.evaluate(items => window.V2Results.render(items), hotels);
     await page.waitForSelector('#results .direct-tour');
+    const primaryParameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
+    await checkPrimaryForm(page, 'first results');
+    if (!previous && [375, 1024, 1440].includes(width)) {
+      await snapshot(page);
+      await page.screenshot({ path: path.join(output, `primary-with-results-${width}.png`), fullPage: true });
+      if (width === 1440) {
+        await page.setViewportSize({ width, height: 700 });
+        await checkPrimaryForm(page, 'short desktop results');
+        await snapshot(page);
+        await page.screenshot({ path: path.join(output, 'primary-with-results-1440-short.png') });
+        await page.setViewportSize({ width, height: 1000 });
+      }
+    }
     await page.evaluate(items => {
       window.V2Results.render(items);
       window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } }));
     }, calendarHotels);
     const calendar = page.locator('#currentPriceCalendar');
+    await checkPrimaryForm(page, 'terminal results with calendar');
+    assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), primaryParameters, 'render and completion preserve every primary/advanced value');
     assert.equal(await calendar.isVisible(), true, 'current price calendar is visible after a terminal result set');
     const calendarDisclosure = calendar.locator('details');
     assert.equal(await calendarDisclosure.evaluate(node => node.open), true, 'Search3 calendar starts expanded on first render at every responsive width');
@@ -385,10 +411,13 @@ async function run(browser, width, previous) {
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()].filter(([name]) => !['dateFrom', 'dateTo'].includes(name))), preservedBeforeCalendar, 'calendar preserves every non-date search parameter');
     const parameters = await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]);
     assert.equal(await page.locator('#resultsTools #resultsSearchEdit').count(), 1, 'native results tools retain one search edit action');
-    await page.locator('#resultsSearchEdit').click();
-    assert.equal(await page.locator('#tourSearch').isVisible(), true, 'results edit action reveals the canonical search form');
+    await page.locator('#resultsSearchEdit').focus();
+    await page.locator('#resultsSearchEdit').press('Enter');
+    assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'keyboard edit action focuses the permanently available primary form');
+    await checkPrimaryForm(page, 'keyboard edit');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), parameters, 'editing preserves all current search parameters');
     await page.evaluate(items => window.V2Results.render(items), hotels);
+    await checkPrimaryForm(page, 'results rerender after edit');
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'cheap', 'price sorting retained');
     const localHotelFilter = page.locator('.search3-hotel-filter');
     const localHotelInput = localHotelFilter.locator('input');
@@ -475,6 +504,7 @@ async function run(browser, width, previous) {
     const localEmptyReset = localEmpty.locator('.search3-local-empty-reset');
     assert.equal(await localEmpty.count(), 1, 'zero matching local filters expose one actionable empty state');
     assert.equal(await localEmpty.isVisible(), true, 'local empty state is visible above the hidden loaded cards');
+    await checkPrimaryForm(page, 'zero local matches');
     assert.match(await localEmpty.innerText(), /По выбранным фильтрам ничего не подошло[\s\S]*Сбросить фильтры/, 'local empty state explains the recoverable filter result');
     assert.ok((await localEmptyReset.boundingBox()).height >= 44, 'local empty reset keeps a full touch target');
     if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `local-empty-${width}.png`), fullPage: true });
@@ -598,6 +628,7 @@ async function run(browser, width, previous) {
     assert.equal((await snapshot(page)).overflow, false, width + ': missing-photo card fits the viewport');
     if (!previous && [375,1024,1440].includes(width)) await page.screenshot({ path: path.join(output, `results-no-photo-${width}.png`), fullPage: true });
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 44 } })));
+    await checkPrimaryForm(page, 'loading with retained results');
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'search start exposes a truthful loading state');
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-progress', { detail: { progress: 47 } })));
     assert.equal(await page.locator('#status .results-state-progress span').evaluate(node => node.style.width), '47%', 'progress state reflects the reported percentage');
@@ -620,6 +651,7 @@ async function run(browser, width, previous) {
     });
     assert.equal(await page.locator('#status .results-state--error').isVisible(), true, 'search failure exposes a distinct error state');
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'search failure leaves parameters editable even with retained results');
+    await checkPrimaryForm(page, 'search error');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), errorParameters, 'error recovery preserves every search parameter');
     if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `search-error-edit-${width}.png`), fullPage: true });
     const retrySearch = page.locator('#status .results-state-retry');
@@ -649,7 +681,7 @@ async function run(browser, width, previous) {
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
     });
-    assert.equal(await page.locator('#serviceCount').innerText(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
+    assert.equal(await page.locator('#serviceCount').textContent(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
     const serviceRelax = page.locator('.empty-relax[data-relax="hotel_service[]"]');
     await serviceRelax.focus();
     await serviceRelax.press('Enter');
@@ -704,8 +736,10 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#ordinary-terminal-focus').evaluate(node => node === document.activeElement), true, 'ordinary terminal empty result does not steal unrelated user focus');
     await page.locator('#ordinary-terminal-focus').evaluate(node => node.remove());
     assert.equal(await page.locator('#status').isVisible(), false, 'ordinary terminal empty result also keeps a single final state');
+    await checkPrimaryForm(page, 'terminal empty results');
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
+    assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
     if ([375, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       await checkAndromedaExpansion(page, width, previous, andromeda);
@@ -713,7 +747,7 @@ async function run(browser, width, previous) {
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
-    return { collapsed, expanded, logoSource };
+    return { sourceSha, primaryForm: 'visible-through-results-calendar-loading-local-empty-error', collapsed, expanded, logoSource };
   } finally { await page.close(); }
 }
 (async () => {
