@@ -3,6 +3,7 @@
   "scope": "search3-current-selected-lead",
   "route": "/_preview/search3-site-candidate/poisk-turov/",
   "widths": {
+    "320": {"selected_head_columns": 1, "fact_columns": 2, "lead_columns": 1, "mobile_submit": true},
     "375": {"selected_head_columns": 1, "fact_columns": 2, "lead_columns": 1, "mobile_submit": true},
     "760": {"selected_head_columns": 1, "fact_columns": 3, "lead_columns": 2, "mobile_submit": false},
     "1000": {"selected_head_columns": 2, "fact_columns": 5, "lead_columns": 2, "mobile_submit": false},
