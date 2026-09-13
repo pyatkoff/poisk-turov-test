@@ -11,6 +11,7 @@ on:
       - 'v2/api-anex-search3-preview.php'
       - 'tests/anex-search3-preview-smoke.php'
       - 'tests/anex-operator-filter-smoke.php'
+      - 'tests/anex-meal-filter-smoke.php'
       - 'tests/anex-retained-additional-prices-test.php'
       - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
@@ -66,6 +67,7 @@ jobs:
           # Explicit offline suites; execution also checks each test file's syntax.
           php -d allow_url_fopen=0 tests/anex-search3-preview-smoke.php
           php -d allow_url_fopen=0 tests/anex-operator-filter-smoke.php
+          php -d allow_url_fopen=0 tests/anex-meal-filter-smoke.php
           php -d allow_url_fopen=0 tests/anex-search-smoke.php
           php -d allow_url_fopen=0 tests/anex-search-freight-identity-smoke.php
           php -d allow_url_fopen=0 tests/anex-tour-program-retention-test.php
