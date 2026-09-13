@@ -28,20 +28,21 @@ def completed_case(m,case):
 
 
 class FamilyPriceTest(unittest.TestCase):
-    def test_source_is_one_exact_family_scenario(self):
-        m=load();source=m.source();marker="const ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_family_price_20260913_v1';"
-        self.assertEqual(source.count(marker),1);family=marker+source.split(marker,1)[1]
-        self.assertIn('2026-10-29',family);self.assertIn('20261029',family)
-        self.assertIn("'nightsFrom'=>9,'nightsTo'=>9",family);self.assertIn("'nights_from'=>9,'nights_till'=>9",family)
-        self.assertIn("'childs'=>[7]",family);self.assertIn("'AGES'=>'7'",family);self.assertIn("'children'=>1",family)
-        for leaked in ('2026-09-27','20260927',"'nightsFrom'=>7","'nights_from'=>7","'childs'=>[]","'CHILD'=>0"):
-            self.assertNotIn(leaked,family)
+    def test_source_is_one_exact_three_adult_scenario(self):
+        m=load();source=m.source();marker="const ANEX_THREE_PRICE_EXPERIMENT = 'anex_three_source_family_price_20260913_v2';"
+        self.assertEqual(source.count(marker),1);party=marker+source.split(marker,1)[1]
+        self.assertIn('2026-10-20',party);self.assertIn('20261020',party)
+        self.assertIn("'nightsFrom'=>8,'nightsTo'=>8",party);self.assertIn("'nights_from'=>8,'nights_till'=>8",party)
+        self.assertIn("'adults'=>3",party);self.assertIn("'ADULT'=>3",party)
+        self.assertIn("'childs'=>[]",party);self.assertIn("'CHILD'=>0",party);self.assertIn("'children'=>0",party)
+        for leaked in ('2026-09-27','20260927',"'nightsFrom'=>7","'nights_from'=>7","'adults'=>2","'ADULT'=>2"):
+            self.assertNotIn(leaked,party)
         for forbidden in ("->request('AdditionalPricesDaily'",'bron_ticket','->bron(','broninit(','->calc(','get_flights('):
-            self.assertNotIn(forbidden,family)
+            self.assertNotIn(forbidden,party)
 
     def test_resolver_coverage_resolves_and_fails_ambiguous(self):
         m=load()
-        common={'local_hotel_id':1,'date':'2026-10-29','nights':9,'adults':2,'children':1,'meal_family':'ai',
+        common={'local_hotel_id':1,'date':'2026-10-20','nights':8,'adults':3,'children':0,'meal_family':'ai',
                 'room_norm':'standard','placement_norm':'dbl','currency':'RUB'}
         results={'anex':{'status':'completed','offers':[dict(common,provider='anex',price='119448',fuel_charge=None)]},
                  'tourvisor':{'status':'completed','offers':[dict(common,provider='tourvisor',price='140294',fuel_charge='20846')]}}
@@ -54,7 +55,7 @@ class FamilyPriceTest(unittest.TestCase):
 
     def test_context_mismatch_does_not_resolve(self):
         m=load()
-        a={'local_hotel_id':1,'date':'2026-10-29','nights':9,'adults':2,'children':1,'meal_family':'ai','room_norm':'a','placement_norm':'dbl','currency':'RUB','price':'100000'}
+        a={'local_hotel_id':1,'date':'2026-10-20','nights':8,'adults':3,'children':0,'meal_family':'ai','room_norm':'a','placement_norm':'dbl','currency':'RUB','price':'100000'}
         t=dict(a,room_norm='b',price='120000',fuel_charge='20000')
         report=m.resolver_coverage({'anex':{'status':'completed','offers':[a]},'tourvisor':{'status':'completed','offers':[t]}})
         self.assertEqual(report['exact_pair_count'],0);self.assertEqual(report['resolved_base_count'],0)
