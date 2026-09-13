@@ -14,7 +14,7 @@ const other=freeze({...tour,id:'second',nights:10,price:74900,meal:{name:'AI',fu
 const hotel=freeze({id:'hotel',name:'Проверочный отель',price:62400,tours:[tour,other]});
 const original=JSON.stringify(hotel);
 assert.equal(api.hotelSummary(hotel).nights,'7–10 ноч.');
-assert.equal(api.hotelSummary(hotel).meal,'BB · AI');
+assert.equal(api.hotelSummary(hotel).meal,'Завтрак · Всё включено');
 assert.equal(api.hotelSummary(hotel).flight,'Возможны чартеры');
 assert.equal(api.hotelSummary(hotel).party,'2 взрослых');
 assert.equal(api.hotelSummary(hotel).date,'16.09.2026');
@@ -33,7 +33,7 @@ assert.match(summary,/data-operator-brand="anex"/);
 assert.doesNotMatch(summary,/intourist|biblio-globus/,'do not add operators absent from this hotel');
 for(const offer of [tour,other]){
   const row=api.tourRow(offer);
-  assert.doesNotMatch(row,/от |7–10|Возможны чартеры|BB · AI/,'individual offer never inherits aggregate fields');
+  assert.doesNotMatch(row,/от |7–10|Возможны чартеры|Завтрак · Всё включено/,'individual offer never inherits aggregate fields');
   assert.match(row,new RegExp(' · '+offer.nights+' ноч\\.'));
   assert.ok(row.includes('data-tid="'+offer.id+'"'));
   assert.ok(row.includes(api.money(offer.price)));
