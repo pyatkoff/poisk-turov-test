@@ -385,6 +385,10 @@ async function checkSearchRecovery(browser, width) {
     await page.evaluate(() => {
       const url = new URL(location.href); url.searchParams.set('utm_campaign', 'current'); url.searchParams.set('yclid', 'current-click'); history.replaceState(null, '', url);
     });
+    // The deliberate fixture submit above exercises normal search listeners.
+    // openPage aborts their POSTs; measure the recovery action separately.
+    const bootstrapBlockedPosts = posts.length;
+    assert.equal(posts.some(([, url]) => /lead/i.test(new URL(url).pathname)), false, 'fixture setup never invokes lead delivery');
     await restore.focus(); await restore.press('Enter');
     await page.waitForURL(url => url.searchParams.get('search3_restore') === '1');
     await page.waitForFunction(() => window.Search3Shortlist && window.V2SearchLifecycle && document.querySelector('#tourSearch')?.dataset.catalogSource === 'partial');
@@ -415,8 +419,10 @@ async function checkSearchRecovery(browser, width) {
       assert.equal(await page.locator('.search3-shortlist-restore').count(), 0, 'invalid recovery query cannot create navigation or search authority');
       assert.equal((await page.evaluate(() => window.Search3Shortlist.items()))[0].searchQuery, undefined);
     }
-    assert.deepEqual(supplierRequests, []); assert.deepEqual(posts, []); assert.deepEqual(errors, []);
-    return { sourceSha, width, restore: true, exactConditions: true, childAges: [0, 17], draftPreserved: true, attributionNotStored: true, currentAttributionPreserved: true, pastDateFocus: true, invalidQueries: 4, geometry, supplierRequests: 0, posts: 0 };
+    assert.deepEqual(supplierRequests, []);
+    assert.deepEqual(posts.slice(bootstrapBlockedPosts), [], 'restoring saved conditions never initiates provider, observation or lead POSTs');
+    assert.deepEqual(errors, []);
+    return { sourceSha, width, restore: true, exactConditions: true, childAges: [0, 17], draftPreserved: true, attributionNotStored: true, currentAttributionPreserved: true, pastDateFocus: true, invalidQueries: 4, geometry, bootstrapBlockedPosts, supplierRequests: 0, posts: 0 };
   } finally { page.off('request', record); await context.close(); }
 }
 
