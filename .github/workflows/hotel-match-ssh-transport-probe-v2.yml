@@ -1,0 +1,42 @@
+name: MATCH SSH transport recovery probe v2
+on:
+  push:
+    branches: [ops/match-ssh-probe-1971-20260913-v2]
+    paths: [.github/match-ssh-transport-probe-1971-20260913-v2.arm]
+permissions: {contents: read}
+concurrency: {group: anytour-match-ssh-transport-probe-1971-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-ssh-transport-probe-1971-20260913-v2
+jobs:
+  probe:
+    if: github.run_attempt == 1 && github.run_number == 1 && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Bind exact harmless operation
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-ssh-transport-probe-1971-20260913-v2.arm)" = "$OPERATION_ID"
+      - name: Probe SSH authentication only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          test -n "$KEY" && test -n "$HOST" && test -n "$USER"
+          key="$RUNNER_TEMP/match-probe-key"; known="$RUNNER_TEMP/match-probe-known"; out="$RUNNER_TEMP/match-probe-out"; err="$RUNNER_TEMP/match-probe-err"
+          trap 'rm -f "$key" "$known" "$out" "$err"' EXIT
+          umask 077
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST" 'printf MATCH_SSH_PROBE_OK' >"$out" 2>"$err"
+          rc=$?
+          set -e
+          printf 'exit_code=%s\n' "$rc"
+          test "$rc" -eq 0
+          test "$(cat "$out")" = 'MATCH_SSH_PROBE_OK'
+          test ! -s "$err"
