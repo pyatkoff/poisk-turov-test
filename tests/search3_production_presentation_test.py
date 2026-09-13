@@ -306,6 +306,17 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 source = source.replace(moment_display, moment_original, 1)
                 self.assertTrue(source.endswith(b'})();\n'), 'reviewed controller keeps one canonical final line break')
                 source = source[:-1]
+                # Reviewed selected loading/error semantics only. Exact markup
+                # reversals preserve the frozen business/controller digest.
+                role_fragments = (
+                    ('<div class="selected-loading" role="status">Загружаем тур…</div>',
+                     '<div class="selected-loading">Загружаем тур…</div>'),
+                    ('<div class="selected-loading" role="alert">Не удалось загрузить выбранный тур: ',
+                     '<div class="selected-loading">Не удалось загрузить выбранный тур: '),
+                )
+                for reviewed, original in role_fragments:
+                    self.assertEqual(source.count(reviewed.encode()), 1, 'one canonical selected status fragment')
+                    source = source.replace(reviewed.encode(), original.encode(), 1)
                 # Reviewed presentation-state fix: preserve the renderer's exact
                 # action label while the existing selection request is pending.
                 # Reversing both fragments recovers the protected controller.

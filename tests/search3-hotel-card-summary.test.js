@@ -160,6 +160,6 @@ assert.match(singleHtml, /direct-tour/);
 assert.match(singleHtml, /Завтраки/);
 assert.doesNotMatch(singleHtml, /Доступные варианты/);
 
-assert.equal(api.choiceHint(multi), '3 варианта для сравнения');
+assert.equal(api.choiceHint(multi), '', 'the disclosure or expanded heading owns the multi-offer count, not the hotel identity header');
 assert.equal(api.choiceHint(single), '1 вариант тура');
 console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK');

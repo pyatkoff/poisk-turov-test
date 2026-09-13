@@ -173,9 +173,10 @@ async function run(browser, width) {
 
     assert.deepEqual(await page.evaluate(() => window.__selectedAcceptanceCalls), { tour: 1, flights: 1, other: 0 }, 'fixture performs only the expected local tour/flights calls');
     const recovery = [375, 1440].includes(width) ? await checkLeadRecovery(page, width) : null;
+    const loadingRecovery = [375, 1440].includes(width) ? await checkSelectedLoadRecovery(page, width) : null;
     assert.deepEqual(posts, [], 'acceptance never sends a real lead or any POST');
     assert.deepEqual(browserErrors, [], 'acceptance fixture has no browser errors');
-    return { width, detail, lead, recovery, realLeads: 0, realSupplierRequests: 0 };
+    return { width, detail, lead, recovery, loadingRecovery, realLeads: 0, realSupplierRequests: 0 };
   } catch (error) {
     await page.screenshot({ path: path.join(output, `selected-current-${width}-failure.png`), fullPage: true });
     fs.writeFileSync(path.join(output, `selected-current-${width}-failure.json`), JSON.stringify({ message: String(error), browserErrors }, null, 2) + '\n');
@@ -338,6 +339,58 @@ async function checkLeadRecovery(page, width) {
   return { ...evidence, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, draftRetained: true, consentReset: true, successReturn: true, resetClearsDraft: true, localSubmissions: 3, realLeads: 0, realSupplierRequests: 0 };
 }
 
+async function checkSelectedLoadRecovery(page, width) {
+  const root = page.locator('#selectedTour');
+  await root.locator('.search3-lead-return').click();
+  await page.evaluate(({ tour, flights }) => {
+    const state = window.__selectedLoadRecovery = { tours: 0, flights: 0, other: 0 };
+    window.V2Runtime.api = (action, params) => {
+      if (params?.tourId !== tour.id) throw new Error('recovery must retain exact offer identity');
+      if (action === 'tour') {
+        state.tours++;
+        if (state.tours === 1) return new Promise((resolve, reject) => { state.rejectTour = reject; });
+        return Promise.resolve(tour);
+      }
+      if (action === 'flights') {
+        state.flights++;
+        if (state.flights === 1) return Promise.reject(new Error('fixture flight failure'));
+        return Promise.resolve(flights);
+      }
+      state.other++;
+      throw new Error('unexpected recovery action ' + action);
+    };
+  }, { tour, flights });
+  const source = page.locator('#results .direct-tour[data-tid="' + tour.id + '"]');
+  await source.click();
+  await page.waitForFunction(() => typeof window.__selectedLoadRecovery.rejectTour === 'function');
+  assert.equal(await root.locator('[role="status"]').evaluate(node => node.closest('[aria-busy="true"]') === null), true, 'loading status is outside a busy region that could suppress its announcement');
+  assert.equal(await root.locator('.selected-loading[role="status"]').count(), 1, 'loading has one status region');
+  assert.equal(await source.isDisabled(), true, 'pending source action cannot repeat the request');
+  await page.evaluate(() => window.__selectedLoadRecovery.rejectTour(new Error('fixture tour failure')));
+  await root.locator('.selected-loading[role="alert"]').waitFor();
+  assert.equal(await root.locator('[role="alert"]').evaluate(node => node.closest('[aria-busy="true"]') === null), true, 'error alert is not suppressed by a busy ancestor');
+  assert.equal(await source.isDisabled(), false, 'failed selection restores the exact source control');
+  assert.equal(await root.locator('[role="alert"]').count(), 1, 'tour error has one canonical alert owner');
+  assert.match(await root.locator('[role="alert"]').innerText(), /Не удалось загрузить выбранный тур/);
+  const retry = root.locator('.retry-tour');
+  assert.equal(await retry.getAttribute('data-tid'), tour.id, 'retry retains the failed offer identity');
+  await root.screenshot({ path: path.join(output, `selected-load-error-${width}.png`), animations: 'disabled' });
+  await retry.focus();
+  await retry.press('Enter');
+  await root.locator('.flight-error[role="alert"]').waitFor();
+  assert.equal(await root.locator('.selected-loading[role="status"]').count(), 0, 'loaded tour retires the pending status even while flight recovery remains');
+  assert.equal(await page.evaluate(() => window.V2TourController.currentTour.id), tour.id, 'flight error never discards the selected tour');
+  assert.equal(await root.locator('.retry-tour').count(), 0, 'successful retry retires the tour error control');
+  await root.locator('.load-flights').focus();
+  await root.locator('.load-flights').press('Enter');
+  await root.locator('.flight-variant').nth(2).waitFor();
+  assert.equal(await root.locator('[role="alert"]').count(), 0, 'successful flight retry clears stale alerts');
+  const evidence = await page.evaluate(() => ({ tours: window.__selectedLoadRecovery.tours, flights: window.__selectedLoadRecovery.flights, other: window.__selectedLoadRecovery.other }));
+  assert.deepEqual(evidence, { tours: 2, flights: 2, other: 0 }, 'each explicit retry makes one local request of the correct kind');
+  console.log('SEARCH3_SELECTED_LOAD_RECOVERY_OK ' + JSON.stringify({ width, pendingControl: true, loadingStatus: true, tourAlert: true, keyboardRetry: true, exactIdentity: true, flightRetry: true, ...evidence, realLeads: 0, realSupplierRequests: 0 }));
+  return { pendingControl: true, loadingStatus: true, tourAlert: true, keyboardRetry: true, exactIdentity: true, flightRetry: true, ...evidence, realLeads: 0, realSupplierRequests: 0 };
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const evidence = { source: process.env.GITHUB_SHA || '', contract, widths: {} };
@@ -347,5 +400,5 @@ async function checkLeadRecovery(page, width) {
     await browser.close();
     fs.writeFileSync(path.join(output, 'selected-lead-current.json'), JSON.stringify(evidence, null, 2) + '\n');
   }
-  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=10 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440');
+  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=12 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440 load_recovery_widths=375,1440');
 })().catch(error => { console.error(error); process.exitCode = 1; });

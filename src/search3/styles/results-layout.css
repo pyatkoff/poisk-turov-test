@@ -218,8 +218,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-summary-total{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;padding-top:14px;border-top:1px solid var(--at-line-soft,#e9edf6)}
 & .hotel-summary-total>div{display:grid;gap:3px;color:#526078;font-size:14px}
 & .hotel-summary-total .hotel-price{color:#2743cb;font-size:30px}
-& .hotel-offers-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 18px 14px;color:#17233b}
-& .hotel-offers-heading>span{color:#526078;font-size:13px}
+& .hotel-offers-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 18px;color:#17233b}
+& .hotel-offers-heading>strong{font-size:15px;line-height:1.4;overflow-wrap:anywhere}
 & .tour-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,24%);gap:16px;align-items:center;border:0;border-top:1px solid var(--at-line-soft,#e9edf6);border-radius:0;padding:14px 18px;background:#fff}
 & .tour-meta>strong{display:block;margin-top:2px;font-size:17px;line-height:1.35}
 & .tour-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin-top:8px}
@@ -244,7 +244,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist-toggle{min-height:44px;padding:9px 12px;border-color:#c4cfeb;background:#fff;color:#2743cb;font-size:14px;font-weight:600}
 & .search3-shortlist-toggle[aria-pressed=true]{border-color:#9aa9e8;background:#eef2ff;color:#172a86}
 & .tour-more-toggle{justify-self:stretch;width:calc(100% - 36px);max-width:none;min-height:48px;margin:0 18px 16px;padding:12px 16px;border-color:var(--at-accent,#d83d00);background:var(--at-accent,#d83d00);color:#fff;font-size:16px;font-weight:700}
-& .tour-more-toggle[aria-expanded=true]{margin-top:14px;border-color:#c4cfeb;background:var(--at-soft-blue,#eef2ff);color:#2743cb}
+& .hotel-offers-heading .tour-more-toggle{justify-self:end;width:auto;min-height:44px;margin:0;padding:10px 12px;border-color:#c4cfeb;background:#fff;color:#2743cb;font-size:14px;font-weight:600}
 & .tour-loading{padding:12px;color:#526078}
 & .empty-actionable{display:grid;justify-items:start;gap:14px;padding:28px;border:1px dashed #bcc9e6;border-radius:18px;background:#fff}
 & .empty-actionable>strong{font-size:22px;line-height:1.3}
