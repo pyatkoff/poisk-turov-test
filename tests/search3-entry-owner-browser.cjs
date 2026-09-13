@@ -24,27 +24,30 @@ async function checkUrlRoundTrip(page, width, blocked) {
     for (const name of ['phone', 'email', 'consent']) {
       const field = document.createElement('input'); field.type = 'hidden'; field.name = name; field.value = 'fixture-private'; form.append(field);
     }
-    history.replaceState({ retained: 'entry-fixture' }, '', location.pathname + '?utm_source=entry-fixture&date_from=2000-01-01&days_from=1&child_age=9&only_charter=1#parameters');
+    history.replaceState({ retained: 'entry-fixture' }, '', location.pathname + '?utm_source=entry-fixture&date_from=2000-01-01&days_from=1&child_age=9&only_charter=1&phone=query-private&consent=1&random_secret=drop-me#parameters');
     const historyLength = history.length, expected = lifecycle.params(), calls = [];
     window.V2Runtime.api = async (action, params) => { calls.push({ action, params }); return { searchId: 701 }; };
     await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
     return { values, expected, calls, historyLength, afterLength: history.length, state: history.state, url: location.href };
   });
   assert.deepEqual(submitted.calls, [{ action: 'search_start', params: submitted.expected }], 'URL persistence preserves exactly one canonical supplier boundary call and its payload');
-  assert.equal(submitted.afterLength, submitted.historyLength, 'search conditions do not add navigation entries');
+  assert.equal(submitted.afterLength, submitted.historyLength + 1, 'a changed valid search creates one navigation entry');
   assert.deepEqual(submitted.state, { retained: 'entry-fixture' }, 'existing history state is retained');
   const saved = new URL(submitted.url);
-  for (const [name, value] of Object.entries(submitted.values)) assert.equal(saved.searchParams.get(name), value, 'URL retains exact ' + name);
+  for (const [name, value] of Object.entries(submitted.values)) {
+    if (name !== 'operator') assert.equal(saved.searchParams.get(name), value, 'URL retains exact ' + name);
+  }
   assert.deepEqual(saved.searchParams.getAll('child_age[]'), ['0', '17'], 'both boundary child ages retain their order');
   assert.deepEqual(saved.searchParams.getAll('hotel_service[]'), ['9', '10'], 'all selected services are retained');
   assert.equal(saved.searchParams.get('onlyDirect'), '1');
   assert.equal(saved.searchParams.get('child_count'), '2');
-  for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'phone', 'email', 'consent']) assert.equal(saved.searchParams.has(name), false, 'stale alias, unchecked flag or private field is excluded: ' + name);
+  for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'operator', 'phone', 'email', 'consent', 'random_secret']) assert.equal(saved.searchParams.has(name), false, 'stale alias, supplier restriction or private field is excluded: ' + name);
   assert.equal(saved.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(saved.hash, '#parameters');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle && document.querySelectorAll('#childAges select').length === 2 && document.querySelector('#childAges select').value === '0');
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
-  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submitted.expected, 'reload restores the exact submitted conditions through existing catalog/URL hydration');
+  const submittedReload = { ...submitted.expected, operatorIds: [] };
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'reload restores the exact shareable conditions without turning operator into an initial restriction');
   await page.screenshot({ path: path.join(output, `url-restored-${width}.png`), fullPage: true });
   const cleared = await page.evaluate(async () => {
     const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
@@ -59,18 +62,21 @@ async function checkUrlRoundTrip(page, width, blocked) {
     await lifecycle.submit();
     const invalid = { calls: calls.length, unchanged: location.href === before };
     form.elements.dateFrom.value = date;
-    const replace = history.replaceState;
-    history.replaceState = () => { throw new DOMException('Fixture history denial', 'SecurityError'); };
+    const push = history.pushState;
+    history.pushState = () => { throw new DOMException('Fixture history denial', 'SecurityError'); };
     await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
     const historyDenied = { calls: calls.length, unchanged: location.href === before };
-    history.replaceState = replace;
+    history.pushState = push;
     const expected = lifecycle.params();
+    const historyLength = history.length;
     await lifecycle.submit(); lifecycle.markDirty('url_fixture_release');
-    return { optional, invalid, historyDenied, expected, calls, url: location.href };
+    return { optional, invalid, historyDenied, expected, calls, historyLength, afterLength: history.length, state: history.state, url: location.href };
   });
   assert.deepEqual(cleared.invalid, { calls: 0, unchanged: true }, 'invalid conditions do not update URL or start supplier search');
   assert.deepEqual(cleared.historyDenied, { calls: 1, unchanged: true }, 'unavailable browser history does not interrupt the ordinary search');
   assert.deepEqual(cleared.calls, Array.from({ length: 2 }, () => ({ action: 'search_start', params: cleared.expected })), 'history availability does not alter the supplier payload or duplicate a submission');
+  assert.equal(cleared.afterLength, cleared.historyLength + 1, 'the second distinct search creates exactly one further navigation entry');
+  assert.deepEqual(cleared.state, { retained: 'entry-fixture' }, 'the second search also retains existing history state');
   const reset = new URL(cleared.url);
   for (const name of [...cleared.optional, 'child_age[]', 'hotel_service[]', 'onlyDirect', 'onlyCharter']) assert.equal(reset.searchParams.has(name), false, 'cleared restriction cannot return from URL: ' + name);
   assert.equal(reset.searchParams.get('child_count'), '0');
@@ -79,7 +85,21 @@ async function checkUrlRoundTrip(page, width, blocked) {
   await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle);
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
   assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'second reload retains zero children and cleared secondary filters');
-  fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, cleared, blocked, supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    page.evaluate(() => history.back()),
+  ]);
+  await page.waitForFunction(expected => location.href === expected && document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle, saved.href);
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'Back restores the previous shareable search without the operator restriction');
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    page.evaluate(() => history.forward()),
+  ]);
+  await page.waitForFunction(expected => location.href === expected && document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle, cleared.url);
+  await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'Forward restores the newer cleared search exactly once');
+  fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, submittedReload, cleared, blocked, navigation: ['reload', 'back', 'forward'], supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
 }
 async function run(browser, width) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
@@ -229,15 +249,14 @@ async function run(browser, width) {
     await flightTargets.first().locator('span').click();
     await page.locator('#tourSearch > .extras > summary').click();
     await adults.selectOption('4');
-    const editingLayout = await page.evaluate(() => {
+    const resultsLayout = await page.evaluate(() => {
       const results = document.querySelector('#results');
       const probe = document.createElement('div'); results.append(probe);
-      document.body.classList.add('search3-editing-search');
-      const display = getComputedStyle(document.querySelector('#tourSearch')).display;
-      probe.remove(); document.body.classList.remove('search3-editing-search');
-      return display;
+      const value = { form: getComputedStyle(document.querySelector('#tourSearch')).display, results: getComputedStyle(probe).display };
+      probe.remove();
+      return value;
     });
-    assert.equal(editingLayout, 'grid', 'editing an existing search retains the same form layout');
+    assert.deepEqual(resultsLayout, { form: 'grid', results: 'block' }, 'the canonical form remains visible beside populated results without a retired editing class');
     await children.selectOption('2');
     await page.waitForFunction(() => document.querySelectorAll('#childAges select').length === 2);
     await page.locator('#childAges select').nth(0).selectOption('8');
