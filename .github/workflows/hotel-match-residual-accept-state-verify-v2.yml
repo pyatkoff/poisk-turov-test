@@ -1,0 +1,43 @@
+name: MATCH residual accept state verify v2
+on:
+  push:
+    branches: [ops/match-residual-accept-state-verify-1971-20260913-v2]
+    paths: [.github/match-residual-accept-state-verify-1971-20260913-v2.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-residual-accept-state-verify-1971-20260913-v2}
+jobs:
+  verify:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve before SSH
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          printf '%s\n' '{"operation_id":"hotel-match-residual-accept-state-verify-1971-20260913-v2","state":"reserved_before_ssh","verifies_unknown_run":34756145099,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}' > "$RUNNER_TEMP/$OPERATION_ID/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-residual-accept-state-verify-v2-reservation, path: '${{ runner.temp }}/hotel-match-residual-accept-state-verify-1971-20260913-v2/reservation.json', retention-days: 90}
+      - name: Verify CURRENT rows read-only
+        id: verify
+        continue-on-error: true
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path;state=P(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];php='''<?php
+          $root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');$a=[];$q=$db->prepare("SELECT external_hotel_id,local_hotel_id,decision_status,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=?");foreach(['116593','122823','243802'] as $id){$q->execute([$id]);$r=$q->fetch(PDO::FETCH_ASSOC);$ev=$r?json_decode((string)$r['evidence_json'],true):null;$a[$id]=['local_hotel_id'=>$r['local_hotel_id']??null,'decision_status'=>$r['decision_status']??null,'promotion_operation'=>is_array($ev)?($ev['promotion']['operation_id']??null):null];}$q=$db->prepare("SELECT anex_hotel_id,catalog_hotel_id,approval_policy,enabled,source_row_digest FROM anex_hotel_search_mappings WHERE anex_hotel_id=30424 ORDER BY catalog_hotel_id");$q->execute();$an=$q->fetchAll(PDO::FETCH_ASSOC);$db->commit();echo json_encode(['status'=>'completed','operation_id'=>'hotel-match-residual-accept-state-verify-1971-20260913-v2','andromeda'=>$a,'anex30424'=>$an,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES),"\n";?>'''
+          raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='hmrv2-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'];p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=300)
+          if p.returncode!=0:raise SystemExit(2)
+          v=json.loads(p.stdout);raw_result=(json.dumps(v,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw_result);state.joinpath('receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_verification','run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw_result).hexdigest(),'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-residual-accept-state-verify-v2-${{ github.run_id }}', path: '${{ runner.temp }}/hotel-match-residual-accept-state-verify-1971-20260913-v2/', retention-days: 90}
+      - name: Terminal gate
+        if: steps.verify.outcome != 'success'
+        run: exit 1
