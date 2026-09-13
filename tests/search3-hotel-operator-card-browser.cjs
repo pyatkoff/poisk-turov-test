@@ -22,10 +22,10 @@ module.exports=async function checkOperatorCards(page,width,output){
   try{
     await page.evaluate(h=>{window.dispatchEvent(new CustomEvent('v2:search-reset'));const freeze=v=>{if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;};window.__brandOriginal=freeze(h);window.V2Results.render([window.__brandOriginal]);},hotel);
     const card=page.locator('[data-hotel-id="brand-hotel"].hotel-card');
-    const logos=card.locator('.hotel-operator-logo');
+    const logos=card.locator('.hotel-operators>.hotel-operators-list>.hotel-operator .hotel-operator-logo');
     await card.scrollIntoViewIfNeeded();
-    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.hotel-operator-logo')).length===3&&Array.from(document.querySelectorAll('.hotel-operator-logo')).every(img=>img.complete&&img.naturalWidth>0));
-    assert.deepEqual(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)),['funsun','anex','intourist']);
+    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.hotel-operators>.hotel-operators-list>.hotel-operator .hotel-operator-logo')).length===3&&Array.from(document.querySelectorAll('.hotel-operators>.hotel-operators-list>.hotel-operator .hotel-operator-logo')).every(img=>img.complete&&img.naturalWidth>0));
+    assert.deepEqual(await card.locator('.hotel-operators>.hotel-operators-list>[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)),['funsun','anex','intourist']);
     assert.equal(await logos.evaluateAll(nodes=>nodes.every(n=>new URL(n.src).origin===location.origin)),true,'brand artwork is local, not hotlinked');
     assert.equal(await card.locator('.direct-tour,.tour-row').count(),0,'collapsed hotel does not pretend to be a specific tour');
     const collapsedText=await card.locator('.hotel-trip-summary').innerText();
@@ -33,8 +33,12 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.match(collapsedText,/7–10 ноч\./);
     assert.match(collapsedText,/3 варианта питания/);
     assert.match(collapsedText,/Разные варианты перелёта/);
-    assert.equal(await card.locator('.hotel-operator-more').innerText(),'+2');
-    assert.equal(await card.locator('.hotel-operator-more').getAttribute('aria-label'),'Ещё 2 туроператоров: Библио-Глобус, LOCAL OPERATOR');
+    const more=card.locator('details.hotel-operator-more'),moreToggle=more.locator('summary');
+    assert.equal(await moreToggle.innerText(),'+2');
+    assert.equal(await moreToggle.getAttribute('aria-label'),'Другие туроператоры: 2');
+    assert.equal(await more.evaluate(node=>node.open),false);
+    const target=await moreToggle.boundingBox();
+    assert.ok(target.width>=44&&target.height>=44,'operator disclosure has a usable touch target');
     assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽');
     assert.equal(await card.locator('.tour-more-toggle').count(),1);
     const toggle=card.locator('.tour-more-toggle');
@@ -44,6 +48,19 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not compete with the exact offer CTA');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     await card.screenshot({path:path.join(output,`operator-card-collapsed-${width}.png`),animations:'disabled'});
+    await moreToggle.focus();await moreToggle.press('Enter');
+    assert.equal(await more.evaluate(node=>node.open),true,'keyboard opens remaining operator names');
+    assert.equal(await moreToggle.evaluate(node=>node===document.activeElement),true,'native disclosure retains focus');
+    assert.deepEqual(await more.locator('.hotel-operator-name').allTextContents(),['Библио-Глобус','LOCAL OPERATOR']);
+    for(const name of await more.locator('.hotel-operator-name').all())assert.equal(await name.isVisible(),true,'sighted touch users can read the actual remaining names');
+    await more.scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>{const image=document.querySelector('.hotel-operator-more [data-operator-brand="biblio-globus"] img');return image&&image.complete&&image.naturalWidth>0;});
+    assert.equal(await more.locator('.hotel-operator:not([data-operator-brand]) img').count(),0,'unknown operator keeps a text fallback');
+    assert.equal(await card.evaluate(node=>node.scrollWidth>node.clientWidth+1),false,'expanded operator list stays inside the hotel card');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    await card.locator('.hotel-operators').screenshot({path:path.join(output,`operator-card-operators-${width}.png`),animations:'disabled'});
+    await moreToggle.click();
+    assert.equal(await more.evaluate(node=>node.open),false,'pointer closes the same native disclosure');
     await toggle.focus();await toggle.press('Enter');
     assert.equal(await card.locator('.hotel-trip-summary').count(),0,'expanded detail is exact offers, not another nested aggregate');
     assert.equal(await card.locator('.tour-row').count(),10);
@@ -103,6 +120,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,visible_logos:['funsun','anex','intourist'],known_logo_coverage:['funsun','anex','intourist','biblio-globus'],operator_overflow:'+2',exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,visible_logos:['funsun','anex','intourist'],known_logo_coverage:['funsun','anex','intourist','biblio-globus'],operator_overflow:{label:'+2',keyboard:true,pointer:true,visible_names:['Библио-Глобус','LOCAL OPERATOR'],known_logo_loaded:true},exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };
