@@ -1,0 +1,37 @@
+name: MATCH GLOBAL ANEX hotelCode queue v1
+on:
+  push:
+    branches: [ops/match-global-current-review-2333-20260913-v1]
+    paths: [.github/match-global-anex-hotelcode-queue-2333-20260913-v1.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-global-anex-hotelcode-queue-2333-20260913-v1}
+jobs:
+  queue:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Build CURRENT unresolved ANEX evidence queue read-only
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"; printf '%s\n' '{"operation_id":"hotel-match-global-anex-hotelcode-queue-2333-20260913-v1","state":"reserved_before_ssh","database_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}' > "$RUNNER_TEMP/$OPERATION_ID/reservation.json"
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path;state=P(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+            x=P(path).read_text();x=x[5:] if x.startswith('<?php') else x;return x.replace('declare(strict_types=1);','',1).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n",'',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php');bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("require_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1);ev=body('scripts/diagnostics/anex_hotelcode_evidence.php');q=body('scripts/diagnostics/anex_hotelcode_current_queue.php').replace("require_once __DIR__ . '/hotel_match_current_bulk_review.php';\nrequire_once __DIR__ . '/anex_hotelcode_evidence.php';\n",'',1).replace("const AHQ_OPERATION = 'hotel-match-anex-hotelcode-current-queue-1971-20260911-v1';","const AHQ_OPERATION = 'hotel-match-global-anex-hotelcode-queue-2333-20260913-v1';",1)
+          wrapper="$root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$out=ahq_review($db,'hotel-match-global-anex-hotelcode-queue-2333-20260913-v1');echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";"
+          source='<?php\n'+"define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+ev+'\n'+q+'\n'+wrapper;raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='ahq-global-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M'],input=source,text=True,capture_output=True,timeout=600)
+          if p.returncode!=0:raise SystemExit(2)
+          v=json.loads(p.stdout);raw_result=(json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw_result);ok=v.get('status')=='completed' and v.get('database_writes')==0 and v.get('supplier_calls')==0;state.joinpath('receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only' if ok else 'invalid','run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw_result).hexdigest(),'counts':v.get('counts'),'coverage':v.get('coverage'),'examined':v.get('examined'),'database_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps({'counts':v.get('counts'),'examined':v.get('examined')},ensure_ascii=False,sort_keys=True));
+          if not ok:raise SystemExit(3)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-global-anex-hotelcode-queue-v1-${{ github.run_id }}', path: '${{ runner.temp }}/hotel-match-global-anex-hotelcode-queue-2333-20260913-v1/', retention-days: 90}
