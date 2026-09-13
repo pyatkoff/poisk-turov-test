@@ -61,7 +61,7 @@ $assert($unknown['application_state'] === 'unknown' && $unknown['party_surcharge
     && $unknown['arithmetic_applied'] === false, 'ambiguous APD rows never become zero or arithmetic');
 
 $source = file_get_contents(__DIR__ . '/../scripts/diagnostics/anex_egypt_248_apd_retained.php');
-$assert(is_string($source) && strpos($source, "'tour' => (int) $selected['program']") !== false,
+$assert(is_string($source) && strpos($source, "'tour' => (int) \$selected['program']") !== false,
     'supplier program is taken from selected concrete offer at the APD call');
 $assert(strpos($source, 'ANEX_EGYPT_248_APD_EXPECTED_PROGRAM') === false,
     'no expected supplier program constant exists');
