@@ -180,7 +180,11 @@ final class AnyTourAnexAdditionalPricesClient
                 || ($entry['status'] ?? null) !== 'unknown') {
                 return;
             }
-            $cachePayload = $this->cachePayload($payload);
+            try {
+                $cachePayload = $this->cachePayload($payload);
+            } catch (Throwable $ignored) {
+                return;
+            }
             $complete = [
                 'version' => self::CACHE_VERSION,
                 'day' => $paths['day'],
@@ -377,9 +381,7 @@ final class AnyTourAnexAdditionalPricesClient
             throw new RuntimeException('ANEX_B2B_INVALID_RESPONSE');
         }
         $this->validateResponseContext($decoded, $criteria);
-        $redacted = $this->redactPayload($decoded);
-        $this->cachePayload($redacted);
-        return $redacted;
+        return $this->redactPayload($decoded);
     }
 
     private function validateCriteria(array $criteria): array
