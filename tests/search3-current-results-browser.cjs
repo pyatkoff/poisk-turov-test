@@ -191,7 +191,7 @@ async function checkExpandedDensity(page, width, previous) {
       assert.notEqual(geometry.collapseColor, geometry.actionColor, 'collapse is visually secondary to choosing a tour');
       assert.equal(geometry.pageOverflow, false);
       if (inspectedWidth <= 390) assert.ok(geometry.action.y + geometry.action.height <= 760, 'first exact selection is reachable within the initial expanded card viewport');
-      measurements.push({ width: inspectedWidth, ...geometry });
+      measurements.push({ viewportWidth: inspectedWidth, ...geometry });
       if (!previous) {
         await card.evaluate(node => scrollTo({ top: node.getBoundingClientRect().top + scrollY, behavior: 'instant' }));
         await page.screenshot({ path: path.join(output, `card-density-${inspectedWidth}.png`), animations: 'disabled' });
@@ -283,10 +283,11 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('.direct-tour').count(), 0, 'a collapsed aggregate does not select an undisclosed offer');
     assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от120000₽', 'selected meal sets the actual matching minimum, explicitly labelled from');
     assert.match(await a.locator('.hotel-trip-summary').innerText(), /Несколько дат вылета/, 'different matching departures are not presented as one representative date');
-    assert.match(await a.locator('.hotel-choice-hint').innerText(), /3 варианта/, 'counts only matching AI aliases across providers');
+    assert.equal(await a.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'counts only matching AI aliases across providers');
     assert.ok((await a.locator('.tour-more-toggle').boundingBox()).height >= 44, 'matching-offer disclosure keeps a full touch target');
     await a.locator('.tour-more-toggle').focus();
     await a.locator('.tour-more-toggle').press('Enter');
+    assert.equal(await a.locator('.hotel-offers-heading>strong').innerText(), '3 варианта тура', 'expanded count also describes only matching AI aliases');
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
     assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
