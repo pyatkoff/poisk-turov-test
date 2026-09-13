@@ -15,16 +15,26 @@ foreach([
 ] as [$key,$value]){$v=$base;$v[$key]=$value;try{anex_three_price_input($v);three_check(false);}catch(RuntimeException $e){three_check($e->getMessage()==='THREE_PRICE_INVALID_INPUT');}}
 $v=$base;$v['extra']=1;try{anex_three_price_input($v);three_check(false);}catch(RuntimeException $e){three_check(true);}
 
+$egypt=['experiment_id'=>ANEX_THREE_PRICE_EGYPT_EXPERIMENT,'case_id'=>'anex','country'=>'Egypt','date'=>'2026-10-21','nights'=>7,
+    'adults'=>2,'child_ages'=>[],'meal_family'=>'ai','currency'=>'RUB'];
+three_check(anex_three_price_input($egypt)===$egypt);
+$v=$egypt;$v['date']='2026-10-22';try{anex_three_price_input($v);three_check(false);}catch(RuntimeException $e){three_check($e->getMessage()==='THREE_PRICE_INVALID_INPUT');}
+$v=$egypt;$v['experiment_id']='anex_three_source_price_20260913_egypt_v2';try{anex_three_price_input($v);three_check(false);}catch(RuntimeException $e){three_check($e->getMessage()==='THREE_PRICE_INVALID_INPUT');}
+
 foreach(['AI','All Inclusive','UAI','Ультра все включено','все включено без алкоголя'] as $meal)three_check(anex_three_price_meal($meal)==='ai');
 foreach(['BB','HB','RO',''] as $meal)three_check(anex_three_price_meal($meal)===null);
 three_check(anex_three_price_decimal('123456.78')==='123456.78');
 foreach(['0','-1','1e5','1,2','1.234',NAN] as $bad)three_check(anex_three_price_decimal($bad)===null);
 
-$row=anex_three_price_offer('tourvisor',6319,6319,'2026-09-27',7,2,0,'AI','STANDARD ROOM','DBL','123456.00','RUB',2500);
+$turkeySpec=anex_three_price_spec(ANEX_THREE_PRICE_EXPERIMENT);
+$egyptSpec=anex_three_price_spec(ANEX_THREE_PRICE_EGYPT_EXPERIMENT);
+$row=anex_three_price_offer($turkeySpec,'tourvisor',6319,6319,'2026-09-27',7,2,0,'AI','STANDARD ROOM','DBL','123456.00','RUB',2500);
 three_check(is_array($row)&&$row['room_norm']==='standard room'&&$row['placement_norm']==='dbl');
 three_check($row['fuel_charge']==='2500'&&$row['fuel_inclusion_verified']===false&&$row['final_price_verified']===false);
-three_check(anex_three_price_offer('anex',6319,8121,'2026-09-27',7,2,0,'BB','STANDARD','DBL','100000','RUB')===null);
-three_check(anex_three_price_offer('andromeda',6319,'8121','2026-09-27',7,2,0,'AI','STANDARD','DBL','100000','USD')===null);
+three_check(anex_three_price_offer($egyptSpec,'anex',6319,8121,'2026-10-21',7,2,0,'AI','STANDARD','DBL','100000','RUB')!==null);
+three_check(anex_three_price_offer($egyptSpec,'anex',6319,8121,'2026-09-27',7,2,0,'AI','STANDARD','DBL','100000','RUB')===null);
+three_check(anex_three_price_offer($turkeySpec,'anex',6319,8121,'2026-09-27',7,2,0,'BB','STANDARD','DBL','100000','RUB')===null);
+three_check(anex_three_price_offer($turkeySpec,'andromeda',6319,'8121','2026-09-27',7,2,0,'AI','STANDARD','DBL','100000','USD')===null);
 
 $initial=['schema_version'=>1,'status'=>'blocked','offers'=>[],'supplier_effect'=>'unknown_after_reservation','reused'=>false,'case_id'=>'anex'];
 $subject=['local_hotel_id'=>6319,'anex_hotel_id'=>8121,'andromeda_hotel_id'=>'9001'];
