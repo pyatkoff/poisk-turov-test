@@ -119,15 +119,29 @@ async function checkRerenderFocus(page, width, output) {
   const last = calendar.locator('[data-calendar-date="2099-09-21"]');
   await page.keyboard.press('Tab');
   await last.focus();
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
-  const position = () => calendar.evaluate(node => ({ scrollLeft: node.querySelector('.current-price-calendar__days').scrollLeft, pageY: scrollY }));
+  // Native focus can start the page's existing smooth scroll. Measure only after
+  // that movement settles, on BOTH sides of the rerender; retain strict deltas.
+  const position = () => calendar.evaluate(node => new Promise((resolve, reject) => {
+    const strip = node.querySelector('.current-price-calendar__days');
+    let prior = null, stable = 0, frames = 0;
+    const sample = () => {
+      const current = { scrollLeft: strip.scrollLeft, pageY: scrollY };
+      stable = prior && current.scrollLeft === prior.scrollLeft && current.pageY === prior.pageY ? stable + 1 : 0;
+      prior = current;
+      if (stable >= 8) return resolve({ ...current, frames });
+      if (++frames >= 180) return reject(new Error('Calendar scroll did not settle before measurement'));
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
   const before = await position();
   await emit('v2:search-continued', updated);
   assert.equal(await last.evaluate(node => node === document.activeElement), true, 'continued prices retain keyboard focus on the same date, not body');
   assert.equal(await last.locator('strong').innerText(), new Intl.NumberFormat('ru-RU').format(160500) + ' ₽', 'focus restoration does not prevent updated prices rendering');
   const after = await position();
+  fs.writeFileSync(path.join(output, `calendar-rerender-${width}-position.json`), JSON.stringify({ width, before, after }, null, 2) + '\n');
   assert.ok(Math.abs(after.scrollLeft - before.scrollLeft) <= 1, 'late-date mobile strip scroll survives replacement');
-  assert.ok(Math.abs(after.pageY - before.pageY) <= 2, 'same-date rerender does not jump the page');
+  assert.ok(Math.abs(after.pageY - before.pageY) <= 2, `same-date rerender does not jump the page: ${before.pageY} -> ${after.pageY}`);
   if ([375, 1440].includes(width)) await calendar.screenshot({ path: path.join(output, `calendar-rerender-${width}-date-focus.png`) });
 
   await calendar.locator('summary').focus();
