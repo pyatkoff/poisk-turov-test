@@ -1,0 +1,37 @@
+name: MATCH ANEX XML Online audit v1
+on:
+  push:
+    branches: [ops/match-anex-xml-online-audit-1971-20260913-v1]
+    paths: [.github/workflows/hotel-match-anex-xml-online-audit-v1.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Inspect ANEX XML and Online identity evidence read-only
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,pathlib,subprocess,tempfile
+          php='''<?php
+          $root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');
+          $tabs=$db->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND (LOWER(TABLE_NAME) LIKE '%anex%' OR LOWER(TABLE_NAME) LIKE '%hotel%') ORDER BY TABLE_NAME")->fetchAll(PDO::FETCH_COLUMN);
+          $cols=[];foreach($tabs as$t){$q=$db->prepare("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND (LOWER(COLUMN_NAME) LIKE '%xml%' OR LOWER(COLUMN_NAME) LIKE '%online%' OR LOWER(COLUMN_NAME) LIKE '%anex%' OR LOWER(COLUMN_NAME) LIKE '%hotel%') ORDER BY ORDINAL_POSITION");$q->execute([$t]);$c=$q->fetchAll(PDO::FETCH_COLUMN);if($c)$cols[$t]=$c;}
+          $out=['status'=>'completed','operation_id'=>'hotel-match-anex-xml-online-audit-1971-20260913-v1','tables'=>$cols,'ids'=>[],'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true];
+          foreach([31364,34395] as$id){$r=['anex_hotel_id'=>$id];foreach(['anex_hotels','anex_hotel_search_mappings','anex_hotel_decisions','anex_search_hotel_observations'] as$t){if(!in_array($t,$tabs,true))continue;$q=$db->prepare("SELECT * FROM `$t` WHERE anex_hotel_id=? LIMIT 50");$q->execute([$id]);$r[$t]=$q->fetchAll(PDO::FETCH_ASSOC);} $out['ids'][(string)$id]=$r;}
+          foreach($cols as$t=>$c){$candidateCols=array_values(array_filter($c,fn($x)=>stripos($x,'xml')!==false||stripos($x,'online')!==false));if(!$candidateCols)continue;$where=[];$args=[];foreach($candidateCols as$cc){$where[]="CAST(`$cc` AS CHAR) IN (?,?)";$args[]=31364;$args[]=34395;}try{$q=$db->prepare("SELECT * FROM `$t` WHERE ".implode(' OR ',$where)." LIMIT 100");$q->execute($args);$rows=$q->fetchAll(PDO::FETCH_ASSOC);if($rows)$out['relation_candidates'][$t]=$rows;}catch(Throwable$e){$out['relation_errors'][$t]=get_class($e);} }
+          $db->commit();echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          ?>'''
+          P=pathlib.Path;raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='anex-xo-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+            p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=php,text=True,capture_output=True,timeout=300)
+          if p.returncode!=0: print(p.stderr); raise SystemExit(2)
+          v=json.loads(p.stdout);pathlib.Path('anex-xml-online-audit.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'tables_with_relation_columns':list(v.get('relation_candidates',{}).keys()),'ids':list(v['ids'].keys())},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-anex-xml-online-audit-v1-${{ github.run_id }}', path: anex-xml-online-audit.json, retention-days: 90}
