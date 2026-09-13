@@ -1,0 +1,72 @@
+name: MATCH GLOBAL provider name bridge v1
+on:
+  push:
+    branches: ['ops/match-global-current-review-2333-20260913-v1']
+    paths:
+      - '.github/workflows/hotel-match-global-provider-name-bridge-v1.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-global-provider-name-bridge-2333-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-provider-name-bridge-review-2333-20260913-v1
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_provider_name_bridge_review.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' scripts/diagnostics/hotel_match_provider_name_bridge_review.php
+      - name: SSH key
+        env: {KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi; chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+      - name: Run CURRENT read-only
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['STATE']);(p/'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'supplier_calls':0,'no_replay':True},sort_keys=True)+'\n')
+          def body(path):
+              s=Path(path).read_text()
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          pend=body('scripts/diagnostics/hotel_match_pending_candidate_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          live=body('scripts/diagnostics/hotel_match_live_priority_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_pending_candidate_bridge_review.php';\n",'',1)
+          trans=body('scripts/diagnostics/hotel_match_translit_exact_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_live_priority_review.php';\n",'',1)
+          bridge=body('scripts/diagnostics/hotel_match_provider_name_bridge_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_translit_exact_review.php';\n",'',1)
+          wrapper="$root=realpath(getcwd());require_once $root.'/config.php';require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();echo fc_json(hmpnb_review($db,HMPNB_OPERATION)),\"\\n\";"
+          (p/'payload.php').write_text("<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+pend+'\n'+live+'\n'+trans+'\n'+bridge+'\n'+wrapper)
+          PYTHON
+          key="$RUNNER_TEMP/key"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15); remote="/tmp/match-provider-name-${GITHUB_RUN_ID}.php"; trap 'ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "rm -f '$remote'" >/dev/null 2>&1 || true' EXIT
+          scp "${opts[@]}" "$STATE/payload.php" "$USER_VALUE@$HOST_VALUE:$remote"
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" "cd \"\$HOME/www/anytoour.ru\" && php -d display_errors=0 -d log_errors=0 -r 'include \"$remote\";'" > "$STATE/result.json"
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['STATE']);x=json.loads((p/'result.json').read_text());assert x['status']=='completed' and x['database_writes']==0 and x['supplier_calls']==0
+          (p/'receipt.json').write_text(json.dumps({'operation_id':x['operation_id'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'stats':x['stats'],'database_writes':0,'supplier_calls':0},sort_keys=True)+'\n')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-global-provider-name-bridge-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-provider-name-bridge-review-2333-20260913-v1/
+          if-no-files-found: error
+          retention-days: 90
