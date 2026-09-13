@@ -1,0 +1,61 @@
+name: MATCH GLOBAL star-soft learned-geo accept v1
+on:
+  push:
+    branches: [ops/match-global-current-review-2333-20260913-v1]
+    paths: [.github/match-star-soft-learned-geo-accept-2333-20260913-v1.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-star-soft-learned-geo-accept-2333-20260913-v1}
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable operation
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          printf '%s\n' '{"operation_id":"hotel-match-star-soft-learned-geo-accept-2333-20260913-v1","state":"reserved_before_ssh","planned":{"andromeda":2},"database_writes":0,"supplier_calls":0,"no_replay":true}' > "$RUNNER_TEMP/$OPERATION_ID/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-star-soft-learned-geo-accept-v1-reservation, path: '${{ runner.temp }}/hotel-match-star-soft-learned-geo-accept-2333-20260913-v1/reservation.json', retention-days: 90}
+      - name: Apply guarded CURRENT star-soft mappings
+        id: write
+        continue-on-error: true
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile,time
+          P=pathlib.Path;state=P(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          php=r'''<?php
+          $op='hotel-match-star-soft-learned-geo-accept-2333-20260913-v1';$committed=false;$written=[];
+          function nn($v){$v=mb_strtolower(trim((string)$v),'UTF-8');$v=preg_replace('/\s*\(\s*(?:ex|ех)\s*\.?\s*[^()]+\)\s*$/ui',' ',$v);$v=preg_replace('/\b(hotel|resort|spa)\b/ui',' ',$v);$v=preg_replace('/[^\p{L}\p{N}]+/u',' ',$v);return trim(preg_replace('/\s+/u',' ',$v));}
+          function geo($v){$v=mb_strtolower(trim((string)$v),'UTF-8');$v=strtr($v,['щ'=>'shch','ш'=>'sh','ч'=>'ch','ц'=>'ts','ю'=>'yu','я'=>'ya','ё'=>'e','ж'=>'zh','х'=>'kh','а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u','ф'=>'f','ы'=>'y','э'=>'e','ь'=>'','ъ'=>'']);$v=preg_replace('/[^a-z0-9]+/',' ',$v);return trim(preg_replace('/\s+/',' ',$v));}
+          function distm($a,$b,$c,$d){foreach([$a,$b,$c,$d] as $x)if(!is_numeric($x))return null;$a=deg2rad((float)$a);$c=deg2rad((float)$c);$dp=$c-$a;$dl=deg2rad((float)$d-(float)$b);$h=sin($dp/2)**2+cos($a)*cos($c)*sin($dl/2)**2;return 12742000*asin(min(1,sqrt($h)));}
+          try{$root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET SESSION innodb_lock_wait_timeout=20');$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->beginTransaction();
+          $targets=[['id'=>'2000088483','local'=>45746,'source_place'=>'Мальдивский Архипелаг','target_place'=>'Мальдивы','min_support'=>100],['id'=>'2000091283','local'=>43658,'source_place'=>'Нилавели','target_place'=>'Тринкомали','min_support'=>5]];
+          $hotels=[];foreach($db->query('SELECT id,name,region_name,subregion_name,category,latitude,longitude FROM catalog_hotels WHERE is_active=1 FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC) as $h)$hotels[(int)$h['id']]=$h;
+          $learn=[];foreach($db->query("SELECT external_hotel_id,local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL FOR UPDATE")->fetchAll(PDO::FETCH_ASSOC) as $r){$lid=(int)$r['local_hotel_id'];if(!isset($hotels[$lid]))continue;$e=json_decode((string)$r['evidence_json'],true);if(!is_array($e))$e=[];$src=$e['source']??($e['prior_evidence']['source']??[]);$g=$e['geography']??($e['prior_evidence']['geography']??[]);$sp=[];foreach([is_array($src)?($src['town']??''):'',is_array($g)?($g['town']??''):'',is_array($g)?($g['parent']??''):''] as $x){$k=geo($x);if($k!=='')$sp[$k]=1;}$tk=[];foreach([$hotels[$lid]['region_name']??'',$hotels[$lid]['subregion_name']??''] as $x){$k=geo($x);if($k!=='')$tk[$k]=1;}foreach(array_keys($sp) as $s)foreach(array_keys($tk) as $t)$learn[$s][$t]=($learn[$s][$t]??0)+1;}
+          $q=$db->prepare("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=? FOR UPDATE");$upd=$db->prepare("UPDATE andromeda_hotel_identities SET local_hotel_id=?,decision_status='accepted',evidence_sha256=?,evidence_json=? WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=? AND decision_status='pending' AND local_hotel_id IS NULL AND evidence_sha256 <=> ?");
+          foreach($targets as $t){$q->execute([$t['id']]);$r=$q->fetch(PDO::FETCH_ASSOC);if(!$r||(string)$r['decision_status']!=='pending'||$r['local_hotel_id']!==null)throw new RuntimeException('state_changed_'.$t['id']);$h=$hotels[$t['local']]??null;if(!$h)throw new RuntimeException('target_missing_'.$t['id']);$e=json_decode((string)$r['evidence_json'],true);if(!is_array($e))$e=[];$src=$e['source']??($e['prior_evidence']['source']??[]);$sourceName=is_array($src)?(string)($src['name']??''):'';if($sourceName===''||nn($sourceName)!==nn((string)$h['name']))throw new RuntimeException('identity_changed_'.$t['id']);$s=geo($t['source_place']);$tk=geo($t['target_place']);$total=array_sum($learn[$s]??[]);$support=(int)($learn[$s][$tk]??0);$conf=$total>0?$support/$total:0;if($support<$t['min_support']||$conf<0.80)throw new RuntimeException('geo_support_changed_'.$t['id']);$distance=null;if(is_array($src))$distance=distm($src['latitude']??null,$src['longitude']??null,$h['latitude']??null,$h['longitude']??null);if($distance!==null&&$distance>5000)throw new RuntimeException('coordinate_conflict_'.$t['id']);$ev=['prior_evidence'=>$e,'promotion'=>['operation_id'=>$op,'lane'=>'MATCH','rule'=>'exact_identity_plus_learned_geo_star_annotation','target'=>$t['local'],'source_name'=>$sourceName,'source_place'=>$t['source_place'],'target_place'=>$t['target_place'],'geo_support'=>$support,'geo_total'=>$total,'geo_confidence'=>round($conf,6),'source_star'=>is_array($src)?($src['star']??null):null,'target_star'=>$h['category'],'star_policy'=>'annotation_only_not_identity_veto','distance_m'=>$distance,'server_current'=>true]];$json=json_encode($ev,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);$hash=hash('sha256',$json);$upd->execute([$t['local'],$hash,$json,$t['id'],$r['evidence_sha256']]);if($upd->rowCount()!==1)throw new RuntimeException('concurrent_change_'.$t['id']);$written[]=['external_id'=>$t['id'],'local_hotel_id'=>$t['local'],'evidence_sha256'=>$hash,'geo_support'=>$support,'geo_total'=>$total,'geo_confidence'=>round($conf,6)];}
+          if(count($written)!==2)throw new RuntimeException('write_count');$db->commit();$committed=true;$rb=$db->prepare("SELECT local_hotel_id,decision_status,evidence_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=?");foreach($written as $w){$rb->execute([$w['external_id']]);$x=$rb->fetch(PDO::FETCH_ASSOC);if(!$x||(int)$x['local_hotel_id']!==(int)$w['local_hotel_id']||(string)$x['decision_status']!=='accepted'||!hash_equals($w['evidence_sha256'],(string)$x['evidence_sha256']))throw new RuntimeException('readback_'.$w['external_id']);}echo json_encode(['status'=>'completed','operation_id'=>$op,'database_writes'=>2,'mapping_writes'=>2,'supplier_calls'=>0,'tourvisor_calls'=>0,'committed'=>true,'readback_verified'=>true,'accepted'=>$written,'no_replay'=>true],JSON_UNESCAPED_SLASHES),"\n";}catch(Throwable $e){if(isset($db)&&$db->inTransaction())$db->rollBack();echo json_encode(['status'=>'failed','operation_id'=>$op,'reason'=>$e->getMessage(),'database_writes'=>$committed?'unknown':0,'mapping_writes'=>$committed?'unknown':0,'supplier_calls'=>0,'tourvisor_calls'=>0,'committed'=>$committed,'readback_verified'=>false,'no_replay'=>true]),"\n";}?>'''
+          raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='starsoft-write-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';sock=P(td)/'sock';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);base=['ssh','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR'];ok=False
+            for _ in range(3):
+              p=subprocess.run(base+['-M','-S',str(sock),'-fnNT','-o','ControlPersist=600','-l',user,host],capture_output=True,text=True,timeout=40)
+              if p.returncode==0:ok=True;break
+              time.sleep(8)
+            if not ok:state.joinpath('blocker.json').write_text('{"state":"auth_preflight_failed_zero_remote_execution"}\n');raise SystemExit(2)
+            p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=php,text=True,capture_output=True,timeout=420);subprocess.run(['ssh','-S',str(sock),'-O','exit',host],capture_output=True,timeout=20)
+          if p.returncode!=0:state.joinpath('blocker.json').write_text(json.dumps({'state':'unknown_after_remote_execution_no_replay','remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest()})+'\n');raise SystemExit(3)
+          v=json.loads(p.stdout);raw_result=(json.dumps(v,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw_result);ok=v.get('status')=='completed' and v.get('committed') is True and v.get('readback_verified') is True and v.get('database_writes')==2 and v.get('mapping_writes')==2;state.joinpath('receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified' if ok else ('unknown_committed' if v.get('committed') else 'known_rolled_back'),'run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw_result).hexdigest(),'database_writes':v.get('database_writes'),'mapping_writes':v.get('mapping_writes'),'committed':v.get('committed'),'readback_verified':v.get('readback_verified'),'no_replay':True},sort_keys=True)+'\n');
+          if not ok:raise SystemExit(4)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-star-soft-learned-geo-accept-v1-${{ github.run_id }}', path: '${{ runner.temp }}/hotel-match-star-soft-learned-geo-accept-2333-20260913-v1/', retention-days: 90}
+      - name: Terminal gate
+        if: steps.write.outcome != 'success'
+        run: exit 1
