@@ -1,0 +1,111 @@
+{
+  "schema": "hotel-match-public-card-discovery-result/1",
+  "operation_id": "hotel-match-public-card-discovery-1971-20260913-v1",
+  "state": "completed_public_evidence_only",
+  "reservation_path": "reports/hotel-match-public-card-discovery-20260913-reservation.json",
+  "source_artifact_id": 10303632729,
+  "source_census_sha256": "24dd5bab497cb7fb530ae70945939abcecd20005a0332a9d2ad9f33be0a8407e",
+  "public_web": {
+    "search_queries_used": 27,
+    "search_query_limit": 64,
+    "unique_official_card_pages_observed": 7,
+    "official_page_read_limit": 80,
+    "access_denial_or_rate_limit": false,
+    "private_authentication": false,
+    "supplier_search_api_calls": 0,
+    "tourvisor_api_calls": 0,
+    "database_reads": 0,
+    "database_writes": 0,
+    "mapping_writes": 0
+  },
+  "direct_numeric_card_evidence": [
+    {
+      "target_anex_id": 32880,
+      "target_name": "Grand Emin Hotel.",
+      "observed_official_url": "https://anextour.ru/tours/turkey/grand-emin-hotel-32880",
+      "observed_numeric_suffix": 32880,
+      "url_name_alignment": "exact_target_id_and_name",
+      "official_page_facts": {
+        "country": "Turkey",
+        "city_or_area": "Istanbul / Laleli",
+        "address": "Mustafakemalpasa Cad. Fabrika Sokak No:13 YENIKAPI ISTANBUL",
+        "nearby_hotel": "Malkoc"
+      },
+      "evidence_level": "independent_public_official_card_id",
+      "acceptance_authority": false,
+      "reason_not_write_authority": "public ANEX card corroborates ANEX id/name only; Tourvisor/local target identity still requires CURRENT guarded reconciliation"
+    }
+  ],
+  "provider_duplicate_or_alias_risk": [
+    {
+      "target_anex_id": 30424,
+      "target_name": "Sarnic Hotel",
+      "observed_official_url": "https://anextour.ru/tours/turkey/sarnic-hotel-32772",
+      "observed_numeric_suffix": 32772,
+      "observed_official_name": "Sarnic Hotel.",
+      "status": "different_official_anex_id_for_same_public_name_hold",
+      "known_context": "ANEX 32772 was previously observed as mapped to local/Tourvisor 17617; residual 30424 must not be accepted by name-only equivalence",
+      "required_next_evidence": "provider-specific proof that 30424 is an alias/duplicate for the same physical hotel, or evidence that it is a distinct supplier object",
+      "acceptance_authority": false
+    }
+  ],
+  "official_name_or_card_corroboration_without_numeric_id": [
+    {
+      "target_anex_ids": [28882, 32743],
+      "target_name": "Malkoc Hotel",
+      "observed_official_url": "https://anextour.ru/tours/turkey/malkoc-hotel",
+      "status": "official_card_name_only_duplicate_family_hold"
+    },
+    {
+      "target_anex_id": 23894,
+      "target_name": "Greenport Hotel",
+      "observed_official_url": "https://anextour.ru/tours/turkey/greenport-hotel",
+      "status": "official_card_name_only"
+    },
+    {
+      "target_anex_id": 34680,
+      "target_name": "Amon Hotels Only Gentleman",
+      "observed_official_url": "https://anextour.ru/tours/turkey/amon-hotels-only-gentleman-adults-only-plus16",
+      "status": "official_card_name_only"
+    },
+    {
+      "target_anex_id": 19226,
+      "target_name": "Stella Gardens",
+      "observed_official_url": "https://anextour.ru/tours/egypt/stella-gardens-resortspa-makadi-bay",
+      "status": "official_card_name_only"
+    },
+    {
+      "target_anex_id": 29092,
+      "target_name": "Adora Hotel",
+      "observed_official_url": "https://anextour.ru/tours/turkey/adora-hotelresort",
+      "status": "possible_name_family_only_not_numeric_identity",
+      "note": "official result title is Adora Hotel & Resort; do not equate automatically with residual Adora Hotel"
+    }
+  ],
+  "official_sitemap_corroboration": {
+    "istanbul_names_seen": ["Adora Hotel", "Almina Inn Hotel", "Raimond Hotel", "Sarnic Hotel", "The Galataport Hotel"],
+    "bodrum_names_seen": ["Greenport Hotel", "Bodrum Beach Resort"],
+    "belek_names_seen": ["Amon Hotels Only Gentleman (Adults Only +16)"],
+    "egypt_hurghada_names_seen": ["Stella Gardens Resort & Spa Makadi Bay"],
+    "meaning": "official catalog presence only; sitemap names contain no observed numeric hotelCode and are not acceptance evidence"
+  },
+  "media_hotelcode_search": {
+    "files_anextour_queries": ["Grand Emin Hotel", "Raimond Hotel", "The Rose Bouquetes", "Sarnic Hotel", "The Galataport Hotel", "Almina Inn Hotel"],
+    "indexed_hotelcode_urls_found": 0,
+    "status": "no_public_indexed_media_hotelcode_evidence",
+    "guard": "no URL or hotelCode was synthesized from a candidate id"
+  },
+  "priority_impact": {
+    "direct_numeric_public_card_ids_confirmed": [32880],
+    "duplicate_or_alias_holds_strengthened": [30424, 28882, 32743],
+    "repeatable_saved_tv_candidates_unchanged": [32745, 44573, 30424, 29092, 29430],
+    "note": "30424 remains prioritized for investigation but is explicitly blocked from name-only acceptance because official Sarnic card exposes 32772"
+  },
+  "policy": {
+    "public_card_search_is_not_tourvisor_provenance": true,
+    "name_or_sitemap_presence_is_not_hotelcode": true,
+    "direct_numeric_card_url_only_confirms_anex_side": true,
+    "duplicate_provider_ids_are_never_collapsed_automatically": true,
+    "future_mapping_requires": "NEW CURRENT guarded reconciliation preserving mappings/manual decisions/exclusions/conflicts/occupancy/qualifiers/coordinates and per-row post-COMMIT readback"
+  }
+}
