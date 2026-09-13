@@ -2,9 +2,9 @@ name: ANEX Egypt retained APD prerequisite preflight
 on:
   push:
     branches:
-      - 'ops/int-egypt-248-apd-preflight-v1-20260914'
+      - 'ops/int-egypt-248-apd-preflight-v2-20260914'
     paths:
-      - '.github/ops/anex-egypt-248-apd-preflight-20260914-v1'
+      - '.github/ops/anex-egypt-248-apd-preflight-20260914-v2'
 permissions:
   contents: read
 concurrency:
@@ -19,7 +19,7 @@ jobs:
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
       ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-      REQUESTED_OPERATION: anex-egypt-248-apd-preflight-20260914-v1
+      REQUESTED_OPERATION: anex-egypt-248-apd-preflight-20260914-v2
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,10 +30,10 @@ jobs:
       - name: Bind exact reviewed preflight source
         id: control
         run: |
-          MARKER='control/.github/ops/anex-egypt-248-apd-preflight-20260914-v1'
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-248-apd-preflight-20260914-v1'
+          MARKER='control/.github/ops/anex-egypt-248-apd-preflight-20260914-v2'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-248-apd-preflight-20260914-v2'
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};scenario=Egypt-local248-anex10449-pre-reservation-prerequisites;owner=2026-09-14"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};scenario=Egypt-local248-anex10449-integration-source-component;owner=2026-09-14"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4

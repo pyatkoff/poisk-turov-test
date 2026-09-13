@@ -106,5 +106,12 @@ $assert(strpos($preflightSource, "resolve('anex_online', ANEX_EGYPT_248_APD_PREF
 $assert(strpos($preflightSource, 'semantic_reservation_written') !== false
     && strpos($preflightSource, "'semantic_reservation_written' => false") !== false,
     'preflight explicitly states it never reserves the semantic APD operation');
+$assert(strpos($preflightSource, "'anex_search' =>") !== false
+    && strpos($preflightSource, "'mapping_registry' =>") !== false
+    && strpos($preflightSource, "'additional_prices_client' =>") !== false,
+    'preflight uses bounded non-path integration component names');
+$assert(strpos($preflightSource, "'integration_source_presence'") !== false
+    && strpos($preflightSource, "'integration_component'") !== false,
+    'preflight exposes only component/presence classification for the integration source stage');
 
 echo "ANEX Egypt retained APD: {$checks} checks passed; network=0\n";
