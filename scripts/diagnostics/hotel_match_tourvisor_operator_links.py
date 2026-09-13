@@ -86,8 +86,10 @@ def flatten_results(payload: object) -> list[dict]:
     rows = []
     for row in payload:
         if not isinstance(row, dict):
-            continue
+            raise ValueError("INVALID_TOURVISOR_RESULT_ROW")
         if "tours" not in row:
+            if not isinstance(row.get("hotel"), dict):
+                raise ValueError("MISSING_TOURVISOR_HOTEL_TOURS")
             rows.append(row)
             continue
         if "hotel" in row or positive_int(row.get("id")) is None or not isinstance(row["tours"], list):
@@ -170,7 +172,7 @@ def build(queue: dict, tv_payload: object, expected_date: str) -> dict:
         local_id = positive_int(hotel.get("id"))
         if local_id is None or local_id not in targets:
             continue
-        tv_country_id = country_id(hotel.get("country"))
+        tv_country_id = country_id(hotel["country"] if "country" in hotel else result.get("country"))
         result_country_id = country_id(result.get("country"))
         coordinate_error = None
         try:
