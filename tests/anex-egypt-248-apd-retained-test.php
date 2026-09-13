@@ -79,5 +79,9 @@ $assert(strpos($workflow, 'code=strict+bootstrap+body') !== false
     'runner composes and executes strict_types before bootstrap/body');
 $assert(strpos($workflow, 'shlex.quote(bootstrap+body)') === false,
     'regressed bootstrap-before-strict composition is absent');
+$assert(strpos($workflow, "require_once $root.'/config.php';") !== false,
+    'runner loads the proven production config before the private/APD runtime');
+$assert(strpos($workflow, "$preview=realpath($root.'/_preview/search3-anex-candidate');") !== false,
+    'preview runtime is resolved from the validated production root');
 
 echo "ANEX Egypt retained APD: {$checks} checks passed; network=0\n";
