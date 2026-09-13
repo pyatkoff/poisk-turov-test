@@ -131,8 +131,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         for marker in ('input:not([type=checkbox])', 'font-size:16px!important', 'min-height:44px!important'):
             self.assertIn(marker, native)
         self.assertNotIn('search3-direct-control', native)
-        for marker in ('.results-layout', '.direct-tour', '[hidden]', '.v2-product-hero'):
+        for marker in ('.results-layout', '.direct-tour', '[hidden]'):
             self.assertIn(marker, results)
+        self.assertNotIn('.v2-product-hero', results)
         self.assertIn('& .v2-shell a{', results)
         self.assertIn('& .v2-shell :focus-visible{', results)
         self.assertNotIn('.at-global-header', results)
