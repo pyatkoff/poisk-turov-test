@@ -52,8 +52,38 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await single.locator('.hotel-trip-summary,.tour-more-toggle').count(),0);
     assert.equal(await single.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'62400₽');
     await single.screenshot({path:path.join(output,`operator-card-single-${width}.png`),animations:'disabled'});
+    const aliasHotel={...hotel,id:'operator-alias-hotel',price:65000,tours:[
+      {...base,id:'alias-tv',price:75000,operator:'ANEX TOUR',provider:'tourvisor'},
+      {...base,id:'alias-direct',price:72000,operator:'Анекс',provider:'anex',selectionEnabled:false},
+      {...base,id:'same-source-other-operator',price:65000,operator:'Fun & Sun',provider:'anex',selectionEnabled:false},
+      {...base,id:'unknown-brand',price:81000,operator:'LOCAL OPERATOR',provider:'tourvisor'}
+    ]};
+    await page.evaluate(h=>{const freeze=v=>{if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;};window.__operatorAliasOriginal=freeze(h);window.V2Results.render([h]);},aliasHotel);
+    const operatorField=page.locator('.search3-operator-filter'),operator=operatorField.locator('select'),provider=page.locator('.search3-provider-filter select');
+    if(width<1025){const panel=page.locator('.search3-mobile-filter-panel');if(!(await panel.evaluate(node=>node.open)))await panel.locator('summary').click();}
+    assert.equal(await operatorField.isVisible(),true,'one loaded hotel with several real operators exposes a useful local choice');
+    const operatorChoices=await operator.locator('option').evaluateAll(nodes=>nodes.map(node=>[node.value,node.textContent]));
+    assert.deepEqual(operatorChoices,[['','Все туроператоры'],['anex','ANEX'],['funsun','FUN&SUN'],['name:local operator','LOCAL OPERATOR']],'facet reuses reviewed display identities and retains unknown labels without new guesses');
+    await operator.selectOption('anex');
+    const aliasCard=page.locator('.hotel-card[data-hotel-id="operator-alias-hotel"]');
+    assert.deepEqual(await page.evaluate(()=>['alias-tv','alias-direct','same-source-other-operator','unknown-brand'].map(id=>window.V2Results.offerAlternatives(id)?.count||0)),[2,2,0,0],'ANEX aliases match across provider sources while other operators remain excluded');
+    assert.equal(await aliasCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от72000₽','representative price comes from the same locally matched offers');
+    await page.evaluate(()=>window.V2Results.rerender());
+    assert.equal(await operator.inputValue(),'anex','canonical choice survives ordinary renderer updates');
+    await page.screenshot({path:path.join(output,`operator-alias-facet-${width}.png`),fullPage:true});
+    await provider.selectOption('anex');
+    assert.deepEqual(await page.evaluate(()=>['alias-tv','alias-direct','same-source-other-operator'].map(id=>window.V2Results.offerAlternatives(id)?.count||0)),[0,1,0],'provider and operator are independent conditions on the same exact offer');
+    assert.equal(await aliasCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'72000₽');
+    assert.equal(await page.evaluate(()=>window.V2Results.state.items[0]===window.__operatorAliasOriginal),true,'projection keeps the canonical source object');
+    assert.equal(await page.evaluate(()=>JSON.stringify(window.__operatorAliasOriginal)),JSON.stringify(aliasHotel),'operator filtering never mutates provider identity, original labels, offers or prices');
+    await provider.selectOption('');
+    await page.evaluate(()=>window.V2Results.render([{...window.__operatorAliasOriginal,tours:[...window.__operatorAliasOriginal.tours,{id:'missing-operator',provider:'anex',price:60000}]}]));
+    assert.equal(await operatorField.isVisible(),false,'provider name cannot fill incomplete operator data');
+    assert.equal(await operator.inputValue(),'','incomplete data clears the old local operator choice');
+    await page.evaluate(()=>window.V2Results.render([{...window.__operatorAliasOriginal,tours:window.__operatorAliasOriginal.tours.slice(0,2)}]));
+    assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,logos:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8],supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,logos:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8],operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };

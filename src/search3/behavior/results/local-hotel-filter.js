@@ -176,7 +176,7 @@ function syncProvider(items){
 }
 function syncOperator(items){
   const labels=new Map(),api=window.V2Results;
-  const complete=items.length>1&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>{const label=api.textValue(t&&t.operator).replace(/\s+/g,' ').trim(),key=normalize(label);if(!key)return false;if(!labels.has(key))labels.set(key,label);return true;}));
+  const complete=items.length>0&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>{const identity=api.operatorIdentity(t);if(!identity)return false;if(!labels.has(identity.key))labels.set(identity.key,identity.label);return true;}));
   const previous=operatorSelect.value,available=complete&&labels.size>1;operatorSelect.replaceChildren(option('','Все туроператоры'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>operatorSelect.appendChild(option(value,label)));
   operatorSelect.value=available&&labels.has(previous)?previous:'';operatorField.hidden=!available;return operatorSelect.value;
@@ -184,7 +184,7 @@ function syncOperator(items){
 function project(items){
   ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),provider=syncProvider(items),operator=syncOperator(items),budget=syncBudget(items);
   if(!meal&&!provider&&!operator&&!budget){projectedItems=items;mount();return projectedItems;}
-  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||mealKey(api.mealLabel(t))===meal)&&(!provider||providerKey(t)===provider)&&(!operator||normalize(api.textValue(t&&t.operator))===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
+  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||mealKey(api.mealLabel(t))===meal)&&(!provider||providerKey(t)===provider)&&(!operator||api.operatorIdentity(t)?.key===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
   mount();return projectedItems;
 }
 function apply(){
