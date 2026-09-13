@@ -1,0 +1,198 @@
+name: MATCH current direct ANEX sellability v15
+run-name: MATCH current direct ANEX sellability #1971 v15
+on:
+  push:
+    branches: ['ops/match-anex-current-sellability-1971-20260913-v15']
+    paths:
+      - '.github/match-anex-current-sellability-1971-v15.arm'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-anex-current-sellability-1971-v15
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-current-sellability-1971-20260913-v15
+  PINNED_MATCH_SOURCE: c5d798cecdf2eeab96a3c83f16163873b378d5a8
+  EXPECTED_MATCH_BLOB: 21eac7be4d83959ad6fb1981150b469a74497611
+  OLD_OPERATION_ID: hotel-match-anex-sellability-review-1971-20260911-v3
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build exact evidence-only payload source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-current-sellability-1971-v15.arm)" = "$OPERATION_ID"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          php -l app/integrations/anex-client.php
+          php -l app/integrations/anex-normalizer.php
+          php -l app/integrations/anex-search.php
+          git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$PINNED_MATCH_SOURCE"
+          git show "$PINNED_MATCH_SOURCE:scripts/diagnostics/hotel_match_anex_sellability_review.php" > "$RUNNER_TEMP/hmas.php"
+          test "$(git hash-object "$RUNNER_TEMP/hmas.php")" = "$EXPECTED_MATCH_BLOB"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'hmas.php'
+          s=p.read_text(encoding='utf-8')
+          old=os.environ['OLD_OPERATION_ID']; new=os.environ['OPERATION_ID']
+          if s.count(old)!=1: raise SystemExit('operation id drift')
+          s=s.replace(old,new,1)
+          old_days="foreach([14,28,42] as $ahead)"
+          new_days="foreach([21,49,77] as $ahead)"
+          if s.count(old_days)!=1: raise SystemExit('lead-day policy drift')
+          s=s.replace(old_days,new_days,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          php -l "$RUNNER_TEMP/hmas.php"
+          grep -Fq 'foreach([21,49,77] as $ahead)' "$RUNNER_TEMP/hmas.php"
+          grep -Fq 'array_chunk($hotelIds,30)' "$RUNNER_TEMP/hmas.php"
+          grep -Fq "'nights_from'=>7" "$RUNNER_TEMP/hmas.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)[[:space:]]+' "$RUNNER_TEMP/hmas.php"
+      - name: Zero-supplier CURRENT/private-config preflight
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,shlex,subprocess,tempfile,time
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; state.mkdir(mode=0o700,parents=True,exist_ok=True)
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          client=body('app/integrations/anex-client.php')
+          normalizer=body('app/integrations/anex-normalizer.php')
+          search=body('app/integrations/anex-search.php').replace("require_once __DIR__ . '/anex-client.php';\n",'',1).replace("require_once __DIR__ . '/anex-normalizer.php';\n",'',1)
+          source=body(Path(os.environ['RUNNER_TEMP'])/'hmas.php')
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());$home=(string)getenv('HOME');
+            if(!$root||basename($root)!=='anytoour.ru'||$home==='')throw new RuntimeException('HMAS_ROOT');
+            $private=realpath($home.'/.anytoour-anex/search3-preview.php');
+            if(!$private||!is_file($private))throw new RuntimeException('HMAS_PRIVATE_CONFIG_MISSING');
+            require $private;
+            if(!defined('ANYTOUR_ANEX_PREVIEW_ENABLED')||ANYTOUR_ANEX_PREVIEW_ENABLED!==true||!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('HMAS_PRIVATE_CONFIG_INVALID');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+            if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMAS_DB_HELPER');
+            require_once $dbHelper;$result=hmas_preflight(v2_data_db(),HMAS_OPERATION);$result['private_config_ready']=true;echo json_encode($result,JSON_UNESCAPED_SLASHES),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMAS_PREFLIGHT_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMAS_OPERATION,'reason'=>$reason,'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          '''
+          code=client+'\n'+normalizer+'\n'+search+'\n'+source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          def progress(stderr):
+              s=str(stderr); return {'authenticated':'Authenticated to ' in s or 'Authentication succeeded' in s,'command_sent':'Sending command:' in s,'remote_exit_seen':'Exit status ' in s}
+          def run_once():
+              host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+              if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+              with tempfile.TemporaryDirectory(prefix='match-anex-v15-pre-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+                  key=Path(tmp)/'key'; key.write_text(keytext.rstrip()+'\n'); key.chmod(0o600); known=Path(tmp)/'known_hosts'
+                  cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+                  clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+                  p=subprocess.run(cmd,text=True,capture_output=True,timeout=120,env=clean); return p,progress(p.stderr)
+          p=prog=None;attempts=0
+          for attempt in (1,2):
+              attempts=attempt;p,prog=run_once()
+              if p.returncode==0 or p.stdout: break
+              if not (p.returncode==255 and not prog['authenticated'] and not prog['command_sent']): break
+              time.sleep(2)
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'failed','operation_id':os.environ['OPERATION_ID'],'reason':'preflight_output_unparseable','supplier_calls':0,'database_writes':0,'mapping_writes':0,'bookings':0}
+          out={'remote':r,'ssh':prog,'ssh_attempts':attempts,'exit_code':p.returncode}
+          raw=(json.dumps(out,sort_keys=True)+'\n').encode(); (state/'preflight.json').write_bytes(raw)
+          if p.returncode!=0 or r.get('status')!='ready' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('private_config_ready') is not True or r.get('supplier_calls')!=0 or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('bookings')!=0 or not isinstance(r.get('queue'),int) or not (0<=r['queue']<=1000): raise RuntimeError('zero_supplier_preflight_failed')
+          print(json.dumps({'queue':r['queue'],'live_queue':r['live_queue'],'countries':r['countries'],'supplier_calls':0},sort_keys=True))
+          PY
+      - name: Reserve immutable operation before supplier access
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); pre=(state/'preflight.json').read_bytes(); p=json.loads(pre)['remote']
+          src=(Path(os.environ['RUNNER_TEMP'])/'hmas.php').read_bytes()
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_after_zero_supplier_preflight','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'pinned_match_source':os.environ['PINNED_MATCH_SOURCE'],'pinned_match_sha256':hashlib.sha256(src).hexdigest(),'preflight_sha256':hashlib.sha256(pre).hexdigest(),'preflight_queue':p['queue'],'preflight_live_queue':p['live_queue'],'lead_day_targets':[21,49,77],'database_writes':0,'mapping_writes':0,'bookings':0,'lead_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          raw=(json.dumps(x,sort_keys=True)+'\n').encode(); (state/'reservation.json').write_bytes(raw)
+          if (state/'reservation.json').read_bytes()!=raw: raise SystemExit('reservation readback failed')
+          PY
+      - name: Preserve reservation before supplier access
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-current-sellability-1971-20260913-v15-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-current-sellability-1971-20260913-v15/preflight.json
+            ${{ runner.temp }}/hotel-match-anex-current-sellability-1971-20260913-v15/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run direct ANEX mass evidence once
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          client=body('app/integrations/anex-client.php'); normalizer=body('app/integrations/anex-normalizer.php')
+          search=body('app/integrations/anex-search.php').replace("require_once __DIR__ . '/anex-client.php';\n",'',1).replace("require_once __DIR__ . '/anex-normalizer.php';\n",'',1)
+          source=body(Path(os.environ['RUNNER_TEMP'])/'hmas.php')
+          wrapper=r'''
+          try{
+            $root=realpath(getcwd());$home=(string)getenv('HOME');
+            if(!$root||basename($root)!=='anytoour.ru'||$home==='')throw new RuntimeException('HMAS_ROOT');
+            $private=realpath($home.'/.anytoour-anex/search3-preview.php');if(!$private||!is_file($private))throw new RuntimeException('HMAS_PRIVATE_CONFIG_MISSING');require $private;
+            if(!defined('ANYTOUR_ANEX_PREVIEW_ENABLED')||ANYTOUR_ANEX_PREVIEW_ENABLED!==true||!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('HMAS_PRIVATE_CONFIG_INVALID');
+            $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('HMAS_DB_HELPER');require_once $dbHelper;
+            $result=hmas_review(v2_data_db(),ANEX_API_TOKEN,HMAS_OPERATION);echo json_encode($result,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();$reason=is_string($m)&&preg_match('/\A[A-Z0-9_]{1,80}\z/D',$m)?$m:'HMAS_REMOTE_ERROR';echo json_encode(['status'=>'failed','operation_id'=>HMAS_OPERATION,'reason'=>$reason,'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          '''
+          code=client+'\n'+normalizer+'\n'+search+'\n'+source+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER')
+          host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          with tempfile.TemporaryDirectory(prefix='match-anex-v15-live-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=1500,env=clean)
+          stderr=str(p.stderr); prog={'authenticated':'Authenticated to ' in stderr or 'Authentication succeeded' in stderr,'command_sent':'Sending command:' in stderr,'remote_exit_seen':'Exit status ' in stderr}
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'live_output_unparseable','database_writes':0,'mapping_writes':0,'bookings':0}
+          result=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'result.json').write_bytes(result)
+          reservation=(state/'reservation.json').read_bytes()
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if p.returncode==0 and r.get('status')=='completed' else ('unknown_no_replay' if prog['command_sent'] else 'failed_precommand'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(result).hexdigest(),'reservation_sha256':hashlib.sha256(reservation).hexdigest(),'exit_code':p.returncode,'ssh':prog,'database_writes':r.get('database_writes',0),'mapping_writes':r.get('mapping_writes',0),'bookings':r.get('bookings',0),'supplier_calls':(r.get('stats') or {}).get('supplier_calls'),'historical_operations_replayed':r.get('historical_operations_replayed'), 'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          print(json.dumps({'status':r.get('status'),'queue':(r.get('stats') or {}).get('queue'),'live_queue':(r.get('stats') or {}).get('live_queue'),'sold_on_probe':(r.get('stats') or {}).get('sold_on_probe'),'sold_live_on_probe':(r.get('stats') or {}).get('sold_live_on_probe'),'supplier_calls':(r.get('stats') or {}).get('supplier_calls'),'batch_errors':(r.get('stats') or {}).get('batch_errors'),'receipt_state':receipt['state']},sort_keys=True))
+          if receipt['state']!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('bookings')!=0 or r.get('historical_operations_replayed') is not False: raise SystemExit(2)
+          PY
+      - name: Preserve sealed result and receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-current-sellability-1971-20260913-v15-result
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-current-sellability-1971-20260913-v15/preflight.json
+            ${{ runner.temp }}/hotel-match-anex-current-sellability-1971-20260913-v15/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-current-sellability-1971-20260913-v15/result.json
+            ${{ runner.temp }}/hotel-match-anex-current-sellability-1971-20260913-v15/receipt.json
+          if-no-files-found: warn
+          retention-days: 90
