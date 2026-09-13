@@ -103,6 +103,7 @@ async function run(browser, width) {
         title: text('.selected-head h2'),
         facts,
         dateText: facts.find(item => item.label === 'Дата')?.value || '',
+        flightMoments: [...node.querySelectorAll('.flight-route span')].map(item => String(item.textContent || '').trim()),
         searchVisible: !!document.querySelector('#tourSearch') && getComputedStyle(document.querySelector('#tourSearch')).display !== 'none',
         overflow: document.documentElement.scrollWidth > innerWidth + 2
       };
@@ -114,6 +115,10 @@ async function run(browser, width) {
     assert.equal(detail.title, 'SUNRISE Resort & Spa', 'selected hotel identity stays visible');
     assert.equal(detail.dateText, '05.10.2026', 'selected date uses the canonical renderer display');
     assert.notEqual(detail.dateText, tour.date, 'selected date never exposes the raw supplier ISO value');
+    assert.ok(detail.flightMoments.some(value => value.includes('05.10.2026')), 'outbound flight uses the canonical date display');
+    assert.ok(detail.flightMoments.some(value => value.includes('14.10.2026')), 'return flight uses the canonical date display');
+    assert.equal(detail.flightMoments.some(value => /\b2026-10-(?:05|14)\b/.test(value)), false,
+      'selected flight routes never expose raw supplier ISO dates');
     const fuelLabels = await root.locator('.flight-fuel').allTextContents();
     assert.deepEqual(fuelLabels.map(value => value.replace(/\s+/g, ' ').trim()), contract.invariants.flight_fuel_display,
       'flight fee display distinguishes unknown, explicit zero and known values');

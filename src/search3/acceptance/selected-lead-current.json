@@ -35,6 +35,7 @@
   },
   "diagnostics": {
     "selected_date_display": "canonical_dd_mm_yyyy",
+    "selected_flight_date_display": "canonical_dd_mm_yyyy",
     "known_raw_date_backlog": false,
     "physical_safari_iphone": "deferred"
   }
