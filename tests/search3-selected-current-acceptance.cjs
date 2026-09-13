@@ -172,9 +172,10 @@ async function run(browser, width) {
     await root.screenshot({ path: path.join(output, `selected-current-${width}-lead.png`), animations: 'disabled' });
 
     assert.deepEqual(await page.evaluate(() => window.__selectedAcceptanceCalls), { tour: 1, flights: 1, other: 0 }, 'fixture performs only the expected local tour/flights calls');
+    const recovery = [375, 1440].includes(width) ? await checkLeadRecovery(page, width) : null;
     assert.deepEqual(posts, [], 'acceptance never sends a real lead or any POST');
     assert.deepEqual(browserErrors, [], 'acceptance fixture has no browser errors');
-    return { width, detail, lead, realLeads: 0, realSupplierRequests: 0 };
+    return { width, detail, lead, recovery, realLeads: 0, realSupplierRequests: 0 };
   } catch (error) {
     await page.screenshot({ path: path.join(output, `selected-current-${width}-failure.png`), fullPage: true });
     fs.writeFileSync(path.join(output, `selected-current-${width}-failure.json`), JSON.stringify({ message: String(error), browserErrors }, null, 2) + '\n');
@@ -182,6 +183,159 @@ async function run(browser, width) {
   } finally {
     await page.close();
   }
+}
+
+async function checkLeadRecovery(page, width) {
+  const searchId = 812301;
+  const hotel = { ...tour.hotel, id: 'lead-recovery-hotel', picturelink: picture };
+  const first = { ...tour, hotel, source: 'tourvisor' };
+  const second = { ...first, id: 'lead-recovery-second', roomType: 'FAMILY ROOM' };
+  const draft = { name: 'Тестовый черновик', phone: '+7 000 000-00-00', comment: 'Локальная проверка без отправки.' };
+  const root = page.locator('#selectedTour');
+  await root.locator('.search3-lead-return').click();
+  await page.evaluate(({ searchId, hotel, first, second, flights }) => {
+    window.V2Runtime.setSearchId(searchId);
+    window.__leadRecovery = { calls: [], payloads: [], pending: [], events: [] };
+    const state = window.__leadRecovery;
+    window.V2Runtime.api = async (action, params) => {
+      state.calls.push([action, params?.tourId]);
+      const selected = [first, second].find(item => item.id === params?.tourId);
+      if (!selected) throw new Error('unexpected recovery offer');
+      if (action === 'tour') return selected;
+      if (action === 'flights') return flights;
+      throw new Error('unexpected recovery API action ' + action);
+    };
+    const originalFetch = window.fetch.bind(window);
+    const leadUrl = new URL(window.V2_CONFIG?.leadApi || '/poisk-turov-test/v2/lead-adapter.php', location.href).href;
+    window.fetch = (input, options) => {
+      const url = new URL(typeof input === 'string' ? input : input.url, location.href).href;
+      if (url !== leadUrl || options?.method !== 'POST') return originalFetch(input, options);
+      state.payloads.push(JSON.parse(options.body));
+      return new Promise((resolve, reject) => state.pending.push({ resolve, reject }));
+    };
+    for (const name of ['lead-started', 'lead-error', 'lead-success']) {
+      window.addEventListener('v2:' + name, event => state.events.push([name, event.detail?.tourId]));
+    }
+    window.V2Results.render([{ ...hotel, price: first.price, tours: [first, second] }]);
+  }, { searchId, hotel, first, second, flights });
+
+  await page.locator('#results .tour-more-toggle').click();
+  const openOffer = async id => {
+    await page.locator('#results .direct-tour[data-tid="' + id + '"]').click();
+    await page.waitForFunction(id => window.V2TourController.currentTour?.id === id, id);
+    await root.locator('.flight-variant').nth(2).waitFor();
+    await root.locator('.search3-flight-continue button').click();
+    await page.waitForFunction(() => document.activeElement?.name === 'phone');
+  };
+  const readDraft = () => root.locator('.lead-form').evaluate(form => Object.fromEntries(
+    ['name', 'phone', 'comment'].map(name => [name, form.elements[name].value])));
+  const captureCount = () => page.evaluate(() => window.__leadRecovery.payloads.length);
+  const locks = () => page.evaluate(() => {
+    const root = document.getElementById('selectedTour');
+    return {
+      pending: window.V2LeadUiRaceGuardV1.leadPending,
+      returns: [...root.querySelectorAll('.back-results,.other-hotel-offers')].map(node => ({ disabled: node.disabled, aria: node.getAttribute('aria-disabled') })),
+      search: document.getElementById('tourSearch').inert,
+      flights: root.querySelector('.flight-variants').inert,
+      offers: [...document.querySelectorAll('#results .direct-tour')].map(node => node.disabled)
+    };
+  });
+  const assertLocks = async locked => {
+    const value = await locks();
+    assert.ok(value.returns.length >= 3, 'top return, lead change and hotel alternatives are actual canonical controls');
+    assert.equal(value.pending, locked);
+    assert.equal(value.search, locked);
+    assert.equal(value.flights, locked);
+    assert.ok(value.returns.every(item => item.disabled === locked && item.aria === (locked ? 'true' : null)), 'every return action follows pending state');
+    assert.deepEqual(value.offers, [locked, locked], 'exact offer buttons follow pending state');
+    return value;
+  };
+  await openOffer(first.id);
+  const form = root.locator('.lead-form');
+  const submit = form.locator('button[type="submit"]');
+  await form.locator('[name="phone"]').fill('123');
+  await submit.click();
+  assert.equal(await captureCount(), 0, 'invalid phone cannot enter lead transport');
+  assert.equal(await form.locator('[name="phone"]').evaluate(node => node.validity.valid), false);
+  for (const [name, value] of Object.entries(draft)) await form.locator('[name="' + name + '"]').fill(value);
+  await submit.click();
+  assert.equal(await captureCount(), 0, 'valid contact without consent cannot enter lead transport');
+  assert.equal(await form.locator('[name="consent"]').evaluate(node => node.validity.valueMissing), true);
+  await form.locator('[name="consent"]').check();
+  await root.locator('input[name="v2flight"][value="1"]').check();
+  await submit.click();
+  await page.waitForFunction(() => window.__leadRecovery.pending.length === 1);
+  const pending = await assertLocks(true);
+  assert.equal(await submit.isDisabled(), true);
+  const activeIdentity = await page.evaluate(() => window.V2TourController.currentTour.id);
+  for (const action of await root.locator('.back-results,.other-hotel-offers').all()) await action.evaluate(node => node.click());
+  assert.equal(await root.isVisible(), true, 'disabled returns cannot leave an in-flight lead');
+  assert.equal(await page.evaluate(() => window.V2TourController.currentTour.id), activeIdentity);
+  await page.evaluate(({ searchId, other }) => {
+    window.dispatchEvent(new CustomEvent('v2:lead-error', { detail: { searchId, tourId: other } }));
+    window.dispatchEvent(new CustomEvent('v2:lead-success', { detail: { searchId, tourId: other, leadId: 999 } }));
+  }, { searchId, other: second.id });
+  await assertLocks(true);
+  assert.equal(await root.locator('.lead-success-panel').count(), 0, 'stale success cannot replace the current draft');
+  assert.equal(await form.locator('.lead-message').getAttribute('role'), 'status', 'stale error cannot overwrite pending feedback');
+  await root.screenshot({ path: path.join(output, `selected-lead-pending-${width}.png`), animations: 'disabled' });
+
+  await page.evaluate(() => window.__leadRecovery.pending.shift().reject(new Error('fixture offline')));
+  await page.waitForFunction(() => !window.V2LeadUiRaceGuardV1.leadPending);
+  await assertLocks(false);
+  assert.deepEqual(await readDraft(), draft, 'network error preserves all contact fields');
+  assert.equal(await form.locator('[name="consent"]').isChecked(), true, 'same-tour error keeps the current consent');
+  assert.equal(await form.locator('.lead-message').getAttribute('role'), 'alert');
+  assert.equal(await submit.innerText(), 'Повторить отправку');
+  await submit.click();
+  await page.waitForFunction(() => window.__leadRecovery.pending.length === 1);
+  await page.evaluate(() => window.__leadRecovery.pending.shift().resolve({ ok: false, json: async () => ({ ok: false, error: 'fixture server error' }) }));
+  await page.waitForFunction(() => !window.V2LeadUiRaceGuardV1.leadPending);
+  assert.deepEqual(await readDraft(), draft, 'server error also preserves the draft');
+  await root.locator('.search3-lead-return').click();
+  await page.waitForFunction(id => document.activeElement?.dataset.tid === id, first.id);
+  await openOffer(second.id);
+  assert.deepEqual(await readDraft(), draft, 'changing offers retains only allowed contact fields');
+  assert.equal(await form.locator('[name="consent"]').isChecked(), false, 'consent never transfers to another offer');
+  assert.equal(await page.evaluate(() => window.V2TourController.currentTour.id), second.id);
+  await submit.click();
+  assert.equal(await captureCount(), 2, 'new offer still requires fresh consent');
+  await form.locator('[name="consent"]').check();
+  await submit.click();
+  await page.waitForFunction(() => window.__leadRecovery.pending.length === 1);
+  await page.evaluate(() => window.__leadRecovery.pending.shift().resolve({ ok: true, json: async () => ({ ok: true, writes: 1, leadId: 9990001 }) }));
+  await root.locator('.lead-success-panel').waitFor();
+  await assertLocks(true);
+  assert.equal(await form.getAttribute('data-sent'), '1');
+  await root.locator('.lead-success-back').click();
+  await page.waitForFunction(id => document.activeElement?.dataset.tid === id, second.id);
+  assert.equal(await page.evaluate(() => window.V2LeadUiRaceGuardV1.leadPending), false, 'explicit success return releases search and result choices');
+  assert.equal(await page.locator('#tourSearch').evaluate(node => node.inert), false);
+  assert.deepEqual(await page.locator('#results .direct-tour').evaluateAll(nodes => nodes.map(node => node.disabled)), [false, false]);
+  await openOffer(first.id);
+  assert.deepEqual(await readDraft(), { name: '', phone: '', comment: '' }, 'confirmed lead clears the reusable draft');
+  assert.equal(await form.locator('[name="consent"]').isChecked(), false);
+  for (const [name, value] of Object.entries(draft)) await form.locator('[name="' + name + '"]').fill(value);
+  await root.locator('.search3-lead-return').click();
+  await page.evaluate(({ searchId, hotel, first, second }) => {
+    window.dispatchEvent(new CustomEvent('v2:search-reset'));
+    window.V2Runtime.setSearchId(searchId + 1);
+    window.V2Results.render([{ ...hotel, price: first.price, tours: [first, second] }]);
+  }, { searchId, hotel, first, second });
+  await page.locator('#results .tour-more-toggle').click();
+  await openOffer(second.id);
+  assert.deepEqual(await readDraft(), { name: '', phone: '', comment: '' }, 'new search clears the old contact draft');
+  const evidence = await page.evaluate(() => ({
+    calls: window.__leadRecovery.calls,
+    identities: window.__leadRecovery.payloads.map(item => ({ tourId: item.tourId, searchId: item.searchId, consent: item.consent })),
+    events: window.__leadRecovery.events,
+    pendingRequests: window.__leadRecovery.pending.length
+  }));
+  assert.deepEqual(evidence.identities, [first.id, first.id, second.id].map(tourId => ({ tourId, searchId, consent: true })), 'the unchanged payload always carries the exact selected offer and search');
+  assert.equal(evidence.calls.some(([action]) => !['tour', 'flights'].includes(action)), false);
+  assert.equal(evidence.pendingRequests, 0);
+  console.log('SEARCH3_LEAD_RECOVERY_OK ' + JSON.stringify({ width, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, errors: ['network', 'server'], draftRetained: true, consentReset: true, successReturn: true, resetClearsDraft: true, localSubmissions: 3, realLeads: 0, realSupplierRequests: 0 }));
+  return { ...evidence, validation: true, pendingReturns: pending.returns.length, staleBlocked: true, draftRetained: true, consentReset: true, successReturn: true, resetClearsDraft: true, localSubmissions: 3, realLeads: 0, realSupplierRequests: 0 };
 }
 
 (async () => {
@@ -193,5 +347,5 @@ async function run(browser, width) {
     await browser.close();
     fs.writeFileSync(path.join(output, 'selected-lead-current.json'), JSON.stringify(evidence, null, 2) + '\n');
   }
-  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=8 real_leads=0 supplier_requests=0 date_display=canonical');
+  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=10 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440');
 })().catch(error => { console.error(error); process.exitCode = 1; });
