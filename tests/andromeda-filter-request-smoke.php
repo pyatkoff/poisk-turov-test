@@ -49,11 +49,17 @@ $request=$base;$request['params']['meal']='7';$request['params']['hotelCategory'
 $params=anytour_andromeda_search3_params($request,$pdo,$saved);
 if(($params['MEAL']??null)!=='5,7'||($params['STARS']??null)!=='5'||($params['GROUP_BY']??null)!==32)
  throw new RuntimeException('5-star AI request does not reach supplier criteria');
-$operatorCases=[['101'=>'5'],['102'=>'9'],['103'=>'12'],['104'=>'17'],['101,102'=>'5,9']];
-foreach($operatorCases as $input=>$expected){
- $request=$base;$request['params']['operatorIds']=explode(',',$input);
+$operatorCases=[
+ [['101'],'5'],
+ [['102'],'9'],
+ [['103'],'12'],
+ [['104'],'17'],
+ [['101','102'],'5,9'],
+];
+foreach($operatorCases as [$input,$expected]){
+ $request=$base;$request['params']['operatorIds']=$input;
  $params=anytour_andromeda_search3_params($request,$pdo,$saved);
- if(($params['OPERATORS']??null)!==$expected)throw new RuntimeException("operators $input not translated: ".json_encode($params));
+ if(($params['OPERATORS']??null)!==$expected)throw new RuntimeException('operators '.implode(',',$input).' not translated: '.json_encode($params));
  AnyTourAndromedaClient::validatePriceParams($params);
 }
 $unfiltered=anytour_andromeda_search3_params($base,$pdo,$saved);
