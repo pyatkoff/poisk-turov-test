@@ -183,7 +183,7 @@ async function checkExpandedDensity(page, width, previous) {
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Enter');
     assert.equal(await card.locator('.hotel-trip-summary,.hotel-summary-total').count(), 0, 'expanded comparison replaces the aggregate facts and total');
-    assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов тура', 'one count belongs to the comparison header');
+    assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов', 'one grammatically correct count belongs to the comparison header');
     assert.equal(await card.locator('.hotel-price').count(), 10, 'one exact price per offer, no duplicate minimum');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.map(value => value.id), 'all exact offer actions retain their original identity and order');
     assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.map(value => value.price), 'each displayed price remains the original supplier amount');
@@ -298,7 +298,7 @@ async function checkMealFacet(page, width, previous) {
     assert.ok((await a.locator('.tour-more-toggle').boundingBox()).height >= 44, 'matching-offer disclosure keeps a full touch target');
     await a.locator('.tour-more-toggle').focus();
     await a.locator('.tour-more-toggle').press('Enter');
-    assert.equal(await a.locator('.hotel-offers-heading>strong').innerText(), '3 варианта тура', 'expanded count also describes only matching AI aliases');
+    assert.equal(await a.locator('.hotel-offers-heading>strong').innerText(), '3 варианта', 'expanded count also describes only matching AI aliases');
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
     assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
