@@ -681,7 +681,7 @@ async function run(browser, width, previous) {
       window.V2Catalogs.updateServiceCount();
       window.V2Results.render([]);
     });
-    assert.equal(await page.locator('#serviceCount').innerText(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
+    assert.equal(await page.locator('#serviceCount').textContent(), '2 выбрано', 'empty recovery starts from the actual selected-service count');
     const serviceRelax = page.locator('.empty-relax[data-relax="hotel_service[]"]');
     await serviceRelax.focus();
     await serviceRelax.press('Enter');
