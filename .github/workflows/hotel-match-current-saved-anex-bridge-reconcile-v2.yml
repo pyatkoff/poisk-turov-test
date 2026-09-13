@@ -1,0 +1,81 @@
+name: MATCH current saved ANEX bridge reconcile v2
+on:
+  push:
+    branches: ['ops/match-current-saved-anex-bridge-reconcile-1971-20260913-v2']
+    paths: ['.github/match-current-saved-anex-bridge-reconcile-1971-20260913-v2.arm']
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: match-current-saved-anex-bridge-reconcile-1971-20260913-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-saved-anex-bridge-reconcile-1971-20260913-v2
+jobs:
+  current-read-only:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false}
+      - name: Reserve immutable operation
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};s.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: match-current-saved-anex-bridge-reconcile-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-current-saved-anex-bridge-reconcile-1971-20260913-v2/reservation.json
+          retention-days: 90
+      - name: Reconcile saved explicit ANEX bridge evidence against CURRENT DB
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];op=json.dumps(os.environ['OPERATION_ID'])
+          php=r'''<?php
+          declare(strict_types=1);$stage='bootstrap';
+          try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$h||strpos($h,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');$stage='reconcile';
+          $hotels=[];foreach($db->query('SELECT id,country_id FROM catalog_hotels WHERE country_id IN (1,2,4,8,9,10,12,16) AND is_active=1')->fetchAll(PDO::FETCH_ASSOC) as $r)$hotels[(int)$r['id']]=(int)$r['country_id'];
+          $anex=[];foreach($db->query("SELECT m.anex_hotel_id,m.catalog_hotel_id FROM anex_hotel_search_mappings m LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=m.anex_hotel_id WHERE m.enabled=1 AND m.scope='preview' AND m.approval_policy='current_db_guarded_v1' AND d.anex_hotel_id IS NULL")->fetchAll(PDO::FETCH_ASSOC) as $r)$anex[(int)$r['anex_hotel_id']]=(int)$r['catalog_hotel_id'];foreach($db->query("SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_decisions WHERE decision_status='accepted' AND catalog_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC) as $r)$anex[(int)$r['anex_hotel_id']]=(int)$r['catalog_hotel_id'];
+          $and=[];$occup=[];foreach($db->query("SELECT external_hotel_id,decision_status,local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' ORDER BY external_hotel_id")->fetchAll(PDO::FETCH_ASSOC) as $r){$id=(string)$r['external_hotel_id'];$and[$id]=$r;if($r['decision_status']==='accepted'&&$r['local_hotel_id']!==null)$occup[(int)$r['local_hotel_id']][$id]=true;}
+          $rows=[];$counts=[];$pathCounts=[];$seen=[];$shape=['anex_bridges_nonarray'=>0,'promotion_nonarray'=>0,'proof_nonarray'=>0];
+          $add=function($did,$aid,$savedLocal,$path)use(&$rows,&$counts,&$pathCounts,&$seen,$anex,$and,$hotels,$occup){$did=(string)$did;$aid=(int)$aid;$savedLocal=$savedLocal===null?null:(int)$savedLocal;$path=(string)$path;if($aid<=0||!isset($and[$did]))return;$key=$did.'|'.$aid.'|'.($savedLocal??0).'|'.$path;if(isset($seen[$key]))return;$seen[$key]=true;$pathCounts[$path]=($pathCounts[$path]??0)+1;$ar=$and[$did];$al=$anex[$aid]??null;$dl=$ar['local_hotel_id']===null?null:(int)$ar['local_hotel_id'];$status='unresolved_anex';if($al!==null&&!isset($hotels[$al]))$status='inactive_target';elseif($al!==null&&$savedLocal!==null&&$savedLocal!==$al)$status='saved_target_conflict';elseif($al!==null&&$dl!==null)$status=$dl===$al?'already_same':'direct_conflict';elseif($al!==null&&$ar['decision_status']==='pending')$status=(isset($occup[$al])&&!isset($occup[$al][$did]))?'occupancy_hold':'candidate_andromeda';elseif($al!==null)$status='andromeda_hold';$counts[$status]=($counts[$status]??0)+1;$rows[]=['andromeda_hotel_id'=>$did,'anex_hotel_id'=>$aid,'saved_target_local_id'=>$savedLocal,'current_anex_local_id'=>$al,'current_andromeda_status'=>$ar['decision_status'],'current_andromeda_local_id'=>$dl,'target_country_id'=>$al!==null&&isset($hotels[$al])?$hotels[$al]:null,'source_path'=>$path,'status'=>$status,'not_write_authority'=>true];};
+          foreach($and as $did=>$r){try{$e=json_decode((string)$r['evidence_json'],true,128,JSON_THROW_ON_ERROR);}catch(Throwable $x){continue;}if(!is_array($e))continue;$bridges=$e['anex_bridges']??[];if(!is_array($bridges)){$shape['anex_bridges_nonarray']++;$bridges=[];}foreach($bridges as $b){if(!is_array($b))continue;$aid=null;foreach(['anex_id','id'] as $k)if(isset($b[$k])&&is_scalar($b[$k])&&filter_var($b[$k],FILTER_VALIDATE_INT)!==false){$aid=(int)$b[$k];break;}if(!$aid)continue;$saved=null;foreach(['local_id','catalog_hotel_id'] as $lk)if(isset($b[$lk])&&is_scalar($b[$lk])&&filter_var($b[$lk],FILTER_VALIDATE_INT)!==false){$saved=(int)$b[$lk];break;}$add((string)$did,$aid,$saved,'anex_bridges');}
+          $p=$e['promotion']??null;if($p!==null&&!is_array($p)){$shape['promotion_nonarray']++;$p=null;}if(is_array($p)&&isset($p['anex_hotel_id'])&&is_scalar($p['anex_hotel_id'])&&filter_var($p['anex_hotel_id'],FILTER_VALIDATE_INT)!==false){$saved=null;foreach(['local_hotel_id','target_local_hotel_id','target'] as $lk)if(isset($p[$lk])&&is_scalar($p[$lk])&&filter_var($p[$lk],FILTER_VALIDATE_INT)!==false){$saved=(int)$p[$lk];break;}$add((string)$did,(int)$p['anex_hotel_id'],$saved,'promotion.anex_hotel_id');}
+          $p=$e['proof']??null;if($p!==null&&!is_array($p)){$shape['proof_nonarray']++;$p=null;}if(is_array($p)&&isset($p['anex_id'])&&is_scalar($p['anex_id'])&&filter_var($p['anex_id'],FILTER_VALIDATE_INT)!==false){$saved=null;foreach(['local_id','local_hotel_id'] as $lk)if(isset($p[$lk])&&is_scalar($p[$lk])&&filter_var($p[$lk],FILTER_VALIDATE_INT)!==false){$saved=(int)$p[$lk];break;}$add((string)$did,(int)$p['anex_id'],$saved,'proof.anex_id');}
+          if(isset($e['anex_hotel_id'])&&is_scalar($e['anex_hotel_id'])&&filter_var($e['anex_hotel_id'],FILTER_VALIDATE_INT)!==false){$saved=isset($e['local_hotel_id'])&&is_scalar($e['local_hotel_id'])&&filter_var($e['local_hotel_id'],FILTER_VALIDATE_INT)!==false?(int)$e['local_hotel_id']:null;$add((string)$did,(int)$e['anex_hotel_id'],$saved,'anex_hotel_id');}}
+          ksort($counts);ksort($pathCounts);usort($rows,static fn($a,$b)=>strcmp($a['status'],$b['status'])?:strcmp($a['andromeda_hotel_id'],$b['andromeda_hotel_id']));$db->commit();echo json_encode(['schema'=>'hotel-match-current-saved-anex-bridge-reconcile/2','status'=>'completed','operation_id'=>__OP__,'identity_rows'=>count($and),'evidence_rows'=>count($rows),'status_counts'=>$counts,'source_path_counts'=>$pathCounts,'shape_counts'=>$shape,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          }catch(Throwable $e){if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->rollBack();echo json_encode(['schema'=>'hotel-match-current-saved-anex-bridge-reconcile/2','status'=>'diagnostic_failure','operation_id'=>__OP__,'stage'=>$stage,'exception_class'=>get_class($e),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}
+          '''.replace('__OP__',op)
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host,user=os.environ[req[1]].strip(),os.environ[req[2]].strip();remote='cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=512M'
+          with tempfile.TemporaryDirectory(prefix='match-saved-bridge-v2-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=Path(td)/'key';raw=os.environ[req[0]].strip();key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);known=Path(td)/'known_hosts';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-l',user,host,remote];clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')};p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=480,env=clean)
+          try:v=json.loads(p.stdout) if p.returncode==0 else None
+          except Exception:v=None
+          if not isinstance(v,dict):raise RuntimeError('no_json')
+          data=(json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(data);receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_reconcile','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(data).hexdigest(),'application_status':v.get('status'),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};state.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n');state.joinpath('summary.md').write_text(f"MATCH #1971 CURRENT saved ANEX bridge reconcile v2: evidence_rows={v.get('evidence_rows')}, status={json.dumps(v.get('status_counts') or {},sort_keys=True,separators=(',',':'))}. DB/mapping writes0; supplier/Tourvisor calls0; NO-REPLAY.\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        id: result
+        with:
+          name: match-current-saved-anex-bridge-reconcile-v2-result
+          path: ${{ runner.temp }}/hotel-match-current-saved-anex-bridge-reconcile-1971-20260913-v2/
+          retention-days: 90
+      - name: Record reconcile
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf '\nResult artifact `%s`; reservation artifact `%s` existed before SSH.\n' '${{ steps.result.outputs.artifact-id }}' '${{ steps.reserve.outputs.artifact-id }}' >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
