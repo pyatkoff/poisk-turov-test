@@ -1,0 +1,11 @@
+operation_id=hotel-match-andromeda-star-semantics-diagnostic-1971-20260913-v6
+claim=996#5651552073
+mode=current_db_read_only_sanitized_stage_diagnostic
+raw_message_retained=false
+raw_sql_retained=false
+raw_stack_retained=false
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
