@@ -63,18 +63,18 @@ def source():
         "anex_three_price_offer('andromeda',(int)$subject['local_hotel_id'],(string)$subject['andromeda_hotel_id'],",
         "anex_three_price_offer('andromeda',$localId,(string)$localId,")
 
+    # Only supplier request filters are forbidden here. The current triple subject remains
+    # intentionally present elsewhere as a checkpoint/current-identity anchor.
     forbidden=(party.EXPERIMENT,"'three-price-party-20260913-v2'","'generation'=>26091302",
-               "'hotelIds'=>[(int)$subject['local_hotel_id']]","'hotel_ids'=>[(string)$subject['anex_hotel_id']]",
-               "(int)($hotel['id']??0)!==(int)$subject['local_hotel_id']",
-               "($offer['hotel']['local_id']??null)!==(int)$subject['local_hotel_id'])",
-               "(int)$subject['local_hotel_id'],(int)$subject['local_hotel_id']",
-               "(int)$subject['local_hotel_id'],(string)$subject['anex_hotel_id']",
-               "(int)$subject['local_hotel_id'],(string)$subject['andromeda_hotel_id']")
+               "'hotelIds'=>[(int)$subject['local_hotel_id']]","'hotel_ids'=>[(string)$subject['anex_hotel_id']]")
     if any(value in text for value in forbidden):
         raise ValueError('party_broad_selected_filter_leaked')
     required=(EXPERIMENT,SPEC['date'],"'nightsFrom'=>8","'nightsTo'=>8","'adults'=>3","'ADULT'=>3",
               "'hotelIds'=>[]","'received_offers'=>count($result['offers'])","'unmapped_received'=>$unmapped",
-              "'selection_basis'=>'current_unique_triple_mapping_anchor_only'","three-price-party-broad-20260913-v1")
+              "'selection_basis'=>'current_unique_triple_mapping_anchor_only'","three-price-party-broad-20260913-v1",
+              "anex_three_price_offer('tourvisor',$localId,$localId",
+              "anex_three_price_offer('anex',$localId,(string)($offer['hotel']['external_id']??'')",
+              "anex_three_price_offer('andromeda',$localId,(string)$localId")
     if any(value not in text for value in required):
         raise ValueError('party_broad_source_incomplete')
     return text
