@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 define('ANYTOUR_ANEX_EGYPT_248_APD_LIBRARY_ONLY', true);
 require_once __DIR__ . '/../scripts/diagnostics/anex_egypt_248_apd_retained.php';
+define('ANYTOUR_ANEX_EGYPT_248_APD_PREFLIGHT_LIBRARY_ONLY', true);
+require_once __DIR__ . '/../scripts/diagnostics/anex_egypt_248_apd_preflight.php';
 
 $checks = 0;
 $assert = static function ($condition, string $message) use (&$checks): void {
@@ -83,5 +85,26 @@ $assert(strpos($workflow, "require_once \$root.'/config.php';") !== false,
     'runner loads the proven production config before the private/APD runtime');
 $assert(strpos($workflow, "\$preview=realpath(\$root.'/_preview/search3-anex-candidate');") !== false,
     'preview runtime is resolved from the validated production root');
+
+$preflight = anex_egypt_248_apd_preflight_main([]);
+$assert($preflight['status'] === 'blocked' && $preflight['blocker_stage'] === 'input'
+    && $preflight['blocker_category'] === 'invalid_input', 'preflight safely classifies invalid input before runtime access');
+$assert($preflight['supplier_calls'] === 0 && $preflight['additional_prices_calls'] === 0
+    && $preflight['tourvisor_calls'] === 0 && $preflight['andromeda_calls'] === 0,
+    'preflight contract exposes zero external supplier calls');
+$assert(anex_egypt_248_apd_preflight_category('db_connect') === 'db_unavailable'
+    && anex_egypt_248_apd_preflight_category('identity') === 'identity_unavailable'
+    && anex_egypt_248_apd_preflight_category('receipt_path') === 'receipt_path_unavailable',
+    'preflight stages map to bounded safe categories');
+$preflightSource = file_get_contents(__DIR__ . '/../scripts/diagnostics/anex_egypt_248_apd_preflight.php');
+$assert(is_string($preflightSource), 'preflight source readable');
+foreach (['AnyTourAnexClient', 'AnyTourAnexAdditionalPricesClient', 'SearchTour_', 'additionalPricesDaily', 'curl_', '->bron(', 'bron_ticket'] as $forbidden) {
+    $assert(strpos($preflightSource, $forbidden) === false, 'preflight contains no supplier/booking token: ' . $forbidden);
+}
+$assert(strpos($preflightSource, "resolve('anex_online', ANEX_EGYPT_248_APD_PREFLIGHT_EXTERNAL_HOTEL, 'preview')") !== false,
+    'preflight checks the same current accepted hotel identity as the retained operation');
+$assert(strpos($preflightSource, 'semantic_reservation_written') !== false
+    && strpos($preflightSource, "'semantic_reservation_written' => false") !== false,
+    'preflight explicitly states it never reserves the semantic APD operation');
 
 echo "ANEX Egypt retained APD: {$checks} checks passed; network=0\n";
