@@ -15,7 +15,7 @@ function hmcf_tokens($value): array
 
 function hmcf_qualifiers(array $tokens): array
 {
-    $q = ['annex','annexe','wing','beach','garden','gardens','north','south','east','west','adult','adults','family','only','suite','suites','villa','villas','apart','apartment','apartments','club','marina','city','island','bay','central'];
+    $q = ['annex','annexe','wing','beach','garden','gardens','north','south','east','west','adult','adults','family','only','suite','suites','villa','villas','apart','apartment','apartments','club','marina','city','island','bay','central','pool','sea','prestige','aquamarine'];
     $set = array_fill_keys($tokens, true); $out=[];
     foreach ($q as $token) if (isset($set[$token])) $out[$token]=true;
     return array_keys($out);
@@ -76,7 +76,7 @@ function hmcf_audit(PDO $db, string $strictOperation, string $operation): array
             $rank=hmcf_best($sourceNames,array_map('intval',array_keys($candidate)),$names);$best=$rank[0]??null;$second=$rank[1]['score']??0.0;
             if(!$best){$row['bridge_reason']='no_ranked_candidate';$blocked[]=$row;$reason['no_ranked_candidate']=($reason['no_ranked_candidate']??0)+1;continue;}
             $targetId=(int)$best['id'];$target=$hotels[$targetId];$margin=$best['score']-$second;
-            $idrow=$identity[$external]??[];$ev=fc_evidence($idrow['evidence_json']??'');$src=$ev['source']??[];if(!is_array($src))$src=[];$geo=$ev['geography']??[];if(!is_array($geo))$geo=[];$obs=$latest[$external]??[];
+            $idrow=$identity[$external]??[];$ev=fc_evidence($idrow['evidence_json']??'');$src=$ev['source']??[];if(!is_array($src))$src=[];$obs=$latest[$external]??[];
             $coordSource=$src;if(is_array($obs))$coordSource+=$obs;$guard=mbr_target_guard($coordSource,$target);$place=fc_place($sourcePlaces,[(string)$target['region_name'],(string)$target['subregion_name']]);$directGeo=($guard['distance_m']!==null&&(int)$guard['distance_m']<=1000)||$place;
             $sourceCategory=mbr_numeric_category($src);if($sourceCategory===null&&is_array($obs))$sourceCategory=mbr_numeric_category($obs);$targetCategory=$target['category']===null?null:(int)$target['category'];$starSignal=($sourceCategory!==null&&$targetCategory!==null)?$sourceCategory-$targetCategory:null;
             $base=['provider'=>'andromeda','external_id'=>$external,'country_id'=>$country,'source_names'=>$sourceNames,'source_places'=>$sourcePlaces,'target'=>mbr_row_target($target),'best'=>$best,'second_score'=>round((float)$second,6),'margin'=>round((float)$margin,6),'guard'=>$guard,'direct_geo'=>$directGeo,'source_category'=>$sourceCategory,'star_difference_signal'=>$starSignal,'existing_anex_anchor'=>isset($anexLocal[$targetId]),'existing_andromeda_occupancy'=>isset($andromedaLocal[$targetId]),'not_write_authority'=>true];
