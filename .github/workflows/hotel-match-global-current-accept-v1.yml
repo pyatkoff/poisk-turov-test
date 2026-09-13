@@ -1,0 +1,58 @@
+name: MATCH GLOBAL CURRENT accept v1
+on:
+  push:
+    branches: [ops/match-global-current-review-2333-20260913-v1]
+    paths: [.github/match-global-current-accept-2333-20260913-v1.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-global-current-accept-2333-20260913-v1}
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate writer
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_bulk_accept.php
+          test "$(cat .github/match-global-current-accept-2333-20260913-v1.arm)" = "$OPERATION_ID"
+      - name: Reserve immutable write before SSH
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          printf '%s\n' '{"operation_id":"hotel-match-global-current-accept-2333-20260913-v1","state":"reserved_before_ssh","review_run":34757632203,"review_result_sha256":"4be9091a68c6f3a2a7a43ba6f9aa4783bc6d0cbe5a3629aa4a67038317536f08","review_safe_candidates":4,"database_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}' > "$RUNNER_TEMP/$OPERATION_ID/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-global-current-accept-v1-reservation, path: '${{ runner.temp }}/hotel-match-global-current-accept-2333-20260913-v1/reservation.json', retention-days: 90}
+      - name: Apply server-CURRENT guarded bulk delta once
+        id: write
+        continue-on-error: true
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile,time
+          P=pathlib.Path;state=P(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+            x=P(path).read_text();x=x[5:] if x.startswith('<?php') else x;return x.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php');bulk=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1);writer=body('scripts/diagnostics/hotel_match_current_bulk_accept.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1).replace("const MBA_OPERATION = 'hotel-match-current-bulk-accept-1971-20260911-v3';","const MBA_OPERATION = 'hotel-match-global-current-accept-2333-20260913-v1';",1)
+          wrapper="$root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$out=mba_accept($db,'hotel-match-global-current-accept-2333-20260913-v1');echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";"
+          source='<?php\n'+"define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+writer+'\n'+wrapper;raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='match-global-write-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';sock=P(td)/'sock';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);base=['ssh','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR'];auth=False
+            for _ in range(3):
+              p=subprocess.run(base+['-M','-S',str(sock),'-fnNT','-o','ControlPersist=600','-l',user,host],capture_output=True,text=True,timeout=40)
+              if p.returncode==0:auth=True;break
+              time.sleep(8)
+            if not auth:state.joinpath('blocker.json').write_text('{"state":"auth_preflight_failed_zero_remote_execution"}\n');raise SystemExit(2)
+            p=subprocess.run(['ssh','-S',str(sock),'-T','-o','ControlMaster=no','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M'],input=source,text=True,capture_output=True,timeout=720);subprocess.run(['ssh','-S',str(sock),'-O','exit',host],capture_output=True,timeout=20)
+          if p.returncode!=0:state.joinpath('blocker.json').write_text(json.dumps({'state':'unknown_after_single_remote_execution_no_replay','remote_exit':p.returncode,'stdout_sha256':hashlib.sha256(p.stdout.encode()).hexdigest(),'database_writes':'unknown'})+'\n');raise SystemExit(3)
+          v=json.loads(p.stdout);raw_result=(json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw_result);ok=v.get('status')=='completed' and v.get('committed') is True and v.get('readback_verified') is True and v.get('database_writes')==4 and v.get('supplier_calls')==0 and sum(v.get('planned',{}).values())==4;state.joinpath('receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified' if ok else ('unknown_committed' if v.get('committed') else 'known_rolled_back'),'run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw_result).hexdigest(),'database_writes':v.get('database_writes'),'planned':v.get('planned'),'planned_classes':v.get('planned_classes'),'coverage_before':v.get('coverage_before'),'coverage_after':v.get('coverage_after'),'identity_before':v.get('identity_before'),'identity_after':v.get('identity_after'),'committed':v.get('committed'),'readback_verified':v.get('readback_verified'),'supplier_calls':0,'no_replay':True},ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps({'status':v.get('status'),'planned':v.get('planned'),'planned_classes':v.get('planned_classes'),'coverage_before':v.get('coverage_before'),'coverage_after':v.get('coverage_after')},ensure_ascii=False,sort_keys=True));
+          if not ok:raise SystemExit(4)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-global-current-accept-v1-${{ github.run_id }}', path: '${{ runner.temp }}/hotel-match-global-current-accept-2333-20260913-v1/', retention-days: 90}
+      - name: Terminal gate
+        if: steps.write.outcome != 'success'
+        run: exit 1
