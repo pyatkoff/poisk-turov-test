@@ -1,0 +1,271 @@
+name: "MATCH ANEX Tourvisor mass future full pages v14"
+run-name: "MATCH ANEX Tourvisor full pages #1971 v14"
+on:
+  push:
+    branches:
+      - ops/match-anex-tourvisor-mass-future-full-pages-1971-20260913-v14
+    paths:
+      - .github/match-anex-tourvisor-mass-future-full-pages-1971-v14.arm
+permissions:
+  contents: read
+concurrency:
+  group: match-anex-tourvisor-full-pages-v14
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-tourvisor-mass-future-full-pages-1971-20260913-v14
+  TEMPLATE_OPERATION_ID: hotel-match-anex-tourvisor-mass-future-1971-20260911-v9
+  FROZEN_SOURCE: e2d8b06c9cc4b9fccb39c99beef9dbb79fb00d9c
+  EXPECTED_TEMPLATE_SHA: 9ee040339cb7c77c0861597fd087c2d39dcba1ade8deb28df3ff7483558bfe8f
+  STATE_DIR: /tmp/match-tv-full-pages-v14
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build exact read-only full-page payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(cat .github/match-anex-tourvisor-mass-future-full-pages-1971-v14.arm)" = "$OPERATION_ID"
+          git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$FROZEN_SOURCE"
+          mkdir -p "$RUNNER_TEMP/frozen/scripts/diagnostics" "$RUNNER_TEMP/frozen/v2/data" "$STATE_DIR"
+          for f in hotel_full_catalog_reconcile.php hotel_match_current_bulk_review.php anex_hotelcode_evidence.php anex_tourvisor_hotelcode_evidence_collect.php anex_tourvisor_mass_future_v9.php; do
+            git show "$FROZEN_SOURCE:scripts/diagnostics/$f" > "$RUNNER_TEMP/frozen/scripts/diagnostics/$f"
+            php -l "$RUNNER_TEMP/frozen/scripts/diagnostics/$f"
+          done
+          git show "$FROZEN_SOURCE:v2/data/tourvisor-client-v1.php" > "$RUNNER_TEMP/frozen/v2/data/tourvisor-client-v1.php"
+          php -l "$RUNNER_TEMP/frozen/v2/data/tourvisor-client-v1.php"
+          test "$(sha256sum "$RUNNER_TEMP/frozen/scripts/diagnostics/anex_tourvisor_mass_future_v9.php" | awk '{print $1}')" = "$EXPECTED_TEMPLATE_SHA"
+          export FROZEN_ROOT="$RUNNER_TEMP/frozen"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root=Path(os.environ['FROZEN_ROOT'])
+          state=Path(os.environ['STATE_DIR'])
+          def body(path):
+              out=[]
+              for line in Path(path).read_text(encoding='utf-8').splitlines():
+                  s=line.strip()
+                  if s in ('<?php','declare(strict_types=1);',"if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);"):
+                      continue
+                  if s.startswith('require_once __DIR__'):
+                      continue
+                  out.append(line)
+              return '\n'.join(out)+'\n'
+          parts=[body(root/'scripts/diagnostics/hotel_full_catalog_reconcile.php'),body(root/'scripts/diagnostics/hotel_match_current_bulk_review.php'),body(root/'scripts/diagnostics/anex_hotelcode_evidence.php'),body(root/'scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php'),body(root/'v2/data/tourvisor-client-v1.php')]
+          c=body(root/'scripts/diagnostics/anex_tourvisor_mass_future_v9.php')
+          if c.count(os.environ['TEMPLATE_OPERATION_ID']) != 1:
+              raise SystemExit('operation template drift')
+          c=c.replace(os.environ['TEMPLATE_OPERATION_ID'],os.environ['OPERATION_ID'])
+          old_lead='const MTV8_LEAD_DAYS = [14, 28, 42];'
+          new_lead="const MTV8_LEAD_DAYS = [20, 50];\nconst MTV14_CONTINUE_CAP = 6;\nconst MTV14_FORBIDDEN_DATES = ['2026-09-18','2026-09-25','2026-09-29','2026-10-09','2026-10-13','2026-10-16','2026-10-23','2026-10-27','2026-11-06','2026-11-20','2026-11-27','2026-12-25','2027-01-08','2027-01-22'];"
+          if c.count(old_lead) != 1:
+              raise SystemExit('lead template drift')
+          c=c.replace(old_lead,new_lead,1)
+          marker='    $resultCalls = 0;\n'
+          if c.count(marker) != 1:
+              raise SystemExit('counter template drift')
+          c=c.replace(marker,marker+'    $continueCallsTotal = 0;\n',1)
+          fallback_lines=[
+              '        if ($selected === []) {',
+              "            $date = ate_pick_date($dateRows, $today->modify('+7 days'));",
+              "            if ($date !== null) $selected[$date] = 'future_fallback';",
+              '        }',
+          ]
+          fallback='\n'.join(fallback_lines)+'\n'
+          if c.count(fallback) != 1:
+              raise SystemExit('date template drift')
+          fresh_lines=[
+              '        foreach (array_keys($selected) as $candidateDate) {',
+              '            if (in_array($candidateDate, MTV14_FORBIDDEN_DATES, true)) unset($selected[$candidateDate]);',
+              '        }',
+          ]
+          c=c.replace(fallback,fallback+'\n'.join(fresh_lines)+'\n',1)
+          old_lines=[
+              '            $rows = [];',
+              '            $resultError = null;',
+              '            foreach ([1000, 500, 100] as $limit) {',
+              '                try {',
+              "                    $result = v2_data_tv_get('/tours/search/' . $searchId, ['limit' => $limit]);",
+              '                    $resultCalls++;',
+              '                    $rows = ate_tv_rows($result);',
+              '                    $resultError = null;',
+              '                    break;',
+              '                } catch (Throwable $e) {',
+              '                    $resultError = mtv8_safe_message($e);',
+              '                }',
+              '            }',
+          ]
+          old='\n'.join(old_lines)+'\n'
+          new_lines=[
+              '            $resultError = null;',
+              '            $fetchRows = static function (int $sid) use (&$resultCalls, &$resultError): array {',
+              '                foreach ([10000, 5000, 2000, 1000, 500, 100] as $limit) {',
+              '                    try {',
+              "                        $result = v2_data_tv_get('/tours/search/' . $sid, ['limit' => $limit]);",
+              '                        $resultCalls++;',
+              '                        $resultError = null;',
+              '                        return ate_tv_rows($result);',
+              '                    } catch (Throwable $e) {',
+              '                        $resultError = mtv8_safe_message($e);',
+              '                    }',
+              '                }',
+              '                return [];',
+              '            };',
+              '            $mergeHotels = static function (array &$union, array $chunk): void {',
+              '                foreach ($chunk as $hotel) {',
+              '                    if (!is_array($hotel)) continue;',
+              "                    $rawId = $hotel['id'] ?? null;",
+              "                    $id = is_array($rawId) ? filter_var($rawId['id'] ?? null, FILTER_VALIDATE_INT) : filter_var($rawId, FILTER_VALIDATE_INT);",
+              '                    if ($id === false || (int)$id <= 0) continue;',
+              '                    $key = (string)(int)$id;',
+              "                    $newTours = is_array($hotel['tours'] ?? null) ? count($hotel['tours']) : 0;",
+              "                    $oldTours = isset($union[$key]) && is_array($union[$key]['tours'] ?? null) ? count($union[$key]['tours']) : -1;",
+              '                    if (!isset($union[$key]) || $newTours > $oldTours) $union[$key] = $hotel;',
+              '                }',
+              '            };',
+              '            $initialRows = $fetchRows($searchId);',
+              '            $initialHotelCount = count($initialRows);',
+              '            $union = [];',
+              '            $mergeHotels($union, $initialRows);',
+              '            $continueCallsForSearch = 0;',
+              "            $continueStop = 'continue_cap';",
+              "            $continueRounds = [['round'=>0,'returned_hotels'=>$initialHotelCount,'union_hotels'=>count($union)]];",
+              '            for ($continueRound = 1; $continueRound <= MTV14_CONTINUE_CAP; $continueRound++) {',
+              '                $before = count($union);',
+              '                sleep(2);',
+              '                try {',
+              "                    v2_data_tv_get('/tours/search/' . $searchId . '/continue');",
+              '                    $continueCallsForSearch++;',
+              '                    $continueCallsTotal++;',
+              '                } catch (Throwable $e) {',
+              "                    $continueStop = 'continue_unavailable';",
+              '                    break;',
+              '                }',
+              '                $continuedComplete = false;',
+              '                for ($continuePoll = 0; $continuePoll < 12; $continuePoll++) {',
+              '                    if ($continuePoll > 0) sleep(2);',
+              '                    try {',
+              "                        $continueStatus = v2_data_tv_get('/tours/search/' . $searchId . '/status', ['operatorStatus' => false]);",
+              '                        $statusCalls++;',
+              '                    } catch (Throwable $e) {',
+              "                        $continueStop = 'continue_status_error';",
+              '                        break 2;',
+              '                    }',
+              '                    if (ate_search_complete($continueStatus)) { $continuedComplete = true; break; }',
+              '                }',
+              "                if (!$continuedComplete) { $continueStop = 'continue_not_complete'; break; }",
+              '                $chunk = $fetchRows($searchId);',
+              '                $mergeHotels($union, $chunk);',
+              "                $continueRounds[] = ['round'=>$continueRound,'returned_hotels'=>count($chunk),'union_hotels'=>count($union)];",
+              "                if (count($union) === $before) { $continueStop = 'no_growth_after_continue'; break; }",
+              '            }',
+              '            $rows = array_values($union);',
+          ]
+          new='\n'.join(new_lines)+'\n'
+          if c.count(old) != 1:
+              raise SystemExit('result block drift')
+          c=c.replace(old,new,1)
+          summary="                'result_hotels' => count($rows),\n"
+          replacement="                'initial_result_hotels' => $initialHotelCount,\n                'result_hotels' => count($rows),\n                'continue_calls' => $continueCallsForSearch,\n                'continue_stop' => $continueStop,\n                'continue_rounds' => $continueRounds,\n"
+          if c.count(summary) != 1:
+              raise SystemExit('summary template drift')
+          c=c.replace(summary,replacement,1)
+          if c.count("'search_continue_calls' => 0,") < 3:
+              raise SystemExit('continue output drift')
+          c=c.replace("'search_continue_calls' => 0,","'search_continue_calls' => $continueCallsTotal,",2)
+          c=c.replace("'current_db_live_tourvisor_anex_mass_future_dates'","'current_db_live_tourvisor_anex_mass_future_full_pages_fresh_dates'",1)
+          start="            try {\n                $start = v2_data_tv_get('/tours/search', $payload);"
+          if c.count(start) != 1:
+              raise SystemExit('start template drift')
+          c=c.replace(start,"            sleep(2);\n"+start,1)
+          payload="<?php\ndefine('FC_LIBRARY_ONLY', true);\n"+'\n'.join(parts+[c])
+          (state/'payload.php').write_text(payload,encoding='utf-8')
+          PY
+          php -l "$STATE_DIR/payload.php"
+          grep -Fq "/continue'" "$STATE_DIR/payload.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' "$RUNNER_TEMP/frozen/scripts/diagnostics/anex_tourvisor_mass_future_v9.php"
+      - name: Prepare key and reservation
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_v14_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE_DIR']); payload=(state/'payload.php').read_bytes()
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_or_supplier_access','source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE'],'run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'payload_sha256':hashlib.sha256(payload).hexdigest(),'mode':'current_db_live_tourvisor_anex_full_pages_fresh_dates','lead_day_targets':[20,50],'continue_cap_per_search':6,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True,indent=2)+'\n').encode(); (state/'reservation.json').write_bytes(raw)
+          if (state/'reservation.json').read_bytes()!=raw: raise SystemExit('reservation readback failed')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-mass-future-full-pages-v14-reservation
+          path: /tmp/match-tv-full-pages-v14/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Cool down
+        run: sleep 60
+      - name: Execute server-CURRENT evidence
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/anytoour_match_v14_key"
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$STATE_DIR/payload.php" > "$STATE_DIR/live.stdout" 2> "$STATE_DIR/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE_DIR']); rc=int(os.environ['RC']); stdout=(state/'live.stdout').read_text(errors='replace'); stderr=(state/'live.stderr').read_text(errors='replace')
+          lines=[x for x in stdout.splitlines() if x.strip()]; data=None
+          if lines:
+              try: data=json.loads(lines[-1])
+              except Exception: pass
+          if not isinstance(data,dict):
+              data={'operation_id':os.environ['OPERATION_ID'],'status':'unknown','reason':'result_marker_missing','remote_exit':rc,'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          if data.get('operation_id') != os.environ['OPERATION_ID']: raise SystemExit('operation mismatch')
+          for k in ('database_writes','mapping_writes','booking_calls'):
+              if int(data.get(k,0)) != 0: raise SystemExit('unsafe side effect '+k)
+          forbidden={'2026-09-18','2026-09-25','2026-09-29','2026-10-09','2026-10-13','2026-10-16','2026-10-23','2026-10-27','2026-11-06','2026-11-20','2026-11-27','2026-12-25','2027-01-08','2027-01-22'}
+          used={str(x.get('date')) for x in (data.get('searches') or []) if x.get('date')}
+          if forbidden & used: raise SystemExit('prior date replay detected')
+          data.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=rc,stderr_present=bool(stderr.strip()),no_replay=True)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (state/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_no_replay' if data.get('status')=='completed' and rc==0 else 'unknown_or_failed_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          searches=data.get('searches') or []
+          summary={'status':data.get('status'),'reason':data.get('reason'),'queue_count':data.get('queue_count'),'queue_by_country':data.get('queue_by_country'),'search_count':len(searches),'search_dates':sorted(used),'search_continue_calls':data.get('search_continue_calls'),'initial_hotels':sum(int(x.get('initial_result_hotels') or 0) for x in searches),'final_union_hotels':sum(int(x.get('result_hotels') or 0) for x in searches),'slices_with_growth':sum(1 for x in searches if int(x.get('result_hotels') or 0)>int(x.get('initial_result_hotels') or 0)),'raw_queue_matches':data.get('raw_queue_matches'),'matched_unique':data.get('matched_unique'),'confirmed_full_path_count':len(data.get('confirmed_full_path') or []),'strong_operator_link_count':len(data.get('strong_operator_link') or []),'conflict_count':len(data.get('conflicts') or []),'remote_exit':rc}
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if data.get('confirmed_full_path') or data.get('strong_operator_link'):
+              safe=[]
+              for group in ('confirmed_full_path','strong_operator_link'):
+                  for row in data.get(group) or []:
+                      safe.append({k:row.get(k) for k in ('evidence_class','anex_hotel_id','tv_hotel_id','tv_hotel_name','match_rule','distance_m','search_count','operator_hotellist','hotel_code')})
+              print('SAFE_EVIDENCE:'+json.dumps(safe[:500],ensure_ascii=False,sort_keys=True))
+          if rc != 0 or data.get('status') != 'completed': raise SystemExit(1)
+          PY
+      - name: Preserve final result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-mass-future-full-pages-v14-result
+          path: |
+            /tmp/match-tv-full-pages-v14/reservation.json
+            /tmp/match-tv-full-pages-v14/result.json
+            /tmp/match-tv-full-pages-v14/receipt.json
+          if-no-files-found: warn
+          retention-days: 90
