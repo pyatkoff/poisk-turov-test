@@ -1,0 +1,100 @@
+name: MATCH CURRENT Tourvisor observation to ANEX direct-key v2
+on:
+  push:
+    branches: ['ops/match-current-tv-anex-observations-1971-20260913-v2']
+    paths: ['.github/match-current-tv-anex-observations-1971-20260913-v2.arm']
+permissions: {contents: read}
+concurrency: {group: match-current-tv-anex-observations-1971-20260913-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-current-tv-anex-observations-1971-20260913-v2
+jobs:
+  current-read-only:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate exact read-only source
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_tv_anex_observations.php)" = 'cfdd5629fd65f7801c680935d13ce8a14de5bcb9'
+          test "$(git hash-object tests/hotel_match_current_tv_anex_observations_test.php)" = '0bb1797e0079705222f1d7eae7b180bf01416bab'
+          php -l scripts/diagnostics/hotel_match_current_tv_anex_observations.php
+          php tests/hotel_match_current_tv_anex_observations_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_current_tv_anex_observations.php
+          test "$(cat .github/match-current-tv-anex-observations-1971-20260913-v2.arm)" = "$OPERATION_ID"
+      - name: Reserve immutable operation before SSH
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          python3 - <<'PY'
+          import json,os,pathlib
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'classifier_blob':'cfdd5629fd65f7801c680935d13ce8a14de5bcb9','test_blob':'0bb1797e0079705222f1d7eae7b180bf01416bab','database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'read_only':True,'no_replay':True}
+          state.joinpath('reservation.json').write_text(json.dumps(reservation,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: match-current-tv-anex-observations-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-current-tv-anex-observations-1971-20260913-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Run server-CURRENT observation audit
+        id: audit
+        continue-on-error: true
+        env:
+          SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path; rt=P(os.environ['RUNNER_TEMP']); state=rt/os.environ['OPERATION_ID']
+          def body(text):
+              if text.startswith('<?php'): text=text[5:]
+              return text.replace('declare(strict_types=1);','',1)
+          helper=body(P('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text())
+          review=body(P('scripts/diagnostics/hotel_match_current_tv_anex_observations.php').read_text())
+          review=review.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          op=json.dumps(os.environ['OPERATION_ID'])
+          wrapper="$stage='bootstrap';try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $dbHelper;$db=v2_data_db();$stage='current_observation_audit';$out=hmto_review($db,"+op+");echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";}catch(Throwable $e){$code=(string)$e->getCode();if(!preg_match('/^[A-Za-z0-9_.-]{1,16}$/D',$code))$code='other';$class=get_class($e);if(!in_array($class,['PDOException','RuntimeException','LogicException','InvalidArgumentException','Error','TypeError'],true))$class='other';echo json_encode(['schema'=>'hotel-match-current-tv-anex-observations/1','status'=>'diagnostic_failure','operation_id'=>"+op+",'stage'=>$stage,'exception_class'=>$class,'exception_code'=>$code,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";}"
+          source='<?php\n'+"define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+review+'\n'+wrapper
+          req=('SSH_KEY','SSH_HOST','SSH_USER')
+          if any(not os.environ.get(k,'').strip() for k in req): raise RuntimeError('ssh_secret_missing')
+          host=os.environ['SSH_HOST'].strip(); user=os.environ['SSH_USER'].strip(); raw=os.environ['SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory(prefix='match-current-v2-',dir=os.environ['RUNNER_TEMP']) as td:
+              key=P(td)/'key'; known=P(td)/'known_hosts'
+              if 'PRIVATE KEY' in raw: key.write_text(raw.rstrip()+'\n')
+              else: key.write_bytes(base64.b64decode(raw))
+              key.chmod(0o600)
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=512M']
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,input=source,text=True,capture_output=True,timeout=540,env=clean)
+          if p.returncode!=0:
+              low=p.stderr.lower(); cls='connection_closed' if ('connection closed' in low or 'connection reset' in low or 'kex_exchange_identification' in low) else ('authentication_denied' if 'permission denied' in low else ('timeout' if 'timed out' in low else 'ssh_failed_other'))
+              safe={'operation_id':os.environ['OPERATION_ID'],'state':'transport_failure_no_replay','exit_code':p.returncode,'classification':cls,'stdout_bytes':len(p.stdout.encode()),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+              state.joinpath('blocker.json').write_text(json.dumps(safe,sort_keys=True)+'\n'); raise SystemExit(2)
+          try: value=json.loads(p.stdout)
+          except Exception: value=None
+          if not isinstance(value,dict):
+              state.joinpath('blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'application_output_unknown_no_replay','stdout_bytes':len(p.stdout.encode()),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True},sort_keys=True)+'\n'); raise SystemExit(3)
+          raw_result=(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); state.joinpath('result.json').write_bytes(raw_result)
+          accepted=value.get('status') in ('completed','observation_table_missing','diagnostic_failure') and all(value.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls'))
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only_audit' if accepted else 'invalid_result_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw_result).hexdigest(),'application_status':value.get('status'),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          state.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if not accepted: raise SystemExit(4)
+          PY
+      - name: Preserve CURRENT result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-tv-anex-observations-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/hotel-match-current-tv-anex-observations-1971-20260913-v2/
+          if-no-files-found: error
+          retention-days: 90
+      - name: Terminal gate
+        if: steps.audit.outcome != 'success'
+        run: exit 1
