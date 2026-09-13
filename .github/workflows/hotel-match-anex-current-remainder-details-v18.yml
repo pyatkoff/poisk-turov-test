@@ -1,0 +1,169 @@
+name: MATCH current ANEX remainder details v18
+run-name: MATCH current ANEX remainder details #1971 v18
+on:
+  push:
+    branches: ['ops/match-anex-current-remainder-details-1971-20260913-v18']
+    paths:
+      - '.github/match-anex-current-remainder-details-1971-v18.arm'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-anex-current-remainder-details-1971-v18
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-current-remainder-details-1971-20260913-v18
+  PINNED_MATCH_SOURCE: c5d798cecdf2eeab96a3c83f16163873b378d5a8
+  EXPECTED_MANIFEST_SHA256: 9d91f0a0345976a792b04fea5e7f99b00fde3651b94542ea31bdaec47537d36b
+  EXCLUDE_ARTIFACT_ID: '10311246616'
+  EXCLUDE_ARTIFACT_SHA256: d29728b346ed17d38a1c8d29930beae151204f7480711a32e3f80bec04b9e802
+  EXCLUDE_PREFLIGHT_SHA256: f2686a8099e216c2dad2d8b7cd19e77ffce605b132fe3dc759e85a1a9c163d08
+  EXCLUDE_TARGET_SHA256: 9253d53504bfd8ed931b82016ae7c00f51c78d1abe38b00e2e54769065e9ca03
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore sealed exclusion set and pin MATCH reviewers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-current-remainder-details-1971-v18.arm)" = "$OPERATION_ID"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(sha256sum .github/match-anex-current-remainder-details-1971-v18.manifest.json | awk '{print $1}')" = "$EXPECTED_MANIFEST_SHA256"
+          mkdir -m 700 "$RUNNER_TEMP/v18-input"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$EXCLUDE_ARTIFACT_ID/zip" -o "$RUNNER_TEMP/v16.zip"
+          test "$(sha256sum "$RUNNER_TEMP/v16.zip" | awk '{print $1}')" = "$EXCLUDE_ARTIFACT_SHA256"
+          unzip -q "$RUNNER_TEMP/v16.zip" -d "$RUNNER_TEMP/v18-input"
+          test "$(sha256sum "$RUNNER_TEMP/v18-input/preflight.json" | awk '{print $1}')" = "$EXCLUDE_PREFLIGHT_SHA256"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          pre=json.loads((Path(os.environ['RUNNER_TEMP'])/'v18-input/preflight.json').read_text())
+          assert pre['operation_id']=='hotel-match-anex-current-details-1971-20260913-v16'
+          assert pre['target_sha256']==os.environ['EXCLUDE_TARGET_SHA256'] and len(pre['target_ids'])==67
+          assert len(set(map(int,pre['target_ids'])))==67
+          PY
+          git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$PINNED_MATCH_SOURCE"
+          git show "$PINNED_MATCH_SOURCE:scripts/diagnostics/hotel_match_anex_sold_details_review.php" > "$RUNNER_TEMP/details.php"
+          git show "$PINNED_MATCH_SOURCE:scripts/diagnostics/hotel_match_anex_sold_details_strong_review.php" > "$RUNNER_TEMP/strong.php"
+          git show "$PINNED_MATCH_SOURCE:scripts/diagnostics/hotel_match_anex_direct_details_coordinate_review.php" > "$RUNNER_TEMP/coord.php"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP'])
+          p=root/'details.php'; s=p.read_text(encoding='utf-8')
+          old="const HMADR_OPERATION = 'hotel-match-anex-sold-details-review-1971-20260911-v1';"; new="const HMADR_OPERATION = 'hotel-match-anex-current-remainder-details-1971-20260913-v18';"
+          if s.count(old)!=1: raise SystemExit('details source drift')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          p=root/'strong.php'; s=p.read_text(encoding='utf-8')
+          patches={
+            "const HMASR_OPERATION = 'hotel-match-anex-sold-details-strong-review-1971-20260911-v1';":"const HMASR_OPERATION = 'hotel-match-anex-current-remainder-details-1971-20260913-v18';",
+            "const HMASR_SOURCE_OPERATION = 'hotel-match-anex-sold-details-review-1971-20260911-v2';":"const HMASR_SOURCE_OPERATION = 'hotel-match-anex-current-remainder-details-1971-20260913-v18';",
+            "const HMASR_SOURCE_RESULT_SHA256 = '86f3cbe232a262fa6c6bcd5d87a56af8167ce52f1dc7b589c7d4605fd57cc7fa';":"const HMASR_SOURCE_RESULT_SHA256 = 'current-inline-v18';",
+          }
+          for a,b in patches.items():
+              if s.count(a)!=1: raise SystemExit('strong source drift')
+              s=s.replace(a,b,1)
+          p.write_text(s,encoding='utf-8')
+          p=root/'coord.php'; s=p.read_text(encoding='utf-8')
+          patches={
+            "const HMADDCR_OPERATION = 'hotel-match-anex-direct-details-coordinate-review-1971-20260911-v1';":"const HMADDCR_OPERATION = 'hotel-match-anex-current-remainder-details-1971-20260913-v18';",
+            "if(count($sources)!==208)":"if(count($sources)!==count(array_filter($directResult['details']['rows']??[],static fn($r)=>is_array($r)&&($r['status']??'')==='ok')))",
+          }
+          for a,b in patches.items():
+              if s.count(a)!=1: raise SystemExit('coordinate source drift')
+              s=s.replace(a,b,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          php -l "$RUNNER_TEMP/details.php"
+          php -l "$RUNNER_TEMP/strong.php"
+          php -l "$RUNNER_TEMP/coord.php"
+          php -l scripts/diagnostics/hotel_full_catalog_reconcile.php
+          php -l app/integrations/anex-client.php
+      - name: Reserve immutable operation before CURRENT DB or supplier access
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_current_db_or_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'excluded_operation':'hotel-match-anex-current-details-1971-20260913-v16','excluded_target_sha256':os.environ['EXCLUDE_TARGET_SHA256'],'excluded_targets':67,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'bookings':0,'lead_calls':0,'no_replay':True}
+          raw=(json.dumps(x,sort_keys=True)+'\n').encode(); p=Path(os.environ['STATE'])/'reservation.json'; p.write_bytes(raw)
+          if p.read_bytes()!=raw: raise SystemExit('reservation readback failed')
+          PY
+      - name: Preserve reservation before access
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-current-remainder-details-1971-20260913-v18-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-current-remainder-details-1971-20260913-v18/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Acquire remainder details once and perform CURRENT mass review
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,shlex,subprocess,tempfile,hashlib
+          from pathlib import Path
+          root=Path(os.environ['RUNNER_TEMP']); state=root/os.environ['OPERATION_ID']; old=json.loads((root/'v18-input/preflight.json').read_text()); excluded=sorted(set(map(int,old['target_ids'])))
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[5:]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php');client=body('app/integrations/anex-client.php')
+          details=body(root/'details.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strong=body(root/'strong.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          coord=body(root/'coord.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_anex_sold_details_strong_review.php';\n",'',1)
+          excluded_raw=json.dumps(excluded,separators=(',',':'))
+          wrapper=r'''
+          function v18_plan(PDO $db,array $excluded): array {
+            if(count($excluded)!==67)throw new RuntimeException('V18_EXCLUDE');$skip=array_fill_keys(array_map('intval',$excluded),true);$core=[1=>true,2=>true,4=>true,8=>true,9=>true,10=>true,12=>true,16=>true];
+            $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+            try{$manual=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN)),true);$mapped=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings')->fetchAll(PDO::FETCH_COLUMN)),true);$staging=[];foreach($db->query('SELECT anex_hotel_id,api_country FROM anex_hotels ORDER BY anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC) as $r)$staging[(int)$r['anex_hotel_id']]=$r;$observed=[];foreach($db->query('SELECT anex_hotel_id,country_id,search_count,last_seen_utc FROM anex_search_hotel_observations ORDER BY anex_hotel_id,search_count DESC,last_seen_utc DESC')->fetchAll(PDO::FETCH_ASSOC) as $r){$id=(int)$r['anex_hotel_id'];if(!isset($observed[$id]))$observed[$id]=$r;}$ids=array_values(array_unique(array_merge(array_keys($staging),array_keys($observed))));sort($ids,SORT_NUMERIC);$targets=[];$ctx=[];$total=0;$liveTotal=0;$excludedCurrent=0;$live=0;
+              foreach($ids as $id){$id=(int)$id;if(isset($manual[$id])||isset($mapped[$id]))continue;$o=$observed[$id]??null;$s=$staging[$id]??null;$country=(int)($o['country_id']??0);if(!isset($core[$country]))$country=(int)(fc_country($s['api_country']??'')??0);if(!isset($core[$country]))continue;$total++;$isLive=(int)($o['search_count']??0)>0;if($isLive)$liveTotal++;if(isset($skip[$id])){$excludedCurrent++;continue;}$targets[]=$id;if($isLive)$live++;$ctx[]=['anex_hotel_id'=>$id,'country_id'=>$country,'live'=>$isLive,'search_count'=>(int)($o['search_count']??0),'last_seen_utc'=>$o['last_seen_utc']??null];}
+              if(count($targets)>254)throw new RuntimeException('V18_TARGET_LIMIT');sort($targets,SORT_NUMERIC);$hash=hash('sha256',json_encode($targets,JSON_UNESCAPED_SLASHES));$db->commit();return ['status'=>'ready','operation_id'=>HMADR_OPERATION,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'stats'=>['current_unresolved'=>$total,'current_live'=>$liveTotal,'excluded_v16_current'=>$excludedCurrent,'remainder'=>count($targets),'remainder_live'=>$live],'target_ids'=>$targets,'target_sha256'=>$hash,'target_context'=>$ctx];
+            }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+          }
+          try{$root=realpath(getcwd());$home=(string)getenv('HOME');if(!$root||basename($root)!=='anytoour.ru'||$home==='')throw new RuntimeException('V18_ROOT');$private=realpath($home.'/.anytoour-anex/search3-preview.php');if(!$private||!is_file($private))throw new RuntimeException('V18_PRIVATE');require $private;if(!defined('ANEX_API_TOKEN')||!is_string(ANEX_API_TOKEN)||trim(ANEX_API_TOKEN)==='')throw new RuntimeException('V18_TOKEN');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('V18_DB');require_once $dbHelper;$db=v2_data_db();$excluded=json_decode('__EXCLUDED__',true,64,JSON_THROW_ON_ERROR);$plan=v18_plan($db,$excluded);$details=hmadr_collect_details($plan['target_ids'],ANEX_API_TOKEN,$plan['target_sha256']);$source=['status'=>'completed','operation_id'=>HMADR_OPERATION,'database_writes'=>0,'mapping_writes'=>0,'details'=>$details,'target_sha256'=>$details['target_sha256']];$strong=hmasr_review($db,$source,$plan,HMASR_OPERATION);$coord=hmaddcr_review($db,$source,$plan,HMADDCR_OPERATION);
+            $sp=[];foreach($strong['prepared']??[] as $r)$sp[(int)$r['anex_hotel_id']]=$r;$cp=[];foreach($coord['prepared']??[] as $r)$cp[(int)$r['anex_hotel_id']]=$r;
+            $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');try{$protected=[];foreach($db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1 UNION SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN) as $id)$protected[(int)$id]=true;$occupied=[];foreach($db->query("SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1 UNION ALL SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_decisions WHERE decision_status='accepted' AND catalog_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC) as $r)$occupied[(int)$r['catalog_hotel_id']][(int)$r['anex_hotel_id']]=true;$excludedPairs=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $r)$excludedPairs[(int)$r['anex_hotel_id']][(int)$r['catalog_hotel_id']]=true;$db->commit();}catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+            $ids=array_unique(array_merge(array_keys($sp),array_keys($cp)));sort($ids,SORT_NUMERIC);$provisional=[];$laneConflicts=[];$withheld=[];foreach($ids as $aid){$s=$sp[$aid]??null;$c=$cp[$aid]??null;if($s&&$c&&(int)$s['target_local_hotel_id']!==(int)$c['target_local_hotel_id']){$laneConflicts[]=['anex_hotel_id'=>$aid,'strong_target'=>(int)$s['target_local_hotel_id'],'coordinate_target'=>(int)$c['target_local_hotel_id']];continue;}$row=$s??$c;$target=(int)$row['target_local_hotel_id'];if(isset($protected[$aid])){$withheld[]=['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'reason'=>'became_protected'];continue;}if(isset($excludedPairs[$aid][$target])){$withheld[]=['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'reason'=>'pair_excluded'];continue;}$other=array_values(array_filter(array_keys($occupied[$target]??[]),static fn($x)=>(int)$x!==$aid));if($other){$withheld[]=['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'reason'=>'target_occupied','other_anex_ids'=>$other];continue;}$provisional[$aid]=['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'live'=>(bool)($row['live']??false),'search_count'=>(int)($row['search_count']??0),'source_name'=>$row['source_name']??null,'target_name'=>$row['target_name']??null,'distance_m'=>$row['distance_m']??null,'place_match'=>(bool)($row['place_match']??false),'andromeda_bridge'=>(bool)($row['andromeda_bridge']??false),'strong_rule'=>$s['rule']??null,'coordinate_rule'=>$c['rule']??null,'strong_score'=>$s['score']??null,'strong_margin'=>$s['margin']??null,'coordinate_score'=>$c['score']??null,'lanes'=>array_values(array_filter([$s?'strong_name_margin':null,$c?'coordinate_cluster':null]))];}
+            $byTarget=[];foreach($provisional as $aid=>$r)$byTarget[(int)$r['target_local_hotel_id']][]=(int)$aid;$safe=[];foreach($provisional as $aid=>$r){$claims=$byTarget[(int)$r['target_local_hotel_id']]??[];if(count($claims)>1){$withheld[]=['anex_hotel_id'=>(int)$aid,'target_local_hotel_id'=>(int)$r['target_local_hotel_id'],'reason'=>'batch_target_collision','claiming_anex_ids'=>$claims];continue;}$safe[]=$r;}usort($safe,static fn($a,$b)=>(int)$b['live']<=>(int)$a['live'] ?: $b['search_count']<=>$a['search_count'] ?: $a['anex_hotel_id']<=>$b['anex_hotel_id']);$coverage=fc_coverage($db);$out=['status'=>'completed','operation_id'=>HMADR_OPERATION,'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0,'historical_operations_replayed'=>false,'plan'=>$plan,'details'=>$details,'strong_stats'=>$strong['stats']??[],'coordinate_stats'=>$coord['stats']??[],'strong_prepared'=>count($sp),'coordinate_prepared'=>count($cp),'lane_conflicts'=>$laneConflicts,'withheld'=>$withheld,'safe_prepared'=>$safe,'safe_count'=>count($safe),'coverage'=>$coverage];echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";
+          }catch(Throwable $e){$m=$e->getMessage();echo json_encode(['status'=>'failed','operation_id'=>HMADR_OPERATION,'reason'=>(is_string($m)&&preg_match('/\A[A-Z0-9_]{1,100}\z/D',$m)?$m:'V18_REMOTE_ERROR'),'database_writes'=>0,'mapping_writes'=>0,'bookings'=>0],JSON_UNESCAPED_SLASHES),"\n";exit(2);}
+          '''.replace('__EXCLUDED__',excluded_raw)
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+client+'\n'+details+'\n'+strong+'\n'+coord+'\n'+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          with tempfile.TemporaryDirectory(prefix='match-anex-v18-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts';cmd=['ssh','-vv','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=3','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)];clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')};p=subprocess.run(cmd,text=True,capture_output=True,timeout=1000,env=clean)
+          stderr=str(p.stderr);prog={'authenticated':'Authenticated to ' in stderr or 'Authentication succeeded' in stderr,'command_sent':'Sending command:' in stderr,'remote_exit_seen':'Exit status ' in stderr}
+          try:r=json.loads(p.stdout)
+          except Exception:r={'status':'unknown','operation_id':os.environ['OPERATION_ID'],'reason':'V18_OUTPUT','database_writes':0,'mapping_writes':0,'bookings':0}
+          result=(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();(state/'result.json').write_bytes(result);reservation=(state/'reservation.json').read_bytes();receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed' if p.returncode==0 and r.get('status')=='completed' else ('unknown_no_replay' if prog['command_sent'] else 'failed_precommand'),'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(result).hexdigest(),'reservation_sha256':hashlib.sha256(reservation).hexdigest(),'exit_code':p.returncode,'ssh':prog,'database_writes':r.get('database_writes',0),'mapping_writes':r.get('mapping_writes',0),'bookings':r.get('bookings',0),'supplier_calls':((r.get('details') or {}).get('supplier_calls')),'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          plan=r.get('plan') or {};d=r.get('details') or {};print(json.dumps({'state':receipt['state'],'current':(plan.get('stats') or {}).get('current_unresolved'),'remainder':(plan.get('stats') or {}).get('remainder'),'remainder_live':(plan.get('stats') or {}).get('remainder_live'),'detail_ok':d.get('ok'),'detail_empty':d.get('empty'),'detail_errors':d.get('errors'),'supplier_calls':d.get('supplier_calls'),'strong_prepared':r.get('strong_prepared'),'coordinate_prepared':r.get('coordinate_prepared'),'safe_count':r.get('safe_count'),'lane_conflicts':len(r.get('lane_conflicts') or []),'withheld':len(r.get('withheld') or [])},sort_keys=True))
+          if receipt['state']!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('mapping_writes')!=0 or r.get('bookings')!=0 or r.get('historical_operations_replayed') is not False: raise SystemExit(2)
+          PY
+      - name: Preserve sealed remainder evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-current-remainder-details-1971-20260913-v18-result
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-current-remainder-details-1971-20260913-v18/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-current-remainder-details-1971-20260913-v18/result.json
+            ${{ runner.temp }}/hotel-match-anex-current-remainder-details-1971-20260913-v18/receipt.json
+          if-no-files-found: warn
+          retention-days: 90
