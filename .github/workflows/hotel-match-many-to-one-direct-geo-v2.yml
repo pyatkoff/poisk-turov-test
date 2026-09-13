@@ -1,0 +1,49 @@
+name: MATCH many to one direct geo v2
+on:
+  push:
+    branches: [ops/match-learned-geo-global-2333-20260914-v1]
+    paths: [.github/match-many-to-one-direct-geo-2333-20260914-v2.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-many-to-one-direct-geo-review-2333-20260914-v2}
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate
+        run: |
+          php -l scripts/diagnostics/hotel_match_many_to_one_direct_geo_review.php
+          test "$(cat .github/match-many-to-one-direct-geo-2333-20260914-v2.arm)" = "$OPERATION_ID"
+      - name: Review current DB read-only
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path
+          def body(p):
+            s=P(p).read_text();s=s[5:] if s.startswith('<?php') else s;return s.replace('declare(strict_types=1);','',1)
+          files=['hotel_full_catalog_reconcile.php','hotel_match_current_bulk_review.php','hotel_match_learned_geo_global_review.php','hotel_match_fuzzy_learned_geo_global_review.php','hotel_match_direct_fuzzy_geo_global_review.php','hotel_match_andromeda_duplicate_bridge_global_review.php','hotel_match_andromeda_star_signal_bridge_review.php','hotel_match_many_to_one_direct_geo_review.php']
+          reqs=["if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\n"]+["require_once __DIR__ . '/%s';\n"%x for x in files]
+          chunks=[]
+          for f in files:
+            s=body('scripts/diagnostics/'+f)
+            for r in reqs:s=s.replace(r,'')
+            chunks.append(s)
+          wrapper="$root=realpath(getcwd());require_once $root.'/config.php';require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$o=hmmto_review(v2_data_db(),'hotel-match-many-to-one-direct-geo-review-2333-20260914-v2');echo json_encode($o,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";"
+          payload='<?php\ndefine("FC_LIBRARY_ONLY",true);\n'+'\n'.join(chunks)+'\n'+wrapper
+          raw=os.environ['SSH_KEY'].strip()
+          with tempfile.TemporaryDirectory(dir=os.environ['RUNNER_TEMP']) as td:
+            k=P(td)/'k';known=P(td)/'known';k.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else k.write_bytes(base64.b64decode(raw));k.chmod(0o600)
+            cmd=['ssh','-T','-i',str(k),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-l',os.environ['SSH_USER'],os.environ['SSH_HOST'],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d memory_limit=1536M']
+            p=subprocess.run(cmd,input=payload,text=True,capture_output=True,timeout=1200)
+          if p.returncode: print(p.stderr[-1000:]);raise SystemExit(p.returncode)
+          v=json.loads(p.stdout);assert v['database_writes']==0 and v['mapping_writes']==0 and v['supplier_calls']==0 and v['tourvisor_calls']==0
+          P('/tmp/result.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True))
+          print(json.dumps({'stats':v['stats'],'safe_count':v['safe_count'],'medium_count':v['medium_count'],'blocked_reasons':v['blocked_reasons']},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: match-many-to-one-direct-geo-v2, path: /tmp/result.json, retention-days: 90}
