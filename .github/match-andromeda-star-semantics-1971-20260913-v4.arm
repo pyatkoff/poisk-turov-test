@@ -1,0 +1,9 @@
+operation_id=hotel-match-andromeda-star-semantics-1971-20260913-v4
+claim=996#5651517248
+transport=php_stdin_short_remote_command
+starKey_excluded=true
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
