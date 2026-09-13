@@ -1,0 +1,22 @@
+{
+  "schema": "hotel-match-public-card-discovery-reservation/1",
+  "operation_id": "hotel-match-public-card-discovery-1971-20260913-v1",
+  "state": "reserved_before_public_acquisition",
+  "source_base_sha": "adf2a4a103357e6b44bdb8b1e63a0b6e7c228a1f",
+  "claim_issue": 996,
+  "claim_comment": 5649581867,
+  "source_artifact_id": 10303632729,
+  "source_census_sha256": "24dd5bab497cb7fb530ae70945939abcecd20005a0332a9d2ad9f33be0a8407e",
+  "target_anex_ids": [16330,23894,34680,28882,32743,32783,32880,35275,43984,44573,45225,16605,44939,32692,44413,32745,19226,37048,42927,1361,16232,4158,28396,1286,1771,36906,37719,37721,780,1655,37012,30600,32572,37885,37389,1772,30599,32724,29446,32355,32686,28933,30424,33110,45226,15072,16691,32567,39601,44562,45166,45249,45259,45330,1767,8798,27777,29036,29092,29430,32742],
+  "excluded_product_ids": [17097,28869,817,815,5173,29000],
+  "limits": {"public_search_queries":64,"public_official_page_reads":80},
+  "mode": "public_web_evidence_only",
+  "not_write_authority": true,
+  "no_replay": true,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "supplier_search_api_calls": 0,
+  "tourvisor_api_calls": 0,
+  "private_authentication": false,
+  "guards": ["no_synthesized_codes_as_evidence","no_Tourvisor_provenance_claim_from_name_search","no_private_executor_or_workflow","stop_on_denial_or_rate_limit","current_identity_reconciliation_required_before_any_mapping","preserve_qualifiers_manual_exclusions_conflicts_and_existing_mappings"]
+}
