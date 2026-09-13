@@ -206,6 +206,24 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await calendar.isVisible(), false, 'a facet chosen during progressive results waits for completion');
     await page.evaluate(items => window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } })), items);
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'completion uses the facet chosen before the terminal event');
+    const boundaryItems = [
+      { id: 'meal-boundary-a', name: 'Границы питания А', price: 101000, tours: [sample('boundary-hb-plus', 101000, 'HB+', '2026-09-20'), sample('boundary-premium', 102000, 'Premium All Inclusive', '2026-09-21')] },
+      { id: 'meal-boundary-b', name: 'Границы питания Б', price: 103000, tours: [sample('boundary-breakfast-dinner', 103000, 'Breakfast and dinner', '2026-09-22'), sample('boundary-not-ai', 104000, 'Not all inclusive', '2026-09-23')] }
+    ];
+    await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 102, items } })); }, boundaryItems);
+    assert.deepEqual(Object.fromEntries(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent]))), {
+      '': 'Любое питание',
+      'meal:half-board': 'Полупансион',
+      'meal:label:premium all inclusive': 'Premium All Inclusive',
+      'meal:label:breakfast and dinner': 'Breakfast and dinner',
+      'meal:label:not all inclusive': 'Not all inclusive'
+    }, 'the actual result facet keeps one reviewed code family and three ambiguous supplier labels distinct');
+    await select.selectOption('meal:label:not all inclusive');
+    assert.deepEqual(await visible(), ['meal-boundary-b']);
+    assert.equal(await page.locator('[data-hotel-id=meal-boundary-b] .direct-tour').getAttribute('data-tid'), 'boundary-not-ai', 'a negated label cannot enter the ordinary all-inclusive result bucket');
+    await select.selectOption('meal:label:breakfast and dinner');
+    assert.equal(await page.locator('[data-hotel-id=meal-boundary-b] .direct-tour').getAttribute('data-tid'), 'boundary-breakfast-dinner', 'an extended label cannot enter the reviewed breakfast result bucket');
+    await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 103, items } })); }, items);
     const longLabel = '<img src=x onerror=bad()> Очень длинное описание питания от поставщика без сокращений';
     await page.evaluate(({ items, longLabel }) => { items[0].tours[0].meal = { fullName: longLabel }; window.V2Results.render(items); }, { items, longLabel });
     assert.equal(await select.locator('img').count(), 0, 'supplier labels are rendered as text, never HTML');

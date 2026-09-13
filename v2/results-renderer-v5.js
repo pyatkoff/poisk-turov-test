@@ -11,18 +11,26 @@ function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'
 function mealLabel(t){const meal=t&&t.meal,label=textValue(meal),full=textValue(meal&&meal.fullName);return full.trim()&&(!label.trim()||/^[A-Z]{1,5}\+?$/.test(label.trim()))?full:label;}
 function mealIdentity(t){
 const label=mealLabel(t).replace(/\s+/g,' ').trim();if(!label)return null;
-const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),primary=(name||label).toLocaleLowerCase('ru-RU'),combined=(name+' '+label).toLocaleLowerCase('ru-RU');
-const code=(primary.match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)(?=$|[+\s-])/)||[])[1]||'';
-if(code==='soft ai'||code==='sai'||/soft[ -]?(?:all[ -]?inclusive|ai)|(?:мягк|софт)[^,;]*(?:вс[её] включено|all[ -]?inclusive)/.test(combined))return{key:'meal:soft-all-inclusive',label:'Soft AI'};
-if(code==='uai'||/ultra[ -]?(?:all[ -]?inclusive|ai)|ультра[^,;]*(?:вс[её] включено|all[ -]?inclusive)/.test(combined))return{key:'meal:ultra-all-inclusive',label:'Ультра всё включено'};
-if(code==='ai'||/all[ -]?inclusive|вс[её] включено/.test(combined))return{key:'meal:all-inclusive',label:'Всё включено'};
-if(code==='bb'||/bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтрак/.test(combined))return{key:'meal:breakfast',label:'Завтрак'};
-if(code==='hb'||/half[ -]?board|полупансион/.test(combined))return{key:'meal:half-board',label:'Полупансион'};
-if(code==='fb'||/full[ -]?board|полный пансион/.test(combined))return{key:'meal:full-board',label:'Полный пансион'};
-if(code==='ro'||/room[ -]?only|no[ -]?meal|без питания/.test(combined))return{key:'meal:room-only',label:'Без питания'};
-if(code==='sc'||/self[ -]?catering|самообслуживан/.test(combined))return{key:'meal:self-catering',label:'Самообслуживание'};
-if(/on[ -]?request|по запросу/.test(combined))return{key:'meal:on-request',label:'По запросу'};
-return{key:'meal:label:'+label.toLocaleLowerCase('ru-RU'),label};
+const normalizeMeal=v=>String(v||'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),normalized=normalizeMeal(label),normalizedName=normalizeMeal(name);
+const code=((normalizedName||normalized).match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)\+?$/)||[])[1]||'';
+let family='';
+if(/^(?:soft[ -]?(?:ai|all[ -]?inclusive)|sai|мягкое все включено|софт все включено)$/.test(normalized))family='soft-all-inclusive';
+else if(/^(?:ultra[ -]?(?:ai|all[ -]?inclusive)|uai|ai ultra|ультра все включено)$/.test(normalized))family='ultra-all-inclusive';
+else if(/^(?:ai\+?|all[ -]?inclusive|все включено)$/.test(normalized))family='all-inclusive';
+else if(/^(?:bb\+?|bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтраки?)$/.test(normalized))family='breakfast';
+else if(/^(?:hb\+?|half[ -]?board|полупансион)$/.test(normalized))family='half-board';
+else if(/^(?:fb\+?|full[ -]?board|полный пансион)$/.test(normalized))family='full-board';
+else if(/^(?:ro\+?|room[ -]?only|no[ -]?meal|без питания)$/.test(normalized))family='room-only';
+else if(/^(?:sc\+?|self[ -]?catering|самообслуживание)$/.test(normalized))family='self-catering';
+else if(/^(?:on[ -]?request|по запросу)$/.test(normalized))family='on-request';
+else if(code&&(!normalizedName||normalized===normalizedName))family=({ai:'all-inclusive',uai:'ultra-all-inclusive','soft ai':'soft-all-inclusive',sai:'soft-all-inclusive',bb:'breakfast',hb:'half-board',fb:'full-board',ro:'room-only',sc:'self-catering'})[code]||'';
+const identities={
+'soft-all-inclusive':{key:'meal:soft-all-inclusive',label:'Soft AI'},'ultra-all-inclusive':{key:'meal:ultra-all-inclusive',label:'Ультра всё включено'},
+'all-inclusive':{key:'meal:all-inclusive',label:'Всё включено'},breakfast:{key:'meal:breakfast',label:'Завтрак'},'half-board':{key:'meal:half-board',label:'Полупансион'},
+'full-board':{key:'meal:full-board',label:'Полный пансион'},'room-only':{key:'meal:room-only',label:'Без питания'},'self-catering':{key:'meal:self-catering',label:'Самообслуживание'},
+'on-request':{key:'meal:on-request',label:'По запросу'}};
+return identities[family]||{key:'meal:label:'+normalized,label};
 }
 function operatorName(t){return textValue(t&&t.operator);}
 // Exact display aliases only; provider/source never supplies operator identity.

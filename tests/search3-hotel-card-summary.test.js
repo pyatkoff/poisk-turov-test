@@ -103,6 +103,22 @@ const distinctInclusiveMeals = {
   ],
 };
 assert.equal(api.hotelSummary(distinctInclusiveMeals).meal, '3 варианта питания', 'AI, UAI and Soft AI remain distinct choices');
+const ambiguousMeals = {
+  ...multi,
+  tours: [
+    { ...multi.tours[0], meal: 'Premium All Inclusive' },
+    { ...multi.tours[1], meal: 'Not all inclusive' },
+  ],
+};
+assert.equal(api.hotelSummary(ambiguousMeals).meal, 'Premium All Inclusive · Not all inclusive', 'custom and negated supplier labels remain separate in the hotel summary');
+const extendedBreakfast = {
+  ...multi,
+  tours: [
+    { ...multi.tours[0], meal: 'Breakfast' },
+    { ...multi.tours[1], meal: 'Breakfast and dinner' },
+  ],
+};
+assert.equal(api.hotelSummary(extendedBreakfast).meal, 'Завтрак · Breakfast and dinner', 'an extended meal label does not collapse into the reviewed breakfast alias');
 
 const single = { id: 'hotel-2', price: 90000, tours: [{ ...multi.tours[0], id: 'single', price: 90000 }] };
 const singleHtml = api.toursHtml(single);

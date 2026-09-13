@@ -76,6 +76,16 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     { key: 'meal:ultra-all-inclusive', label: 'Ультра всё включено' },
     { key: 'meal:soft-all-inclusive', label: 'Soft AI' },
   ]), 'AI, UAI and Soft AI retain distinct identities');
+  assert.equal(JSON.stringify(results.mealIdentity({ meal: 'HB+' })), JSON.stringify({ key: 'meal:half-board', label: 'Полупансион' }), 'an exact supplier code with a suffix keeps its reviewed family');
+  assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: 'Premium All Inclusive' }),
+    results.mealIdentity({ meal: 'Breakfast and dinner' }),
+    results.mealIdentity({ meal: 'Not all inclusive' }),
+  ]), JSON.stringify([
+    { key: 'meal:label:premium all inclusive', label: 'Premium All Inclusive' },
+    { key: 'meal:label:breakfast and dinner', label: 'Breakfast and dinner' },
+    { key: 'meal:label:not all inclusive', label: 'Not all inclusive' },
+  ]), 'ambiguous, extended and negated supplier labels are not guessed into a broader meal family');
   assert.match(results.tourRow(tour), /<small>Питание<\/small><b>All Inclusive<\/b>/,
     'supplier fullName-only meal appears in the tour facts');
   assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'All Inclusive',
