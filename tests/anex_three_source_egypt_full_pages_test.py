@@ -16,13 +16,13 @@ def ok(value,message):
     checks+=1
 
 php=full.source()
-ok(full.EXPERIMENT in php and full.egypt.EXPERIMENT not in php,'fresh full-page experiment bound')
-ok("2026-12-14" in php and "20261214" in php and "2026-11-03" not in php,'new date replaces sealed Egypt date')
+ok(full.EXPERIMENT in php and full.egypt.EXPERIMENT not in php,'fresh adult-control experiment bound')
+ok("2026-12-14" in php and "20261214" in php and "2026-11-03" not in php,'same date as family case replaces sealed Egypt base date')
 ok("'nightsFrom'=>9" in php and "'nightsTo'=>9" in php and "'nights_from'=>9" in php and "'nights_till'=>9" in php,'nine-night stay reaches all providers')
 ok("'adults'=>2" in php and "'ADULT'=>2" in php and "($value['adults'] ?? null) !== 2" in php,'two-adult party reaches all provider and validation paths')
-ok("'children'=>1" in php and "'childs'=>[7]" in php and "'CHILD'=>1,'AGES'=>'7'" in php
-   and "($value['child_ages'] ?? null) !== [7]" in php,'child age seven reaches all provider and validation paths')
-ok("'three-price-egypt-family-full-pages-20260914-v3'" in php and "'generation'=>26091402" in php,'new operation/session generation bound')
+ok("'children'=>0" in php and "'childs'=>[]" in php and "'CHILD'=>0" in php
+   and "($value['child_ages'] ?? null) !== []" in php,'adult-only control preserves zero children across providers')
+ok("'three-price-egypt-adult-control-full-pages-20260914-v4'" in php and "'generation'=>26091403" in php,'new operation/session generation bound')
 ok("for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)" in php and "$request['page']=$pageNo" in php,'Andromeda establishes page1 then walks pages sequentially')
 ok("'pages_loaded'=>$pagesLoaded" in php and "$receivedTotal+=(int)($result['received_offers']??0)" in php,'Andromeda page coverage is accumulated')
 ok("'hotelIds'=>[]" in php and "current_unique_triple_mapping_anchor_only" in php,'broad scope remains no-hotel-filter with identity anchor only')
@@ -50,8 +50,8 @@ anchor={'local_hotel_id':158,'anex_hotel_id':1275,'andromeda_hotel_id':'103544',
         'selection_basis':'current_unique_triple_mapping_anchor_only','anex_observation_count':12}
 def offer(provider,local,price,fuel=None):
     return {'provider':provider,'local_hotel_id':local,'external_hotel_id':str(local),'date':'2026-12-14','nights':9,
-            'adults':2,'children':1,'meal_family':'ai','meal_label':'AI','room':'Standard Room','room_norm':'standard room',
-            'placement':'2+1','placement_norm':'2 1','price':price,'currency':'RUB','fuel_charge':fuel,
+            'adults':2,'children':0,'meal_family':'ai','meal_label':'AI','room':'Standard Room','room_norm':'standard room',
+            'placement':'2','placement_norm':'2','price':price,'currency':'RUB','fuel_charge':fuel,
             'fuel_inclusion_verified':False,'final_price_verified':False}
 def case(provider,offers,details=None):
     return {'schema_version':1,'experiment_id':full.EXPERIMENT,'case_id':provider,'automatic_retry':False,
@@ -78,4 +78,4 @@ ok(report['observation_summary']['andromeda_pages_loaded']==2 and report['money_
 ok(report['effects']=={'booking_calls':0,'broninit_calls':0,'mapping_writes':0,'additional_prices_calls':0}
    and report['unknown_replay_allowed'] is False,'no-replay and prohibited effects remain explicit')
 
-print(f'ANEX three-source Egypt family full-pages comparator: {checks} checks passed; network=0')
+print(f'ANEX three-source Egypt adult-control full-pages comparator: {checks} checks passed; network=0')
