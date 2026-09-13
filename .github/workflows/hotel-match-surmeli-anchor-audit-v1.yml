@@ -1,0 +1,28 @@
+name: MATCH Surmeli anchor audit v1
+on:
+  push:
+    branches: [ops/match-surmeli-anchor-audit-1971-20260913-v1]
+    paths: [.github/workflows/hotel-match-surmeli-anchor-audit-v1.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Read CURRENT Surmeli candidates
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,pathlib,subprocess,tempfile
+          php='''<?php $root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');$q=$db->query("SELECT h.id,h.name,h.normalized_name,h.region_name,h.subregion_name,h.category,COALESCE(d.latitude,h.latitude) latitude,COALESCE(d.longitude,h.longitude) longitude FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.country_id=4 AND h.is_active=1 AND (LOWER(h.name) LIKE '%surmel%' OR LOWER(h.normalized_name) LIKE '%surmel%' OR EXISTS(SELECT 1 FROM hotel_aliases a WHERE a.hotel_id=h.id AND LOWER(a.alias) LIKE '%surmel%')) ORDER BY h.id LIMIT 100");$rows=$q->fetchAll(PDO::FETCH_ASSOC);foreach($rows as &$r){$a=$db->prepare('SELECT alias,normalized_alias FROM hotel_aliases WHERE hotel_id=? ORDER BY id');$a->execute([$r['id']]);$r['aliases']=$a->fetchAll(PDO::FETCH_ASSOC);}$m=$db->prepare('SELECT anex_hotel_id,catalog_hotel_id,enabled,scope,approval_policy FROM anex_hotel_search_mappings WHERE anex_hotel_id=31364');$m->execute();$db->commit();echo json_encode(['status'=>'completed','operation_id'=>'hotel-match-surmeli-anchor-audit-1971-20260913-v1','source_anex'=>['id'=>31364,'name'=>'Surmeli Hotel','region'=>'Стамбул','town'=>'Шишли','latitude'=>41.065068,'longitude'=>29.002977],'current_mapping'=>$m->fetchAll(PDO::FETCH_ASSOC),'candidates'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";?>'''
+          P=pathlib.Path;raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='surmeli-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'];p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=300)
+          if p.returncode!=0:raise SystemExit(2)
+          v=json.loads(p.stdout);pathlib.Path('surmeli-result.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'status':v['status'],'candidate_count':len(v['candidates']),'current_mapping':v['current_mapping']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-surmeli-anchor-audit-v1-${{ github.run_id }}', path: surmeli-result.json, retention-days: 90}
