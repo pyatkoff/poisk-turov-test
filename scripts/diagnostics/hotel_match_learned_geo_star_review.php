@@ -3,7 +3,7 @@ declare(strict_types=1);
 if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_match_star_semantics_current_review.php';
 
-const HMLGS_OPERATION='hotel-match-learned-geo-star-review-2333-20260913-v1';
+const HMLGS_OPERATION='hotel-match-learned-geo-star-review-2333-20260913-v2';
 
 function hmlgs_latin(string $v): string {
     $v=mb_strtolower($v,'UTF-8');
