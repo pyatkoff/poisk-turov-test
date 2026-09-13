@@ -31,10 +31,10 @@ $geo=['coordinate_conflict'=>false,'direct_geo'=>true];
 $assert(hmsbf_status($r,$geo,true)==='hard_conflict','pair_exclusion_blocks');
 
 $tokenIndex=[];$targetNames=[];
-hmsbf_add_target($tokenIndex,$targetNames,4,201,['Royal Garden Premium']);
-hmsbf_add_target($tokenIndex,$targetNames,4,202,['Royal Garden Deluxe']);
-$r=hmsbf_rank(['Royal Garden Collection'],4,$tokenIndex,$targetNames);
-$assert($r['status']==='ranked'&&$r['margin']<HMSBF_MIN_MARGIN,'close_runner_up_is_ambiguous');
+hmsbf_add_target($tokenIndex,$targetNames,4,201,['Alpha Blue Premium Palace']);
+hmsbf_add_target($tokenIndex,$targetNames,4,202,['Alpha Blue Premium Collection']);
+$r=hmsbf_rank(['Alpha Blue Premium Palace Collection'],4,$tokenIndex,$targetNames);
+$assert($r['status']==='ranked'&&$r['best']['score']>=HMSBF_MIN_SCORE&&$r['margin']<HMSBF_MIN_MARGIN,'close_runner_up_is_ambiguous');
 $assert(hmsbf_status($r,['coordinate_conflict'=>false,'direct_geo'=>true])==='ambiguous_margin','margin_guard_blocks');
 
 $tokenIndex=[];$targetNames=[];
