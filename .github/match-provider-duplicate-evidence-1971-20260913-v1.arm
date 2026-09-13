@@ -1,0 +1,9 @@
+operation_id=hotel-match-provider-duplicate-evidence-1971-20260913-v1
+source_base=5d423f37ab42b64eda80860967a148afd65b1c5c
+claim=996#5650096003
+mode=current_db_read_only_provider_duplicate
+no_replay=true
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
