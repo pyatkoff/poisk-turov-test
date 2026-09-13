@@ -47,6 +47,30 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.ok((await toggle.boundingBox()).width<260,'collapsed disclosure is a compact secondary action');
     assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not compete with the exact offer CTA');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+    const collapsedComposition=[];
+    if(width===375){
+      const viewport=page.viewportSize();
+      for(const inspectedWidth of [320,350,375,390,700]){
+        await page.setViewportSize({...viewport,width:inspectedWidth});
+        const geometry=await card.evaluate(node=>{
+          const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+          return{card:box(node),facts:box(node.querySelector('.hotel-trip-summary>.tour-facts')),operators:box(node.querySelector('.hotel-operators')),label:box(node.querySelector('.hotel-summary-total>div')),price:box(node.querySelector('.hotel-summary-total>.hotel-price')),toggle:box(node.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
+        });
+        assert.ok(geometry.toggle.height>=44,`${inspectedWidth}: collapsed disclosure keeps a full touch target`);
+        assert.equal(geometry.overflow,false,`${inspectedWidth}: collapsed hotel card stays contained`);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+        if(inspectedWidth<=350){
+          assert.ok(geometry.toggle.y>=geometry.price.bottom-1,`${inspectedWidth}: narrow fallback keeps disclosure below the price`);
+        }else{
+          assert.ok(geometry.toggle.y<=geometry.label.y+1&&geometry.toggle.bottom>=geometry.price.bottom-1,`${inspectedWidth}: disclosure shares the label and price action block`);
+          assert.ok(geometry.price.right<=geometry.toggle.x+1,`${inspectedWidth}: price and disclosure do not overlap`);
+          assert.ok(geometry.facts.right<=geometry.card.right+1&&geometry.operators.right<=geometry.card.right+1,`${inspectedWidth}: facts and operators keep the full card track`);
+        }
+        collapsedComposition.push({width:inspectedWidth,geometry});
+        await card.screenshot({path:path.join(output,`operator-card-collapsed-action-${inspectedWidth}.png`),animations:'disabled'});
+      }
+      await page.setViewportSize(viewport);
+    }
     await card.screenshot({path:path.join(output,`operator-card-collapsed-${width}.png`),animations:'disabled'});
     await moreToggle.focus();await moreToggle.press('Enter');
     assert.equal(await more.evaluate(node=>node.open),true,'keyboard opens remaining operator names');
@@ -173,6 +197,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,mobileComposition,desktopComposition,visible_logos:['funsun','anex','intourist'],known_logo_coverage:['funsun','anex','intourist','biblio-globus'],operator_overflow:{label:'+2',keyboard:true,pointer:true,visible_names:['Библио-Глобус','LOCAL OPERATOR'],known_logo_loaded:true},exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,visible_logos:['funsun','anex','intourist'],known_logo_coverage:['funsun','anex','intourist','biblio-globus'],operator_overflow:{label:'+2',keyboard:true,pointer:true,visible_names:['Библио-Глобус','LOCAL OPERATOR'],known_logo_loaded:true},exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };

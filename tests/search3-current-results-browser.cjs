@@ -212,6 +212,7 @@ async function checkExpandedDensity(page, width, previous) {
     assert.equal(await card.locator('.hotel-price').count(), 10, 'one exact price per offer, no duplicate minimum');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.map(value => value.id), 'all exact offer actions retain their original identity and order');
     assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.map(value => value.price), 'each displayed price remains the original supplier amount');
+    await page.mouse.move(0, 0);
     for (const inspectedWidth of width === 375 ? [375, 390] : [width]) {
       if (inspectedWidth !== width) await page.setViewportSize({ width: inspectedWidth, height: page.viewportSize().height });
       await page.evaluate(() => document.fonts.ready);
