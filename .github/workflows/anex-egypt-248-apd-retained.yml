@@ -1,14 +1,14 @@
-name: ANEX Egypt retained APD v2
+name: ANEX Egypt retained APD v3
 on:
   push:
     branches:
-      - 'ops/int-egypt-248-apd-retained-v2-20260914'
+      - 'ops/int-egypt-248-apd-retained-v3-20260914'
     paths:
-      - '.github/ops/anex-egypt-248-apd-retained-v2-20260914'
+      - '.github/ops/anex-egypt-248-apd-retained-v3-20260914'
 permissions:
   contents: read
 concurrency:
-  group: anex-egypt-248-apd-retained-v2-${{ github.ref }}
+  group: anex-egypt-248-apd-retained-v3-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   live:
@@ -30,10 +30,10 @@ jobs:
       - name: Bind exact reviewed Egypt retained APD source
         id: control
         run: |
-          MARKER='control/.github/ops/anex-egypt-248-apd-retained-v2-20260914'
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-248-apd-retained-v2-20260914'
+          MARKER='control/.github/ops/anex-egypt-248-apd-retained-v3-20260914'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-248-apd-retained-v3-20260914'
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};scenario=Egypt-local248-anex10449-2026-12-07-10n-3a-AI-garden-room;owner=2026-09-14;runner=v2"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=${REQUESTED_OPERATION};scenario=Egypt-local248-anex10449-2026-12-07-10n-3a-AI-garden-room;owner=2026-09-14;runner=v3"
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
@@ -60,7 +60,10 @@ jobs:
           assert body.startswith(strict)
           body=body[len(strict):]
           bootstrap=("$_SERVER['SCRIPT_FILENAME']='';"
-                     "$preview=realpath(getenv('HOME').'/www/anytoour.ru/_preview/search3-anex-candidate');"
+                     "$root=realpath(getenv('HOME').'/www/anytoour.ru');"
+                     "if(!$root)throw new RuntimeException('ANEX_EGYPT_APD_RUNTIME');"
+                     "require_once $root.'/config.php';"
+                     "$preview=realpath($root.'/_preview/search3-anex-candidate');"
                      "if(!$preview)throw new RuntimeException('ANEX_EGYPT_APD_RUNTIME');"
                      "require_once $preview.'/api-anex-search3-preview.php';")
           code=strict+bootstrap+body
@@ -92,7 +95,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-egypt-248-apd-retained-v2-${{ github.run_id }}
+          name: anex-egypt-248-apd-retained-v3-${{ github.run_id }}
           path: ${{ runner.temp }}/egypt-retained-apd/result.json
           if-no-files-found: error
           retention-days: 30
