@@ -8,6 +8,7 @@ on:
       - 'app/integrations/anex-preview-gateway.php'
       - 'app/integrations/anex-search.php'
       - 'app/integrations/anex-client.php'
+      - 'app/integrations/anex-additional-prices-client.php'
       - 'app/integrations/anex-additional-prices-batch.php'
       - 'v2/api-anex-search3-preview.php'
       - 'tests/anex-search3-preview-smoke.php'
@@ -16,6 +17,7 @@ on:
       - 'tests/anex-numeric-filter-types-smoke.php'
       - 'tests/anex-retained-additional-prices-test.php'
       - 'tests/anex-additional-prices-batch-test.php'
+      - 'tests/anex-additional-prices-daily-cache-test.php'
       - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
       - 'app/integrations/three-provider-meal-family.php'
@@ -57,6 +59,7 @@ jobs:
       - name: Validate offers and retained context without network
         run: |
           php -l app/integrations/anex-preview-gateway.php
+          php -l app/integrations/anex-additional-prices-client.php
           php -l app/integrations/anex-additional-prices-batch.php
           php -l v2/api-anex-search3-preview.php
           php -l app/integrations/three-provider-offer-contract.php
@@ -78,6 +81,7 @@ jobs:
           php -d allow_url_fopen=0 tests/anex-tour-program-retention-test.php
           php -d allow_url_fopen=0 tests/anex-retained-additional-prices-test.php
           php -d allow_url_fopen=0 tests/anex-additional-prices-batch-test.php
+          php -d allow_url_fopen=0 tests/anex-additional-prices-daily-cache-test.php
           php -d allow_url_fopen=0 tests/three-provider-anex-offer-test.php
           php -d allow_url_fopen=0 tests/anex-normalizer-smoke.php
           php -d allow_url_fopen=0 tests/three-provider-offer-contract-test.php
