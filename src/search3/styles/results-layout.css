@@ -99,7 +99,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 &.search3-selected-open :is(#tourSearch,.results-tools,.results-layout){display:none!important}
 @media(max-width:600px){
 & .v2-shell{padding:12px}
-& .results-tools{padding:16px;margin-block:16px}
+& .results-tools{position:static;top:auto;padding:16px;margin-block:16px}
 & .results-tools>div:first-child>strong{font-size:22px}
 & .results-tools__actions{grid-template-columns:minmax(0,1fr)}
 & .search3-mobile-filter-panel__body{grid-template-columns:1fr}

@@ -82,6 +82,8 @@ async function checkToolbarLayout(page, width, previous) {
     assert.ok(controls.every(control => Math.abs(control.y + control.height - bottom) < 3), 'toolbar actions align in one usable row');
     if (width >= 760 && width <= 1024) assert.ok(closed.actions.height <= 76, 'tablet toolbar has no empty edit row or separate filter/sort rows');
   } else {
+    const positioning = await tools.evaluate(node => ({ position: getComputedStyle(node).position, top: getComputedStyle(node).top }));
+    assert.deepEqual(positioning, { position: 'static', top: 'auto' }, 'mobile results toolbar stays in document flow instead of entering the physical safe area');
     assert.ok(closed.edit.width < closed.actions.width - 24, 'mobile edit remains a compact secondary action');
     assert.ok(closed.sort.y >= closed.edit.y + closed.edit.height && closed.summary.y >= closed.sort.y + closed.sort.height, 'mobile controls follow their readable visual order');
   }
@@ -101,6 +103,15 @@ async function checkToolbarLayout(page, width, previous) {
     if (!previous && width === 1024) await tools.screenshot({ path: path.join(output, 'toolbar-1024-open.png'), animations: 'disabled' });
     await summary.press('Enter');
     assert.equal(await panel.evaluate(node => node.open), false, 'inspection restores the closed disclosure');
+  }
+  if (!previous && width === 375) {
+    const toolbarDocumentBottom = await tools.evaluate(node => node.getBoundingClientRect().bottom + scrollY);
+    await page.evaluate(y => scrollTo({ top: y, left: 0, behavior: 'instant' }), toolbarDocumentBottom + 20);
+    await page.waitForFunction(() => scrollY > 0);
+    assert.ok((await tools.boundingBox()).y < 0, 'mobile results toolbar scrolls away instead of sticking below the browser chrome');
+    await page.screenshot({ path: path.join(output, 'toolbar-375-scrolled.png'), animations: 'disabled' });
+    await page.evaluate(() => scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+    await page.waitForFunction(() => scrollY === 0);
   }
   return { closed, opened };
 }
