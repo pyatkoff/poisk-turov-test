@@ -81,6 +81,9 @@ jobs:
                  and value.get('mapping_writes')==0 and value.get('semantic_reservation_written') is False)
           raise SystemExit(0 if valid else 1)
           PY
+      - name: Show sanitized prerequisite classification
+        if: always()
+        run: cat "$RUNNER_TEMP/egypt-apd-preflight/result.json"
       - name: Preserve sanitized prerequisite evidence
         if: always()
         uses: actions/upload-artifact@v4
