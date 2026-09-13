@@ -87,7 +87,7 @@ async function checkToolbarLayout(page, width, previous) {
     assert.ok(closed.edit.width < closed.actions.width - 24, 'mobile edit remains a compact secondary action');
     assert.ok(closed.sort.y >= closed.edit.y + closed.edit.height && closed.summary.y >= closed.sort.y + closed.sort.height, 'mobile controls follow their readable visual order');
   }
-  if (!previous && [375, 1024, 1025, 1440].includes(width)) await tools.screenshot({ path: path.join(output, `toolbar-${width}-closed.png`), animations: 'disabled' });
+  if (!previous && [375, 720, 1024, 1025, 1440].includes(width)) await tools.screenshot({ path: path.join(output, `toolbar-${width}-closed.png`), animations: 'disabled' });
   await edit.focus(); await edit.press('Tab');
   assert.equal(await sort.evaluate(node => node === document.activeElement), true, 'keyboard moves from edit directly to the adjacent sort control');
   let opened = null;
@@ -585,7 +585,7 @@ async function run(browser, width, previous) {
       toolbarLayout.belowTablet = await checkToolbarLayout(page, 759, previous);
       await page.setViewportSize({ width, height: 1000 });
     }
-    if (!previous && [375, 1024, 1440].includes(width)) {
+    if (!previous && [375, 720, 1024, 1440].includes(width)) {
       await snapshot(page);
       await page.screenshot({ path: path.join(output, `primary-with-results-${width}.png`), fullPage: true });
       if (width === 1440) {
@@ -727,7 +727,7 @@ async function run(browser, width, previous) {
     await checkPrimaryForm(page, 'zero local matches');
     assert.match(await localEmpty.innerText(), /По выбранным фильтрам ничего не подошло[\s\S]*Сбросить фильтры/, 'local empty state explains the recoverable filter result');
     assert.ok((await localEmptyReset.boundingBox()).height >= 44, 'local empty reset keeps a full touch target');
-    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `local-empty-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `local-empty-${width}.png`), fullPage: true });
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await localHotelInput.inputValue(), '  ВТОРОЙ  ', 'sorting preserves the local hotel query');
     assert.equal(await localCategorySelect.inputValue(), '5', 'sorting preserves the local category');
@@ -805,7 +805,7 @@ async function run(browser, width, previous) {
     const collapsed = await snapshot(page);
     if (collapsed.overflow) console.error(JSON.stringify({width,previous,offenders:collapsed.offenders}));
     assert.equal(collapsed.overflow, false, width + ': results fit viewport');
-    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Enter');
     assert.equal(await card.locator('.tour-row').count(), 3, 'actual toggle reveals all tours');
@@ -825,7 +825,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
     const expanded = await snapshot(page);
     assert.equal(expanded.overflow, false, width + ': expanded results fit viewport');
-    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').press('Space');
@@ -846,7 +846,7 @@ async function run(browser, width, previous) {
     assert.ok(noPhotoGeometry.media.height < 64, 'missing-photo header stays compact instead of reserving media height: '+JSON.stringify({width,previous,noPhotoGeometry}));
     assert.ok(noPhotoGeometry.body.width >= noPhotoGeometry.main.width - 2, 'missing-photo facts use the card content width');
     assert.equal((await snapshot(page)).overflow, false, width + ': missing-photo card fits the viewport');
-    if (!previous && [375,1024,1440].includes(width)) await page.screenshot({ path: path.join(output, `results-no-photo-${width}.png`), fullPage: true });
+    if (!previous && [375,720,1024,1440].includes(width)) await page.screenshot({ path: path.join(output, `results-no-photo-${width}.png`), fullPage: true });
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-started', { detail: { searchId: 44 } })));
     await checkPrimaryForm(page, 'loading with retained results');
     assert.equal(await page.locator('#status .results-state--loading').isVisible(), true, 'search start exposes a truthful loading state');
@@ -873,7 +873,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'search failure leaves parameters editable even with retained results');
     await checkPrimaryForm(page, 'search error');
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), errorParameters, 'error recovery preserves every search parameter');
-    if (!previous && [375, 1440].includes(width)) await page.screenshot({ path: path.join(output, `search-error-edit-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `search-error-edit-${width}.png`), fullPage: true });
     const retrySearch = page.locator('#status .results-state-retry');
     await retrySearch.focus();
     await retrySearch.press('Enter');
@@ -961,7 +961,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
     let minimumReadiness = null, expandedDensity = null;
-    if ([375, 390, 1440].includes(width)) {
+    if ([375, 390, 720, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkExactOfferParty(page, width, previous);
@@ -977,11 +977,12 @@ async function run(browser, width, previous) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [375, 390, 760, 761, 999, 1000, 1024, 1025, 1440]) {
+    // 720 CSS px is the 200% reflow equivalent of the 1440px desktop viewport.
+    for (const width of [375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=18 widths=375,390,760,761,999,1000,1024,1025,1440 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=20 widths=375,390,720,760,761,999,1000,1024,1025,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
