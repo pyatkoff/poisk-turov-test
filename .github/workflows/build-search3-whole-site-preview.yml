@@ -359,6 +359,7 @@ jobs:
         if: steps.entry-owner.outputs.required == 'true'
         shell: bash
         env:
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
           SEARCH3_ENTRY_OWNER_OUTPUT: ${{ runner.temp }}/search3-entry-owner
         run: |
