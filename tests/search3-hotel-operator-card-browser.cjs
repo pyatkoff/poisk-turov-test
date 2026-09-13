@@ -75,6 +75,32 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
     }
+    const desktopComposition=[];
+    if(width===1440){
+      const viewport=page.viewportSize();
+      for(const inspectedWidth of [1199,1200,1440]){
+        await page.setViewportSize({...viewport,width:inspectedWidth});
+        const rows=await card.locator('.tour-row').evaluateAll(nodes=>nodes.map(node=>{
+          const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+          const action=node.querySelector('.direct-tour'),compare=node.querySelector('.search3-shortlist-toggle');
+          return{row:box(node),date:box(node.querySelector('.tour-meta>small')),facts:box(node.querySelector('.tour-facts')),select:box(action),compare:compare?box(compare):null,price:box(node.querySelector('.tour-action')),overflow:node.scrollWidth>node.clientWidth+1};
+        }));
+        for(const row of rows){
+          assert.equal(row.overflow,false,'all exact offer facts remain within their row');
+          assert.ok(row.select.height>=44&&(!row.compare||row.compare.height>=44),'selection and comparison retain usable targets');
+          assert.ok(row.price.right<=row.row.right&&row.select.right<=row.price.right+1,'price/action group is contained');
+          if(inspectedWidth>=1200){
+            assert.ok(row.facts.x>=row.date.right-1&&Math.abs(row.facts.y-row.date.y)<2,'date and primary conditions share one desktop reading row');
+            if(row.compare)assert.ok(row.compare.x>=row.select.right-1&&Math.abs(row.compare.y-row.select.y)<2,'selection and comparison share one action row');
+          }
+          if(inspectedWidth===1440)assert.ok(row.row.height<=180,'heterogeneous desktop offer avoids the former tall nested action card');
+        }
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+        desktopComposition.push({width:inspectedWidth,rows});
+        await card.screenshot({path:path.join(output,`operator-card-composition-${inspectedWidth}.png`),animations:'disabled'});
+      }
+      await page.setViewportSize(viewport);
+    }
     await card.screenshot({path:path.join(output,`operator-card-expanded-${width}.png`),animations:'disabled'});
     await toggle.press('Space');
     assert.equal(await toggle.getAttribute('aria-expanded'),'false');
@@ -120,6 +146,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,visible_logos:['funsun','anex','intourist'],known_logo_coverage:['funsun','anex','intourist','biblio-globus'],operator_overflow:{label:'+2',keyboard:true,pointer:true,visible_names:['Библио-Глобус','LOCAL OPERATOR'],known_logo_loaded:true},exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,desktopComposition,visible_logos:['funsun','anex','intourist'],known_logo_coverage:['funsun','anex','intourist','biblio-globus'],operator_overflow:{label:'+2',keyboard:true,pointer:true,visible_names:['Библио-Глобус','LOCAL OPERATOR'],known_logo_loaded:true},exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };
