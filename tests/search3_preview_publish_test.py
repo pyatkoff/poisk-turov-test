@@ -8,6 +8,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/deploy'))
@@ -170,6 +171,64 @@ class Transaction(unittest.TestCase):
         self.site.binding(q)
         with self.assertRaises(ValueError):self.site.binding({**q,'nonce':'0'*64},True)
         self.site.binding(q,True);self.assertFalse((self.site.target/q['name']).exists())
+
+
+class LeadHealth(unittest.TestCase):
+    def test_canonical_read_only_health(self):
+        body = json.dumps(dict(ok=True, adapter='v2-direct-bitrix-lead', version=2, writes=True))
+        with patch.object(publish, 'http', return_value=(200, body)) as http:
+            self.assertEqual(publish.production_lead_health(), 'v2-direct-bitrix-lead')
+        http.assert_called_once_with('/lead-adapter-v2.php')
+
+    def test_unhealthy_or_other_contract_rejected(self):
+        health = dict(ok=True, adapter='v2-direct-bitrix-lead', version=2, writes=True)
+        cases = [(503, json.dumps(health)), (302, json.dumps(health)),
+                 (200, 'v2-direct-bitrix-lead'), (200, 'null'), (200, '[]'),
+                 (200, '{"ok":true,"adapter":"v2-direct-bitrix-lead"}')]
+        for field, value in [('ok', False), ('ok', 1), ('writes', False), ('writes', 1),
+                             ('version', '2'), ('version', 2.0), ('version', 3),
+                             ('adapter', 'v2-hmac-bridge-bitrix-lead'), ('adapter', 'unknown')]:
+            cases.append((200, json.dumps({**health, field: value})))
+        for response in cases:
+            with self.subTest(response=response), patch.object(publish, 'http', return_value=response):
+                with self.assertRaisesRegex(ValueError, '^production_lead_health$'):
+                    publish.production_lead_health()
+
+    def test_preflight_failure_prevents_activation(self):
+        env = dict(GITHUB_EVENT_PATH='/unused/event.json', GITHUB_RUN_ID='789',
+                   GITHUB_EVENT_NAME='workflow_dispatch', GH_TOKEN='fixture',
+                   GITHUB_SHA='d' * 40, PREVIEW_HOST='example.invalid', PREVIEW_USER='fixture',
+                   PREVIEW_KEY='PRIVATE KEY offline fixture')
+        q = fixture()[0]
+        actions = []
+        def command(args, data=None, timeout=120):
+            if args[0] == 'ssh-keygen':
+                return b'256 SHA256:offline fixture (ED25519)\n'
+            if args[0] == 'ssh-keyscan':
+                return b'offline host key\n'
+            if args[0] == 'ssh':
+                import shlex
+                action = shlex.split(args[-1])[2]
+                actions.append(action)
+                return b'{}'
+            raise AssertionError('unexpected command before activation: ' + args[0])
+        with tempfile.TemporaryDirectory() as d:
+            env['RUNNER_TEMP'] = d
+            work = Path(d) / 'search3-preview-publish'
+            work.mkdir()
+            with patch.dict(os.environ, env, clear=True), patch.object(Path, 'read_text', return_value='{}'), \
+                 patch.object(publish, 'checked_command', return_value=q), patch.object(publish, 'Github'), \
+                 patch.object(publish, 'verify_provenance', return_value=(TREE, 'e' * 64)), \
+                 patch.object(publish, 'prepare_zip', return_value={}), patch.object(publish, 'command', side_effect=command), \
+                 patch.object(publish.secrets, 'token_hex', return_value='f' * 32), \
+                 patch.object(publish, 'http', side_effect=[(200, 'f' * 32), (404, '')]), \
+                 patch.object(publish, 'production_lead_health', side_effect=ValueError('production_lead_health')):
+                with self.assertRaisesRegex(ValueError, '^production_lead_health$'):
+                    publish.main()
+            self.assertEqual(actions, ['bind', 'unbind'])
+            evidence = json.loads((work / 'evidence.json').read_text())
+            self.assertEqual(evidence['status'], 'failed_not_accepted')
+            self.assertNotIn('activation', evidence)
 
 
 class Provenance(unittest.TestCase):

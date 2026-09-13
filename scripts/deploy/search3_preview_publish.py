@@ -178,6 +178,22 @@ def http(path, data=None, binary=False):
         return response.code, content if binary else content.decode(errors='replace')
 
 
+def production_lead_health():
+    # Canonical GET contract in trusted-main v2/lead-adapter-v2.php.
+    # The HMAC handoff is internal; it is not this public health identity.
+    status, body = http('/lead-adapter-v2.php')
+    need(status == 200, 'production_lead_health')
+    try:
+        health = json.loads(body)
+    except (ValueError, TypeError):
+        raise ValueError('production_lead_health') from None
+    need(isinstance(health, dict) and health.get('ok') is True
+         and health.get('adapter') == 'v2-direct-bitrix-lead'
+         and type(health.get('version')) is int and health['version'] == 2
+         and health.get('writes') is True, 'production_lead_health')
+    return health['adapter']
+
+
 def live_checks(files):
     for route in ('', 'poisk-turov/', 'poisk-turov-old/', 'country/', 'country/turkey/', 'hot/', 'contacts/', 'rb/', 'how-to-buy/'):
         status, html = http(ROUTE + route)
@@ -194,7 +210,7 @@ def live_checks(files):
     need(http(ROUTE + 'config.php')[0] in (403,404), 'config_not_denied')
     need(http('/')[0] == 200 and http('/poisk-turov/')[0] == 200, 'production_pages_unhealthy')
     need('tourvisor-direct' in http('/api-v2.php?action=health')[1], 'production_API_health')
-    need('v2-hmac-bridge-bitrix-lead' in http('/lead-adapter-v2.php')[1], 'production_lead_health')
+    production_lead_health()
     for name in ('search3-results-filters-v1.css', 'search3-results-filters-v1.js', 'site-header-v2.css', 'andromeda-provider-v1.js'):
         if name in files:
             status, body = http(ROUTE + name + '?sha=' + files[name], binary=True)
@@ -244,6 +260,7 @@ def main():
         finally:
             remote('unbind',binding)
         need(http(ROUTE + binding['name'] + '?removed=1')[0] in (404,410), 'binding_not_removed')
+        evidence['production_lead_adapter'] = production_lead_health()
         before = remote('snapshot', {}); q['before'] = before
         owner = before['owner'] or {}
         same = owner.get('source_sha') == q['source_sha'] and owner.get('artifact_id') == q['artifact_id']
