@@ -1,0 +1,219 @@
+name: MATCH current operator observation evidence v1
+run-name: MATCH current operator observation evidence #1971
+on:
+  push:
+    branches: ['ops/match-current-operator-observation-evidence-1971-20260913-v1']
+    paths: ['.github/match-current-operator-observation-evidence-1971-v1.arm']
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-current-operator-observation-evidence-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-operator-observation-evidence-1971-20260913-v1
+  HISTORICAL_MATCH_SOURCE: d397e795335f3a7c0b4878ce38029e22c0dd6f11
+  EVIDENCE_HELPER_SOURCE: e2d8b06c9cc4b9fccb39c99beef9dbb79fb00d9c
+  MAIN_RUNTIME_SOURCE: 12764adb21ef9cf76ac85c3213bdd7cd51bc79af
+  EXPECTED_BULK_BLOB: 4ef3e150bfbec625d1baf1c425e2a2cd6999e875
+  EXPECTED_STRICT_BLOB: 9c08276f69a3c827e2a03ed3a01188b57d21fb0a
+  EXPECTED_TV_CLIENT_BLOB: d29e5a2c62333918034326f8527e4b45ddf4b382
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Reconstruct pinned reviewed libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sha in "$HISTORICAL_MATCH_SOURCE" "$EVIDENCE_HELPER_SOURCE" "$MAIN_RUNTIME_SOURCE"; do
+            git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$sha"
+          done
+          git show "$HISTORICAL_MATCH_SOURCE:scripts/diagnostics/hotel_full_catalog_reconcile.php" > "$RUNNER_TEMP/full.php"
+          git show "$HISTORICAL_MATCH_SOURCE:scripts/diagnostics/hotel_match_current_bulk_review.php" > "$RUNNER_TEMP/bulk.php"
+          git show "$HISTORICAL_MATCH_SOURCE:scripts/diagnostics/hotel_match_current_strict_review.php" > "$RUNNER_TEMP/strict.php"
+          git show "$EVIDENCE_HELPER_SOURCE:scripts/diagnostics/anex_hotelcode_evidence.php" > "$RUNNER_TEMP/hotelcode.php"
+          git show "$EVIDENCE_HELPER_SOURCE:scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php" > "$RUNNER_TEMP/evidence.php"
+          git show "$MAIN_RUNTIME_SOURCE:v2/data/tourvisor-client-v1.php" > "$RUNNER_TEMP/tv.php"
+          test "$(git hash-object "$RUNNER_TEMP/bulk.php")" = "$EXPECTED_BULK_BLOB"
+          test "$(git hash-object "$RUNNER_TEMP/strict.php")" = "$EXPECTED_STRICT_BLOB"
+          test "$(git hash-object "$RUNNER_TEMP/tv.php")" = "$EXPECTED_TV_CLIENT_BLOB"
+          for f in "$RUNNER_TEMP"/{full,bulk,strict,hotelcode,evidence,tv}.php; do php -l "$f"; done
+      - name: Reserve immutable operation before live access
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$state"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          x={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh_or_tourvisor_detail','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':1,'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_passive_operator_observations_plus_bounded_detail','database_writes':0,'mapping_writes':0,'tourvisor_search_starts':0,'tourvisor_continue_calls':0,'booking_calls':0,'lead_calls':0,'detail_call_cap':122,'anex_page_cap':122,'no_replay':True}
+          (s/'reservation.json').write_text(json.dumps(x,sort_keys=True)+'\n')
+          PY
+      - name: Preserve reservation before live access
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-operator-observation-evidence-1971-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-current-operator-observation-evidence-1971-20260913-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Build pinned one-shot payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,re
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP'])
+          def body(name):
+              x=(rt/name).read_text(encoding='utf-8')
+              if x.startswith('<?php'): x=x[5:]
+              x=x.replace('declare(strict_types=1);','',1)
+              return x
+          full=body('full.php')
+          bulk=body('bulk.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strict=body('strict.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          old="const MBR_OPERATION = 'hotel-match-current-bulk-review-1971-20260911-v1';"
+          bulk=bulk.replace(old,"const MBR_OPERATION = 'hotel-match-current-operator-observation-bulk-library-1971-20260913-v1';")
+          old="const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';"
+          strict=strict.replace(old,"const MSR_OPERATION = '"+os.environ['OPERATION_ID']+"';")
+          needle="'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'candidates'=>$candidates,"
+          if strict.count(needle)!=1: raise SystemExit('strict return shape drift')
+          strict=strict.replace(needle,"'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'candidates'=>$candidates,'blocked_rows'=>$blocked,",1)
+          hotelcode=body('hotelcode.php')
+          evidence=body('evidence.php')
+          evidence=evidence.replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\nrequire_once __DIR__ . '/anex_hotelcode_evidence.php';\n",'',1)
+          tv=body('tv.php')
+          runner=r'''const MOE_DETAIL_CAP=122; const MOE_PAGE_CAP=122;
+function moe_anex_name(?string $name): bool { $x=fc_norm((string)$name); return $x!=='' && (str_contains($x,'anex')||str_contains($x,'анекс')); }
+function moe_safe_error(Throwable $e): string { $m=preg_replace('/[^\\p{L}\\p{N}\\s_.:()\\/-]+/u',' ',(string)$e->getMessage())??''; return mb_substr(preg_replace('/\\s+/u',' ',trim($m))??'',0,160); }
+try {
+  ini_set('display_errors','0'); ini_set('log_errors','0');
+  $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('server_root_invalid');
+  $config=realpath($root.'/config.php'); $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+  if(!$config||!$dbHelper||strpos($config,$root.DIRECTORY_SEPARATOR)!==0||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0) throw new RuntimeException('runtime_helper_invalid');
+  ob_start(); require_once $config; require_once $dbHelper; ob_end_clean();
+  if(!defined('TOURVISOR_ANEX_JWT')) throw new RuntimeException('anex_jwt_constant_missing');
+  $token=trim((string)constant('TOURVISOR_ANEX_JWT')); if(stripos($token,'Bearer ')===0)$token=trim(substr($token,7));
+  if($token===''||strlen($token)<20) throw new RuntimeException('anex_jwt_empty'); putenv('TOURVISOR_JWT='.$token);
+  $db=v2_data_db(); $review=msr_review($db,MSR_OPERATION);
+  if(($review['status']??'')!=='completed') throw new RuntimeException('strict_review_failed');
+  $queue=[]; foreach(($review['blocked_rows']??[]) as $r){ if(($r['provider']??'')==='anex'&&($r['reason']??'')==='tourvisor_anex_operator_link_hotelcode_needed')$queue[]=$r; }
+  usort($queue,static fn($a,$b)=>((int)($b['search_count']??0))<=>((int)($a['search_count']??0)) ?: ((int)$a['external_id'])<=>((int)$b['external_id']));
+  $candidateSet=[]; foreach($queue as $r)foreach(array_map('intval',$r['candidate_ids']??[]) as $id)if($id>0)$candidateSet[$id]=true;
+  $tableExists=false; $tableCount=0; $candidateObs=[]; $localRows=[]; $staging=[];
+  $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'); $db->exec('START TRANSACTION READ ONLY');
+  try {
+    $q=$db->query("SHOW TABLES LIKE 'tour_operator_identity_observations'"); $tableExists=$q&&$q->fetchColumn()!==false;
+    if($tableExists){
+      $tableCount=(int)$db->query('SELECT COUNT(*) FROM tour_operator_identity_observations')->fetchColumn();
+      if($candidateSet){ $ids=implode(',',array_map('intval',array_keys($candidateSet))); $candidateObs=$db->query("SELECT hotel_id,hotel_name,country_id,region_name,subregion_name,latitude,longitude,operator_id,operator_name,tour_id,operator_link,observation_count,last_seen_at FROM tour_operator_identity_observations WHERE hotel_id IN ($ids) ORDER BY last_seen_at DESC,observation_count DESC,hotel_id,tour_id")->fetchAll(PDO::FETCH_ASSOC); }
+    }
+    if($candidateSet){ $ids=implode(',',array_map('intval',array_keys($candidateSet))); foreach($db->query("SELECT h.id,h.country_id,h.name,h.region_name,h.subregion_name,COALESCE(d.latitude,h.latitude) latitude,COALESCE(d.longitude,h.longitude) longitude FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.id IN ($ids)")->fetchAll(PDO::FETCH_ASSOC) as $x)$localRows[(int)$x['id']]=$x; }
+    $anexIds=array_map(static fn($r)=>(int)$r['external_id'],$queue); if($anexIds){$ids=implode(',',$anexIds);foreach($db->query("SELECT anex_hotel_id,latitude,longitude,api_name,xml_name,xml_alternate_name,api_region,api_town FROM anex_hotels WHERE anex_hotel_id IN ($ids)")->fetchAll(PDO::FETCH_ASSOC) as $x)$staging[(int)$x['anex_hotel_id']]=$x;}
+    $db->commit();
+  } catch(Throwable $e){ if($db->inTransaction())$db->rollBack(); throw $e; }
+  $departures=v2_data_tv_get('/departures'); $departureId=ate_departure_id(is_array($departures)?$departures:[]); if(!$departureId)throw new RuntimeException('moscow_departure_missing');
+  $operatorIds=[]; $catalogCalls=1; foreach(array_values(array_unique(array_map(static fn($r)=>(int)$r['country_id'],$queue))) as $country){ $ops=v2_data_tv_get('/operators',['departureId'=>$departureId,'countryId'=>$country]); $catalogCalls++; $operatorIds[$country]=ate_operator_id(is_array($ops)?$ops:[]); }
+  $obsByLocal=[]; foreach($candidateObs as $o){$country=(int)$o['country_id'];$op=(int)$o['operator_id']; if(($operatorIds[$country]??null)!==$op&&!moe_anex_name($o['operator_name']??null))continue; $obsByLocal[(int)$o['hotel_id']][]=$o;}
+  $detailCache=[]; $detailCalls=0; $pageCalls=0; $rows=[]; $counts=['full_hotelcode'=>0,'strong_hotellist'=>0,'hotellist_conflict'=>0,'coordinate_conflict'=>0,'ambiguous_local_observation'=>0,'no_candidate_ids'=>0,'no_passive_observation'=>0,'detail_error'=>0,'detail_no_link'=>0,'page_no_hotelcode'=>0];
+  foreach($queue as $r){
+    $aid=(int)$r['external_id']; $country=(int)$r['country_id']; $cids=array_values(array_unique(array_filter(array_map('intval',$r['candidate_ids']??[]))));
+    if(!$cids){$counts['no_candidate_ids']++;continue;}
+    $locals=[]; foreach($cids as $cid)if(!empty($obsByLocal[$cid]))$locals[$cid]=$obsByLocal[$cid];
+    if(!$locals){$counts['no_passive_observation']++;continue;} if(count($locals)!==1){$counts['ambiguous_local_observation']++;continue;}
+    $localId=(int)array_key_first($locals); $obs=$locals[$localId][0]; $target=$localRows[$localId]??null; if(!is_array($target)||(int)$target['country_id']!==$country){continue;}
+    $source=$staging[$aid]??[]; $distance=fc_dist($source['latitude']??null,$source['longitude']??null,$target['latitude']??null,$target['longitude']??null); if($distance!==null&&$distance>5000){$counts['coordinate_conflict']++;continue;}
+    $tourId=trim((string)($obs['tour_id']??'')); if($tourId===''){$counts['detail_error']++;continue;} $tourHash=hash('sha256',$tourId);
+    $link=trim((string)($obs['operator_link']??'')); $detailError=null;
+    if($link===''){
+      if(!array_key_exists($tourHash,$detailCache)){
+        if($detailCalls>=MOE_DETAIL_CAP){$detailCache[$tourHash]=['link'=>'','error'=>'detail_cap'];}
+        else { $detailCalls++; try{$d=v2_data_tv_get('/tours/'.rawurlencode($tourId),['currency'=>'RUB']);$detailCache[$tourHash]=['link'=>trim((string)($d['operatorLink']??'')),'error'=>null];}catch(Throwable $e){$detailCache[$tourHash]=['link'=>'','error'=>moe_safe_error($e)];} }
+      }
+      $link=(string)$detailCache[$tourHash]['link']; $detailError=$detailCache[$tourHash]['error'];
+    }
+    if($detailError!==null){$counts['detail_error']++; $rows[]=['anex_hotel_id'=>$aid,'country_id'=>$country,'search_count'=>(int)$r['search_count'],'local_hotel_id'=>$localId,'evidence_class'=>'detail_error','tour_id_sha256'=>$tourHash,'detail_error'=>$detailError];continue;}
+    if($link===''){$counts['detail_no_link']++;continue;}
+    $hotellist=ate_operator_hotellist($link); if($hotellist!==null&&$hotellist!==$aid){$counts['hotellist_conflict']++;$rows[]=['anex_hotel_id'=>$aid,'country_id'=>$country,'search_count'=>(int)$r['search_count'],'local_hotel_id'=>$localId,'evidence_class'=>'operator_hotellist_conflict','operator_hotellist'=>$hotellist,'tour_id_sha256'=>$tourHash];continue;}
+    $hotelCode=null;$hotelCodeStatus='not_fetched'; if($hotellist===$aid&&ate_allowed_anex_page($link)&&$pageCalls<MOE_PAGE_CAP){$pageCalls++;$p=ate_fetch_anex_page($link);if(($p['status']??'')==='ok'){$he=ate_page_hotelcode_evidence((string)($p['body']??''));$hotelCodeStatus=(string)($he['status']??'invalid_evidence');$hotelCode=($hotelCodeStatus==='confirmed')?(int)($he['hotel_code']??0):null;}else{$hotelCodeStatus=(string)($p['status']??'fetch_error');}}
+    $class='detail_no_direct_anex_id'; if($hotellist===$aid&&$hotelCode===$aid){$class='full_operator_link_plus_hotelcode';$counts['full_hotelcode']++;}elseif($hotellist===$aid){$class='strong_operator_link_no_hotelcode';$counts['strong_hotellist']++;if($hotelCode===null)$counts['page_no_hotelcode']++;}elseif($hotelCode!==null&&$hotelCode===$aid){$class='media_hotelcode_matches_seed';$counts['full_hotelcode']++;}
+    $rows[]=['anex_hotel_id'=>$aid,'country_id'=>$country,'search_count'=>(int)$r['search_count'],'local_hotel_id'=>$localId,'tv_hotel_name'=>$target['name'],'operator_id'=>(int)$obs['operator_id'],'passive_observation_count'=>(int)$obs['observation_count'],'passive_last_seen_at'=>$obs['last_seen_at'],'tour_id_sha256'=>$tourHash,'distance_m'=>$distance===null?null:(int)round($distance),'operator_hotellist'=>$hotellist,'hotelcode_status'=>$hotelCodeStatus,'hotel_code'=>$hotelCode,'evidence_class'=>$class];
+  }
+  usort($rows,static fn($a,$b)=>((int)($b['search_count']??0))<=>((int)($a['search_count']??0)) ?: ((int)$a['anex_hotel_id'])<=>((int)$b['anex_hotel_id']));
+  $out=['status'=>'completed','operation_id'=>MSR_OPERATION,'mode'=>'current_db_passive_operator_observations_plus_bounded_detail','queue_count'=>count($queue),'queue_observed_count'=>count(array_filter($queue,static fn($r)=>(bool)($r['observed']??false))),'candidate_local_ids'=>count($candidateSet),'passive_table_exists'=>$tableExists,'passive_table_rows'=>$tableCount,'candidate_passive_rows'=>count($candidateObs),'anex_candidate_passive_rows'=>array_sum(array_map('count',$obsByLocal)),'tourvisor_catalog_calls'=>$catalogCalls,'tourvisor_detail_calls'=>$detailCalls,'tourvisor_search_starts'=>0,'tourvisor_continue_calls'=>0,'anex_page_calls'=>$pageCalls,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'token_value_recorded'=>false,'operator_ids'=>$operatorIds,'counts'=>$counts,'evidence_rows'=>$rows,'strict_snapshot'=>['coverage'=>$review['coverage'],'examined'=>$review['examined'],'blocked_reasons'=>$review['blocked_reasons']],'guards'=>['not_write_authority'=>true,'manual_existing_exclusion_recomputed_current'=>true,'coordinate_conflict_m'=>5000,'hotelcode_required_for_full_path'=>true,'no_tourvisor_search_start'=>true,'no_search_continue'=>true]];
+  echo fc_json($out),"\n";
+} catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>MSR_OPERATION,'reason'=>moe_safe_error($e),'database_writes'=>0,'mapping_writes'=>0,'tourvisor_search_starts'=>0,'tourvisor_continue_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'token_value_recorded'=>false],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n"; exit(1);}'''
+          code="define('FC_LIBRARY_ONLY',true);\n"+full+'\n'+bulk+'\n'+strict+'\n'+hotelcode+'\n'+evidence+'\n'+tv+'\n'+runner
+          (rt/os.environ['OPERATION_ID']/ 'payload.php').write_text('<?php\n'+code,encoding='utf-8')
+          PY
+          php -l "$RUNNER_TEMP/$OPERATION_ID/payload.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' "$RUNNER_TEMP/$OPERATION_ID/payload.php"
+          ! grep -Eiq "/continue['\"]|/tours/search['\"]|/book|bookTour|createOrder|sendLead" "$RUNNER_TEMP/$OPERATION_ID/payload.php"
+      - name: Execute one CURRENT evidence pass
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/match_operator_evidence_key"
+          test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
+          if [[ "$ANYTOOUR_DEPLOY_SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$ANYTOOUR_DEPLOY_SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$ANYTOOUR_DEPLOY_SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o ConnectTimeout=20 -l "$ANYTOOUR_DEPLOY_USER" "$ANYTOOUR_DEPLOY_HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$state/payload.php" > "$state/live.stdout" 2> "$state/live.stderr"
+          rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          s=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; rc=int(os.environ['RC']); stdout=s.joinpath('live.stdout').read_text(errors='replace'); stderr=s.joinpath('live.stderr').read_text(errors='replace')
+          lines=[x for x in stdout.splitlines() if x.strip()]; data=None
+          if lines:
+            try:data=json.loads(lines[-1])
+            except Exception:pass
+          if not isinstance(data,dict): data={'status':'failed','operation_id':os.environ['OPERATION_ID'],'reason':'unparseable_or_transport','remote_exit':rc,'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),'stderr_present':bool(stderr.strip()),'database_writes':0,'mapping_writes':0,'tourvisor_search_starts':0,'tourvisor_continue_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          data['source_sha']=os.environ['GITHUB_SHA'];data['run_id']=int(os.environ['GITHUB_RUN_ID']);data['no_replay']=True;data['remote_exit']=rc
+          for k in ('database_writes','mapping_writes','tourvisor_search_starts','tourvisor_continue_calls','booking_calls','lead_calls'):
+            if int(data.get(k,0))!=0: raise SystemExit('action guard '+k)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); s.joinpath('result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only' if data.get('status')=='completed' and rc==0 else 'unknown_or_failed_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'tourvisor_search_starts':0,'tourvisor_continue_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          s.joinpath('receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          if data.get('status')=='completed':
+            c=data.get('counts') or {}; text=f"MATCH #1971 CURRENT operator-observation evidence `{os.environ['OPERATION_ID']}` completed read-only. Queue **{data.get('queue_count')}** hotelCode dossiers; passive table rows **{data.get('passive_table_rows')}**, candidate passive rows **{data.get('candidate_passive_rows')}**, ANEX candidate observations **{data.get('anex_candidate_passive_rows')}**. Tourvisor catalog/detail calls **{data.get('tourvisor_catalog_calls')}/{data.get('tourvisor_detail_calls')}**, search starts/continue **0/0**; ANEX page reads **{data.get('anex_page_calls')}**. Full link+hotelCode **{c.get('full_hotelcode',0)}**, strong HOTELLIST without hotelCode **{c.get('strong_hotellist',0)}**, conflicts **{c.get('hotellist_conflict',0)}**, no passive observation **{c.get('no_passive_observation',0)}**, ambiguous local observation **{c.get('ambiguous_local_observation',0)}**. DB/mapping/booking/lead writes **0**. Result is evidence only, never write authority."
+          else: text=f"MATCH #1971 operator-observation evidence `{os.environ['OPERATION_ID']}` is {receipt['state']}; reason `{data.get('reason')}`. NO-REPLAY; DB/mapping/search-start/continue/booking/lead actions0."
+          s.joinpath('summary.md').write_text(text+'\n')
+          print(text)
+          if data.get('status')!='completed' or rc!=0: raise SystemExit(1)
+          PY
+      - name: Preserve sanitized result and receipt
+        if: always()
+        id: result
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-operator-observation-evidence-1971-v1-result
+          path: |
+            ${{ runner.temp }}/hotel-match-current-operator-observation-evidence-1971-20260913-v1/reservation.json
+            ${{ runner.temp }}/hotel-match-current-operator-observation-evidence-1971-20260913-v1/result.json
+            ${{ runner.temp }}/hotel-match-current-operator-observation-evidence-1971-20260913-v1/receipt.json
+            ${{ runner.temp }}/hotel-match-current-operator-observation-evidence-1971-20260913-v1/summary.md
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record substantive result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.result.outputs.artifact-id }}
+        shell: bash
+        run: |
+          state="$RUNNER_TEMP/$OPERATION_ID"; printf '\nResult artifact `%s`; reservation was durable before live access.\n' "$ARTIFACT_ID" >> "$state/summary.md"
+          gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$state/summary.md"
