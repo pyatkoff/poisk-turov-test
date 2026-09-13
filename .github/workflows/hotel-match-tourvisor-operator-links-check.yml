@@ -1,0 +1,25 @@
+name: MATCH Tourvisor operator-link evidence
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_tourvisor_operator_links.py'
+      - 'tests/hotel_match_tourvisor_operator_links_test.py'
+      - '.github/workflows/hotel-match-tourvisor-operator-links-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify exact source and offline regression
+        env:
+          EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          python3 -m py_compile scripts/diagnostics/hotel_match_tourvisor_operator_links.py tests/hotel_match_tourvisor_operator_links_test.py
+          python3 tests/hotel_match_tourvisor_operator_links_test.py
