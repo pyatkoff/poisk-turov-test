@@ -44,7 +44,7 @@ final class AnyTourAnexSearch
         }
         $this->params = $params;
         $this->context = $criteria;
-        $this->remember($result['offers']);
+        $this->remember($result['offers'], $this->freightRefsBySupplierOffer($data));
         return $result;
     }
 
@@ -61,6 +61,9 @@ final class AnyTourAnexSearch
                 'supplier_offer_id' => $offer['supplier_offer_id'],
                 'kind' => $offer['kind'],
                 'hotel_external_id' => $offer['hotel']['external_id'],
+                // Opaque provider IDs only. These are not flight details, fare deltas,
+                // AdditionalPricesDaily.tour values, or proof of selected transport.
+                'supplier_freight_refs' => $offer['supplier_freight_refs'] ?? [],
             ];
         }
         return ['schema_version' => 1, 'context' => $this->context, 'offers' => $offers];
@@ -83,9 +86,13 @@ final class AnyTourAnexSearch
         );
         $offers = [];
         foreach ($snapshot['offers'] as $offer) {
-            if (!is_array($offer) || !self::exactKeys($offer, [
-                'offer_key', 'supplier_offer_id', 'kind', 'hotel_external_id'
-            ]) || !is_string($offer['offer_key'])
+            $legacyKeys = ['offer_key', 'supplier_offer_id', 'kind', 'hotel_external_id'];
+            $currentKeys = array_merge($legacyKeys, ['supplier_freight_refs']);
+            $hasCurrentShape = is_array($offer) && self::exactKeys($offer, $currentKeys);
+            $hasLegacyShape = is_array($offer) && self::exactKeys($offer, $legacyKeys);
+            $freightRefs = $hasCurrentShape ? $offer['supplier_freight_refs'] : [];
+            if ((!$hasCurrentShape && !$hasLegacyShape) || !self::validFreightRefs($freightRefs)
+                || !is_string($offer['offer_key'])
                 || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $offer['offer_key'])
                 || isset($offers[$offer['offer_key']]) || !is_string($offer['supplier_offer_id'])
                 || !preg_match('~\A[A-Za-z0-9][A-Za-z0-9_.:,;\~@+/=|\-]{0,2047}\z~D', $offer['supplier_offer_id'])
@@ -104,6 +111,7 @@ final class AnyTourAnexSearch
                 'supplier_offer_id' => $offer['supplier_offer_id'],
                 'kind' => $offer['kind'],
                 'hotel' => ['external_id' => $offer['hotel_external_id']],
+                'supplier_freight_refs' => $freightRefs,
             ];
         }
         $this->params = $params;
@@ -175,9 +183,9 @@ final class AnyTourAnexSearch
         unset($params['PARTITION_PRICE']);
         $params['CATCLAIM'] = $group['supplier_offer_id'];
         $params['HOTELS'] = $group['hotel']['external_id'];
+        $data = $this->client->request('SearchTour_PRICES', $params);
         $result = anytour_anex_normalize_prices(
-            $this->client->request('SearchTour_PRICES', $params),
-            $this->context, $this->resolver, $this->sensitive
+            $data, $this->context, $this->resolver, $this->sensitive
         );
         $accepted = [];
         foreach ($result['offers'] as $offer) {
@@ -188,7 +196,7 @@ final class AnyTourAnexSearch
             }
         }
         $result['offers'] = $accepted;
-        $this->remember($accepted);
+        $this->remember($accepted, $this->freightRefsBySupplierOffer($data));
         return $result;
     }
 
@@ -244,7 +252,42 @@ final class AnyTourAnexSearch
         return $result;
     }
 
-    private function remember(array $offers): void
+    /**
+     * Extract only already-present SearchTour provider IDs. Their namespace and
+     * relation to FreightMonitor or B2B AdditionalPricesDaily remain unverified.
+     */
+    private function freightRefsBySupplierOffer(array $payload): array
+    {
+        $data = array_key_exists('SearchTour_PRICES', $payload) ? $payload['SearchTour_PRICES'] : $payload;
+        $rows = is_array($data) && is_array($data['prices'] ?? null) ? $data['prices'] : [];
+        $result = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) continue;
+            $supplierId = $row['id'] ?? null;
+            if (is_int($supplierId) && $supplierId > 0) $supplierId = (string) $supplierId;
+            if (!is_string($supplierId) || $supplierId === '') continue;
+            $refs = [];
+            foreach (['freightBeg' => 'outbound', 'freightEnd' => 'return'] as $field => $leg) {
+                $id = anytour_anex_normalizer_id($row[$field] ?? null);
+                if ($id !== null) $refs[$leg] = $id;
+            }
+            if ($refs !== []) $result[$supplierId] = $refs;
+        }
+        return $result;
+    }
+
+    private static function validFreightRefs($refs): bool
+    {
+        if (!is_array($refs) || count($refs) > 2 || array_diff(array_keys($refs), ['outbound', 'return'])) {
+            return false;
+        }
+        foreach ($refs as $id) {
+            if (!is_string($id) || anytour_anex_normalizer_id($id) !== $id) return false;
+        }
+        return true;
+    }
+
+    private function remember(array $offers, array $freightRefs = []): void
     {
         foreach ($offers as $offer) {
             if (count($this->offers) >= 600 && !isset($this->offers[$offer['offer_key']])) break;
@@ -253,6 +296,7 @@ final class AnyTourAnexSearch
                 'supplier_offer_id' => $offer['supplier_offer_id'],
                 'kind' => $offer['kind'],
                 'hotel' => ['external_id' => $offer['hotel']['external_id']],
+                'supplier_freight_refs' => $freightRefs[$offer['supplier_offer_id']] ?? [],
             ];
         }
     }
