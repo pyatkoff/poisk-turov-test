@@ -297,6 +297,13 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 self.assertEqual(source.count(fuel_helper), 1, 'one reviewed flight fuel display helper')
                 self.assertEqual(source.count(current_variant), 1, 'one reviewed flight fuel variant renderer')
                 source = source.replace(fuel_helper, b'', 1).replace(current_variant, original_variant, 1)
+                # Reviewed flight segment date display only. The lead serializer
+                # below keeps dep.date/arr.date untouched; reversing this exact
+                # display function recovers the protected controller.
+                moment_display = b"function momentText(point,isPlaceholder){const p=point||{},parts=[],date=window.V2Results&&typeof window.V2Results.formatTourDate==='function'?window.V2Results.formatTourDate(p.date):p.date;if(date)parts.push(date);if(p.time&&!(isPlaceholder&&String(p.time)==='00:00'))parts.push(p.time);if(isPlaceholder)parts.push('\xd0\xb2\xd1\x80\xd0\xb5\xd0\xbc\xd1\x8f \xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f');return parts.join(' \xc2\xb7 ')||'\xe2\x80\x94';}"
+                moment_original = b"function momentText(point,isPlaceholder){const p=point||{},parts=[];if(p.date)parts.push(p.date);if(p.time&&!(isPlaceholder&&String(p.time)==='00:00'))parts.push(p.time);if(isPlaceholder)parts.push('\xd0\xb2\xd1\x80\xd0\xb5\xd0\xbc\xd1\x8f \xd1\x83\xd1\x82\xd0\xbe\xd1\x87\xd0\xbd\xd1\x8f\xd0\xb5\xd1\x82\xd1\x81\xd1\x8f');return parts.join(' \xc2\xb7 ')||'\xe2\x80\x94';}"
+                self.assertEqual(source.count(moment_display), 1, 'one canonical selected flight date display')
+                source = source.replace(moment_display, moment_original, 1)
                 self.assertTrue(source.endswith(b'})();\n'), 'reviewed controller keeps one canonical final line break')
                 source = source[:-1]
                 # Reviewed presentation-state fix: preserve the renderer's exact
