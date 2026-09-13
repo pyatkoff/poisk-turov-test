@@ -18,7 +18,7 @@ jobs:
     env:
       ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
       ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+      ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
       REQUESTED_OPERATION: anex-egypt-248-apd-preflight-20260914-v1
     steps:
       - uses: actions/checkout@v4
