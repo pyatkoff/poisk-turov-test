@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+const HMRE_OPERATION='hotel-match-residual-evidence-audit-1971-20260913-v1';
+function hmre_json($raw):array{try{$x=json_decode((string)$raw,true,64,JSON_THROW_ON_ERROR);return is_array($x)?$x:[];}catch(Throwable $e){return[];}}
+function hmre_run(PDO $db):array{
+  $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+  try{
+    $targets=[17493,17527,1112,17689,9373,22784,17703,17317,1330,17541,17535,28589,17543,99969,44445,17617];
+    $hotels=[];$q=$db->prepare('SELECT h.id,h.country_id,h.name,h.normalized_name,h.region_name,h.subregion_name,h.category,h.latitude,h.longitude,d.latitude detail_latitude,d.longitude detail_longitude,d.hotel_type FROM catalog_hotels h LEFT JOIN catalog_hotel_details d ON d.hotel_id=h.id WHERE h.id IN ('.implode(',',array_fill(0,count($targets),'?')).')');$q->execute($targets);foreach($q->fetchAll(PDO::FETCH_ASSOC) as$r)$hotels[(int)$r['id']]=$r;
+    $aliases=[];$q=$db->prepare('SELECT hotel_id,alias,normalized_alias FROM hotel_aliases WHERE hotel_id IN ('.implode(',',array_fill(0,count($targets),'?')).') ORDER BY hotel_id,id');$q->execute($targets);foreach($q->fetchAll(PDO::FETCH_ASSOC) as$r)$aliases[(int)$r['hotel_id']][]=['alias'=>$r['alias'],'normalized_alias'=>$r['normalized_alias']];
+    $anAccepted=[];foreach($db->query("SELECT d.anex_hotel_id external_id,d.catalog_hotel_id local_id FROM anex_hotel_decisions d WHERE d.decision_status='accepted' AND d.catalog_hotel_id IS NOT NULL UNION ALL SELECT m.anex_hotel_id,m.catalog_hotel_id FROM anex_hotel_search_mappings m LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=m.anex_hotel_id WHERE m.enabled=1 AND m.scope='preview' AND d.anex_hotel_id IS NULL")->fetchAll(PDO::FETCH_ASSOC)as$r)$anAccepted[(int)$r['local_id']][]=(int)$r['external_id'];
+    $andAccepted=[];foreach($db->query("SELECT external_hotel_id,local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC)as$r)$andAccepted[(int)$r['local_hotel_id']][]=(string)$r['external_hotel_id'];
+    $stage=[];foreach($db->query('SELECT * FROM anex_hotels')->fetchAll(PDO::FETCH_ASSOC)as$r)$stage[(int)$r['anex_hotel_id']]=$r;
+    $aobs=[];foreach($db->query('SELECT * FROM anex_search_hotel_observations ORDER BY search_count DESC,last_seen_utc DESC,anex_hotel_id')->fetchAll(PDO::FETCH_ASSOC)as$r){$id=(int)$r['anex_hotel_id'];if(!isset($aobs[$id]))$aobs[$id]=$r;}
+    $and=[];foreach($db->query("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog'")->fetchAll(PDO::FETCH_ASSOC)as$r)$and[(string)$r['external_hotel_id']]=$r;
+    $dobs=[];foreach($db->query("SELECT * FROM andromeda_search_hotel_observations WHERE supplier_namespace='andromeda_catalog' ORDER BY observed_at_utc DESC,external_hotel_id")->fetchAll(PDO::FETCH_ASSOC)as$r){$id=(string)$r['external_hotel_id'];if(!isset($dobs[$id]))$dobs[$id]=$r;}
+    $candidates=[['provider'=>'andromeda','external_id'=>'116593','target'=>17541],['provider'=>'andromeda','external_id'=>'122823','target'=>17535],['provider'=>'andromeda','external_id'=>'2000021925','target'=>28589],['provider'=>'andromeda','external_id'=>'243802','target'=>17543],['provider'=>'andromeda','external_id'=>'43248','target'=>99969],['provider'=>'andromeda','external_id'=>'62624','target'=>44445],['provider'=>'anex','external_id'=>'30424','target'=>17617]];
+    $rows=[];foreach($candidates as$c){$target=(int)$c['target'];$row=['provider'=>$c['provider'],'external_id'=>$c['external_id'],'target'=>$hotels[$target]??null,'target_aliases'=>$aliases[$target]??[],'accepted_anex_at_target'=>$anAccepted[$target]??[],'accepted_andromeda_at_target'=>$andAccepted[$target]??[]];
+      if($c['provider']==='andromeda'){$id=(string)$c['external_id'];$r=$and[$id]??[];$ev=hmre_json($r['evidence_json']??'');$row['andromeda_current']=['decision_status'=>$r['decision_status']??null,'local_hotel_id'=>$r['local_hotel_id']??null,'source'=>$ev['source']??null,'geography'=>$ev['geography']??null,'observation'=>$dobs[$id]??null];$opp=[];foreach($anAccepted[$target]??[]as$aid)$opp[]=['anex_hotel_id'=>$aid,'stage'=>$stage[$aid]??null,'observation'=>$aobs[$aid]??null];$row['opposite_anex']=$opp;
+      }else{$id=(int)$c['external_id'];$row['anex_current']=['stage'=>$stage[$id]??null,'observation'=>$aobs[$id]??null];$opp=[];foreach($andAccepted[$target]??[]as$did){$r=$and[$did]??[];$ev=hmre_json($r['evidence_json']??'');$opp[]=['external_hotel_id'=>$did,'source'=>$ev['source']??null,'geography'=>$ev['geography']??null,'observation'=>$dobs[$did]??null];}$row['opposite_andromeda']=$opp;}
+      $rows[]=$row;
+    }
+    $db->commit();return['status'=>'completed','operation_id'=>HMRE_OPERATION,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true];
+  }catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}
+}
