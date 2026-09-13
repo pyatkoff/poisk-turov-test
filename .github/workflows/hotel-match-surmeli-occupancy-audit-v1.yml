@@ -1,0 +1,27 @@
+name: MATCH Surmeli occupancy audit v1
+on:
+  push:
+    branches: [ops/match-surmeli-occupancy-audit-1971-20260913-v1]
+    paths: [.github/workflows/hotel-match-surmeli-occupancy-audit-v1.yml]
+permissions: {contents: read}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Inspect CURRENT local 17657 occupancy
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,pathlib,subprocess,tempfile
+          php='''<?php $root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$db->exec('START TRANSACTION READ ONLY');$q=$db->query("SELECT * FROM anex_hotel_search_mappings WHERE catalog_hotel_id=17657 ORDER BY anex_hotel_id");$maps=$q->fetchAll(PDO::FETCH_ASSOC);$rows=[];foreach($maps as$m){$id=(int)$m['anex_hotel_id'];$s=$db->prepare('SELECT * FROM anex_hotels WHERE anex_hotel_id=?');$s->execute([$id]);$o=$db->prepare('SELECT * FROM anex_search_hotel_observations WHERE anex_hotel_id=? ORDER BY search_count DESC,last_seen_utc DESC LIMIT 1');$o->execute([$id]);$rows[]=['mapping'=>$m,'stage'=>$s->fetch(PDO::FETCH_ASSOC),'observation'=>$o->fetch(PDO::FETCH_ASSOC)];}$db->commit();echo json_encode(['status'=>'completed','operation_id'=>'hotel-match-surmeli-occupancy-audit-1971-20260913-v1','target_local'=>17657,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),"\n";?>''';P=pathlib.Path;raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='surmeli-occ-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'],input=php,text=True,capture_output=True,timeout=300)
+          if p.returncode!=0:raise SystemExit(2)
+          v=json.loads(p.stdout);pathlib.Path('surmeli-occupancy.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'rows':len(v['rows']),'ids':[r['mapping']['anex_hotel_id'] for r in v['rows']]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-surmeli-occupancy-audit-v1-${{ github.run_id }}', path: surmeli-occupancy.json, retention-days: 90}
