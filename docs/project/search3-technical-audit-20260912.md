@@ -46,57 +46,6 @@ API, matching/content, SITE/SEO, lead transport/field mapping, арифмети�
 разбиения файлов. Заменённый synthetic test удалён в том же пакете, не оставлен
 параллельным «новой» приёмке.
 
-## Актуальный checkpoint выполнения, 2026-09-13
-
-Этот раздел — более поздний результат того же ограниченного technical/product pass.
-Он уточняет открытые статусы ниже, не создаёт вторую очередь и не превращает
-исторические snapshots в новые задачи.
-
-| Пакет | Exact evidence | Текущий статус |
-| --- | --- | --- |
-| Подготовка и очистка guards #2271/#2272 | release `78819dd10225bfc9f07a9e045cc1dd079c4b7c45`; source `ec0620a43199875dd3351adc792e16bcda37c46d`; Security `34724871213`, whole-site `34724871206` | CHECKED + MERGED. Карта owners/build сохранена; 53 недостижимых pre-reset теста удалены, 17 текущих выполняются. Этот проход не начинать заново |
-| Desktop family geometry #2261 | source `e9b89fcb7137d0942a76d642a76531fb28affcd1`; release `a4e591c10800fb13b7a0fe9705fc3f494a1e8078`; Security `34725970327`, whole-site `34725970333`; geometry artifact `10307144242` | CHECKED + MERGED. Лично просмотрены 1099/1100/1101/1199/1200/1366/1440/1600 для 1/2/3 детей и mobile 375; один/два возраста выровнены, третий безопасно переносится, overflow=0 |
-| Exact evidence source #2281 | source `1109f30a2eb80e25a0f67551c876a76f24ee76e6`; release `e905c9606d64dec00cae285019dae8a839bbfe43`; Security `34726399766`, whole-site `34726399796`; artifact `10307199652` | CHECKED + MERGED. Каждый entry journey JSON содержит exact source SHA; runtime/UI не менялись |
-| Calendar disclosure #2276 | source `bb8d971123ae23a98566bce7caf7783f2e481180`; release `0758836b54d3fd4b1ee0c8f41599cc4db1e2b2b7`; Security `34725886284`, whole-site `34725886295`, ready repeat `34726979918`; artifact `10307503383` | CHECKED + MERGED. Лично просмотрены open/closed screenshots 375/1440; выбор disclosure переживает transient 0/1/restored dates, новая выдача использует установленный open-default, supplier/lead calls=0 |
-| Malformed inbound date #2282 | source `82f2d93627079d6f9e2df723471c15d39facd88d`; release `283f3db732e57a450339cdecf818cbdd193f6b32`; Security `34726558158`, whole-site `34726610750`, navigation `34726610763` | CHECKED + MERGED. Non-scalar/NUL даты уходят в существующий fallback до DateTimeImmutable; нормальный render не менялся |
-| Exact primary budget #2285 | source `4fb095560d45dd9d39d8a92c751a0cd41a321e93`; release `be7f5fe884937b32f06232e9cd56bb136a9ffad4`; Security `34727654231`, whole-site/browser `34727654213`, ready whole-site `34727758775`, navigation `34727758774`; geometry artifact `10309075087` | CHECKED + MERGED. Search3 принимает целые рубли 155500–200750 без stepMismatch/округления; zero/unset сохранены, negative/reversed блокируются. Снимки 375/1440 лично просмотрены, supplier/lead calls=0 |
-
-### Подтверждённый следующий defect: постоянная OTA-форма
-
-На exact release `be7f5fe884937b32f06232e9cd56bb136a9ffad4`
-`src/search3/styles/results-layout.css` всё ещё скрывает `#tourSearch`, когда
-в `#results` есть карточки, а `src/search3/behavior/search-form.js` возвращает
-форму только через класс `search3-editing-search`. Это расходится с более новым
-поручением владельца: полноценная primary OTA-форма страницы поиска должна оставаться
-постоянно доступной в основном flow, а не заменяться одним действием «Изменить поиск».
-
-Следующий связный runtime-пакет должен удалить именно заменённые hide/show CSS rules
-и ставшие ненужными class handlers, сохранить одну server-rendered форму, FormData,
-календарь, results rail и selected flow. Нужны exact screenshots form+results на
-375/430/1024/1100/1199/1200/1366/1440/1600 и коротком desktop, keyboard/focus,
-loading/empty/error и supplier calls=0. CSS/search-form/generated/import paths
-не захватываются этим docs-only checkpoint: действующий selected-date-v4 claim
-`5648815213` на shared import/runtime требует явного handoff.
-
-### Последняя попытка isolated preview
-
-Owner-commanded run `34726731028` проверил provenance и активировал exact artifact
-`10307199652` (725 файлов), но mandatory live check остановился на
-`production_lead_health`. Receipt artifact `10307564509`,
-SHA-256 `73d1162d5d1b9d3e3a9742a0babc11d7e2cde176004de1f9af6f921f684c4d5e`,
-фиксирует `status=failed_not_accepted`, `rollback.status=rolled_back` и
-`production_unchanged=true`. Read-only GET возвращал
-`adapter=v2-direct-bitrix-lead`, тогда как trusted publisher ожидает
-`v2-hmac-bridge-bitrix-lead`. Защита не ослаблялась, lead transport не менялся,
-команда повторно не запускается до отдельного разрешённого разрешения этого
-production contract. После rollback served entry CSS снова имеет предыдущий
-SHA-256 `c52602b999c09fe23e51186b5510befacadd2c59382d3d8bf7cf3a3d3bc7feb3`.
-
-Таким образом новые пакеты выше `checked/merged`, но не
-`preview-published` и не `production-approved`. Physical Safari/iPhone,
-реальная доставка заявки и полный SEARCH-QUALITY-1 остаются deferred/not_measured;
-частичные green-пакеты не повышают строку до 9.5 автоматически.
-
 ## Проверенный пакет календаря #2080
 
 - Исходная release: `311530102d1b7695c2d51fa1082c35893eb617cb`.
@@ -478,12 +427,13 @@ supplier/API/price/lead/analytics, SITE/SEO/INT/MATCH и physical-device deferre
 | --- | --- | --- |
 | #2272 | Удалён отключённый test owner; 17 текущих guards проходят. Повторять эту очистку не нужно | [ec0620a4](https://github.com/pyatkoff/poisk-turov-test/commit/ec0620a43199875dd3351adc792e16bcda37c46d) → [281c17ff](https://github.com/pyatkoff/poisk-turov-test/commit/281c17ff3533ce7a32a4bb5f63aef390ab848d30); Security 34724871213, whole-site 34724871206 |
 | #2279 | Существующий hotel-summary test актуализирован и действительно подключён к renderer CI; runtime не менялся | [eb203d8c](https://github.com/pyatkoff/poisk-turov-test/commit/eb203d8c826ae5a0f4bf61c4ff6b07f9ef5e9fea) → [37523e78](https://github.com/pyatkoff/poisk-turov-test/commit/37523e7837a7f2461602adcd92f24fb1bcfba6b2); Security 34726053737, renderer 34726053747 |
+| #2281 | Каждый entry journey JSON привязан к exact source SHA; runtime/UI не менялись | [1109f30a](https://github.com/pyatkoff/poisk-turov-test/commit/1109f30a2eb80e25a0f67551c876a76f24ee76e6) → [e905c960](https://github.com/pyatkoff/poisk-turov-test/commit/e905c9606d64dec00cae285019dae8a839bbfe43); Security 34726399766, whole-site 34726399796, site artifact 10307199652 |
 | #2261 | Desktop-family geometry исправлена в canonical CSS; 1–2 возраста выровнены в ограниченной группе, третий переносится внутри неё | [e9b89fcb](https://github.com/pyatkoff/poisk-turov-test/commit/e9b89fcb7137d0942a76d642a76531fb28affcd1) → [a4e591c1](https://github.com/pyatkoff/poisk-turov-test/commit/a4e591c10800fb13b7a0fe9705fc3f494a1e8078); [точные ширины и визуальный receipt](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649482828) |
 | #2276 | Выбор open/closed календаря сохраняется через локальные 0/1/restored dates; новый поиск сохраняет первоначальное раскрытие | [bb8d9711](https://github.com/pyatkoff/poisk-turov-test/commit/bb8d971123ae23a98566bce7caf7783f2e481180) → [0758836b](https://github.com/pyatkoff/poisk-turov-test/commit/0758836b54d3fd4b1ee0c8f41599cc4db1e2b2b7); [375/1440 visual и green CI](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649576503) |
 | #2282 | Повреждённые даты из URL получают существующий fallback до PHP-парсера; обычные даты/aliases/семья/ночи сохранены | [82f2d936](https://github.com/pyatkoff/poisk-turov-test/commit/82f2d93627079d6f9e2df723471c15d39facd88d) → [283f3db7](https://github.com/pyatkoff/poisk-turov-test/commit/283f3db732e57a450339cdecf818cbdd193f6b32); [baseline fatal и final green](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5649537573) |
 | #2285 | Primary-бюджет принимает точные суммы в рублях: 155500–200750 больше не блокируются native step=1000. Суммы не округляются; legacy step сохранён | [4fb09556](https://github.com/pyatkoff/poisk-turov-test/commit/4fb095560d45dd9d39d8a92c751a0cd41a321e93) → [be7f5fe8](https://github.com/pyatkoff/poisk-turov-test/commit/be7f5fe884937b32f06232e9cd56bb136a9ffad4); [точная визуальная приёмка](https://github.com/pyatkoff/poisk-turov-test/pull/2285#issuecomment-5649653514) |
 
-Все шесть пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
+Все семь пакетов CHECKED+MERGED. Для #2285 final whole-site 34727758775,
 navigation 34727758774 и Security 34727654231 успешны; оба merged файла
 прочитаны обратно и совпали с checked source. Выполнены 15 ширин, 60 состояний
 семьи и exact/zero/unset/negative/reversed budget guards. Геометрический стенд
@@ -495,6 +445,22 @@ navigation 34727758774 и Security 34727654231 успешны; оба merged ф�
 доступом к артефактам; ссылки выше сохраняют происхождение подтверждения.
 Локальный HTTP 403 при чтении артефакта не обходился. Успешный CI без просмотра
 изображений не был засчитан как визуальная приёмка.
+
+### Сохраняющийся дефект постоянной OTA-формы
+
+На проверенной release `be7f5fe884937b32f06232e9cd56bb136a9ffad4`
+`src/search3/styles/results-layout.css` скрывает `#tourSearch`, когда в
+`#results` есть карточки; `src/search3/behavior/search-form.js` возвращает
+форму через `search3-editing-search`. Это расходится с поручением владельца
+о постоянно доступной полной primary-форме страницы поиска.
+
+Следующий связный UI-пакет должен убрать заменяемые hide/show rules и ненужные
+class handlers в этих владельцах, сохранив одну native-форму, FormData, календарь,
+rail и selected flow. Нужна приёмка form+results на затронутых mobile/desktop
+ширинах, промежуточных breakpoint и коротком экране, keyboard/focus и
+loading/empty/error; локальные действия не запускают supplier search.
+Нового CSS/form owner не создавать. Shared import/runtime handoff ниже
+остаётся условием этого source/generated/hash пакета.
 
 ### Установленная граница следующего URL-пакета
 
