@@ -133,7 +133,8 @@ async function checkUrlRoundTrip(page, width, blocked) {
   assert.deepEqual(cleared.invalid, { calls: 0, unchanged: true }, 'invalid conditions do not update URL or start supplier search');
   assert.deepEqual(cleared.historyDenied, { calls: 1, unchanged: true }, 'unavailable browser history does not interrupt the ordinary search');
   assert.deepEqual(cleared.calls, Array.from({ length: 2 }, () => ({ action: 'search_start', params: cleared.expected })), 'history availability does not alter the supplier payload or duplicate a submission');
-  assert.equal(cleared.afterLength, cleared.historyLength + 1, 'the second distinct search creates exactly one further navigation entry');
+  assert.equal(cleared.historyLength, submitted.afterLength + 2, 'the local-history fixture leaves exactly two forward entries');
+  assert.equal(cleared.afterLength, submitted.afterLength + 1, 'the second distinct search replaces the two local forward entries with exactly one search entry');
   assert.deepEqual(cleared.state, { retained: 'entry-fixture' }, 'the second search also retains existing history state');
   const reset = new URL(cleared.url);
   for (const name of [...cleared.optional, 'child_age[]', 'hotel_service[]', 'onlyDirect', 'onlyCharter']) assert.equal(reset.searchParams.has(name), false, 'cleared restriction cannot return from URL: ' + name);
