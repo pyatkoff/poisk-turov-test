@@ -807,7 +807,7 @@ async function run(browser, width, previous) {
     const collapsed = await snapshot(page);
     if (collapsed.overflow) console.error(JSON.stringify({width,previous,offenders:collapsed.offenders}));
     assert.equal(collapsed.overflow, false, width + ': results fit viewport');
-    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1200, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Enter');
     assert.equal(await card.locator('.tour-row').count(), 3, 'actual toggle reveals all tours');
@@ -827,7 +827,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
     const expanded = await snapshot(page);
     assert.equal(expanded.overflow, false, width + ': expanded results fit viewport');
-    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1200, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').press('Space');
@@ -980,11 +980,11 @@ async function run(browser, width, previous) {
   const browser = await chromium.launch({ headless: true });
   try {
     // 720 CSS px is the 200% reflow equivalent of the 1440px desktop viewport.
-    for (const width of [375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1440]) {
+    for (const width of [375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1200, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=20 widths=375,390,720,760,761,999,1000,1024,1025,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=20 widths=375,390,720,760,761,999,1000,1024,1025,1200,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
