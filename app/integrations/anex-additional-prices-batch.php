@@ -81,3 +81,69 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
         'contexts' => array_values($contexts),
     ];
 }
+
+/**
+ * Execute each unique private context at most once.
+ *
+ * `$reader` receives one private planner context and must return already-validated public-safe
+ * evidence. The executor itself never performs transport. New contexts are persisted as unknown
+ * before invoking the reader; unknown/reserved attempts are not replayed, while completed evidence
+ * is reused without a reader call.
+ */
+function anytour_anex_additional_prices_batch_execute(array $plan, array &$state, callable $reader, callable $checkpoint): array
+{
+    $contexts = $plan['contexts'] ?? null;
+    $offers = $plan['offers'] ?? null;
+    if (!is_array($contexts) || !is_array($offers)
+        || ($plan['requested_offers'] ?? null) !== count($offers)
+        || ($plan['unique_contexts'] ?? null) !== count($contexts)
+        || count($offers) < 1 || count($offers) > 6 || count($contexts) < 1 || count($contexts) > 6) {
+        throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
+    }
+    if (!is_array($state['additional_prices'] ?? null)) $state['additional_prices'] = [];
+
+    $results = [];
+    foreach ($contexts as $context) {
+        $digest = is_array($context) ? ($context['context_digest'] ?? null) : null;
+        if (!is_string($digest) || !preg_match('/\A[a-f0-9]{64}\z/D', $digest)) {
+            throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
+        }
+        $attempt = $state['additional_prices'][$digest] ?? null;
+        if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
+            $results[$digest] = ['status' => 'complete', 'cached' => true, 'evidence' => $attempt['evidence']];
+            continue;
+        }
+        if ($attempt !== null) {
+            $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null];
+            continue;
+        }
+        $state['additional_prices'][$digest] = ['status' => 'unknown'];
+        $checkpoint($state, $digest);
+        $evidence = $reader($context);
+        if (!is_array($evidence)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
+        $results[$digest] = ['status' => 'complete', 'cached' => false, 'evidence' => $evidence];
+    }
+
+    $publicOffers = [];
+    foreach ($offers as $item) {
+        $digest = is_array($item) ? ($item['context_digest'] ?? null) : null;
+        if (!is_string($digest) || !isset($results[$digest])
+            || !is_string($item['offer_ref'] ?? null) || !is_int($item['local_hotel_id'] ?? null)) {
+            throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
+        }
+        $publicOffers[] = [
+            'offer_ref' => $item['offer_ref'],
+            'local_hotel_id' => $item['local_hotel_id'],
+            'context_digest' => $digest,
+            'status' => $results[$digest]['status'],
+            'additional_prices' => $results[$digest]['evidence'],
+        ];
+    }
+
+    return [
+        'requested_offers' => count($publicOffers),
+        'unique_contexts' => count($results),
+        'offers' => $publicOffers,
+    ];
+}
