@@ -12,6 +12,7 @@ on:
       - 'tests/anex-search3-preview-smoke.php'
       - 'tests/anex-operator-filter-smoke.php'
       - 'tests/anex-meal-filter-smoke.php'
+      - 'tests/anex-hotel-filter-smoke.php'
       - 'tests/anex-retained-additional-prices-test.php'
       - 'app/integrations/three-provider-offer-context.php'
       - 'app/integrations/three-provider-room-placement.php'
@@ -68,6 +69,7 @@ jobs:
           php -d allow_url_fopen=0 tests/anex-search3-preview-smoke.php
           php -d allow_url_fopen=0 tests/anex-operator-filter-smoke.php
           php -d allow_url_fopen=0 tests/anex-meal-filter-smoke.php
+          php -d allow_url_fopen=0 tests/anex-hotel-filter-smoke.php
           php -d allow_url_fopen=0 tests/anex-search-smoke.php
           php -d allow_url_fopen=0 tests/anex-search-freight-identity-smoke.php
           php -d allow_url_fopen=0 tests/anex-tour-program-retention-test.php
