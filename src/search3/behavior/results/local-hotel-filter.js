@@ -66,7 +66,7 @@ function syncEmptyState(list,shown){
 function mount(){
   if(!field)return;
   if(desktop.matches){mobilePanel.open=false;rail.append(activeList);fields().forEach(node=>rail.appendChild(node));rail.append(resetButton);}
-  else{const anchor=actions.querySelector('#sortResults')?.closest('label')||actions.firstChild;actions.insertBefore(mobilePanel,anchor);mobileBody.append(activeList);fields().forEach(node=>mobileBody.appendChild(node));mobileBody.append(resetButton);}
+  else{actions.appendChild(mobilePanel);mobileBody.append(activeList);fields().forEach(node=>mobileBody.appendChild(node));mobileBody.append(resetButton);}
   syncContainers(Number(count.textContent||0));
 }
 function option(value,label){const node=document.createElement('option');node.value=String(value);node.textContent=label;return node;}
