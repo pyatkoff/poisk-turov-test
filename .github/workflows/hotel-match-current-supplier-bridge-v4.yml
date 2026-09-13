@@ -1,0 +1,41 @@
+name: MATCH CURRENT supplier bridge v4
+on:
+  push:
+    branches: [ops/match-current-supplier-bridge-1971-20260913-v4]
+    paths: [.github/match-current-supplier-bridge-1971-20260913-v4.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-current-supplier-bridge-review-1971-20260913-v4}
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate immutable review source
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_current_supplier_bridge.php)" = 'ca393057939aa427b92d43a42cdcd83cfad8df48'
+          test "$(git hash-object scripts/diagnostics/hotel_full_catalog_reconcile.php)" = 'f551c9dd4c9365799a8728f29a9881dd3e3256d7'
+          test "$(cat .github/match-current-supplier-bridge-1971-20260913-v4.arm)" = "$OPERATION_ID"
+      - name: Run CURRENT bridge review read-only
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path
+          def body(path):
+            x=P(path).read_text();x=x[5:] if x.startswith('<?php') else x;return x.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php');review=body('scripts/diagnostics/hotel_match_current_supplier_bridge.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          op='hotel-match-current-supplier-bridge-review-1971-20260913-v4';wrapper="$root=realpath(getcwd());require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$db=v2_data_db();$out=hmsb_review($db,'"+op+"');echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),\"\\n\";";source='<?php\ndefine(\'FC_LIBRARY_ONLY\',true);\n'+helper+'\n'+review+'\n'+wrapper
+          raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='bridge-v4-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600)
+            p=subprocess.run(['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M'],input=source,text=True,capture_output=True,timeout=420)
+          if p.returncode!=0: print(p.stderr); raise SystemExit(2)
+          v=json.loads(p.stdout);pathlib.Path('bridge-v4-result.json').write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({'status':v.get('status'),'rows':len(v.get('rows',[])),'database_writes':v.get('database_writes'),'mapping_writes':v.get('mapping_writes')},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'match-current-supplier-bridge-v4-${{ github.run_id }}', path: bridge-v4-result.json, retention-days: 90}
