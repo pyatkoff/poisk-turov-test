@@ -6,22 +6,6 @@ let field=null,input=null,status=null,categoryField=null,categorySelect=null,cat
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function providerKey(t){const value=String(t&&t.provider||'tourvisor').trim().toLowerCase();return value==='andromeda'?'andromeda':value==='anex'?'anex':'tourvisor';}
-function mealKey(value){
-  const label=normalize(value),code=(label.match(/^(uai|ai|bb|hb|fb|ro|sc)(?=$|[+\s-])/)||[])[1]||'';
-  if(code==='ai'||code==='uai'||/(?:ultra\s+)?all[ -]?inclusive|вс[её] включено/.test(label))return'meal:all-inclusive';
-  if(code==='bb'||/bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтрак/.test(label))return'meal:breakfast';
-  if(code==='hb'||/half[ -]?board|полупансион/.test(label))return'meal:half-board';
-  if(code==='fb'||/full[ -]?board|полный пансион/.test(label))return'meal:full-board';
-  if(code==='ro'||/room[ -]?only|no[ -]?meal|без питания/.test(label))return'meal:room-only';
-  if(code==='sc'||/self[ -]?catering|самообслуживан/.test(label))return'meal:self-catering';
-  if(/on[ -]?request|по запросу/.test(label))return'meal:on-request';
-  return label;
-}
-function mealOptionLabel(key,label){return({
-  'meal:all-inclusive':'Всё включено','meal:breakfast':'Завтрак','meal:half-board':'Полупансион',
-  'meal:full-board':'Полный пансион','meal:room-only':'Без питания','meal:self-catering':'Самообслуживание',
-  'meal:on-request':'По запросу'
-})[key]||label;}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
 function cards(){return Array.from(results.querySelectorAll('.hotel-card'));}
 function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Number(item&&item[key]||0)]));return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||0);}
@@ -158,7 +142,7 @@ function syncBudget(items){
 function syncBudgetLabel(){budgetLabel.textContent=budgetField.hidden?'':'до '+money(budgetInput.value)+' ₽';}
 function syncMeal(items){
   const labels=new Map(),ids=new Set(),api=window.V2Results;
-  const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const label=api.mealLabel(t).replace(/\s+/g,' ').trim(),key=mealKey(label);if(!key)return false;if(!labels.has(key))labels.set(key,mealOptionLabel(key,label));return true;});});
+  const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const identity=api.mealIdentity(t);if(!identity)return false;if(!labels.has(identity.key))labels.set(identity.key,identity.label);return true;});});
   const previous=mealSelect.value,available=complete&&labels.size>1;mealSelect.replaceChildren(option('','Любое питание'));
   if(available)Array.from(labels).sort((a,b)=>a[1].localeCompare(b[1],'ru')).forEach(([value,label])=>mealSelect.appendChild(option(value,label)));
   mealSelect.value=available&&labels.has(previous)?previous:'';mealField.hidden=!available;
@@ -184,7 +168,7 @@ function syncOperator(items){
 function project(items){
   ensure();sourceItems=items.slice();unmatched=new Set();const api=window.V2Results,meal=syncMeal(items),provider=syncProvider(items),operator=syncOperator(items),budget=syncBudget(items);
   if(!meal&&!provider&&!operator&&!budget){projectedItems=items;mount();return projectedItems;}
-  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||mealKey(api.mealLabel(t))===meal)&&(!provider||providerKey(t)===provider)&&(!operator||api.operatorIdentity(t)?.key===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
+  projectedItems=items.map(h=>{const tours=(Array.isArray(h.tours)?h.tours:[]).filter(t=>(!meal||api.mealIdentity(t)?.key===meal)&&(!provider||providerKey(t)===provider)&&(!operator||api.operatorIdentity(t)?.key===operator)&&(!budget||Number(t&&t.price||0)<=budget));if(!tours.length){unmatched.add(id(h));return Object.assign({},h,{tours:[]});}return Object.assign({},h,{tours,price:api.representativeTour({tours}).price});});
   mount();return projectedItems;
 }
 function apply(){

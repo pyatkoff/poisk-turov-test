@@ -19,7 +19,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('.direct-tour,.tour-row').count(),0,'collapsed hotel does not pretend to be a specific tour');
     assert.match(await card.locator('.hotel-trip-summary').innerText(),/7–10 ноч\./);
     assert.match(await card.locator('.hotel-trip-summary').innerText(),/Возможны чартеры/);
-    assert.match(await card.locator('.hotel-trip-summary').innerText(),/BB · AI/);
+    assert.match(await card.locator('.hotel-trip-summary').innerText(),/Завтрак · Всё включено/);
     assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽');
     assert.equal(await card.locator('.tour-more-toggle').count(),1);
     const toggle=card.locator('.tour-more-toggle');

@@ -9,6 +9,21 @@ function money(v){const n=Number(v||0);return n>0?moneyFormatter.format(n):'';}
 function formatTourDate(v){const value=String(v==null?'':v).trim();if(!value)return'';const iso=value.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T|\s)/);return iso?iso[3]+'.'+iso[2]+'.'+iso[1]:value;}
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object')return textValue(v.russianName||v.fullRussianName||v.name||v.title||v.value||v.description||'');return'';}
 function mealLabel(t){const meal=t&&t.meal,label=textValue(meal),full=textValue(meal&&meal.fullName);return full.trim()&&(!label.trim()||/^[A-Z]{1,5}\+?$/.test(label.trim()))?full:label;}
+function mealIdentity(t){
+const label=mealLabel(t).replace(/\s+/g,' ').trim();if(!label)return null;
+const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),primary=(name||label).toLocaleLowerCase('ru-RU'),combined=(name+' '+label).toLocaleLowerCase('ru-RU');
+const code=(primary.match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)(?=$|[+\s-])/)||[])[1]||'';
+if(code==='soft ai'||code==='sai'||/soft[ -]?(?:all[ -]?inclusive|ai)|(?:мягк|софт)[^,;]*(?:вс[её] включено|all[ -]?inclusive)/.test(combined))return{key:'meal:soft-all-inclusive',label:'Soft AI'};
+if(code==='uai'||/ultra[ -]?(?:all[ -]?inclusive|ai)|ультра[^,;]*(?:вс[её] включено|all[ -]?inclusive)/.test(combined))return{key:'meal:ultra-all-inclusive',label:'Ультра всё включено'};
+if(code==='ai'||/all[ -]?inclusive|вс[её] включено/.test(combined))return{key:'meal:all-inclusive',label:'Всё включено'};
+if(code==='bb'||/bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтрак/.test(combined))return{key:'meal:breakfast',label:'Завтрак'};
+if(code==='hb'||/half[ -]?board|полупансион/.test(combined))return{key:'meal:half-board',label:'Полупансион'};
+if(code==='fb'||/full[ -]?board|полный пансион/.test(combined))return{key:'meal:full-board',label:'Полный пансион'};
+if(code==='ro'||/room[ -]?only|no[ -]?meal|без питания/.test(combined))return{key:'meal:room-only',label:'Без питания'};
+if(code==='sc'||/self[ -]?catering|самообслуживан/.test(combined))return{key:'meal:self-catering',label:'Самообслуживание'};
+if(/on[ -]?request|по запросу/.test(combined))return{key:'meal:on-request',label:'По запросу'};
+return{key:'meal:label:'+label.toLocaleLowerCase('ru-RU'),label};
+}
 function operatorName(t){return textValue(t&&t.operator);}
 // Exact display aliases only; provider/source never supplies operator identity.
 const operatorBrands=[
@@ -32,10 +47,9 @@ function priceRank(v){const n=Number(v||0);return Number.isFinite(n)&&n>0?n:Numb
 function representativeTour(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];if(!tours.length)return{};const hotelPrice=priceRank(h&&h.price);if(Number.isFinite(hotelPrice)){const exact=tours.find(t=>priceRank(t&&t.price)===hotelPrice);if(exact)return exact;}return tours.reduce((best,t)=>priceRank(t&&t.price)<priceRank(best&&best.price)?t:best,tours[0]||{});}
 function collapsedTours(h,limit){const tours=Array.isArray(h&&h.tours)?h.tours:[];if(limit===1&&tours.length)return[representativeTour(h)];return tours.slice(0,limit);}
 function distinctValues(values){return Array.from(new Set(values.map(v=>String(v==null?'':v).trim()).filter(Boolean)));}
-function mealSummaryLabel(t){const code=textValue(t&&t.meal&&t.meal.name).trim();return /^[A-Z]{1,5}\+?$/.test(code)?code:mealLabel(t);}
 function hotelSummary(h){
-  const tours=Array.isArray(h&&h.tours)?h.tours:[],dates=distinctValues(tours.map(t=>formatTourDate(t&&t.date))),nights=Array.from(new Set(tours.map(t=>Number(t&&t.nights||0)).filter(n=>Number.isFinite(n)&&n>0))).sort((a,b)=>a-b),meals=distinctValues(tours.map(mealSummaryLabel)),operators=hotelOperators(h).map(item=>item.label);
-  const complete=predicate=>tours.length>0&&tours.every(predicate),dateComplete=complete(t=>!!formatTourDate(t&&t.date)),nightsComplete=complete(t=>Number.isFinite(Number(t&&t.nights))&&Number(t.nights)>0),mealComplete=complete(t=>!!mealSummaryLabel(t).trim());
+  const tours=Array.isArray(h&&h.tours)?h.tours:[],dates=distinctValues(tours.map(t=>formatTourDate(t&&t.date))),nights=Array.from(new Set(tours.map(t=>Number(t&&t.nights||0)).filter(n=>Number.isFinite(n)&&n>0))).sort((a,b)=>a-b),mealIdentities=tours.map(mealIdentity),meals=distinctValues(mealIdentities.map(item=>item&&item.label)),operators=hotelOperators(h).map(item=>item.label);
+  const complete=predicate=>tours.length>0&&tours.every(predicate),dateComplete=complete(t=>!!formatTourDate(t&&t.date)),nightsComplete=complete(t=>Number.isFinite(Number(t&&t.nights))&&Number(t.nights)>0),mealComplete=mealIdentities.length>0&&mealIdentities.every(Boolean);
   const allCharter=complete(t=>t&&t.isCharter===true),someCharter=tours.some(t=>t&&t.isCharter===true);
   const nightsLabel=!nightsComplete?'Уточняется':nights.length===1?String(nights[0])+' ноч.':String(nights[0])+'–'+String(nights[nights.length-1])+' ноч.';
   const meal=!mealComplete?'Уточняется по варианту':meals.length<=2?meals.join(' · '):String(meals.length)+' варианта питания';
@@ -83,5 +97,5 @@ function bindSort(){const sort=document.getElementById('sortResults');if(!sort||
 function bindTourToggle(){if(document.documentElement.dataset.v2TourToggleBound==='1')return;document.documentElement.dataset.v2TourToggleBound='1';document.addEventListener('keydown',e=>{const btn=e.target&&e.target.closest&&e.target.closest('.empty-relax');if(!btn||(e.key!=='Enter'&&e.key!==' '))return;e.preventDefault();relax(String(btn.dataset.relax||''));},true);document.addEventListener('click',e=>{const btn=e.target&&e.target.closest&&e.target.closest('.tour-more-toggle');if(btn){const card=btn.closest('.hotel-card'),key=String(btn.dataset.hotelId||card&&card.dataset.hotelId||'');if(!card||!key)return;e.preventDefault();e.stopPropagation();const hotel=viewItems.find(h=>hotelKey(h)===key);if(!hotel)return;if(expandedHotels.has(key))expandedHotels.delete(key);else expandedHotels.add(key);const box=card.querySelector('.hotel-tours');if(box){box.innerHTML=toursHtml(hotel);const toggle=box.querySelector('.tour-more-toggle');if(toggle)toggle.focus({preventScroll:true});}return;}const relaxBtn=e.target&&e.target.closest&&e.target.closest('.empty-relax');if(relaxBtn){e.preventDefault();relax(String(relaxBtn.dataset.relax||''));return;}const edit=e.target&&e.target.closest&&e.target.closest('.empty-edit-search');if(edit){e.preventDefault();const form=document.getElementById('tourSearch');if(form)form.scrollIntoView({behavior:'smooth',block:'start'});}},true);}
 function bind(){bindSort();bindSearchStatus();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
-const api={render,rerender,offerAlternatives,revealOfferAlternatives,sorted,tourRow,toursHtml,money,formatTourDate,hotelPhotoAlt,tourCountLabel,priceRank,representativeTour,collapsedTours,priceContext,hotelSummary,hotelSummaryHtml,operatorIdentity,hotelOperators,hotelOperatorsHtml,decisionFacts,decisionFactsHtml,choiceHint,tourFact,textValue,mealLabel,providerName,tourAction,providerDetailHtml,initialTourLimit,activeRelaxations,emptyHtml,showPlainStatus,showSearchStatus,hideSearchStatus,state,version:5};window.V2Results=api;window.V2ResultsV5=api;
+const api={render,rerender,offerAlternatives,revealOfferAlternatives,sorted,tourRow,toursHtml,money,formatTourDate,hotelPhotoAlt,tourCountLabel,priceRank,representativeTour,collapsedTours,priceContext,hotelSummary,hotelSummaryHtml,operatorIdentity,hotelOperators,hotelOperatorsHtml,decisionFacts,decisionFactsHtml,choiceHint,tourFact,textValue,mealLabel,mealIdentity,providerName,tourAction,providerDetailHtml,initialTourLimit,activeRelaxations,emptyHtml,showPlainStatus,showSearchStatus,hideSearchStatus,state,version:5};window.V2Results=api;window.V2ResultsV5=api;
 })();

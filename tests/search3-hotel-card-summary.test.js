@@ -39,18 +39,18 @@ const multi = {
 assert.deepEqual(api.hotelSummary(multi), {
   date: '16.09.2026',
   nights: '7–10 ноч.',
-  meal: 'BB · AI',
+  meal: 'Завтрак · Всё включено',
   operators: 'FUN&SUN · ANEX',
   flight: 'Возможны чартеры',
   party: '',
   count: 3,
 });
-assert.equal(api.priceContext(multi), '16.09.2026 · 7–10 ноч. · BB · AI');
+assert.equal(api.priceContext(multi), '16.09.2026 · 7–10 ноч. · Завтрак · Всё включено');
 const collapsed = api.toursHtml(multi);
 assert.match(collapsed, /class="hotel-trip-summary"/);
 assert.doesNotMatch(collapsed, /Доступные варианты/, 'collapsed hotel has one current aggregate summary');
 assert.match(collapsed, /7–10 ноч\./);
-assert.match(collapsed, /BB · AI/);
+assert.match(collapsed, /Завтрак · Всё включено/);
 assert.match(collapsed, /data-operator-brand="funsun"/);
 assert.match(collapsed, /data-operator-brand="anex"/);
 assert.match(collapsed, /от 62(?:\s| )?400/);
@@ -84,6 +84,25 @@ const differentDates = {
   tours: [multi.tours[0], { ...multi.tours[1], date: '2026-09-18' }],
 };
 assert.equal(api.hotelSummary(differentDates).date, 'Несколько дат вылета');
+
+const equivalentMeals = {
+  ...multi,
+  tours: [
+    { ...multi.tours[0], meal: { name: 'AI', fullName: 'Всё включено' } },
+    { ...multi.tours[1], meal: { fullName: 'All Inclusive' } },
+    { ...multi.tours[2], meal: 'Всё включено' },
+  ],
+};
+assert.equal(api.hotelSummary(equivalentMeals).meal, 'Всё включено', 'supplier aliases do not invent several meal variants');
+const distinctInclusiveMeals = {
+  ...multi,
+  tours: [
+    { ...multi.tours[0], meal: { name: 'AI', fullName: 'Всё включено' } },
+    { ...multi.tours[1], meal: { name: 'UAI', fullName: 'Ультра всё включено' } },
+    { ...multi.tours[2], meal: { name: 'Soft AI', fullName: 'Мягкое всё включено' } },
+  ],
+};
+assert.equal(api.hotelSummary(distinctInclusiveMeals).meal, '3 варианта питания', 'AI, UAI and Soft AI remain distinct choices');
 
 const single = { id: 'hotel-2', price: 90000, tours: [{ ...multi.tours[0], id: 'single', price: 90000 }] };
 const singleHtml = api.toursHtml(single);

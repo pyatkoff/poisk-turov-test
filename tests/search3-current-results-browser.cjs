@@ -64,7 +64,7 @@ async function snapshot(page) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { fullName: 'Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { fullName: 'Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
     { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'), sample('b-bb', 142000, { fullName: 'Breakfast' }, '2026-09-15'), sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16'), sample('b-request', 162000, { fullName: 'On Request' }, '2026-09-19')] },
     { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Room only' }, '2026-09-13'), sample('c-fb', 152000, { fullName: 'Полный пансион' }, '2026-09-17'), sample('c-sc', 157000, { fullName: 'Самообслуживание' }, '2026-09-18')] }
   ];
@@ -90,10 +90,19 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent])), [
       ['', 'Любое питание'], ['meal:room-only', 'Без питания'], ['meal:all-inclusive', 'Всё включено'],
       ['meal:breakfast', 'Завтрак'], ['meal:on-request', 'По запросу'], ['meal:full-board', 'Полный пансион'],
-      ['meal:half-board', 'Полупансион'], ['meal:self-catering', 'Самообслуживание']
-    ], 'Russian and English supplier synonyms collapse into one customer-facing choice per meal family');
+      ['meal:half-board', 'Полупансион'], ['meal:self-catering', 'Самообслуживание'],
+      ['meal:ultra-all-inclusive', 'Ультра всё включено'], ['meal:soft-all-inclusive', 'Soft AI']
+    ], 'supplier synonyms collapse while AI, UAI and Soft AI remain separate customer-facing choices');
     assert.equal(await mealPreset.isVisible(), true, 'a truthful existing all-inclusive option exposes one quick choice');
     assert.ok((await mealPreset.boundingBox()).height >= 44, 'meal quick choice keeps a full touch target');
+    assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
+    await select.selectOption('meal:ultra-all-inclusive');
+    assert.deepEqual(await visible(), ['meal-a'], 'UAI remains independently selectable instead of entering the AI bucket');
+    assert.equal(await page.locator('#results [data-hotel-id=meal-a] .direct-tour').getAttribute('data-tid'), 'a-uai');
+    await select.selectOption('meal:soft-all-inclusive');
+    assert.deepEqual(await visible(), ['meal-a'], 'Soft AI remains independently selectable instead of entering the AI bucket');
+    assert.equal(await page.locator('#results [data-hotel-id=meal-a] .direct-tour').getAttribute('data-tid'), 'a-soft-ai');
+    await select.selectOption('');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     const calendar = page.locator('#currentPriceCalendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-13', 'calendar starts from the lowest offer in the terminal result set');
@@ -124,13 +133,13 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('.direct-tour').count(), 0, 'a collapsed aggregate does not select an undisclosed offer');
     assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от120000₽', 'selected meal sets the actual matching minimum, explicitly labelled from');
     assert.match(await a.locator('.hotel-trip-summary').innerText(), /Несколько дат вылета/, 'different matching departures are not presented as one representative date');
-    assert.match(await a.locator('.hotel-choice-hint').innerText(), /4 варианта/, 'counts all matching AI and UAI offers across providers');
+    assert.match(await a.locator('.hotel-choice-hint').innerText(), /3 варианта/, 'counts only matching AI aliases across providers');
     assert.ok((await a.locator('.tour-more-toggle').boundingBox()).height >= 44, 'matching-offer disclosure keeps a full touch target');
     await a.locator('.tour-more-toggle').focus();
     await a.locator('.tour-more-toggle').press('Enter');
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
-    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra', 'a-uai'], 'expansion keeps selectable AI and UAI offers without reintroducing an excluded meal');
+    assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
     assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent Andromeda AI remains visible but cannot enter the Tourvisor selection controller');
     assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
     assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
@@ -564,7 +573,7 @@ async function run(browser, width, previous) {
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
     assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'disclosure states the total loaded offer count');
     assert.equal(await card.locator('.tour-meta').count(), 0, 'hotel summary never uses the concrete offer owner');
-    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Вылет', '12.09.2026'], ['Длительность', '9 ноч.'], ['Питание', 'AI'], ['Перелёт', 'Уточняется по варианту']], 'aggregate facts describe the shared departure, duration and meal');
+    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Вылет', '12.09.2026'], ['Длительность', '9 ноч.'], ['Питание', 'Всё включено'], ['Перелёт', 'Уточняется по варианту']], 'aggregate facts use the same canonical meal identity as the result facet');
     assert.deepEqual(await card.locator('.hotel-operators .hotel-operator-name').allTextContents(), ['OTHER OPERATOR', 'TEST OPERATOR'], 'summary contains actual operator names without guessing a brand');
     assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от148500,6₽', 'aggregate minimum is distinct from an exact offer price');
     const single = page.locator('#results [data-hotel-id=cheap].hotel-card');

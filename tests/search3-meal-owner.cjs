@@ -61,6 +61,21 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   });
   const results = rendererWindow.V2Results;
   const tour = { id: 'meal-shape-check', price: 125000, meal: { id: 7, fullName: 'All Inclusive' } };
+  assert.equal(typeof results.mealIdentity, 'function', 'renderer exposes one canonical meal identity for summary and result facets');
+  assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: { name: 'AI', fullName: 'Всё включено' } }),
+    results.mealIdentity({ meal: { fullName: 'All Inclusive' } }),
+    results.mealIdentity({ meal: 'Всё включено' }),
+  ]), JSON.stringify(Array.from({ length: 3 }, () => ({ key: 'meal:all-inclusive', label: 'Всё включено' }))), 'AI supplier aliases share one customer-facing identity');
+  assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: { name: 'AI', fullName: 'Всё включено' } }),
+    results.mealIdentity({ meal: { name: 'UAI', fullName: 'Ультра всё включено' } }),
+    results.mealIdentity({ meal: { name: 'Soft AI', fullName: 'Мягкое всё включено' } }),
+  ]), JSON.stringify([
+    { key: 'meal:all-inclusive', label: 'Всё включено' },
+    { key: 'meal:ultra-all-inclusive', label: 'Ультра всё включено' },
+    { key: 'meal:soft-all-inclusive', label: 'Soft AI' },
+  ]), 'AI, UAI and Soft AI retain distinct identities');
   assert.match(results.tourRow(tour), /<small>Питание<\/small><b>All Inclusive<\/b>/,
     'supplier fullName-only meal appears in the tour facts');
   assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'All Inclusive',
