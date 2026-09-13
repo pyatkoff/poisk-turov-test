@@ -61,6 +61,32 @@ assert.doesNotMatch(collapsed, />Чартер</, 'mixed offers cannot promise a 
 assert.doesNotMatch(collapsed, /2 взрослых/);
 assert.doesNotMatch(collapsed, /direct-tour/);
 
+// The displayed minimum belongs to its own exact-price offers, never to a
+// different, selectable offer elsewhere in the same hotel.
+const checkNote = 'Минимальная цена требует проверки перед выбором';
+const mixedNote = 'Часть вариантов по минимальной цене требует проверки';
+const withMinimum = cheapest => ({ ...multi, tours: [cheapest, multi.tours[1]] });
+for (const flags of [{ selectionEnabled: false }, { selection_enabled: false }, { provider: 'andromeda' }, { provider: 'ANDROMEDA', selectionEnabled: true }]) {
+  const sample = withMinimum({ ...multi.tours[0], ...flags });
+  const original = JSON.stringify(sample);
+  const html = api.toursHtml(sample);
+  assert.ok(html.includes(checkNote), 'collapsed minimum inherits the exact cheapest offer readiness');
+  assert.match(html, /от 62(?:\s| )?400/);
+  assert.doesNotMatch(html, /direct-tour/, 'a summary does not create a new select action');
+  assert.equal(JSON.stringify(sample), original, 'readiness presentation preserves source offers and prices');
+  assert.doesNotMatch(api.tourAction(sample.tours[0]), /direct-tour/, 'expanded action agrees with the summary');
+}
+const mixedMinimum = { ...multi, tours: [{ ...multi.tours[0], provider: 'andromeda' }, { ...multi.tours[1], price: multi.price }] };
+assert.ok(api.toursHtml(mixedMinimum).includes(mixedNote), 'equal-price mixed readiness is not reported as uniformly blocked');
+assert.ok(api.toursHtml({ ...mixedMinimum, tours: [...mixedMinimum.tours].reverse() }).includes(mixedNote), 'equal-price readiness does not depend on supplier order');
+assert.doesNotMatch(api.toursHtml(withMinimum(multi.tours[0])), /tour-selection-note/, 'normal selectable minima receive no invented confirmation or extra warning');
+assert.doesNotMatch(api.toursHtml({ ...multi, tours: [multi.tours[0], { ...multi.tours[1], selectionEnabled: false }] }), /tour-selection-note/, 'a blocked expensive offer does not mark the minimum blocked');
+assert.match(api.toursHtml({ ...multi, price: 61000 }), /Условия минимальной цены уточняются/, 'unmatched summary price never borrows another offer readiness');
+for (const price of [undefined, null, 0, -1, 'unknown']) {
+  assert.match(api.toursHtml({ ...multi, price }), /Цена и условия уточняются/, 'unknown or invalid minimum stays explicitly unknown');
+}
+assert.match(api.toursHtml({ ...multi, price: '62400', tours: [{ ...multi.tours[0], selectionEnabled: false }, multi.tours[1]] }), /Минимальная цена требует проверки/, 'numeric supplier prices follow the existing renderer price normalization');
+
 const allCharter = {
   ...multi,
   tours: multi.tours.map((tour, index) => ({ ...tour, id: 'charter-' + index, isCharter: true })),

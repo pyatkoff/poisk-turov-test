@@ -104,6 +104,53 @@ async function checkToolbarLayout(page, width, previous) {
   }
   return { closed, opened };
 }
+async function checkMinimumReadiness(page, width, previous) {
+  const makeTour = (id, price, extra = {}) => ({ ...tour, id, price, ...extra });
+  const items = [
+    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена с проверкой', price: 80000, tours: [makeTour('minimum-andromeda', 80000, { provider: 'andromeda' }), makeTour('minimum-selectable', 95000)] },
+    { ...hotels[0], id: 'minimum-mixed', name: 'Одна цена — разные условия выбора', price: 85000, tours: [makeTour('mixed-andromeda', 85000, { provider: 'andromeda' }), makeTour('mixed-selectable', 85000)] },
+    { ...hotels[0], id: 'minimum-ready', name: 'Вариант с доступным выбором', price: 90000, tours: [makeTour('ready-minimum', 90000), makeTour('expensive-check', 110000, { selectionEnabled: false })] }
+  ];
+  const requests = [];
+  const record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
+  page.on('request', record);
+  try {
+    await page.evaluate(items => {
+      window.Search3LocalHotelFilter.reset();
+      window.__minimumReadinessSource = items;
+      window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } }));
+    }, items);
+    const cards = page.locator('#results .hotel-card');
+    const checked = page.locator('.hotel-card[data-hotel-id="minimum-check"]');
+    const mixed = page.locator('.hotel-card[data-hotel-id="minimum-mixed"]');
+    const ready = page.locator('.hotel-card[data-hotel-id="minimum-ready"]');
+    assert.equal(await checked.locator('.hotel-trip-summary .tour-selection-note').textContent(), 'Минимальная цена требует проверки перед выбором');
+    assert.equal(await mixed.locator('.hotel-trip-summary .tour-selection-note').textContent(), 'Часть вариантов по минимальной цене требует проверки');
+    assert.equal(await ready.locator('.hotel-trip-summary .tour-selection-note').count(), 0, 'a more expensive blocked offer does not label the minimum blocked');
+    for (const card of [checked, mixed, ready]) {
+      const geometry = await card.evaluate(node => {
+        const r = node.getBoundingClientRect(), note = node.querySelector('.hotel-trip-summary .tour-selection-note'), n = note && note.getBoundingClientRect();
+        return { inside: !n || n.width > 0 && n.left >= r.left && n.right <= r.right + 1, overflow: node.scrollWidth > node.clientWidth + 1 };
+      });
+      assert.equal(geometry.inside, true, 'minimum note remains readable within its card');
+      assert.equal(geometry.overflow, false);
+    }
+    if (!previous) await (width === 375 ? mixed : checked).screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
+    const labels = await cards.evaluateAll(nodes => nodes.map(node => ({ id: node.dataset.hotelId, price: node.querySelector('.hotel-summary-total .hotel-price').textContent, note: node.querySelector('.hotel-trip-summary .tour-selection-note')?.textContent || '' })));
+    const toggle = checked.locator('.tour-more-toggle');
+    await toggle.focus(); await toggle.press('Enter');
+    assert.equal(await checked.locator('[data-tid="minimum-andromeda"]').count(), 0, 'unverified minimum still cannot create a select action');
+    assert.equal(await checked.locator('[data-tid="minimum-selectable"]').isVisible(), true, 'more expensive selectable offer keeps its existing action');
+    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором нужна проверка/);
+    await checked.locator('.tour-more-toggle').press('Enter');
+    assert.equal(await checked.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'collapse retains the existing disclosure focus');
+    assert.deepEqual(await page.evaluate(() => window.__minimumReadinessSource), items, 'presentation does not mutate supplier prices or readiness');
+    assert.deepEqual(requests, [], 'local summary and disclosure cause no supplier or lead request');
+    return labels;
+  } finally { page.off('request', record); }
+}
+
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
@@ -816,14 +863,16 @@ async function run(browser, width, previous) {
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
+    let minimumReadiness = null;
     if ([375, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
+      minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkAndromedaExpansion(page, width, previous, andromeda);
       await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
-    return { sourceSha, primaryForm: 'visible-through-results-calendar-loading-local-empty-error', toolbarLayout, collapsed, expanded, logoSource };
+    return { sourceSha, primaryForm: 'visible-through-results-calendar-loading-local-empty-error', toolbarLayout, minimumReadiness, collapsed, expanded, logoSource };
   } finally { await page.close(); }
 }
 (async () => {

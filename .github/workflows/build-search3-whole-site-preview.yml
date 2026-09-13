@@ -19,6 +19,7 @@ on:
       - 'tests/home-search-loading-handoff.cjs'
       - 'tests/search3_production_presentation_test.py'
       - 'tests/search3_site_preview_isolation_test.py'
+      - 'tests/search3-selected-return-owner.cjs'
       - 'tests/search3-selected-geometry-browser.cjs'
       - 'tests/search3-lazy-selected-browser.cjs'
       - 'tests/search3-lean-entry-browser.cjs'
