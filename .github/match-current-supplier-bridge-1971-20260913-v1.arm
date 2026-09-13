@@ -1,0 +1,9 @@
+operation_id=hotel-match-current-supplier-bridge-1971-20260913-v1
+claim=996#5651661126
+mode=current_db_read_only_supplier_bridge
+source_merge=bc0d25454e4d4f9ed436e6bf8945d4589b20ce0e
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
