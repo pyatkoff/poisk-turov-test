@@ -2,6 +2,11 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/data/hotel-details-v1.php';
+$mealFamilyFile = is_file(__DIR__ . '/app/integrations/three-provider-meal-family.php')
+    ? __DIR__ . '/app/integrations/three-provider-meal-family.php'
+    : __DIR__ . '/../app/integrations/three-provider-meal-family.php';
+require_once $mealFamilyFile;
+unset($mealFamilyFile);
 
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
@@ -66,6 +71,41 @@ function anytour_anex_search3_operator_scope(PDO $pdo, $values): string
     return $hasAnex ? 'include' : 'exclude';
 }
 
+/** Search3 canonical meal IDs -> local direct-ANEX meal families. This is not a supplier-ID mapping. */
+function anytour_anex_search3_meal_families($value): ?array
+{
+    $value = (string) $value;
+    if ($value === '') return null;
+    $families = [
+        '2' => ['ro'],
+        '3' => ['bb'],
+        '4' => ['hb'],
+        '5' => ['fb'],
+        '7' => ['ai', 'uai'],
+        '9' => ['uai'],
+    ][$value] ?? null;
+    if ($families === null) throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
+    return $families;
+}
+
+/** Match only verified human-readable meal labels; unknown labels fail closed when a meal is selected. */
+function anytour_anex_search3_meal_matches($raw, $filter): bool
+{
+    $families = anytour_anex_search3_meal_families($filter);
+    if ($families === null) return true;
+    if (!is_string($raw) || trim($raw) === '') return false;
+    // Direct ANEX historically emits ALL as a short AI label; preserve that source-specific verified alias.
+    if (anytour_anex_search3_name($raw) === 'all') return in_array('ai', $families, true);
+    try {
+        $normalized = AnyTourThreeProviderMealFamily::normalize($raw);
+    } catch (InvalidArgumentException $ignored) {
+        return false;
+    }
+    return ($normalized['family_verified'] ?? false) === true
+        && is_string($normalized['family'] ?? null)
+        && in_array($normalized['family'], $families, true);
+}
+
 function anytour_anex_search3_dictionary($client, string $action, array $params, array &$cache): array
 {
     $key = hash('sha256', $action . json_encode($params));
@@ -104,8 +144,8 @@ function anytour_anex_search3_core(array $params): array
     foreach (['onlyDirect', 'onlyCharter'] as $key) {
         if (!in_array($params[$key] ?? 'false', ['false', false, '', '0', 0], true)) throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
     }
-    // Search3's established food=7 means All Inclusive. Other meal IDs are not translated by number.
-    if (!in_array($params['meal'] ?? '', ['', '7', 7], true)) throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
+    // Meal semantics are local-only here. Never treat Search3 numeric meal IDs as ANEX supplier IDs.
+    anytour_anex_search3_meal_families($params['meal'] ?? '');
     if (!in_array((string) ($params['hotelRating'] ?? ''), ['', '2', '3', '4', '5'], true)) throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
     foreach (['hotelCategory', 'hotelRating', 'priceFrom', 'priceTo'] as $key) {
         if (isset($params[$key]) && $params[$key] !== '' && (!is_scalar($params[$key])
@@ -200,9 +240,7 @@ function anytour_anex_search3_project(array $offers, array $metadata, array $par
         $rating = ['2' => 3.0, '3' => 3.5, '4' => 4.0, '5' => 4.5][(string) ($params['hotelRating'] ?? '')] ?? 0;
         if (!$fits || (float) ($row['category'] ?? 0) < (float) ($params['hotelCategory'] ?? 0)
             || (float) ($row['rating'] ?? 0) < $rating) continue;
-        if (!empty($params['meal']) && !in_array(anytour_anex_search3_name((string) ($offer['meal'] ?? '')),
-            ['ai', 'all', 'all inclusive', 'uai', 'ultra all inclusive', 'ai without alcohol',
-                'все включено', 'ультра все включено', 'все включено без алкоголя'], true)) continue;
+        if (!anytour_anex_search3_meal_matches($offer['meal'] ?? null, $params['meal'] ?? '')) continue;
         $price = ($offer['price']['currency'] ?? '') === 'RUB' ? $offer['price'] : ($offer['converted_price'] ?? null);
         if (!$price || $price['currency'] !== 'RUB' || !anytour_anex_normalizer_decimal($price['amount'] ?? null)) continue;
         if ((!empty($params['priceFrom']) && (float) $price['amount'] < (float) $params['priceFrom'])
