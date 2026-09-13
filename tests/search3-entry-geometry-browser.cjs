@@ -63,7 +63,7 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
             preferenceLabels: [...preferences.querySelectorAll('.search-preference>span')].map(node => node.textContent.trim()),
             preferenceWidths: [...preferences.children].map(node => box(node).width),
             labels: visible(form.querySelectorAll('.field>span')).map(box),
-            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name })),
+            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name, appearance: getComputedStyle(node).appearance, tag: node.tagName })),
             dateControls: [...form.querySelectorAll('.search-group--dates input')].map(box),
             partyBox: box(partyGroup), childAgesBox: box(childAges), childAgesInsideParty: childAges.parentElement === partyGroup,
             submit: box(form.querySelector('.search-submit')), extras: box(form.querySelector('.extras')),
@@ -77,7 +77,8 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
         assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
         assert.equal(state.controls.length, 15, 'all fourteen primary native controls plus the hydrated child age are visible');
-        assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), 'native controls retain 44px/16px');
+        assert.ok(state.controls.every(item => item.height >= 43.5 && item.height <= 44.5 && item.fontSize >= 16), 'all primary selects, dates, numbers and child ages share the same readable 44px box');
+        assert.ok(state.controls.filter(item => item.tag === 'SELECT').every(item => item.appearance === 'none'), 'select rendering uses the canonical box while native selection behavior remains intact');
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, 'primary action remains readable');
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы']);
         assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до']);
@@ -160,6 +161,18 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
           const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden, insideParty: !!form.querySelector('.search-group--party > #childAges') }; });
           assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0, insideParty: true });
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+          if (count === 0 && width >= 1100) {
+            const geometry = await page.evaluate(() => {
+              const group = document.querySelector('.search-group--party'), adults = group.querySelector('[name=count_people]'), children = group.querySelector('[name=child_count]');
+              const rect = node => { const b = node.getBoundingClientRect(); return { left:b.left, right:b.right, top:b.top, width:b.width, height:b.height }; };
+              return { group:rect(group), adults:rect(adults), children:rect(children) };
+            });
+            assert.ok(Math.abs(geometry.adults.width - geometry.children.width) <= 1, 'no-child tourist controls use balanced columns');
+            assert.ok(Math.abs(geometry.adults.top - geometry.children.top) <= 1, 'tourist controls share a row');
+            assert.ok(geometry.children.right >= geometry.group.right - 2, 'a hidden child-age group reserves no empty third column');
+            await page.locator('#tourSearch').screenshot({ path:path.join(output, `entry-no-children-${width}.png`), animations:'disabled' });
+            fs.writeFileSync(path.join(output, `entry-no-children-${width}.json`), JSON.stringify({ width, geometry }, null, 2) + '\n');
+          }
           if (count === 2 && ([320, 350, 375].includes(width) || width >= 1099)) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
