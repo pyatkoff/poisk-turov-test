@@ -203,6 +203,28 @@ async function checkJourney(browser, width) {
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'fourth offer cannot evict or replace an existing snapshot');
     assert.match(compact(await shortlist.locator('.search3-shortlist-status').innerText()), /3|тр[её]х|максим/i, 'max-three limit is announced');
 
+    const differences = shortlist.locator('.search3-shortlist-view-toggle');
+    assert.equal(await differences.isVisible(), true, 'multi-offer comparison exposes the optional differences view');
+    assert.ok((await differences.boundingBox()).height >= 44, 'differences view keeps a 44px target');
+    assert.equal(await differences.getAttribute('aria-pressed'), 'false', 'full saved conditions remain the default view');
+    await differences.focus(); await differences.press('Enter');
+    await page.waitForFunction(() => window.Search3Shortlist.differencesOnly === true && document.activeElement?.matches('.search3-shortlist-view-toggle'));
+    assert.equal(await differences.getAttribute('aria-pressed'), 'true', 'keyboard activation exposes the selected differences view');
+    assert.equal(await differences.textContent(), 'Показать все условия', 'the selected view offers an explicit return to full facts');
+    const commonText = compact(await shortlist.locator('.search3-shortlist__common').innerText());
+    for (const label of ['Вылет', 'Ночей', 'Туристы', 'Питание', 'Размещение', 'Оператор']) assert.match(commonText, new RegExp(label), `shared ${label} is rendered once`);
+    assert.equal(await shortlist.locator('.search3-shortlist__common .search3-shortlist-item__facts>div').count(), 6, 'six identical displayed facts move to one shared group');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts').evaluateAll(nodes => nodes.map(node => node.children.length)), [1, 1, 1], 'each offer keeps only its differing room fact');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts dd').allTextContents(), ['STANDARD', 'FAMILY', 'DELUXE'], 'different exact room facts remain attached to their offers');
+    assert.equal(await shortlist.locator('.search3-shortlist-item__price').count(), 3, 'historical price remains per offer in differences view');
+    assert.equal(await shortlist.locator('.search3-shortlist-item__actions').count(), 3, 'exact actions remain per offer in differences view');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'differences view creates no horizontal overflow');
+    await shortlist.screenshot({ path: path.join(output, `shortlist-differences-${width}.png`), animations: 'disabled' });
+    await differences.press('Enter');
+    await page.waitForFunction(() => window.Search3Shortlist.differencesOnly === false && document.activeElement?.matches('.search3-shortlist-view-toggle'));
+    assert.equal(await shortlist.locator('.search3-shortlist__common').count(), 0, 'full view removes the shared-facts presentation');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts').evaluateAll(nodes => nodes.map(node => node.children.length)), [7, 7, 7], 'one action restores every exact condition per offer');
+
     const snapshots = await shortlist.locator('.search3-shortlist-item').evaluateAll(nodes => nodes.map(node => ({ offerId: node.dataset.offerId, text: node.textContent.replace(/\s+/g, ' ').trim() })));
     assert.match(snapshots[0].text, /STANDARD/); assert.match(snapshots[0].text, /Всё включено/); assert.match(snapshots[0].text.replace(/\s/g, ''), /120000₽/);
     assert.match(snapshots[1].text, /FAMILY/); assert.match(snapshots[1].text, /Всё включено/); assert.match(snapshots[1].text.replace(/\s/g, ''), /125000₽/);
@@ -312,7 +334,7 @@ async function checkJourney(browser, width) {
     assert.equal(await page.evaluate(() => JSON.stringify(window.__shortlistSource[0].tours.map(item => [item.id, item.price, item.roomType]))), JSON.stringify(items[0].tours.map(item => [item.id, item.price, item.roomType])), 'source projection remains immutable');
     assert.deepEqual(posts, [], 'shortlist never sends POST or a real lead');
     assert.deepEqual(errors, [], 'shortlist journey has no page errors');
-    return { sourceSha, width, geometry: [one, two, three], exactOffers: ['offer-standard', 'offer-family'], prices: [120000, 125000], max: 3, reload: true, staleBlocked: true, duplicateBlocked: true, keyboard: true, focusReturn: true, posts: 0 };
+    return { sourceSha, width, geometry: [one, two, three], differences: { optional: true, commonFacts: 6, perOfferFacts: 1, keyboard: true }, exactOffers: ['offer-standard', 'offer-family'], prices: [120000, 125000], max: 3, reload: true, staleBlocked: true, duplicateBlocked: true, keyboard: true, focusReturn: true, posts: 0 };
   } finally { await context.close(); }
 }
 
