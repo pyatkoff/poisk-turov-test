@@ -1,0 +1,155 @@
+name: "MATCH current operator observation census v2"
+run-name: "MATCH current operator observation census #1971 v2"
+on:
+  push:
+    branches:
+      - ops/match-current-operator-observation-evidence-1971-20260913-v1
+    paths:
+      - .github/match-current-operator-observation-census-1971-v2.arm
+permissions:
+  contents: read
+concurrency:
+  group: match-current-operator-observation-census-1971-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-operator-observation-census-1971-20260913-v2
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reserve before live DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$state"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          row={
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved_before_ssh_or_db_access',
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'source_sha':os.environ['GITHUB_SHA'],
+            'mode':'current_db_operator_identity_census_read_only',
+            'database_writes':0,
+            'mapping_writes':0,
+            'supplier_calls':0,
+            'tourvisor_calls':0,
+            'booking_calls':0,
+            'lead_calls':0,
+            'no_replay':True,
+          }
+          (state/'reservation.json').write_text(json.dumps(row,sort_keys=True)+'\n')
+          PY
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-operator-observation-census-1971-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-current-operator-observation-census-1971-20260913-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Build read-only payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          cat > "$state/payload.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          ini_set('display_errors','0');
+          ini_set('log_errors','0');
+          $operation='hotel-match-current-operator-observation-census-1971-20260913-v2';
+          try {
+              $root=realpath(getcwd());
+              if (!$root || basename($root)!=='anytoour.ru') throw new RuntimeException('server_root_invalid');
+              $config=realpath($root.'/config.php');
+              $dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));
+              if (!$config || !$dbHelper || strpos($config,$root.DIRECTORY_SEPARATOR)!==0 || strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0) throw new RuntimeException('runtime_helper_invalid');
+              ob_start(); require_once $config; require_once $dbHelper; ob_end_clean();
+              $db=v2_data_db();
+              $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+              $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+              $db->exec('START TRANSACTION READ ONLY');
+              $exists=$db->query("SHOW TABLES LIKE 'tour_operator_identity_observations'");
+              $tableExists=$exists && $exists->fetchColumn()!==false;
+              $out=[
+                  'status'=>'completed','operation_id'=>$operation,'mode'=>'current_db_operator_identity_census_read_only',
+                  'table_exists'=>$tableExists,'rows'=>0,'distinct_hotels'=>0,'distinct_operators'=>0,'distinct_tours'=>0,
+                  'rows_with_operator_link'=>0,'anex_like_rows'=>0,'anex_like_distinct_hotels'=>0,'first_seen_at'=>null,'last_seen_at'=>null,
+                  'by_country'=>[],'by_operator'=>[],'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,
+              ];
+              if ($tableExists) {
+                  $summary=$db->query("SELECT COUNT(*) rows_count,COUNT(DISTINCT hotel_id) distinct_hotels,COUNT(DISTINCT operator_id) distinct_operators,COUNT(DISTINCT tour_id) distinct_tours,SUM(operator_link IS NOT NULL AND operator_link<>'') rows_with_operator_link,MIN(first_seen_at) first_seen_at,MAX(last_seen_at) last_seen_at FROM tour_operator_identity_observations")->fetch(PDO::FETCH_ASSOC) ?: [];
+                  $out['rows']=(int)($summary['rows_count']??0); $out['distinct_hotels']=(int)($summary['distinct_hotels']??0); $out['distinct_operators']=(int)($summary['distinct_operators']??0); $out['distinct_tours']=(int)($summary['distinct_tours']??0); $out['rows_with_operator_link']=(int)($summary['rows_with_operator_link']??0); $out['first_seen_at']=$summary['first_seen_at']??null; $out['last_seen_at']=$summary['last_seen_at']??null;
+                  $anex=$db->query("SELECT COUNT(*) rows_count,COUNT(DISTINCT hotel_id) distinct_hotels FROM tour_operator_identity_observations WHERE LOWER(COALESCE(operator_name,'')) LIKE '%anex%' OR LOWER(COALESCE(operator_name,'')) LIKE '%анекс%'")->fetch(PDO::FETCH_ASSOC) ?: [];
+                  $out['anex_like_rows']=(int)($anex['rows_count']??0); $out['anex_like_distinct_hotels']=(int)($anex['distinct_hotels']??0);
+                  foreach ($db->query("SELECT country_id,COUNT(*) rows_count,COUNT(DISTINCT hotel_id) hotel_count,COUNT(DISTINCT tour_id) tour_count,SUM(operator_link IS NOT NULL AND operator_link<>'') link_count FROM tour_operator_identity_observations GROUP BY country_id ORDER BY rows_count DESC,country_id")->fetchAll(PDO::FETCH_ASSOC) as $r) $out['by_country'][]=['country_id'=>(int)$r['country_id'],'rows'=>(int)$r['rows_count'],'hotels'=>(int)$r['hotel_count'],'tours'=>(int)$r['tour_count'],'links'=>(int)$r['link_count']];
+                  foreach ($db->query("SELECT operator_id,MAX(operator_name) operator_name,COUNT(*) rows_count,COUNT(DISTINCT hotel_id) hotel_count,COUNT(DISTINCT tour_id) tour_count,SUM(operator_link IS NOT NULL AND operator_link<>'') link_count FROM tour_operator_identity_observations GROUP BY operator_id ORDER BY rows_count DESC,operator_id LIMIT 50")->fetchAll(PDO::FETCH_ASSOC) as $r) $out['by_operator'][]=['operator_id'=>(int)$r['operator_id'],'operator_name'=>mb_substr((string)($r['operator_name']??''),0,120),'rows'=>(int)$r['rows_count'],'hotels'=>(int)$r['hotel_count'],'tours'=>(int)$r['tour_count'],'links'=>(int)$r['link_count']];
+              }
+              $db->commit();
+              echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
+          } catch (Throwable $e) {
+              if (isset($db) && $db instanceof PDO && $db->inTransaction()) $db->rollBack();
+              $m=preg_replace('/[^\\p{L}\\p{N}\\s_.:()\\/-]+/u',' ',(string)$e->getMessage())??'';
+              echo json_encode(['status'=>'failed','operation_id'=>$operation,'reason'=>mb_substr(preg_replace('/\\s+/u',' ',trim($m))??'',0,180),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";
+              exit(1);
+          }
+          PHP
+          php -l "$state/payload.php"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' "$state/payload.php"
+      - name: Execute one read-only current census
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          key="$RUNNER_TEMP/match_current_operator_census_key"
+          test -n "$KEY_VALUE" && test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ConnectionAttempts=2 -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$state/payload.php" > "$state/live.stdout" 2> "$state/live.stderr"
+          rc=$?
+          set -e
+          export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; rc=int(os.environ['RC'])
+          stdout=(state/'live.stdout').read_text(errors='replace'); stderr=(state/'live.stderr').read_text(errors='replace'); data=None
+          lines=[x for x in stdout.splitlines() if x.strip()]
+          if lines:
+            try: data=json.loads(lines[-1])
+            except Exception: pass
+          if not isinstance(data,dict): data={'status':'failed','operation_id':os.environ['OPERATION_ID'],'reason':'ssh_or_unparseable','remote_exit':rc,'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),'stderr_present':bool(stderr.strip()),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0}
+          data.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=rc,no_replay=True)
+          for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls','booking_calls','lead_calls'):
+            if int(data.get(k,0)) != 0: raise SystemExit('action guard '+k)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only' if data.get('status')=='completed' and rc==0 else 'unknown_or_failed_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          print(json.dumps({'status':data.get('status'),'table_exists':data.get('table_exists'),'rows':data.get('rows'),'distinct_hotels':data.get('distinct_hotels'),'anex_like_rows':data.get('anex_like_rows'),'anex_like_distinct_hotels':data.get('anex_like_distinct_hotels'),'rows_with_operator_link':data.get('rows_with_operator_link'),'last_seen_at':data.get('last_seen_at'),'remote_exit':rc},sort_keys=True))
+          if data.get('status')!='completed' or rc!=0: raise SystemExit(1)
+          PY
+      - name: Preserve census result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-operator-observation-census-1971-v2-result
+          path: |
+            ${{ runner.temp }}/hotel-match-current-operator-observation-census-1971-20260913-v2/reservation.json
+            ${{ runner.temp }}/hotel-match-current-operator-observation-census-1971-20260913-v2/result.json
+            ${{ runner.temp }}/hotel-match-current-operator-observation-census-1971-20260913-v2/receipt.json
+          if-no-files-found: warn
+          retention-days: 90
