@@ -107,6 +107,8 @@ async function run(browser, width) {
     assert.deepEqual(detail.facts.map(item => item.label), contract.required_fact_labels, 'selected facts stay complete and ordered');
     assert.match(detail.price.replace(/\s/g, ''), /148500₽/, 'selected total stays visible');
     assert.equal(detail.title, 'SUNRISE Resort & Spa', 'selected hotel identity stays visible');
+    assert.equal(detail.dateText, '05.10.2026', 'selected date uses the canonical renderer display');
+    assert.notEqual(detail.dateText, selectedTour.date, 'selected date never exposes the raw supplier ISO value');
     assert.equal(detail.searchVisible, contract.invariants.selected_search_form_visible, 'selected state does not duplicate the search form');
     assert.equal(detail.overflow, contract.invariants.horizontal_overflow, `selected detail has no horizontal overflow at ${width}`);
     assert.ok(detail.rootWidth <= width + 2, 'selected root is bounded by the viewport');
@@ -177,5 +179,5 @@ async function run(browser, width) {
     await browser.close();
     fs.writeFileSync(path.join(output, 'selected-lead-current.json'), JSON.stringify(evidence, null, 2) + '\n');
   }
-  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=8 real_leads=0 supplier_requests=0 date_display=diagnostic');
+  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + Object.keys(contract.widths).join(',') + ' screenshots=8 real_leads=0 supplier_requests=0 date_display=canonical');
 })().catch(error => { console.error(error); process.exitCode = 1; });

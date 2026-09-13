@@ -29,8 +29,8 @@
     "selected_search_form_visible": false
   },
   "diagnostics": {
-    "selected_date_display": "capture_only",
-    "known_raw_date_backlog": true,
+    "selected_date_display": "canonical_dd_mm_yyyy",
+    "known_raw_date_backlog": false,
     "physical_safari_iphone": "deferred"
   }
 }

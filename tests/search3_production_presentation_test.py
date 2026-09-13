@@ -278,6 +278,18 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
                 source = source.replace(display, original, 1)
+                # Reviewed selected-tour date display only. The supplier ISO value
+                # remains unchanged in state and the lead payload; reversing these
+                # two exact fragments recovers the protected controller.
+                date_display = b",date=window.V2Results&&typeof window.V2Results.formatTourDate==='function'?window.V2Results.formatTourDate(t.date):t.date;return"
+                date_original = b";return"
+                date_value = b"esc(date||'\xe2\x80\x94')"
+                raw_date_value = b"esc(t.date||'\xe2\x80\x94')"
+                self.assertEqual(source.count(date_display), 1, 'one canonical selected date formatter call')
+                self.assertEqual(source.count(date_value), 1, 'one formatted selected date value')
+                source = source.replace(date_display, date_original, 1).replace(date_value, raw_date_value, 1)
+                self.assertTrue(source.endswith(b'})();\n'), 'reviewed controller keeps one canonical final line break')
+                source = source[:-1]
                 # Reviewed presentation-state fix: preserve the renderer's exact
                 # action label while the existing selection request is pending.
                 # Reversing both fragments recovers the protected controller.
