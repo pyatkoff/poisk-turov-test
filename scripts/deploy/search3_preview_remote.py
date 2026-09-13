@@ -10,6 +10,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -254,12 +255,92 @@ class Site:
                 out.write(nonce)
         return {'status': 'removed' if remove else 'bound'}
 
+    def lead_inspect(self):
+        snapshot = self.snapshot()
+        secret = self.root / '.anytoour-bridge-secret'
+        ready = (secret.is_file() and not secret.is_symlink()
+                 and bool(re.fullmatch(rb'[0-9a-f]{64}', secret.read_bytes().strip())))
+        return {**snapshot, 'bridge_configured': ready}
+
+    def lead_restore(self, q):
+        # Separate owner-authorized incident action; never part of preview activation.
+        need(type(q.get('deploy_run')) is int and 0 < q['deploy_run'] < 10**15
+             and q.get('attempt') == 1, 'lead_repair_identity')
+        for name in ('bridge_sha256', 'direct_sha256'):
+            need(isinstance(q.get(name), str) and re.fullmatch('[0-9a-f]{64}', q[name]), 'lead_repair_hash')
+        need(q['bridge_sha256'] != q['direct_sha256'], 'lead_repair_same_hash')
+        target = self.root / 'lead-adapter-v2.php'
+        bridge = self.root / 'lead-bridge-v1.php'
+        receipt = self.parent / f".search3-lead-repair-{q['deploy_run']}.json"
+        with self.lock():
+            before = self.lead_inspect()
+            need(before == q['before'], 'lead_repair_predecessor_changed')
+            need(before['bridge_configured'], 'lead_bridge_not_configured')
+            need(before['protected']['lead-bridge-v1.php'] == q['bridge_sha256'], 'lead_bridge_unknown')
+            current = before['protected']['lead-adapter-v2.php']
+            need(current in (q['bridge_sha256'], q['direct_sha256']), 'lead_adapter_unknown')
+            need(not receipt.exists() and not receipt.is_symlink(), 'lead_repair_no_replay')
+            if current == q['bridge_sha256']:
+                return {'status': 'already_canonical', 'adapter_sha256': current, 'writes': 0}
+            lint = subprocess.run(['php', '-l', str(bridge)], capture_output=True, timeout=20)
+            need(lint.returncode == 0, 'lead_bridge_syntax')
+            modules = subprocess.run(['php', '-m'], capture_output=True, timeout=20)
+            need(modules.returncode == 0 and b'curl' in modules.stdout.splitlines(), 'lead_bridge_curl_missing')
+            old = target.read_bytes(); replacement = bridge.read_bytes()
+            need(digest(old) == q['direct_sha256'] and digest(replacement) == q['bridge_sha256'], 'lead_repair_source_drift')
+            backup_dir = Path(tempfile.mkdtemp(prefix=f"anytoour-lead-repair-{q['deploy_run']}-", dir='/tmp'))
+            backup = backup_dir / 'lead-adapter-v2.php'
+            backup.write_bytes(old); backup.chmod(0o600)
+            fd = os.open(receipt, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            evidence = {'status': 'prepared', 'deploy_run': q['deploy_run'], 'backup': str(backup),
+                        'before_sha256': current, 'canonical_sha256': q['bridge_sha256']}
+            with os.fdopen(fd, 'wb') as out:
+                out.write(json_bytes(evidence))
+            fd, name = tempfile.mkstemp(prefix='.search3-lead-repair-', suffix='.php', dir=self.root)
+            staged = Path(name); activated = False
+            try:
+                with os.fdopen(fd, 'wb') as out:
+                    out.write(replacement); out.flush(); os.fsync(out.fileno())
+                staged.chmod(target.stat().st_mode & 0o777)
+                need(self.lead_inspect() == before, 'lead_repair_predecessor_changed')
+                os.replace(staged, target); activated = True
+                expected = {**before['protected'], 'lead-adapter-v2.php': q['bridge_sha256']}
+                after = self.lead_inspect()
+                need(after['protected'] == expected and after['target_digest'] == before['target_digest']
+                     and after['owner'] == before['owner'] and after['bridge_configured'], 'lead_repair_readback')
+                evidence.update(status='restored_canonical', other_protected_unchanged=True, preview_unchanged=True, writes=1)
+            except Exception:
+                evidence['status'] = 'failed_before_activation'
+                if activated:
+                    evidence['status'] = 'unknown_stop_no_replay'
+                    need(digest(target.read_bytes()) == q['bridge_sha256'], 'lead_repair_rollback_unknown_writer')
+                    fd, name = tempfile.mkstemp(prefix='.search3-lead-rollback-', suffix='.php', dir=self.root)
+                    rollback = Path(name)
+                    try:
+                        with os.fdopen(fd, 'wb') as out:
+                            out.write(old); out.flush(); os.fsync(out.fileno())
+                        rollback.chmod(target.stat().st_mode & 0o777)
+                        os.replace(rollback, target)
+                        need(digest(target.read_bytes()) == current, 'lead_repair_rollback_readback')
+                        evidence['status'] = 'rolled_back'
+                    finally:
+                        rollback.unlink(missing_ok=True)
+                raise
+            finally:
+                staged.unlink(missing_ok=True)
+                receipt.write_bytes(json_bytes(evidence))
+            return evidence
+
 
 def main():
     need(len(sys.argv) == 3, 'usage')
     action = sys.argv[1]; q = json.loads(sys.argv[2]); site = Site(Path.home() / 'www/anytoour.ru')
     if action == 'snapshot':
         result = site.snapshot()
+    elif action == 'lead-inspect':
+        result = site.lead_inspect()
+    elif action == 'lead-restore':
+        result = site.lead_restore(q)
     elif action == 'upload':
         fd, name = tempfile.mkstemp(prefix='search3-site.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
         result = {'archive': name}

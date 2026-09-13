@@ -27,6 +27,7 @@ on:
       - '.github/workflows/deploy-search3-whole-site-preview.yml'
       - 'scripts/deploy/search3_preview_publish.py'
       - 'scripts/deploy/search3_preview_remote.py'
+      - 'scripts/deploy/search3_lead_route_repair.py'
       - 'tests/search3_preview_publish_test.py'
 
 permissions:
@@ -44,7 +45,7 @@ jobs:
           persist-credentials: false
       - name: Offline authorization, archive and transaction contracts
         run: |
-          python3 -m py_compile scripts/deploy/search3_preview_publish.py scripts/deploy/search3_preview_remote.py
+          python3 -m py_compile scripts/deploy/search3_preview_publish.py scripts/deploy/search3_preview_remote.py scripts/deploy/search3_lead_route_repair.py
           python3 tests/search3_preview_publish_test.py -v
 
   publish-preview:
@@ -89,5 +90,46 @@ jobs:
         with:
           name: search3-site-deployment-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/search3-preview-publish/evidence.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  restore-lead-route:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.event_name == 'issue_comment' && github.event.issue.number == 996 &&
+      !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/restore-search3-lead-route ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: read
+    concurrency:
+      group: deploy-anytoour-production
+      cancel-in-progress: false
+    steps:
+      - name: Trusted main recovery code only
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Offline recovery and publisher contracts
+        run: python3 tests/search3_preview_publish_test.py
+      - name: Diagnose and restore only the known public lead route drift
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          PREVIEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PREVIEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        run: python3 scripts/deploy/search3_lead_route_repair.py
+      - name: Retain recovery receipt without secrets
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-lead-route-repair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/search3-lead-route-repair/evidence.json
           if-no-files-found: warn
           retention-days: 30

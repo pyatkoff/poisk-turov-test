@@ -8,11 +8,13 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/deploy'))
 import search3_preview_publish as publish
 import search3_preview_remote as remote
+import search3_lead_route_repair as repair
 
 SOURCE = 'a' * 40
 TREE = 'b' * 40
@@ -170,6 +172,99 @@ class Transaction(unittest.TestCase):
         self.site.binding(q)
         with self.assertRaises(ValueError):self.site.binding({**q,'nonce':'0'*64},True)
         self.site.binding(q,True);self.assertFalse((self.site.target/q['name']).exists())
+
+
+class LeadRouteRecovery(unittest.TestCase):
+    def setUp(self):
+        Transaction.setUp(self)
+        self.bridge = b'<?php /* canonical bridge fixture */'
+        self.direct = b'<?php /* internal adapter fixture */'
+        self.target = self.site.root / 'lead-adapter-v2.php'
+        self.target.write_bytes(self.direct)
+        (self.site.root / 'lead-bridge-v1.php').write_bytes(self.bridge)
+        (self.site.root / '.anytoour-bridge-secret').write_bytes(b'e' * 64)
+        self.request = dict(deploy_run=999, attempt=1, direct_sha256=remote.digest(self.direct),
+                            bridge_sha256=remote.digest(self.bridge), before=self.site.lead_inspect())
+        self.process = patch.object(remote.subprocess, 'run', return_value=type('Result', (), {'returncode': 0, 'stdout': b'curl\n'})())
+        self.process.start(); self.addCleanup(self.process.stop)
+        # Keep retained-backup fixtures in the test's own temporary directory.
+        original = tempfile.mkdtemp
+        temp = patch.object(remote.tempfile, 'mkdtemp', side_effect=lambda **kw: original(prefix=kw['prefix'], dir=self.temp.name))
+        temp.start(); self.addCleanup(temp.stop)
+
+    def test_restore_exact_drift_preserves_other_files_and_preview(self):
+        before = self.site.snapshot()
+        result = self.site.lead_restore(self.request)
+        self.assertEqual(result['status'], 'restored_canonical')
+        self.assertEqual(self.target.read_bytes(), self.bridge)
+        self.assertEqual(Path(result['backup']).read_bytes(), self.direct)
+        self.assertEqual(self.site.protected(), {**before['protected'], 'lead-adapter-v2.php': remote.digest(self.bridge)})
+        self.assertEqual(self.site.snapshot()['target_digest'], before['target_digest'])
+        self.assertTrue(result['other_protected_unchanged'])
+        self.request['before'] = self.site.lead_inspect()
+        with self.assertRaisesRegex(ValueError, 'lead_repair_no_replay'):
+            self.site.lead_restore(self.request)
+
+    def test_already_canonical_has_no_replacement(self):
+        self.target.write_bytes(self.bridge); self.request['before'] = self.site.lead_inspect()
+        result = self.site.lead_restore(self.request)
+        self.assertEqual(result['status'], 'already_canonical')
+        self.assertEqual(result['writes'], 0)
+        self.assertFalse(list(self.site.parent.glob('.search3-lead-repair-*')))
+
+    def test_unknown_adapter_or_bridge_and_missing_secret_do_not_write(self):
+        for mode in ('adapter', 'bridge', 'secret'):
+            with self.subTest(mode=mode):
+                self.target.write_bytes(self.direct)
+                (self.site.root / 'lead-bridge-v1.php').write_bytes(self.bridge)
+                (self.site.root / '.anytoour-bridge-secret').write_bytes(b'e' * 64)
+                name = {'adapter': 'lead-adapter-v2.php', 'bridge': 'lead-bridge-v1.php', 'secret': '.anytoour-bridge-secret'}[mode]
+                (self.site.root / name).write_bytes(b'unknown')
+                self.request['before'] = self.site.lead_inspect(); before = self.site.snapshot()
+                with self.assertRaises(ValueError): self.site.lead_restore(self.request)
+                self.assertEqual(self.site.snapshot(), before)
+                self.assertFalse(list(self.site.parent.glob('.search3-lead-repair-*')))
+
+    def test_drift_and_failed_php_preflight_prevent_replacement(self):
+        self.target.write_bytes(b'other writer')
+        with self.assertRaisesRegex(ValueError, 'lead_repair_predecessor_changed'):
+            self.site.lead_restore(self.request)
+        self.target.write_bytes(self.direct)
+        with patch.object(remote.subprocess, 'run', return_value=type('Result', (), {'returncode': 1, 'stdout': b''})()):
+            with self.assertRaisesRegex(ValueError, 'lead_bridge_syntax'):
+                self.site.lead_restore(self.request)
+        self.assertEqual(self.target.read_bytes(), self.direct)
+
+    def test_failed_readback_restores_only_own_change(self):
+        original = self.site.lead_inspect
+        calls = 0
+        def inspect():
+            nonlocal calls
+            calls += 1
+            state = original()
+            if calls == 3: state['target_digest'] = 'simulated failed acceptance'
+            return state
+        with patch.object(self.site, 'lead_inspect', side_effect=inspect):
+            with self.assertRaisesRegex(ValueError, 'lead_repair_readback'):
+                self.site.lead_restore(self.request)
+        self.assertEqual(self.target.read_bytes(), self.direct)
+        receipt = json.loads((self.site.parent / '.search3-lead-repair-999.json').read_text())
+        self.assertEqual(receipt['status'], 'rolled_back')
+
+    def test_repair_requires_exact_fresh_owner_command(self):
+        fixture_auth = Authorization(); fixture_auth.setUp()
+        env = {**fixture_auth.env, 'GITHUB_SHA': 'd' * 40}
+        event = copy.deepcopy(fixture_auth.event)
+        event['comment']['body'] = repair.PREFIX + env['GITHUB_SHA']
+        self.assertEqual(repair.checked_repair(event, env), env['GITHUB_SHA'])
+        for key, value in [('GITHUB_SHA', 'e' * 40), ('GITHUB_RUN_ATTEMPT', '2'),
+                           ('GITHUB_ACTOR', 'other'), ('GITHUB_REF', 'refs/heads/feature'),
+                           ('GITHUB_EVENT_NAME', 'push')]:
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                repair.checked_repair(event, {**env, key: value})
+        for body in [repair.PREFIX + 'd' * 8, event['comment']['body'] + '\n', event['comment']['body'] + ' extra']:
+            bad = copy.deepcopy(event); bad['comment']['body'] = body
+            with self.subTest(body=body), self.assertRaises(ValueError): repair.checked_repair(bad, env)
 
 
 class Provenance(unittest.TestCase):
