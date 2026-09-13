@@ -1,0 +1,142 @@
+name: "MATCH ANEX Tourvisor mass future v12"
+run-name: "MATCH ANEX Tourvisor mass future #1971 v12"
+on:
+  push:
+    branches:
+      - ops/match-anex-tourvisor-mass-future-1971-20260913-v12
+    paths:
+      - .github/match-anex-tourvisor-mass-future-1971-v12.arm
+permissions:
+  contents: read
+concurrency:
+  group: match-anex-tourvisor-mass-future-1971-v12
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-tourvisor-mass-future-1971-20260913-v12
+  TEMPLATE_OPERATION_ID: hotel-match-anex-tourvisor-mass-future-1971-20260911-v9
+  FROZEN_SOURCE: e2d8b06c9cc4b9fccb39c99beef9dbb79fb00d9c
+  EXPECTED_TEMPLATE_SHA: 9ee040339cb7c77c0861597fd087c2d39dcba1ade8deb28df3ff7483558bfe8f
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reconstruct and verify frozen collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(cat .github/match-anex-tourvisor-mass-future-1971-v12.arm)" = "$OPERATION_ID"
+          git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$FROZEN_SOURCE"
+          mkdir -p "$RUNNER_TEMP/frozen/scripts/diagnostics" "$RUNNER_TEMP/frozen/v2/data"
+          for f in hotel_full_catalog_reconcile.php hotel_match_current_bulk_review.php anex_hotelcode_evidence.php anex_tourvisor_hotelcode_evidence_collect.php anex_tourvisor_mass_future_v9.php; do
+            git show "$FROZEN_SOURCE:scripts/diagnostics/$f" > "$RUNNER_TEMP/frozen/scripts/diagnostics/$f"
+            php -l "$RUNNER_TEMP/frozen/scripts/diagnostics/$f"
+          done
+          git show "$FROZEN_SOURCE:v2/data/tourvisor-client-v1.php" > "$RUNNER_TEMP/frozen/v2/data/tourvisor-client-v1.php"
+          php -l "$RUNNER_TEMP/frozen/v2/data/tourvisor-client-v1.php"
+          got="$(sha256sum "$RUNNER_TEMP/frozen/scripts/diagnostics/anex_tourvisor_mass_future_v9.php" | awk '{print $1}')"
+          test "$got" = "$EXPECTED_TEMPLATE_SHA"
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]+' "$RUNNER_TEMP/frozen/scripts/diagnostics/anex_tourvisor_mass_future_v9.php"
+          ! grep -Eiq "/continue['\"]|/book|bookTour|createOrder|sendLead" "$RUNNER_TEMP/frozen/scripts/diagnostics/anex_tourvisor_mass_future_v9.php"
+      - name: Prepare key payload and reservation
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_v12_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); root=Path(os.environ['RUNNER_TEMP'])/'frozen'
+          reservation={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_or_supplier_access','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'frozen_source_sha':os.environ['FROZEN_SOURCE'],'mode':'current_db_live_tourvisor_anex_mass_future_distinct_dates','database_writes':0,'mapping_writes':0,'search_continue_calls':0,'booking_calls':0,'historical_operations_replayed':False,'lead_day_targets':[16,30,44],'prior_exhausted_dates':['2026-09-25','2026-10-09','2026-10-23'],'transport_connections_planned':1,'cooldown_seconds':45,'no_replay':True}
+          (state/'reservation.json').write_text(json.dumps(reservation,sort_keys=True,indent=2)+'\n')
+          def body(path):
+              out=[]
+              for line in Path(path).read_text(encoding='utf-8').splitlines():
+                  s=line.strip()
+                  if s in ('<?php','declare(strict_types=1);',"if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);"): continue
+                  if s.startswith('require_once __DIR__'): continue
+                  out.append(line)
+              return '\n'.join(out)+'\n'
+          parts=[body(root/'scripts/diagnostics/hotel_full_catalog_reconcile.php'),body(root/'scripts/diagnostics/hotel_match_current_bulk_review.php'),body(root/'scripts/diagnostics/anex_hotelcode_evidence.php'),body(root/'scripts/diagnostics/anex_tourvisor_hotelcode_evidence_collect.php'),body(root/'v2/data/tourvisor-client-v1.php')]
+          collector=body(root/'scripts/diagnostics/anex_tourvisor_mass_future_v9.php')
+          collector=collector.replace(os.environ['TEMPLATE_OPERATION_ID'],os.environ['OPERATION_ID'])
+          collector=collector.replace('const MTV8_LEAD_DAYS = [14, 28, 42];','const MTV8_LEAD_DAYS = [16, 30, 44];')
+          if os.environ['OPERATION_ID'] not in collector or 'const MTV8_LEAD_DAYS = [16, 30, 44];' not in collector: raise SystemExit('collector substitution missing')
+          payload="<?php\ndefine('FC_LIBRARY_ONLY', true);\n"+'\n'.join(parts+[collector])
+          (state/'payload.php').write_text(payload,encoding='utf-8')
+          print('payload_sha='+hashlib.sha256(payload.encode()).hexdigest())
+          PY
+          php -l "$STATE/payload.php"
+      - name: Preserve reservation before live access
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-mass-future-1971-v12-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260913-v12/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Cool down SSH admission
+        shell: bash
+        run: sleep 45
+      - name: Execute one CURRENT DB and distinct-date Tourvisor evidence pass
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/anytoour_match_v12_key"
+          set +e
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 -o ConnectionAttempts=2 -o LogLevel=ERROR -l "$USER_VALUE" "$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$STATE/payload.php" > "$STATE/live.stdout" 2> "$STATE/live.stderr"
+          rc=$?; set -e; export STATE RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); rc=int(os.environ['RC']); stdout=(state/'live.stdout').read_text(errors='replace'); stderr=(state/'live.stderr').read_text(errors='replace')
+          lines=[x for x in stdout.splitlines() if x.strip()]; data=None
+          if lines:
+              try:data=json.loads(lines[-1])
+              except Exception:pass
+          if not isinstance(data,dict):
+              low=stderr.lower(); transport='kex_exchange_identification_reset' if 'kex_exchange_identification' in low else ('connection_reset' if 'connection reset' in low else ('connect_timeout' if 'timed out' in low else ('permission_denied' if 'permission denied' in low else 'ssh_exit_'+str(rc))))
+              data={'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'ssh_transport_failed','transport_class':transport,'remote_exit':rc,'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),'stdout_bytes':len(stdout.encode()),'stderr_present':bool(stderr.strip()),'database_calls_claimed':0,'supplier_calls_claimed':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'search_continue_calls':0,'token_value_recorded':False,'no_replay':True}
+          else:
+              if data.get('operation_id')!=os.environ['OPERATION_ID']: raise SystemExit('operation mismatch')
+              for k in ('database_writes','mapping_writes','booking_calls','search_continue_calls'):
+                  if int(data.get(k,0))!=0: raise SystemExit('action guard '+k)
+              if data.get('token_value_recorded',False) is not False: raise SystemExit('token guard')
+              old={'2026-09-25','2026-10-09','2026-10-23'}; used={str(x.get('date')) for x in (data.get('searches') or []) if x.get('date')}
+              if old & used: raise SystemExit('historical date replay detected '+','.join(sorted(old&used)))
+              data.update(source_sha=os.environ['GITHUB_SHA'],run_id=int(os.environ['GITHUB_RUN_ID']),run_attempt=int(os.environ['GITHUB_RUN_ATTEMPT']),remote_exit=rc,stderr_present=bool(stderr.strip()),no_replay=True)
+          raw=(json.dumps(data,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); (state/'result.json').write_bytes(raw)
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_no_replay' if data.get('status')=='completed' and rc==0 else 'unknown_or_failed_no_replay','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'search_continue_calls':0,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          summary={'status':data.get('status'),'reason':data.get('reason'),'coverage':data.get('coverage'),'queue_count':data.get('queue_count'),'queue_by_country':data.get('queue_by_country'),'search_count':len(data.get('searches') or []),'search_dates':sorted({str(x.get('date')) for x in (data.get('searches') or []) if x.get('date')}),'raw_queue_matches':data.get('raw_queue_matches'),'matched_unique':data.get('matched_unique'),'ambiguous_count':len(data.get('ambiguous_seed_matches') or []),'confirmed_full_path_count':len(data.get('confirmed_full_path') or []),'strong_operator_link_count':len(data.get('strong_operator_link') or []),'conflict_count':len(data.get('conflicts') or []),'search_only_count':len(data.get('search_only') or []),'remote_exit':rc}
+          print(json.dumps(summary,ensure_ascii=False,sort_keys=True))
+          if data.get('confirmed_full_path') or data.get('strong_operator_link'):
+              safe=[]
+              for group in ('confirmed_full_path','strong_operator_link'):
+                  for row in data.get(group) or []: safe.append({k:row.get(k) for k in ('evidence_class','anex_hotel_id','tv_hotel_id','tv_hotel_name','match_rule','distance_m','search_count','operator_hotellist','hotel_code')})
+              print('SAFE_EVIDENCE:'+json.dumps(safe[:250],ensure_ascii=False,sort_keys=True))
+          if rc!=0 or data.get('status')!='completed': raise SystemExit(1)
+          PY
+      - name: Preserve sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-anex-tourvisor-mass-future-1971-v12-result
+          path: |
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260913-v12/reservation.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260913-v12/result.json
+            ${{ runner.temp }}/hotel-match-anex-tourvisor-mass-future-1971-20260913-v12/receipt.json
+          if-no-files-found: warn
+          retention-days: 90
