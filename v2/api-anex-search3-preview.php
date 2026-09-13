@@ -27,6 +27,45 @@ function anytour_anex_search3_dictionary_id(array $rows, array $names): int
     return (int) array_key_first($matches);
 }
 
+/** Search3 operator IDs are Tourvisor-native; use observed names only to decide whether this ANEX-only source applies. */
+function anytour_anex_search3_operator_scope(PDO $pdo, $values): string
+{
+    if ($values === null || $values === '') $values = [];
+    if (!is_array($values) || count($values) > 30) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
+    if ($values === []) return 'all';
+    $wanted = [];
+    foreach ($values as $value) {
+        if (!is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) {
+            throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
+        }
+        $wanted[(string) $value] = true;
+    }
+    try {
+        $query = $pdo->prepare('SELECT operator_id,operator_name FROM tour_operator_identity_observations WHERE operator_id IN ('
+            . implode(',', array_fill(0, count($wanted), '?')) . ") AND operator_name IS NOT NULL AND operator_name<>'' ORDER BY last_seen_at DESC,id DESC");
+        $query->execute(array_keys($wanted));
+        $seen = [];
+        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $id = (string) ($row['operator_id'] ?? '');
+            if (!isset($wanted[$id]) || !is_string($row['operator_name'] ?? null)) continue;
+            $name = anytour_anex_search3_name($row['operator_name']);
+            if ($name === '') continue;
+            $tokens = explode(' ', $name);
+            $kind = in_array('anex', $tokens, true) || in_array('анекс', $tokens, true) || $name === 'анекстур' ? 'anex' : 'other';
+            $seen[$id][$kind] = true;
+        }
+    } catch (Throwable $ignored) {
+        throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
+    }
+    $hasAnex = false;
+    foreach (array_keys($wanted) as $id) {
+        $kinds = array_keys($seen[$id] ?? []);
+        if ($kinds === [] || count($kinds) !== 1) throw new InvalidArgumentException('ANEX_FILTER_UNSUPPORTED');
+        if ($kinds[0] === 'anex') $hasAnex = true;
+    }
+    return $hasAnex ? 'include' : 'exclude';
+}
+
 function anytour_anex_search3_dictionary($client, string $action, array $params, array &$cache): array
 {
     $key = hash('sha256', $action . json_encode($params));
@@ -215,14 +254,24 @@ function anytour_anex_search3_prices($client, callable $resolver, array $criteri
     return $gateway->handle(['action' => 'search', 'criteria' => anytour_anex_search3_week($criteria)], $session);
 }
 
-function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null, ?callable $observer = null, ?array &$state = null): array
+function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cache, ?array &$diagnostics = null, ?callable $observer = null,
+    ?array &$state = null, ?string $operatorScope = null): array
 {
     // Invalidate before validating a replacement, including unsupported criteria.
     if ($state !== null) $state = [];
     if (!is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
         || !is_array($request['params'] ?? null) || count($request['params']) > 40) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
     $params = $request['params'];
-    $criteria = anytour_anex_search3_core($params);
+    $operatorScope = $operatorScope ?? anytour_anex_search3_operator_scope($pdo, $params['operatorIds'] ?? []);
+    if (!in_array($operatorScope, ['all', 'include', 'exclude'], true)) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
+    $coreParams = $params;
+    $coreParams['operatorIds'] = [];
+    $criteria = anytour_anex_search3_core($coreParams);
+    if ($operatorScope === 'exclude') {
+        return ['generation' => $request['generation'], 'provider' => 'anex',
+            'date_range' => ['from' => $criteria['checkin_begin'], 'to' => $criteria['checkin_end']], 'hotels' => [],
+            'external_search_pending' => false, 'first_page_only' => true];
+    }
     // Browser labels are captured for UI continuity only; trusted DB names select dictionaries.
     $lookup = $pdo->prepare('SELECT d.name AS departure_name,c.name AS country_name FROM catalog_departures d'
         . ' CROSS JOIN catalog_countries c WHERE d.id=? AND c.id=? AND d.is_active=1 AND c.is_active=1 LIMIT 1');
@@ -550,8 +599,9 @@ function anytour_anex_search3_http(): void
             $observer = static function (array $offers, array $context) use ($pdo): array {
                 return AnyTourAnexSearchObservations::record($pdo, $offers, $context);
             };
-            $data = anytour_anex_search3_run($request, $pdo, $clientFactory(), $_SESSION['dictionaries'],
-                $diagnostics, $observer, $_SESSION['offer_context']);
+            $operatorScope = anytour_anex_search3_operator_scope($pdo, $request['params']['operatorIds'] ?? []);
+            $data = anytour_anex_search3_run($request, $pdo, $operatorScope === 'exclude' ? null : $clientFactory(),
+                $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
         } else {
             $data = anytour_anex_search3_followup($request, $_SESSION['offer_context'],
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(), $clientFactory,
