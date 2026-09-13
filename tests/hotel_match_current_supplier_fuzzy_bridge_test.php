@@ -14,11 +14,11 @@ $assert(hmsbf_qualifier_conflict(['sunrise','diamond','beach'],['sunrise','diamo
 $assert(hmsbf_qualifier_conflict(['sunrise','diamond'],['sunrise','diamond'])===false,'same_qualifiers_ok');
 
 $tokenIndex=[];$targetNames=[];
-hmsbf_add_target($tokenIndex,$targetNames,4,101,['Alpha Blue Palace']);
-hmsbf_add_target($tokenIndex,$targetNames,4,102,['Alpha Blue Garden']);
-$r=hmsbf_rank(['Alpha Blue Palace Hotel'],4,$tokenIndex,$targetNames);
+hmsbf_add_target($tokenIndex,$targetNames,4,101,['Alpha Blue Premium Palace']);
+hmsbf_add_target($tokenIndex,$targetNames,4,102,['Alpha Green Garden Deluxe']);
+$r=hmsbf_rank(['Alpha Blue Premium Palace Hotel'],4,$tokenIndex,$targetNames);
 $assert($r['status']==='exact_key_skipped','completed_exact_lane_not_replayed');
-$r=hmsbf_rank(['Alpha Blue Premium Palace'],4,$tokenIndex,$targetNames);
+$r=hmsbf_rank(['Alpha Blue Premium Palace Collection'],4,$tokenIndex,$targetNames);
 $assert($r['status']==='ranked'&&$r['best']['local_id']===101,'best_candidate_ranked');
 $assert($r['best']['score']>=HMSBF_MIN_SCORE&&$r['margin']>=HMSBF_MIN_MARGIN,'large_margin_strong_name');
 $geo=['coordinate_conflict'=>false,'direct_geo'=>true];
