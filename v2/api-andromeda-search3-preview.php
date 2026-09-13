@@ -81,6 +81,31 @@ function anytour_andromeda_search3_operators(array $saved,array $values,PDO $pdo
     return implode(',',$ids);
 }
 
+/** Translate current local resort identity to provider-native Andromeda TOWNTO IDs. More specific subregions win over parent regions. */
+function anytour_andromeda_search3_townto(array $saved,array $regions,array $subregions,PDO $pdo,int $country): ?string {
+    if(!$regions&&!$subregions)return null;
+    foreach([$regions,$subregions] as $values){
+        if(count($values)>30)throw new InvalidArgumentException();
+        foreach($values as $value)if(!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
+    }
+    $useSubregions=(bool)$subregions;$values=array_values(array_unique(array_map('strval',$useSubregions?$subregions:$regions)));
+    if($useSubregions){
+        $query=$pdo->prepare('SELECT s.id,s.name FROM catalog_subregions s JOIN catalog_regions r ON r.id=s.region_id WHERE s.id IN ('.implode(',',array_fill(0,count($values),'?')).') AND s.is_active=1 AND r.is_active=1 AND r.country_id=?');
+    }else{
+        $query=$pdo->prepare('SELECT id,name FROM catalog_regions WHERE id IN ('.implode(',',array_fill(0,count($values),'?')).') AND is_active=1 AND country_id=?');
+    }
+    try{$query->execute(array_merge($values,[$country]));$local=[];foreach($query->fetchAll(PDO::FETCH_ASSOC) as $row)$local[(string)$row['id']]=(string)$row['name'];}
+    catch(Throwable $ignored){throw new DomainException('destination_dictionary_missing');}
+    $rows=$saved['all']['payload']['TOWNTO']??null;if(!is_array($rows))throw new DomainException('destination_dictionary_missing');
+    $ids=[];
+    foreach($values as $id){
+        if(!isset($local[$id])||trim($local[$id])==='')throw new DomainException('destination_not_loaded');
+        $ids[]=anytour_andromeda_search3_dictionary_id($rows,[$local[$id]],'destination_not_loaded');
+    }
+    $ids=array_values(array_unique($ids));sort($ids,SORT_NUMERIC);
+    return implode(',',$ids);
+}
+
 /** Restrict upstream only with complete accepted catalog coverage; otherwise retain local filtering. */
 function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $saved): ?string {
     if(!$localIds)return null;
@@ -118,6 +143,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
         if(isset($p[$key]) && (!is_array($p[$key]) || count($p[$key])>30))throw new InvalidArgumentException();
         foreach($p[$key]??[] as $id)if(!is_scalar($id)||!ctype_digit((string)$id))throw new InvalidArgumentException();
     }
+    $destinationFilter=anytour_andromeda_search3_townto($saved,$p['regionIds']??[],$p['subregionIds']??[],$pdo,$country);
     $lookup=$pdo->prepare('SELECT name FROM catalog_departures WHERE id=? AND is_active=1');
     $lookup->execute([(int)($p['departureId']??0)]);$name=$lookup->fetchColumn();
     if(!$name)throw new DomainException('departure_not_loaded');
@@ -137,6 +163,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     if($ages)$params['AGES']=implode(',',$ages);
     if($meal!==null)$params['MEAL']=$meal;
     if($stars!==null)$params['STARS']=$stars;
+    if($destinationFilter!==null)$params['TOWNTOINC']=$destinationFilter;
     // Empty exclusions keep every operator enabled in the owner's SAMO account.
     $excluded=$saved['excluded_operator_ids']??[];
     if($excluded){
