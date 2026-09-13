@@ -22,6 +22,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -85,6 +87,7 @@ jobs:
       - name: Verify exact served primary-form geometry
         shell: bash
         env:
+          SEARCH3_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8099/_preview/search3-site-candidate
           SEARCH3_RESULTS_OUTPUT: ${{ runner.temp }}/search3-primary-catalog-evidence
         run: |
@@ -108,7 +111,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: search3-primary-catalog-entry-visual-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          name: search3-primary-catalog-entry-visual-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
           path: ${{ runner.temp }}/search3-primary-catalog-evidence/native-form/
           if-no-files-found: error
           retention-days: 30
