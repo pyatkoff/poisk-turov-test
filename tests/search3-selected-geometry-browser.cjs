@@ -339,10 +339,6 @@ async function run(browser, width, previous) {
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="0"]')?.classList.contains('is-selected'));
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
-    if(previous){
-      await page.waitForSelector('#selectedTour.search3-final-review .search3-summary-submit');
-      await page.locator('#selectedTour .search3-summary-submit').click();
-    }
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
     states.lead=await capture(page,prefix+'-lead');
     assert.equal(await page.locator('#selectedTour .lead-form button[type=submit]').isVisible(),true,'lead submit remains reachable');
