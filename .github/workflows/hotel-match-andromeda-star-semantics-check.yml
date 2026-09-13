@@ -1,0 +1,66 @@
+name: MATCH Andromeda star semantics offline check
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_andromeda_star_semantics.php'
+      - 'tests/hotel_match_andromeda_star_semantics_test.php'
+      - '.github/workflows/hotel-match-andromeda-star-semantics-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify semantics and large stdin transport
+        env:
+          HISTORICAL_SOURCE: d397e795335f3a7c0b4878ce38029e22c0dd6f11
+          EXPECTED_BULK_BLOB: 4ef3e150bfbec625d1baf1c425e2a2cd6999e875
+          EXPECTED_STRICT_BLOB: 9c08276f69a3c827e2a03ed3a01188b57d21fb0a
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_andromeda_star_semantics.php
+          php -l tests/hotel_match_andromeda_star_semantics_test.php
+          php tests/hotel_match_andromeda_star_semantics_test.php
+          git fetch --no-tags --depth=1 "https://github.com/$GITHUB_REPOSITORY.git" "$HISTORICAL_SOURCE"
+          git show "$HISTORICAL_SOURCE:scripts/diagnostics/hotel_match_current_bulk_review.php" > "$RUNNER_TEMP/bulk.php"
+          git show "$HISTORICAL_SOURCE:scripts/diagnostics/hotel_match_current_strict_review.php" > "$RUNNER_TEMP/strict.php"
+          test "$(git hash-object "$RUNNER_TEMP/bulk.php")" = "$EXPECTED_BULK_BLOB"
+          test "$(git hash-object "$RUNNER_TEMP/strict.php")" = "$EXPECTED_STRICT_BLOB"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          rt=Path(os.environ['RUNNER_TEMP'])
+          def body(x):
+              if x.startswith('<?php'): x=x[5:]
+              return x.replace('declare(strict_types=1);','',1)
+          helper=body(Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text())
+          bulk=body((rt/'bulk.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strict=body((rt/'strict.php').read_text()).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          audit=body(Path('scripts/diagnostics/hotel_match_andromeda_star_semantics.php').read_text())
+          old="const MBR_OPERATION = 'hotel-match-current-bulk-review-1971-20260911-v1';"
+          if bulk.count(old)!=1: raise SystemExit('bulk operation drift')
+          bulk=bulk.replace(old,"const MBR_OPERATION = 'offline-stdin-bulk';")
+          old="const MSR_OPERATION = 'hotel-match-current-strict-review-1971-20260911-v3';"
+          if strict.count(old)!=1: raise SystemExit('strict operation drift')
+          strict=strict.replace(old,"const MSR_OPERATION = 'offline-stdin-strict';")
+          needle="'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'candidates'=>$candidates,"
+          if strict.count(needle)!=1: raise SystemExit('strict blocked return drift')
+          strict=strict.replace(needle,"'examined'=>$stats,'blocked_reasons'=>$blockedReasons,'blocked_rows'=>$blocked,'candidates'=>$candidates,")
+          source="<?php\ndefine('FC_LIBRARY_ONLY',true);\n"+helper+'\n'+bulk+'\n'+strict+'\n'+audit+'\necho "MATCH_STAR_STDIN_OK\\n";\n'
+          path=rt/'combined-star-stdin.php'; path.write_text(source)
+          size=len(source.encode())
+          if size <= 65536: raise SystemExit(f'payload unexpectedly small: {size}')
+          remote='cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0'
+          if '-r' in remote or len(remote.encode()) >= 256: raise SystemExit('remote command not bounded')
+          print(f'MATCH_STAR_PAYLOAD_BYTES={size}')
+          print(f'MATCH_STAR_REMOTE_COMMAND_BYTES={len(remote.encode())}')
+          PY
+          php -l "$RUNNER_TEMP/combined-star-stdin.php"
+          test "$(php < "$RUNNER_TEMP/combined-star-stdin.php")" = 'MATCH_STAR_STDIN_OK'
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b' scripts/diagnostics/hotel_match_andromeda_star_semantics.php
