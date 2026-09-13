@@ -37,6 +37,7 @@ $state = [
             ['offer_key' => $ref3, 'kind' => 'concrete', 'hotel_external_id' => '8103'],
         ]],
     ],
+    'additional_prices' => [],
 ];
 
 $plan = anytour_anex_additional_prices_batch_plan([
@@ -52,6 +53,60 @@ $assert($plan['contexts'][0]['supplier_tour_program_id'] === '2637'
     && $plan['contexts'][0]['supplier_currency_id'] === '1'
     && $plan['contexts'][0]['checkin'] === '2026-10-05'
     && $plan['contexts'][0]['nights'] === 7, 'private supplier context preserved server-side');
+
+$reads = [];
+$checkpoints = [];
+$reader = static function (array $context) use (&$reads): array {
+    $reads[] = $context['context_digest'];
+    return ['source' => 'test', 'marker' => $context['checkin']];
+};
+$checkpoint = static function (array &$current, string $digest) use (&$checkpoints, $assert): void {
+    $checkpoints[] = $digest;
+    $assert(($current['additional_prices'][$digest]['status'] ?? null) === 'unknown', 'unknown persisted before reader');
+};
+$result = anytour_anex_additional_prices_batch_execute($plan, $state, $reader, $checkpoint);
+$assert(count($reads) === 2 && count($checkpoints) === 2, 'one reader call per unique context');
+$assert($result['requested_offers'] === 3 && $result['unique_contexts'] === 2, 'batch result keeps offer/context counts');
+$assert($result['offers'][0]['additional_prices']['marker'] === '2026-10-05'
+    && $result['offers'][1]['additional_prices']['marker'] === '2026-10-05', 'shared evidence fans out to both offers');
+$assert($result['offers'][2]['additional_prices']['marker'] === '2026-10-06', 'second context keeps its evidence');
+$assert(count($state['additional_prices']) === 2, 'completed evidence stored once per context');
+
+$cachedReads = 0;
+$cached = anytour_anex_additional_prices_batch_execute($plan, $state,
+    static function () use (&$cachedReads): array { ++$cachedReads; return ['unexpected' => true]; },
+    static function (): void { throw new RuntimeException('CHECKPOINT_MUST_NOT_RUN'); });
+$assert($cachedReads === 0, 'completed batch is supplier-free cache read');
+$assert($cached['offers'][0]['status'] === 'complete' && $cached['offers'][1]['status'] === 'complete'
+    && $cached['offers'][2]['status'] === 'complete', 'cached statuses stay complete');
+
+$unknownState = $state;
+$unknownDigest = $plan['offers'][0]['context_digest'];
+$unknownState['additional_prices'][$unknownDigest] = ['status' => 'unknown'];
+$unknownReads = 0;
+$unknown = anytour_anex_additional_prices_batch_execute($plan, $unknownState,
+    static function () use (&$unknownReads): array { ++$unknownReads; return ['unexpected' => true]; },
+    static function (): void { throw new RuntimeException('UNKNOWN_REPLAY_CHECKPOINT_FORBIDDEN'); });
+$assert($unknownReads === 0, 'unknown context is never replayed');
+$assert($unknown['offers'][0]['status'] === 'unknown' && $unknown['offers'][1]['status'] === 'unknown'
+    && $unknown['offers'][2]['status'] === 'complete', 'unknown only affects offers sharing that context');
+
+$failureState = [
+    'gateway' => $state['gateway'],
+    'additional_prices' => [],
+];
+$failurePlan = anytour_anex_additional_prices_batch_plan([['offer_ref' => $ref1, 'local_hotel_id' => 101]], $failureState);
+$failureDigest = $failurePlan['offers'][0]['context_digest'];
+$failed = false;
+try {
+    anytour_anex_additional_prices_batch_execute($failurePlan, $failureState,
+        static function () { throw new RuntimeException('SUPPLIER_TIMEOUT'); },
+        static function (): void {});
+} catch (RuntimeException $e) {
+    $failed = $e->getMessage() === 'SUPPLIER_TIMEOUT';
+}
+$assert($failed && ($failureState['additional_prices'][$failureDigest]['status'] ?? null) === 'unknown',
+    'reader failure leaves durable unknown no-replay state');
 
 $tooMany = [];
 for ($i = 0; $i < 7; ++$i) $tooMany[] = ['offer_ref' => $ref1, 'local_hotel_id' => 101];
@@ -79,4 +134,4 @@ try { anytour_anex_additional_prices_batch_plan([['offer_ref' => $ref1, 'local_h
 catch (InvalidArgumentException $e) { $failed = $e->getMessage() === 'ANEX_INVALID_SESSION'; }
 $assert($failed, 'local hotel identity mismatch fails closed');
 
-echo "ANEX additional-prices batch planner: {$checks} checks passed; network=0\n";
+echo "ANEX additional-prices batch planner/executor: {$checks} checks passed; network=0\n";
