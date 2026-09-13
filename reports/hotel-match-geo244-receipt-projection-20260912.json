@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "lane": "MATCH",
+  "issue": 1971,
+  "status": "prepared_receipt_projection_not_current_db_acceptance",
+  "source_geo_report": "reports/hotel-match-geo-context-review-20260912.json",
+  "source_geo_pairs": {"total": 244, "anex": 209, "andromeda": 35, "live_anex": 23},
+  "authoritative_post44_census": {
+    "operation_id": "hotel-match-post44-current-census-1971-20260912-v1",
+    "run_id": 34693573853,
+    "artifact_id": 10297872553,
+    "artifact_zip_sha256": "ca9553f33b5b0e0d4b07aaa517f559bc0c3427b4ce928caa2c3cec3cf03cae61",
+    "generated_at_utc": "2026-09-12T12:24:23+00:00",
+    "anex_mapping_rows": 14423,
+    "anex_unique_local": 12364,
+    "andromeda_accepted": 8147,
+    "andromeda_pending": 1837,
+    "andromeda_conflict": 12,
+    "andromeda_unique_local": 7856,
+    "triple": 4260,
+    "anex_tv_only": 8104,
+    "andromeda_tv_only": 3596,
+    "exactly_two": 11700,
+    "live_anex_unresolved": 106,
+    "live_anex_unresolved_absent_from_staging": 101,
+    "database_writes": 0,
+    "supplier_calls": 0,
+    "tourvisor_calls": 0,
+    "no_replay": true
+  },
+  "completed_operations_after_geo_source_snapshot": [
+    {
+      "operation_id": "hotel-match-mass-direct-exact-accept-1971-20260912-v1",
+      "run_id": 34691621327,
+      "written": 148,
+      "provider": "anex",
+      "readback": true,
+      "intersection_rule": "geo report explicitly excludes native exact lane; exact operation uses unique normalized current local name/alias. No overlap is inferred from the algorithmic lane separation, but this is not a substitute for CURRENT per-row DB status."
+    },
+    {
+      "operation_id": "hotel-match-andromeda-anex-bridge-accept31-1971-20260912-v1",
+      "run_id": 34693063398,
+      "artifact_id": 10297886015,
+      "artifact_zip_sha256": "cebe21be8b8744efb3e44cf378d85cdbff4ebae2198d1f149ccd9e946f68bddc",
+      "written": 31,
+      "readback": true,
+      "geo35_intersection": [["2000095456",126048]],
+      "intersection_count": 1,
+      "intersection_resolution": "same proposed local; remove from residual, never replay"
+    },
+    {
+      "operation_id": "hotel-match-andromeda-full-anex-accept13-1971-20260912-v1",
+      "run_id": 34693504318,
+      "source_sha": "40bcce0072b5731a759f91e1435bac6821a5d237",
+      "written": 13,
+      "readback": true,
+      "plan": [["112766",17481],["113325",17430],["118322",2923],["2000031200",43701],["2000034859",47111],["2000035367",706],["2000039600",57821],["2000060824",121865],["2000063060",52942],["2000067140",76469],["2000068092",78882],["2000087259",9324],["252550",155740]],
+      "geo35_intersection_count": 0
+    }
+  ],
+  "receipt_projected_residual": {
+    "total": 243,
+    "anex": 209,
+    "andromeda": 34,
+    "live_anex": 23,
+    "note": "Large evidence package after subtracting known completed receipt overlap only. It is not an apply manifest and not a CURRENT DB readback."
+  },
+  "andromeda_coordinate_lane": {
+    "run_id": 34693645333,
+    "pending_examined": 1837,
+    "with_source_coordinate": 0,
+    "safe": 0,
+    "reason": "no_source_coordinate",
+    "status": "automatic coordinate source exhausted for current pending registry"
+  },
+  "current_status_revalidation": {
+    "operation_id": "hotel-match-geo244-current-status-1971-20260912-v1",
+    "script_commits": ["b9b16c2345a904e49c1b9a2b204a512e2749e9b2","ff6c3d425239b00304546437f440bc01a6841766"],
+    "workflow_path": ".github/workflows/hotel-match-geo244-current-status.yml",
+    "workflow_created": false,
+    "execution_started": false,
+    "blocker": "OpenAI tool safety rejected workflow file creation before any runner/SSH/DB access",
+    "alternative_executor_or_bypass_attempted": false
+  },
+  "safety": {
+    "database_writes_this_continuation": 0,
+    "mapping_writes_this_continuation": 0,
+    "supplier_calls_this_continuation": 0,
+    "tourvisor_calls_this_continuation": 0,
+    "evidence_recomputed_against_current_db": false,
+    "manual_decisions_exclusions_conflicts_overwritten": false,
+    "stale_geo244_apply_allowed": false,
+    "next_acceptance_requires": "NEW server-current full evidence transaction, manual/exclusion/current mapping recheck, coordinate/qualifier guards, durable reservation and post-COMMIT per-row readback"
+  }
+}
