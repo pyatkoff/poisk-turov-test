@@ -59,15 +59,21 @@ assert.ok(localFilters.includes('function fields(){return[field,regionField,cate
 
 {
   const listeners = new Map();
+  const strip = { scrollLeft: 0 };
   let details = null, markup = '';
   const box = {
     hidden: true,
-    querySelector(selector) { assert.equal(selector, 'details'); return details; },
+    contains(node) { return node === details; },
+    querySelector(selector) {
+      if (selector === 'details') return details;
+      if (selector === '.current-price-calendar__days') return markup.includes('current-price-calendar__days') ? strip : null;
+      assert.fail(`unexpected calendar selector: ${selector}`);
+    },
     get innerHTML() { return markup; },
     set innerHTML(value) { markup = value; details = value.includes('<details') ? { open: value.includes('<details open>') } : null; }
   };
   const window = { addEventListener(name, fn) { listeners.set(name, fn); }, matchMedia() { return { matches: false }; } };
-  const document = { getElementById(id) { assert.equal(id, 'currentPriceCalendar'); return box; }, body: { classList: { contains() { return true; } } }, addEventListener() {} };
+  const document = { activeElement: null, getElementById(id) { assert.equal(id, 'currentPriceCalendar'); return box; }, body: { classList: { contains() { return true; } } }, addEventListener() {} };
   vm.runInNewContext(priceCalendar, { window, document, Intl });
   const api = window.V2CurrentPriceCalendar;
   const items = [{ tours: [{ date: '2099-09-01', price: 150000 }, { date: '2099-09-02', price: 140000 }, { date: '2099-09-03', price: 145000 }] }];

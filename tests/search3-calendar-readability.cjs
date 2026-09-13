@@ -105,9 +105,83 @@ async function checkDateIntegrity(page, width, output) {
   assert.deepEqual(action.valid, { dates: ['2096-02-29', '2096-02-29'], events: ['dateFrom', 'dateTo'], submits: 1, othersUnchanged: true }, 'valid leap day keeps the original single-submit and non-date field contract');
   return { cases: cases.length, ...integrity, action };
 }
+async function checkRerenderFocus(page, width, output) {
+  const calendar = page.locator('#currentPriceCalendar');
+  const items = [{ tours: Array.from({ length: 21 }, (_, i) => ({ date: `2099-09-${String(i + 1).padStart(2, '0')}`, price: 140000 + i * 1000 })) }];
+  const updated = [{ tours: items[0].tours.map(tour => ({ ...tour, price: tour.price + 500 })) }];
+  const emit = (name, values) => page.evaluate(({ name, values }) => {
+    window.dispatchEvent(new CustomEvent(name, { detail: { items: values } }));
+  }, { name, values });
+  const formData = () => page.evaluate(() => [...new FormData(document.getElementById('tourSearch'))]);
+  const initial = await formData();
+  await emit('v2:search-started', []);
+  await emit('v2:search-complete', items);
+  const last = calendar.locator('[data-calendar-date="2099-09-21"]');
+  await page.keyboard.press('Tab');
+  await last.focus();
+  // Native focus can start the page's existing smooth scroll. Measure only after
+  // that movement settles, on BOTH sides of the rerender; retain strict deltas.
+  const position = () => calendar.evaluate(node => new Promise((resolve, reject) => {
+    const strip = node.querySelector('.current-price-calendar__days');
+    let prior = null, stable = 0, frames = 0;
+    const sample = () => {
+      const current = { scrollLeft: strip.scrollLeft, pageY: scrollY };
+      stable = prior && current.scrollLeft === prior.scrollLeft && current.pageY === prior.pageY ? stable + 1 : 0;
+      prior = current;
+      if (stable >= 8) return resolve({ ...current, frames });
+      if (++frames >= 180) return reject(new Error('Calendar scroll did not settle before measurement'));
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
+  const before = await position();
+  await emit('v2:search-continued', updated);
+  assert.equal(await last.evaluate(node => node === document.activeElement), true, 'continued prices retain keyboard focus on the same date, not body');
+  assert.equal(await last.locator('strong').innerText(), new Intl.NumberFormat('ru-RU').format(160500) + ' ₽', 'focus restoration does not prevent updated prices rendering');
+  const after = await position();
+  fs.writeFileSync(path.join(output, `calendar-rerender-${width}-position.json`), JSON.stringify({ width, before, after }, null, 2) + '\n');
+  assert.ok(Math.abs(after.scrollLeft - before.scrollLeft) <= 1, 'late-date mobile strip scroll survives replacement');
+  assert.ok(Math.abs(after.pageY - before.pageY) <= 2, `same-date rerender does not jump the page: ${before.pageY} -> ${after.pageY}`);
+  if ([375, 1440].includes(width)) await calendar.screenshot({ path: path.join(output, `calendar-rerender-${width}-date-focus.png`) });
+
+  await calendar.locator('summary').focus();
+  await calendar.locator('summary').press('Enter');
+  assert.equal(await calendar.locator('details').evaluate(node => node.open), false);
+  await emit('v2:search-continued', items);
+  assert.equal(await calendar.locator('summary').evaluate(node => node === document.activeElement), true, 'closed disclosure retains focus when results update');
+  assert.equal(await calendar.locator('details').evaluate(node => node.open), false, 'focus restoration does not reopen a user-closed calendar');
+  if ([375, 1440].includes(width)) await calendar.screenshot({ path: path.join(output, `calendar-rerender-${width}-summary-focus.png`) });
+  await calendar.locator('summary').press('Space');
+  await last.focus();
+  await emit('search3:local-results-filtered', [{ tours: items[0].tours.slice(0, 2) }]);
+  assert.equal(await calendar.locator('summary').evaluate(node => node === document.activeElement), true, 'removed focused date falls back to the existing calendar heading');
+  assert.equal(await calendar.locator('details').evaluate(node => node.open), true);
+
+  const outside = page.locator('#tourSearch [name="dateFrom"]');
+  await outside.focus();
+  await emit('search3:local-results-filtered', items);
+  assert.equal(await outside.evaluate(node => node === document.activeElement), true, 'background calendar updates never steal outside focus');
+  for (const count of [0, 1]) {
+    await last.focus();
+    const expected = await page.evaluate(() => {
+      const form = document.getElementById('tourSearch');
+      const target = [document.getElementById('resultsSearchEdit'), form.elements.dateFrom].find(node => node && node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+      return target.id || target.name;
+    });
+    await emit('search3:local-results-filtered', [{ tours: items[0].tours.slice(0, count) }]);
+    assert.equal(await calendar.evaluate(node => node.hidden), true);
+    assert.equal(await page.evaluate(() => document.activeElement.id || document.activeElement.name), expected, 'hidden calendar returns focused keyboard users to an existing visible search control');
+    await emit('search3:local-results-filtered', items);
+    assert.equal(await page.evaluate(() => document.activeElement.id || document.activeElement.name), expected, 'restoring calendar dates does not reclaim focus');
+  }
+  assert.deepEqual(await formData(), initial, 'calendar focus/scroll recovery never rewrites search conditions');
+  await emit('v2:search-reset', []);
+  return { sameDate: true, updatedPrice: 160500, closedSummary: true, removedDateFallback: true, hiddenCounts: [0, 1], outsideFocusPreserved: true, formDataUnchanged: true, before, after };
+}
 module.exports = async function calendarReadability(page, width, output) {
   const calendar = page.locator('#currentPriceCalendar');
   const disclosure = await checkDisclosureState(page, width, output);
+  const rerenderFocus = await checkRerenderFocus(page, width, output);
   await page.mouse.move(0, 0);
   const records = [];
   const tours = Array.from({ length: 21 }, (_, index) => ({
@@ -176,6 +250,6 @@ module.exports = async function calendarReadability(page, width, output) {
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
   const dateIntegrity = await checkDateIntegrity(page, width, output);
-  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
+  fs.writeFileSync(path.join(output, `calendar-readable-${width}.json`), JSON.stringify({ width, records, focus, dateIntegrity, disclosure, rerenderFocus, fixture: true, supplier_requests: 0, leads: 0 }, null, 2) + '\n');
   await page.evaluate(() => window.V2CurrentPriceCalendar.clear());
 };
