@@ -1,0 +1,45 @@
+<?php
+declare(strict_types=1);
+if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
+require_once __DIR__ . '/hotel_match_learned_geo_global_review.php';
+
+const HMFG_OPERATION='hotel-match-fuzzy-learned-geo-global-review-2333-20260914-v1';
+
+function hmfg_tokens(string $v): array {
+    $v=hmlg_latin($v);
+    $tokens=fc_tokens($v,true);
+    $variants=['centre'=>'center','blu'=>'blue','heights'=>'height','villas'=>'villa','suites'=>'suite','residences'=>'residence','towers'=>'tower','gardens'=>'garden','beaches'=>'beach'];
+    $out=[]; foreach($tokens as $t){$t=$variants[$t]??$t;if($t!=='')$out[$t]=1;} return array_keys($out);
+}
+function hmfg_similarity(string $a,string $b): array {
+    $x=array_fill_keys(hmfg_tokens($a),true);$y=array_fill_keys(hmfg_tokens($b),true);
+    $shared=count(array_intersect_key($x,$y));$union=count($x+$y);$j=$union?$shared/$union:0.0;
+    $ka=implode(' ',array_keys($x));$kb=implode(' ',array_keys($y));$max=max(strlen($ka),strlen($kb));$lev=$max?1-(levenshtein($ka,$kb)/$max):0.0;
+    return [max($j,$lev*0.92),$shared,$j,$lev];
+}
+function hmfg_rank(array $pool,array $sourceNames,array $names): array {
+    $rows=[];foreach($pool as $id){$best=['score'=>0.0,'shared'=>0,'jaccard'=>0.0,'lev'=>0.0,'source'=>'','target'=>''];foreach($sourceNames as $s)foreach($names[$id]??[] as $t){[$score,$shared,$j,$lev]=hmfg_similarity((string)$s,(string)$t);if($score>$best['score']||($score===$best['score']&&$shared>$best['shared']))$best=['score'=>round($score,6),'shared'=>$shared,'jaccard'=>round($j,6),'lev'=>round($lev,6),'source'=>(string)$s,'target'=>(string)$t];}$best['id']=(int)$id;$rows[]=$best;}
+    usort($rows,static fn($a,$b)=>$b['score']<=>$a['score'] ?: $b['shared']<=>$a['shared'] ?: $a['id']<=>$b['id']);return $rows;
+}
+function hmfg_review(PDO $db,string $operation=HMFG_OPERATION): array {
+    if($operation!==HMFG_OPERATION)throw new RuntimeException('operation_scope');$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+    [$hotels,$names,$strict,$broad,$places,$scope]=mbr_catalog($db);$shaCountry=fc_sha_countries($db);
+    $latest=[];$obsCount=[];foreach($db->query("SELECT * FROM andromeda_search_hotel_observations WHERE supplier_namespace='andromeda_catalog' ORDER BY observed_at_utc DESC,external_hotel_id")->fetchAll(PDO::FETCH_ASSOC) as $o){$id=(string)$o['external_hotel_id'];$obsCount[$id]=($obsCount[$id]??0)+1;if(!isset($latest[$id]))$latest[$id]=$o;}
+    $acceptedLocal=[];$learn=[];$training=0;foreach($db->query("SELECT local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC) as $r){$lid=(int)$r['local_hotel_id'];$acceptedLocal[$lid]=1;if(!isset($hotels[$lid]))continue;$e=fc_evidence($r['evidence_json']??'');$src=$e['source']??($e['prior_evidence']['source']??[]);if(!is_array($src))$src=[];$geo=$e['geography']??($e['prior_evidence']['geography']??[]);if(!is_array($geo))$geo=[];$sp=[];foreach([(string)($src['town']??''),(string)($geo['town']??''),(string)($geo['parent']??'')] as $v){$k=hmlg_place_key($v);if($k!=='')$sp[$k]=1;}$tk=hmlg_target_place_keys($hotels[$lid]);if(!$sp||!$tk)continue;$training++;foreach(array_keys($sp) as $s)foreach($tk as $t)$learn[$s][$t]=($learn[$s][$t]??0)+1;}
+    $placeHotels=[];foreach($hotels as $id=>$h)foreach(hmlg_target_place_keys($h) as $k)$placeHotels[(int)$h['country_id']][$k][(int)$id]=1;
+    $stats=['pending_examined'=>0,'no_unique_identity_examined'=>0,'with_geo_pool'=>0,'ranked'=>0,'safe'=>0,'medium'=>0,'occupied_target'=>0,'coordinate_conflict'=>0,'qualifier_conflict'=>0,'weak_score'=>0,'weak_margin'=>0,'weak_geo'=>0,'observed'=>0,'country_unknown'=>0];$safe=[];$medium=[];$reasons=[];
+    foreach($db->query("SELECT * FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='pending' AND local_hotel_id IS NULL ORDER BY external_hotel_id")->fetchAll(PDO::FETCH_ASSOC) as $r){$external=(string)$r['external_hotel_id'];$obs=$latest[$external]??null;$prior=fc_evidence($r['evidence_json']??'');$src=$prior['source']??[];if(!is_array($src))$src=[];$geo=$prior['geography']??[];if(!is_array($geo))$geo=[];$country=(int)($obs['country_id']??0);if(!isset(MBR_CORE8[$country]))$country=(int)($shaCountry[$r['catalog_sha256']]??0);if(!isset(MBR_CORE8[$country])){$stats['country_unknown']++;continue;}$stats['pending_examined']++;
+        $sourceNames=array_values(array_unique(array_filter([(string)($src['name']??''),(string)($src['lName']??''),(string)($obs['hotel_name']??'')],static fn($v)=>trim($v)!=='')));$sourcePlaces=array_values(array_unique(array_filter([(string)($src['town']??''),(string)($geo['town']??''),(string)($geo['parent']??''),(string)($obs['region_name']??'')],static fn($v)=>trim($v)!=='')));
+        $strictIds=mbr_ids_for_names($strict,$country,$sourceNames,false);$broadIds=mbr_ids_for_names($broad,$country,$sourceNames,true);if(count($strictIds)===1||count($strictIds)>1||count($broadIds)===1||count($broadIds)>1)continue;$stats['no_unique_identity_examined']++;$oc=(int)($obsCount[$external]??0);if($oc>0)$stats['observed']++;
+        $pool=[];$geoProof=[];foreach($sourcePlaces as $p){$pk=hmlg_place_key($p);if($pk==='')continue;foreach($learn[$pk]??[] as $tk=>$n){$total=array_sum($learn[$pk]);$conf=$total>0?$n/$total:0.0;if($n<2||$conf<0.67)continue;foreach(array_keys($placeHotels[$country][$tk]??[]) as $lid){$pool[(int)$lid]=1;$key=(int)$lid;$cand=['source_place'=>$p,'source_place_key'=>$pk,'target_place_key'=>$tk,'support'=>(int)$n,'total'=>(int)$total,'confidence'=>round($conf,6)];if(!isset($geoProof[$key])||$cand['confidence']>$geoProof[$key]['confidence']||($cand['confidence']===$geoProof[$key]['confidence']&&$cand['support']>$geoProof[$key]['support']))$geoProof[$key]=$cand;}}}
+        foreach(array_map('intval',$prior['candidate_ids']??[]) as $lid)if(isset($hotels[$lid])&&(int)$hotels[$lid]['country_id']===$country)$pool[$lid]=1;if(!$pool){$stats['weak_geo']++;$reasons['no_learned_geo_pool']=($reasons['no_learned_geo_pool']??0)+1;continue;}$stats['with_geo_pool']++;
+        $rank=hmfg_rank(array_map('intval',array_keys($pool)),$sourceNames,$names);$best=$rank[0]??null;if(!$best){continue;}$stats['ranked']++;$second=$rank[1]['score']??0.0;$margin=$best['score']-$second;$lid=(int)$best['id'];$target=$hotels[$lid];$proof=$geoProof[$lid]??null;$direct=fc_place($sourcePlaces,[(string)$target['region_name'],(string)$target['subregion_name']]);$strongGeo=$direct||($proof!==null&&$proof['support']>=3&&$proof['confidence']>=0.80);
+        if(!$strongGeo){$stats['weak_geo']++;$reasons['best_without_strong_geo']=($reasons['best_without_strong_geo']??0)+1;continue;}if(!hmlg_qualifiers_ok($sourceNames,$names[$lid]??[(string)$target['name']])){$stats['qualifier_conflict']++;$reasons['meaningful_qualifier_conflict']=($reasons['meaningful_qualifier_conflict']??0)+1;continue;}$coord=$src;if($obs)$coord+=$obs;$guard=mbr_target_guard($coord,$target);if($guard['coordinate_conflict']){$stats['coordinate_conflict']++;$reasons['coordinate_conflict_gt_5km']=($reasons['coordinate_conflict_gt_5km']??0)+1;continue;}if(isset($acceptedLocal[$lid])){$stats['occupied_target']++;$reasons['target_already_accepted_andromeda']=($reasons['target_already_accepted_andromeda']??0)+1;continue;}
+        $base=['external_id'=>$external,'country_id'=>$country,'observation_count'=>$oc,'source_names'=>$sourceNames,'source_places'=>$sourcePlaces,'target'=>mbr_row_target($target),'best'=>$best,'second_score'=>round($second,6),'margin'=>round($margin,6),'direct_geo'=>(bool)$direct,'learned_geo'=>$proof,'guard'=>$guard];
+        if($best['score']>=0.82&&$best['shared']>=2&&$margin>=0.18){$base['tier']='safe';$base['reason']='strong_fuzzy_large_margin_plus_strong_geo';$safe[]=$base;$stats['safe']++;continue;}
+        if($best['score']>=0.72&&$best['shared']>=2&&$margin>=0.10){$base['tier']='medium';$base['reason']='fuzzy_candidate_plus_strong_geo_needs_independent_evidence';$medium[]=$base;$stats['medium']++;continue;}
+        if($best['score']<0.72||$best['shared']<2){$stats['weak_score']++;$reasons['weak_fuzzy_score']=($reasons['weak_fuzzy_score']??0)+1;}else{$stats['weak_margin']++;$reasons['insufficient_fuzzy_margin']=($reasons['insufficient_fuzzy_margin']??0)+1;}
+    }
+    $sort=static fn($a,$b)=>(int)$b['observation_count']<=>(int)$a['observation_count'] ?: $b['best']['score']<=>$a['best']['score'] ?: $b['margin']<=>$a['margin'] ?: strcmp($a['external_id'],$b['external_id']);usort($safe,$sort);usort($medium,$sort);arsort($reasons);
+    return ['status'=>'completed','operation_id'=>$operation,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'historical_operations_replayed'=>false,'training_rows'=>$training,'learned_place_keys'=>count($learn),'coverage'=>fc_coverage($db),'catalog_scope'=>$scope,'stats'=>$stats,'blocked_reasons'=>$reasons,'safe_count'=>count($safe),'medium_count'=>count($medium),'safe'=>$safe,'medium'=>$medium];
+}
