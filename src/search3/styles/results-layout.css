@@ -170,7 +170,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & #results{gap:18px}
 & #results .hotel-main{grid-template-columns:minmax(220px,28%) minmax(0,1fr)}
 & #results .hotel-body{padding-inline:22px}
-& #results .tour-row{grid-template-columns:minmax(0,1fr) 304px;gap:20px;padding-block:14px}
+& #results .tour-row{grid-template-columns:minmax(0,1fr) 250px;gap:20px;padding-block:14px}
 & #results .tour-meta{display:grid;grid-template-columns:126px minmax(0,1fr);align-content:start;gap:0 16px}
 & #results .tour-meta>small{grid-column:1;grid-row:1}
 & #results .tour-meta>strong{grid-column:1;grid-row:2;align-self:start}
@@ -181,7 +181,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & #results .tour-operator .hotel-operator:not([data-operator-brand]){grid-template-columns:1fr}
 & #results .tour-operator .hotel-operator-logo{height:24px}
 & #results .tour-operator .hotel-operator-name{text-align:left;font-size:12px}
-& #results .tour-action{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 8px}
+& #results .tour-action{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:6px 8px}
 & #results .tour-action>:is(small,.hotel-price,.tour-selection-note,.provider-detail-toggle){grid-column:1/-1}
 & #results .tour-action .direct-tour{grid-column:1;margin-top:4px;padding-inline:10px}
 & #results .tour-action .search3-shortlist-toggle{grid-column:2;margin-top:4px;padding-inline:8px}
