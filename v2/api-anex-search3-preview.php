@@ -106,6 +106,55 @@ function anytour_anex_search3_meal_matches($raw, $filter): bool
         && in_array($normalized['family'], $families, true);
 }
 
+/**
+ * Translate selected local hotels only through the current accepted preview registry.
+ * Partial/ambiguous coverage deliberately returns null so the supplier request stays broad
+ * and the existing local result filter remains authoritative.
+ */
+function anytour_anex_search3_supplier_hotel_ids(PDO $pdo, AnyTourAnexSearchMappingRegistry $registry, $values): ?array
+{
+    if ($values === null || $values === '') $values = [];
+    if (!is_array($values) || count($values) > 30) throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
+    if ($values === []) return null;
+    $wanted = [];
+    foreach ($values as $value) {
+        if (!is_scalar($value) || !preg_match('/\A[1-9][0-9]{0,9}\z/D', (string) $value)) {
+            throw new InvalidArgumentException('ANEX_INVALID_SEARCH');
+        }
+        $wanted[(string) $value] = true;
+    }
+    $placeholders = implode(',', array_fill(0, count($wanted), '?'));
+    try {
+        $query = $pdo->prepare(
+            'SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_search_mappings WHERE catalog_hotel_id IN (' . $placeholders . ')'
+            . ' UNION ALL SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_decisions WHERE catalog_hotel_id IN (' . $placeholders . ')'
+        );
+        $ids = array_keys($wanted);
+        $query->execute(array_merge($ids, $ids));
+        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $ignored) {
+        return null;
+    }
+    $resolved = [];
+    foreach ($rows as $row) {
+        if (!is_array($row)) continue;
+        $external = (string) ($row['anex_hotel_id'] ?? '');
+        $local = (string) ($row['catalog_hotel_id'] ?? '');
+        if (!isset($wanted[$local]) || !preg_match('/\A[1-9][0-9]{0,7}\z/D', $external)) continue;
+        if ($registry->resolve('anex_online', $external, 'preview') !== (int) $local) continue;
+        $resolved[$local][$external] = true;
+    }
+    foreach (array_keys($wanted) as $local) {
+        if (empty($resolved[$local])) return null;
+    }
+    $externalIds = [];
+    foreach ($resolved as $items) foreach (array_keys($items) as $external) $externalIds[$external] = true;
+    if (count($externalIds) > 30) return null;
+    $externalIds = array_keys($externalIds);
+    usort($externalIds, static function (string $a, string $b): int { return (int) $a <=> (int) $b; });
+    return $externalIds;
+}
+
 function anytour_anex_search3_dictionary($client, string $action, array $params, array &$cache): array
 {
     $key = hash('sha256', $action . json_encode($params));
@@ -327,7 +376,10 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     if ($criteria['child_ages']) $dated['AGES'] = implode(',', $criteria['child_ages']);
     $criteria['currency_id'] = anytour_anex_search3_dictionary_id(
         anytour_anex_search3_dictionary($client, 'SearchTour_CURRENCIES', $dated, $cache), ['RUB', 'RUR', 'Рубль', 'Рубли', 'Руб']);
-    $resolver = AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
+    $registry = AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
+    $resolver = $registry->previewResolver();
+    $supplierHotelIds = anytour_anex_search3_supplier_hotel_ids($pdo, $registry, $params['hotelIds'] ?? []);
+    if ($supplierHotelIds !== null) $criteria['hotel_ids'] = $supplierHotelIds;
     $session = $state === null ? null : [];
     $result = anytour_anex_search3_prices($client, $resolver, $criteria, $session);
     // Bound the first page before catalog hydration; cheapest RUB offers first.
