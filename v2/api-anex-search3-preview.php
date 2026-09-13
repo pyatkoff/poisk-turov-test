@@ -7,6 +7,11 @@ $mealFamilyFile = is_file(__DIR__ . '/app/integrations/three-provider-meal-famil
     : __DIR__ . '/../app/integrations/three-provider-meal-family.php';
 require_once $mealFamilyFile;
 unset($mealFamilyFile);
+$additionalBatchFile = is_file(__DIR__ . '/app/integrations/anex-additional-prices-batch.php')
+    ? __DIR__ . '/app/integrations/anex-additional-prices-batch.php'
+    : __DIR__ . '/../app/integrations/anex-additional-prices-batch.php';
+require_once $additionalBatchFile;
+unset($additionalBatchFile);
 
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
@@ -480,6 +485,94 @@ function anytour_anex_search3_additional_application(array $evidence, array $off
     return $evidence;
 }
 
+/** Bounded visible-card batch for retained direct-ANEX AdditionalPricesDaily evidence. */
+function anytour_anex_search3_additional_batch(array $request, array &$state, callable $resolver, callable $metadataReader,
+    ?callable $clock = null, ?callable $checkpoint = null, ?callable $additionalFactory = null): array
+{
+    $keys = ['action', 'generation', 'search_ref', 'items'];
+    if (count($request) !== count($keys) || array_diff($keys, array_keys($request))
+        || array_diff(array_keys($request), $keys)
+        || ($request['action'] ?? null) !== 'additional_prices_batch'
+        || !is_int($request['generation'] ?? null) || $request['generation'] < 1 || $request['generation'] > 2147483647
+        || !is_string($request['search_ref'] ?? null) || !preg_match('/\A[a-f0-9]{32}\z/D', $request['search_ref'])
+        || !is_array($request['items'] ?? null)) {
+        throw new InvalidArgumentException('ANEX_INVALID_REQUEST');
+    }
+    $clock = $clock ?? static function (): int { return time(); };
+    $now = $clock();
+    if (!is_int($now) || $now < 1) throw new RuntimeException('ANEX_CLOCK_ERROR');
+    $reply = ['provider' => 'anex', 'generation' => $request['generation'], 'search_ref' => $request['search_ref'],
+        'status' => 'expired', 'offers' => [], 'selection_state' => 'disabled'];
+    if (!anytour_anex_search3_current($state, $now)) return $reply;
+    $saved = $state['gateway']['saved_offers'] ?? null;
+    if (!is_array($saved) || ($state['generation'] ?? null) !== $request['generation']
+        || ($saved['search_ref'] ?? null) !== $request['search_ref']) {
+        return array_replace($reply, ['status' => 'mismatch']);
+    }
+
+    $plan = anytour_anex_additional_prices_batch_plan($request['items'], $state);
+    $offersByRef = [];
+    foreach ($plan['offers'] as $item) {
+        $key = $item['offer_ref'];
+        $entry = $saved['offers'][$key] ?? null;
+        $offer = is_array($entry) ? ($entry['offer'] ?? null) : null;
+        if (!is_array($offer)) return array_replace($reply, ['status' => 'not_loaded']);
+        $local = $resolver('anex_online', $offer['hotel']['external_id'] ?? null);
+        if ($local === null) return array_replace($reply, ['status' => 'identity_unresolved']);
+        if ($local !== $item['local_hotel_id'] || $local !== ($offer['hotel']['local_id'] ?? null)) {
+            return array_replace($reply, ['status' => 'identity_changed']);
+        }
+        $offersByRef[$key] = $offer;
+    }
+    $metadata = $metadataReader(array_values($offersByRef));
+    foreach ($offersByRef as $offer) {
+        if (anytour_anex_search3_project([$offer], $metadata, $state['params']) === []) {
+            return array_replace($reply, ['status' => 'not_available']);
+        }
+    }
+    if ($checkpoint === null || $additionalFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+
+    $persist = static function (array &$batchState, string $digest) use ($checkpoint, $clock): void {
+        $checkpoint($batchState);
+        $after = $clock();
+        if (!is_int($after) || !anytour_anex_search3_current($batchState, $after)) {
+            throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        }
+    };
+    $reader = static function (array $context) use (&$state, $additionalFactory, $clock): array {
+        $before = $clock();
+        if (!is_int($before) || !anytour_anex_search3_current($state, $before)) {
+            throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        }
+        $additional = $additionalFactory();
+        if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
+            throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
+        }
+        $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10,
+            'tour' => (int) $context['supplier_tour_program_id'], 'dateBeg' => $context['checkin'],
+            'nights' => $context['nights'], 'currency' => (int) $context['supplier_currency_id']]);
+        if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $evidence = anytour_anex_search3_additional_evidence($payload);
+        $observed = $clock();
+        if (!is_int($observed) || !anytour_anex_search3_current($state, $observed)) {
+            throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        }
+        $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $observed);
+        return $evidence;
+    };
+    $batch = anytour_anex_additional_prices_batch_execute($plan, $state, $reader, $persist);
+    $public = [];
+    foreach ($batch['offers'] as $item) {
+        $key = $item['offer_ref'];
+        $complete = ($item['status'] ?? null) === 'complete' && is_array($item['additional_prices'] ?? null);
+        $public[] = ['offer_ref' => $key, 'local_hotel_id' => $item['local_hotel_id'],
+            'status' => $complete ? 'additional_prices' : 'additional_prices_unknown',
+            'additional_prices' => $complete
+                ? anytour_anex_search3_additional_application($item['additional_prices'], $offersByRef[$key]) : null];
+    }
+    return array_replace($reply, ['status' => 'additional_prices_batch', 'offers' => $public]);
+}
+
 function anytour_anex_search3_followup(array $request, array &$state, callable $resolver, callable $clientFactory,
     callable $metadataReader, ?callable $clock = null, ?callable $checkpoint = null, ?callable $additionalFactory = null): array
 {
@@ -642,7 +735,7 @@ function anytour_anex_search3_http(): void
     if (!session_start()) anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
     try {
         $action = $request['action'] ?? 'search';
-        if (!in_array($action, ['search', 'offer', 'expand', 'additional_prices'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
+        if (!in_array($action, ['search', 'offer', 'expand', 'additional_prices', 'additional_prices_batch'], true)) throw new InvalidArgumentException('ANEX_INVALID_ACTION');
         if ($action === 'search' || !is_array($_SESSION['offer_context'] ?? null)) $_SESSION['offer_context'] = [];
         if (!is_array($_SESSION['dictionaries'] ?? null)) $_SESSION['dictionaries'] = [];
         $app = is_file(__DIR__ . '/app/integrations/anex-search.php') ? __DIR__ . '/app/integrations' : __DIR__ . '/../app/integrations';
@@ -683,6 +776,11 @@ function anytour_anex_search3_http(): void
             $operatorScope = anytour_anex_search3_operator_scope($pdo, $request['params']['operatorIds'] ?? []);
             $data = anytour_anex_search3_run($request, $pdo, $operatorScope === 'exclude' ? null : $clientFactory(),
                 $_SESSION['dictionaries'], $diagnostics, $observer, $_SESSION['offer_context'], $operatorScope);
+        } elseif ($action === 'additional_prices_batch') {
+            $data = anytour_anex_search3_additional_batch($request, $_SESSION['offer_context'],
+                AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(),
+                static function (array $offers) use ($pdo): array { return anytour_anex_search3_metadata($pdo, $offers); },
+                null, 'anytour_anex_search3_checkpoint', $additionalFactory);
         } else {
             $data = anytour_anex_search3_followup($request, $_SESSION['offer_context'],
                 AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver(), $clientFactory,
