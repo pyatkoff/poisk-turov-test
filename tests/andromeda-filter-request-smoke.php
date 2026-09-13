@@ -92,6 +92,19 @@ $bad=$saved;$bad['all']['payload']['MEAL']=array_values(array_filter($bad['all']
 try{$request=$base;$request['params']['meal']='7';anytour_andromeda_search3_params($request,$pdo,$bad);throw new RuntimeException('incomplete AI family dictionary accepted');}catch(DomainException $expected){}
 echo "Andromeda upstream filters: meals + minimum stars + operators + resort geography passed\n";
 
+// Regression: raw JSON types must not silently change local/provider identity context.
+foreach([
+ ['countryId',true],['departureId',true],
+ ['hotelIds',[true]],['regionIds',[true]],['subregionIds',[true]],['operatorIds',[true]],
+] as [$key,$value]){
+ $request=$base;$request['params'][$key]=$value;
+ try{
+  anytour_andromeda_search3_params($request,$pdo,$saved);
+  throw new RuntimeException('boolean '.$key.' was converted into local identity 1');
+ }catch(InvalidArgumentException $expected){}
+}
+echo "Andromeda identity filters: booleans rejected before local/provider lookup\n";
+
 // Regression: raw JSON types must not silently change the priced party or stay.
 foreach([
  ['adults',true],['adults',2.9],['adults','2adults'],
