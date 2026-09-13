@@ -37,7 +37,12 @@ const segment = {
   baggage: 20,
   carryOn: '5 кг'
 };
-const flights = [{ isDefault: true, price: { value: 148500 }, forward: [segment], backward: [{ ...segment, number: 'AT124', departure: { ...segment.arrival, date: '2026-10-14', time: '16:00' }, arrival: { ...segment.departure, date: '2026-10-14', time: '20:30' } }] }];
+const returnSegment = { ...segment, number: 'AT124', departure: { ...segment.arrival, date: '2026-10-14', time: '16:00' }, arrival: { ...segment.departure, date: '2026-10-14', time: '20:30' } };
+const flights = [
+  { isDefault: true, price: { value: 148500 }, forward: [segment], backward: [returnSegment] },
+  { price: { value: 148500 }, fuelCharge: { value: 0 }, forward: [segment], backward: [returnSegment] },
+  { price: { value: 149900 }, fuelCharge: { value: 1400 }, forward: [segment], backward: [returnSegment] }
+];
 
 const settle = page => page.evaluate(async () => {
   await document.fonts.ready;
@@ -109,6 +114,10 @@ async function run(browser, width) {
     assert.equal(detail.title, 'SUNRISE Resort & Spa', 'selected hotel identity stays visible');
     assert.equal(detail.dateText, '05.10.2026', 'selected date uses the canonical renderer display');
     assert.notEqual(detail.dateText, tour.date, 'selected date never exposes the raw supplier ISO value');
+    const fuelLabels = await root.locator('.flight-fuel').allTextContents();
+    assert.deepEqual(fuelLabels.map(value => value.replace(/\s+/g, ' ').trim()), contract.invariants.flight_fuel_display,
+      'flight fee display distinguishes unknown, explicit zero and known values');
+    assert.equal(fuelLabels.some(value => /:\s*₽\s*$/.test(value)), false, 'flight fee never renders a bare currency marker');
     assert.equal(detail.searchVisible, contract.invariants.selected_search_form_visible, 'selected state does not duplicate the search form');
     assert.equal(detail.overflow, contract.invariants.horizontal_overflow, `selected detail has no horizontal overflow at ${width}`);
     assert.ok(detail.rootWidth <= width + 2, 'selected root is bounded by the viewport');
