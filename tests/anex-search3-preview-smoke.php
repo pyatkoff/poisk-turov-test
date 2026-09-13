@@ -78,6 +78,8 @@ class Search3CatalogStatement extends PDOStatement
     public function __construct(array $rows) { $this->rows = $rows; }
     public function execute(?array $params = null): bool { $this->parameters = $params ?? []; return true; }
     public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array { return $this->rows; }
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed
+    { return array_shift($this->rows) ?? false; }
 }
 class Search3CatalogPdo extends PDO
 {
@@ -85,6 +87,8 @@ class Search3CatalogPdo extends PDO
     public array $queries = [];
     public array $statements = [];
     public function __construct(array $responses) { $this->responses = $responses; }
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
+    { return $this->prepare($query); }
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
         $this->queries[] = $query;
@@ -409,3 +413,82 @@ $sessionOutput = []; $sessionCode = 0;
 exec(escapeshellarg(PHP_BINARY) . ' -d allow_url_fopen=0 -r ' . escapeshellarg($sessionCheck), $sessionOutput, $sessionCode);
 search3_check($sessionCode === 0 && implode('', $sessionOutput) === 'SESSION_RESERVATION_READBACK_OK', 'real session reservation/readback failed');
 echo "ANEX_SEARCH3_RETAINED_OK common_refs=1 expand_once=1 saved_supplier_calls=0 native_money=1 stale_rejected=1 fixed_expiry=1 reservation_readback=1\n";
+
+
+// A selected hotel must reach the supplier before its bounded first page is built.
+$filterRow = static function (int $external, int $local): array {
+    return ['anex_hotel_id' => $external, 'catalog_hotel_id' => $local,
+        'existing_catalog_hotel_id' => $local, 'enabled' => 1, 'match_class' => 'exact',
+        'scope' => 'preview', 'approval_policy' => 'owner_exact_and_strong_20260908'];
+};
+$filterRows = [$filterRow(2, 999), $filterRow(1, 999), $filterRow(3, 998)];
+$filterRegistry = AnyTourAnexSearchMappingRegistry::fromRows($filterRows);
+search3_check($filterRegistry->previewHotelIds(['999', 999]) === [1, 2], 'all accepted supplier IDs retained, not local IDs or a single alias');
+search3_check($filterRegistry->previewHotelIds([998, 999]) === [1, 2, 3], 'multiple selected hotels retain complete supplier coverage');
+foreach ([[], [999, 997], ['0999'], [true]] as $selection) {
+    search3_check($filterRegistry->previewHotelIds($selection) === [], 'empty, incomplete or invalid selection never narrows to a subset');
+}
+$guardedRegistry = AnyTourAnexSearchMappingRegistry::fromRows($filterRows,
+    [['anex_hotel_id' => 1, 'catalog_hotel_id' => 997, 'existing_catalog_hotel_id' => 997, 'decision_status' => 'accepted'],
+     ['anex_hotel_id' => 3, 'catalog_hotel_id' => 998, 'existing_catalog_hotel_id' => 998, 'decision_status' => 'rejected']],
+    [['anex_hotel_id' => 2, 'catalog_hotel_id' => 999]]);
+search3_check($guardedRegistry->previewHotelIds([999]) === [] && $guardedRegistry->previewHotelIds([998]) === []
+    && $guardedRegistry->previewHotelIds([997]) === [1], 'reverse read preserves manual target, rejection and pair exclusion precedence');
+$manyRows = array_map(static function (int $id) use ($filterRow): array { return $filterRow($id, 999); }, range(1, 31));
+search3_check(AnyTourAnexSearchMappingRegistry::fromRows(array_slice($manyRows, 0, 30))->previewHotelIds([999]) === range(1, 30),
+    'exact supplier 30-ID limit is usable');
+search3_check(AnyTourAnexSearchMappingRegistry::fromRows($manyRows)->previewHotelIds([999]) === [],
+    '31 accepted IDs fall back to broad search, never a truncated supplier subset');
+
+$runHotelSelection = static function (array $selection) use ($filterRows, $params, $row, $metadata): array {
+    $db = new Search3CatalogPdo([
+        [['departure_name' => 'Moscow', 'country_name' => 'Country']],
+        array_slice($filterRows, 0, 2), [], [], array_values($metadata), [], [],
+    ]);
+    $requests = [];
+    $client = new AnyTourAnexClient('test-secret', static function (string $url) use (&$requests, $row): array {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+        $requests[] = $query;
+        $action = $query['action'];
+        $dictionaries = ['SearchTour_TOWNFROMS' => [['id' => 1000, 'name' => 'Moscow']],
+            'SearchTour_STATES' => [['id' => 20, 'name' => 'Country']],
+            'SearchTour_CURRENCIES' => [['id' => 9, 'alias' => 'RUB']]];
+        if ($action === 'SearchTour_PRICES') {
+            // The broad first page deliberately does not contain the selected hotel.
+            $rows = ($query['HOTELS'] ?? null) === '1,2'
+                ? [$row, array_replace($row, ['id' => 'selected-alias-2', 'hotelKey' => 2])]
+                : [array_replace($row, ['id' => 'unmapped-first-page', 'hotelKey' => 888])];
+            $payload = ['prices' => $rows];
+        } else {
+            search3_check(isset($dictionaries[$action]), 'unexpected supplier action');
+            $payload = $dictionaries[$action];
+        }
+        return ['status' => 200, 'body' => json_encode([$action => $payload])];
+    });
+    $cache = []; $diagnostics = []; $observed = []; $state = [];
+    $observer = static function (array $offers) use (&$observed): array { $observed = $offers; return ['status' => 'fixture']; };
+    $result = anytour_anex_search3_run(['generation' => 9, 'params' => $params + ['hotelIds' => $selection]],
+        $db, $client, $cache, $diagnostics, $observer, $state);
+    search3_check(count($requests) === 4 && $requests[3]['action'] === 'SearchTour_PRICES',
+        'hotel filter must not add supplier requests');
+    foreach ($db->queries as $sql) search3_check(strpos($sql, 'SELECT ') === 0, 'hotel filter must remain a read-only registry consumer');
+    return [$result, $requests[3], $state, $diagnostics, $observed];
+};
+[$selected, $selectedQuery, $selectedState] = $runHotelSelection([999]);
+search3_check(($selectedQuery['HOTELS'] ?? null) === '1,2' && $selectedQuery['TOWNFROMINC'] === '1000'
+    && $selectedQuery['STATEINC'] === '20' && $selectedQuery['CURRENCY'] === '9', 'selected hotels and dictionaries use supplier namespaces');
+search3_check(count($selected['hotels']) === 1 && $selected['hotels'][0]['local_id'] === 999
+    && count($selected['hotels'][0]['tours']) === 2, 'selected hotel absent from broad first page now found with all accepted aliases');
+search3_check($selected['hotels'][0]['tours'][0]['price']['amount'] === '12345.50'
+    && $selectedState['gateway']['search']['context']['hotel_ids'] === [1, 2], 'price unchanged and retained context keeps supplier hotel selection');
+search3_check(strpos(json_encode($selected), 'supplier-private-claim') === false
+    && strpos(json_encode($selected), 'hotel_ids') === false, 'private supplier selector is not projected');
+foreach ([[], [999, 998]] as $selection) {
+    [$fallback, $fallbackQuery, $fallbackState, $fallbackDiagnostics, $fallbackObserved] = $runHotelSelection($selection);
+    search3_check(!isset($fallbackQuery['HOTELS']) && !isset($fallbackState['gateway']['search']['context']['hotel_ids']),
+        'broad or incompletely mapped selection retains original broad request');
+    search3_check($fallback['hotels'] === [] && $fallbackDiagnostics['unmapped_hotel_ids'] === [888]
+        && count($fallbackObserved) === 1 && $fallbackObserved[0]['hotel']['external_id'] === '888',
+        'unmapped first-page evidence survives broad fallback without public numeric-ID guessing');
+}
+echo "ANEX selected hotel upstream smoke passed\n";

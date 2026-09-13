@@ -135,6 +135,33 @@ final class AnyTourAnexSearchMappingRegistry
         };
     }
 
+    /**
+     * Search3 HOTELS filter, using only the final preview identities above.
+     * An empty result keeps the broad request: never drop a selected local hotel
+     * or truncate its accepted supplier identities to fit the 30-ID contract.
+     */
+    public function previewHotelIds(array $localHotelIds): array
+    {
+        if ($localHotelIds === [] || count($localHotelIds) > 30) return [];
+        $wanted = [];
+        foreach ($localHotelIds as $localId) {
+            $id = self::id($localId, 10);
+            if ($id === null) return [];
+            $wanted[$id] = true;
+        }
+        $covered = [];
+        $externalIds = [];
+        foreach ($this->index as $externalId => $localId) {
+            if (!isset($wanted[$localId])) continue;
+            $covered[$localId] = true;
+            $externalIds[] = (int) $externalId;
+            if (count($externalIds) > 30) return [];
+        }
+        if (count($covered) !== count($wanted)) return [];
+        sort($externalIds, SORT_NUMERIC);
+        return $externalIds;
+    }
+
     public function count(): int
     {
         return count($this->index);

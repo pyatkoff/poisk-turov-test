@@ -104,6 +104,13 @@ media403 и ранее выполненные TV эксперименты1696/AM
 - Existing secrets, AnyTour SSH/DB helper и client. Token-wide pacing1.05с,
   максимум10r/s и60r/min, Retry-After. HOTELS до30 единых ANEX ID; обычный preview
   первые7дней/одинPRICES. UI reveal/фильтры не вызывают сеть.
+- INT 2026-09-13: `anytour_anex_search3_run()` передаёт выбранные `hotelIds` в
+  supplier `HOTELS` через read-only `previewHotelIds()` существующего реестра.
+  Используются все принятые ANEX ID выбранных local hotels после manual/exclusion
+  precedence. Неполное покрытие или >30 ANEX ID сохраняет broad request + local filter,
+  без усечения списка и без новых mappings. Фильтр удерживается в исходном search context;
+  цены/топливо не меняются. Проверка — существующий offline Search3 smoke с first-page
+  regression и unmapped observation fallback; live/deploy этим пакетом не выполняется.
 - Point-TV: явное действие для принятого localID, отсутствующего в завершённом rawTV;
   исходные критерии + hotelIds, 1 in-flight, максимум3 новых отеля/generation,
   8status по7.5с/deadline60с. Unknown не переигрывать; исходный broad/lead searchId сохранять.
