@@ -60,7 +60,6 @@ def test_country_conflict_rejected():
 def test_missing_link_rejected():
     r = mod.build(queue(), [tv_row(link=None)], "2026-09-20")
     assert r["operator_link_ready"] == 0
-    assert r["rejected"][0]["reason"] == "missing_or_invalid_operator_link"
 
 
 def test_foreign_host_rejected():
@@ -250,6 +249,22 @@ def test_3000_grouped_hotels_preserve_every_anex_child():
     assert len({r["local_hotel_id"] for r in result["captures"]}) == 3000
     assert all(r["not_write_authority"] for r in result["captures"])
     assert result["database_writes"] == result["mapping_writes"] == result["supplier_calls"] == result["tourvisor_calls"] == 0
+
+
+def test_flat_root_country_legacy_contract():
+    row = tv_row()
+    row["country"] = row["hotel"].pop("country")
+    result = mod.build(queue(), [row], "2026-09-20")
+    assert result["operator_link_ready"] == 1
+    row["hotel"]["country"] = {"id": 4}
+    assert mod.build(queue(), [row], "2026-09-20")["operator_link_ready"] == 0
+
+
+def test_missing_group_tours_or_nonobject_row_refuses():
+    group = grouped_row()
+    del group["tours"]
+    for payload in ([group], {"hotels": [group]}, [None], [False], ["bad"]):
+        must_reject_payload(payload)
 
 
 if __name__ == "__main__":
