@@ -61,7 +61,7 @@ function anytour_andromeda_search3_operators(array $saved,array $values,PDO $pdo
     if(count($values)>30)throw new InvalidArgumentException();
     $wanted=[];
     foreach($values as $value){
-        if(!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
+        if(is_bool($value)||!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
         $wanted[(string)$value]=true;
     }
     try{
@@ -86,7 +86,7 @@ function anytour_andromeda_search3_townto(array $saved,array $regions,array $sub
     if(!$regions&&!$subregions)return null;
     foreach([$regions,$subregions] as $values){
         if(count($values)>30)throw new InvalidArgumentException();
-        foreach($values as $value)if(!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
+        foreach($values as $value)if(is_bool($value)||!is_scalar($value)||!preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value))throw new InvalidArgumentException();
     }
     $useSubregions=(bool)$subregions;$values=array_values(array_unique(array_map('strval',$useSubregions?$subregions:$regions)));
     if($useSubregions){
@@ -129,6 +129,7 @@ function anytour_andromeda_search3_hotels(array $localIds, PDO $pdo, array $save
 function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved): array {
     if(!is_int($request['generation']??null) || $request['generation']<1 || $request['generation']>2147483647 || !is_array($request['params']??null)) throw new InvalidArgumentException();
     $p=$request['params'];
+    if(is_bool($p['countryId']??null))throw new InvalidArgumentException();
     $country=(int)($saved['local_country_id']??1);
     if((string)($p['countryId']??'')!==(string)$country) throw new DomainException('country_not_loaded');
     foreach(['arrivalId','hotelServices','hotelTypes'] as $key) if(!empty($p[$key]))throw new DomainException('filter_not_supported');
@@ -141,9 +142,10 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     $operatorFilter=anytour_andromeda_search3_operators($saved,$operatorValues,$pdo);
     foreach(['hotelIds','regionIds','subregionIds'] as $key){
         if(isset($p[$key]) && (!is_array($p[$key]) || count($p[$key])>30))throw new InvalidArgumentException();
-        foreach($p[$key]??[] as $id)if(!is_scalar($id)||!ctype_digit((string)$id))throw new InvalidArgumentException();
+        foreach($p[$key]??[] as $id)if(is_bool($id)||!is_scalar($id)||!ctype_digit((string)$id))throw new InvalidArgumentException();
     }
     $destinationFilter=anytour_andromeda_search3_townto($saved,$p['regionIds']??[],$p['subregionIds']??[],$pdo,$country);
+    if(is_bool($p['departureId']??null))throw new InvalidArgumentException();
     $lookup=$pdo->prepare('SELECT name FROM catalog_departures WHERE id=? AND is_active=1');
     $lookup->execute([(int)($p['departureId']??0)]);$name=$lookup->fetchColumn();
     if(!$name)throw new DomainException('departure_not_loaded');
@@ -403,7 +405,7 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
 /** Only explicitly installed country catalogs are eligible for live search. */
 function anytour_andromeda_search3_catalog(array $config, array $request): array {
     $id=$request['params']['countryId']??null;
-    if(!is_scalar($id)||!preg_match('/^[1-9][0-9]{0,8}$/D',(string)$id))throw new InvalidArgumentException();
+    if(is_bool($id)||!is_scalar($id)||!preg_match('/^[1-9][0-9]{0,8}$/D',(string)$id))throw new InvalidArgumentException();
     $path=(string)$id==='1'?$config['catalog_path']:dirname($config['catalog_path']).'/countries/'.(string)$id.'.json';
     if(!is_file($path)||is_link($path))throw new DomainException('country_not_loaded');
     $saved=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
