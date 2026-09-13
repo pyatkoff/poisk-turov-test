@@ -111,6 +111,14 @@ const ambiguousMeals = {
   ],
 };
 assert.equal(api.hotelSummary(ambiguousMeals).meal, 'Premium All Inclusive · Not all inclusive', 'custom and negated supplier labels remain separate in the hotel summary');
+const equivalentUnknownLabels = {
+  ...multi,
+  tours: [
+    { ...multi.tours[0], meal: 'Premium All Inclusive' },
+    { ...multi.tours[1], meal: 'premium all inclusive' },
+  ],
+};
+assert.equal(api.hotelSummary(equivalentUnknownLabels).meal, 'Premium All Inclusive', 'one unknown identity is deduplicated by its canonical key, not display casing');
 const extendedBreakfast = {
   ...multi,
   tours: [

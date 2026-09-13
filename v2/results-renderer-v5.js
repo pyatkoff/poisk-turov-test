@@ -56,7 +56,9 @@ function representativeTour(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];
 function collapsedTours(h,limit){const tours=Array.isArray(h&&h.tours)?h.tours:[];if(limit===1&&tours.length)return[representativeTour(h)];return tours.slice(0,limit);}
 function distinctValues(values){return Array.from(new Set(values.map(v=>String(v==null?'':v).trim()).filter(Boolean)));}
 function hotelSummary(h){
-  const tours=Array.isArray(h&&h.tours)?h.tours:[],dates=distinctValues(tours.map(t=>formatTourDate(t&&t.date))),nights=Array.from(new Set(tours.map(t=>Number(t&&t.nights||0)).filter(n=>Number.isFinite(n)&&n>0))).sort((a,b)=>a-b),mealIdentities=tours.map(mealIdentity),meals=distinctValues(mealIdentities.map(item=>item&&item.label)),operators=hotelOperators(h).map(item=>item.label);
+  const tours=Array.isArray(h&&h.tours)?h.tours:[],dates=distinctValues(tours.map(t=>formatTourDate(t&&t.date))),nights=Array.from(new Set(tours.map(t=>Number(t&&t.nights||0)).filter(n=>Number.isFinite(n)&&n>0))).sort((a,b)=>a-b),mealIdentities=tours.map(mealIdentity),mealByKey=new Map();
+  mealIdentities.forEach(item=>{if(item&&!mealByKey.has(item.key))mealByKey.set(item.key,item.label);});
+  const meals=Array.from(mealByKey.values()),operators=hotelOperators(h).map(item=>item.label);
   const complete=predicate=>tours.length>0&&tours.every(predicate),dateComplete=complete(t=>!!formatTourDate(t&&t.date)),nightsComplete=complete(t=>Number.isFinite(Number(t&&t.nights))&&Number(t.nights)>0),mealComplete=mealIdentities.length>0&&mealIdentities.every(Boolean);
   const allCharter=complete(t=>t&&t.isCharter===true),someCharter=tours.some(t=>t&&t.isCharter===true);
   const nightsLabel=!nightsComplete?'Уточняется':nights.length===1?String(nights[0])+' ноч.':String(nights[0])+'–'+String(nights[nights.length-1])+' ноч.';
