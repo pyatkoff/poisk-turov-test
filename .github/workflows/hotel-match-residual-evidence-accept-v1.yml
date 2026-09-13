@@ -1,0 +1,58 @@
+name: MATCH residual evidence accept v1
+on:
+  push:
+    branches: [ops/match-residual-evidence-accept-1971-20260913-v1]
+    paths: [.github/match-residual-evidence-accept-1971-20260913-v1.arm]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-residual-evidence-accept-1971-20260913-v1}
+jobs:
+  accept:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate immutable inputs
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_full_catalog_reconcile.php)" = 'f551c9dd4c9365799a8728f29a9881dd3e3256d7'
+          test "$(git hash-object scripts/diagnostics/hotel_match_residual_evidence_audit.php)" = '46eb5e16a9838cd55af6f0542c60c44a8469cb3b'
+          test "$(git hash-object scripts/diagnostics/hotel_match_residual_evidence_accept.php)" = 'b1ec0e07e1220d7a387de1f147e809bb39748ea2'
+          php -l scripts/diagnostics/hotel_match_residual_evidence_accept.php
+          test "$(cat .github/match-residual-evidence-accept-1971-20260913-v1.arm)" = "$OPERATION_ID"
+      - name: Reserve before SSH
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          printf '%s\n' '{"operation_id":"hotel-match-residual-evidence-accept-1971-20260913-v1","state":"reserved_before_ssh","review_run":34755941552,"review_artifact":10317815762,"planned":{"anex":1,"andromeda":3},"database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}' > "$RUNNER_TEMP/$OPERATION_ID/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-residual-evidence-accept-v1-reservation, path: '${{ runner.temp }}/hotel-match-residual-evidence-accept-1971-20260913-v1/reservation.json', retention-days: 90}
+      - name: Apply guarded residual evidence
+        id: write
+        continue-on-error: true
+        env: {SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile
+          P=pathlib.Path; state=P(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+            x=P(path).read_text(); x=x[5:] if x.startswith('<?php') else x; return x.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          audit=body('scripts/diagnostics/hotel_match_residual_evidence_audit.php')
+          writer=body('scripts/diagnostics/hotel_match_residual_evidence_accept.php').replace("require_once __DIR__.'/hotel_match_residual_evidence_audit.php';",'',1)
+          writer=writer.replace("[$id,$t,'human_reviewed',$digest,$md]","[$id,$t,FC_POLICY,$digest,$md]",1)
+          wrapper="$stage='bootstrap';try{$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once $dbHelper;$db=v2_data_db();$stage='accept';$out=hmrea_accept($db);echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";}catch(Throwable $e){echo json_encode(['status'=>'failed','operation_id'=>'hotel-match-residual-evidence-accept-1971-20260913-v1','stage'=>$stage,'reason'=>$e->getMessage(),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'committed'=>false,'readback_verified'=>false,'no_replay'=>true],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),\"\\n\";}"
+          source='<?php\n'+helper+'\n'+audit+'\n'+writer+'\n'+wrapper; raw=os.environ['SSH_KEY'].strip();host=os.environ['SSH_HOST'].strip();user=os.environ['SSH_USER'].strip()
+          with tempfile.TemporaryDirectory(prefix='hmrea-',dir=os.environ['RUNNER_TEMP']) as td:
+            key=P(td)/'key';known=P(td)/'known';key.write_text(raw.rstrip()+'\n') if 'PRIVATE KEY' in raw else key.write_bytes(base64.b64decode(raw));key.chmod(0o600);cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','ControlMaster=no','-o','ControlPath=none','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=20','-o','LogLevel=ERROR','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M'];p=subprocess.run(cmd,input=source,text=True,capture_output=True,timeout=420)
+          if p.returncode!=0: raise SystemExit(2)
+          v=json.loads(p.stdout); raw_result=(json.dumps(v,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();state.joinpath('result.json').write_bytes(raw_result);ok=v.get('status')=='completed' and v.get('committed') is True and v.get('readback_verified') is True and v.get('database_writes')==4 and v.get('mapping_writes')==4 and v.get('supplier_calls')==0 and v.get('tourvisor_calls')==0;state.joinpath('receipt.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'completed_committed_readback_verified' if ok else ('unknown_committed' if v.get('committed') else 'known_rolled_back'),'run_id':int(os.environ['GITHUB_RUN_ID']),'result_sha256':hashlib.sha256(raw_result).hexdigest(),'database_writes':v.get('database_writes'),'mapping_writes':v.get('mapping_writes'),'committed':v.get('committed'),'readback_verified':v.get('readback_verified'),'no_replay':True},sort_keys=True)+'\n');
+          if not ok: raise SystemExit(3)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: 'match-residual-evidence-accept-v1-${{ github.run_id }}', path: '${{ runner.temp }}/hotel-match-residual-evidence-accept-1971-20260913-v1/', retention-days: 90}
+      - name: Terminal gate
+        if: steps.write.outcome != 'success'
+        run: exit 1
