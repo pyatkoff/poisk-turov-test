@@ -1,0 +1,37 @@
+name: MATCH ANEX rendered sitemap discovery v10
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-rendered-sitemap-discovery-v10.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-rendered-sitemap-discovery-1971-20260914-v10}
+jobs:
+  discover:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable public discovery
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_browser","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
+      - name: Render public hotel sitemap pages and capture link source
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"
+          npm init -y >/dev/null 2>&1; npm install --silent playwright@1.55.0; npx playwright install --with-deps chromium >/dev/null
+          node <<'NODE'
+          const fs=require('fs'),{chromium}=require('playwright');const S=process.env.RUNNER_TEMP+'/'+process.env.OPERATION_ID;
+          const countries=['egypt','turkey','thailand','uae','vietnam','sri-lanka','maldives','cuba'];
+          (async()=>{const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({userAgent:'Mozilla/5.0 AnyTour-MATCH-sitemap/1.0'});const rows=[];
+          for(const c of countries){const p=await ctx.newPage(),req=[],resp=[];p.on('request',q=>{const u=q.url();if(/anextour/i.test(u)&&(/api|hotel|sitemap/i.test(u)))req.push(u)});p.on('response',q=>{const u=q.url();if(/anextour/i.test(u)&&(/api|hotel|sitemap/i.test(u)))resp.push({url:u,status:q.status(),type:q.request().resourceType()})});let err=null,final=null,links=[];try{await p.goto('https://www.anextour.ru/sitemap/hotels/'+c,{waitUntil:'domcontentloaded',timeout:15000});await p.waitForTimeout(3500);final=p.url();links=await p.locator('a[href]').evaluateAll(xs=>xs.map(x=>x.href).filter(x=>/\/tours\//.test(x)||/\/sitemap\/hotels\//.test(x)))}catch(e){err=String(e).slice(0,180)}await p.close();rows.push({country:c,final_url:final,hotel_tour_links:[...new Set(links.filter(x=>/\/tours\//.test(x)))],sitemap_links:[...new Set(links.filter(x=>/\/sitemap\/hotels\//.test(x)))],network_requests:[...new Set(req)].slice(0,200),network_responses:resp.slice(0,200),error:err})}
+          await browser.close();const out={status:'completed',operation_id:process.env.OPERATION_ID,rows,total_hotel_links:rows.reduce((n,r)=>n+r.hotel_tour_links.length,0),database_writes:0,mapping_writes:0,tourvisor_calls:0,supplier_search_calls:0,no_replay:true};fs.writeFileSync(S+'/result.json',JSON.stringify(out,null,2)+'\n');console.log(JSON.stringify({total_hotel_links:out.total_hotel_links,by_country:Object.fromEntries(rows.map(r=>[r.country,r.hotel_tour_links.length])),network_counts:Object.fromEntries(rows.map(r=>[r.country,r.network_responses.length]))}));})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];x=json.loads((S/'result.json').read_text());r={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'total_hotel_links':x['total_hotel_links'],'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'no_replay':True};(S/'receipt.json').write_text(json.dumps(r,sort_keys=True)+'\n');print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: match-anex-rendered-sitemap-discovery-v10-result, path: '${{ runner.temp }}/hotel-match-anex-rendered-sitemap-discovery-1971-20260914-v10/', retention-days: 90}
