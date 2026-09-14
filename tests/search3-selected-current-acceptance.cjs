@@ -52,6 +52,35 @@ const settle = page => page.evaluate(async () => {
 });
 const columnCount = value => String(value || '').trim().split(/\s+/).filter(Boolean).length;
 
+async function checkLeadEntryViewport(page, root, width, height) {
+  await page.setViewportSize({ width, height });
+  await root.locator('.search3-flight-continue button').click();
+  await page.waitForFunction(() => {
+    const phone = document.querySelector('#selectedTour .lead-form input[name="phone"]');
+    const box = phone?.getBoundingClientRect();
+    const label = phone?.closest('label').getBoundingClientRect();
+    return document.activeElement === phone && box && box.top >= 0 && box.bottom <= innerHeight && label.top >= 0 && label.bottom <= innerHeight;
+  });
+  await settle(page);
+  const geometry = await root.locator('.lead-form').evaluate(form => {
+    const rect = node => {
+      const box = node.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height };
+    };
+    const phone = form.querySelector('input[name="phone"]');
+    return { viewport: { width: innerWidth, height: innerHeight }, form: rect(form), phone: rect(phone),
+      label: rect(phone.closest('label')), activeName: document.activeElement?.name,
+      summary: form.querySelector('.lead-selection-summary').textContent.replace(/\s+/g, ' ').trim() };
+  });
+  assert.equal(geometry.activeName, 'phone', 'the canonical handoff keeps synchronous phone focus');
+  assert.ok(geometry.phone.top >= 0 && geometry.phone.bottom <= height, `${width}x${height}: focused phone is completely on screen`);
+  assert.ok(geometry.label.top >= 0 && geometry.label.bottom <= height, `${width}x${height}: phone label and hint are also visible`);
+  assert.ok(geometry.phone.left >= 0 && geometry.phone.right <= width, 'phone stays within the viewport');
+  assert.match(geometry.summary, /SUNRISE Resort & Spa/, 'scrolling retains the exact tour summary');
+  await page.screenshot({ path: path.join(output, `lead-entry-viewport-${width}x${height}.png`), animations: 'disabled' });
+  return geometry;
+}
+
 async function checkSelectedFacts(root, width) {
   const geometry = await root.locator('.facts').evaluate(grid => {
     const rect = node => {
@@ -251,7 +280,9 @@ async function run(browser, width) {
     }
     await root.screenshot({ path: path.join(output, `selected-current-${width}-detail.png`), animations: 'disabled' });
 
-    await root.locator('.search3-flight-continue button').click();
+    const leadEntryViewports = [await checkLeadEntryViewport(page, root, width, width === 320 ? 568 : width === 375 ? 667 : 600)];
+    if (width <= 375) leadEntryViewports.push(await checkLeadEntryViewport(page, root, width, 360));
+    await page.setViewportSize({ width, height: 1000 });
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
     await page.waitForFunction(() => document.activeElement?.name === 'phone');
     await settle(page);
@@ -305,7 +336,7 @@ async function run(browser, width) {
     const longFlightPrice = [320, 375, 1440].includes(width) ? await checkLongFlightPrice(page, width) : null;
     assert.deepEqual(posts, [], 'acceptance never sends a real lead or any POST');
     assert.deepEqual(browserErrors, [], 'acceptance fixture has no browser errors');
-    return { width, detail, factGeometry, lead, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
+    return { width, detail, factGeometry, lead, leadEntryViewports, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
   } catch (error) {
     await page.screenshot({ path: path.join(output, `selected-current-${width}-failure.png`), fullPage: true });
     fs.writeFileSync(path.join(output, `selected-current-${width}-failure.json`), JSON.stringify({ message: String(error), browserErrors }, null, 2) + '\n');
