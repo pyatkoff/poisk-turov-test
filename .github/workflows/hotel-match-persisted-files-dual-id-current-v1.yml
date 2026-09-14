@@ -1,13 +1,13 @@
-name: MATCH photo hotelCode CURRENT catalog v6
+name: MATCH photo hotelCode CURRENT catalog v7
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-persisted-files-dual-id-current-v1.yml]
 permissions: {contents: read, actions: read}
-env: {OPERATION_ID: hotel-match-photo-hotelcode-current-catalog-1971-20260914-v6}
+env: {OPERATION_ID: hotel-match-photo-hotelcode-current-catalog-1971-20260914-v7}
 jobs:
   join:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 6
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 7
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,7 +27,7 @@ jobs:
           python3 - <<'PY'
           import json,math,os,pathlib,re,shlex,subprocess,tempfile,unicodedata
           root=pathlib.Path(os.environ['RUNNER_TEMP']);S=root/os.environ['OPERATION_ID'];ev=json.loads((root/'e/evidence.json').read_text());rr=json.loads((root/'r/result.json').read_text())
-          php=r'''$root=realpath(getcwd());$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');try{$hot=$db->query("SELECT * FROM catalog_hotels WHERE country_id IN (1,2,4,8,9,10,12,16)")->fetchAll(PDO::FETCH_ASSOC);$mapped=$db->query("SELECT anex_hotel_id FROM anex_hotel_search_mappings")->fetchAll(PDO::FETCH_COLUMN);$manual=$db->query("SELECT anex_hotel_id FROM anex_hotel_decisions")->fetchAll(PDO::FETCH_COLUMN);$db->commit();echo json_encode(['hotels'=>$hot,'mapped'=>$mapped,'manual'=>$manual],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}'''
+          php=r'''$root=realpath(getcwd());$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');try{$hot=$db->query("SELECT * FROM catalog_hotels WHERE country_id IN (1,2,4,8,9,10,12,16)")->fetchAll(PDO::FETCH_ASSOC);$mapped=$db->query("SELECT anex_hotel_id FROM anex_hotel_search_mappings")->fetchAll(PDO::FETCH_COLUMN);$manual=$db->query("SELECT anex_hotel_id FROM anex_hotel_decisions")->fetchAll(PDO::FETCH_COLUMN);$db->commit();echo json_encode(['hotels'=>$hot,'mapped'=>$mapped,'manual'=>$manual],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}'''
           v=[os.environ[k].strip() for k in ['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER']]
           with tempfile.TemporaryDirectory(dir=root) as td:
             key=pathlib.Path(td)/'k';key.write_text(v[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'h';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-l',v[2],v[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=1 -d log_errors=0 -r '+shlex.quote(php)];p=subprocess.run(cmd,text=True,capture_output=True,timeout=180)
@@ -64,4 +64,4 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: match-photo-hotelcode-current-v6-result, path: '${{ runner.temp }}/hotel-match-photo-hotelcode-current-catalog-1971-20260914-v6/', retention-days: 90}
+        with: {name: match-photo-hotelcode-current-v7-result, path: '${{ runner.temp }}/hotel-match-photo-hotelcode-current-catalog-1971-20260914-v7/', retention-days: 90}
