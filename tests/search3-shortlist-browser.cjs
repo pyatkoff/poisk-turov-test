@@ -280,11 +280,10 @@ async function checkJourney(browser, width) {
     assert.equal(visual.priceColor, 'rgb(21, 27, 36)', 'saved price uses the primary ink hierarchy rather than link blue');
     assert.ok(visual.select.height >= 44 && visual.remove.height >= 44, 'comparison actions retain 44px targets');
     assert.equal(visual.removeBackground, 'rgba(0, 0, 0, 0)', 'remove stays visually secondary');
+    assert.ok(visual.remove.x > visual.select.x, 'comparison actions retain a compact primary/secondary row');
     if (width <= 430) {
-      assert.ok(visual.select.width >= visual.actions.width - 3, 'mobile primary action spans the comparison card');
-      assert.ok(visual.remove.y > visual.select.y, 'mobile remove action follows the primary action instead of competing beside it');
-    } else {
-      assert.ok(visual.remove.x > visual.select.x, 'desktop actions retain a compact primary/secondary row');
+      assert.ok(Math.abs(visual.remove.y - visual.select.y) < 2, 'mobile primary and remove actions share the compact row');
+      assert.ok(visual.remove.x + visual.remove.width <= visual.actions.x + visual.actions.width + 2, 'mobile action pair stays contained');
     }
     const three = await checkComparisonGeometry(page, width, 3);
 
