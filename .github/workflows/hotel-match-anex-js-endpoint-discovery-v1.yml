@@ -1,0 +1,59 @@
+name: MATCH ANEX JS endpoint discovery v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-js-endpoint-discovery-v1.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-js-endpoint-discovery-1971-20260914-v1}
+jobs:
+  discover:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Discover public JS/API references read-only
+        run: |
+          set -euo pipefail; mkdir -p /tmp/out /tmp/js
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+          curl --fail --location --max-redirs 4 --max-time 25 -A 'AnyTour-MATCH-js-evidence/1.0' -o /tmp/page.html 'https://anextour.ru/tours/vietnam/le-van-hotel'
+          python3 - <<'PY'
+          import re,html,urllib.parse,urllib.request,pathlib,json,hashlib,time
+          page=pathlib.Path('/tmp/page.html').read_text(errors='replace'); base='https://anextour.ru/tours/vietnam/le-van-hotel'
+          srcs=[]
+          for s in re.findall(r'<script[^>]+src=["\']([^"\']+)',page,re.I):
+            u=urllib.parse.urljoin(base,html.unescape(s)); p=urllib.parse.urlparse(u)
+            if p.scheme=='https' and p.hostname in {'anextour.ru','www.anextour.ru'}: srcs.append(u)
+          srcs=list(dict.fromkeys(srcs))[:80]; hits=[]; fetched=[]
+          pats=[r'https?://[^\\s"\'<>]+',r'["\'](/[^"\']*(?:hotel|gallery|photo|image|media|tour)[^"\']*)["\']',r'["\']([^"\']*(?:api|graphql)[^"\']*)["\']']
+          keys=re.compile(r'hotel(code|id)?|gallery|photos?|images?|media|api|graphql|detail',re.I)
+          for i,u in enumerate(srcs):
+            try:
+              req=urllib.request.Request(u,headers={'User-Agent':'AnyTour-MATCH-js-evidence/1.0'})
+              with urllib.request.urlopen(req,timeout=20) as r: b=r.read(4*1024*1024)
+              t=b.decode(errors='replace'); fetched.append({'url':u,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()})
+              for m in keys.finditer(t):
+                a=max(0,m.start()-500);z=min(len(t),m.end()+1000);c=t[a:z]
+                refs=[]
+                for pat in pats:
+                  for x in re.findall(pat,c,re.I):
+                    if isinstance(x,tuple): x=''.join(x)
+                    if x and len(x)<1500: refs.append(x)
+                hits.append({'script':u,'keyword':m.group(0),'offset':m.start(),'snippet':re.sub(r'\\s+',' ',c)[:1500],'refs':list(dict.fromkeys(refs))[:30]})
+                if len(hits)>=600: break
+              if len(hits)>=600: break
+            except Exception as e: fetched.append({'url':u,'error':type(e).__name__+':'+str(e)[:200]})
+            time.sleep(.2)
+          out={'status':'completed','operation_id':'hotel-match-anex-js-endpoint-discovery-1971-20260914-v1','script_count':len(srcs),'scripts':srcs,'fetched':fetched,'hit_count':len(hits),'hits':hits,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'scripts':len(srcs),'hits':len(hits),'sample':[{'keyword':h['keyword'],'refs':h['refs'][:8]} for h in hits[:25]]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-js-endpoint-discovery-v1-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+          retention-days: 90
