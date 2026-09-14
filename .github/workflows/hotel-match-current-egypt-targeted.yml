@@ -1,0 +1,102 @@
+name: MATCH CURRENT Egypt targeted Tourvisor
+on:
+  push:
+    branches: [match/current-egypt-targeted-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php'
+      - '.github/workflows/hotel-match-current-egypt-targeted.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-current-egypt-targeted-1971-20260914
+  cancel-in-progress: false
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - op: hotel-match-old-tv-hotellist-mass-1971-20260914-v8-egypt
+            batch: 1
+            date: '2026-11-08'
+            focus: '42927:131347,19226:14140,37048:97122,1361:125,4158:37412,28396:293,36906:21636,780:464,1771:190,37719:132075,1655:157782,30600:129,37012:83106,44562:159,1767:182,1772:191,835:196,28563:73342,30599:159159,1768:183,4131:488,1328:128,5215:121626,990:162145,1769:186,43850:151784,45166:148539,45249:127294,45259:143442,45330:130621'
+            limit: 30
+          - op: hotel-match-old-tv-hotellist-mass-1971-20260914-v9-egypt
+            batch: 2
+            date: '2026-11-08'
+            focus: '29556:15693,29557:73343'
+            limit: 2
+    env:
+      OUT: /tmp/match-current-egypt-${{ matrix.batch }}
+      OPERATION_ID: ${{ matrix.op }}
+      MATCH_DATE: ${{ matrix.date }}
+      MATCH_FOCUS_PAIRS: ${{ matrix.focus }}
+      MATCH_LIMIT: ${{ matrix.limit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Offline guards
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
+          php scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php --self-test
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
+          grep -Fq "hotelIds" scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
+          grep -Fq "no_current_unresolved_focus" scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
+      - name: Run immutable targeted evidence operation
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/key-${{ matrix.batch }}"; known="$RUNNER_TEMP/known-${{ matrix.batch }}"; sock="$RUNNER_TEMP/sock-${{ matrix.batch }}"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=6 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_DATE='$MATCH_DATE' MATCH_FOCUS_PAIRS='$MATCH_FOCUS_PAIRS' MATCH_LIMIT='$MATCH_LIMIT' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])
+          def load(n):
+              try:return json.loads((p/n).read_text())
+              except Exception:return {}
+          res=load('result.json'); rec=load('receipt.json'); rsv=load('reservation.json')
+          rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
+          verified=(bool(res) and bool(rec) and bool(rsv) and rec.get('result_sha256')==rh and rec.get('readback_verified') is True
+                    and res.get('operation_id')==os.environ['OPERATION_ID'] and rsv.get('operation_id')==os.environ['OPERATION_ID']
+                    and res.get('database_writes')==0 and res.get('mapping_writes')==0 and res.get('booking_calls')==0 and res.get('lead_calls')==0)
+          gate={'operation_id':os.environ['OPERATION_ID'],'verified':verified,'remote_exit':int(os.environ['REMOTE_RC']),
+                'status':res.get('status'),'reason':res.get('reason'),'date':res.get('date'),'search_id':res.get('search_id'),
+                'current_focus_count':len(res.get('current_focus') or {}),'flattened_rows':res.get('flattened_rows'),
+                'unique_tours_selected':res.get('unique_tours_selected'),'direct_hotellist_identities':res.get('direct_hotellist_identities'),
+                'safe_current_candidates':res.get('safe_current_candidates'),'existing_same_pair':res.get('existing_same_pair'),
+                'holds':res.get('holds'),'rate_limited':res.get('rate_limited'),'auth_rejected':res.get('auth_rejected'),
+                'tourvisor_calls':res.get('tourvisor_calls'),'result_sha256':rh,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,sort_keys=True))
+          if not verified: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-current-egypt-${{ matrix.batch }}-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          retention-days: 90
