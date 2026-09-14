@@ -78,7 +78,8 @@ def load_handoff(directory: Path, source: str) -> tuple[dict[str, str], dict[str
             or deps.get('retained_install_baseline') != '163ef9eed9993c08558b84b7a0295e8b4295d2e8'):
         raise ValueError('handoff_receipt')
     expected_hashes = receipt.get('files_sha256')
-    if not isinstance(expected_hashes, dict) or list(expected_hashes) != SOURCE_PATHS:
+    if (not isinstance(expected_hashes, dict) or len(expected_hashes) != len(SOURCE_PATHS)
+            or set(expected_hashes) != set(SOURCE_PATHS)):
         raise ValueError('handoff_receipt')
     files: dict[str, str] = {}
     hashes: dict[str, str] = {}
