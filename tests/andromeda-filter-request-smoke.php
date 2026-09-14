@@ -135,3 +135,30 @@ if(count($wire)!==1||$wire[0]['ADULT']!=='2'||$wire[0]['CHILD']!=='2'||$wire[0][
  ||$wire[0]['NIGHTS_FROM']!=='7'||$wire[0]['NIGHTS_TILL']!=='7')
  throw new RuntimeException('validated family changed at the mock supplier boundary');
 echo "Andromeda party/stay: malformed inputs rejected; exact family ages and numeric strings preserved\n";
+
+// Regression: the loader must return the same local-country authority that it has already validated.
+$catalogDir=sys_get_temp_dir().'/andromeda-country-context-'.bin2hex(random_bytes(6));
+if(!mkdir($catalogDir,0700)||!mkdir($catalogDir.'/countries',0700))throw new RuntimeException('catalog fixture mkdir failed');
+try{
+ $legacy=$saved;unset($legacy['local_country_id']);
+ $main=$catalogDir.'/catalog.json';
+ file_put_contents($main,json_encode($legacy,JSON_THROW_ON_ERROR));
+ $config=['catalog_path'=>$main];
+ $legacyRequest=$base;
+ $loaded=anytour_andromeda_search3_catalog($config,$legacyRequest);
+ if(($loaded['local_country_id']??null)!==1)throw new RuntimeException('legacy default country context was not materialized');
+ $country9=$saved;$country9['local_country_id']='9';
+ file_put_contents($catalogDir.'/countries/9.json',json_encode($country9,JSON_THROW_ON_ERROR));
+ $request9=$base;$request9['params']['countryId']='9';
+ $loaded9=anytour_andromeda_search3_catalog($config,$request9);
+ if(($loaded9['local_country_id']??null)!==9)throw new RuntimeException('validated country context was not normalized to integer');
+ $country9['local_country_id']=8;
+ file_put_contents($catalogDir.'/countries/9.json',json_encode($country9,JSON_THROW_ON_ERROR));
+ try{
+  anytour_andromeda_search3_catalog($config,$request9);
+  throw new RuntimeException('mismatched country catalog accepted');
+ }catch(DomainException $expected){}
+}finally{
+ @unlink($catalogDir.'/countries/9.json');@unlink($catalogDir.'/catalog.json');@rmdir($catalogDir.'/countries');@rmdir($catalogDir);
+}
+echo "Andromeda country catalog: validated local context is materialized for package consumers\n";
