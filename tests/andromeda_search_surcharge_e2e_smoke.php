@@ -2,6 +2,7 @@
 declare(strict_types=1);
 define('ANYTOUR_ANDROMEDA_SURCHARGE_E2E_TEST_MODE', true);
 require __DIR__ . '/../scripts/diagnostics/andromeda_search_surcharge_e2e.php';
+require __DIR__ . '/../app/integrations/andromeda-price-observation.php';
 
 $request = anytour_andromeda_surcharge_e2e_request();
 if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8'
@@ -37,7 +38,7 @@ if (anytour_andromeda_surcharge_e2e_find($projection, $offerRef) !== $before) {
 
 $after = $before;
 $after['base_search_price'] = $before['price'];
-$after['price'] = ['amount' => '114356.00', 'currency' => 'RUB'];
+$after['price'] = ['amount' => '114356.00', 'currency' => 'RUB', 'source' => 'derived_search_estimate'];
 $after['search_surcharge'] = [
     'state' => 'estimated',
     'arithmetic_applied' => true,
@@ -62,22 +63,12 @@ $quote = [
     'state' => 'quote_verified',
     'final_price_verified' => true,
     'final_price' => ['amount' => '120000.00', 'currency' => 'RUB'],
-    'served_price_observation' => [
-        'schema_version' => 1,
-        'provider' => 'andromeda',
-        'basis' => 'search_api_response',
-        'state' => 'comparable',
-        'price_basis' => 'transport_surcharge_estimate',
-        'served_at' => 1,
-        'actualized_at' => 2,
-        'served_price' => ['amount' => '114356.00', 'currency' => 'RUB'],
-        'final_price' => ['amount' => '120000.00', 'currency' => 'RUB'],
-        'signed_delta_amount' => '5644.00',
-        'absolute_delta_amount' => '5644.00',
-        'relative_delta_bps' => 494,
-        'final_price_verified' => true,
-    ],
 ];
+// The actual recorder intentionally stores money without the listing provenance tag.
+$quote['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed([
+    'served_price' => ['amount' => '114356.00', 'currency' => 'RUB'],
+    'basis' => 'transport_surcharge_estimate', 'issued_at' => 1,
+], $quote, 2);
 $quoteEvidence = anytour_andromeda_surcharge_e2e_verify_quote($listed, $quote);
 if (($quoteEvidence['price_basis'] ?? null) !== 'transport_surcharge_estimate'
     || ($quoteEvidence['served_price']['amount'] ?? null) !== '114356.00'
@@ -88,6 +79,18 @@ if (($quoteEvidence['price_basis'] ?? null) !== 'transport_surcharge_estimate'
     || ($quoteEvidence['listing_price_ref_sha256'] ?? null) !== hash('sha256', $listed['listing_price_ref'])) {
     throw new RuntimeException('served quote comparison changed');
 }
+
+// Provenance is validated separately, not discarded from the input or guessed.
+foreach ([['source','unexpected'], ['currency','USD'], ['amount','140000.00'], ['extra',true]] as [$key,$value]) {
+    $wrong = $listed; $wrong['price'][$key] = $value;
+    try {
+        anytour_andromeda_surcharge_e2e_verify_quote($wrong, $quote);
+        throw new RuntimeException('foreign money accepted');
+    } catch (RuntimeException $expected) {
+        if ($expected->getMessage() !== 'served_quote_observation_invalid') throw $expected;
+    }
+}
+if ($listed['price']['source'] !== 'derived_search_estimate') throw new RuntimeException('listing mutated');
 
 $broken = $after;
 unset($broken['base_search_price']);
@@ -121,6 +124,20 @@ try {
 if (anytour_andromeda_surcharge_e2e_reason(new RuntimeException('supplier_unavailable')) !== 'supplier_unavailable'
     || anytour_andromeda_surcharge_e2e_reason(new RuntimeException("secret value\nleak")) !== 'operation_unconfirmed') {
     throw new RuntimeException('reason sanitization failed');
+}
+
+// A normal structured rejection must survive the pinned SSH helper's exit contract.
+$process = proc_open([PHP_BINARY, '-d', 'allow_url_fopen=0',
+    __DIR__ . '/../scripts/diagnostics/andromeda_search_surcharge_e2e.php'],
+    [1 => ['pipe','w'], 2 => ['pipe','w']], $pipes, sys_get_temp_dir());
+if (!is_resource($process)) throw new RuntimeException('CLI fixture unavailable');
+$stdout = stream_get_contents($pipes[1]); $stderr = stream_get_contents($pipes[2]);
+fclose($pipes[1]); fclose($pipes[2]); $exit = proc_close($process);
+$reply = json_decode($stdout, true, 16, JSON_THROW_ON_ERROR);
+if ($exit !== 0 || $stderr !== '' || $reply['status'] !== 'blocked'
+    || $reply['phase'] !== 'preflight' || $reply['reason'] !== 'project_invalid'
+    || $reply['calc_calls'] !== 0 || $reply['booking_calls'] !== 0) {
+    throw new RuntimeException('structured rejection lost on CLI wire');
 }
 
 echo "Andromeda surcharge E2E: new cohort + served listing to verified quote contract passed\n";
