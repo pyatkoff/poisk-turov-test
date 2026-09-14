@@ -89,4 +89,68 @@ foreach (['estimated', 'zero', 'ambiguous', 'unknown', 'stale'] as $case) {
         surcharge_check($disk['status'] === ['ambiguous'=>'complete','unknown'=>'unknown','stale'=>'stale'][$case], 'durable terminal status');
     }
 }
-echo "Saved surcharge: one opt-in get_flights, same budget/lock, safe persisted estimate, local read, expiry/mapping/party invalidation, all outcomes no-replay passed offline.\n";
+
+// Real consumer regression: ordinary Search3 listing reads the already-completed
+// sidecar locally, uses base+surcharge only for list display, and leaves the retained
+// offer/selected DTO at the original base price for later authoritative actualization.
+$listingDir = $root . '/listing/searches'; mkdir($listingDir, 0700, true);
+anytour_andromeda_search3_save($listingDir . '/' . $ref . '-1.json', ['status'=>'complete','store'=>$state]);
+anytour_andromeda_search3_save($listingDir . '/' . $ref . '-auth.json', [
+    'created_at'=>$created,'session'=>['sid'=>'listing-fixture-session','expires'=>time()+1800]]);
+$listingPath = $listingDir . '/' . $ref . '-' . $created . '-1-' . $context['offer_ref'] . '-surcharge-v1.json';
+$listingBootstrapCalls = 0; $listingFlightCalls = 0;
+$listingAllows = static fn(array $offer): bool => $offer['local_hotel_id'] === 900;
+$listingBootstrap = static function($url) use (&$listingBootstrapCalls, $raw): array {
+    ++$listingBootstrapCalls;
+    return ['status'=>200,'body'=>json_encode($raw)];
+};
+$listingFlight = static function(string $url, string $post) use (&$listingFlightCalls, $raw): array {
+    ++$listingFlightCalls;
+    $reply = $raw;
+    $reply['claimDocument'][0]['moneys'] = [['money'=>[
+        ['currency'=>'USD','rate'=>'1','isClaimCurrency'=>'true'],
+        ['currency'=>'RUB','rate'=>'100','isClaimCurrency'=>'false']]]];
+    $reply['variants'] = [['transports'=>[['transport'=>[
+        ['type'=>'ttAvia','details'=>[['detail'=>[['markup'=>'100','currency'=>'USD']]]]],
+        ['type'=>'ttAvia','details'=>[['detail'=>[['markup'=>'100','currency'=>'USD']]]]],
+    ]]]]];
+    return ['status'=>200,'body'=>json_encode($reply)];
+};
+anytour_andromeda_capture_saved_package($listingDir, $context, $source, $listingAllows, $listingBootstrap, true, $clock);
+$listingReceipt = anytour_andromeda_capture_saved_package(
+    $listingDir, $context, $source, $listingAllows, $listingBootstrap, true, $clock, true, $listingFlight);
+surcharge_check(($listingReceipt['surcharge']['fact']['search_price_with_surcharge']['amount'] ?? null) === '93080.00', 'listing fixture has retained estimate');
+surcharge_check($listingBootstrapCalls === 1 && $listingFlightCalls === 1, 'listing producer calls bounded before projection');
+
+$pdo = new PDO('sqlite::memory:'); $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo->exec('CREATE TABLE catalog_hotels(id INTEGER,name TEXT,country_id INTEGER,country_name TEXT,region_id INTEGER,region_name TEXT,subregion_id INTEGER,subregion_name TEXT,category INTEGER,rating REAL,is_active INTEGER,primary_image_url TEXT)');
+$pdo->exec('CREATE TABLE andromeda_hotel_identities(supplier_namespace TEXT,external_hotel_id TEXT,local_hotel_id INTEGER,decision_status TEXT)');
+$pdo->exec("INSERT INTO catalog_hotels VALUES(900,'Fixture hotel',4,'Турция',10,'Анталья',11,'Кемер',5,4.7,1,NULL)");
+$pdo->exec("INSERT INTO andromeda_hotel_identities VALUES('andromeda_catalog','3414',900,'accepted')");
+$request = ['generation'=>1,'params'=>[
+    'countryId'=>4,'dateFrom'=>'2026-09-22','dateTo'=>'2026-09-22','nightsFrom'=>7,'nightsTo'=>7,
+    'adults'=>2,'childs'=>[],'meal'=>'','currency'=>'RUB','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],
+    'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,
+    'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>'']];
+$listingPage = ['offers'=>$page['offers'],'search_ref'=>$ref,'generation'=>1,'page'=>1,'pages_count'=>1,'status'=>'complete'];
+$beforeState = json_encode($state, JSON_THROW_ON_ERROR);
+$projected = anytour_andromeda_search3_project($request, $pdo, $listingPage, [], [
+    'directory'=>$listingDir,'store'=>$state,'created_at'=>$created]);
+$tour = $projected['hotels'][0]['tours'][0] ?? null;
+surcharge_check(is_array($tour), 'listing projection returns tour');
+surcharge_check(($tour['price']['amount'] ?? null) === '93080.00', 'listing displays base plus retained surcharge');
+surcharge_check(($tour['base_search_price']['amount'] ?? null) === '83080', 'listing preserves explicit base fact');
+surcharge_check(($tour['search_surcharge']['party_surcharge']['amount'] ?? null) === '10000.00', 'listing exposes separate surcharge fact');
+surcharge_check(($tour['search_surcharge']['final_price_verified'] ?? null) === false, 'listing estimate remains non-final');
+surcharge_check(json_encode($state, JSON_THROW_ON_ERROR) === $beforeState, 'projection does not mutate retained base snapshot');
+surcharge_check($listingBootstrapCalls === 1 && $listingFlightCalls === 1, 'listing projection is supplier-free');
+
+unlink($listingPath);
+$fallback = anytour_andromeda_search3_project($request, $pdo, $listingPage, [], [
+    'directory'=>$listingDir,'store'=>$state,'created_at'=>$created]);
+$fallbackTour = $fallback['hotels'][0]['tours'][0] ?? null;
+surcharge_check(($fallbackTour['price']['amount'] ?? null) === '83080', 'missing surcharge cache keeps base listing price');
+surcharge_check(!isset($fallbackTour['search_surcharge']) && !isset($fallbackTour['base_search_price']), 'missing surcharge remains unknown, never synthetic zero');
+surcharge_check($listingBootstrapCalls === 1 && $listingFlightCalls === 1, 'missing cache never calls supplier from listing');
+
+echo "Saved surcharge: one opt-in get_flights, same budget/lock, safe persisted estimate, supplier-free listing projection, base fallback, expiry/mapping/party invalidation, all outcomes no-replay passed offline.\n";
