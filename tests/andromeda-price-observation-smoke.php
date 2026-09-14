@@ -123,15 +123,51 @@ observation_check(AnyTourAndromedaPriceObservation::compareServed($receipt,$othe
 try { AnyTourAndromedaPriceObservation::summarize([$served]);observation_check(false,'corpora_not_mixed'); }
 catch (InvalidArgumentException $e) { observation_check(true,'corpora_not_mixed'); }
 
+// The selected-offer owner retains normalizer metadata; receipts deliberately do not.
+$normalized = $resolved;
+$normalized['offer']['price'] += ['currency_id'=>'1','kind'=>'offer','fees'=>'unknown','final'=>false];
+$originalNormalized = $normalized;
+observation_check($read($receipts,$reference,$normalized) === $receipt,'normalized_base_receipt');
+observation_check($normalized === $originalNormalized,'normalized_price_preserved');
+foreach (['amount'=>'119115','currency'=>'USD','currency_id'=>true,'kind'=>'package',
+    'fees'=>'included','final'=>true,'source'=>'guessed','extra'=>true] as $key=>$value) {
+    $wrong=$normalized;$wrong['offer']['price'][$key]=$value;
+    observation_check($read($receipts,$reference,$wrong)===null,'normalized_reject_'.$key);
+}
+$wrong=$normalized;unset($wrong['offer']['price']['fees']);
+observation_check($read($receipts,$reference,$wrong)===null,'incomplete_normalizer_metadata');
+$wrong=$receipts;$wrong[$reference]['base_price']['amount']='119115';
+observation_check($read($wrong,$reference,$normalized)===null,'normalized_receipt_hash_preserved');
+observation_check($read([],$reference,$normalized)===null,'normalized_other_session');
+observation_check($read($receipts,$reference,$normalized,$now-60,$now)===null,'normalized_ttl_preserved');
+
 // The existing assembled-runtime CI supplies the REAL API; no copy of its recorder implementation.
 if (isset($argv[1])) {
     $runtime=realpath($argv[1]);observation_check($runtime!==false,'runtime_exists');
     require_once $runtime.'/v2/api-andromeda-search3-preview.php';
+    require_once $runtime.'/app/integrations/andromeda-selected-offer.php';
+    // Exercise the existing normalizer -> retained store -> selected-offer owner, not a two-field fake.
+    $nativeNow=time();$nativeState=[];$nativeStore=new AnyTourAndromedaOfferStore($nativeState,true);
+    $nativeStore->begin($context['search_ref'],$context['generation'],$nativeNow);
+    $criteria=['TOWNFROMINC'=>'1','STATEINC'=>'3','CHECKIN_BEG'=>'20261215','CHECKIN_END'=>'20261215',
+        'ADULT'=>2,'CHILD'=>1,'AGES'=>'8','NIGHTS_FROM'=>7,'NIGHTS_TILL'=>7,'CURRENCYINC'=>'1','PAGE'=>1];
+    $row=['id'=>'private-fixture-only','hotelKey'=>'123','operatorKey'=>'5','isOperatorHotelKey'=>0,
+        'price'=>$basePrice['amount'],'currency'=>'RUB','currencyKey'=>'1','checkIn'=>'15.12.2026',
+        'nights'=>7,'hotel'=>'Test hotel','operator'=>'ANEX','meal'=>'AI','mealKey'=>'7',
+        'room'=>'Standard','htplace'=>'DBL+CHD','adult'=>2,'child'=>1];
+    $nativePage=$nativeStore->capture(['PAGE'=>1,'PAGES_COUNT'=>1,'PRICES'=>[$row]],
+        $criteria,$context['search_ref'],$context['generation'],$nativeNow);
+    // A local accepted mapping is supplied only to this in-memory fixture, never to a registry.
+    $nativeState['snapshot']['offers'][0]['local_hotel_id']=900;
+    $nativeContext=$context;$nativeContext['offer_ref']=$nativePage['offers'][0]['offer_ref'];
+    $nativeResolved=AnyTourAndromedaSelectedOffer::resolve($nativeStore,$nativeContext,
+        static fn(array $offer): bool => $offer['local_hotel_id']===900,$nativeNow);
+    observation_check(count($nativeResolved['offer']['price'])===6,'real_normalized_price_shape');
     $temporary=sys_get_temp_dir().'/andromeda-price-session-'.bin2hex(random_bytes(8));
     mkdir($temporary,0700);ini_set('session.save_path',$temporary);ini_set('session.use_cookies','0');session_cache_limiter('');
     session_id('andromeda-price-test-'.bin2hex(random_bytes(8)));
     $projection=['provider'=>'andromeda','hotels'=>[['local_id'=>900,'tours'=>[[
-        'offer_context'=>$context,'price'=>$servedPrice,'base_search_price'=>$basePrice,
+        'offer_context'=>$nativeContext,'price'=>$servedPrice,'base_search_price'=>$nativeResolved['offer']['price'],
         'search_surcharge'=>['state'=>'estimated'],'irrelevant_supplier_field'=>'private-test',
     ]]]]];
     try {
@@ -143,7 +179,7 @@ if (isset($argv[1])) {
         observation_check($_SESSION['unrelated']==='preserved','session_preserved');session_write_close();
         observation_check(!str_contains(json_encode($stored),'private-test'),'receipt_whitelist');
         $issued=$stored[$ref]['issued_at'];
-        $value=AnyTourAndromedaPriceObservation::resolveServed($stored,$ref,$resolved,$issued-60,$issued+600,time());
+        $value=AnyTourAndromedaPriceObservation::resolveServed($stored,$ref,$nativeResolved,$issued-60,$issued+600,time());
         observation_check($value!==null && $value['served_price']===$servedPrice,'native_session_roundtrip');
         $changed=$projection;$changed['hotels'][0]['tours'][0]['price']['amount']='140000';
         $later=anytour_andromeda_search3_record_response($changed);
