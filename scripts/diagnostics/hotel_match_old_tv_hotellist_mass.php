@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /**
  * MATCH #1971: bounded mass read-only Tourvisor(old JWT) -> ANEX HOTELLIST bridge.
- * One ANEX-only one-day search, up to 30 unique Tourvisor hotels, detail reads,
+ * Only explicit unresolved hotel targets: ANEX-only one-day search, detail reads,
  * then CURRENT DB classification. No DB/mapping writes and no API contract changes.
  */
 
@@ -48,20 +48,19 @@ function hm_tv_path(string$root):string{foreach([$root.'/data/tourvisor-client-v
 function hm_detail_coords(array$h):array{$lat=hm_num($h['latitude']??($h['common']['latitude']??null));$lon=hm_num($h['longitude']??($h['common']['longitude']??null));return[$lat,$lon];}
 
 // Keep the mandatory request flags in the same source exercised by the self-test.
-function hm_search_params(int $departure, int $country, int $operator, string $date, array $hotels=[]): array {
+function hm_search_params(int $departure, int $country, int $operator, string $date, array $hotels): array {
+    if(!$hotels)throw new RuntimeException('focus_required');
     $params=['departureId'=>$departure,'countryId'=>$country,'dateFrom'=>$date,'dateTo'=>$date,
         'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'operatorIds'=>[$operator],
         'currency'=>'RUB','onlyCharter'=>false];
-    if($hotels){
-        if(count($hotels)>30||count(array_unique($hotels))!==count($hotels))throw new RuntimeException('focus_limit_guard');
-        foreach($hotels as $id)if(!is_int($id)||$id<1)throw new RuntimeException('focus_id_guard');
-        $params['hotelIds']=$hotels;
-    }
+    if(count($hotels)>30||count(array_unique($hotels))!==count($hotels))throw new RuntimeException('focus_limit_guard');
+    foreach($hotels as $id)if(!is_int($id)||$id<1)throw new RuntimeException('focus_id_guard');
+    $params['hotelIds']=$hotels;
     return $params;
 }
 // Proposals narrow discovery only; they never supply the observed ANEX identity.
 function hm_focus_proposals(string $raw): array {
-    if($raw==='')return [];
+    if(trim($raw)==='')throw new RuntimeException('focus_required');
     $parts=explode(',',$raw);if(count($parts)>30)throw new RuntimeException('focus_limit_guard');
     $out=[];$seen=[];
     foreach($parts as $part){
@@ -72,13 +71,18 @@ function hm_focus_proposals(string $raw): array {
     }
     return $out;
 }
-function hm_current_focus(array $proposals,array $mapped,array $manual):array {
-    return array_diff_key($proposals,$mapped,$manual);
+function hm_current_focus(array $proposals,array $mapped,array $manual,array $exclusions=[]):array {
+    $focus=array_diff_key($proposals,$mapped,$manual);
+    foreach($focus as $aid=>$tv)if(isset($exclusions[$aid][$tv]))unset($focus[$aid]);
+    if(!$focus)throw new RuntimeException('no_current_unresolved_focus');
+    return $focus;
 }
 // Counts client invocations, including failures; the deployed client owns HTTP retries.
 function hm_call(string $stage, string $path, array $params=[]): array {
     global $calls, $lastStage;
     $lastStage=$stage;
+    // Fail closed even if a caller bypasses hm_search_params(). No broad fallback.
+    if(rtrim($path,'/')==='/tours/search'&&(!is_array($params['hotelIds']??null)||!$params['hotelIds']))throw new RuntimeException('focus_required');
     if($calls>=39)throw new RuntimeException('client_call_cap');
     $calls++;
     return v2_data_tv_get($path,$params);
@@ -98,7 +102,7 @@ function hm_failure_reason(Throwable $e): string {
     $message=$e->getMessage();
     if(preg_match('/HTTP[ _]([45][0-9]{2})(?:\b|_)/i',$message,$m))return 'old_tourvisor_http_'.$m[1];
     $allowed=['client_call_cap','moscow_departure_not_found','egypt_not_found','anex_operator_not_found',
-        'search_id_not_found','tourvisor_search_not_complete_bounded','no_unique_tours_selected','no_current_unresolved_focus',
+        'search_id_not_found','tourvisor_search_not_complete_bounded','no_unique_tours_selected','no_current_unresolved_focus','focus_required',
         'old_tourvisor_jwt_missing','tourvisor_client_contract_missing','db_bootstrap_missing','tourvisor_client_missing'];
     return in_array($message,$allowed,true)?$message:'diagnostic_error';
 }
@@ -112,11 +116,11 @@ if(in_array('--self-test',$argv??[],true)){
         return ['path'=>$path,'params'=>$params];
     }
     $calls=0;$lastStage='self_test';
-    $fixture=hm_call('search_create','/tours/search',hm_search_params(1,1,13,'2026-11-01'));
+    $fixture=hm_call('search_create','/tours/search',hm_search_params(1,1,13,'2026-11-01',[37412]));
     if($fixture['path']!=='/tours/search'||$fixture['params']!==[
         'departureId'=>1,'countryId'=>1,'dateFrom'=>'2026-11-01','dateTo'=>'2026-11-01',
         'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'operatorIds'=>[13],
-        'currency'=>'RUB','onlyCharter'=>false])throw new RuntimeException('search_contract_test');
+        'currency'=>'RUB','onlyCharter'=>false,'hotelIds'=>[37412]])throw new RuntimeException('search_contract_test');
     try{hm_call('search_create','fixture-error');throw new LogicException('missing_fixture_error');}
     catch(RuntimeException $e){if(hm_failure_reason($e)!=='old_tourvisor_http_400')throw $e;}
     if($calls!==2||$lastStage!=='search_create')throw new RuntimeException('failed_call_telemetry_test');
@@ -130,13 +134,35 @@ if(in_array('--self-test',$argv??[],true)){
     $proposals=hm_focus_proposals('4158:37412,19226:14140,37048:97122');
     $focus=hm_current_focus($proposals,[19226=>14140],[37048=>true]);
     if($focus!==[4158=>37412]||hm_search_params(1,1,13,'2026-11-04',array_values($focus))['hotelIds']!==[37412])throw new RuntimeException('current_focus_test');
-    foreach(['0:1','1:2,1:3','1:2,3:2','1:2/3','1:2,'.str_repeat('3:4,',30).'5:6'] as $bad){
+    foreach(['','   ','0:1','1:2,1:3','1:2,3:2','1:2/3','1:2,'.str_repeat('3:4,',30).'5:6'] as $bad){
         try{hm_focus_proposals($bad);throw new LogicException('focus_invalid_accepted');}catch(RuntimeException $e){}
     }
+    $blockedCases=[
+        static fn()=>hm_search_params(1,1,13,'2026-11-01',[]),
+        static fn()=>hm_call('search_create','/tours/search',[]),
+        static fn()=>hm_call('search_create','/tours/search/',['hotelIds'=>[]]),
+        static fn()=>hm_call('search_create','/tours/search',['hotelIds'=>'']),
+        static fn()=>hm_current_focus([],[],[]),
+        static fn()=>hm_current_focus([4158=>37412],[4158=>37412],[]),
+        static fn()=>hm_current_focus([4158=>37412],[],[4158=>true]),
+        static fn()=>hm_current_focus([4158=>37412],[],[],[4158=>[37412=>true]])
+    ];
+    foreach($blockedCases as $blocked){
+        $before=$calls;
+        try{$blocked();throw new LogicException('unfiltered_search_not_blocked');}
+        catch(RuntimeException $e){
+            if(!in_array($e->getMessage(),['focus_required','no_current_unresolved_focus'],true))throw $e;
+        }
+        if($calls!==$before)throw new RuntimeException('blocked_search_spent_call');
+    }
+    $focused=hm_current_focus([4158=>37412,19226=>14140,37048=>97122,1361=>125],
+        [19226=>14140],[37048=>true],[1361=>[125=>true]]);
+    if($focused!==[4158=>37412])throw new RuntimeException('only_missing_links_test');
+    if((new ReflectionFunction('hm_search_params'))->getNumberOfRequiredParameters()!==5)throw new RuntimeException('hotel_ids_must_be_required');
     $calls=39;
     try{hm_call('tour_detail','fixture-success');throw new LogicException('missing_call_cap');}
     catch(RuntimeException $e){if($e->getMessage()!=='client_call_cap'||$calls!==39)throw $e;}
-    echo "old-tv-hotellist-mass self-test: PASS (identity, search contract, status-only polling, CURRENT focus, failure telemetry, redaction, call cap)\n";exit(0);
+    echo "old-tv-hotellist-mass self-test: PASS (identity, search contract, status-only polling, CURRENT unresolved-only focus, empty/broad search blocked, failure telemetry, redaction, call cap)\n";exit(0);
 }
 
 $op=(string)getenv('OPERATION_ID');$sha=(string)getenv('MATCH_SOURCE_SHA');$date=(string)(getenv('MATCH_DATE')?:'2026-10-31');$limit=(int)(getenv('MATCH_LIMIT')?:30);
@@ -155,8 +181,7 @@ try{
     $stage=[];foreach(hm_select($db,'SELECT * FROM anex_hotels ORDER BY anex_hotel_id')as$r){$aid=(int)($r['anex_hotel_id']??0);if($aid>0)$stage[$aid]=$r;}
     $excl=[];foreach(hm_select($db,'SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')as$r)$excl[(int)$r['anex_hotel_id']][(int)$r['catalog_hotel_id']]=true;$db->exec('ROLLBACK');
 
-    $focus=hm_current_focus($focusProposals,$mapped,$manual);
-    if($focusProposals&&!$focus)throw new RuntimeException('no_current_unresolved_focus');
+    $focus=hm_current_focus($focusProposals,$mapped,$manual,$excl);
     $lastStage='client_bootstrap';require_once hm_tv_path($root);if(!function_exists('v2_data_tv_get'))throw new RuntimeException('tourvisor_client_contract_missing');
     if(trim((string)(getenv('TOURVISOR_JWT')?:''))===''&&!(defined('TOURVISOR_JWT')&&trim((string)TOURVISOR_JWT)!==''))throw new RuntimeException('old_tourvisor_jwt_missing');
     $departures=hm_call('departures','/departures');$dep=hm_find_entity($departures,['моск','moscow']);if($dep===null)throw new RuntimeException('moscow_departure_not_found');
@@ -166,7 +191,7 @@ try{
     $status=hm_poll($sid);
     if(!hm_complete($status))throw new RuntimeException('tourvisor_search_not_complete_bounded');$payload=hm_call('search_results','/tours/search/'.$sid,['limit'=>500]);$flat=hm_flatten($payload);
 
-    $selected=[];$seenHotels=[];foreach($flat as$r){if(!is_array($r)||!hm_operator_anex($r['operator']??null))continue;$tid=hm_id($r['id']??null);$h=is_array($r['hotel']??null)?$r['hotel']:[];$hid=hm_id($h['id']??null);if($tid===null||$hid===null||isset($seenHotels[$hid])||($focus&&!in_array($hid,$focus,true)))continue;$seenHotels[$hid]=true;$selected[]=['tour_id'=>$tid,'search_hotel_id'=>$hid,'search_hotel_name'=>hm_name($h)];if(count($selected)>=$limit)break;}
+    $selected=[];$seenHotels=[];foreach($flat as$r){if(!is_array($r)||!hm_operator_anex($r['operator']??null))continue;$tid=hm_id($r['id']??null);$h=is_array($r['hotel']??null)?$r['hotel']:[];$hid=hm_id($h['id']??null);if($tid===null||$hid===null||isset($seenHotels[$hid])||!in_array($hid,$focus,true))continue;$seenHotels[$hid]=true;$selected[]=['tour_id'=>$tid,'search_hotel_id'=>$hid,'search_hotel_name'=>hm_name($h)];if(count($selected)>=$limit)break;}
     if(!$selected)throw new RuntimeException('no_unique_tours_selected');
 
     $rows=[];$rateLimited=false;$authRejected=false;$detailErrors=0;foreach($selected as$s){
