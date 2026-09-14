@@ -1,0 +1,83 @@
+name: MATCH SAMO object Andromeda CURRENT v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-samo-object-andromeda-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-samo-object-andromeda-current-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-samo-object-andromeda-current-1971-20260914-v1
+  SOURCE_RUN_ID: '34837638490'
+  SOURCE_ARTIFACT: match-anex-bridge-current-v1-result
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable CURRENT read
+        run: |
+          set -euo pipefail; STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_ssh","database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_http_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" > "$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-samo-object-andromeda-current-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-samo-object-andromeda-current-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download immutable CURRENT unresolved queue
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/queue.json"
+      - name: Validate dual namespace and sanitize saved Andromeda hotel URLs
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shlex,subprocess,tempfile
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          q=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source'/'queue.json').read_text())
+          rows=q.get('rows') or []
+          unresolved={int(r.get('anex_hotel_id') or 0):{'country_id':int(r.get('country_id') or 0),'observed':bool(r.get('observed')),'search_count':int(r.get('search_count') or 0)} for r in rows if int(r.get('anex_hotel_id') or 0)>0}
+          if len(unresolved)!=182: raise RuntimeError('queue_contract:'+str(len(unresolved)))
+          payload={'unresolved':unresolved,'fixtures':[{'samo_object_id':651573,'anex_hotel_code':36124,'slug':'amphoras-aqua-hotel-sharm-el-sheikh'},{'samo_object_id':569451,'anex_hotel_code':1102,'slug':'amwaj-oyoun-hotel-resort-sharm-el-sheikh'},{'samo_object_id':532684,'anex_hotel_code':5215,'slug':'aurora-oriental-resort-sharm-el-sheikh-ex-ori-sharm-el-sheikh'},{'samo_object_id':495438,'anex_hotel_code':4158,'slug':'barcelo-tiran-sharm-hotel-sharm-el-sheikh-sharm-el-sheikh'}]}
+          helper=pathlib.Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text()
+          if helper.startswith('<?php'): helper=helper[len('<?php'):]
+          helper=helper.replace('declare(strict_types=1);','',1)
+          wrapper=r'''
+          $in=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);$unresolved=[];foreach(($in['unresolved']??[])as$k=>$v)$unresolved[(int)$k]=$v;$fixtures=$in['fixtures']??[];
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$h)throw new RuntimeException('db_helper');require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+          function sa_num($v): ?int {if(is_int($v)&&$v>0)return$v;if(is_string($v)&&preg_match('/^[1-9][0-9]{0,14}$/D',$v))return(int)$v;return null;}
+          function sa_tokens(?string$url):array{$out=['host'=>null,'path'=>null,'hotelCode'=>null,'HOTELLIST'=>null,'o_object_id'=>null,'numeric_query'=>[]];if(!is_string($url)||trim($url)==='')return$out;$p=parse_url(trim($url));if(!is_array($p))return$out;$out['host']=strtolower((string)($p['host']??''));$out['path']=(string)($p['path']??'');if(preg_match('~/o([1-9][0-9]*)(?:/|$)~i',$out['path'],$m))$out['o_object_id']=(int)$m[1];$q=[];parse_str((string)($p['query']??''),$q);foreach($q as$k=>$v){if(is_array($v))continue;$n=sa_num($v);if($n===null)continue;$lk=strtolower((string)$k);if($lk==='hotelcode')$out['hotelCode']=$n;elseif($lk==='hotellist')$out['HOTELLIST']=$n;if(in_array($lk,['hotelcode','hotellist','hotel','hotel_id','hotelid','id'],true))$out['numeric_query'][$lk]=$n;}return$out;}
+          function sa_source($raw):array{try{$e=json_decode((string)$raw,true,64,JSON_THROW_ON_ERROR);$s=$e['source']??[];return is_array($s)?$s:[];}catch(Throwable$e){return[];}}
+          try{$identityRows=$db->query("SELECT external_hotel_id,local_hotel_id,decision_status,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog'")->fetchAll(PDO::FETCH_ASSOC);$byExt=[];foreach($identityRows as$r){$ext=(string)$r['external_hotel_id'];$s=sa_source($r['evidence_json']??'');$byExt[$ext][]=['external_hotel_id'=>$ext,'local_hotel_id'=>$r['local_hotel_id']===null?null:(int)$r['local_hotel_id'],'decision_status'=>(string)$r['decision_status'],'source_name'=>$s['name']??($s['lName']??null),'source_country'=>$s['state']??($s['country']??null),'source_region'=>$s['region']??($s['town']??null)];}
+          $anexMap=[];foreach($db->query("SELECT anex_hotel_id,catalog_hotel_id FROM anex_hotel_search_mappings WHERE enabled=1")->fetchAll(PDO::FETCH_ASSOC)as$r)$anexMap[(int)$r['anex_hotel_id']][]=(int)$r['catalog_hotel_id'];foreach($db->query("SELECT anex_hotel_id,catalog_hotel_id,decision_status FROM anex_hotel_decisions WHERE catalog_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC)as$r)$anexMap[(int)$r['anex_hotel_id']][]=(int)$r['catalog_hotel_id'];
+          $fixtureOut=[];$fixtureExternalHits=0;$fixtureLocalAgreement=0;foreach($fixtures as$f){$sid=(string)(int)$f['samo_object_id'];$aid=(int)$f['anex_hotel_code'];$andr=$byExt[$sid]??[];$am=array_values(array_unique($anexMap[$aid]??[]));if($andr)$fixtureExternalHits++;$andLoc=array_values(array_unique(array_filter(array_map(static fn($x)=>$x['local_hotel_id'],$andr),static fn($x)=>$x!==null)));$agree=count($andLoc)===1&&in_array($andLoc[0],$am,true);if($agree)$fixtureLocalAgreement++;$fixtureOut[]=['samo_object_id'=>(int)$sid,'anex_hotel_code'=>$aid,'slug'=>$f['slug'],'andromeda_identity_rows'=>$andr,'andromeda_local_ids'=>$andLoc,'anex_current_local_ids'=>$am,'same_current_local'=>$agree,'anex_current_unresolved'=>isset($unresolved[$aid])];}
+          $obsTable=(bool)$db->query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='andromeda_search_hotel_observations' LIMIT 1")->fetchColumn();$obs=[];$schema=[];if($obsTable){$schema=$db->query("SELECT COLUMN_NAME,DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='andromeda_search_hotel_observations' ORDER BY ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);$hasUrl=false;foreach($schema as$c)if($c['COLUMN_NAME']==='hotel_url')$hasUrl=true;if($hasUrl)$obs=$db->query("SELECT * FROM andromeda_search_hotel_observations WHERE hotel_url IS NOT NULL AND hotel_url<>'' ORDER BY id DESC LIMIT 10000")->fetchAll(PDO::FETCH_ASSOC);}
+          $hosts=[];$tokenRows=[];$codeQueue=[];$oIdentity=0;$dual=0;foreach($obs as$r){$t=sa_tokens($r['hotel_url']??null);if(!$t['host'])continue;$hosts[$t['host']]=($hosts[$t['host']]??0)+1;$ext=null;foreach(['external_hotel_id','andromeda_hotel_id','hotel_id','supplier_hotel_id']as$k){if(array_key_exists($k,$r)&&($n=sa_num($r[$k]))!==null){$ext=$n;break;}}$o=$t['o_object_id'];$hc=$t['hotelCode'];$olink=$o!==null&&isset($byExt[(string)$o]);if($olink)$oIdentity++;if($o!==null&&$hc!==null)$dual++;$isQueue=$hc!==null&&isset($unresolved[$hc]);if($isQueue)$codeQueue[$hc]=true;if($o!==null||$hc!==null||$t['HOTELLIST']!==null||$isQueue){$tokenRows[]=['host'=>$t['host'],'path'=>$t['path'],'hotelCode'=>$hc,'HOTELLIST'=>$t['HOTELLIST'],'o_object_id'=>$o,'o_matches_andromeda_external'=>$olink,'row_external_hotel_id'=>$ext,'row_external_matches_o'=>$ext!==null&&$o!==null&&$ext===$o,'queue_hotelcode'=>$isQueue,'queue_meta'=>$isQueue?$unresolved[$hc]:null,'andromeda_by_o'=>$olink?($byExt[(string)$o]??[]):[]];}}
+          ksort($hosts);usort($tokenRows,static fn($a,$b)=>(($a['queue_hotelcode']?0:1)<=>($b['queue_hotelcode']?0:1))?:((int)($a['hotelCode']??0)<=>(int)($b['hotelCode']??0))?:((int)($a['o_object_id']??0)<=>(int)($b['o_object_id']??0)));$coverage=fc_coverage($db);$db->commit();echo fc_json(['status'=>'completed','operation_id'=>'hotel-match-samo-object-andromeda-current-1971-20260914-v1','identity_rows'=>count($identityRows),'fixture_external_hits'=>$fixtureExternalHits,'fixture_local_agreement'=>$fixtureLocalAgreement,'fixtures'=>$fixtureOut,'observation_table_present'=>$obsTable,'observation_rows'=>count($obs),'observation_schema'=>$schema,'hosts'=>$hosts,'token_rows'=>count($tokenRows),'dual_o_hotelcode_rows'=>$dual,'o_matches_andromeda_external_rows'=>$oIdentity,'unresolved_hotelcodes_from_saved_urls'=>count($codeQueue),'saved_url_evidence'=>array_slice($tokenRows,0,1000),'coverage'=>$coverage,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_http_calls'=>0,'historical_operations_replayed'=>false,'no_replay'=>true]),"\n";}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+wrapper
+          req=['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER'];vals=[os.environ.get(k,'').strip() for k in req]
+          if not all(vals):raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(dir=os.environ['RUNNER_TEMP']) as td:
+            key=pathlib.Path(td)/'key';key.write_text(vals[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'known'
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',vals[2],vals[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+            p=subprocess.run(cmd,input=json.dumps(payload,ensure_ascii=False,separators=(',',':')),text=True,capture_output=True,timeout=420)
+          if p.returncode!=0:(state/'blocker.json').write_text(json.dumps({'status':'failed','exit_code':p.returncode,'stderr_tail':p.stderr[-1800:]},ensure_ascii=False)+'\n');raise RuntimeError('remote_review_failed')
+          x=json.loads(p.stdout);rp=state/'result.json';rp.write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if x.get('status')!='completed' or any(int(x.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_http_calls')):raise RuntimeError('review_contract')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'fixture_external_hits':x['fixture_external_hits'],'fixture_local_agreement':x['fixture_local_agreement'],'observation_rows':x['observation_rows'],'dual_o_hotelcode_rows':x['dual_o_hotelcode_rows'],'o_matches_andromeda_external_rows':x['o_matches_andromeda_external_rows'],'unresolved_hotelcodes_from_saved_urls':x['unresolved_hotelcodes_from_saved_urls'],'result_sha256':hashlib.sha256(rp.read_bytes()).hexdigest(),'coverage':x['coverage'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_http_calls':0,'historical_operations_replayed':False,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-samo-object-andromeda-current-v1-result
+          path: ${{ runner.temp }}/hotel-match-samo-object-andromeda-current-1971-20260914-v1/
+          retention-days: 90
