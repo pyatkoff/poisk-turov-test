@@ -455,8 +455,9 @@ async function checkAndromedaExpansion(page, width, previous, control) {
       assert.equal(await page.locator('.results-filter-rail').isVisible(), true, 'cross-provider offers expose the useful provider/source facet in the canonical desktop rail');
       assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results remain readable beside the truthful provider/source facet');
     }
-    assert.equal(await card.locator('.tour-row').count(), 1, 'one provider offer keeps its own conditions and guarded action');
-    assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
+    assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'cross-provider hotel stays hotel-level before exact variants are disclosed');
+    assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'cross-provider idle state exposes one truthful hotel minimum');
+    assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от165000₽', 'provider discovery does not turn the hotel minimum into a selectable quote');
     const expansion = card.locator('.provider-expansion');
     const expansionToggle = expansion.locator('[data-andromeda-expand]');
     assert.equal(await expansion.locator('small').innerText(), 'Дополнительные предложения', 'provider expansion is secondary without falsely claiming that the visible minimum belongs to another source');
