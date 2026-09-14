@@ -52,6 +52,35 @@ const settle = page => page.evaluate(async () => {
 });
 const columnCount = value => String(value || '').trim().split(/\s+/).filter(Boolean).length;
 
+async function checkSelectedFacts(root, width) {
+  const geometry = await root.locator('.facts').evaluate(grid => {
+    const rect = node => {
+      const box = node.getBoundingClientRect();
+      return { x: box.x, y: box.y, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+    };
+    const text = node => {
+      const range = document.createRange(); range.selectNodeContents(node);
+      const style = getComputedStyle(node);
+      return { text: node.textContent.trim(), size: parseFloat(style.fontSize), visible: style.visibility === 'visible' && node.getClientRects().length > 0,
+        lines: [...range.getClientRects()].filter(box => box.width && box.height).map(box => ({ x: box.x, y: box.y, right: box.right, bottom: box.bottom })) };
+    };
+    return { ...rect(grid), cells: [...grid.children].map(cell => ({ ...rect(cell), label: text(cell.querySelector('span')), value: text(cell.querySelector('b')) })) };
+  });
+  assert.deepEqual(geometry.cells.map(cell => cell.label.text), contract.required_fact_labels, 'all selected fact labels remain visible and ordered');
+  for (const cell of geometry.cells) {
+    assert.ok(cell.x >= geometry.x - 1 && cell.right <= geometry.right + 1, width + ': fact cell stays inside the grid');
+    for (const [kind, minimum] of [['label', 12], ['value', 15]]) {
+      const value = cell[kind];
+      assert.ok(value.visible && value.text && value.lines.length, width + ': ' + cell.label.text + ' keeps visible ' + kind);
+      assert.ok(value.size >= minimum, width + ': compact spacing preserves readable ' + kind + ' typography');
+      assert.ok(value.lines.every(line => line.x >= cell.x - 1 && line.right <= cell.right + 1 && line.y >= cell.y - 1 && line.bottom <= cell.bottom + 1),
+        width + ': complete ' + cell.label.text + ' ' + kind + ' fits its cell without clipping');
+    }
+  }
+  assert.equal(geometry.cells.find(cell => cell.label.text === 'Дата').value.lines.length, 1, 'the exact departure date stays whole');
+  return geometry;
+}
+
 async function checkFlightPriceLines(root, width) {
   const prices = await root.locator('.flight-choice > b').evaluateAll(nodes => nodes.map(node => {
     const choice = node.closest('.flight-choice').getBoundingClientRect();
@@ -80,7 +109,9 @@ async function checkFlightPriceLines(root, width) {
 }
 
 async function checkLongFlightPrice(page, width) {
-  const item = { ...tour, id: 'long-flight-price-' + width, price: 1234567.89 };
+  const item = { ...tour, id: 'long-flight-price-' + width, price: 1234567.89,
+    roomType: 'FAMILY SUITE WITH TWO BEDROOMS AND SIDE SEA VIEW',
+    operator: { name: 'Туроператор с длинным составным названием для проверки переноса' } };
   const choices = [{ ...flights[0], price: { value: item.price } }];
   await page.evaluate(({ item, choices }) => {
     const calls = window.__longFlightPriceCalls = [];
@@ -98,11 +129,15 @@ async function checkLongFlightPrice(page, width) {
   await page.waitForFunction(id => window.V2TourController.currentTour?.id === id && document.querySelectorAll('#selectedTour .flight-choice').length === 1, item.id);
   await settle(page);
   const prices = await checkFlightPriceLines(root, width);
+  const facts = await checkSelectedFacts(root, width);
+  assert.equal(facts.cells.find(cell => cell.label.text === 'Номер').value.text, item.roomType, 'long room conditions stay complete');
+  assert.equal(facts.cells.find(cell => cell.label.text === 'Оператор').value.text, item.operator.name, 'long operator identity stays complete');
   assert.equal(prices[0].text.replace(/\s/g, ''), 'Стоимостьтура:1234567,89₽', 'single-flight decimal amount stays exact');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'long flight price does not create page overflow');
   assert.deepEqual(await page.evaluate(() => window.__longFlightPriceCalls), ['tour', 'flights'], 'long-price case makes only the two local fixture calls');
   await root.locator('.flight-variant').screenshot({ path: path.join(output, 'flight-price-long-' + width + '.png'), animations: 'disabled' });
-  return { prices, exactOffer: item.id, realSupplierRequests: 0 };
+  await root.locator('.facts').screenshot({ path: path.join(output, 'selected-facts-long-' + width + '.png'), animations: 'disabled' });
+  return { prices, facts, exactOffer: item.id, realSupplierRequests: 0 };
 }
 
 async function run(browser, width) {
@@ -165,6 +200,10 @@ async function run(browser, width) {
     assert.equal(columnCount(detail.headColumns), expected.selected_head_columns, `selected header columns at ${width}`);
     assert.equal(columnCount(detail.factColumns), expected.fact_columns, `selected fact columns at ${width}`);
     assert.deepEqual(detail.facts.map(item => item.label), contract.required_fact_labels, 'selected facts stay complete and ordered');
+    assert.deepEqual(detail.facts.map(item => item.value), ['Москва', '05.10.2026', '9', '2 взр. + 1 дет.', 'Всё включено',
+      'STANDARD LAND VIEW', 'DBL + CHD', 'ANEX Tour', 'Чартер', 'без доплаты'], 'spacing never changes the exact selected conditions');
+    const factGeometry = await checkSelectedFacts(root, width);
+    await root.locator('.facts').screenshot({ path: path.join(output, 'selected-facts-' + width + '.png'), animations: 'disabled' });
     assert.equal(detail.facts.find(item => item.label === 'Топливный сбор')?.value, 'без доплаты',
       'selected summary distinguishes an explicit zero fuel charge from an unknown fee');
     assert.match(detail.price.replace(/\s/g, ''), /148500₽/, 'selected total stays visible');
@@ -241,7 +280,7 @@ async function run(browser, width) {
     const longFlightPrice = [320, 375, 1440].includes(width) ? await checkLongFlightPrice(page, width) : null;
     assert.deepEqual(posts, [], 'acceptance never sends a real lead or any POST');
     assert.deepEqual(browserErrors, [], 'acceptance fixture has no browser errors');
-    return { width, detail, lead, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
+    return { width, detail, factGeometry, lead, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
   } catch (error) {
     await page.screenshot({ path: path.join(output, `selected-current-${width}-failure.png`), fullPage: true });
     fs.writeFileSync(path.join(output, `selected-current-${width}-failure.json`), JSON.stringify({ message: String(error), browserErrors }, null, 2) + '\n');
@@ -466,5 +505,5 @@ async function checkSelectedLoadRecovery(page, width) {
     await browser.close();
     fs.writeFileSync(path.join(output, 'selected-lead-current.json'), JSON.stringify(evidence, null, 2) + '\n');
   }
-  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + widths.join(',') + ' screenshots=' + (widths.length * 2 + 4) + ' reflow_200pct_equivalent=1440_to_720 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440 load_recovery_widths=375,1440');
+  console.log('SEARCH3_SELECTED_LEAD_CURRENT_OK widths=' + widths.join(',') + ' screenshots=' + fs.readdirSync(output).filter(name => name.endsWith('.png')).length + ' reflow_200pct_equivalent=1440_to_720 real_leads=0 supplier_requests=0 date_display=canonical recovery_widths=375,1440 load_recovery_widths=375,1440');
 })().catch(error => { console.error(error); process.exitCode = 1; });
