@@ -3,6 +3,7 @@ declare(strict_types=1);
 define('ANYTOUR_ANDROMEDA_SURCHARGE_E2E_TEST_MODE', true);
 require __DIR__ . '/../scripts/diagnostics/andromeda_search_surcharge_e2e.php';
 require __DIR__ . '/../app/integrations/andromeda-price-observation.php';
+require __DIR__ . '/../app/integrations/andromeda-search-surcharge.php';
 
 $request = anytour_andromeda_surcharge_e2e_request();
 if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8'
@@ -25,7 +26,9 @@ $before = [
     'provider' => 'andromeda',
     'offer_ref' => $offerRef,
     'offer_context' => ['provider' => 'andromeda', 'offer_ref' => $offerRef],
-    'price' => ['amount' => '100000.00', 'currency' => 'RUB'],
+    // Actual normalizer price shape: metadata stays on the original search fact.
+    'price' => ['amount' => '100000.00', 'currency' => 'RUB', 'currency_id' => '1',
+        'kind' => 'offer', 'fees' => 'unknown', 'final' => false],
 ];
 $projection = ['hotels' => [['local_id' => 9365, 'tours' => [$before]]]];
 $picked = anytour_andromeda_surcharge_e2e_pick($projection);
@@ -38,15 +41,13 @@ if (anytour_andromeda_surcharge_e2e_find($projection, $offerRef) !== $before) {
 
 $after = $before;
 $after['base_search_price'] = $before['price'];
-$after['price'] = ['amount' => '114356.00', 'currency' => 'RUB', 'source' => 'derived_search_estimate'];
-$after['search_surcharge'] = [
-    'state' => 'estimated',
-    'arithmetic_applied' => true,
-    'final_price_verified' => false,
-    'search_price' => $before['price'],
-    'party_surcharge' => ['amount' => '14356.00', 'currency' => 'RUB', 'source' => 'andromeda_get_flights_transport'],
-    'search_price_with_surcharge' => $after['price'],
-];
+// Use the real calculator, not a hand-built fact that copies extra base metadata.
+$after['search_surcharge'] = AnyTourAndromedaSearchSurcharge::estimate([
+    'claimDocument' => [[]],
+    'variants' => [['transports' => [['transport' => [['type' => 'ttAvia',
+        'details' => [['detail' => [['markup' => '14356.00', 'currency' => 'RUB']]]]]]]],
+], $before['price']);
+$after['price'] = $after['search_surcharge']['search_price_with_surcharge'];
 $money = anytour_andromeda_surcharge_e2e_verify($before, $after);
 if (($money['base']['amount'] ?? null) !== '100000.00'
     || ($money['surcharge']['amount'] ?? null) !== '14356.00'
@@ -99,6 +100,45 @@ try {
     throw new RuntimeException('missing base was accepted');
 } catch (RuntimeException $expected) {
     if ($expected->getMessage() !== 'listing_surcharge_not_applied') throw $expected;
+}
+
+// Original provenance must survive unchanged; a foreign base/fact is still refused.
+foreach ([['base_search_price','amount','99000.00'], ['base_search_price','fees','included'],
+    ['search_price','amount','99000.00'], ['search_price','currency','USD']] as [$where,$key,$value]) {
+    $wrong = $after;
+    if ($where === 'base_search_price') $wrong[$where][$key] = $value;
+    else $wrong['search_surcharge'][$where][$key] = $value;
+    try {
+        anytour_andromeda_surcharge_e2e_verify($before, $wrong);
+        throw new RuntimeException('foreign base accepted');
+    } catch (RuntimeException $expected) {
+        if ($expected->getMessage() !== 'listing_surcharge_not_applied') throw $expected;
+    }
+}
+if ($after['base_search_price'] !== $before['price'] || $before['price']['fees'] !== 'unknown') {
+    throw new RuntimeException('base metadata changed');
+}
+
+// The same normalized base shape is served when no surcharge is known.
+$baseListed = $before; $baseListed['listing_price_ref'] = $listed['listing_price_ref'];
+$baseQuote = $quote;
+$baseQuote['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed([
+    'served_price' => ['amount' => '100000.00', 'currency' => 'RUB'],
+    'basis' => 'search_base', 'issued_at' => 1,
+], $baseQuote, 2);
+$baseEvidence = anytour_andromeda_surcharge_e2e_verify_quote($baseListed, $baseQuote);
+if ($baseEvidence['price_basis'] !== 'search_base' || $baseEvidence['signed_delta_amount'] !== '20000.00') {
+    throw new RuntimeException('base-only quote comparison failed');
+}
+foreach ([['amount','99999.00'], ['kind','other'], ['fees','included'], ['final',true],
+    ['currency_id',true], ['extra',true]] as [$key,$value]) {
+    $wrong = $baseListed; $wrong['price'][$key] = $value;
+    try {
+        anytour_andromeda_surcharge_e2e_verify_quote($wrong, $baseQuote);
+        throw new RuntimeException('foreign base-only money accepted');
+    } catch (RuntimeException $expected) {
+        if ($expected->getMessage() !== 'served_quote_observation_invalid') throw $expected;
+    }
 }
 
 $tmp = sys_get_temp_dir() . '/andromeda-surcharge-e2e-' . bin2hex(random_bytes(8));
