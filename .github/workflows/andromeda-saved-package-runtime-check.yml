@@ -23,6 +23,7 @@ on:
       - 'tests/andromeda-package-evidence-smoke.php'
       - 'scripts/diagnostics/andromeda-package-probe.php'
       - 'tests/andromeda-retained-cli-smoke.php'
+      - 'tests/andromeda-current-surcharge-cli-smoke.php'
       - 'scripts/diagnostics/andromeda_package_checkpoint_read.py'
       - 'tests/andromeda_package_checkpoint_read_test.py'
       - '.github/workflows/andromeda-saved-package-runtime-check.yml'
@@ -58,6 +59,16 @@ jobs:
           ref: 163ef9eed9993c08558b84b7a0295e8b4295d2e8
           path: retained-base
           persist-credentials: false
+      - name: Load the published source pin without expiring artifact dependencies
+        uses: actions/checkout@v4
+        with:
+          ref: b32993261eb8657004e7d4fd146b65a95264d4bc
+          path: published-surcharge
+          persist-credentials: false
+      - name: Exercise current surcharge CLI without supplier access
+        run: |
+          cp package/app/integrations/andromeda-package-capture.php package/app/integrations/andromeda-selected-offer.php published-surcharge/app/integrations/
+          php -d allow_url_fopen=0 change/tests/andromeda-current-surcharge-cli-smoke.php published-surcharge
       - name: Preserve exact retained/install regression, then exercise candidate runtime
         run: |
           cp package/app/integrations/andromeda-client.php package/app/integrations/andromeda-package-capture.php package/app/integrations/andromeda-selected-offer.php runtime/app/integrations/
