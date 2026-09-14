@@ -27,14 +27,15 @@ const calendarHotels = [
   ] },
   { id: 'calendar-b', tours: [{ ...tour, id: 'calendar-b1', date: '2026-09-12', price: 148500 }] }
 ];
-async function checkPrimaryForm(page, state) {
+async function checkPrimaryForm(page, state, visible = false) {
   const form = page.locator('#tourSearch');
   assert.equal(await form.count(), 1, state + ': one canonical form owner');
-  assert.equal(await form.isVisible(), true, state + ': primary form stays visible without an edit action');
+  assert.equal(await form.isVisible(), visible, state + ': canonical editor visibility follows the results state');
   for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill', 'count_people', 'child_count', 'region', 'hotel', 'stars', 'food', 'price_from', 'price_till']) {
-    assert.equal(await form.locator(`[name="${name}"]`).isVisible(), true, state + ': primary control ' + name + ' remains visible');
+    assert.equal(await form.locator(`[name="${name}"]`).count(), 1, state + ': primary control ' + name + ' remains owned by the canonical form');
+    if (visible) assert.equal(await form.locator(`[name="${name}"]`).isVisible(), true, state + ': primary control ' + name + ' is editable');
   }
-  assert.equal(await form.locator('[name=operator]').isVisible(), false, state + ': supplier operator remains secondary');
+  if (visible) assert.equal(await form.locator('[name=operator]').isVisible(), false, state + ': supplier operator remains secondary');
 }
 async function snapshot(page) {
   await page.evaluate(async () => {
@@ -589,7 +590,7 @@ async function run(browser, width, previous) {
       toolbarLayout.belowTablet = await checkToolbarLayout(page, 759, previous);
       await page.setViewportSize({ width, height: 1000 });
     }
-    if (!previous && [375, 720, 1024, 1440].includes(width)) {
+    if (!previous && [375, 390, 720, 1024, 1200, 1440].includes(width)) {
       await snapshot(page);
       await page.screenshot({ path: path.join(output, `primary-with-results-${width}.png`), fullPage: true });
       if (width === 1440) {
@@ -638,10 +639,14 @@ async function run(browser, width, previous) {
     await page.locator('#resultsSearchEdit').focus();
     await page.locator('#resultsSearchEdit').press('Enter');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'keyboard edit action focuses the permanently available primary form');
-    await checkPrimaryForm(page, 'keyboard edit');
+    await checkPrimaryForm(page, 'keyboard edit', true);
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), parameters, 'editing preserves all current search parameters');
+    if (!previous && [375, 390, 720, 1200, 1440].includes(width)) {
+      await snapshot(page);
+      await page.screenshot({ path: path.join(output, `primary-editor-${width}.png`), fullPage: true });
+    }
     await page.evaluate(items => window.V2Results.render(items), hotels);
-    await checkPrimaryForm(page, 'results rerender after edit');
+    await checkPrimaryForm(page, 'results rerender after edit', true);
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'cheap', 'price sorting retained');
     const localHotelFilter = page.locator('.search3-hotel-filter');
     const localHotelInput = localHotelFilter.locator('input');
@@ -728,7 +733,7 @@ async function run(browser, width, previous) {
     const localEmptyReset = localEmpty.locator('.search3-local-empty-reset');
     assert.equal(await localEmpty.count(), 1, 'zero matching local filters expose one actionable empty state');
     assert.equal(await localEmpty.isVisible(), true, 'local empty state is visible above the hidden loaded cards');
-    await checkPrimaryForm(page, 'zero local matches');
+    await checkPrimaryForm(page, 'zero local matches', true);
     assert.match(await localEmpty.innerText(), /По выбранным фильтрам ничего не подошло[\s\S]*Сбросить фильтры/, 'local empty state explains the recoverable filter result');
     assert.ok((await localEmptyReset.boundingBox()).height >= 44, 'local empty reset keeps a full touch target');
     if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `local-empty-${width}.png`), fullPage: true });
@@ -809,7 +814,7 @@ async function run(browser, width, previous) {
     const collapsed = await snapshot(page);
     if (collapsed.overflow) console.error(JSON.stringify({width,previous,offenders:collapsed.offenders}));
     assert.equal(collapsed.overflow, false, width + ': results fit viewport');
-    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1200, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-collapsed-${width}.png`), fullPage: true });
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Enter');
     assert.equal(await card.locator('.tour-row').count(), 3, 'actual toggle reveals all tours');
@@ -829,7 +834,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
     const expanded = await snapshot(page);
     assert.equal(expanded.overflow, false, width + ': expanded results fit viewport');
-    if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
+    if (!previous && [375, 720, 1200, 1440].includes(width)) await page.screenshot({ path: path.join(output, `results-expanded-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').press('Space');
@@ -875,7 +880,7 @@ async function run(browser, width, previous) {
     });
     assert.equal(await page.locator('#status .results-state--error').isVisible(), true, 'search failure exposes a distinct error state');
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'search failure leaves parameters editable even with retained results');
-    await checkPrimaryForm(page, 'search error');
+    await checkPrimaryForm(page, 'search error', true);
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), errorParameters, 'error recovery preserves every search parameter');
     if (!previous && [375, 720, 1440].includes(width)) await page.screenshot({ path: path.join(output, `search-error-edit-${width}.png`), fullPage: true });
     const retrySearch = page.locator('#status .results-state-retry');
@@ -960,7 +965,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#ordinary-terminal-focus').evaluate(node => node === document.activeElement), true, 'ordinary terminal empty result does not steal unrelated user focus');
     await page.locator('#ordinary-terminal-focus').evaluate(node => node.remove());
     assert.equal(await page.locator('#status').isVisible(), false, 'ordinary terminal empty result also keeps a single final state');
-    await checkPrimaryForm(page, 'terminal empty results');
+    await checkPrimaryForm(page, 'terminal empty results', true);
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
@@ -975,18 +980,18 @@ async function run(browser, width, previous) {
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
-    return { sourceSha, primaryForm: 'visible-through-results-calendar-loading-local-empty-error', toolbarLayout, minimumReadiness, expandedDensity, collapsed, expanded, logoSource };
+    return { sourceSha, primaryForm: 'collapsed-with-results-editable-on-demand-and-error', toolbarLayout, minimumReadiness, expandedDensity, collapsed, expanded, logoSource };
   } finally { await page.close(); }
 }
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
     // 720 CSS px is the 200% reflow equivalent of the 1440px desktop viewport.
-    for (const width of [375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1440]) {
+    for (const width of [375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1200, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=20 widths=375,390,720,760,761,999,1000,1024,1025,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=20 widths=375,390,720,760,761,999,1000,1024,1025,1200,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });

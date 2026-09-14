@@ -20,6 +20,9 @@ for (const marker of ['search3-price-calendar', 'search3-entry-summary-detail', 
   assert.ok(!bundle.includes(marker), `retired entry projection stays absent: ${marker}`);
 }
 assert.match(formOwner, /dataset\.search3Ready='1'/, 'compatibility ready marker remains');
+assert.match(formOwner, /dataset\.search3View=open\?'editor':'summary'/, 'one canonical form owner switches between results summary and editor states');
+assert.match(formOwner, /setAttribute\('aria-expanded'/, 'the results edit action exposes the editor state');
+assert.match(read('src/search3/styles/entry-native-controls.css'), /#tourSearch\[data-search3-view=summary\]\{display:none\}/, 'populated results can collapse the full editor without deleting it');
 for (const name of ['from', 'country', 'dateFrom', 'dateTo', 'daysFrom', 'daysTill',
   'count_people', 'child_count', 'child_age[]', 'region', 'subregion', 'hotel', 'stars', 'rating', 'food',
   'operator', 'price_from', 'price_till']) {
