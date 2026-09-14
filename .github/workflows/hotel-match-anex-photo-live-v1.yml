@@ -1,0 +1,56 @@
+name: MATCH ANEX photo live v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-photo-live-v1.yml]
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-anex-photo-live-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-photo-live-1971-20260914-v1
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable operation
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/out
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+      - uses: actions/upload-artifact@v4
+        with: {name: match-anex-photo-live-v1-reservation, path: /tmp/out/reservation.json, retention-days: 90}
+      - name: Probe known official ANEX hotel pages read-only
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import subprocess,json,hashlib,urllib.request,urllib.parse,time,pathlib
+          # Official pages are public GET-only. Slugs are known hotel identities used only to validate media extraction.
+          urls=[
+            'https://anextour.ru/tours/vietnam/le-van-hotel',
+          ]
+          rows=[]
+          for u in urls:
+            req=urllib.request.Request(u,headers={'User-Agent':'AnyTour-MATCH-photo-evidence/1.0','Accept':'text/html,application/xhtml+xml'})
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                final=r.geturl(); body=r.read(3*1024*1024); status=r.status
+              if urllib.parse.urlparse(final).hostname not in {'anextour.ru','www.anextour.ru'}: raise RuntimeError('redirect_outside_allowlist')
+              p=subprocess.run(['php','scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php',final],input=body,stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True)
+              x=json.loads(p.stdout); rows.append({'url':u,'final_url':final,'http':status,'body_sha256':hashlib.sha256(body).hexdigest(),'extract':x})
+            except Exception as e: rows.append({'url':u,'error':type(e).__name__+':'+str(e)[:300]})
+            time.sleep(1)
+          out={'status':'completed','operation_id':'hotel-match-anex-photo-live-1971-20260914-v1','run_id':int(__import__('os').environ['GITHUB_RUN_ID']),'source_sha':__import__('os').environ['GITHUB_SHA'],'pages':rows,'database_writes':0,'mapping_writes':0,'supplier_api_calls':0,'public_get_calls':len(urls),'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps([{'url':r['url'],'error':r.get('error'),'codes':(r.get('extract') or {}).get('hotel_codes'),'urls':(r.get('extract') or {}).get('url_count'),'hotelcode_urls':(r.get('extract') or {}).get('hotelcode_url_count')} for r in rows],ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-photo-live-v1-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+          retention-days: 90
