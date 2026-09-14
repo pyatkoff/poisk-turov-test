@@ -1245,7 +1245,7 @@
       "S3_PRODUCT_APPROVED_MIGRATION"
     ],
     "legacy_queue_policy": "Other queue rows remain historical evidence/backlog context. current_task and active roadmap own execution; do not resume superseded retirement work.",
-    "last_execution_continuation": "Search3 visual acceptance advanced through merged PR1885 and PR1886 on release3427fae2. Catalog recovery copy now has a clear heading/body hierarchy and a 44px retry action. Hotel and offer rows now read as one card surface instead of nested cards; prices use primary ink, the existing orange brand accent owns the selection CTA, and <=430px stacks a full-width action. Security34473224706 and exact PHP+Chromium34473224675 passed; 16 collapsed/expanded states at375/430/760/761/999/1000/1025/1440 were checked and actual375/1440 screenshots inspected. CSS grew by1529B across the two useful packages, JS0B. Exact source dbe2d1c2/tree2d319335 was published only to the isolated preview by run34473865312; 9 routes200, noindex, lead403, counter0, rollback retained and 13 production fingerprints unchanged. Technical search/API/data were untouched; physical Safari/iPhone remains deferred."
+    "last_execution_continuation": "Bounded technical preparation closed in merged #2423 (TECHNICAL_REFACTOR_PASS_COMPLETE in the existing dated audit). The checked release baseline is 0527c0785674792eed20f7643ab26f6730e5f426 after #2434: hotel minimum price is clearer, wide-desktop cards use a dedicated price/action column and larger real photo, and mobile exact-offer density is preserved. Source0a6372c786015c7ab2f70fa3b3fbb3f6f6fcce8f passed whole-site34863733705 and the required focused checks; actual mobile/desktop screenshots were inspected. Exact site artifact10356174334 was published only to the isolated preview by run34864845980, receipt artifact10356596803: 9 routes200, served asset hashes verified, noindex, counter0, lead403, production unchanged and rollback retained. Coordination receipt5666759367 records the evidence. Current independent follow-ups are coordinated shortlist header density #2436 and selected-flight currency wrapping claim5666829637; shared files remain with their current writer until handoff. This state-only resume correction changes no runtime and requires no republish. Product-wide 9.5 and physical Safari/iPhone acceptance remain unmeasured/deferred."
   },
   "css_consolidation": {
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
@@ -1265,7 +1265,7 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3: bounded technical refactor-pass, then per-axis OTA acceptance",
+    "title": "Search3: per-axis OTA acceptance after completed technical preparation",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
     "coordinator_issue": 996,
@@ -1273,10 +1273,10 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Owner 2026-09-12/13: run a bounded Search3 technical refactor-pass before the next UI packages, then reach >=9.5 on every SEARCH-QUALITY-1 axis. Preserve the full OTA primary form direction of 2026-09-11, current active queues and all protected boundaries.",
-    "last_fully_checked_release_sha": "3427fae296a951efbff9b95b29191969bf29ff0c",
-    "published_source_sha": "dbe2d1c28e739ed2bc1aa89d9822f1bb9122b6cf",
-    "acceptance_status": "REFERENCE_FORM_CALENDAR_RECOVERY_CARD_HIERARCHY_PREVIEW_PUBLISHED_SELECTION_DISABLED",
-    "next_action": "First complete the bounded Search3 preparation stage in the canonical product plan: actual owner/include map, form/URL/results/shortlist/selected state flow, duplicate display helpers/handlers/CSS rules, build parity and focused guard gaps. Read fresh #996/#1646 and exact release/open PR/CI before claiming one small correction; #2261 entry CSS has its own writer until released. Record completed checks/corrections in the existing audit so this pass is not restarted every run. Then continue full primary form, desktop geometry, calendar, URL/state/local facets, cards, compare, selected, lead and accumulated visual acceptance. Historical compact-form/PR1861 next_action is superseded. Do not alter API/provider/matching/content, prices, lead transport/mapping, analytics or production; missing evidence stays not_measured.",
+    "last_fully_checked_release_sha": "0527c0785674792eed20f7643ab26f6730e5f426",
+    "published_source_sha": "0a6372c786015c7ab2f70fa3b3fbb3f6f6fcce8f",
+    "acceptance_status": "HOTEL_CARD_HIERARCHY_PREVIEW_PUBLISHED_OTA_ACCEPTANCE_IN_PROGRESS",
+    "next_action": "The bounded technical refactor-pass is COMPLETE: #2423 and docs/project/search3-technical-audit-20260912.md own its closeout; do not restart it. Continue current Search3 UX and per-axis OTA acceptance from the checked/published #2434 baseline. First read fresh #996/#1646, release/open PR/CI and active exact-path claims. At this checkpoint #2436 owns shortlist header density and shared results CSS/generated/import files; selected-flight price wrapping is independently prepared under claim5666829637 and must wait for the shared-file handoff. Recheck live ownership instead of treating these dated references as a new permanent queue. Then continue unfinished compare, selected-tour/lead and accumulated desktop/mobile acceptance in the canonical product plan. Keep full primary form direction, existing active queues and completed form/results/card work. Do not alter API/provider/matching/content, price arithmetic, lead transport/mapping, analytics or production; missing evidence stays not_measured.",
     "audit": "docs/project/search3-results-clarity-product.json"
   },
   "local_filter_zero_match_recovery_20260910": {
