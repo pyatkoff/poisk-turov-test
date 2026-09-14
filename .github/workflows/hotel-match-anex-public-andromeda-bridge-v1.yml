@@ -1,0 +1,112 @@
+name: MATCH ANEX public Andromeda bridge v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-public-andromeda-bridge-v1.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-anex-public-andromeda-bridge-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-public-andromeda-bridge-1971-20260914-v1
+  SOURCE_EVIDENCE_RUN_ID: '34835601806'
+  SOURCE_EVIDENCE_ARTIFACT: match-anex-observed-public-evidence-v1-result
+jobs:
+  bridge:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable CURRENT bridge read
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_evidence_run_id":%s,"state":"reserved_before_ssh","database_writes":0,"mapping_writes":0,"supplier_calls":0,"public_get_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_EVIDENCE_RUN_ID" >"$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-public-andromeda-bridge-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-public-andromeda-bridge-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download immutable public ANEX evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source-evidence"
+          gh run download "$SOURCE_EVIDENCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_EVIDENCE_ARTIFACT" -D "$RUNNER_TEMP/source-evidence"
+          test -s "$RUNNER_TEMP/source-evidence/evidence.json"
+      - name: Bridge confirmed public ANEX identities through accepted Andromeda aliases
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          ev=json.loads((Path(os.environ['RUNNER_TEMP'])/'source-evidence'/'evidence.json').read_text())
+          if ev.get('status')!='completed' or int(ev.get('confirmed_count') or 0)!=72: raise RuntimeError('source_evidence_contract')
+          payload=[]
+          for row in ev.get('matched',[]):
+              hits=row.get('hits') or []
+              if not hits: continue
+              d=(hits[0] or {}).get('detail') or {}
+              if d.get('inc')!=row.get('anex_hotel_id'): continue
+              names=[]
+              for v in list(row.get('source_names') or [])+[d.get('name'),d.get('lname'),d.get('exName'),d.get('exLName')]:
+                  if isinstance(v,str) and v.strip() and v.strip() not in names:names.append(v.strip())
+              places=[]
+              for v in list(row.get('source_places') or [])+[d.get('town'),(d.get('town_obj') or {}).get('name'),(d.get('region_obj') or {}).get('name')]:
+                  if isinstance(v,str) and v.strip() and v.strip() not in places:places.append(v.strip())
+              payload.append({'anex_hotel_id':int(row['anex_hotel_id']),'country_id':int(row['country_id']),'search_count':int(row.get('search_count') or 0),'source_names':names,'source_places':places,'latitude':d.get('latitude'),'longitude':d.get('longitude'),'public_slug':d.get('slug'),'public_inc':d.get('inc'),'public_star':d.get('star')})
+          helper=Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text();planner=Path('scripts/diagnostics/hotel_match_current_bulk_review.php').read_text()
+          def body(t):
+              if t.startswith('<?php'):t=t[len('<?php'):]
+              return t.replace('declare(strict_types=1);','',1)
+          helper=body(helper);planner=body(planner).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          wrapper=r'''
+          function apb_qualifiers(array $names): array {$q=['annex'=>1,'beach'=>1,'garden'=>1,'north'=>1,'south'=>1];$o=[];foreach($names as $n)foreach(fc_tokens($n,false) as $t)if(isset($q[$t]))$o[$t]=true;return array_keys($o);}
+          function apb_has_qualifiers(array $qs,array $targets): bool {if(!$qs)return true;$seen=[];foreach($targets as $n)foreach(fc_tokens($n,false) as $t)$seen[$t]=true;foreach($qs as $q)if(!isset($seen[$q]))return false;return true;}
+          function apb_star($v): ?int {return preg_match('/([1-5])/',(string)$v,$m)?(int)$m[1]:null;}
+          function apb_names(array $source): array {$out=[];$keys=['name','lName','lname','hotelName','hotel_name','title','exName','exLName','formerName'];foreach($keys as $k){$v=$source[$k]??null;if(is_string($v)&&trim($v)!==''&&!in_array(trim($v),$out,true))$out[]=trim($v);}return $out;}
+          function apb_best(array $src,array $aliases): array {$best=['score'=>0.0,'shared'=>0,'source_name'=>'','alias'=>'','strict_exact'=>false,'broad_exact'=>false];foreach($src as $s)foreach($aliases as $a){[$sc,$sh]=mbr_similarity($s,$a);$strict=fc_key($s,false)===fc_key($a,false);$broad=fc_key($s,true,true)===fc_key($a,true,true);if($strict||(!$best['strict_exact']&&($broad&&!$best['broad_exact']||$sc>$best['score']||($sc===$best['score']&&$sh>$best['shared']))))$best=['score'=>$sc,'shared'=>$sh,'source_name'=>$s,'alias'=>$a,'strict_exact'=>$strict,'broad_exact'=>$broad];}return $best;}
+          $payload=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $dbHelper;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+          try{[$hotels,$names,$strict,$broad,$places,$scope]=mbr_catalog($db);$manual=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN)),true);$existing=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings')->fetchAll(PDO::FETCH_COLUMN)),true);$excluded=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC) as $x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=true;
+            $aliases=[];$acceptedRows=0;foreach($db->query("SELECT local_hotel_id,evidence_json FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL")->fetchAll(PDO::FETCH_ASSOC) as $r){$lid=(int)$r['local_hotel_id'];if(!isset($hotels[$lid]))continue;$source=fc_source($r);$aa=apb_names($source);if(!$aa)continue;$acceptedRows++;foreach($aa as $a)$aliases[(int)$hotels[$lid]['country_id']][$lid][$a]=true;}
+            $rows=[];$counts=['input'=>0,'protected'=>0,'bridge_candidates'=>0,'safe'=>0,'review'=>0,'conflict'=>0,'accepted_andromeda_rows_with_aliases'=>$acceptedRows];
+            foreach($payload as $p){$counts['input']++;$id=(int)$p['anex_hotel_id'];$country=(int)$p['country_id'];if(isset($manual[$id])||isset($existing[$id])){$counts['protected']++;continue;}if((int)$p['public_inc']!==$id)throw new RuntimeException('public_inc_contract');$rank=[];$qs=apb_qualifiers($p['source_names']);foreach($aliases[$country]??[] as $lid=>$set){$aa=array_keys($set);$b=apb_best($p['source_names'],$aa);if($b['score']<0.30&&!$b['strict_exact']&&!$b['broad_exact'])continue;$d=fc_dist($p['latitude'],$p['longitude'],$hotels[$lid]['latitude'],$hotels[$lid]['longitude']);$place=fc_place($p['source_places'],[$hotels[$lid]['region_name'],$hotels[$lid]['subregion_name']]);$rank[]=['id'=>$lid,'score'=>$b['score'],'shared'=>$b['shared'],'source_name'=>$b['source_name'],'andromeda_alias'=>$b['alias'],'strict_exact'=>$b['strict_exact'],'broad_exact'=>$b['broad_exact'],'distance_m'=>$d,'place_match'=>$place,'qualifier_ok'=>apb_has_qualifiers($qs,array_merge($names[$lid]??[],$aa))];}
+              if($rank)$counts['bridge_candidates']++;usort($rank,static fn($a,$b)=>($b['strict_exact']<=>$a['strict_exact'])?:($b['broad_exact']<=>$a['broad_exact'])?:($b['score']<=>$a['score'])?:($b['shared']<=>$a['shared'])?:(($a['distance_m']??PHP_INT_MAX)<=>($b['distance_m']??PHP_INT_MAX))?:$a['id']<=>$b['id']);$top=$rank[0]??null;$second=$rank[1]??null;$safe=null;$reason='no_safe_andromeda_bridge';
+              if($top){$sameStrict=array_values(array_filter($rank,static fn($x)=>$x['strict_exact']));$strictUnique=count(array_unique(array_column($sameStrict,'id')))==1;$sameBroad=array_values(array_filter($rank,static fn($x)=>$x['broad_exact']));$broadUnique=count(array_unique(array_column($sameBroad,'id')))==1;$margin=$top['score']-($second['score']??0.0);$d=$top['distance_m'];$geoOk=$d===null?false:$d<=5000;$ss=apb_star($p['public_star']);$ts=$hotels[$top['id']]['category']===null?null:(int)$hotels[$top['id']]['category'];$starDelta=($ss!==null&&$ts!==null)?abs($ss-$ts):null;$starOk=$starDelta===null||$starDelta<2;$pairOk=!isset($excluded[$id][$top['id']]);$ok=false;$rule='';if($top['strict_exact']&&$strictUnique&&$top['qualifier_ok']&&$pairOk&&$starOk&&($geoOk||$top['place_match'])){$ok=true;$rule='andromeda_unique_strict_alias_plus_geo';}elseif($top['broad_exact']&&$broadUnique&&$top['qualifier_ok']&&$pairOk&&$starOk&&(($d!==null&&$d<=1000)||$top['place_match'])){$ok=true;$rule='andromeda_unique_broad_alias_plus_geo';}elseif($top['qualifier_ok']&&$pairOk&&$starOk&&$d!==null&&((($d<=500)&&$top['score']>=0.60&&$top['shared']>=2&&$margin>=0.20)||(($d<=2000)&&$top['score']>=0.85&&$top['shared']>=2&&$margin>=0.15))){$ok=true;$rule='andromeda_alias_fuzzy_plus_coordinate_large_margin';}if($ok){$safe=['target'=>mbr_row_target($hotels[$top['id']]),'best'=>$top,'margin'=>round($margin,6),'star_delta'=>$starDelta,'rule'=>$rule];$reason=$rule;$counts['safe']++;}elseif(!$pairOk){$counts['conflict']++;$reason='pair_exclusion_protected';}else{$counts['review']++;}}
+              else{$counts['review']++;}
+              $rows[]=['anex_hotel_id'=>$id,'country_id'=>$country,'search_count'=>(int)$p['search_count'],'source_names'=>$p['source_names'],'source_places'=>$p['source_places'],'public_slug'=>$p['public_slug'],'public_star'=>$p['public_star'],'latitude'=>$p['latitude'],'longitude'=>$p['longitude'],'bucket'=>$safe?'safe':'review','reason'=>$reason,'safe'=>$safe,'top'=>array_slice($rank,0,5)];
+            }$coverage=fc_coverage($db);$db->commit();usort($rows,static fn($a,$b)=>$b['search_count']<=>$a['search_count']?:$a['anex_hotel_id']<=>$b['anex_hotel_id']);echo fc_json(['status'=>'completed','operation_id'=>'hotel-match-anex-public-andromeda-bridge-1971-20260914-v1','counts'=>$counts,'coverage'=>$coverage,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'public_get_calls'=>0,'guards'=>['andromeda_decision_status'=>'accepted','public_inc_equals_anex_hotel_id'=>true,'coordinate_conflict_auto_block_m'=>5000,'meaningful_qualifiers_required'=>['annex','beach','garden','north','south'],'star_delta_ge_2_blocks_new_bridge'=>true,'pair_exclusions_overwritten'=>false,'manual_decisions_overwritten'=>false,'existing_mappings_overwritten'=>false,'historical_operations_replayed'=>false,'no_replay'=>true]]),"\n";
+          }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip()
+          with tempfile.TemporaryDirectory(prefix='match-anex-and-bridge-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)];clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')};p=subprocess.run(cmd,input=json.dumps(payload,ensure_ascii=False,separators=(',',':')),text=True,capture_output=True,timeout=420,env=clean)
+          try:result=json.loads(p.stdout)
+          except Exception:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'status':'failed','reason':'unparseable','exit_code':p.returncode,'stderr_tail':p.stderr[-1600:]},ensure_ascii=False,sort_keys=True)+'\n');raise
+          (state/'bridge.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if p.returncode!=0 or result.get('status')!='completed' or result.get('database_writes')!=0 or result.get('mapping_writes')!=0:raise RuntimeError('bridge_contract')
+          raw=(state/'bridge.json').read_bytes();receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'bridge_sha256':hashlib.sha256(raw).hexdigest(),'counts':result.get('counts'),'coverage':result.get('coverage'),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'public_get_calls':0,'historical_operations_replayed':False,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          safe=[]
+          for r in result.get('rows',[]):
+              if r.get('bucket')=='safe':safe.append({'anex_hotel_id':r['anex_hotel_id'],'search_count':r['search_count'],'source_names':r['source_names'],'reason':r['reason'],'safe':r['safe']})
+          print(json.dumps({'counts':result.get('counts'),'coverage':result.get('coverage'),'safe':safe},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-public-andromeda-bridge-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-public-andromeda-bridge-1971-20260914-v1/
+          retention-days: 90
