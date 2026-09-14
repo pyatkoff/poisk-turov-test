@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import runpy
 import sys
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -65,3 +66,5 @@ except ValueError as exc:
     ok(str(exc)=='egypt_broad_offer_invalid','wrong party rejected')
 
 print(f'ANEX three-source broad Egypt comparator: {checks} checks passed; network=0')
+# Keep the existing family-price workflow as the single gate for cross-country broad P1 scenarios.
+runpy.run_path(str(ROOT/'tests'/'anex_three_source_uae_broad_test.py'))
