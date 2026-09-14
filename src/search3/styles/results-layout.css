@@ -427,8 +427,8 @@ margin:0;background:#f5f7fb;color:#17233b;
     & .section-heading strong {font-size:21px}
     & .flight-variant {padding:12px}
     & .flight-segment {padding:12px}
-    & .flight-route {grid-template-columns:1fr;gap:8px}
-    & .flight-arrow {justify-self:start;transform:rotate(90deg);font-size:18px}
+    & .flight-route {grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);gap:6px}
+    & .flight-arrow {align-self:center;justify-self:center;font-size:18px}
     & .lead-fields {grid-template-columns:1fr}
     & .lead-selection-summary {padding:14px;gap:12px}
     & .search3-lead-return {width:100%}
