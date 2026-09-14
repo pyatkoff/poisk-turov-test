@@ -91,6 +91,13 @@ assert.notEqual(identity('Soft AI'),identity('AI'));
 assert.notEqual(identity('Premium All Inclusive'),identity('AI'));
 assert.notEqual(identity('Not all inclusive'),identity('AI'));
 assert.notEqual(identity('Breakfast and dinner'),identity('Breakfast'));
+for(const [plus,base] of [['AI+','AI'],['BB+','BB'],['HB+','HB'],['FB+','FB'],['RO+','RO'],['SC+','SC']]){
+  const plusIdentity=api.mealIdentity({meal:plus});
+  assert.equal(plusIdentity.key,'meal:label:'+plus.toLowerCase());
+  assert.equal(plusIdentity.label,plus);
+  assert.notEqual(plusIdentity.key,identity(base));
+}
+assert.deepEqual(api.mealIdentity({meal:{name:'HB+',fullName:'Полупансион'}}),{key:'meal:label:hb+',label:'HB+'});
 assert.equal(identity('Premium All Inclusive'),identity('premium all inclusive'));
 assert.equal(JSON.stringify(multi),original,'renderer preserves all original offers, values and ordering');
 assert.match(api.toursHtml({...multi,tours:[]}),/Нет доступных вариантов/);
