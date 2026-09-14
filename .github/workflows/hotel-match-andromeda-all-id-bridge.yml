@@ -9,12 +9,14 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-match-andromeda-all-id-bridge-1971-v4
+  group: anytour-match-andromeda-all-id-bridge-1971-v5
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v4
+  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v5
 jobs:
   probe:
+    if: >-
+      github.event.head_commit.message == 'MATCH: execute hotel-specific all probe v5 once'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -23,31 +25,39 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
           fetch-depth: 1
-      - name: Offline scope checks
+      - name: Offline scope and complete-scan checks
         run: |
           set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1 || { echo REPLAY_REFUSED; exit 2; }
           php -l scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
           ! grep -Eiq '(->price\(|broninit\(|booking\(|lead\()' scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
+          php -r '
+          require "scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php";
+          $rows=array_fill(0,300,["id"=>1,"name"=>"offline fixture"]);
+          $rows[]=["id"=>MATCH_ALL_TARGET,"name"=>"offline target","operatorHotelId"=>999];
+          $r=match_all_inspect(["HOTELS"=>$rows],["HOTELS"=>MATCH_ALL_TARGET]);
+          if($r["hotel_rows_scanned"]!==301 || $r["target_count"]!==1 || $r["non_target_count"]!==300 || !in_array("operatorHotelId",$r["hotel_field_schema"],true) || !isset($r["interesting_paths"]["HOTELS[300].operatorHotelId"])) throw new RuntimeException("INCOMPLETE_SCAN");
+          echo "OFFLINE_FULL_SCAN_OK\n";
+          '
       - name: Reserve immutable operation before supplier access
         run: |
           set -euo pipefail
           export OUT="$RUNNER_TEMP/hotel-match-andromeda-all-id-bridge"
-          test "$GITHUB_RUN_ATTEMPT" = 1 || { echo REPLAY_REFUSED; exit 2; }
           mkdir -m 700 "$OUT"
           python3 - <<'PY'
           import json, os, pathlib
           p=pathlib.Path(os.environ['OUT'])/'reservation.json'
-          value={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_supplier_access','supplier_calls_max':2,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'no_replay':True}
+          value={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_supplier_access','supplier_calls_max':3,'target_hotel_id':416247,'variants':['hotel_only','hotel_anex'],'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'no_replay':True}
           with p.open('x') as f: json.dump(value,f,sort_keys=True,indent=2); f.write('\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-all-id-bridge-reservation-v4
+          name: match-andromeda-all-id-bridge-reservation-v5
           path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Fresh raw all probe
+      - name: Two bounded hotel-specific raw all variants
         env:
           ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
           ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
@@ -68,16 +78,17 @@ jobs:
           receipt=json.loads((p/'receipt.json').read_text()) if (p/'receipt.json').exists() else {}
           reservation=json.loads((p/'reservation.json').read_text())
           digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
-          ok=(reservation.get('state')=='reserved_before_supplier_access' and reservation.get('operation_id')==os.environ['OPERATION_ID'] and receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and all(receipt.get(k)==0 for k in ('database_writes','mapping_writes','tourvisor_calls')))
-          gate={'operation_id':os.environ['OPERATION_ID'],'verified':ok,'state':result.get('state'),'hotel_count':result.get('hotel_count'),'top_level_keys':result.get('top_level_keys'),'interesting_path_count':len(result.get('interesting_paths') or {}),'supplier_calls':result.get('supplier_calls'),'result_sha256':digest,'no_replay':True}
-          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
+          ok=(reservation.get('state')=='reserved_before_supplier_access' and all(x.get('operation_id')==os.environ['OPERATION_ID'] and x.get('source_sha')==os.environ['GITHUB_SHA'] for x in (reservation,result,receipt)) and receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and all(result.get(k)==receipt.get(k)==0 for k in ('database_writes','mapping_writes','tourvisor_calls')) and result.get('supplier_calls',99)<=3)
+          variants={name:{k:v.get(k) for k in ('hotel_count','hotel_rows_scanned','target_count','non_target_count','hotel_field_schema','target_rows','sampling_applied')} for name,v in result.get('variants',{}).items()}
+          gate={'operation_id':os.environ['OPERATION_ID'],'verified':ok,'state':result.get('state'),'variants':variants,'supplier_calls':result.get('supplier_calls'),'result_sha256':digest,'no_replay':True}
+          with (p/'workflow-readback.json').open('x') as f: f.write(json.dumps(gate,sort_keys=True,indent=2)+'\n')
           print(json.dumps(gate,sort_keys=True))
           if not ok: raise SystemExit(2)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-andromeda-all-id-bridge-evidence-v4
+          name: match-andromeda-all-id-bridge-evidence-v5
           path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/
           if-no-files-found: warn
           retention-days: 90
