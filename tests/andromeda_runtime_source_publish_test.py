@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -105,6 +106,27 @@ class RuntimePublisherTest(unittest.TestCase):
             (clone / 'unexpected').write_text('x')
             with self.assertRaisesRegex(ValueError, 'handoff_inventory'):
                 publisher.load_handoff(clone, source)
+
+    def test_publisher_limit_is_accepted_by_pinned_helper(self):
+        helper_path = Path(os.environ['ANDROMEDA_PUBLISH_HELPER']).resolve()
+        sys.path.insert(0, str(helper_path.parent))
+        try:
+            helper_spec = importlib.util.spec_from_file_location('pinned_publish_helper', helper_path)
+            helper = importlib.util.module_from_spec(helper_spec)
+            helper_spec.loader.exec_module(helper)
+            names = ('ANYTOOUR_DEPLOY_SSH_KEY', 'ANYTOOUR_DEPLOY_HOST', 'ANYTOOUR_DEPLOY_USER')
+            saved = {name: os.environ.pop(name, None) for name in names}
+            try:
+                with self.assertRaisesRegex(ValueError, 'missing SSH configuration'):
+                    helper.ssh_php('', {}, maximum_bytes=publisher.SSH_RESPONSE_LIMIT)
+                with self.assertRaisesRegex(ValueError, 'unsupported diagnostic response limit'):
+                    helper.ssh_php('', {}, maximum_bytes=131072)
+            finally:
+                for name, value in saved.items():
+                    if value is not None:
+                        os.environ[name] = value
+        finally:
+            sys.path.pop(0)
 
 
 if __name__ == '__main__':
