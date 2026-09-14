@@ -1,4 +1,4 @@
-name: MATCH old Tourvisor HOTELLIST mass v1
+name: MATCH old Tourvisor HOTELLIST mass v2
 on:
   push:
     branches: [match/manual-live-review-queue-1971-20260914]
@@ -12,13 +12,13 @@ concurrency:
   group: anytour-match-old-tv-hotellist-mass-1971-v1
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260914-v1-egypt
-  MATCH_DATE: '2026-10-31'
+  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260914-v2-egypt
+  MATCH_DATE: '2026-11-01'
   MATCH_LIMIT: '30'
-  OUT: /tmp/match-old-tv-hotellist-mass-v1
+  OUT: /tmp/match-old-tv-hotellist-mass-v2
 jobs:
   probe:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -31,6 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          printf '%s  %s\n' '320c712319ce3f433993647165b13f5d835a5062791067cdb6677953ed055f03' 'scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php' | sha256sum -c -
           php -l scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
           php scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php --self-test
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
@@ -65,22 +66,33 @@ jobs:
               except Exception:return {}
           reservation=load('reservation.json'); result=load('result.json'); receipt=load('receipt.json')
           rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest() if (out/'result.json').exists() else None
-          ok=(result.get('status') in {'completed','partial_rate_limited','blocked'}
+          calls=result.get('tourvisor_calls')
+          ok=(result.get('status') in {'completed','partial_rate_limited','partial_auth_rejected','blocked'}
               and result.get('credential_identifier')=='TOURVISOR_JWT'
+              and reservation.get('credential_identifier')=='TOURVISOR_JWT'
               and reservation.get('state')=='reserved_before_db_and_supplier_access'
-              and reservation.get('source_sha')==os.environ['GITHUB_SHA']
+              and reservation.get('date')==os.environ['MATCH_DATE'] and reservation.get('limit')==30
+              and all(x.get('operation_id')==os.environ['OPERATION_ID']
+                      and x.get('source_sha')==os.environ['GITHUB_SHA'] and x.get('no_replay') is True
+                      for x in (reservation,result,receipt))
+              and receipt.get('state')==result.get('status')
               and receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh
-              and result.get('database_writes')==0 and result.get('mapping_writes')==0)
-          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':ok,
-                'status':result.get('status'),'reason':result.get('reason'),'tourvisor_calls':result.get('tourvisor_calls'),
+              and all(result.get(k)==0 for k in ('database_writes','mapping_writes','booking_calls','lead_calls','new_tourvisor_calls'))
+              and type(calls) is int and 0<=calls<=39)
+          completed=ok and result.get('status')=='completed' and int(os.environ['RC'])==0 and int(os.environ['TRC'])==0
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],
+                'verified':ok,'provider_acquisition_completed':completed,
+                'status':result.get('status'),'reason':result.get('reason'),'tourvisor_calls':calls,
+                'last_stage':result.get('last_stage'),'call_count_unit':result.get('call_count_unit'),
                 'flattened_rows':result.get('flattened_rows'),'unique_tours_selected':result.get('unique_tours_selected'),
                 'detail_rows':result.get('detail_rows'),'direct_hotellist_identities':result.get('direct_hotellist_identities'),
                 'safe_current_candidates':result.get('safe_current_candidates'),'existing_same_pair':result.get('existing_same_pair'),
-                'holds':result.get('holds'),'rate_limited':result.get('rate_limited'),'remote_exit':int(os.environ['RC']),
-                'tar_exit':int(os.environ['TRC']),'result_sha256':rh,'database_writes':0,'mapping_writes':0,'no_replay':True}
+                'holds':result.get('holds'),'rate_limited':result.get('rate_limited'),'auth_rejected':result.get('auth_rejected'),
+                'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'result_sha256':rh,
+                'database_writes':0,'mapping_writes':0,'no_replay':True}
           (out/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
           print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
-          if not ok: raise SystemExit(2)
+          if not completed: raise SystemExit(2)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
