@@ -1,0 +1,53 @@
+name: MATCH old Tourvisor operatorLink shape v1
+on:
+  push:
+    branches: [match/manual-live-review-queue-1971-20260914]
+    paths: ['.github/workflows/hotel-match-old-tv-operatorlink-shape-v1.yml']
+permissions: {contents: read, actions: read}
+concurrency: {group: anytour-match-old-tv-operatorlink-shape-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-old-tv-operatorlink-shape-1971-20260914-v1-barcelo
+  TOUR_ID: '13278670760276'
+  OUT: /tmp/match-old-tv-operatorlink-shape
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.sha }}', fetch-depth: 1, persist-credentials: false}
+      - name: Build read-only sanitized shape probe
+        run: |
+          set -euo pipefail; mkdir -p "$OUT"
+          cat > "$OUT/probe.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $op=(string)getenv('OPERATION_ID');$sha=(string)getenv('MATCH_SOURCE_SHA');$tid=(string)getenv('TOUR_ID');
+          if($op!=='hotel-match-old-tv-operatorlink-shape-1971-20260914-v1-barcelo'||!preg_match('/^[0-9a-f]{40}$/',$sha)||!preg_match('/^[0-9]+$/',$tid))throw new RuntimeException('identity_guard');
+          $root=(string)realpath(getcwd());$client=$root.'/v2/data/tourvisor-client-v1.php';if(!is_file($client))$client=$root.'/data/tourvisor-client-v1.php';require_once $client;
+          $base=rtrim((string)getenv('HOME'),'/').'/.anytoour-match/operations';$dir=$base.'/'.$op;if(!is_dir($base)||!mkdir($dir,0700))throw new RuntimeException('operation_exists');
+          $write=function(string$n,array$x)use($dir){$s=json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";$f=fopen($dir.'/'.$n,'x');fwrite($f,$s);fflush($f);fclose($f);return hash('sha256',$s);};
+          $write('reservation.json',['operation_id'=>$op,'source_sha'=>$sha,'state'=>'reserved_before_supplier_access','credential_identifier'=>'TOURVISOR_JWT','tour_id'=>$tid,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);
+          try{$d=v2_data_tv_get('/tours/'.$tid,['currency'=>'RUB']);$u=trim((string)($d['operatorLink']??''));$p=parse_url($u);$pairs=[];parse_str((string)($p['query']??''),$pairs);$q=[];foreach($pairs as$k=>$v){$row=['key'=>(string)$k,'type'=>gettype($v)];if(is_scalar($v)&&preg_match('/^[1-9][0-9]{0,12}$/',(string)$v))$row['numeric_value']=(int)$v;$q[]=$row;}usort($q,fn($a,$b)=>strcmp($a['key'],$b['key']));$r=['operation_id'=>$op,'source_sha'=>$sha,'status'=>'completed','credential_identifier'=>'TOURVISOR_JWT','tourvisor_calls'=>1,'tour_id'=>$tid,'tourvisor_hotel_id'=>(int)($d['hotel']['id']??0),'hotel_name'=>(string)($d['hotel']['name']??''),'operator_name'=>(string)($d['operator']['name']??''),'operator_link_present'=>$u!=='','operator_link_shape'=>['scheme'=>strtolower((string)($p['scheme']??'')),'host'=>strtolower((string)($p['host']??'')),'path'=>(string)($p['path']??''),'query'=>$q],'database_writes'=>0,'mapping_writes'=>0,'raw_provider_body_recorded'=>false,'raw_operator_link_recorded'=>false,'token_values_recorded'=>false,'no_replay'=>true];}catch(Throwable$e){$r=['operation_id'=>$op,'source_sha'=>$sha,'status'=>'blocked','credential_identifier'=>'TOURVISOR_JWT','reason'=>preg_replace('/[^A-Za-z0-9_.-]+/','_',substr($e->getMessage(),0,100)),'tourvisor_calls'=>1,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true];}
+          $h=$write('result.json',$r);$write('receipt.json',['operation_id'=>$op,'source_sha'=>$sha,'state'=>$r['status'],'result_sha256'=>$h,'readback_verified'=>hash('sha256',(string)file_get_contents($dir.'/result.json'))===$h,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);echo 'MATCH_OPERATORLINK_SHAPE_JSON:'.json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;exit($r['status']==='completed'?0:2);
+          PHP
+          php -l "$OUT/probe.php"
+      - name: Execute immutable server probe
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          trap 'ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi; chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' TOUR_ID='$TOUR_ID' php -d display_errors=0 -d log_errors=0" < "$OUT/probe.php" > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"; rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>>"$OUT/remote-stderr.txt"; trc=$?
+          set -e; test $trc -eq 0; tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; cat "$OUT/result.json"; test $rc -eq 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: match-old-tv-operatorlink-shape-${{ github.run_id }}, path: '${{ env.OUT }}/', retention-days: 90}
