@@ -562,10 +562,114 @@ jobs:
        github.event_name == 'issue_comment' && github.event.action == 'created' &&
        github.event.issue.number == 996 && !github.event.issue.pull_request &&
        github.event.comment.user.id == 226193297 &&
-       github.event.comment.body == '/inspect-andromeda-surcharge-e2e-1717-v2')
+       github.event.comment.body == '/inspect-andromeda-surcharge-e2e-1717-v2-money')
     runs-on: ubuntu-latest
     timeout-minutes: 3
     env:
+      ARCHIVAL_MONEY_PHP: |
+        function v2_archive_json(string $path, int $limit): array {
+            if (is_link($path) || realpath($path) !== $path || !is_file($path)) throw new RuntimeException('archive_path_invalid');
+            $file = fopen($path, 'rb');
+            if (!$file) throw new RuntimeException('archive_unreadable');
+            try {
+                $stat = fstat($file);
+                if ($stat['nlink'] !== 1 || $stat['size'] > $limit) throw new RuntimeException('archive_size_or_link');
+                $bytes = stream_get_contents($file, $limit + 1);
+                if (!is_string($bytes) || strlen($bytes) !== $stat['size']) throw new RuntimeException('archive_read_failed');
+            } finally { fclose($file); }
+            $value = json_decode($bytes, true, 48, JSON_THROW_ON_ERROR);
+            if (!is_array($value)) throw new RuntimeException('archive_json_invalid');
+            return [$value, hash('sha256', $bytes), $stat['mtime']];
+        }
+        function v2_archive_money($value): array {
+            if (!is_array($value) || !is_string($value['amount'] ?? null) || !preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D', $value['amount'])
+                || !is_string($value['currency'] ?? null) || !preg_match('/^[A-Z]{3}$/D', $value['currency'])) throw new RuntimeException('archive_money_invalid');
+            return ['amount'=>$value['amount'], 'currency'=>$value['currency']];
+        }
+        function v2_archive_units(array $value): int {
+            $parts = explode('.', $value['amount']);
+            return (int)$parts[0] * 100 + (int)str_pad($parts[1] ?? '', 2, '0');
+        }
+        function v2_archive_money_read(string $private, array $reservation, int $finished): array {
+            $directory = $private . '/searches';
+            if (realpath($directory) !== $directory || !is_dir($directory)) throw new RuntimeException('archive_store_missing');
+            $source = '64706822fc54f4d4423ea6bbd0ad966144151387';
+            $start = $reservation['created_at'] ?? null;
+            if (!is_int($start) || $start < 1 || $finished < $start) throw new RuntimeException('archive_time_invalid');
+            $matches = []; $entries = 0; $sidecars = 0;
+            foreach (new DirectoryIterator($directory) as $entry) {
+                if ($entry->isDot()) continue;
+                if (++$entries > 10000) throw new RuntimeException('archive_scan_limit');
+                $name = $entry->getFilename();
+                if (!preg_match('/^([a-f0-9]{64})-([1-9][0-9]{0,11})-1-(offer_[a-f0-9]{64})-surcharge-v1\.json$/D', $name, $parts)) continue;
+                if (++$sidecars > 128) throw new RuntimeException('archive_scan_limit');
+                [$record, $digest] = v2_archive_json($directory . '/' . $name, 16384);
+                $ctx = $record['context'] ?? [];
+                if (($ctx['generation'] ?? null) !== 17171215) continue;
+                if (($record['source'] ?? null) !== $source || ($record['status'] ?? null) !== 'complete' || ($record['version'] ?? null) !== 1
+                    || ($record['implementation_sha256'] ?? null) !== '28995a73f46f3e1a9d953c034cd5bf514d53c6c4d46d71d5ba593b7d255a8112'
+                    || ($ctx['provider'] ?? null) !== 'andromeda' || ($ctx['search_ref'] ?? null) !== $parts[1]
+                    || ($ctx['page'] ?? null) !== 1 || ($ctx['offer_ref'] ?? null) !== $parts[3] || ($ctx['operator_ref'] ?? null) !== '5'
+                    || !array_key_exists('hotel_scope', $ctx) || $ctx['hotel_scope'] !== null || !is_int($ctx['local_id'] ?? null) || $ctx['local_id'] < 1
+                    || ($record['snapshot_created_at'] ?? null) !== (int)$parts[2]
+                    || !is_int($record['observed_at'] ?? null) || $record['observed_at'] < $start || $record['observed_at'] > $finished) throw new RuntimeException('archive_context_mismatch');
+                $matches[] = [$record, $digest, $parts];
+            }
+            if (count($matches) !== 1) throw new RuntimeException(count($matches) ? 'archive_ambiguous' : 'archive_not_retained');
+            [$record, $surchargeHash, $parts] = $matches[0]; $ctx = $record['context'];
+            [$first, $searchHash] = v2_archive_json($directory . '/' . $parts[1] . '-1.json', 3000000);
+            $store = $first['store'] ?? []; $criteria = $store['criteria'] ?? [];
+            if (!in_array($first['status'] ?? null, ['complete','partial'], true) || ($first['generation'] ?? null) !== 17171215
+                || ($store['generation'] ?? null) !== 17171215 || ($store['search_ref'] ?? null) !== $parts[1]
+                || ($store['created_at'] ?? null) !== (int)$parts[2] || ($store['snapshot']['page'] ?? null) !== 1
+                || ($first['criteria'] ?? null) !== $criteria || hash('sha256', json_encode($criteria, JSON_THROW_ON_ERROR)) !== ($record['criteria_sha256'] ?? null)) throw new RuntimeException('archive_search_mismatch');
+            foreach (['CHECKIN_BEG'=>'20261215','CHECKIN_END'=>'20261215','ADULT'=>'2','CHILD'=>'1','AGES'=>'8','NIGHTS_FROM'=>'7','NIGHTS_TILL'=>'7','OPERATORS'=>'5','PAGE'=>'1'] as $key=>$wanted) {
+                if ((!is_int($criteria[$key] ?? null) && !is_string($criteria[$key] ?? null)) || (string)$criteria[$key] !== $wanted) throw new RuntimeException('archive_search_mismatch');
+            }
+            if (isset($criteria['HOTELS']) || $store['created_at'] < $start || $store['created_at'] > $finished) throw new RuntimeException('archive_search_mismatch');
+            $found = [];
+            foreach ($store['snapshot']['offers'] ?? [] as $offer) if (($offer['offer_ref'] ?? null) === $ctx['offer_ref']) $found[] = $offer;
+            if (count($found) !== 1) throw new RuntimeException('archive_offer_mismatch');
+            $offer = $found[0];
+            if (($offer['local_hotel_id'] ?? null) !== $ctx['local_id'] || ($offer['operator_ref'] ?? null) !== '5'
+                || ($offer['check_in'] ?? null) !== '2026-12-15' || ($offer['nights'] ?? null) !== 7 || ($offer['adults'] ?? null) !== 2 || ($offer['children'] ?? null) !== 1
+                || !is_string($store['raw_ids'][$ctx['offer_ref']] ?? null)
+                || hash('sha256', $store['raw_ids'][$ctx['offer_ref']]) !== ($record['supplier_offer_sha256'] ?? null)) throw new RuntimeException('archive_offer_mismatch');
+            $stem = $directory . '/' . $parts[1] . '-' . $parts[2] . '-1-' . $parts[3];
+            [$package, $packageHash] = v2_archive_json($stem . '-package.json', 3000000);
+            $savedPackage = $package['record'] ?? [];
+            if (($package['source'] ?? null) !== $source || ($savedPackage['status'] ?? null) !== 'captured' || ($savedPackage['context'] ?? null) !== $ctx
+                || !is_array($savedPackage['private_package'] ?? null) || ($savedPackage['package_sha256'] ?? null) !== ($record['package_sha256'] ?? null)
+                || hash('sha256', json_encode($savedPackage['private_package'], JSON_THROW_ON_ERROR)) !== $record['package_sha256']) throw new RuntimeException('archive_package_mismatch');
+            $fact = $record['fact'] ?? [];
+            if (($fact['provider'] ?? null) !== 'andromeda' || ($fact['state'] ?? null) !== 'estimated' || ($fact['arithmetic_applied'] ?? null) !== true
+                || ($fact['final_price_verified'] ?? null) !== false || ($fact['surcharge_scope'] ?? null) !== 'party') throw new RuntimeException('archive_fact_invalid');
+            $base = v2_archive_money($offer['price'] ?? null); $factBase = v2_archive_money($fact['search_price'] ?? null);
+            $charge = v2_archive_money($fact['party_surcharge'] ?? null); $total = v2_archive_money($fact['search_price_with_surcharge'] ?? null);
+            if ($base['currency'] !== $factBase['currency'] || $base['currency'] !== $charge['currency'] || $base['currency'] !== $total['currency']
+                || v2_archive_units($base) !== v2_archive_units($factBase) || v2_archive_units($base) <= 0
+                || v2_archive_units($base) + v2_archive_units($charge) !== v2_archive_units($total)
+                || ($fact['search_price_with_surcharge']['source'] ?? null) !== 'derived_search_estimate') throw new RuntimeException('archive_money_mismatch');
+            $reported = v2_archive_money($fact['transport_markup_reported'] ?? null);
+            $result = ['archive_only'=>true,'operation_replayed'=>false,'runtime_source'=>$source,
+                'generation'=>17171215,'local_hotel_id'=>$ctx['local_id'],'date'=>'2026-12-15','nights'=>7,'adults'=>2,'child_ages'=>[8],
+                'operator'=>'ANEX','base_search_price'=>$base,'transport_markup_reported'=>$reported,'party_surcharge'=>$charge,'recorded_estimate'=>$total,
+                'observed_at'=>$record['observed_at'],'expires_at'=>$record['expires_at'] ?? null,'final_price_verified'=>false,
+                'historical_api_response_recorded'=>false,'browser_display_verified'=>false,'calc_called'=>false,
+                'search_sha256'=>$searchHash,'surcharge_sha256'=>$surchargeHash,'package_file_sha256'=>$packageHash];
+            foreach (['hotel','room','placement'] as $key) {
+                $text=$offer[$key] ?? null;
+                if (is_string($text) && strlen($text)<=300 && preg_match('//u',$text) && !preg_match('/[\x00-\x1f\x7f]/',$text)) $result[$key]=$text;
+            }
+            $result['currency_rates_reported']=[];
+            foreach ($fact['operator_currency_rates_reported'] ?? [] as $rate) {
+                if (!is_array($rate) || !is_string($rate['currency'] ?? null) || !preg_match('/^[A-Z]{3}$/D',$rate['currency'])
+                    || !is_string($rate['rate'] ?? null) || !preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,6})?$/D',$rate['rate'])) throw new RuntimeException('archive_rate_invalid');
+                $result['currency_rates_reported'][]=['currency'=>$rate['currency'],'rate'=>$rate['rate']];
+                if (count($result['currency_rates_reported'])>16) throw new RuntimeException('archive_rate_invalid');
+            }
+            return $result;
+        }
       SURCHARGE_V2_READBACK_PHP: |
         error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
         $operation='andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8';
@@ -581,7 +685,7 @@ jobs:
           $directory=$private.'/'.$operation;$exists=file_exists($directory);$out['operation_exists']=$exists;
           if(is_link($directory)||($exists&&(realpath($directory)!==$directory||!is_dir($directory)||!is_readable($directory))))throw new RuntimeException('checkpoint_path_invalid');
           if(!$exists){$out['checkpoint_state']='absent';$out['status']='inspected';echo json_encode($out,JSON_THROW_ON_ERROR);return;}
-          $out['files']=[];$reservationPresent=false;$resultPresent=false;
+          $out['files']=[];$reservationPresent=false;$resultPresent=false;$reservation=[];$resultModified=0;
           foreach(['reservation','result'] as $name){
             $path=$directory.'/'.$name.'.json';$out['files'][$name]=['present'=>false];
             if(is_link($path))throw new RuntimeException('checkpoint_path_invalid');if(!file_exists($path))continue;
@@ -591,12 +695,12 @@ jobs:
             $value=json_decode($bytes,true,24,JSON_THROW_ON_ERROR);if(!is_array($value)||($value['operation']??null)!==$operation)throw new RuntimeException('checkpoint_operation_mismatch');
             $out['files'][$name]=['present'=>true,'sha256'=>hash('sha256',$bytes)];
             if($name==='reservation'){
-              $reservationPresent=true;
+              $reservationPresent=true;$reservation=$value;
               foreach(['runtime_source'=>40,'scenario_sha256'=>64] as $key=>$length){if(!is_string($value[$key]??null)||!preg_match('/^[a-f0-9]{'.$length.'}$/D',$value[$key]))throw new RuntimeException('reservation_invalid');$out[$key]=$value[$key];}
             }else{
-              $resultPresent=true;$status=$value['status']??null;if(!in_array($status,['blocked','unknown','complete'],true))throw new RuntimeException('result_status_invalid');
+              $resultPresent=true;$resultModified=$stat['mtime'];$status=$value['status']??null;if(!in_array($status,['blocked','unknown','complete'],true))throw new RuntimeException('result_status_invalid');
               $out['operation_status']=$status;$out['checkpoint_state']=$status;
-              $phase=$value['phase']??null;$phases=['preflight','reserved','search','surcharge_capture','listing_recorded','quote','complete'];$out['phase']=is_string($phase)&&in_array($phase,$phases,true)?$phase:null;
+              $phase=$value['phase']??null;$phases=['preflight','reserved','search','surcharge_capture','retained_listing','listing_recorded','quote','complete'];$out['phase']=is_string($phase)&&in_array($phase,$phases,true)?$phase:null;
               $reason=$value['reason']??null;$out['reason']=is_string($reason)&&preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$reason)?$reason:($reason===null?null:'unclassified_operation_failure');$out['reason_sha256']=is_string($reason)?hash('sha256',$reason):null;
               $out['outcome']=in_array($value['outcome']??null,['served_quote_compared','surcharge_unavailable','listing_estimate_applied'],true)?$value['outcome']:null;
               foreach(['supplier_scenario','mapping_writes','booking_calls'] as $key){$out[$key]=is_int($value[$key]??null)?$value[$key]:null;}
@@ -611,8 +715,15 @@ jobs:
             }
           }
           if(!$resultPresent)$out['checkpoint_state']=$reservationPresent?'reserved_no_result':'directory_without_checkpoint';
+          if($resultPresent && $reservationPresent){
+            if($out['files']['reservation']['sha256']!=='d08344fd8b04ac3e783386bfe99cddb94e14479e97eb1ae5cab85f2607dd5178'
+              ||$out['files']['result']['sha256']!=='2f2cbaa68f013bc1f502fb6dadc8ae22e29cb521feffed40f72bdfc4d4a8efcf'
+              ||$out['scenario_sha256']!=='5f2331f77dc8cf00ef912176e454354852fd12665ddc384d0d36bc7dd455d1fa'){
+              $out['archive_error']='operation_pin_mismatch';
+            }else{$out['archival_money']=v2_archive_money_read($private,$reservation,$resultModified);}
+          }
           $out['status']='inspected';
-        }catch(Throwable $e){$allowed=['project_invalid','private_directory_unavailable','checkpoint_path_invalid','checkpoint_unreadable','checkpoint_size_or_link','checkpoint_read_failed','checkpoint_operation_mismatch','reservation_invalid','result_status_invalid'];$out['inspection_error']=in_array($e->getMessage(),$allowed,true)?$e->getMessage():'checkpoint_invalid';}
+        }catch(Throwable $e){$allowed=['project_invalid','private_directory_unavailable','checkpoint_path_invalid','checkpoint_unreadable','checkpoint_size_or_link','checkpoint_read_failed','checkpoint_operation_mismatch','reservation_invalid','result_status_invalid','archive_path_invalid','archive_unreadable','archive_size_or_link','archive_read_failed','archive_json_invalid','archive_store_missing','archive_time_invalid','archive_scan_limit','archive_context_mismatch','archive_ambiguous','archive_not_retained','archive_search_mismatch','archive_offer_mismatch','archive_package_mismatch','archive_fact_invalid','archive_money_invalid','archive_money_mismatch','archive_rate_invalid'];$out['inspection_error']=in_array($e->getMessage(),$allowed,true)?$e->getMessage():'checkpoint_invalid';}
         echo json_encode($out,JSON_THROW_ON_ERROR);
     steps:
       - name: Exercise fixed v2 checkpoint classification without SSH
@@ -624,18 +735,56 @@ jobs:
           with tempfile.TemporaryDirectory() as tmp:
               account=pathlib.Path(tmp)/'account';root=account/'www/anytoour.ru';root.mkdir(parents=True);private=account/'.anytoour-andromeda';private.mkdir();directory=private/operation
               def run():
-                  p=subprocess.run(['php','-d','allow_url_fopen=0','-r',os.environ['SURCHARGE_V2_READBACK_PHP']],cwd=root,text=True,capture_output=True,check=True,timeout=5);assert p.stderr=='' and 'PRIVATE_SENTINEL' not in p.stdout;result=json.loads(p.stdout);assert all(result[k]==0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']);assert result['operation_replayed'] is False;return result
+                  p=subprocess.run(['php','-d','allow_url_fopen=0','-r',os.environ['ARCHIVAL_MONEY_PHP']+os.environ['SURCHARGE_V2_READBACK_PHP']],cwd=root,text=True,capture_output=True,check=True,timeout=5);assert p.stderr=='' and 'PRIVATE_SENTINEL' not in p.stdout;result=json.loads(p.stdout);assert all(result[k]==0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']);assert result['operation_replayed'] is False;return result
               assert run()['checkpoint_state']=='absent';directory.mkdir();(directory/'reservation.json').write_text(json.dumps({'operation':operation,'runtime_source':'64706822fc54f4d4423ea6bbd0ad966144151387','scenario_sha256':'a'*64,'private':'PRIVATE_SENTINEL'}));assert run()['checkpoint_state']=='reserved_no_result'
               (directory/'result.json').write_text(json.dumps({'operation':operation,'status':'unknown','phase':'quote','reason':'served_quote_observation_invalid','supplier_scenario':1,'mapping_writes':0,'booking_calls':0,'calc_calls':None,'private':'PRIVATE_SENTINEL'}));result=run();assert result['checkpoint_state']=='unknown' and result['phase']=='quote' and result['reason']=='served_quote_observation_invalid' and result['calc_calls'] is None
+              assert result['archive_error']=='operation_pin_mismatch' and 'archival_money' not in result
           print('Fixed v2 checkpoint readback: absent/reserved/unknown classification and privacy pass; supplier/network0')
           PY
-      - name: Bind owner-only v2 inspection to the terminal execution
+      - name: Verify archive binding and recorded money without network
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - <<'PY'
+          import os,subprocess
+          fixture=r'''
+          $root=sys_get_temp_dir().'/andromeda-archive-'.bin2hex(random_bytes(8));mkdir($root,0700);mkdir($root.'/searches',0700);
+          $ref=str_repeat('a',64);$offerRef='offer_'.str_repeat('b',64);$stem=$root.'/searches/'.$ref.'-100-1-'.$offerRef;
+          $criteria=['CHECKIN_BEG'=>'20261215','CHECKIN_END'=>'20261215','ADULT'=>2,'CHILD'=>1,'AGES'=>'8','NIGHTS_FROM'=>7,'NIGHTS_TILL'=>7,'OPERATORS'=>'5','PAGE'=>1];
+          $ctx=['provider'=>'andromeda','search_ref'=>$ref,'generation'=>17171215,'page'=>1,'offer_ref'=>$offerRef,'operator_ref'=>'5','hotel_scope'=>null,'local_id'=>42];
+          $source='64706822fc54f4d4423ea6bbd0ad966144151387';$claim=['private'=>'PRIVATE_SENTINEL'];
+          $offer=['offer_ref'=>$offerRef,'local_hotel_id'=>42,'operator_ref'=>'5','check_in'=>'2026-12-15','nights'=>7,'adults'=>2,'children'=>1,'hotel'=>'Test hotel','price'=>['amount'=>'100000','currency'=>'RUB','fees'=>'unknown']];
+          $record=['version'=>1,'status'=>'complete','source'=>$source,'implementation_sha256'=>'28995a73f46f3e1a9d953c034cd5bf514d53c6c4d46d71d5ba593b7d255a8112','context'=>$ctx,'snapshot_created_at'=>100,'observed_at'=>101,'expires_at'=>401,'criteria_sha256'=>hash('sha256',json_encode($criteria)),'supplier_offer_sha256'=>hash('sha256','PRIVATE_SENTINEL'),'package_sha256'=>hash('sha256',json_encode($claim)),'fact'=>['provider'=>'andromeda','state'=>'estimated','arithmetic_applied'=>true,'final_price_verified'=>false,'surcharge_scope'=>'party','search_price'=>['amount'=>'100000.00','currency'=>'RUB'],'party_surcharge'=>['amount'=>'18000.00','currency'=>'RUB'],'search_price_with_surcharge'=>['amount'=>'118000.00','currency'=>'RUB','source'=>'derived_search_estimate'],'transport_markup_reported'=>['amount'=>'200','currency'=>'USD'],'operator_currency_rates_reported'=>[['currency'=>'USD','rate'=>'90'],['currency'=>'RUB','rate'=>'1']]]];
+          $search=['status'=>'complete','generation'=>17171215,'criteria'=>$criteria,'store'=>['generation'=>17171215,'search_ref'=>$ref,'created_at'=>100,'expires_at'=>1000,'criteria'=>$criteria,'raw_ids'=>[$offerRef=>'PRIVATE_SENTINEL'],'snapshot'=>['page'=>1,'offers'=>[$offer]]]];
+          $package=['source'=>$source,'record'=>['status'=>'captured','context'=>$ctx,'private_package'=>$claim,'package_sha256'=>$record['package_sha256']]];
+          $write=fn($p,$v)=>file_put_contents($p,json_encode($v));
+          try{
+            $write($stem.'-surcharge-v1.json',$record);$write($stem.'-package.json',$package);$write($root.'/searches/'.$ref.'-1.json',$search);
+            $before=[];foreach(glob($root.'/searches/*') as $p)$before[$p]=hash_file('sha256',$p);
+            $out=v2_archive_money_read($root,['created_at'=>99],103);
+            if($out['recorded_estimate']['amount']!=='118000.00'||$out['party_surcharge']['amount']!=='18000.00'||$out['final_price_verified']!==false||$out['historical_api_response_recorded']!==false||str_contains(json_encode($out),'PRIVATE_SENTINEL'))throw new RuntimeException('positive/privacy failed');
+            foreach($before as $p=>$h)if(hash_file('sha256',$p)!==$h)throw new RuntimeException('mutation');
+            $bad=$record;$bad['source']=str_repeat('c',40);$write($stem.'-surcharge-v1.json',$bad);
+            try{v2_archive_money_read($root,['created_at'=>99],103);throw new RuntimeException('bad accepted');}catch(RuntimeException $e){if($e->getMessage()!=='archive_context_mismatch')throw $e;}
+            $write($stem.'-surcharge-v1.json',$record);$bad=$search;$bad['store']['raw_ids'][$offerRef]='FOREIGN';$write($root.'/searches/'.$ref.'-1.json',$bad);
+            try{v2_archive_money_read($root,['created_at'=>99],103);throw new RuntimeException('bad accepted');}catch(RuntimeException $e){if($e->getMessage()!=='archive_offer_mismatch')throw $e;}
+            $write($root.'/searches/'.$ref.'-1.json',$search);$bad=$record;$bad['fact']['party_surcharge']['amount']='18001';$write($stem.'-surcharge-v1.json',$bad);
+            try{v2_archive_money_read($root,['created_at'=>99],103);throw new RuntimeException('bad accepted');}catch(RuntimeException $e){if($e->getMessage()!=='archive_money_mismatch')throw $e;}
+            unlink($stem.'-surcharge-v1.json');symlink($stem.'-package.json',$stem.'-surcharge-v1.json');
+            try{v2_archive_money_read($root,['created_at'=>99],103);throw new RuntimeException('bad accepted');}catch(RuntimeException $e){if($e->getMessage()!=='archive_path_invalid')throw $e;}
+            unlink($stem.'-surcharge-v1.json');
+            try{v2_archive_money_read($root,['created_at'=>99],103);throw new RuntimeException('bad accepted');}catch(RuntimeException $e){if($e->getMessage()!=='archive_not_retained')throw $e;}
+            echo "Archive binding/money/privacy/missing cases pass; supplier0\n";
+          }finally{foreach(glob($root.'/searches/*') as $p)unlink($p);rmdir($root.'/searches');rmdir($root);}
+          '''
+          subprocess.run(['php','-d','allow_url_fopen=0','-r',os.environ['ARCHIVAL_MONEY_PHP']+fixture],check=True,timeout=10)
+          PY
+      - name: Bind owner-only archival inspection to the terminal execution
         if: github.event_name != 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             if (process.env.GITHUB_RUN_ATTEMPT !== '1' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff' || context.actor !== 'pyatkoff' || context.payload.sender?.id !== 226193297 || context.ref !== 'refs/heads/main') throw new Error('Owner-only single inspection required.');
-            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 || context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 || context.payload.comment?.body !== '/inspect-andromeda-surcharge-e2e-1717-v2') throw new Error('Exact v2 inspection command required.');
+            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 || context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 || context.payload.comment?.body !== '/inspect-andromeda-surcharge-e2e-1717-v2-money') throw new Error('Exact archival inspection command required.');
             const {data: main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});if(main.object.sha!==context.sha)throw new Error('Main advanced; stop.');
             const {data: sourceComment}=await github.rest.issues.getComment({...context.repo,comment_id:5671360276});
             if(sourceComment.user?.id!==226193297||sourceComment.created_at!=='2026-09-14T21:56:50Z'||sourceComment.updated_at!=='2026-09-14T21:56:50Z'||sourceComment.body!=='/run-andromeda-surcharge-e2e-1717-v2')throw new Error('Source command provenance mismatch.');
@@ -643,13 +792,15 @@ jobs:
             if(run.head_sha!=='30106212b88616187e63fec625f91673576a0643'||run.event!=='issue_comment'||run.status!=='completed'||run.conclusion!=='failure'||run.run_attempt!==1)throw new Error('Terminal v2 run mismatch.');
             const {data: receipt}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10370532737});
             if(receipt.expired!==false||receipt.workflow_run?.id!==34901558904||receipt.workflow_run?.head_sha!=='30106212b88616187e63fec625f91673576a0643'||receipt.digest!=='sha256:83b9f85a611cabff94fa7ae7535289101f80ed812d635d40f108ca4bc7959266')throw new Error('Terminal v2 fallback receipt mismatch.');
+            const {data: readback}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10370668015});
+            if(readback.expired!==false||readback.workflow_run?.id!==34902201040||readback.digest!=='sha256:e9eb097cdf8760d3b915d671ba1efb0f9d3f1ea0ffa8df1c3fb3592af2594476')throw new Error('Fixed classification receipt mismatch.');
       - uses: actions/checkout@v4
         if: github.event_name != 'pull_request'
         with:
           ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
           path: helper
           persist-credentials: false
-      - name: Read only the fixed v2 reservation and result
+      - name: Read only retained search package and surcharge money
         if: github.event_name != 'pull_request'
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -661,18 +812,19 @@ jobs:
           import json,os,pathlib
           from anex_search3_owner_decisions import ssh_php
           out=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-surcharge-e2e-v2-readback';out.mkdir(mode=0o700)
-          try: result=ssh_php(os.environ['SURCHARGE_V2_READBACK_PHP'],{},maximum_bytes=65536)
+          try: result=ssh_php(os.environ['ARCHIVAL_MONEY_PHP']+os.environ['SURCHARGE_V2_READBACK_PHP'],{},maximum_bytes=65536)
           except Exception:
               (out/'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','operation_replayed':False}));raise
           result['control_source']=os.environ['GITHUB_SHA'];(out/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
-          if result.get('status')!='inspected' or result.get('operation_replayed') is not False or any(result.get(k)!=0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']):raise SystemExit('V2 checkpoint inspection incomplete; operation not replayed')
+          if result.get('status')!='inspected' or result.get('operation_replayed') is not False or any(result.get(k)!=0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']):raise SystemExit('V2 archive inspection incomplete; operation not replayed')
+          if result.get('archival_money',{}).get('archive_only') is not True:raise SystemExit('Retained money not recovered; inspect receipt without supplier replay')
           print(json.dumps(result,sort_keys=True))
           PY
-      - name: Preserve sanitized v2 checkpoint inspection
+      - name: Preserve sanitized v2 archival money
         if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: andromeda-surcharge-e2e-v2-readback-${{ github.run_id }}
+          name: andromeda-surcharge-e2e-v2-money-${{ github.run_id }}
           path: ${{ runner.temp }}/andromeda-surcharge-e2e-v2-readback/
           if-no-files-found: error
           retention-days: 14
