@@ -1,0 +1,165 @@
+name: MATCH ANEX media hotelCode CURRENT v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-media-hotelcode-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-media-hotelcode-current-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-media-hotelcode-current-1971-20260914-v1
+  SOURCE_RUN_ID: '34837638490'
+  SOURCE_ARTIFACT: match-anex-bridge-current-v1-result
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate extractor contract with owner-provided ANEX media examples
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/fixture.txt" <<'EOF'
+          https://files.anextour.ru/hotel/egypt/hotel/amphoras-aqua-hotel-sharm-el-sheikh/o651573?&hotelCode=36124
+          https://files.anextour.ru/hotel/egypt/hotel/amwaj-oyoun-hotel-resort-sharm-el-sheikh/o569451?&hotelCode=1102
+          https://files.anextour.ru/hotel/egypt/hotel/aurora-oriental-resort-sharm-el-sheikh-ex-ori-sharm-el-sheikh/o532684?&hotelCode=5215
+          https://files.anextour.ru/hotel/egypt/hotel/barcelo-tiran-sharm-hotel-sharm-el-sheikh-sharm-el-sheikh/o495438?&hotelCode=4158
+          EOF
+          php scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php https://anextour.ru/ < "$RUNNER_TEMP/fixture.txt" > "$RUNNER_TEMP/fixture.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          x=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'fixture.json').read_text())
+          if x.get('hotel_codes') != [1102,4158,5215,36124]: raise SystemExit('fixture_hotelcode_contract')
+          if int(x.get('hotelcode_url_count') or 0) != 4: raise SystemExit('fixture_url_count')
+          print(json.dumps({'fixture_hotel_codes':x['hotel_codes'],'fixture_hotelcode_url_count':x['hotelcode_url_count']},sort_keys=True))
+          PY
+      - name: Reserve immutable public media evidence operation
+        run: |
+          set -euo pipefail; STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_public_network","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" > "$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-media-hotelcode-current-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-media-hotelcode-current-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download CURRENT unresolved ANEX bridge queue
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/queue.json"
+          test -s "$RUNNER_TEMP/source/receipt.json"
+      - name: Extract native hotelCode from public ANEX API media payloads
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,subprocess,time,unicodedata,urllib.parse,urllib.request,urllib.error
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          src=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source'/'queue.json').read_text())
+          rows=src.get('rows') or []
+          core={1:['egypt'],2:['cuba'],4:['turkey'],8:['thailand'],9:['vietnam'],10:['sri-lanka','srilanka'],12:['uae','united-arab-emirates'],16:['maldives']}
+          seeds=[]
+          for r in rows:
+            eid=int(r.get('anex_hotel_id') or 0); cid=int(r.get('country_id') or 0)
+            if eid<=0 or cid not in core: continue
+            names=[]
+            for n in r.get('source_names') or []:
+              if isinstance(n,str) and n.strip() and n.strip() not in names:names.append(n.strip())
+            seeds.append({'anex_hotel_id':eid,'country_id':cid,'observed':bool(r.get('observed')),'search_count':int(r.get('search_count') or 0),'source_names':names,'source_places':r.get('source_places') or []})
+          seeds.sort(key=lambda x:(0 if x['observed'] else 1,-x['search_count'],x['anex_hotel_id']))
+          if len(seeds)!=182: raise SystemExit(f'current_seed_contract:{len(seeds)}')
+          def slug(s):
+            s=unicodedata.normalize('NFKD',s).encode('ascii','ignore').decode().lower()
+            s=re.sub(r'\b(?:ex|former|formerly)\b\.?',' ',s)
+            s=re.sub(r'[^a-z0-9]+','-',s).strip('-')
+            return s
+          def variants(s):
+            out=[]
+            for x in [s,re.sub(r'\((?:ex\.?|former(?:ly)?)[^)]*\)',' ',s,flags=re.I)]:
+              v=slug(x)
+              if v and v not in out: out.append(v)
+            m=re.search(r'\((?:ex\.?|former(?:ly)?)\s*([^)]*)\)',s,re.I)
+            if m:
+              v=slug(m.group(1));
+              if v and v not in out: out.append(v)
+            return out
+          ua='AnyTour-MATCH-ANEX-media-hotelCode/1.0'
+          calls=0
+          def get(path):
+            nonlocal_dummy=None
+            url='https://api.anextour.ru/b2c/hotel?hotel='+urllib.parse.quote(path,safe='')
+            req=urllib.request.Request(url,headers={'User-Agent':ua,'Accept':'application/json,text/plain,*/*'})
+            try:
+              with urllib.request.urlopen(req,timeout=25) as resp:
+                body=resp.read(4*1024*1024); final=resp.geturl(); status=int(resp.status)
+              return final,body,status,None
+            except urllib.error.HTTPError as e: return url,b'',int(e.code),'http'
+            except Exception as e: return url,b'',0,type(e).__name__
+          def parse_media(body):
+            p=subprocess.run(['php','scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php','https://anextour.ru/'],input=body,capture_output=True)
+            if p.returncode!=0: return {'status':'parser_failed','hotel_codes':[],'hotelcode_urls':[]}
+            try:return json.loads(p.stdout)
+            except Exception:return {'status':'parser_invalid','hotel_codes':[],'hotelcode_urls':[]}
+          out=[]; confirmed_identity=0; media_expected=0; media_any=0; conflicts=0; api_ok=0; api_404=0
+          for idx,s in enumerate(seeds,1):
+            eid=s['anex_hotel_id']; attempts=[]; winner=None
+            paths=[]
+            for country in core[s['country_id']]:
+              for name in s['source_names'][:5]:
+                for v in variants(name):
+                  p=f'/hotels/{country}/{v}'
+                  if p not in paths: paths.append(p)
+            for path in paths[:12]:
+              final,body,status,err=get(path); calls+=1
+              rec={'path':path,'http':status,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest() if body else None,'error':err}
+              if status==404: api_404+=1
+              if status!=200 or not body: attempts.append(rec); continue
+              api_ok+=1
+              try:data=json.loads(body)
+              except Exception: rec['error']='json'; attempts.append(rec); continue
+              canonical=None
+              if isinstance(data,list) and len(data)==1 and isinstance(data[0],dict) and data[0].get('code')==301 and isinstance(data[0].get('url'),str): canonical=data[0]['url']
+              if canonical and canonical!=path:
+                rec['canonical_to']=canonical; attempts.append(rec)
+                final2,body2,status2,err2=get(canonical); calls+=1
+                rec2={'path':canonical,'http':status2,'bytes':len(body2),'sha256':hashlib.sha256(body2).hexdigest() if body2 else None,'error':err2,'via_301':path}
+                if status2==200 and body2:
+                  body=body2; rec=rec2
+                  try:data=json.loads(body)
+                  except Exception:data=None
+                else:
+                  attempts.append(rec2); continue
+              info=None
+              if isinstance(data,list) and data and isinstance(data[0],dict) and isinstance(data[0].get('info'),dict): info=data[0]['info']
+              inc=int(info.get('inc') or 0) if isinstance(info,dict) else 0
+              rec['returned_inc']=inc or None
+              attempts.append(rec)
+              if inc!=eid: continue
+              confirmed_identity+=1
+              media=parse_media(body)
+              codes=sorted(set(int(x) for x in (media.get('hotel_codes') or []) if int(x)>0))
+              if codes: media_any+=1
+              expected=eid in codes
+              conflict=bool(codes and not expected)
+              if expected: media_expected+=1
+              if conflict: conflicts+=1
+              safe_urls=[]
+              for m in media.get('hotelcode_urls') or []:
+                if int(m.get('hotelCode') or 0)==eid: safe_urls.append(m.get('url'))
+              winner={'path':path,'returned_inc':inc,'name':info.get('name'),'lname':info.get('lname'),'exName':info.get('exName'),'exLName':info.get('exLName'),'state':info.get('state'),'town':info.get('town'),'latitude':info.get('latitude'),'longitude':info.get('longitude'),'hotel_codes':codes,'expected_hotelcode_in_media':expected,'hotelcode_conflict':conflict,'expected_media_urls':safe_urls[:20],'raw_sha256':hashlib.sha256(body).hexdigest()}
+              break
+            out.append({**s,'identity_confirmed':winner is not None,'evidence':winner,'attempt_count':len(attempts),'attempts':attempts[:16]})
+            time.sleep(0.03)
+          result={'status':'completed','operation_id':os.environ['OPERATION_ID'],'seed_count':len(seeds),'observed_seed_count':sum(1 for s in seeds if s['observed']),'public_api_calls':calls,'api_200_payloads':api_ok,'api_404':api_404,'identity_confirmed':confirmed_identity,'media_hotelcode_any':media_any,'media_hotelcode_expected':media_expected,'media_hotelcode_conflicts':conflicts,'rows':out,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'guards':{'core8_only':True,'native_code_requires_files_anextour_ru_hotel_path_and_hotelCode_query':True,'user_fixture_codes':[1102,4158,5215,36124],'historical_operations_replayed':False,'no_replay':True}}
+          ep=state/'evidence.json'; ep.write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'seed_count':182,'identity_confirmed':confirmed_identity,'media_hotelcode_expected':media_expected,'media_hotelcode_conflicts':conflicts,'public_api_calls':calls,'evidence_sha256':hashlib.sha256(ep.read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-media-hotelcode-current-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-media-hotelcode-current-1971-20260914-v1/
+          retention-days: 90
