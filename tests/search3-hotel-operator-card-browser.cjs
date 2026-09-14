@@ -23,24 +23,17 @@ module.exports=async function checkOperatorCards(page,width,output){
     await page.evaluate(h=>{window.dispatchEvent(new CustomEvent('v2:search-reset'));window.V2Runtime.setSearchId(9410);const freeze=v=>{if(v&&typeof v==='object'){Object.values(v).forEach(freeze);Object.freeze(v);}return v;};window.__brandOriginal=freeze(h);window.V2Results.render([window.__brandOriginal]);window.dispatchEvent(new CustomEvent('search3:local-results-filtered',{detail:{items:[window.__brandOriginal]}}));},hotel);
     const card=page.locator('[data-hotel-id="brand-hotel"].hotel-card');
     await card.scrollIntoViewIfNeeded();
-    await page.waitForFunction(()=>{const img=document.querySelector('[data-hotel-id="brand-hotel"] .hotel-operator-logo');return img&&img.complete&&img.naturalWidth>0;});
-    assert.deepEqual(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)),['funsun']);
-    assert.equal(await card.locator('.hotel-operator-logo').evaluateAll(nodes=>nodes.every(n=>new URL(n.src).origin===location.origin)),true,'brand artwork stays local');
-    assert.equal(await card.locator('.tour-row').count(),1,'collapsed hotel exposes the exact primary tour');
-    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'brand-funsun-7');
-    const collapsedText=await card.locator('.tour-row').innerText();
-    assert.match(collapsedText,/16\.09\.2026/);
-    assert.match(collapsedText,/ · 7 ноч\./);
-    assert.match(collapsedText,/Завтраки/);
-    assert.match(collapsedText,/Чартер/);
-    assert.doesNotMatch(collapsedText,/Несколько дат|7[–-]10|7[–-]9|BB · AI|варианта питания|Разные варианты/);
-    assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'62400₽');
+    assert.equal(await card.locator('[data-operator-brand],.hotel-operator-logo').count(),0,'collapsed multi-offer hotel does not borrow one concrete operator');
+    assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,'collapsed multi-offer hotel has no concrete offer row, Select, or Compare');
+    const collapsedText=await card.innerText();
+    assert.doesNotMatch(collapsedText,/16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|8 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Полупансион|Всё включено|STANDARD|DBL|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Чартер|Регулярный рейс/,'collapsed hotel-level surface excludes concrete offer parameters');
+    assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽','collapsed multi-offer hotel exposes only the truthful group minimum');
     assert.equal(await card.locator('.tour-more-toggle').count(),1);
     const toggle=card.locator('.tour-more-toggle');
     assert.equal(await toggle.innerText(),'Показать варианты · 10');
     assert.ok((await toggle.boundingBox()).height>=44);
     assert.ok((await toggle.boundingBox()).width<260,'collapsed disclosure is a compact secondary action');
-    assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not compete with the exact offer CTA');
+    assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not pretend to be a concrete offer CTA');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const collapsedComposition=[];
     if(width===375){
@@ -49,14 +42,15 @@ module.exports=async function checkOperatorCards(page,width,output){
         await page.setViewportSize({...viewport,width:inspectedWidth});
         const geometry=await card.evaluate(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
-          return{card:box(node),row:box(node.querySelector('.tour-row')),facts:box(node.querySelector('.tour-facts')),price:box(node.querySelector('.hotel-price')),toggle:box(node.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
+          const summary=node.querySelector('.hotel-offers-summary');
+          return{card:box(node),summary:box(summary),price:box(summary.querySelector('.hotel-price')),toggle:box(summary.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
         });
         assert.ok(geometry.toggle.height>=44,`${inspectedWidth}: collapsed disclosure keeps a full touch target`);
         assert.equal(geometry.overflow,false,`${inspectedWidth}: collapsed hotel card stays contained`);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-        assert.ok(geometry.toggle.y>=geometry.row.bottom-1,`${inspectedWidth}: alternatives follow the complete exact offer`);
-        assert.ok(geometry.price.right<=geometry.card.right+1,`${inspectedWidth}: exact price stays within the card`);
-        assert.doesNotMatch(await card.locator('.tour-row').innerText(),/Несколько дат|7[–-]10|7[–-]9|BB · AI/);
+        assert.ok(geometry.summary.y>=0&&geometry.summary.bottom<=geometry.card.bottom+1,`${inspectedWidth}: hotel-level offer summary stays inside the hotel card`);
+        assert.ok(geometry.price.right<=geometry.card.right+1&&geometry.toggle.right<=geometry.card.right+1,`${inspectedWidth}: minimum and disclosure stay within the card`);
+        assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,`${inspectedWidth}: no concrete offer leaks into collapsed hotel`);
         collapsedComposition.push({width:inspectedWidth,geometry});
         await card.screenshot({path:path.join(output,`operator-card-collapsed-action-${inspectedWidth}.png`),animations:'disabled'});
       }
@@ -67,6 +61,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('.hotel-trip-summary').count(),0,'expanded detail is exact offers, not another nested aggregate');
     assert.equal(await card.locator('.tour-row').count(),10);
     await page.waitForFunction(()=>document.querySelectorAll('[data-hotel-id="brand-hotel"] .search3-shortlist-toggle').length===10);
+    await page.waitForFunction(()=>{const img=document.querySelector('[data-hotel-id="brand-hotel"] .hotel-operator-logo');return img&&img.complete&&img.naturalWidth>0;});
     assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(),'10 вариантов');
     assert.equal(await toggle.getAttribute('aria-expanded'),'true');
     assert.equal(await toggle.evaluate(node=>node===document.activeElement),true);
@@ -76,6 +71,9 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.match(await row.locator('.tour-meta>small').innerText(),new RegExp(' · '+offer.nights+' ноч\\.'));
       assert.match(await row.innerText(),new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
+      assert.match(await row.innerText(),/Источник\s*Tourvisor/,'expanded exact offer keeps provider source distinct from tour operator');
+      assert.doesNotMatch(await row.innerText(),/Туристы|Размещение/,'expanded offer row does not repeat search party or a second placement field');
+      assert.match(await row.innerText(),/STANDARD · DBL/,'room and placement stay together as one compact exact-offer fact');
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
     }
     for(const brand of ['funsun','anex','intourist','biblio-globus']){
@@ -130,7 +128,7 @@ module.exports=async function checkOperatorCards(page,width,output){
             assert.ok(row.facts.x>=row.date.right-1&&Math.abs(row.facts.y-row.date.y)<2,'date and primary conditions share one desktop reading row');
             if(row.compare)assert.ok(row.compare.x>=row.select.right-1&&Math.abs(row.compare.y-row.select.y)<2,'selection and comparison share one action row');
           }
-          if(inspectedWidth===1440)assert.ok(row.row.height<=180,'heterogeneous desktop offer avoids the former tall nested action card');
+          if(inspectedWidth===1440)assert.ok(row.row.height<=160,'compact heterogeneous desktop offer stays below the former tall nested action card');
         }
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         desktopComposition.push({width:inspectedWidth,rows});
@@ -142,7 +140,8 @@ module.exports=async function checkOperatorCards(page,width,output){
     await toggle.press('Space');
     assert.equal(await toggle.getAttribute('aria-expanded'),'false');
     assert.equal(await toggle.evaluate(node=>node===document.activeElement),true);
-    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'brand-funsun-7');
+    assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle,[data-operator-brand]').count(),0,'collapsing returns to a hotel-only surface');
+    assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽');
     assert.equal(await page.evaluate(()=>JSON.stringify(window.__brandOriginal)),JSON.stringify(hotel));
     // A single concrete Biblio-Globus offer has a real operator logo and no minimum prefix.
     await page.evaluate(({hotel,base})=>window.V2Results.render([{...hotel,id:'brand-single',tours:[{...base,id:'brand-bg',operator:'Библио Глобус'}]}]),{hotel,base});
@@ -166,7 +165,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     await operator.selectOption('anex');
     const aliasCard=page.locator('.hotel-card[data-hotel-id="operator-alias-hotel"]');
     assert.deepEqual(await page.evaluate(()=>['alias-tv','alias-direct','same-source-other-operator','unknown-brand'].map(id=>window.V2Results.offerAlternatives(id)?.count||0)),[2,2,0,0],'ANEX aliases match across provider sources while other operators remain excluded');
-    assert.equal(await aliasCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'72000₽','representative price comes from the same locally matched offers');
+    assert.equal(await aliasCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от72000₽','hotel-level minimum comes from the same locally matched offers');
     await page.evaluate(()=>window.V2Results.rerender());
     assert.equal(await operator.inputValue(),'anex','canonical choice survives ordinary renderer updates');
     await page.screenshot({path:path.join(output,`operator-alias-facet-${width}.png`),fullPage:true});
@@ -183,6 +182,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:'funsun',collapsed_exact_offer:'brand-funsun-7',known_logo_coverage:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };

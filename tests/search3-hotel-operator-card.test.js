@@ -14,13 +14,11 @@ const other=freeze({...tour,id:'second',nights:10,price:74900,meal:{name:'AI',fu
 const hotel=freeze({id:'hotel',name:'Проверочный отель',price:62400,tours:[tour,other]});
 const original=JSON.stringify(hotel);
 const summary=api.toursHtml(hotel);
-assert.match(summary,/class="tour-row"/);
-assert.doesNotMatch(summary,/hotel-trip-summary|hotel-summary-total|7–10|Несколько дат|Разные варианты/);
-assert.equal((summary.match(/Итого за тур/g)||[]).length,1);
-assert.match(summary,/data-operator-brand="funsun"/);
-assert.doesNotMatch(summary,/data-operator-brand="anex"/,'the other offer operator is not assigned to the primary tour');
-assert.match(summary,/data-tid="first"/);
-assert.match(summary,/62\s?400/);
+assert.match(summary,/hotel-offers-summary/);
+assert.doesNotMatch(summary,/class="tour-row"|data-tid=|data-operator-brand=|Итого за тур|16\.09\.2026|7 ноч\.|Завтраки|Чартер/,'collapsed multi-offer hotel must not borrow one tour conditions or actions');
+assert.equal((summary.match(/class="hotel-price"/g)||[]).length,1);
+assert.match(summary,/от 62(?:\s| )?400/);
+assert.match(summary,/Показать варианты · 2/);
 for(const offer of [tour,other]){
   const row=api.tourRow(offer);
   assert.doesNotMatch(row,/от |7–10|Разные варианты перелёта|Завтрак · Всё включено/,'individual offer never inherits aggregate fields');
@@ -30,6 +28,9 @@ for(const offer of [tour,other]){
   assert.ok(row.includes(offer.meal.fullName));
   assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
+  assert.match(row,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/,'room and placement stay together as one exact offer fact');
+  assert.match(row,/<small>Источник<\/small><b>Tourvisor<\/b>/,'exact offer keeps provider source distinct from tour operator');
+  assert.doesNotMatch(row,/<small>(?:Туристы|Размещение)<\/small>/,'exact offer does not repeat search party or a second placement field');
 }
 assert.equal(api.operatorIdentity({provider:'anex'}),null,'provider is not tour operator');
 assert.equal(api.operatorIdentity({operator:'ANEX SERVICES'}).logo,'','unknown similar name is not branded');
@@ -56,4 +57,4 @@ for(const asset of provenance.assets){
     assert.doesNotMatch(text,/<(?:script|foreignObject|iframe|image)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*["'](?:https?:|\/\/|data:)|url\(\s*["']?https?:/i,'brand SVG must be passive and self-contained');
   }else assert.equal(data.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
 }
-console.log('SEARCH3_OPERATOR_CARDS_OK exact_collapsed_offer=1 exact_offers=1 brands=4 provider_not_operator=1 frozen_source=1');
+console.log('SEARCH3_OPERATOR_CARDS_OK collapsed_hotel_level=1 compact_exact_offers=1 brands=4 provider_not_operator=1 frozen_source=1');
