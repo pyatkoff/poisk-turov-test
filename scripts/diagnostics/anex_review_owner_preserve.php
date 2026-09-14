@@ -10,29 +10,34 @@ try{
     // These five Andromeda core files are installed by the scoped provider publisher but are not yet
     // tracked on the INT base. A full ANEX preview refresh must not silently delete them. If a future
     // payload carries any of them itself, that current source wins and the installed copy is ignored.
+    // The same helper is also used by owner-panel-only fixtures; those do not contain a preview payload
+    // and therefore do not participate in runtime preservation.
     $runtimeNames=['andromeda-normalizer.php','andromeda-hotel-resolver.php','andromeda-search.php','andromeda-hotel-observations.php','andromeda-offer-store.php'];
     $runtimeDir=$stage.'/app/integrations';
-    if(!is_dir($runtimeDir)||is_link($runtimeDir))throw new RuntimeException('preserve_runtime_stage');
-    $runtimeHashes=[];$runtimeBytes=[];$runtimeSources=[];
-    foreach($runtimeNames as $name){
-        $destination=$runtimeDir.'/'.$name;
-        if(is_file($destination)&&!is_link($destination)){
-            $size=filesize($destination);
+    $runtimeOverlay=['status'=>'not_applicable','sha256'=>[],'bytes'=>[],'sources'=>[]];
+    if(is_file($stage.'/anex-preview-manifest.json')||is_dir($runtimeDir)){
+        if(!is_dir($runtimeDir)||is_link($runtimeDir))throw new RuntimeException('preserve_runtime_stage');
+        $runtimeHashes=[];$runtimeBytes=[];$runtimeSources=[];
+        foreach($runtimeNames as $name){
+            $destination=$runtimeDir.'/'.$name;
+            if(is_file($destination)&&!is_link($destination)){
+                $size=filesize($destination);
+                if(!is_int($size)||$size<1||$size>300000)throw new RuntimeException('preserve_runtime_bound');
+                $runtimeHashes[$name]=hash_file('sha256',$destination);$runtimeBytes[$name]=$size;$runtimeSources[$name]='current_source';
+                continue;
+            }
+            if(file_exists($destination)||is_link($destination))throw new RuntimeException('preserve_runtime_stage');
+            $source=$target.'/app/integrations/'.$name;
+            if(!is_file($source)||is_link($source))throw new RuntimeException('preserve_runtime_missing');
+            $size=filesize($source);
             if(!is_int($size)||$size<1||$size>300000)throw new RuntimeException('preserve_runtime_bound');
-            $runtimeHashes[$name]=hash_file('sha256',$destination);$runtimeBytes[$name]=$size;$runtimeSources[$name]='current_source';
-            continue;
+            $raw=file_get_contents($source);
+            if(!is_string($raw)||strlen($raw)!==$size||file_put_contents($destination,$raw)!==$size||!chmod($destination,0644))throw new RuntimeException('preserve_runtime_write');
+            $runtimeHashes[$name]=hash_file('sha256',$destination);$runtimeBytes[$name]=$size;$runtimeSources[$name]='installed_preview';
+            if($runtimeHashes[$name]!==hash_file('sha256',$source))throw new RuntimeException('preserve_runtime_drift');
         }
-        if(file_exists($destination)||is_link($destination))throw new RuntimeException('preserve_runtime_stage');
-        $source=$target.'/app/integrations/'.$name;
-        if(!is_file($source)||is_link($source))throw new RuntimeException('preserve_runtime_missing');
-        $size=filesize($source);
-        if(!is_int($size)||$size<1||$size>300000)throw new RuntimeException('preserve_runtime_bound');
-        $raw=file_get_contents($source);
-        if(!is_string($raw)||strlen($raw)!==$size||file_put_contents($destination,$raw)!==$size||!chmod($destination,0644))throw new RuntimeException('preserve_runtime_write');
-        $runtimeHashes[$name]=hash_file('sha256',$destination);$runtimeBytes[$name]=$size;$runtimeSources[$name]='installed_preview';
-        if($runtimeHashes[$name]!==hash_file('sha256',$source))throw new RuntimeException('preserve_runtime_drift');
+        $runtimeOverlay=['status'=>'preserved','sha256'=>$runtimeHashes,'bytes'=>$runtimeBytes,'sources'=>$runtimeSources];
     }
-    $runtimeOverlay=['status'=>'preserved','sha256'=>$runtimeHashes,'bytes'=>$runtimeBytes,'sources'=>$runtimeSources];
 
     // Preserve the separate owner panel when it is installed. Runtime preservation above is independent
     // of the panel so a preview refresh remains safe even when the panel has never been activated.
