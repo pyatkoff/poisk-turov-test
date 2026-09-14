@@ -1,45 +1,37 @@
-name: MATCH ANEX child sitemap hotelCode v11
+name: MATCH ANEX child sitemap hotelCode v12
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-anex-rendered-child-sitemap-hotelcode-v11.yml]
 permissions: {contents: read, actions: read}
-env:
-  OPERATION_ID: hotel-match-anex-child-sitemap-hotelcode-1971-20260914-v11
-  SITEMAP_RUN: '34843349184'
-  EVIDENCE_RUN: '34839217307'
+env: {OPERATION_ID: hotel-match-anex-child-sitemap-hotelcode-1971-20260914-v12}
 jobs:
   recover:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false, ref: '${{ github.sha }}'}
-      - name: Reserve and download immutable inputs
+      - name: Recover real ANEX pages and photo hotelCode from rendered child sitemaps
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
-          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S" "$RUNNER_TEMP/sitemap" "$RUNNER_TEMP/evidence"
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S" "$RUNNER_TEMP/s" "$RUNNER_TEMP/e"
           printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_browser","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
-          gh run download "$SITEMAP_RUN" --repo "$GITHUB_REPOSITORY" --name match-anex-rendered-sitemap-discovery-v10-result -D "$RUNNER_TEMP/sitemap"
-          gh run download "$EVIDENCE_RUN" --repo "$GITHUB_REPOSITORY" --name match-anex-public-full-current-v3-result -D "$RUNNER_TEMP/evidence"
-          test -s "$RUNNER_TEMP/sitemap/result.json"; test -s "$RUNNER_TEMP/evidence/evidence.json"
-      - uses: actions/upload-artifact@v4
-        with: {name: match-anex-child-sitemap-hotelcode-v11-reservation, path: '${{ runner.temp }}/hotel-match-anex-child-sitemap-hotelcode-1971-20260914-v11/reservation.json', retention-days: 90}
-      - name: Crawl child sitemap pages, resolve real hotel pages, extract photo hotelCode
-        run: |
-          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"
+          gh run download 34843349184 --repo "$GITHUB_REPOSITORY" --name match-anex-rendered-sitemap-discovery-v10-result -D "$RUNNER_TEMP/s"
+          gh run download 34839217307 --repo "$GITHUB_REPOSITORY" --name match-anex-public-full-current-v3-result -D "$RUNNER_TEMP/e"
           npm init -y >/dev/null 2>&1; npm install --silent playwright@1.55.0; npx playwright install --with-deps chromium >/dev/null
           node <<'NODE'
-          const fs=require('fs'),{chromium}=require('playwright');const root=process.env.RUNNER_TEMP,S=root+'/'+process.env.OPERATION_ID,sm=JSON.parse(fs.readFileSync(root+'/sitemap/result.json')),ev=JSON.parse(fs.readFileSync(root+'/evidence/evidence.json'));
+          const fs=require('fs'),{chromium}=require('playwright');
+          const root=process.env.RUNNER_TEMP,S=root+'/'+process.env.OPERATION_ID,sm=JSON.parse(fs.readFileSync(root+'/s/result.json')),ev=JSON.parse(fs.readFileSync(root+'/e/evidence.json'));
           const media=/^https?:\/\/(?:files\.anextour\.(?:ru|com)|cdn\.anextour\.ru)\//i,generic=new Set(['hotel','hotels','resort','resorts','spa']);
-          function norm(v){return String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\b(?:ex|former|formerly)\b\.?/g,' ').match(/[a-z0-9]+/g)?.filter(x=>!generic.has(x)).join(' ')||''}
-          const child=[...new Set(sm.rows.flatMap(r=>r.sitemap_links||[]))];const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({userAgent:'Mozilla/5.0 AnyTour-MATCH-child-sitemap/1.0'});let ci=0;const pages=[];
-          async function cw(){while(true){const i=ci++;if(i>=child.length)break;const url=child[i],p=await ctx.newPage();let links=[],err=null;try{await p.goto(url,{waitUntil:'domcontentloaded',timeout:12000});await p.waitForTimeout(1200);links=await p.locator('a[href]').evaluateAll(xs=>xs.map(x=>({href:x.href,text:(x.textContent||'').trim()})).filter(x=>/\/tours\//.test(x.href)&&x.href.split('/').length>=6))}catch(e){err=String(e).slice(0,160)}await p.close();pages.push({url,links,error:err})}}
-          await Promise.all(Array.from({length:12},()=>cw()));const index=new Map();for(const pg of pages)for(const l of pg.links){const k=norm(l.text);if(k)(index.get(k)||index.set(k,[]).get(k)).push(l.href)}
-          const candidates=[];for(const r of ev.unmatched||[]){const aid=Number(r.anex_hotel_id||0);let urls=new Set();for(const n of r.source_names||[]){for(const u of index.get(norm(n))||[])urls.add(u)}if(urls.size)candidates.push({aid,cid:Number(r.country_id||0),source_names:r.source_names||[],urls:[...urls]})}
-          let ri=0;const rows=[];async function rw(){while(true){const i=ri++;if(i>=candidates.length)break;const c=candidates[i];let hit=null,attempts=[];for(const url of c.urls.slice(0,4)){const p=await ctx.newPage(),urls=new Set();p.on('request',q=>{if(media.test(q.url())&&/hotelCode=/i.test(q.url()))urls.add(q.url())});p.on('response',q=>{if(media.test(q.url())&&/hotelCode=/i.test(q.url()))urls.add(q.url())});let err=null;try{await p.goto(url,{waitUntil:'domcontentloaded',timeout:12000});await p.waitForTimeout(2200);for(const u of await p.locator('img').evaluateAll(xs=>xs.flatMap(x=>[x.src,x.currentSrc,x.getAttribute('data-src'),x.getAttribute('srcset')].filter(Boolean))))if(media.test(u)&&/hotelCode=/i.test(u))urls.add(u)}catch(e){err=String(e).slice(0,160)}await p.close();const codes=[...new Set([...urls].map(u=>{try{return Number(new URL(u).searchParams.get('hotelCode')||0)}catch{return 0}}).filter(Boolean))].sort((a,b)=>a-b);attempts.push({url,photo_url_count:urls.size,hotel_codes:codes,error:err});if(codes.length===1&&codes[0]===c.aid){hit={page_url:url,photo_url_count:urls.size,hotel_code:c.aid};break}}rows.push({...c,confirmed:!!hit,hit,attempts})}}
-          await Promise.all(Array.from({length:10},()=>rw()));await browser.close();const ok=rows.filter(r=>r.confirmed),allLinks=[...new Set(pages.flatMap(p=>p.links.map(l=>l.href)))];const out={status:'completed',operation_id:process.env.OPERATION_ID,child_sitemap_pages:child.length,child_pages_rendered:pages.length,actual_hotel_links:allLinks.length,unresolved_source:86,exact_name_real_page_candidates:candidates.length,confirmed_by_photo_hotelcode:ok.length,confirmed_ids:ok.map(r=>r.aid),still_without_real_page_or_code:86-ok.length,rows,database_writes:0,mapping_writes:0,tourvisor_calls:0,supplier_search_calls:0,no_replay:true};fs.writeFileSync(S+'/result.json',JSON.stringify(out,null,2)+'\n');console.log(JSON.stringify({child_sitemap_pages:out.child_sitemap_pages,actual_hotel_links:out.actual_hotel_links,exact_name_real_page_candidates:out.exact_name_real_page_candidates,confirmed_by_photo_hotelcode:out.confirmed_by_photo_hotelcode,still_without_real_page_or_code:out.still_without_real_page_or_code}));
+          const norm=v=>(String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\b(?:ex|former|formerly)\b\.?/g,' ').match(/[a-z0-9]+/g)||[]).filter(x=>!generic.has(x)).join(' ');
+          (async()=>{const child=[...new Set(sm.rows.flatMap(r=>r.sitemap_links||[]))],browser=await chromium.launch({headless:true}),ctx=await browser.newContext({userAgent:'Mozilla/5.0 AnyTour-MATCH-child-sitemap/1.0'});let ci=0;const pages=[];
+          async function cw(){while(true){const i=ci++;if(i>=child.length)break;const url=child[i],p=await ctx.newPage();let links=[],err=null;try{await p.goto(url,{waitUntil:'domcontentloaded',timeout:12000});await p.waitForTimeout(900);links=await p.locator('a[href]').evaluateAll(xs=>xs.map(x=>({href:x.href,text:(x.textContent||'').trim()})).filter(x=>/\/tours\//.test(x.href)&&x.href.split('/').length>=6))}catch(e){err=String(e).slice(0,140)}await p.close();pages.push({url,links,error:err})}}
+          await Promise.all(Array.from({length:14},()=>cw()));const index=new Map();for(const pg of pages)for(const l of pg.links){const k=norm(l.text);if(k){if(!index.has(k))index.set(k,new Set());index.get(k).add(l.href)}}
+          const candidates=[];for(const r of ev.unmatched||[]){const urls=new Set();for(const n of r.source_names||[])for(const u of index.get(norm(n))||[])urls.add(u);if(urls.size)candidates.push({aid:Number(r.anex_hotel_id),cid:Number(r.country_id),source_names:r.source_names||[],urls:[...urls]})}
+          let ri=0;const rows=[];async function rw(){while(true){const i=ri++;if(i>=candidates.length)break;const c=candidates[i];let hit=null,attempts=[];for(const url of c.urls.slice(0,4)){const p=await ctx.newPage(),found=new Set();p.on('request',q=>{if(media.test(q.url())&&/hotelCode=/i.test(q.url()))found.add(q.url())});p.on('response',q=>{if(media.test(q.url())&&/hotelCode=/i.test(q.url()))found.add(q.url())});let err=null;try{await p.goto(url,{waitUntil:'domcontentloaded',timeout:12000});await p.waitForTimeout(2200);for(const u of await p.locator('img').evaluateAll(xs=>xs.flatMap(x=>[x.src,x.currentSrc,x.getAttribute('data-src'),x.getAttribute('srcset')].filter(Boolean))))if(media.test(u)&&/hotelCode=/i.test(u))found.add(u)}catch(e){err=String(e).slice(0,140)}await p.close();const codes=[...new Set([...found].map(u=>{try{return Number(new URL(u).searchParams.get('hotelCode')||0)}catch{return 0}}).filter(Boolean))].sort((a,b)=>a-b);attempts.push({url,photo_url_count:found.size,hotel_codes:codes,error:err});if(codes.length===1&&codes[0]===c.aid){hit={page_url:url,photo_url_count:found.size,hotel_code:c.aid};break}}rows.push({...c,confirmed:!!hit,hit,attempts})}}
+          await Promise.all(Array.from({length:10},()=>rw()));await browser.close();const ok=rows.filter(r=>r.confirmed),allLinks=[...new Set(pages.flatMap(p=>p.links.map(l=>l.href)))];const out={status:'completed',operation_id:process.env.OPERATION_ID,child_sitemap_pages:child.length,child_pages_rendered:pages.length,actual_hotel_links:allLinks.length,unresolved_source:86,exact_name_real_page_candidates:candidates.length,confirmed_by_photo_hotelcode:ok.length,confirmed_ids:ok.map(r=>r.aid),still_without_real_page_or_code:86-ok.length,rows,database_writes:0,mapping_writes:0,tourvisor_calls:0,supplier_search_calls:0,no_replay:true};fs.writeFileSync(S+'/result.json',JSON.stringify(out,null,2)+'\n');console.log(JSON.stringify({child_sitemap_pages:out.child_sitemap_pages,actual_hotel_links:out.actual_hotel_links,exact_name_real_page_candidates:out.exact_name_real_page_candidates,confirmed_by_photo_hotelcode:out.confirmed_by_photo_hotelcode,still_without_real_page_or_code:out.still_without_real_page_or_code}));})().catch(e=>{console.error(e);process.exit(1)});
           NODE
           python3 - <<'PY'
           import hashlib,json,os,pathlib
@@ -47,4 +39,4 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: match-anex-child-sitemap-hotelcode-v11-result, path: '${{ runner.temp }}/hotel-match-anex-child-sitemap-hotelcode-1971-20260914-v11/', retention-days: 90}
+        with: {name: match-anex-child-sitemap-hotelcode-v12-result, path: '${{ runner.temp }}/hotel-match-anex-child-sitemap-hotelcode-1971-20260914-v12/', retention-days: 90}
