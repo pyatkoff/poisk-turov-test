@@ -1,19 +1,19 @@
-name: MATCH passive Tourvisor operator evidence CURRENT
+name: MATCH saved Tourvisor ANEX handles CURRENT
 on:
   push:
     branches: [match/manual-live-review-queue-1971-20260914]
     paths:
-      - 'scripts/diagnostics/hotel_match_passive_tv_operator_evidence.py'
+      - 'scripts/diagnostics/hotel_match_saved_tv_tour_handles.py'
       - '.github/workflows/hotel-match-manual-live-queue.yml'
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-match-passive-tv-operator-evidence-1971-20260915-v1
+  group: anytour-match-saved-tv-tour-handles-1971-20260915-v1
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-passive-tv-operator-evidence-1971-20260915-v1
-  OUT: /tmp/match-passive-tv-operator-evidence-1971-v1
+  OPERATION_ID: hotel-match-saved-tv-tour-handles-1971-20260915-v1
+  OUT: /tmp/match-saved-tv-tour-handles-1971-v1
 jobs:
   current-readonly:
     runs-on: ubuntu-latest
@@ -24,13 +24,13 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
           fetch-depth: 1
-      - name: Offline scope and parser checks
+      - name: Offline saved-handle scope checks
         run: |
           set -euo pipefail
-          python3 -B scripts/diagnostics/hotel_match_passive_tv_operator_evidence.py --self-test
-          python3 -m py_compile scripts/diagnostics/hotel_match_passive_tv_operator_evidence.py
-          ! grep -Eiq '(curl|wget|requests\.|urllib\.request|api\.tourvisor|parser\.anextour|gateway\.samo)' scripts/diagnostics/hotel_match_passive_tv_operator_evidence.py
-      - name: CURRENT passive evidence read with immutable reservation/readback
+          python3 -B scripts/diagnostics/hotel_match_saved_tv_tour_handles.py --self-test
+          python3 -m py_compile scripts/diagnostics/hotel_match_saved_tv_tour_handles.py
+          ! grep -Eiq '(curl|wget|requests\.|urllib\.request|api\.tourvisor|parser\.anextour|gateway\.samo)' scripts/diagnostics/hotel_match_saved_tv_tour_handles.py
+      - name: CURRENT saved observation read with immutable reservation/readback
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -38,14 +38,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$OUT"
-          key="$RUNNER_TEMP/match-passive-key"; known="$RUNNER_TEMP/match-passive-known"; sock="$RUNNER_TEMP/match-passive.sock"
+          key="$RUNNER_TEMP/match-saved-key"; known="$RUNNER_TEMP/match-saved-known"; sock="$RUNNER_TEMP/match-saved.sock"
           cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
           trap cleanup EXIT
           if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
           chmod 600 "$key"
           ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' python3 -" < scripts/diagnostics/hotel_match_passive_tv_operator_evidence.py > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' python3 -" < scripts/diagnostics/hotel_match_saved_tv_tour_handles.py > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
           trc=$?
@@ -67,8 +67,9 @@ jobs:
               and receipt.get('result_sha256')==rh and receipt.get('evidence_sha256')==eh
               and all(result.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls','booking_calls')))
           gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':ok,'remote_exit':int(os.environ['RC']),
-                'target_count':result.get('target_count'),'unique_candidate_local_ids':result.get('unique_candidate_local_ids'),'passive_rows_read':result.get('passive_rows_read'),
-                'route_counts':result.get('route_counts'),'result_sha256':rh,'evidence_sha256':eh,'no_replay':True}
+                'target_count':result.get('target_count'),'unique_candidate_local_ids':result.get('unique_candidate_local_ids'),'identified_anex_operator_ids':result.get('identified_anex_operator_ids'),
+                'price_rows_read':result.get('price_rows_read'),'hot_rows_read':result.get('hot_rows_read'),'route_counts':result.get('route_counts'),
+                'result_sha256':rh,'evidence_sha256':eh,'no_replay':True}
           (out/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
           print(json.dumps(gate,sort_keys=True))
           if not ok: raise SystemExit(2)
@@ -76,6 +77,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-passive-tv-operator-evidence-${{ github.run_id }}
+          name: match-saved-tv-tour-handles-${{ github.run_id }}
           path: ${{ env.OUT }}/
           retention-days: 90
