@@ -1,71 +1,107 @@
-name: MATCH Andromeda exact direct all price original v11
+name: MATCH Andromeda valid catalog price original v12
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-andromeda-price-original-current-v1.yml]
 permissions: {contents: read}
-concurrency: {group: match-andromeda-price-original-1971-v11-416247, cancel-in-progress: false}
+concurrency: {group: match-andromeda-price-original-1971-v12-416247, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-andromeda-exact-direct-all-price-original-1971-20260914-v11-416247
+  OPERATION_ID: hotel-match-andromeda-valid-catalog-price-original-1971-20260914-v12-416247
 jobs:
   canary:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 11
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 12
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env: {OUT: /tmp/match-andromeda-v11}
+    env: {OUT: /tmp/match-andromeda-v12}
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false, ref: '${{ github.sha }}'}
       - name: Reserve immutable supplier read
         run: |
           set -euo pipefail; mkdir -p "$OUT"
-          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_andromeda_id":416247,"operator":5,"state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$OUT/reservation.json"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_andromeda_id":416247,"operator":5,"state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$OUT/reservation.json"
       - uses: actions/upload-artifact@v4
-        with: {name: andromeda-v11-reserved, path: '${{ env.OUT }}/reservation.json', retention-days: 90}
-      - name: Build exact direct all then price
+        with: {name: andromeda-v12-reserved, path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Build corrected catalog then price canary
         run: |
           set -euo pipefail
           cat > "$OUT/program.php" <<'PHP'
           <?php
           declare(strict_types=1);
-          const OP='hotel-match-andromeda-exact-direct-all-price-original-1971-20260914-v11-416247';
+          const OP='hotel-match-andromeda-valid-catalog-price-original-1971-20260914-v12-416247';
           const H=416247;
-          function out(array $x,int $rc=0):void{$x+=['operation_id'=>OP,'database_writes'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true];echo 'MATCH_ORIGINAL_JSON:'.json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;if($rc)exit($rc);}
-          function date8(string $v):string{foreach(['d.m.Y','Y-m-d','Ymd']as$f){$d=DateTimeImmutable::createFromFormat('!'.$f,trim($v));if($d instanceof DateTimeImmutable)return$d->format('Ymd');}return'';}
-          function collect($n,array&$a):void{if(!is_array($n))return;if(isset($n['hotelKey'])||isset($n['operatorKey']))$a[]=$n;foreach($n as$v)if(is_array($v))collect($v,$a);}
-          function keys($n):array{if(!is_array($n))return[];$k=array_keys($n);sort($k,SORT_STRING);return array_slice($k,0,80);}
+          function emit_result(array $x,int $rc=0):void{
+              $x += ['operation_id'=>OP,'database_writes'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true];
+              echo 'MATCH_ORIGINAL_JSON:'.json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+              if($rc) exit($rc);
+          }
+          function safe_reason(Throwable $e):string{return preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,160)) ?: 'exception';}
+          function date8($value):string{
+              $v=trim((string)$value);
+              foreach(['d.m.Y','Y-m-d','Ymd'] as $f){$d=DateTimeImmutable::createFromFormat('!'.$f,$v);if($d instanceof DateTimeImmutable&&$d->format($f)===$v)return $d->format('Ymd');}
+              return '';
+          }
+          function selected_date($node):string{
+              if(!is_array($node)) return '';
+              if(array_key_exists('selected',$node)){ $d=date8($node['selected']); if($d!=='') return $d; }
+              foreach($node as $row) if(is_array($row)&&!empty($row['selected'])){ foreach(['id','value','date','name'] as $k) if(isset($row[$k])){ $d=date8($row[$k]); if($d!=='') return $d; } }
+              foreach($node as $row){ $d=selected_date($row); if($d!=='') return $d; }
+              return '';
+          }
+          function selected_id($node,int $fallback):int{
+              if(!is_array($node)) return $fallback;
+              foreach($node as $row) if(is_array($row)&&!empty($row['selected'])&&isset($row['id'])&&(int)$row['id']>0) return (int)$row['id'];
+              return $fallback;
+          }
+          function collect_rows($node,array &$rows):void{
+              if(!is_array($node)) return;
+              if(isset($node['hotelKey'])||isset($node['operatorKey'])) $rows[]=$node;
+              foreach($node as $value) if(is_array($value)) collect_rows($value,$rows);
+          }
+          function array_keys_safe($node):array{if(!is_array($node))return[];$keys=array_keys($node);sort($keys,SORT_STRING);return array_slice($keys,0,80);}
           try{
-            $root=realpath(getcwd());$preview=$root.'/_preview/search3-anex-candidate';require_once $preview.'/api-andromeda-search3-preview.php';$cfg=require $preview.'/.andromeda-private.php';$budget=dirname((string)$cfg['catalog_path']);$transport=new AnyTourAndromedaTransport(true);$client=new AnyTourAndromedaClient(static function($url,$opts)use($transport,$budget){anytour_andromeda_search3_budget($budget);return$transport($url,$opts);},true);
-            try{$client->login((string)$cfg['username'],(string)$cfg['password']);}catch(Throwable$e){out(['status'=>'failed','stage'=>'login','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,160))],2);}
-            $send=new ReflectionMethod($client,'send');$send->setAccessible(true);
-            $allParams=['TOWNFROMINC'=>'1','STATEINC'=>'3','HOTELS'=>(string)H,'OPERATORS'=>'5'];
-            try{$all=$send->invoke($client,'all',$allParams);}catch(Throwable$e){out(['status'=>'failed','stage'=>'direct_all','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,160)),'provider_calls'=>['login'=>1,'direct_all'=>1]],2);}
-            $sel=(string)($all['CHECKIN_BEG']['selected']??'');$beg=date8($sel);if($beg==='')out(['status'=>'failed','stage'=>'all_parse','reason'=>'selected_date_missing','all_top_keys'=>keys($all),'provider_calls'=>['login'=>1,'direct_all'=>1]],2);
-            $d=DateTimeImmutable::createFromFormat('!Ymd',$beg);$end=$d->modify('+30 days')->format('Ymd');$currency=643;foreach((array)($all['CURRENCY']??[])as$c)if(($c['selected']??0)&&isset($c['id'])){$currency=(int)$c['id'];break;}
-            $hotelSelected=false;$hotelName='';foreach((array)($all['HOTELS']??[])as$h)if((int)($h['id']??0)===H){$hotelSelected=((int)($h['selected']??0)===1);$hotelName=(string)($h['name']??'');break;}
-            $p=AnyTourAndromedaClient::priceProbeParams();foreach(['TOWNFROMINC'=>'1','STATEINC'=>'3','CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'ADULT'=>'2','CHILD'=>'0','CURRENCYINC'=>(string)$currency,'OPERATORS'=>'5','HOTELS'=>(string)H,'NIGHTS_FROM'=>'5','NIGHTS_TILL'=>'14','PAGE'=>'1']as$k=>$v)$p[$k]=$v;unset($p['NIGHTS_TO']);
-            try{$raw=$client->price($p);}catch(Throwable$e){out(['status'=>'failed','stage'=>'price','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,160)),'all_checkin_selected'=>$sel,'resolved_beg'=>$beg,'resolved_end'=>$end,'hotel_selected'=>$hotelSelected,'hotel_name'=>$hotelName,'provider_calls'=>['login'=>1,'direct_all'=>1,'price'=>1]],2);}
-            $rows=[];collect($raw,$rows);$hits=[];$target=0;foreach($rows as$r){if((int)($r['operatorKey']??0)!==5||(int)($r['hotelKey']??0)!==H)continue;$target++;$o=is_array($r['original']??null)?$r['original']:[];$aid=(int)($o['hotelKey']??0);if($aid>0)$hits[]=['andromeda_id'=>H,'anex_id'=>$aid,'hotel'=>(string)($r['hotel']??''),'town'=>(string)($r['town']??''),'check_in'=>(string)($r['checkIn']??''),'nights'=>(string)($r['nights']??''),'original_keys'=>keys($o)];}
-            $ids=array_values(array_unique(array_column($hits,'anex_id')));sort($ids,SORT_NUMERIC);out(['status'=>'completed','all_checkin_selected'=>$sel,'resolved_beg'=>$beg,'resolved_end'=>$end,'hotel_selected'=>$hotelSelected,'hotel_name'=>$hotelName,'pages_count'=>(int)($raw['PAGES_COUNT']??0),'raw_candidate_rows'=>count($rows),'target_rows'=>$target,'matching_rows'=>count($hits),'original_hotel_keys'=>$ids,'rows'=>array_slice($hits,0,20),'provider_calls'=>['login'=>1,'direct_all'=>1,'price'=>1]]);
-          }catch(Throwable$e){out(['status'=>'failed','stage'=>'runtime','reason'=>preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,160))],2);}
+              $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru') emit_result(['status'=>'failed','stage'=>'bootstrap','reason'=>'root'],2);
+              $preview=$root.'/_preview/search3-anex-candidate'; require_once $preview.'/api-andromeda-search3-preview.php'; $cfg=require $preview.'/.andromeda-private.php';
+              $budget=dirname((string)$cfg['catalog_path']); $transport=new AnyTourAndromedaTransport(true);
+              $client=new AnyTourAndromedaClient(static function($url,$opts)use($transport,$budget){anytour_andromeda_search3_budget($budget);return $transport($url,$opts);},true);
+              try{$client->login((string)$cfg['username'],(string)$cfg['password']);}catch(Throwable $e){emit_result(['status'=>'failed','stage'=>'login','reason'=>safe_reason($e)],2);}
+              try{$all=$client->catalog('all',['TOWNFROMINC'=>1,'STATEINC'=>3]);}catch(Throwable $e){emit_result(['status'=>'failed','stage'=>'catalog_all','reason'=>safe_reason($e),'provider_calls'=>['login'=>1,'all'=>1]],2);}
+              $beg=selected_date($all['CHECKIN_BEG']??[]); if($beg==='') emit_result(['status'=>'failed','stage'=>'all_parse','reason'=>'selected_date_missing','all_top_keys'=>array_keys_safe($all),'checkin_keys'=>array_keys_safe($all['CHECKIN_BEG']??[]),'provider_calls'=>['login'=>1,'all'=>1]],2);
+              $date=DateTimeImmutable::createFromFormat('!Ymd',$beg); $end=$date->modify('+20 days')->format('Ymd');
+              $currency=selected_id($all['CURRENCY']??[],643); $hotelInAll=false; $hotelSelected=false; $hotelName='';
+              foreach((array)($all['HOTELS']??[]) as $h) if((int)($h['id']??0)===H){$hotelInAll=true;$hotelSelected=!empty($h['selected']);$hotelName=(string)($h['name']??'');break;}
+              $operator5=false; foreach((array)($all['OPERATORS']??[]) as $o) if((int)($o['id']??0)===5){$operator5=true;break;}
+              if(!$hotelInAll||!$operator5) emit_result(['status'=>'completed','evidence'=>'target_not_available_in_catalog','hotel_in_all'=>$hotelInAll,'hotel_selected'=>$hotelSelected,'hotel_name'=>$hotelName,'operator5_in_all'=>$operator5,'provider_calls'=>['login'=>1,'all'=>1]],0);
+              $params=['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>$beg,'CHECKIN_END'=>$end,'NIGHTS_FROM'=>5,'NIGHTS_TILL'=>14,'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>$currency,'PACKETTYPE'=>0,'PAGE'=>1,'OPERATORS'=>'5','HOTELS'=>(string)H];
+              try{AnyTourAndromedaClient::validatePriceParams($params);$raw=$client->price($params);}catch(Throwable $e){emit_result(['status'=>'failed','stage'=>'price','reason'=>safe_reason($e),'resolved_beg'=>$beg,'resolved_end'=>$end,'hotel_in_all'=>$hotelInAll,'hotel_name'=>$hotelName,'operator5_in_all'=>$operator5,'provider_calls'=>['login'=>1,'all'=>1,'price'=>1]],2);}
+              $rows=[]; collect_rows($raw,$rows); $targetRows=[]; $hits=[];
+              foreach($rows as $row){
+                  if((int)($row['operatorKey']??0)!==5||(int)($row['hotelKey']??0)!==H) continue;
+                  $orig=is_array($row['original']??null)?$row['original']:[];
+                  $targetRows[]=['row_keys'=>array_keys_safe($row),'original_keys'=>array_keys_safe($orig),'provider'=>is_array($row['provider']??null)?(string)($row['provider']['name']??''):'','mapped_operator'=>!empty($row['mappedOperator']),'is_operator_hotel_key'=>(int)($row['isOperatorHotelKey']??0),'check_in'=>(string)($row['checkIn']??''),'nights'=>(string)($row['nights']??'')];
+                  $aid=(int)($orig['hotelKey']??0); if($aid>0&&!empty($orig)) $hits[]=['andromeda_id'=>H,'anex_id'=>$aid,'hotel'=>(string)($row['hotel']??''),'town'=>(string)($row['town']??''),'check_in'=>(string)($row['checkIn']??''),'nights'=>(string)($row['nights']??''),'original_keys'=>array_keys_safe($orig)];
+              }
+              $ids=array_values(array_unique(array_column($hits,'anex_id'))); sort($ids,SORT_NUMERIC);
+              emit_result(['status'=>'completed','evidence'=>'price_original_canary','resolved_beg'=>$beg,'resolved_end'=>$end,'hotel_in_all'=>$hotelInAll,'hotel_selected'=>$hotelSelected,'hotel_name'=>$hotelName,'operator5_in_all'=>$operator5,'pages_count'=>(int)($raw['PAGES_COUNT']??0),'raw_price_rows'=>is_array($raw['PRICES']??null)?count($raw['PRICES']):0,'recursive_candidate_rows'=>count($rows),'target_rows'=>count($targetRows),'target_row_shapes'=>array_slice($targetRows,0,20),'matching_rows'=>count($hits),'original_hotel_keys'=>$ids,'rows'=>array_slice($hits,0,20),'provider_calls'=>['login'=>1,'all'=>1,'price'=>1]]);
+          }catch(Throwable $e){emit_result(['status'=>'failed','stage'=>'runtime','reason'=>safe_reason($e)],2);}
           PHP
           php -l "$OUT/program.php"
-      - name: Execute supplier canary
+      - name: Execute corrected supplier canary
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
-          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi; chmod 600 "$key"
           ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST"
-          set +e;ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M'<"$OUT/program.php">"$RUNNER_TEMP/stdout" 2>"$RUNNER_TEMP/stderr";rc=$?;set -e;export RC="$rc"
+          set +e; ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"; rc=$?; set -e; export RC="$rc"
           python3 - <<'PY'
           import json,os,pathlib,hashlib
-          d=pathlib.Path(os.environ['OUT']);raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes();v=[x.split('MATCH_ORIGINAL_JSON:',1)[1] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_ORIGINAL_JSON:')];x=json.loads(v[-1]) if len(v)==1 else {'status':'unknown','reason':'marker_missing','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True};x['remote_exit']=int(os.environ['RC']);(d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(x,ensure_ascii=False));
-          if x.get('database_writes')!=0 or x.get('mapping_writes')!=0 or int(os.environ['RC'])!=0 or x.get('status')!='completed':raise SystemExit(2)
+          d=pathlib.Path(os.environ['OUT']);raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes();vals=[x.split('MATCH_ORIGINAL_JSON:',1)[1] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_ORIGINAL_JSON:')];x=json.loads(vals[-1]) if len(vals)==1 else {'status':'unknown','reason':'marker_missing_or_ambiguous','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True};x['remote_exit']=int(os.environ['RC']);(d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(x,ensure_ascii=False))
+          if x.get('database_writes')!=0 or x.get('mapping_writes')!=0 or int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
           PY
-          ssh -S "$sock" -O exit "$HOST">/dev/null 2>&1||true;rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1||true; rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: andromeda-v11-final, path: '${{ env.OUT }}/', retention-days: 90}
+        with: {name: andromeda-v12-final, path: '${{ env.OUT }}/', retention-days: 90}
