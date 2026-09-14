@@ -1,6 +1,6 @@
 # AnyTour INT — Tourvisor + direct ANEX + Andromeda
 
-Актуализировано: 2026-09-13. Репозиторий: только `pyatkoff/poisk-turov-test`.
+Актуализировано: 2026-09-14 (Andromeda price observation). Репозиторий: только `pyatkoff/poisk-turov-test`.
 INT-база: свежая `feature/anex-search-adapter-20260907`. Координация: #996.
 Рабочие issues: #1685, #1717, #1647. #1759 — только внешний identity dependency.
 
@@ -74,7 +74,7 @@ Turkey broad-v2 ANEX-only parity дал 6 exact aligned tuples на current acce
 - `final_price_verified`;
 - source/method/timestamp/context provenance.
 
-Отсутствующий fuel/additional = `unknown`, не `0`. Ничего автоматически не складывать. Agency cost и customer money не fallback друг в друга. Protected price arithmetic не менять.
+Отсутствующий fuel/additional = `unknown`, не `0`. Agency cost и customer money не fallback друг в друга. Protected price arithmetic не менять. Для Andromeda владелец 2026-09-14 разрешил отдельную оценку `PRICE + available transport surcharge`, не равную гарантированной будущей цене `calc`; детали и измерение — §4.2. Это не универсальное разрешение складывать другие money facts.
 
 Для одного exact Andromeda claim доказана и sealed цепочка:
 
@@ -111,6 +111,14 @@ decimal-грамматики. Некорректный final net не даёт v
 #2267 закрыл ещё один direct read-only путь: one-shot SearchTour search+expand по exact GREEN GOLD cohort завершён COMPLETE/NO-REPLAY, и у всех шести concrete rows под `freights` нет ни одного money/surcharge-like значения (`money=[]`). Ранее FreightMonitor также не дал money. Поэтому SearchTour + FreightMonitor read-only schemas не содержат недостающие `20846/29184` как готовый exact fuel fact.
 
 Текущий точный P0 blocker: нужен **authoritative ANEX B2B tour dictionary/lookup либо supplier-issued binding** от concrete SearchTour/CATCLAIM/freight package к `AdditionalPricesDaily.tour`. До этого direct-ANEX production fuel arithmetic выключена, новые blind numeric `tour` probes запрещены, отсутствующий fuel остаётся `unknown`. Saved Tourvisor observations можно исследовать как отдельное zero-new-supplier evidence, но они не становятся direct-ANEX supplier authority и не разрешают runtime arithmetic. Если authoritative binding недоступен, следующий независимый полезный шаг — genuinely new P1 observation scenario при green budget/owner-control; P2/P4/P6/P7 ради заполнения очереди не расширять.
+
+### 4.2 Andromeda — estimated listing и цена, реально выданная API
+
+Owner-approved модель: базовая PRICE + доступная транспортная доплата даёт `estimated`, не final; отсутствие сбора остаётся unknown. Цель 80% не runtime gate. Установленный listing reader — source `b32993261eb8657004e7d4fd146b65a95264d4bc`, publication run34873062851/receipt10359648547. #2450 устраняет ложную неоднозначность одинаковых decimal values, source-only; не переустанавливать historical operations.
+
+`price_observation` из #2433 сравнивает оценку, пересчитанную во время актуализации, с `calc`. Для отдельного измерения search-response→calc существующий HTTP owner теперь сохраняет точные `base_price`, `served_price`, время и контекст в текущей PHP-сессии (до2000 receipts/900с) и выдаёт `tour.listing_price_ref`. Quote читает только серверный receipt по этому ref, после обычной current-offer/mapping/session/TTL проверки, и сохраняет `served_price_observation` в прежний completed quote checkpoint. Нет ref, receipt устарел/вытеснен/не совпал — измерения нет, новая оценка не подставляется. Сам пересчёт и no-replay контракты не меняются.
+
+Это source-only функциональный пакет, не публикация и не доказательство просмотра человеком. Receiving SEARCH #1646 должен сохранить поле рядом с конкретным предложением и вернуть его как top-level `listing_price_ref` в существующий quote request; текущий JS это поле отбрасывает. До согласованной публикации API/quote и receiving wiring не заявлять live coverage/80% accuracy. E2E v1/run34874678175 остаётся terminal/no-replay; его уже закреплённый read-only checkpoint-разбор не дублировать.
 
 ## 5. Закрытые source-side contracts — второй слой не создавать
 
@@ -343,7 +351,7 @@ Statuses: `verified | local_only | unsupported | unknown`. Raw supplier numeric 
 | dates/nights/party/ages | verified/closed |
 | availability | source/raw evidence; absent proof = unknown |
 | flights/baggage | optional details capability; never auto-fetch by generic contract |
-| fuel/additional | separate money facts; never synthetic total |
+| fuel/additional | separate money facts; Andromeda estimated listing по §4.2, не final |
 
 Не создавать новый generic P2 wrapper, если family уже имеет current rule. Следующий P2 пакет допустим только при **новом provider-specific evidence**, которое безопасно повышает конкретный status/capability. Tourvisor protected payload не трогать ради симметрии. Если такого evidence нет — возвращаться к genuinely new P0/P1 evidence, а не создавать wrapper churn.
 

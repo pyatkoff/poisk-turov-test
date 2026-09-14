@@ -10,7 +10,7 @@ require_once $quoteApp . '/andromeda-selected-quote.php';
 require_once $quoteApp . '/andromeda-quote-attempt-state.php';
 
 /** Resolve a retained offer privately, under the same search/session authority as offer_detail. */
-function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved, array $config, string $session): array
+function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved, array $config, string $session, array $listingPrices = []): array
 {
     $criteria = anytour_andromeda_search3_params($request, $pdo, $saved);
     $number = $criteria['PAGE'];
@@ -38,16 +38,20 @@ function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved,
             || ($state['store']['snapshot']['page'] ?? null) !== $number) throw new DomainException('offer_expired');
         $allows = static fn(array $offer): bool => anytour_andromeda_search3_mapping_allows(
             $pdo, (int)$request['params']['countryId'], $offer);
-        return AnyTourAndromedaSelectedOffer::resolve(
+        $resolved = AnyTourAndromedaSelectedOffer::resolve(
             new AnyTourAndromedaOfferStore($state['store'], true), $context, $allows, $now);
+        $resolved['listing_price_receipt'] = AnyTourAndromedaPriceObservation::resolveServed(
+            $listingPrices, $request['listing_price_ref'] ?? null, $resolved,
+            $state['store']['created_at'], $state['store']['expires_at'], $now);
+        return $resolved;
     } finally { flock($lock, LOCK_UN); fclose($lock); }
 }
 
-function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, array $config, string $session): array
+function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, array $config, string $session, array $listingPrices = []): array
 {
     // Re-resolve current retained context before looking at a prior completed quote.
     // Therefore a stale/reassigned mapping cannot reuse an older result.
-    $resolved = anytour_andromeda_quote_resolve($request, $pdo, $saved, $config, $session);
+    $resolved = anytour_andromeda_quote_resolve($request, $pdo, $saved, $config, $session, $listingPrices);
     $context = $resolved['context'] ?? [];
     $ref = $context['search_ref'] ?? null;
     $generation = $context['generation'] ?? null;
@@ -126,6 +130,8 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
         $actions = new AnyTourAndromedaClaimActions($sid,
             static fn() => anytour_andromeda_search3_budget($budgetDirectory));
         $result = AnyTourAndromedaSelectedQuote::run($resolved, $client, $actions);
+        $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
+            $resolved['listing_price_receipt'] ?? null, $result, time());
 
         $lock = fopen($lockPath, 'c');
         if (!$lock || !flock($lock, LOCK_EX)) throw new RuntimeException('ANDROMEDA_QUOTE_LOCK_FAILED');
@@ -179,7 +185,10 @@ function anytour_andromeda_quote_http(): void
     ini_set('session.use_strict_mode','1'); ini_set('session.use_only_cookies','1');
     session_set_cookie_params(['secure'=>true,'httponly'=>true,'samesite'=>'Lax','path'=>'/_preview/search3-anex-candidate/']);
     if (!session_start()) anytour_anex_search3_out(['ok'=>false,'error'=>'supplier_unavailable'],503);
-    $session = session_id(); session_write_close();
+    $session = session_id();
+    $listingPrices = is_array($_SESSION['andromeda_listing_prices_v1'] ?? null)
+        ? $_SESSION['andromeda_listing_prices_v1'] : [];
+    session_write_close();
 
     try {
         $request = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
@@ -191,7 +200,7 @@ function anytour_andromeda_quote_http(): void
         $saved = anytour_andromeda_search3_catalog($config, $request);
         $saved['excluded_operator_ids'] = $config['excluded_operator_ids'] ?? [];
         anytour_andromeda_search3_params($request, $pdo, $saved);
-        $data = anytour_andromeda_quote_run($request, $pdo, $saved, $config, $session);
+        $data = anytour_andromeda_quote_run($request, $pdo, $saved, $config, $session, $listingPrices);
         anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
     } catch (OverflowException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'monthly_quota_exhausted'],429);
     } catch (DomainException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'quote_not_available'],422);

@@ -515,6 +515,51 @@ function anytour_andromeda_search3_detail_state(array $state,array $context,int 
         'quote_required'=>true,'selection_enabled'=>false,'booking_enabled'=>false];
 }
 
+/** Retain the exact API response price in the existing search session, never browser money.
+ * A receipt proves an issued response, not that a human saw it. SEARCH must echo its ref.
+ * Recording failure leaves the original response intact and emits no usable reference.
+ */
+function anytour_andromeda_search3_record_response(array $data): array {
+    if(session_status()!==PHP_SESSION_NONE || session_id()==='' || ($data['provider']??null)!=='andromeda' || !is_array($data['hotels']??null))return $data;
+    try{
+        if(!session_start())return $data;
+        $now=time();$previous=$_SESSION['andromeda_listing_prices_v1']??[];$current=[];$recorded=$data;
+        $previous=is_array($previous)?array_filter($previous,static fn($row)=>is_array($row)
+            && is_int($row['issued_at']??null) && $row['issued_at']<=$now && $now-$row['issued_at']<900):[];
+        foreach($recorded['hotels'] as &$hotel)foreach($hotel['tours'] as &$tour){
+            unset($tour['listing_price_ref']);
+            if(count($current)>=2000 || !is_int($hotel['local_id']??null) || $hotel['local_id']<1)continue;
+            $input=$tour['offer_context']??[];
+            if(($input['provider']??null)!=='andromeda'
+                || !is_string($input['search_ref']??null) || !preg_match('/^[a-f0-9]{64}$/D',$input['search_ref'])
+                || !is_string($input['offer_ref']??null) || !preg_match('/^offer_[a-f0-9]{64}$/D',$input['offer_ref'])
+                || !is_int($input['generation']??null) || $input['generation']<1
+                || !is_int($input['page']??null) || $input['page']<1 || $input['page']>1000)continue;
+            $context=[];foreach(['provider','search_ref','generation','page','offer_ref'] as $key)$context[$key]=$input[$key];
+            $money=[];
+            foreach([$tour['base_search_price']??$tour['price']??null,$tour['price']??null] as $price){
+                if(!is_array($price) || !is_string($price['amount']??null)
+                    || !preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/D',$price['amount'])
+                    || !preg_match('/[1-9]/',$price['amount']) || !is_string($price['currency']??null)
+                    || !preg_match('/^[A-Z0-9_]{2,8}$/D',$price['currency']))continue 2;
+                $money[]=['amount'=>$price['amount'],'currency'=>$price['currency']];
+            }
+            $row=['context'=>$context,'local_id'=>$hotel['local_id'],'base_price'=>$money[0],'served_price'=>$money[1],
+                'basis'=>isset($tour['search_surcharge'])?'transport_surcharge_estimate':'search_base','issued_at'=>$now];
+            $reference='listing_'.hash('sha256',json_encode($row,JSON_THROW_ON_ERROR));
+            $current[$reference]=$row;$tour['listing_price_ref']=$reference;
+        }
+        unset($hotel,$tour);
+        // Current refs stay present; old/evicted refs simply cannot produce an accuracy observation.
+        $_SESSION['andromeda_listing_prices_v1']=array_slice(array_diff_key($previous,$current)+$current,-2000,null,true);
+        if(!session_write_close())return $data;
+        return $recorded;
+    }catch(Throwable $ignored){
+        if(session_status()===PHP_SESSION_ACTIVE)session_abort();
+        return $data;
+    }
+}
+
 function anytour_andromeda_search3_http(): void {
     header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
     if(!is_file(__DIR__.'/.andromeda-private.php'))anytour_anex_search3_out(['ok'=>false,'error'=>'not_found'],404);
@@ -542,6 +587,7 @@ function anytour_andromeda_search3_http(): void {
         $data=($request['action']??null)==='offer_detail'
             ?anytour_andromeda_search3_detail($request,$pdo,$saved,$config,$session)
             :anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);
+        if(($request['action']??null)!=='offer_detail')$data=anytour_andromeda_search3_record_response($data);
         anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
     }catch(OverflowException $e){anytour_anex_search3_out(['ok'=>false,'error'=>'monthly_quota_exhausted'],429);
     }catch(DomainException $e){anytour_anex_search3_out(['ok'=>false,'error'=>'search_not_supported'],422);
