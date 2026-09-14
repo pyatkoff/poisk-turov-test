@@ -518,3 +518,70 @@ Exact artifact 10314326197, ZIP SHA-256:
 CHECKED/MERGED не означает preview-published или production-approved.
 Physical Safari/iPhone остаётся deferred; production/main и защищённые
 supplier/price/lead/analytics/matching/content/SITE/SEO границы сохранены.
+
+
+
+## Технический refactor-pass завершён, 2026-09-14
+
+Это финальный closeout только ограниченного подготовительного pass из поручения
+владельца. Exact runtime release:
+[`6c22b2c9`](https://github.com/pyatkoff/poisk-turov-test/commit/6c22b2c9d92634e009cb2de55aa0bf40eaac3bb3).
+Предыдущие датированные формулировки «pass не закрыт» сохраняют исторический
+контекст, но больше не являются текущим статусом или новой очередью.
+
+### Итоговая карта подключённых owners и цепочки
+
+| Участок | Единственный текущий owner / проверенная связь |
+| --- | --- |
+| Form и defaults | `v2/index.php`, `v2/form-defaults.php`; presentation glue только `src/search3/behavior/search-form.js` |
+| Submit, URL, reload, Back/Forward | `v2/search-lifecycle-v6.js` и существующий catalog hydration; второго submit/popstate owner не найдено |
+| Results и display identity | `v2/results-renderer-v5.js`; `src/search3/behavior/results/local-hotel-filter.js` делегирует ему `mealIdentity` и `operatorIdentity` |
+| Compare / shortlist | `src/search3/behavior/results/shortlist.js` хранит exact loaded offer snapshot и выбирает через существующий `.direct-tour`, не через второй controller |
+| Selected / return | `v2/tour-controller-v4.js` единолично обрабатывает `.direct-tour`, selected state и return event; `src/search3/behavior/summary-cta.js` остаётся presentation/lead-handoff glue |
+| Build | Один ordered manifest, восемь public Search3 assets; retired slots остаются пустыми/provenance и не возвращены как owners |
+
+Проверенная цепочка:
+`form → lifecycle/FormData → canonical URL → renderer → local facets → shortlist exact offer → .direct-tour → tour-controller → selected → v2:tour-returned → restored results/focus`.
+Конкурирующих submit, popstate, selection или renderer handlers в подключённом
+runtime не найдено. Provider/source и tour operator остаются разными полями.
+
+### Закрытые причины и corrections
+
+- #2272 удалил отключённый исторический test owner и сохранил/усилил исполняемые
+  guards; повторять этот cleanup не требуется.
+- #2303 закрыл form → URL → reload/Back/Forward для primary условий без PII,
+  consent, provider или operator в initial supplier query.
+- #2305 перевёл result facet на существующий `operatorIdentity`; отдельная таблица
+  display aliases или новый matching owner не добавлены.
+- [#2411](https://github.com/pyatkoff/poisk-turov-test/pull/2411) закрепил одну
+  canonical projection multi-offer/single-offer карточек, exact offer для
+  Select/Compare и отдельное отображение provider/operator без второго renderer.
+- [#2417](https://github.com/pyatkoff/poisk-turov-test/pull/2417) закрыл прежний
+  exact остаток same-query/fragment-only history: переход остаётся same-document,
+  не создаёт document или supplier request и восстанавливается тем же lifecycle.
+- [#2421](https://github.com/pyatkoff/poisk-turov-test/pull/2421) закрыл последний
+  display-normalization остаток: AI+/BB+/HB+/FB+/RO+/SC+ больше не смешиваются
+  с базовыми кодами; обычные canonical aliases сохраняются. Local facet использует
+  тот же renderer identity; исходные supplier values/payload не меняются.
+
+Для #2421 source `f5a4c504360923ba0449d490dd7f4a5cde314289` проверен Security
+`34837089513`, renderer-date `34837089525`, primary-catalog `34837089586`
+и whole-site `34837089595`; все успешны. Browser tier прошёл 26 состояний на
+320–1440 px с `raw_served_parity=1`, `external_calls=0`, `lead_sent=0`.
+Exact artifact `10344892850`, ZIP SHA-256
+`2dc4cdfc85180a176162b16137fdea91f92f34398f1b113976984cb4dffa5b6b`;
+лично просмотрены `meal-filter-375.png` и `meal-filter-1440.png`.
+Source/generated shared runtime вошли вместе.
+
+**Текущий статус: `TECHNICAL_REFACTOR_PASS_COMPLETE` для указанного bounded
+scope.** Это не новый глобальный refactor mode и не утверждение, что продуктовый
+roadmap либо 12 осей SEARCH-QUALITY-1 достигли 9.5. Связанная с композицией CSS
+очистка остаётся частью соответствующего UI-пакета. В частности, #2402 сохраняет
+свой exact entry CSS/generated/import claim; мобильный zero-match gap result facets
+требует отдельного свободного result-CSS/hash пакета после fresh claim recheck.
+Эти продуктовые остатки не отменяют завершение технической карты/цепочки/guards.
+
+Preview для release `6c22b2c9...` в этом closeout не публиковался и
+production-approved не объявляется. `main`, production, API/payload, price
+arithmetic, lead transport/mapping, analytics, matching/content, SITE/SEO/INT
+не менялись; supplier-запросы и реальные заявки не выполнялись.
