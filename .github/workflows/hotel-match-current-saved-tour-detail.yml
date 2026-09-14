@@ -1,0 +1,86 @@
+name: MATCH CURRENT saved Tourvisor detail evidence
+on:
+  push:
+    branches: [match/current-egypt-targeted-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_current_saved_tour_detail.php'
+      - '.github/workflows/hotel-match-current-saved-tour-detail.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-current-saved-tour-detail-1971-20260914-v1
+  cancel-in-progress: false
+env:
+  OUT: /tmp/match-current-saved-tour-detail-v1
+  OPERATION_ID: hotel-match-current-saved-tour-detail-1971-20260914-v1-egypt
+  MATCH_EXPECTED_TRIPLES: '4158:37412:13278670760276,37719:132075:13279232318107,1767:182:13272998781716,1768:183:13261030029798,42927:131347:13278723374403'
+jobs:
+  detail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Offline guards
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_saved_tour_detail.php
+          php scripts/diagnostics/hotel_match_current_saved_tour_detail.php --self-test
+          ! grep -Fq "'/tours/search" scripts/diagnostics/hotel_match_current_saved_tour_detail.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_current_saved_tour_detail.php
+          grep -Fq "START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY" scripts/diagnostics/hotel_match_current_saved_tour_detail.php
+          grep -Fq "reserved_before_db_and_supplier_access" scripts/diagnostics/hotel_match_current_saved_tour_detail.php
+      - name: Run immutable CURRENT-guarded detail evidence
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=4 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_EXPECTED_TRIPLES='$MATCH_EXPECTED_TRIPLES' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_current_saved_tour_detail.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT'])
+          def load(n):
+              try:return json.loads((p/n).read_text())
+              except Exception:return {}
+          res=load('result.json'); rec=load('receipt.json'); rsv=load('reservation.json')
+          rh=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
+          verified=(bool(res) and bool(rec) and bool(rsv) and rec.get('result_sha256')==rh and rec.get('readback_verified') is True
+                    and res.get('operation_id')==os.environ['OPERATION_ID'] and rsv.get('operation_id')==os.environ['OPERATION_ID']
+                    and res.get('search_calls')==0 and res.get('database_writes')==0 and res.get('mapping_writes')==0
+                    and res.get('booking_calls')==0 and res.get('lead_calls')==0)
+          gate={'operation_id':os.environ['OPERATION_ID'],'verified':verified,'remote_exit':int(os.environ['REMOTE_RC']),
+                'status':res.get('status'),'reason':res.get('reason'),'expected_count':res.get('expected_count'),
+                'current_unresolved_count':res.get('current_unresolved_count'),'skipped_current_count':res.get('skipped_current_count'),
+                'tourvisor_detail_calls':res.get('tourvisor_detail_calls'),'detail_rows':res.get('detail_rows'),
+                'direct_confirmed':res.get('direct_confirmed'),'holds':res.get('holds'),'blocked_rows':res.get('blocked_rows'),
+                'result_sha256':rh,'no_replay':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,sort_keys=True))
+          if not verified: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-current-saved-tour-detail-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          retention-days: 90
