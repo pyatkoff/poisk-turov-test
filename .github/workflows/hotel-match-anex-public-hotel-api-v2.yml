@@ -1,0 +1,83 @@
+name: MATCH ANEX public hotel API v2
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-public-hotel-api-v2.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-public-hotel-api-1971-20260914-v2}
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve before public API GET
+        run: |
+          set -euo pipefail; mkdir -p /tmp/out
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+      - uses: actions/upload-artifact@v4
+        with: {name: match-anex-public-hotel-api-v2-reservation, path: /tmp/out/reservation.json, retention-days: 90}
+      - name: Follow observed canonical slug and inspect detail JSON
+        run: |
+          set -euo pipefail
+          URL='https://api.anextour.ru/b2c/hotel?hotel=%2Fhotels%2Fvietnam%2Flevan-hotel'
+          curl --fail --location --max-redirs 3 --connect-timeout 10 --max-time 30 \
+            -A 'AnyTour-MATCH-public-hotel-evidence/2.0' -H 'Accept: application/json,text/plain,*/*' \
+            -D /tmp/out/headers.txt -o /tmp/out/body.json -w '%{url_effective}\n%{http_code}\n%{content_type}\n' "$URL" >/tmp/out/curl-meta.txt
+          python3 - <<'PY'
+          import json,re,hashlib,pathlib,urllib.parse,os
+          src='https://api.anextour.ru/b2c/hotel?hotel=%2Fhotels%2Fvietnam%2Flevan-hotel'
+          meta=pathlib.Path('/tmp/out/curl-meta.txt').read_text(errors='replace').splitlines(); final=meta[0] if meta else ''
+          p=urllib.parse.urlparse(final)
+          if p.scheme!='https' or p.hostname!='api.anextour.ru': raise SystemExit('unexpected_final_url:'+final)
+          raw=pathlib.Path('/tmp/out/body.json').read_bytes(); data=json.loads(raw)
+          scalar=[]; urls=[]
+          wanted=re.compile(r'(id|inc|code|hotel|slug|name|country|state|region|resort|town|place|lat|lon|lng|coord|photo|image|gallery|media|url|address|star|category)',re.I)
+          def walk(v,path='$'):
+            if isinstance(v,dict):
+              for k,x in v.items():
+                pp=path+'.'+str(k)
+                if wanted.search(str(k)) and isinstance(x,(str,int,float,bool,type(None))): scalar.append({'path':pp,'key':str(k),'value':x})
+                walk(x,pp)
+            elif isinstance(v,list):
+              for i,x in enumerate(v): walk(x,f'{path}[{i}]')
+            elif isinstance(v,str) and v.startswith(('https://','http://','//')):
+              urls.append({'path':path,'url':('https:'+v if v.startswith('//') else v)})
+          walk(data)
+          text=raw.decode(errors='replace').replace('\\/','/')
+          for u in re.findall(r'https?://[^\\s"<>]+',text,re.I):
+            if not any(x['url']==u for x in urls): urls.append({'path':'$raw','url':u})
+          idfields=[]; media=[]; direct=[]
+          for s in scalar:
+            k=s['key'].lower(); v=s['value']
+            if re.search(r'(id|inc|hotel.*code|code.*hotel|hotelid|hotel_id)',k) and ((isinstance(v,int) and v>0) or (isinstance(v,str) and re.fullmatch(r'[1-9][0-9]{0,11}',v or ''))): idfields.append(s)
+          for row in urls:
+            u=row['url']; pp=urllib.parse.urlparse(u); host=(pp.hostname or '').lower(); q=urllib.parse.parse_qs(pp.query); nums=sorted(set(re.findall(r'(?<![A-Za-z])([0-9]{2,12})(?![A-Za-z])',u)))
+            item={**row,'host':host,'path_url':pp.path,'query':pp.query,'numeric_tokens':nums}
+            if 'anextour.' in host or 'anextour.com' in host: media.append(item)
+            vals=[]
+            for k in ('hotelCode','hotelcode','HOTELLIST','hotellist','hotelId','hotel_id','inc'):
+              if k in q: vals += q[k]
+            if vals: direct.append({'url':u,'params':vals,'path':row['path']})
+          # Compact shape/tree keys for diagnosing nested response without preserving body.
+          def shape(v,depth=0):
+            if depth>4:return type(v).__name__
+            if isinstance(v,dict):return {k:shape(x,depth+1) for k,x in list(v.items())[:80]}
+            if isinstance(v,list):return {'_list_len':len(v),'_sample':shape(v[0],depth+1) if v else None}
+            return type(v).__name__
+          out={'status':'completed','operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'request_url':src,'final_url':final,'http_code':meta[1] if len(meta)>1 else None,'content_type':meta[2] if len(meta)>2 else None,'body_bytes':len(raw),'body_sha256':hashlib.sha256(raw).hexdigest(),'top_type':type(data).__name__,'shape':shape(data),'identity_candidates':idfields[:1000],'matched_scalar_fields':scalar[:5000],'url_count':len(urls),'anex_url_count':len(media),'anex_urls':media[:5000],'direct_id_url_refs':direct[:1000],'database_writes':0,'mapping_writes':0,'supplier_search_calls':0,'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'http':out['http_code'],'bytes':out['body_bytes'],'shape':out['shape'],'identity_candidates':idfields[:50],'scalar_sample':scalar[:80],'anex_urls':media[:40],'direct_id_url_refs':direct[:20]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-public-hotel-api-v2-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+            /tmp/out/headers.txt
+            /tmp/out/curl-meta.txt
+          retention-days: 90
