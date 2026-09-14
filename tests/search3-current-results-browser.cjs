@@ -459,6 +459,15 @@ async function checkAndromedaExpansion(page, width, previous, control) {
   try {
     await start(73);
     const card = page.locator('#results .hotel-card[data-hotel-id="21477"]');
+    await page.evaluate(() => window.V2Results.render([], { empty: true }));
+    assert.equal(await page.locator('#results .hotel-card').count(), 1, 'prepared local hotel remains visible without a Tourvisor offer');
+    assert.equal(await card.locator('.hotel-photo img').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
+    assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
+    await card.locator('.hotel-photo img').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-photo img'); return img && img.complete && img.naturalWidth > 0; });
+    await card.locator('.hotel-photo img').evaluate(img => img.decode());
+    if (!previous) await card.screenshot({ path: path.join(output, `catalog-hotel-${width}.png`), animations: 'disabled' });
+    await page.evaluate(hotel => window.V2Results.render([hotel], { empty: true }), tvHotel);
     if (width >= 1025) {
       assert.equal(await page.locator('.results-filter-rail').isVisible(), true, 'cross-provider offers expose the useful provider/source facet in the canonical desktop rail');
       assert.ok((await card.boundingBox()).width >= 700, 'desktop single-hotel results remain readable beside the truthful provider/source facet');
@@ -550,6 +559,7 @@ async function run(browser, width, previous) {
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', route => {
     const request = route.request(), url = new URL(request.url());
+    if (url.href === 'https://catalog.example/hotel-21477.svg') return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: decodeURIComponent(picture.split(',')[1]) });
     if (catalog.recover && url.pathname.endsWith('/data/departures-v1.php')) {
       catalog.requests.push('departures');
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: [{ id: 1, russianName: 'Москва' }] }) });
@@ -568,7 +578,8 @@ async function run(browser, width, previous) {
       const context = input.action === 'hotel_offers'
         ? { ...seed, page: input.page, offer_ref: offerRef, hotel_scope: input.hotel_scope }
         : seed;
-      const hotel = { local_id: 21477, name: 'Movenpick Resort', provider: 'andromeda', mapping_status: 'resolved', country: 'Египет', category: 4,
+      const hotel = { local_id: 21477, name: 'Movenpick Resort', provider: 'andromeda', mapping_status: 'resolved', country: 'Египет', region: 'Шарм-эль-Шейх', category: 4, rating: 4.7,
+        catalog: { hotel_id: 21477, source: 'tourvisor', image_url: 'https://catalog.example/hotel-21477.svg', subregion: 'Наама-Бей', sea_distance: null },
         andromeda_content: { source: 'andromeda', region: 'Шарм-эль-Шейх' },
         tours: [{ provider: 'andromeda', offer_ref: offerRef, offer_context: context, price: { amount: input.action === 'hotel_offers' ? String(154000 + input.page * 1000) : '155079.00', currency: 'RUB' }, checkin: '2026-09-18', nights: 8, meal: 'AI', room: input.action === 'hotel_offers' ? 'ROOM ' + input.page : 'GROUPED ROOM', placement: '2 ADL', operator: 'ANEX' }] };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', generation: input.generation, page: input.page, pages_count: input.action === 'hotel_offers' ? 2 : 1, grouped: input.action === 'hotel_offers' ? false : true, hotels: [hotel] } }) });
@@ -864,7 +875,10 @@ async function run(browser, width, previous) {
     assert.equal(await primary.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await primary.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
     assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW · DBL']], 'primary comparison facts keep their labels and original values');
-    assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR']], 'source and operator remain distinct while room placement stays in its single exact-offer fact');
+    assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact:not(.tour-operator)').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor']], 'source remains a distinct exact-offer fact');
+    assert.equal(await primary.locator('.hotel-operator').innerText(), 'TEST OPERATOR', 'unknown operator keeps its visible name');
+    assert.equal(await primary.locator('.hotel-operator').getAttribute('title'), 'Туроператор: TEST OPERATOR', 'tooltip explains the operator identity');
+    assert.equal(await primary.locator('.tour-operator>small').count(), 0, 'redundant operator caption is removed');
     assert.equal(await primary.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '148500,6₽', 'expanded representative keeps the precise original price');
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard expansion retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');

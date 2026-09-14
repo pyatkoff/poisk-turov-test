@@ -31,6 +31,10 @@ for(const offer of [tour,other]){
   assert.match(row,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/,'room and placement stay together as one exact offer fact');
   assert.match(row,/<small>Источник<\/small><b>Tourvisor<\/b>/,'exact offer keeps provider source distinct from tour operator');
   assert.doesNotMatch(row,/<small>(?:Туристы|Размещение)<\/small>/,'exact offer does not repeat search party or a second placement field');
+  assert.doesNotMatch(row,/<small>Оператор<\/small>|class="hotel-operator-name"/,'known operator is represented by its logo without duplicate visible captions');
+  const description='Туроператор: '+api.operatorIdentity(offer).label.replace(/&/g,'&amp;');
+  assert.ok(row.includes('title="'+description+'"'),'operator tooltip uses the canonical brand name');
+  assert.ok(row.includes('alt="'+description+'"'),'logo retains an accessible operator name');
 }
 assert.equal(api.operatorIdentity({provider:'anex'}),null,'provider is not tour operator');
 assert.equal(api.operatorIdentity({operator:'ANEX SERVICES'}).logo,'','unknown similar name is not branded');
@@ -39,6 +43,8 @@ assert.equal(api.operatorIdentity({operator:'Библио Глобус'}).key,'b
 const fallback=api.tourRow({...tour,operator:'<img onerror="bad()">'});
 assert.doesNotMatch(fallback,/<img onerror/);
 assert.match(fallback,/&lt;img/,'unknown operator names remain escaped');
+assert.match(fallback,/class="hotel-operator-name">&lt;img onerror=&quot;bad\(\)&quot;&gt;<\/span>/,'unknown operators retain their escaped visible name');
+assert.match(fallback,/title="Туроператор: &lt;img onerror=&quot;bad\(\)&quot;&gt;"/,'operator tooltip escapes untrusted attribute content');
 assert.doesNotMatch(api.tourRow({...tour,provider:'andromeda',selectionEnabled:false}),/class="direct-tour"/,'existing provider selection guard stays authoritative');
 assert.equal(JSON.stringify(hotel),original,'frozen original identities, dates, prices and parameters are unchanged');
 const assets=path.join(__dirname,'../v2/assets/operator-logos');
