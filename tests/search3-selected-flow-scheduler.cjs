@@ -22,6 +22,8 @@ const events = new Map();
 const bodyClasses = new Set(['search3-candidate']);
 const selectedClasses = new Set();
 let focused = 0;
+const handoff = [];
+let hasPhone = true;
 const labels = [
   { textContent: 'К минимальной цене', classList: { toggle() {} } },
   { textContent: 'К минимальной цене', classList: { toggle() {} } }
@@ -33,7 +35,11 @@ const variants = [72832, '90 049,6'].map((value, index) => ({
 const button = { textContent: '' };
 const action = { hidden: true, querySelector() { return button; } };
 const flights = { querySelector() { return action; }, appendChild() {} };
-const form = { scrollIntoView() {}, querySelector() { return { focus() { focused += 1; } }; } };
+const phone = {
+  focus() { focused += 1; handoff.push('phone-focus'); },
+  scrollIntoView() { handoff.push('phone-scroll'); }
+};
+const form = { scrollIntoView() { handoff.push('form-scroll'); }, querySelector() { return hasPhone ? phone : null; } };
 const selected = {
   classList: {
     add(name) { selectedClasses.add(name); },
@@ -72,6 +78,10 @@ assert.equal(bodyClasses.has('search3-selected-open'), false);
 window.Search3SummaryCta.enterLead('flight');
 assert.ok(selectedClasses.has('search3-lead-entry'));
 assert.equal(focused, 1);
+assert.deepEqual(handoff, ['phone-focus', 'phone-scroll'], 'handoff focuses synchronously and reveals the field instead of the distant form heading');
+hasPhone = false;
+assert.equal(window.Search3SummaryCta.enterLead('flight'), true);
+assert.equal(handoff.at(-1), 'form-scroll', 'the form remains the fallback when no phone field exists');
 assert.equal(window.Search3SummaryCta.version, 14);
 
 console.log('PASS: selected public adapter is retired; canonical recovery/price and native handoff remain');
