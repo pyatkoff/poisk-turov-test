@@ -40,11 +40,13 @@ if ($docRoot !== '' && is_file($siteConf)) require_once $siteConf;
 define('V2_PUBLIC_BASE_PATH', '');
 require dirname(__DIR__) . '/index.php';
 """)
-        for name in ("poisk-turov/index.php", "api-anex-search3-preview.php", "preview-lead-disabled.php"):
+        for name in ("poisk-turov/index.php", "api-anex-search3-preview.php",
+                     "api-andromeda-search3-preview.php", "preview-lead-disabled.php"):
             self.write("v2/" + name, "<?php // fixture\n")
         self.write("v2/anex-search3-preview-v1.js", "window.fixture = true;\n")
         self.write("v2/site-path-v1.php", (ROOT / "v2/site-path-v1.php").read_text())
         self.write("app/integrations/anex-search-mapping-registry.php", "<?php // registry\n")
+        self.write("app/integrations/anex-additional-prices-client.php", "<?php // APD client\n")
         self.write("scripts/build/search3_site_preview_isolation.py", (ROOT / "scripts/build/search3_site_preview_isolation.py").read_text())
 
     def write(self, relative, content):
@@ -78,6 +80,19 @@ require dirname(__DIR__) . '/index.php';
         self.assertNotIn("SECRET_TOKEN", serialized)
         self.assertNotIn("ANEX_API_TOKEN", (payload / ".anex-private.php").read_text())
         self.assertIn("Require all denied", (payload / "app/.htaccess").read_text())
+        access = (payload / ".htaccess").read_text()
+        self.assertIn('<Files "api-anex-search3-preview.php">', access)
+        self.assertIn('<Files "api-andromeda-search3-preview.php">', access)
+        self.assertTrue((payload / "app/integrations/anex-additional-prices-client.php").is_file())
+
+    def test_provider_runtime_dependencies_are_required(self):
+        (self.repo / "app/integrations/anex-additional-prices-client.php").unlink()
+        with self.assertRaisesRegex(ValueError, "runtime dependency"):
+            deploy.build_payload(self.repo, self.root / "missing-apd", SHA)
+        self.write("app/integrations/anex-additional-prices-client.php", "<?php // APD client\n")
+        (self.repo / "v2/api-andromeda-search3-preview.php").unlink()
+        with self.assertRaisesRegex(ValueError, "runtime dependency"):
+            deploy.build_payload(self.repo, self.root / "missing-andromeda", SHA)
 
     def test_symbolic_links_and_existing_payload_are_rejected(self):
         (self.repo / "v2/linked.js").symlink_to(self.repo / "v2/anex-search3-preview-v1.js")
@@ -101,6 +116,9 @@ require dirname(__DIR__) . '/index.php';
         self.assertIn('test -f "$target/anex-preview-manifest.json"', script)
         self.assertIn('mv "$target" "$backup"', script)
         self.assertIn('mv "$backup" "$target"', script)
+        self.assertIn('test -f "$target/api-anex-search3-preview.php"', script)
+        self.assertIn('test -f "$target/api-andromeda-search3-preview.php"', script)
+        self.assertIn('test -f "$target/app/integrations/anex-additional-prices-client.php"', script)
         self.assertIn('chmod 600 "$work/search3-preview.php"', script)
         self.assertIn('tar -xzf - -C "$work"', script)
         with self.assertRaises(ValueError):
