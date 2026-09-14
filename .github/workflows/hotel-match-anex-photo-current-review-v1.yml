@@ -1,0 +1,68 @@
+name: MATCH ANEX photo hotelCode CURRENT review v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-photo-current-review-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-photo-current-review-1971-20260914-v1, cancel-in-progress: false}
+env: {OPERATION_ID: hotel-match-anex-photo-current-review-1971-20260914-v1}
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable CURRENT read
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_ssh","database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-anex-photo-current-review-v1-reservation, path: '${{ runner.temp }}/hotel-match-anex-photo-current-review-1971-20260914-v1/reservation.json', retention-days: 90}
+      - name: Combine immutable photo evidence and review CURRENT DB
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -p "$RUNNER_TEMP/v13" "$RUNNER_TEMP/v16" "$RUNNER_TEMP/v17"
+          gh run download 34843924242 --repo "$GITHUB_REPOSITORY" --name match-anex-child-sitemap-hotelcode-v13-result -D "$RUNNER_TEMP/v13"
+          gh run download 34848535471 --repo "$GITHUB_REPOSITORY" --name match-anex-targeted-full-media-v16-result -D "$RUNNER_TEMP/v16"
+          gh run download 34849297432 --repo "$GITHUB_REPOSITORY" --name match-anex-corrected-country-v17-result -D "$RUNNER_TEMP/v17"
+          php -l scripts/diagnostics/anex_photo_hotelcode_current_review_v1.php
+          python3 - <<'PY'
+          import base64,hashlib,json,os,pathlib,re,shlex,subprocess,tempfile
+          root=pathlib.Path(os.environ['RUNNER_TEMP']); state=root/os.environ['OPERATION_ID']; rec={}
+          a=json.load(open(root/'v13/result.json')); b=json.load(open(root/'v16/result.json')); c=json.load(open(root/'v17/result.json'))
+          for r in a['rows']:
+            if r.get('confirmed'):
+              h=r['hit']; rec[int(r['aid'])]={'anex_hotel_id':int(r['aid']),'country_id':int(r['cid']),'page_url':h['page_url'],'hotelcode':int(h['hotel_code']),'evidence':'official_anex_page_native_media_hotelCode','source_run':34843924242}
+          for x,run,key in [(b,34848535471,'photo_hotelcode'),(c,34849297432,'hotelcode')]:
+            for r in x['confirmed']:
+              aid=int(r['anex_hotel_id']); rec[aid]={'anex_hotel_id':aid,'country_id':int(r['country_id']),'page_url':r['page_url'],'hotelcode':int(r[key]),'evidence':r['evidence'],'source_run':run}
+          evidence=[rec[k] for k in sorted(rec)]
+          if len(evidence)!=31 or any(x['anex_hotel_id']!=x['hotelcode'] for x in evidence): raise SystemExit('evidence_contract')
+          eraw=(json.dumps(evidence,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); (state/'evidence.json').write_bytes(eraw)
+          paths=['scripts/diagnostics/hotel_full_catalog_reconcile.php','scripts/diagnostics/hotel_match_current_bulk_review.php','scripts/diagnostics/anex_photo_hotelcode_current_review_v1.php']
+          def body(p):
+            t=pathlib.Path(p).read_text().removeprefix('<?php').replace('declare(strict_types=1);','',1)
+            return re.sub(r"require_once __DIR__ \. '/[^']+';\n?",'',t)
+          payload=base64.b64encode(eraw).decode(); code="define('FC_LIBRARY_ONLY',true);\n"+'\n'.join(body(p) for p in paths)+"\n$ev=json_decode(base64_decode('"+payload+"'),true,64,JSON_THROW_ON_ERROR);$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$h)throw new RuntimeException('db_helper');require_once $h;$out=aph_review(v2_data_db(),$ev,APH_OPERATION);echo fc_json($out),'\\n';"
+          vals=[os.environ.get(k,'').strip() for k in ['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER']]
+          if not all(vals): raise SystemExit('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(dir=root) as td:
+            key=pathlib.Path(td)/'key';key.write_text(vals[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'known'
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',vals[2],vals[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+            p=subprocess.run(cmd,text=True,capture_output=True,timeout=480)
+          try:x=json.loads(p.stdout)
+          except Exception:
+            (state/'blocker.json').write_text(json.dumps({'status':'failed','reason':'unparseable','exit':p.returncode,'stderr_tail':p.stderr[-700:],'database_writes':0,'mapping_writes':0}));raise
+          (state/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if p.returncode or x.get('status')!='completed' or x.get('operation_id')!=os.environ['OPERATION_ID'] or x.get('database_writes')!=0 or x.get('mapping_writes')!=0: raise SystemExit('current_review_not_completed')
+          rr=(state/'result.json').read_bytes(); receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'evidence_count':31,'evidence_sha256':hashlib.sha256(eraw).hexdigest(),'result_sha256':hashlib.sha256(rr).hexdigest(),'counts':x['counts'],'coverage':x['coverage'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps({'counts':x['counts'],'coverage':x['coverage']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: match-anex-photo-current-review-v1-result, path: '${{ runner.temp }}/hotel-match-anex-photo-current-review-1971-20260914-v1/', retention-days: 90}
