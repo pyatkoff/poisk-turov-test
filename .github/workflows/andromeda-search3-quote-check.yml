@@ -4,6 +4,8 @@ on:
     paths:
       - 'app/integrations/andromeda-claim-actions.php'
       - 'app/integrations/andromeda-selected-quote.php'
+      - 'app/integrations/andromeda-search-surcharge.php'
+      - 'tests/andromeda-search-surcharge-smoke.php'
       - 'app/integrations/andromeda-price-observation.php'
       - 'app/integrations/andromeda-quote-attempt-state.php'
       - 'v2/api-andromeda-quote-preview.php'
@@ -20,11 +22,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Syntax and quote-flow regression
         run: |
           php -l app/integrations/andromeda-claim-actions.php
           php -l app/integrations/andromeda-selected-quote.php
+          php -l app/integrations/andromeda-search-surcharge.php
+          php -d allow_url_fopen=0 tests/andromeda-search-surcharge-smoke.php
           php -l app/integrations/andromeda-price-observation.php
           php -l app/integrations/andromeda-quote-attempt-state.php
           php -l v2/api-andromeda-quote-preview.php

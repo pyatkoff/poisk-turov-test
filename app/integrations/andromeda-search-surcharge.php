@@ -98,7 +98,10 @@ final class AnyTourAndromedaSearchSurcharge
                             $currency = $detail['currency'] ?? null;
                             if ($amount === null || !is_string($currency)
                                 || preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) !== 1) continue;
-                            $facts[$currency . "\0" . $amount] = [
+                            // Compare decimal value, not supplier formatting; keep the first raw fact.
+                            $units = self::units($amount, 2);
+                            if ($units === null) continue;
+                            $facts[$currency . "\0" . $units] ??= [
                                 'amount' => $amount,
                                 'currency' => $currency,
                             ];
@@ -129,7 +132,9 @@ final class AnyTourAndromedaSearchSurcharge
                     'is_claim_currency' => $isClaim === 'true' ? true : ($isClaim === 'false' ? false : null),
                     'source' => 'andromeda_claim_money',
                 ];
-                if (isset($rates[$currency]) && $rates[$currency] !== $row) {
+                if (isset($rates[$currency])
+                    && (self::units($rates[$currency]['rate'], 6) !== self::units($rate, 6)
+                        || $rates[$currency]['is_claim_currency'] !== $row['is_claim_currency'])) {
                     // Ambiguous rate means conversion cannot be used safely.
                     $rates[$currency] = null;
                 } elseif (!array_key_exists($currency, $rates)) {
