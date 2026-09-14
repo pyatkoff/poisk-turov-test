@@ -1,4 +1,5 @@
 name: MATCH ANEX bridge CURRENT v1
+# Second push arms the workflow after the workflow file itself exists on this branch.
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
