@@ -463,6 +463,8 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await page.locator('#results .hotel-card').count(), 1, 'prepared local hotel remains visible without a Tourvisor offer');
     assert.equal(await card.locator('.hotel-photo img').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
+    await card.locator('.hotel-photo img').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-photo img'); return img && img.complete && img.naturalWidth > 0; });
     await card.locator('.hotel-photo img').evaluate(img => img.decode());
     if (!previous) await card.screenshot({ path: path.join(output, `catalog-hotel-${width}.png`), animations: 'disabled' });
     await page.evaluate(hotel => window.V2Results.render([hotel], { empty: true }), tvHotel);
