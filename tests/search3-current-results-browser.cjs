@@ -137,26 +137,26 @@ async function checkMinimumReadiness(page, width, previous) {
     const checked = page.locator('.hotel-card[data-hotel-id="minimum-check"]');
     const mixed = page.locator('.hotel-card[data-hotel-id="minimum-mixed"]');
     const ready = page.locator('.hotel-card[data-hotel-id="minimum-ready"]');
-    assert.equal(await checked.locator('.tour-row .tour-selection-note').textContent(), 'Цена из Андромеды · перед выбором нужна проверка');
-    assert.equal(await mixed.locator('.tour-row .tour-selection-note').textContent(), 'Цена из Андромеды · перед выбором нужна проверка');
-    assert.equal(await ready.locator('.tour-row .tour-selection-note').count(), 0, 'a more expensive blocked offer does not label the minimum blocked');
     for (const card of [checked, mixed, ready]) {
+      assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle,.tour-selection-note').count(), 0, 'collapsed hotel does not project one offer readiness or action');
+      assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapsed hotel exposes one neutral minimum summary');
       const geometry = await card.evaluate(node => {
-        const r = node.getBoundingClientRect(), note = node.querySelector('.tour-row .tour-selection-note'), n = note && note.getBoundingClientRect();
-        return { inside: !n || n.width > 0 && n.left >= r.left && n.right <= r.right + 1, overflow: node.scrollWidth > node.clientWidth + 1 };
+        const r = node.getBoundingClientRect(), summary = node.querySelector('.hotel-offers-summary'), s = summary && summary.getBoundingClientRect();
+        return { inside: !s || s.width > 0 && s.left >= r.left && s.right <= r.right + 1, overflow: node.scrollWidth > node.clientWidth + 1 };
       });
-      assert.equal(geometry.inside, true, 'minimum note remains readable within its card');
+      assert.equal(geometry.inside, true, 'hotel-level minimum remains readable within its card');
       assert.equal(geometry.overflow, false);
     }
-    if (!previous) await (width === 375 ? mixed : checked).screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
-    const labels = await cards.evaluateAll(nodes => nodes.map(node => ({ id: node.dataset.hotelId, price: node.querySelector('.tour-row .hotel-price').textContent, note: node.querySelector('.tour-row .tour-selection-note')?.textContent || '' })));
+    const labels = await cards.evaluateAll(nodes => nodes.map(node => ({ id: node.dataset.hotelId, price: node.querySelector('.hotel-offers-summary .hotel-price').textContent, note: node.querySelector('.tour-selection-note')?.textContent || '' })));
     const toggle = checked.locator('.tour-more-toggle');
     await toggle.focus(); await toggle.press('Enter');
     assert.equal(await checked.locator('[data-tid="minimum-andromeda"]').count(), 0, 'unverified minimum still cannot create a select action');
     assert.equal(await checked.locator('[data-tid="minimum-selectable"]').isVisible(), true, 'more expensive selectable offer keeps its existing action');
     assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором нужна проверка/);
+    if (!previous) await checked.screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
     await checked.locator('.tour-more-toggle').press('Enter');
     assert.equal(await checked.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'collapse retains the existing disclosure focus');
+    assert.equal(await checked.locator('.tour-selection-note').count(), 0, 'collapse removes concrete readiness copy with the concrete offer');
     assert.deepEqual(await page.evaluate(() => window.__minimumReadinessSource), items, 'presentation does not mutate supplier prices or readiness');
     assert.deepEqual(requests, [], 'local summary and disclosure cause no supplier or lead request');
     return labels;
