@@ -1,0 +1,9 @@
+operation_id=hotel-match-anex-automatch-current-mass-review-1971-20260914-v1
+claim=996#5660748375
+mode=current_db_read_only_anex_automatch_mass_review
+source_feature=0ba1e4eb68eb50d3766c57ccdf444f1476fffc1d
+database_writes=0
+mapping_writes=0
+supplier_calls=0
+tourvisor_calls=0
+no_replay=true
