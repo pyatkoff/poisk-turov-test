@@ -5,6 +5,8 @@
   "widths": {
     "320": {"selected_head_columns": 1, "fact_columns": 2, "lead_columns": 1, "mobile_submit": true},
     "375": {"selected_head_columns": 1, "fact_columns": 2, "lead_columns": 1, "mobile_submit": true},
+    "600": {"selected_head_columns": 1, "fact_columns": 2, "lead_columns": 1, "mobile_submit": true},
+    "601": {"selected_head_columns": 1, "fact_columns": 3, "lead_columns": 2, "mobile_submit": false},
     "720": {"selected_head_columns": 1, "fact_columns": 3, "lead_columns": 2, "mobile_submit": false},
     "760": {"selected_head_columns": 1, "fact_columns": 3, "lead_columns": 2, "mobile_submit": false},
     "1000": {"selected_head_columns": 2, "fact_columns": 5, "lead_columns": 2, "mobile_submit": false},
