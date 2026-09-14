@@ -157,9 +157,18 @@ async function checkComparisonGeometry(page, width, count) {
   await openComparison(page, width);
   await page.evaluate(() => document.fonts.ready);
   const geometry = await shortlist.locator('.search3-shortlist__items').evaluate(list => {
-    const rect = node => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right }; };
-    return { grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap), cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(rect) })) };
+    const rect = node => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom }; };
+    const root = list.closest('.search3-shortlist'), head = root.querySelector('.search3-shortlist__head'), headActions = root.querySelector('.search3-shortlist__head-actions');
+    return {
+      grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap),
+      cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(rect) })),
+      chrome: { head: rect(head), actions: rect(headActions), legacyViewCount: root.querySelectorAll('.search3-shortlist__view').length }
+    };
   });
+  assert.equal(geometry.chrome.legacyViewCount, 0, 'differences action has one canonical header owner instead of a separate body row');
+  assert.ok(geometry.chrome.actions.x >= geometry.chrome.head.x - 1 && geometry.chrome.actions.right <= geometry.chrome.head.right + 1, 'header actions stay contained');
+  const cardsGap = geometry.grid.y - geometry.chrome.head.bottom;
+  assert.ok(cardsGap >= (width <= 600 ? 9 : 15) && cardsGap <= 20, 'cards follow the header without the former 82px empty band');
   assert.equal(geometry.cards.length, count);
   for (const card of geometry.cards) {
     assert.ok(card.x >= geometry.grid.x - 1 && card.right <= geometry.grid.right + 1, 'every comparison card stays inside its grid');
