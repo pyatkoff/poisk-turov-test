@@ -441,6 +441,7 @@ function anytour_andromeda_search3_catalog(array $config, array $request): array
     if(!is_file($path)||is_link($path))throw new DomainException('country_not_loaded');
     $saved=json_decode(file_get_contents($path),true,32,JSON_THROW_ON_ERROR);
     if((string)($saved['local_country_id']??1)!==(string)$id)throw new DomainException('country_not_loaded');
+    $saved['local_country_id']=(int)$id;
     return $saved;
 }
 
