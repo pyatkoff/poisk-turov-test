@@ -55,7 +55,17 @@ final class AnyTourThreeProviderRoomPlacement
         return [
             'raw' => $raw,
             'normalized' => $normalized,
+            'display_label' => self::display($normalized),
             'comparison_scope' => 'display_label_only',
         ];
+    }
+
+    private static function display(string $normalized): string
+    {
+        if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
+            return mb_strtoupper(mb_substr($normalized, 0, 1, 'UTF-8'), 'UTF-8')
+                . mb_substr($normalized, 1, null, 'UTF-8');
+        }
+        return ucfirst($normalized);
     }
 }
