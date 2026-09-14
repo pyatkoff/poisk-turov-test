@@ -40,5 +40,5 @@ window.addEventListener('v2:selected-tour-opened',()=>selectedState(true));
 ['v2:tour-returned','v2:selected-tour-closed','v2:search-reset'].forEach(name=>window.addEventListener(name,()=>selectedState(false)));
 window.addEventListener('click',event=>{if(event.target&&event.target.closest&&event.target.closest('#selectedTour .back-results,#selectedTour .lead-success-back,#selectedTour .other-hotel-offers'))selectedState(false)},true);
 document.addEventListener('click',event=>{if(event.target&&event.target.closest&&event.target.closest('#selectedTour .search3-flight-continue button')){event.preventDefault();enterLead('flight')}});
-window.Search3SummaryCta={ensure,enterLead,correctTradeoffs,syncLeadFlight,version:15};
+window.Search3SummaryCta={ensure,enterLead,correctTradeoffs,syncLeadFlight,version:14};
 })();
