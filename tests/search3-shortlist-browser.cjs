@@ -161,7 +161,7 @@ async function checkComparisonGeometry(page, width, count) {
     const root = list.closest('.search3-shortlist'), head = root.querySelector('.search3-shortlist__head'), headActions = root.querySelector('.search3-shortlist__head-actions');
     return {
       grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap),
-      cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(rect) })),
+      cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(button => ({ ...rect(button), text: button.textContent.trim(), font: getComputedStyle(button).font })) })),
       chrome: { head: rect(head), actions: rect(headActions), legacyViewCount: root.querySelectorAll('.search3-shortlist__view').length }
     };
   });
@@ -173,6 +173,12 @@ async function checkComparisonGeometry(page, width, count) {
   for (const card of geometry.cards) {
     assert.ok(card.x >= geometry.grid.x - 1 && card.right <= geometry.grid.right + 1, 'every comparison card stays inside its grid');
     assert.ok(card.actions.every(action => action.height >= 44 && action.x >= card.x && action.right <= card.right), 'actions remain visible, contained and touch-sized');
+    if (width <= 430) {
+      assert.equal(card.actions.length, 2, 'mobile saved offer keeps both exact actions');
+      assert.ok(Math.abs(card.actions[0].y - card.actions[1].y) < 2, 'mobile Select and Remove share one compact action row');
+      const actionRowHeight = Math.max(...card.actions.map(action => action.bottom)) - Math.min(...card.actions.map(action => action.y));
+      assert.ok(actionRowHeight <= (width <= 320 ? 72 : 48), 'mobile action row stays compact without hiding a touch target: ' + JSON.stringify({ width, count, actionRowHeight, actions: card.actions }));
+    }
   }
   if (count === 1) {
     assert.ok(geometry.cards[0].width <= 641, 'one saved offer stays bounded instead of becoming a giant card');
@@ -274,11 +280,10 @@ async function checkJourney(browser, width) {
     assert.equal(visual.priceColor, 'rgb(21, 27, 36)', 'saved price uses the primary ink hierarchy rather than link blue');
     assert.ok(visual.select.height >= 44 && visual.remove.height >= 44, 'comparison actions retain 44px targets');
     assert.equal(visual.removeBackground, 'rgba(0, 0, 0, 0)', 'remove stays visually secondary');
+    assert.ok(visual.remove.x > visual.select.x, 'comparison actions retain a compact primary/secondary row');
     if (width <= 430) {
-      assert.ok(visual.select.width >= visual.actions.width - 3, 'mobile primary action spans the comparison card');
-      assert.ok(visual.remove.y > visual.select.y, 'mobile remove action follows the primary action instead of competing beside it');
-    } else {
-      assert.ok(visual.remove.x > visual.select.x, 'desktop actions retain a compact primary/secondary row');
+      assert.ok(Math.abs(visual.remove.y - visual.select.y) < 2, 'mobile primary and remove actions share the compact row');
+      assert.ok(visual.remove.x + visual.remove.width <= visual.actions.x + visual.actions.width + 2, 'mobile action pair stays contained');
     }
     const three = await checkComparisonGeometry(page, width, 3);
 
@@ -559,7 +564,7 @@ async function checkCorruptStorage(browser, width) {
       evidence.push(await checkStorageFailure(browser, width, 'quota'));
       evidence.push(await checkCorruptStorage(browser, width));
     }
-    for (const width of [600, 601, 768, 1024]) evidence.push(await checkIntermediateGeometry(browser, width));
+    for (const width of [320, 600, 601, 768, 1024]) evidence.push(await checkIntermediateGeometry(browser, width));
   } finally { await browser.close(); }
   fs.writeFileSync(path.join(output, 'shortlist-contract.json'), JSON.stringify(evidence, null, 2));
   console.log('SEARCH3_SHORTLIST_OK ' + JSON.stringify(evidence));
