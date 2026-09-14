@@ -96,9 +96,10 @@ async function openFilters(page, width) {
 
 async function discloseMatchingOffers(page) {
   const card = page.locator('#results [data-hotel-id="offer-hotel"]');
-  assert.equal(await card.locator('.hotel-trip-summary').count(), 1, 'matching multi-offer hotel starts with an aggregate');
-  assert.equal(await card.locator('.direct-tour,.search3-shortlist-toggle').count(), 0, 'an undisclosed aggregate cannot select or save a fabricated representative');
-  assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), 'от120000₽', 'RO90k is excluded from the matching aggregate minimum');
+  assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'matching multi-offer hotel starts at hotel level without Select or Compare');
+  assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'matching multi-offer hotel exposes one hotel-level minimum');
+  assert.equal((await card.locator('.hotel-price').innerText()).replace(/\s/g, ''), 'от120000₽', 'RO90k is excluded and matching AI offers contribute only the truthful hotel minimum');
+  assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /offer-standard|TEST OPERATOR|Tourvisor|Всё включено|12\.09\.2026/, 'collapsed shortlist entry does not borrow one exact offer');
   const disclosure = card.locator('.tour-more-toggle');
   assert.ok((await disclosure.boundingBox()).height >= 44, 'offer disclosure retains a 44px target');
   await disclosure.focus();
@@ -396,6 +397,10 @@ async function checkSearchRecovery(browser, width) {
     assert.deepEqual(storedQuery.getAll('child_age[]'), ['0', '17']);
     assert.deepEqual(storedQuery.getAll('hotel_service[]'), ['11', '22']);
     assert.equal(/utm_|yclid|phone|consent|token|cookie|payload/i.test(saved.searchQuery), false, 'persistent search conditions exclude attribution, contacts and raw data');
+    const editSearch = page.locator('#resultsSearchEdit');
+    assert.equal(await editSearch.getAttribute('aria-expanded'), 'false', 'populated results keep the canonical search editor collapsed');
+    await editSearch.click();
+    assert.equal(await editSearch.getAttribute('aria-expanded'), 'true', 'editing the current search uses the existing disclosure control');
     await page.locator('#tourSearch [name=count_people]').selectOption('3');
     await openComparison(page, width);
     const restore = page.locator('.search3-shortlist-restore');

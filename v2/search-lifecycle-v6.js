@@ -11,8 +11,8 @@ function show(text){if(renderer&&typeof renderer.showPlainStatus==='function'&&r
 function params(){const f=new FormData(form),ages=f.getAll('child_age[]').map(v=>String(v).trim()).filter(v=>v!=='').map(v=>Number(v));return{departureId:f.get('from'),countryId:f.get('country'),dateFrom:f.get('dateFrom'),dateTo:f.get('dateTo'),nightsFrom:f.get('daysFrom'),nightsTo:f.get('daysTill'),adults:f.get('count_people')||2,childs:ages,meal:f.get('food')||'',hotelCategory:f.get('stars')||'',hotelRating:f.get('rating')||'',hotelTypes:f.get('hotel_type')?[f.get('hotel_type')]:[],hotelIds:f.get('hotel')?[f.get('hotel')]:[],hotelServices:f.getAll('hotel_service[]'),arrivalId:f.get('arrival')||'',regionIds:f.get('region')?[f.get('region')]:[],subregionIds:f.get('subregion')?[f.get('subregion')]:[],operatorIds:f.get('operator')?[f.get('operator')]:[],priceFrom:f.get('price_from')||'',priceTo:f.get('price_till')||'',currency:'RUB',onlyCharter:f.get('onlyCharter')?'true':'false',onlyDirect:f.get('onlyDirect')?'true':'false'};}
 function cloneSnapshot(p){if(!p)return null;const out={};Object.entries(p).forEach(([k,v])=>{out[k]=Array.isArray(v)?v.slice():v;});return out;}
 function attributionParam(name){return/^(?:utm_[a-z0-9_]+|gclid|dclid|gbraid|wbraid|yclid|ymclid|fbclid|msclkid|ttclid|vk_click_id|_openstat|roistat|calltouch_[a-z0-9_]+)$/i.test(String(name||''));}
-function formQuery(includeOperator){const query=new URLSearchParams(),data=new FormData(form);(includeOperator?urlFields.concat('operator'):urlFields).forEach(name=>data.getAll(name).forEach(value=>{if(typeof value==='string'&&value!=='')query.append(name,value);}));return query;}
-function captureRestoreQuery(){if(!document.body||!document.body.classList.contains('search3-candidate'))return'';try{return formQuery(true).toString();}catch(error){return'';}}
+function formQuery(){const query=new URLSearchParams(),data=new FormData(form);urlFields.concat('operator').forEach(name=>data.getAll(name).forEach(value=>{if(typeof value==='string'&&value!=='')query.append(name,value);}));return query;}
+function captureRestoreQuery(){if(!document.body||!document.body.classList.contains('search3-candidate'))return'';try{return formQuery().toString();}catch(error){return'';}}
 function normalizeRestoreQuery(query){if(typeof query!=='string'||!query||query.length>4096)return'';try{const saved=new URLSearchParams(query),allowed=urlFields.concat('operator'),seen=new Set();for(const [name,value]of saved){if(!allowed.includes(name)||!value||value.length>256||(seen.has(name)&&name!=='child_age[]'&&name!=='hotel_service[]'))return'';seen.add(name);}if(!['from','country','dateFrom','dateTo','daysFrom','daysTill','count_people'].every(name=>saved.has(name)))return'';return saved.toString();}catch(error){return'';}}
 function restorationUrl(query){if(!document.body||!document.body.classList.contains('search3-candidate'))return'';const clean=normalizeRestoreQuery(query);if(!clean)return'';try{const url=new URL(window.location.href),next=new URLSearchParams();url.searchParams.forEach((value,name)=>{if(attributionParam(name))next.append(name,value);});new URLSearchParams(clean).forEach((value,name)=>next.append(name,value));next.set('search3_restore','1');url.search=next.toString();url.hash='';return url.href;}catch(error){return'';}}
 function persistUrlState(mode){
@@ -20,7 +20,7 @@ if(!document.body||!document.body.classList.contains('search3-candidate')||typeo
 try{
 const url=new URL(window.location.href),next=new URLSearchParams();
 url.searchParams.forEach((value,name)=>{if(attributionParam(name))next.append(name,value);});
-formQuery(false).forEach((value,name)=>next.append(name,value));
+formQuery().forEach((value,name)=>next.append(name,value));
 url.search=next.toString();
 if(url.href!==window.location.href){
 const method=mode==='replace'?'replaceState':'pushState';

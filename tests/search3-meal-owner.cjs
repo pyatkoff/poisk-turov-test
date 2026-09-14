@@ -76,7 +76,14 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     { key: 'meal:ultra-all-inclusive', label: 'Ультра всё включено' },
     { key: 'meal:soft-all-inclusive', label: 'Soft AI' },
   ]), 'AI, UAI and Soft AI retain distinct identities');
-  assert.equal(JSON.stringify(results.mealIdentity({ meal: 'HB+' })), JSON.stringify({ key: 'meal:half-board', label: 'Полупансион' }), 'an exact supplier code with a suffix keeps its reviewed family');
+  assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: 'HB' }),
+    results.mealIdentity({ meal: { name: 'HB', fullName: 'Полупансион' } }),
+  ]), JSON.stringify(Array.from({ length: 2 }, () => ({ key: 'meal:half-board', label: 'Полупансион' }))), 'ordinary HB aliases retain the reviewed family');
+  assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: 'HB+' }),
+    results.mealIdentity({ meal: { name: 'HB+', fullName: 'Полупансион' } }),
+  ]), JSON.stringify(Array.from({ length: 2 }, () => ({ key: 'meal:label:hb+', label: 'HB+' }))), 'an exact supplier plus code remains a distinct supplier label');
   assert.equal(JSON.stringify([
     results.mealIdentity({ meal: 'Premium All Inclusive' }),
     results.mealIdentity({ meal: 'Breakfast and dinner' }),
