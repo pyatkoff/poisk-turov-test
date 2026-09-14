@@ -76,7 +76,21 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     { key: 'meal:ultra-all-inclusive', label: 'Ультра всё включено' },
     { key: 'meal:soft-all-inclusive', label: 'Soft AI' },
   ]), 'AI, UAI and Soft AI retain distinct identities');
-  assert.equal(JSON.stringify(results.mealIdentity({ meal: 'HB+' })), JSON.stringify({ key: 'meal:half-board', label: 'Полупансион' }), 'an exact supplier code with a suffix keeps its reviewed family');
+  assert.equal(JSON.stringify(results.mealIdentity({ meal: 'HB+' })), JSON.stringify({ key: 'meal:label:hb+', label: 'HB+' }), 'plus supplier codes remain distinct instead of collapsing into their base family');
+  assert.equal(JSON.stringify(results.mealIdentity({ meal: { name: 'HB+', fullName: 'Полупансион плюс' } })), JSON.stringify({ key: 'meal:label:hb+', label: 'Полупансион плюс' }), 'plus supplier codes retain the supplier-facing expanded label when available');
+  assert.equal(JSON.stringify([
+    results.mealIdentity({ meal: 'AI+' }),
+    results.mealIdentity({ meal: 'BB+' }),
+    results.mealIdentity({ meal: 'FB+' }),
+    results.mealIdentity({ meal: 'RO+' }),
+    results.mealIdentity({ meal: 'SC+' }),
+  ]), JSON.stringify([
+    { key: 'meal:label:ai+', label: 'AI+' },
+    { key: 'meal:label:bb+', label: 'BB+' },
+    { key: 'meal:label:fb+', label: 'FB+' },
+    { key: 'meal:label:ro+', label: 'RO+' },
+    { key: 'meal:label:sc+', label: 'SC+' },
+  ]), 'reviewed plus variants retain exact distinct identities');
   assert.equal(JSON.stringify([
     results.mealIdentity({ meal: 'Premium All Inclusive' }),
     results.mealIdentity({ meal: 'Breakfast and dinner' }),
