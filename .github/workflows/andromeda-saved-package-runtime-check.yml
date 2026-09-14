@@ -22,6 +22,8 @@ on:
       - 'scripts/diagnostics/andromeda_package_evidence.php'
       - 'tests/andromeda-package-evidence-smoke.php'
       - 'scripts/diagnostics/andromeda-package-probe.php'
+      - 'scripts/diagnostics/andromeda_search_surcharge_e2e.php'
+      - 'tests/andromeda_search_surcharge_e2e_smoke.php'
       - 'tests/andromeda-retained-cli-smoke.php'
       - 'tests/andromeda-current-surcharge-cli-smoke.php'
       - 'scripts/diagnostics/andromeda_package_checkpoint_read.py'
@@ -100,6 +102,8 @@ jobs:
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
           php change/tests/andromeda-saved-package-attempt-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-attempt-fixture"
           php -d allow_url_fopen=0 change/tests/andromeda-saved-surcharge-runtime-smoke.php runtime "$RUNNER_TEMP/saved-surcharge-fixture"
+          php -l change/scripts/diagnostics/andromeda_search_surcharge_e2e.php
+          php -d allow_url_fopen=0 change/tests/andromeda_search_surcharge_e2e_smoke.php
           php change/tests/andromeda-retained-mapping-smoke.php runtime
           php -d allow_url_fopen=0 change/tests/andromeda-package-evidence-smoke.php
           php -l change/scripts/diagnostics/andromeda-package-probe.php
