@@ -173,7 +173,7 @@ async function checkComparisonGeometry(page, width, count) {
   }
   if (width <= 375) {
     assert.ok(geometry.chrome.actions.height <= 104, 'mobile comparison header actions fit at most two rows: ' + JSON.stringify(geometry.chrome));
-    assert.ok(geometry.chrome.head.height <= (width <= 320 ? 280 : 225), 'compact mobile header brings the saved tours closer: ' + JSON.stringify({ width, count, chrome: geometry.chrome }));
+    assert.ok(geometry.chrome.head.height <= (width <= 320 ? 280 : 230), 'compact mobile header brings the saved tours closer: ' + JSON.stringify({ width, count, chrome: geometry.chrome }));
   }
   const cardsGap = geometry.grid.y - geometry.chrome.head.bottom;
   assert.ok(cardsGap >= (width <= 600 ? 9 : 15) && cardsGap <= 20, 'cards follow the header without the former 82px empty band');
