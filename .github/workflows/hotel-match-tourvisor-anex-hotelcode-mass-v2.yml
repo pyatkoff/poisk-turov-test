@@ -1,0 +1,143 @@
+name: MATCH Tourvisor ANEX hotelCode mass v2
+on:
+  push:
+    branches: [ops/match-learned-geo-global-2333-20260914-v1]
+    paths: [.github/workflows/hotel-match-tourvisor-anex-hotelcode-mass-v2.yml]
+permissions: {contents: read, actions: read, issues: write}
+concurrency: {group: anytour-match-tourvisor-anex-hotelcode-mass-v2, cancel-in-progress: false}
+env:
+  FAMILY_ID: hotel-match-tourvisor-anex-hotelcode-mass-1971-20260914-v2
+jobs:
+  slice:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        country: [egypt, turkey]
+        date: ['2026-10-06','2026-10-27','2026-11-24']
+    env:
+      COUNTRY: ${{ matrix.country }}
+      SEARCH_DATE: ${{ matrix.date }}
+      OUT: /tmp/match-tv-anex-hotelcode-v2
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate source and reserve immutable slice
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          export OPERATION_ID="${FAMILY_ID}-${COUNTRY}-${SEARCH_DATE}"
+          php -l scripts/diagnostics/hotel_match_tourvisor_anex_hotelcode_mass_v2.php
+          python3 - <<'PY'
+          import os,pathlib,hashlib,json
+          p=pathlib.Path('scripts/diagnostics/hotel_match_tourvisor_anex_hotelcode_mass_v2.php').read_text()
+          for marker in ('__MATCH_COUNTRY__','__MATCH_DATE__','__MATCH_OPERATION__'):
+              assert p.count(marker)==1, marker
+          p=p.replace('__MATCH_COUNTRY__',os.environ['COUNTRY']).replace('__MATCH_DATE__',os.environ['SEARCH_DATE']).replace('__MATCH_OPERATION__',os.environ['OPERATION_ID'])
+          assert "hotel-match-tourvisor-anex-hotelcode-mass-1971-20260914-v2-" in p
+          assert "online.anextour.ru" in p and "legacy_hotellist" in p and "online_hotelcode" in p
+          d=pathlib.Path(os.environ['OUT']); (d/'program.php').write_text(p)
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'country':os.environ['COUNTRY'],'date':os.environ['SEARCH_DATE'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(p.encode()).hexdigest(),'state':'reserved_before_supplier_access','tourvisor_account_scope':'ANEX-only','database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+          php -l "$OUT/program.php"
+      - uses: actions/upload-artifact@v4
+        id: reserve
+        with:
+          name: tv-anex-hotelcode-v2-${{ matrix.country }}-${{ matrix.date }}-${{ github.run_id }}-reserved
+          path: ${{ env.OUT }}/reservation.json
+          retention-days: 90
+      - name: SSH preflight only
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0
+          for n in 1 2 3; do
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=3000 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi
+            sleep $((n*10))
+          done
+          test "$ok" = 1
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && test -f config.php && printf OK' | grep -qx OK
+          printf '%s\n' "$key" > "$RUNNER_TEMP/keypath"; printf '%s\n' "$sock" > "$RUNNER_TEMP/sockpath"
+      - name: Execute one immutable read-only evidence slice
+        env: {HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$(cat "$RUNNER_TEMP/keypath")"; sock="$(cat "$RUNNER_TEMP/sockpath")"
+          trap 'ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true' EXIT
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=2048M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"
+          rc=$?
+          set -e; export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes()
+          prefix='MATCH_TV_ANEX_HOTELCODE_V2_JSON:'
+          vals=[line[len(prefix):] for line in raw.decode(errors='replace').splitlines() if line.startswith(prefix)]
+          x=json.loads(vals[-1]) if len(vals)==1 else {'status':'unknown','stage':'result_readback','reason':'result_marker_missing_or_ambiguous','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          x['remote_exit']=int(os.environ['RC']); x['run_id']=int(os.environ['GITHUB_RUN_ID']); x['source_sha']=os.environ['GITHUB_SHA']
+          (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          assert x.get('database_writes')==0 and x.get('mapping_writes')==0 and x.get('booking_calls')==0 and x.get('lead_calls')==0
+          print(json.dumps({'status':x.get('status'),'country':x.get('country'),'date':x.get('date'),'counts':x.get('counts'),'diagnostics':((x.get('tourvisor') or {}).get('diagnostics')),'operator_page_calls':x.get('operator_page_calls'),'card_calls':x.get('card_calls')},ensure_ascii=False,sort_keys=True))
+          if int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
+          PY
+          rm -f "$key" "$RUNNER_TEMP/known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tv-anex-hotelcode-v2-${{ matrix.country }}-${{ matrix.date }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/result.json
+          retention-days: 90
+  aggregate:
+    if: always() && github.run_attempt == 1 && github.run_number == 1
+    needs: slice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'tv-anex-hotelcode-v2-*-final', path: /tmp/all, merge-multiple: false}
+      - name: Aggregate globally one-to-one CURRENT-safe evidence
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,collections,os
+          files=list(pathlib.Path('/tmp/all').rglob('result.json')); completed=[]; failed=[]
+          for p in files:
+              x=json.loads(p.read_text()); (completed if x.get('status')=='completed' else failed).append(x)
+          obs=collections.defaultdict(list); by_a=collections.defaultdict(set); by_l=collections.defaultdict(set); totals=collections.Counter(); calls=collections.Counter(); diag=collections.Counter()
+          for x in completed:
+              for k,v in (x.get('counts') or {}).items(): totals[k]+=int(v)
+              calls['operator_page_calls']+=int(x.get('operator_page_calls') or 0); calls['card_calls']+=int(x.get('card_calls') or 0)
+              for k,v in (((x.get('tourvisor') or {}).get('diagnostics')) or {}).items(): diag[k]+=int(v)
+              for r in x.get('rows') or []:
+                  if r.get('bucket') not in {'safe_tourvisor_anex_hotelcode','medium_tourvisor_anex_hotelcode'}: continue
+                  aid=str(r.get('anex_hotel_id') or ''); lid=str(r.get('tv_hotel_id') or '')
+                  if not aid or not lid: continue
+                  by_a[aid].add(lid); by_l[lid].add(aid)
+                  obs[(aid,lid)].append({'country':x.get('country'),'date':x.get('date'),'bucket':r.get('bucket'),'identity_mode':r.get('operator_identity_mode'),'card_source':r.get('card_source'),'semantic':(r.get('semantic') or {}).get('state'),'card_distance':((r.get('coordinates') or {}).get('distance_card_catalog_km')),'operator_document_sha256':r.get('operator_document_sha256'),'card_document_sha256':r.get('card_document_sha256')})
+          candidates=[]
+          for (aid,lid),rows in obs.items():
+              oto=len(by_a[aid])==1 and len(by_l[lid])==1; safe_any=any(r['bucket']=='safe_tourvisor_anex_hotelcode' for r in rows)
+              candidates.append({'anex_hotel_id':aid,'local_hotel_id':lid,'country':rows[0]['country'],'recurrence':len({r['date'] for r in rows}),'observations':rows,'global_one_to_one':oto,'tier':'SAFE' if safe_any else 'MEDIUM'})
+          candidates.sort(key=lambda r:(not r['global_one_to_one'],r['tier']!='SAFE',-r['recurrence'],r['country'],int(r['local_hotel_id']),int(r['anex_hotel_id'])))
+          usable=[r for r in candidates if r['global_one_to_one']]; safe=[r for r in usable if r['tier']=='SAFE']; medium=[r for r in usable if r['tier']=='MEDIUM']
+          out={'status':'completed' if len(completed)==6 else 'partial','family_id':os.environ['FAMILY_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'completed_slices':len(completed),'failed_slices':len(failed),'counts':dict(totals),'tourvisor_diagnostics':dict(diag),'provider_calls':dict(calls),'distinct_candidate_pairs':len(candidates),'global_one_to_one_candidates':len(usable),'safe_candidates':len(safe),'medium_candidates':len(medium),'recurring_ge2':sum(r['recurrence']>=2 for r in usable),'global_conflict_anex':sum(len(v)>1 for v in by_a.values()),'global_conflict_local':sum(len(v)>1 for v in by_l.values()),'candidates':candidates,'failed':[{'country':x.get('country'),'date':x.get('date'),'stage':x.get('stage'),'reason':x.get('reason'),'operation_id':x.get('operation_id')} for x in failed],'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          pathlib.Path('aggregate.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          summary=(f"MATCH #1971 NEW v2 Tourvisor→ANEX hotelCode evidence `{out['family_id']}`: completed **{out['completed_slices']}/6** immutable fresh-date slices; "
+                   f"Tourvisor ANEX rows **{diag['anex_operator_rows']}**, parsed current/legacy identities **{diag['online_hotelcode']}/{diag['legacy_hotellist']}**, operator/card GETs **{calls['operator_page_calls']}/{calls['card_calls']}**. "
+                   f"Buckets `{dict(totals)}`. Global one-to-one prepared candidates **{len(usable)}** = SAFE **{len(safe)}** + MEDIUM **{len(medium)}**, recurring >=2 **{out['recurring_ge2']}**; provider conflicts ANEX/local **{out['global_conflict_anex']}/{out['global_conflict_local']}**. "
+                   f"DB/mapping/booking/lead writes **0**. Failed/unknown operations are NO-REPLAY; acceptance, if any, still requires a NEW server-CURRENT guarded transaction and post-COMMIT readback.")
+          pathlib.Path('summary.md').write_text(summary+'\n'); print(summary)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'tv-anex-hotelcode-v2-${{ github.run_id }}-aggregate', path: aggregate.json, retention-days: 90}
+      - name: Record result
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file summary.md
