@@ -12,8 +12,9 @@ function mealLabel(t){const meal=t&&t.meal,label=textValue(meal),full=textValue(
 function mealIdentity(t){
 const label=mealLabel(t).replace(/\s+/g,' ').trim();if(!label)return null;
 const normalizeMeal=v=>String(v||'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
-const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),normalized=normalizeMeal(label),normalizedName=normalizeMeal(name);
-const code=((normalizedName||normalized).match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)\+?$/)||[])[1]||'';
+const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),normalized=normalizeMeal(label),normalizedName=normalizeMeal(name),supplierCode=normalizedName||normalized;
+if(/^(?:soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)\+$/.test(supplierCode))return{key:'meal:label:'+supplierCode,label:name||label};
+const code=(supplierCode.match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)$/)||[])[1]||'';
 let family='';
 if(/^(?:soft[ -]?(?:ai|all[ -]?inclusive)|sai|мягкое все включено|софт все включено)$/.test(normalized))family='soft-all-inclusive';
 else if(/^(?:ultra[ -]?(?:ai|all[ -]?inclusive)|uai|ai ultra|ультра все включено)$/.test(normalized))family='ultra-all-inclusive';
