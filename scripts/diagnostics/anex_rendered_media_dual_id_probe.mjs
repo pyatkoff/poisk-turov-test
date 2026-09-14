@@ -4,7 +4,8 @@ import { chromium } from 'playwright';
 const [,, evidencePath, outPath] = process.argv;
 if (!evidencePath || !outPath) process.exit(2);
 const ev=JSON.parse(fs.readFileSync(evidencePath,'utf8'));
-const COUNTRY={1:'egypt',2:'thailand',4:'turkey',8:'uae',9:'vietnam',10:'sri-lanka',12:'maldives',16:'cuba'};
+// Source queue country_id follows the Tourvisor/AnyTour country identity.
+const COUNTRY={1:'egypt',2:'thailand',4:'turkey',8:'maldives',9:'uae',10:'cuba',12:'sri-lanka',16:'vietnam'};
 const rx=/https?:\/\/(?:files\.anextour\.(?:ru|com)|cdn\.anextour\.ru)\/[^\s"'<>]+/ig;
 const prx=/\/hotel\/([^/]+)\/hotel\/([^/]+)\/o(\d+)(?:\/|$)/i;
 function pageFrom(row){
