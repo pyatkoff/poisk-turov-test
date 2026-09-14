@@ -30,8 +30,8 @@ def _current_andromeda_library(here):
         raise ValueError('three_source_andromeda_source_contract_changed')
     body=endpoint[len(bootstrap):-len(trailer)]
     required=("function anytour_andromeda_search3_meal", "function anytour_andromeda_search3_run",
-              "'4'=>[['HB','Half Board','Полупансион','Завтрак и ужин']]", "b2b_tour_binding_unverified")
-    if any(value not in body for value in required[:-1]):
+              "'4'=>[['HB','Half Board','Полупансион','Завтрак и ужин']]")
+    if any(value not in body for value in required):
         raise ValueError('three_source_andromeda_source_incomplete')
     return body
 
@@ -44,12 +44,12 @@ def source():
     strict='\ndeclare(strict_types=1);\n'
     if not new_body.startswith(strict): raise ValueError('three_source_php_strict_header')
     new_body=new_body[len(strict):]
-    stale="$_SERVER['SCRIPT_FILENAME']='';require_once $preview.'/api-andromeda-search3-preview.php';"
+    stale=re.compile(r"\$_SERVER\['SCRIPT_FILENAME'\]\s*=\s*'';\s*require_once\s+\$preview\s*\.\s*'/api-andromeda-search3-preview\.php';")
     dependencies=("$_SERVER['SCRIPT_FILENAME']='';require_once $preview.'/api-anex-search3-preview.php';"
                   "$andromedaApp=is_file($preview.'/app/integrations/andromeda-client.php')?$preview.'/app/integrations':dirname($preview).'/app/integrations';"
                   "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file)require_once $andromedaApp.'/'.$file.'.php';")
-    if new_body.count(stale)!=1: raise ValueError('three_source_andromeda_runtime_contract_changed')
-    new_body=new_body.replace(stale,dependencies)
+    new_body,count=stale.subn(lambda unused: dependencies,new_body)
+    if count!=1: raise ValueError('three_source_andromeda_runtime_contract_changed')
     andromeda=_current_andromeda_library(here)
     return ("declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"
             +old[5:]+'\n'+andromeda+'\n'+new_body)
