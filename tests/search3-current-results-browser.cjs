@@ -172,9 +172,10 @@ async function checkExactOfferParty(page, width, previous) {
     window.__partyOriginal=freeze(item);window.V2Results.render([window.__partyOriginal]);
   },item);
   const card=page.locator('.hotel-card[data-hotel-id="party-hotel"]');
-  assert.equal(await card.locator('.tour-row .direct-tour').getAttribute('data-tid'),'party-0');
-  assert.match(await card.locator('.tour-row').innerText(),/2 взрослых/,'collapsed exact price names its own party');
-  assert.doesNotMatch(await card.locator('.tour-row').innerText(),/1 ребёнок|2 ребёнка/,'other offers cannot supply the displayed party');
+  assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,'collapsed multi-offer hotel does not borrow one party or offer action');
+  assert.equal(await card.locator('.hotel-offers-summary').count(),1,'collapsed multi-offer hotel exposes one hotel-level summary');
+  assert.equal(await card.locator('.hotel-price').innerText().then(text=>text.replace(/\s/g,'')),'от71000₽','collapsed party sample exposes only the hotel minimum');
+  assert.doesNotMatch(await card.locator('.hotel-tours').innerText(),/2 взрослых|1 ребёнок|2 ребёнка/,'collapsed hotel does not borrow an exact offer party');
   await card.locator('.tour-more-toggle').click();
   const rows=card.locator('.tour-row');
   for(let index=0;index<parties.length;index++){
@@ -206,7 +207,7 @@ async function checkExpandedDensity(page, width, previous) {
     }, item);
     const card = page.locator('.hotel-card[data-hotel-id="density-ten"]');
     assert.equal(await card.locator('.hotel-choice-hint').count(), 0, 'hotel identity does not repeat the loaded count');
-    assert.equal(await card.locator('.hotel-price').count(), 1, 'collapsed state contains one exact offer price');
+    assert.equal(await card.locator('.hotel-price').count(), 1, 'collapsed state contains one hotel-level minimum');
     assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 10');
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Enter');
@@ -239,8 +240,9 @@ async function checkExpandedDensity(page, width, previous) {
     }
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Space');
-    assert.equal(await card.locator('.tour-row').count(), 1, 'collapse keeps the concrete primary offer');
-    assert.equal(await card.locator('.hotel-price').count(), 1);
+    assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'collapse returns to hotel-level choice without a borrowed concrete offer');
+    assert.equal(await card.locator('.hotel-offers-summary .hotel-price').count(), 1);
+    assert.match(await card.locator('.hotel-offers-summary .hotel-price').innerText(), /^от\s/);
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'replacement disclosure keeps keyboard focus');
     assert.deepEqual(await page.evaluate(() => window.__densityOriginal), item, 'density changes never mutate the input offers');
     assert.deepEqual(requests, [], 'local expansion and collapse make no supplier or lead request');
@@ -319,11 +321,10 @@ async function checkMealFacet(page, width, previous) {
     });
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'raw continuation event cannot overwrite the matching meal projection');
     const a = page.locator('#results [data-hotel-id=meal-a]');
-    assert.equal(await a.locator('.tour-row').count(), 1, 'matching offers show one exact primary offer');
-    assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'collapsed selection belongs to the displayed matching offer');
-    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'selected meal sets the price of the same displayed offer');
-    assert.equal(await a.locator('.tour-meta>strong').innerText(), '12.09.2026', 'collapsed date belongs to the exact a-ai offer');
-    assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Несколько дат|7[–-]9|7[–-]10/);
+    assert.equal(await a.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'three matching meal offers stay hotel-level until disclosure');
+    assert.equal(await a.locator('.hotel-offers-summary').count(), 1, 'matching meal projection exposes one hotel-level summary');
+    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от120000₽', 'selected meal sets the truthful minimum without making it a selectable offer');
+    assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /12\.09\.2026|14\.09\.2026|7 ноч\.|Завтраки|Всё включено|TEST OPERATOR|Tourvisor/, 'collapsed matching hotel excludes exact offer parameters');
     assert.equal(await a.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'counts only matching AI aliases across providers');
     assert.ok((await a.locator('.tour-more-toggle').boundingBox()).height >= 44, 'matching-offer disclosure keeps a full touch target');
     await a.locator('.tour-more-toggle').focus();
@@ -337,8 +338,8 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
     await a.locator('.tour-more-toggle').press('Space');
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal collapse keeps focus on the replacement disclosure');
-    assert.equal(await a.locator('.direct-tour').getAttribute('data-tid'), 'a-ai', 'collapse restores the same explicit primary offer');
-    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'collapse retains the same offer price');
+    assert.equal(await a.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'meal collapse returns to the hotel-level choice');
+    assert.equal(await a.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от120000₽', 'meal collapse retains the same truthful minimum');
     assert.equal(await page.evaluate(() => window.V2Results.state.items.length === 3 && window.V2Results.state.items.every((h, i) => h === window.__mealOriginal[i]) && window.__mealEvents.every(list => list.length === 3 && list.every((h, i) => h === window.__mealOriginal[i]))), true, 'original result state, event items and continuation count remain intact');
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(items), 'frozen source tours and prices are unchanged');
     await name.fill('Отель А');
@@ -796,15 +797,13 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.hotel-price').count(), 1, 'collapsed card exposes one authoritative total');
     assert.match(await card.locator('.hotel-decision-rating').innerText(), /Рейтинг 5/, 'hotel score is not confused with star category');
     assert.match(await page.locator('#resultSummary').innerText(), /цены указаны за весь тур/, 'result summary explains price scope');
-    assert.equal(await card.locator('.tour-row').count(), 1, 'collapsed hotel displays one concrete offer');
-    assert.equal(await card.locator('.hotel-trip-summary').count(), 0, 'aggregate display owner is removed');
-    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), 'current-tour', 'selection belongs to the displayed exact conditions');
+    assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'collapsed multi-offer hotel has no concrete row, Select, or Compare');
+    assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapsed multi-offer hotel has one hotel-level summary owner');
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
     assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'disclosure states the total loaded offer count');
-    assert.equal(await card.locator('.tour-meta').count(), 1, 'collapsed and expanded rows share the exact offer owner');
-    assert.deepEqual(await card.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW']], 'conditions belong only to the representative offer');
-    assert.deepEqual(await card.locator('.tour-operator .hotel-operator-name').allTextContents(), ['TEST OPERATOR'], 'operator belongs only to the representative offer');
-    assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '148500,6₽', 'collapsed row uses its own precise original price');
+    assert.equal(await card.locator('.tour-meta').count(), 0, 'exact offer owner stays absent before disclosure');
+    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL/, 'collapsed hotel excludes concrete offer parameters');
+    assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от148500,6₽', 'collapsed hotel exposes only its precise minimum with a truthful prefix');
     const single = page.locator('#results [data-hotel-id=cheap].hotel-card');
     assert.equal(await single.locator('.hotel-trip-summary,.tour-more-toggle').count(), 0, 'single-offer hotel needs no redundant aggregate or disclosure');
     assert.equal(await single.locator('.direct-tour').getAttribute('data-tid'), 'cheap-tour', 'single-offer hotel retains immediate exact selection');
@@ -837,7 +836,7 @@ async function run(browser, width, previous) {
     assert.equal(await primary.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await primary.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
     assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'STANDARD LAND VIEW']], 'primary comparison facts keep their labels and original values');
-    assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR'], ['Размещение', 'DBL']], 'source and operator remain distinct while secondary facts keep unambiguous labels');
+    assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor'], ['Оператор', 'TEST OPERATOR']], 'source and operator remain distinct while room placement stays in its single exact-offer fact');
     assert.equal(await primary.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), '148500,6₽', 'expanded representative keeps the precise original price');
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard expansion retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true');
@@ -847,11 +846,11 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-meta>strong').first().evaluate(node => getComputedStyle(node, '::before').content), 'none', 'result dates have no duplicate generated label');
     assert.match(await card.innerText(), /148[\s\u00a0]*500,6/, 'decimal price remains visible');
     await card.locator('.tour-more-toggle').press('Space');
-    assert.equal(await card.locator('.tour-row').count(), 1, 'actual toggle restores the same exact primary offer');
+    assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'actual toggle restores the hotel-level collapsed choice');
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard collapse retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false');
-    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), 'current-tour', 'collapse preserves the original selection identity');
-    assert.equal(await card.locator('.hotel-trip-summary').count(), 0, 'collapse cannot reintroduce aggregate conditions');
+    assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapse restores exactly one hotel-level summary');
+    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL/, 'collapse cannot reintroduce concrete offer conditions');
     assert.equal(await page.evaluate(() => window.V2Results.state.items.every((hotel, i) => hotel === window.__decisionOriginal[i]) && window.V2Results.representativeTour(window.__decisionOriginal[0]) === window.__decisionOriginal[0].tours[1]), true, 'render and disclosure preserve original hotel and representative tour objects');
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(hotels), 'disclosure leaves frozen source prices, tour order and contents unchanged');
     await page.locator('#sortResults').selectOption('rating');
