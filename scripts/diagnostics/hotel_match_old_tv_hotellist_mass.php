@@ -61,6 +61,17 @@ function hm_call(string $stage, string $path, array $params=[]): array {
     $calls++;
     return v2_data_tv_get($path,$params);
 }
+// Poll the initial search; /continue requests more supplier results, not readiness.
+function hm_poll(int $sid, ?callable $wait=null): array {
+    $wait=$wait??static function(int $seconds):void{sleep($seconds);};
+    $wait(8);
+    $status=hm_call('search_status','/tours/search/'.$sid.'/status',['operatorStatus'=>false]);
+    if(!hm_complete($status)){
+        $wait(12);
+        $status=hm_call('search_status','/tours/search/'.$sid.'/status',['operatorStatus'=>false]);
+    }
+    return $status;
+}
 function hm_failure_reason(Throwable $e): string {
     $message=$e->getMessage();
     if(preg_match('/HTTP[ _]([45][0-9]{2})(?:\b|_)/i',$message,$m))return 'old_tourvisor_http_'.$m[1];
@@ -74,6 +85,7 @@ if(in_array('--self-test',$argv??[],true)){
     if(hm_norm('BARCELO TIRAN SHARM HOTEL')!=='barcelo sharm tiran')throw new RuntimeException('norm_test');
     $x=hm_operator_identity('https://agent.anextour.ru/search/tour?HOTELLIST=4158&ADULT=2');if(($x['anex_hotel_id']??0)!==4158||($x['mode']??'')!=='legacy_hotellist')throw new RuntimeException('identity_test');
     function v2_data_tv_get(string $path,array $params=[]):array {
+        if(str_ends_with($path,'/status')){ $GLOBALS['fixture_status_calls']++;return ['progress'=>$GLOBALS['fixture_status_calls']>=2?100:50]; }
         if($path==='fixture-error')throw new RuntimeException('Tourvisor HTTP 400 after 1 attempt(s)');
         return ['path'=>$path,'params'=>$params];
     }
@@ -87,10 +99,16 @@ if(in_array('--self-test',$argv??[],true)){
     catch(RuntimeException $e){if(hm_failure_reason($e)!=='old_tourvisor_http_400')throw $e;}
     if($calls!==2||$lastStage!=='search_create')throw new RuntimeException('failed_call_telemetry_test');
     if(hm_failure_reason(new RuntimeException('private-error-detail'))!=='diagnostic_error')throw new RuntimeException('error_redaction_test');
+    $calls=0;$GLOBALS['fixture_status_calls']=0;$waits=[];
+    $status=hm_poll(123,static function(int $seconds)use(&$waits):void{$waits[]=$seconds;});
+    if(!hm_complete($status)||$calls!==2||$waits!==[8,12]||$lastStage!=='search_status')throw new RuntimeException('initial_poll_contract_test');
+    $calls=0;$waits=[];
+    $status=hm_poll(123,static function(int $seconds)use(&$waits):void{$waits[]=$seconds;});
+    if(!hm_complete($status)||$calls!==1||$waits!==[8])throw new RuntimeException('completed_poll_once_test');
     $calls=39;
     try{hm_call('tour_detail','fixture-success');throw new LogicException('missing_call_cap');}
     catch(RuntimeException $e){if($e->getMessage()!=='client_call_cap'||$calls!==39)throw $e;}
-    echo "old-tv-hotellist-mass self-test: PASS (identity, search contract, failure telemetry, redaction, call cap)\n";exit(0);
+    echo "old-tv-hotellist-mass self-test: PASS (identity, search contract, status-only polling, failure telemetry, redaction, call cap)\n";exit(0);
 }
 
 $op=(string)getenv('OPERATION_ID');$sha=(string)getenv('MATCH_SOURCE_SHA');$date=(string)(getenv('MATCH_DATE')?:'2026-10-31');$limit=(int)(getenv('MATCH_LIMIT')?:30);
@@ -114,9 +132,7 @@ try{
     $countries=hm_call('countries','/countries',['departureId'=>$dep['id'],'onlyCharter'=>false,'onlyDirect'=>false]);$country=hm_find_entity($countries,['егип','egypt']);if($country===null)throw new RuntimeException('egypt_not_found');
     $operators=hm_call('operators','/operators',['departureId'=>$dep['id'],'countryId'=>$country['id']]);$operator=hm_find_entity($operators,['anex','анекс']);if($operator===null)throw new RuntimeException('anex_operator_not_found');
     $search=hm_call('search_create','/tours/search',hm_search_params($dep['id'],$country['id'],$operator['id'],$date));$sid=hm_search_id($search);if($sid===null)throw new RuntimeException('search_id_not_found');
-    try{hm_call('search_continue','/tours/search/'.$sid.'/continue');}catch(Throwable$e){if(str_contains($e->getMessage(),'429'))throw new RuntimeException('old_tourvisor_http_429_continue');throw$e;}
-    sleep(8);$status=hm_call('search_status','/tours/search/'.$sid.'/status',['operatorStatus'=>false]);
-    if(!hm_complete($status)){try{hm_call('search_continue','/tours/search/'.$sid.'/continue');}catch(Throwable$e){if(str_contains($e->getMessage(),'429'))throw new RuntimeException('old_tourvisor_http_429_continue');throw$e;}sleep(12);$status=hm_call('search_status','/tours/search/'.$sid.'/status',['operatorStatus'=>false]);}
+    $status=hm_poll($sid);
     if(!hm_complete($status))throw new RuntimeException('tourvisor_search_not_complete_bounded');$payload=hm_call('search_results','/tours/search/'.$sid,['limit'=>500]);$flat=hm_flatten($payload);
 
     $selected=[];$seenHotels=[];foreach($flat as$r){if(!is_array($r)||!hm_operator_anex($r['operator']??null))continue;$tid=hm_id($r['id']??null);$h=is_array($r['hotel']??null)?$r['hotel']:[];$hid=hm_id($h['id']??null);if($tid===null||$hid===null||isset($seenHotels[$hid]))continue;$seenHotels[$hid]=true;$selected[]=['tour_id'=>$tid,'search_hotel_id'=>$hid,'search_hotel_name'=>hm_name($h)];if(count($selected)>=$limit)break;}
@@ -133,6 +149,6 @@ try{
         $rows[]=['tour_id'=>$s['tour_id'],'tourvisor_hotel_id'=>$tv,'tourvisor_hotel_name'=>$hname,'anex_hotel_id'=>$aid,'identity_mode'=>$id['mode'],'source_name'=>$srcName?:null,'semantic'=>$sem,'distance_km'=>$dist,'qualifier_conflict'=>$qConflict,'numeric_conflict'=>$nConflict,'manual_protected'=>$manualProtected,'pair_excluded'=>$pairExcluded,'existing_mapping_local_id'=>$mappedLocal,'live_search_count'=>(int)($obs[$aid]['search_count']??0),'tier'=>$tier,'reason'=>$reason];
     }
     $safe=count(array_filter($rows,fn($r)=>($r['tier']??'')==='SAFE'));$existing=count(array_filter($rows,fn($r)=>($r['tier']??'')==='EXISTING'));$holds=count(array_filter($rows,fn($r)=>($r['tier']??'')==='HOLD'));$identities=count(array_filter($rows,fn($r)=>isset($r['anex_hotel_id'])));
-    $result=['operation_id'=>$op,'source_sha'=>$sha,'status'=>$rateLimited?'partial_rate_limited':($authRejected?'partial_auth_rejected':'completed'),'credential_identifier'=>'TOURVISOR_JWT','date'=>$date,'limit'=>$limit,'search_id_present'=>true,'flattened_rows'=>count($flat),'unique_tours_selected'=>count($selected),'detail_rows'=>count($rows),'direct_hotellist_identities'=>$identities,'safe_current_candidates'=>$safe,'existing_same_pair'=>$existing,'holds'=>$holds,'detail_errors'=>$detailErrors,'rate_limited'=>$rateLimited,'auth_rejected'=>$authRejected,'tourvisor_calls'=>$calls,'last_stage'=>$lastStage,'call_count_unit'=>'client_invocations_including_failures','new_tourvisor_calls'=>0,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'raw_provider_bodies_recorded'=>false,'raw_operator_links_recorded'=>false,'token_values_recorded'=>false,'no_replay'=>true];
-}catch(Throwable$e){try{if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->exec('ROLLBACK');}catch(Throwable$x){}$reason=hm_failure_reason($e);$result=['operation_id'=>$op,'source_sha'=>$sha,'status'=>'blocked','reason'=>$reason,'last_stage'=>$lastStage,'tourvisor_calls'=>$calls,'call_count_unit'=>'client_invocations_including_failures','new_tourvisor_calls'=>0,'credential_identifier'=>'TOURVISOR_JWT','database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true];}
+    $result=['operation_id'=>$op,'source_sha'=>$sha,'status'=>$rateLimited?'partial_rate_limited':($authRejected?'partial_auth_rejected':'completed'),'credential_identifier'=>'TOURVISOR_JWT','date'=>$date,'limit'=>$limit,'search_id_present'=>true,'search_id'=>$sid,'flattened_rows'=>count($flat),'unique_tours_selected'=>count($selected),'detail_rows'=>count($rows),'direct_hotellist_identities'=>$identities,'safe_current_candidates'=>$safe,'existing_same_pair'=>$existing,'holds'=>$holds,'detail_errors'=>$detailErrors,'rate_limited'=>$rateLimited,'auth_rejected'=>$authRejected,'tourvisor_calls'=>$calls,'last_stage'=>$lastStage,'call_count_unit'=>'client_invocations_including_failures','new_tourvisor_calls'=>0,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'raw_provider_bodies_recorded'=>false,'raw_operator_links_recorded'=>false,'token_values_recorded'=>false,'no_replay'=>true];
+}catch(Throwable$e){try{if(isset($db)&&$db instanceof PDO&&$db->inTransaction())$db->exec('ROLLBACK');}catch(Throwable$x){}$reason=hm_failure_reason($e);$result=['operation_id'=>$op,'source_sha'=>$sha,'status'=>'blocked','reason'=>$reason,'last_stage'=>$lastStage,'search_id'=>$sid??null,'tourvisor_calls'=>$calls,'call_count_unit'=>'client_invocations_including_failures','new_tourvisor_calls'=>0,'credential_identifier'=>'TOURVISOR_JWT','database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true];}
 $rh=hm_write_new($out.'/result.json',$result);hm_write_new($out.'/receipt.json',['operation_id'=>$op,'source_sha'=>$sha,'state'=>$result['status'],'result_sha256'=>$rh,'readback_verified'=>hash('sha256',(string)file_get_contents($out.'/result.json'))===$rh,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true]);echo HM_MARKER.hm_json($result)."\n";exit(in_array($result['status'],['completed','partial_rate_limited'],true)?0:2);

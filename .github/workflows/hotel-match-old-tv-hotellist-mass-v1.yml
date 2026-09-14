@@ -1,4 +1,4 @@
-name: MATCH old Tourvisor HOTELLIST mass v2
+name: MATCH old Tourvisor HOTELLIST mass v3
 on:
   push:
     branches: [match/manual-live-review-queue-1971-20260914]
@@ -12,13 +12,13 @@ concurrency:
   group: anytour-match-old-tv-hotellist-mass-1971-v1
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260914-v2-egypt
-  MATCH_DATE: '2026-11-01'
+  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260914-v3-egypt
+  MATCH_DATE: '2026-11-02'
   MATCH_LIMIT: '30'
-  OUT: /tmp/match-old-tv-hotellist-mass-v2
+  OUT: /tmp/match-old-tv-hotellist-mass-v3
 jobs:
   probe:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 3
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -31,7 +31,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s  %s\n' '320c712319ce3f433993647165b13f5d835a5062791067cdb6677953ed055f03' 'scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php' | sha256sum -c -
+          printf '%s  %s\n' '38792e690adff4a3223214e49b759ed0870310860b1a78097b44670254a7b957' 'scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php' | sha256sum -c -
           php -l scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
           php scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php --self-test
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
