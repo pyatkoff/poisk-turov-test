@@ -618,7 +618,7 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         if (!anytour_anex_search3_current($state, $clock())) return $reply;
         $expanded = $gateway->handle(['action' => 'expand', 'offer_key' => $key], $state['gateway']);
         $state['expansions'][$key] = ['status' => 'complete', 'keys' => array_column($expanded['offers'], 'offer_key'),
-            'external_search_pending' => $expanded['external_search_pending'];
+            'external_search_pending' => $expanded['external_search_pending']];
         $attempt = $state['expansions'][$key];
     }
     if (!anytour_anex_search3_current($state, $clock())) return $reply;
