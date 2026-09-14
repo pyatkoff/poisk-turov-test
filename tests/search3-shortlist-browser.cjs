@@ -161,7 +161,7 @@ async function checkComparisonGeometry(page, width, count) {
     const root = list.closest('.search3-shortlist'), head = root.querySelector('.search3-shortlist__head'), headActions = root.querySelector('.search3-shortlist__head-actions');
     return {
       grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap),
-      cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(rect) })),
+      cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(button => ({ ...rect(button), text: button.textContent.trim(), font: getComputedStyle(button).font })) })),
       chrome: { head: rect(head), actions: rect(headActions), legacyViewCount: root.querySelectorAll('.search3-shortlist__view').length }
     };
   });
@@ -177,7 +177,7 @@ async function checkComparisonGeometry(page, width, count) {
       assert.equal(card.actions.length, 2, 'mobile saved offer keeps both exact actions');
       assert.ok(Math.abs(card.actions[0].y - card.actions[1].y) < 2, 'mobile Select and Remove share one compact action row');
       const actionRowHeight = Math.max(...card.actions.map(action => action.bottom)) - Math.min(...card.actions.map(action => action.y));
-      assert.ok(actionRowHeight <= (width <= 320 ? 72 : 48), 'mobile action row stays compact without hiding a touch target');
+      assert.ok(actionRowHeight <= (width <= 320 ? 72 : 48), 'mobile action row stays compact without hiding a touch target: ' + JSON.stringify({ width, count, actionRowHeight, actions: card.actions }));
     }
   }
   if (count === 1) {
