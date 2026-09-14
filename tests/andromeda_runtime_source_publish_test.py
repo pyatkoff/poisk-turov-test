@@ -129,5 +129,82 @@ class RuntimePublisherTest(unittest.TestCase):
             sys.path.pop(0)
 
 
+class PackageInventoryTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.base = Path(self.temp.name)
+        self.current, self.package, self.runtime = [self.base / n for n in ('current','package','runtime')]
+        self.runtime.mkdir()
+        for checkout in (self.current, self.package):
+            for name in publisher.SOURCE_PATHS:
+                path = checkout / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('<?php /* ' + checkout.name + ':' + name + ' */')
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def export(self):
+        return publisher.export_handoff(self.current, self.package, self.runtime, self.base / 'out', source)
+
+    def test_same_inventory_assembles_exports_and_loads_quote_closure(self):
+        publisher.assemble_runtime(self.current, self.package, self.runtime)
+        receipt = self.export()
+        packed, packed_hashes = publisher.load_handoff(self.base / 'out', source)
+        self.assertEqual(16, len(packed))
+        self.assertEqual(source, receipt['dependencies']['candidate_quote'])
+        self.assertEqual({
+            'app/integrations/andromeda-package-capture.php',
+            'app/integrations/andromeda-selected-offer.php',
+        }, {name for name, origin in publisher.SOURCE_ORIGINS.items() if origin == 'package'})
+        for name, target in zip(publisher.SOURCE_PATHS, publisher.TARGET_PATHS):
+            checkout = self.package if publisher.SOURCE_ORIGINS[name] == 'package' else self.current
+            expected = (checkout / name).read_bytes()
+            self.assertEqual(expected, (self.runtime / name).read_bytes())
+            self.assertEqual(expected, base64.b64decode(packed[target]))
+            self.assertEqual(publisher._sha(expected), packed_hashes[target])
+        for name in ('andromeda-selected-quote.php', 'andromeda-price-observation.php',
+                     'andromeda-quote-attempt-state.php'):
+            self.assertEqual('current', publisher.SOURCE_ORIGINS['app/integrations/' + name])
+        self.assertEqual('current', publisher.SOURCE_ORIGINS['v2/api-andromeda-quote-preview.php'])
+
+    def test_missing_quote_dependency_never_falls_back_to_historical_file(self):
+        for name in ('app/integrations/andromeda-selected-quote.php',
+                     'app/integrations/andromeda-price-observation.php',
+                     'app/integrations/andromeda-quote-attempt-state.php',
+                     'v2/api-andromeda-quote-preview.php'):
+            path = self.current / name
+            data = path.read_bytes(); path.unlink()
+            with self.subTest(path=name), self.assertRaisesRegex(ValueError, 'candidate_source'):
+                publisher.assemble_runtime(self.current, self.package, self.runtime)
+            self.assertEqual([], list(self.runtime.iterdir()))
+            path.write_bytes(data)
+
+    def test_export_refuses_a_changed_tested_runtime_and_old_inventory(self):
+        publisher.assemble_runtime(self.current, self.package, self.runtime)
+        path = self.runtime / 'app/integrations/andromeda-price-observation.php'
+        path.write_text('<?php /* unexpected stale observation */')
+        with self.assertRaisesRegex(ValueError, 'tested_runtime_changed'):
+            self.export()
+        self.assertFalse((self.base / 'out').exists())
+        publisher.assemble_runtime(self.current, self.package, self.runtime)
+        self.export()
+        (self.base / 'out/v2/api-andromeda-quote-preview.php').unlink()
+        with self.assertRaisesRegex(ValueError, 'handoff_inventory'):
+            publisher.load_handoff(self.base / 'out', source)
+
+    def test_source_and_runtime_links_are_not_followed(self):
+        name = 'app/integrations/andromeda-price-observation.php'
+        path = self.current / name
+        path.unlink(); path.symlink_to(self.package / name)
+        with self.assertRaisesRegex(ValueError, 'candidate_source'):
+            publisher.assemble_runtime(self.current, self.package, self.runtime)
+        self.assertEqual([], list(self.runtime.iterdir()))
+        path.unlink(); path.write_text('<?php /* current */')
+        (self.runtime / 'app').symlink_to(self.package / 'app', target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'runtime_entry'):
+            publisher.assemble_runtime(self.current, self.package, self.runtime)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

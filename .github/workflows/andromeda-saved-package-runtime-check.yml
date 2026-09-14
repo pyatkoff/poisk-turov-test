@@ -7,6 +7,13 @@ on:
       - 'app/integrations/andromeda-claim-actions.php'
       - 'app/integrations/andromeda-search-surcharge.php'
       - 'app/integrations/andromeda-price-observation.php'
+      - 'app/integrations/andromeda-selected-quote.php'
+      - 'app/integrations/andromeda-quote-attempt-state.php'
+      - 'v2/api-andromeda-quote-preview.php'
+      - 'scripts/diagnostics/andromeda_runtime_source_publish.py'
+      - 'tests/andromeda_runtime_source_publish_test.py'
+      - 'tests/andromeda-selected-quote-smoke.php'
+      - 'tests/andromeda-quote-attempt-state-test.php'
       - 'tests/andromeda-price-observation-smoke.php'
       - 'tests/andromeda-saved-surcharge-runtime-smoke.php'
       - 'app/integrations/andromeda-package-public.php'
@@ -37,6 +44,8 @@ jobs:
   offline:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    env:
+      PYTHONPATH: change/scripts/diagnostics
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,26 +94,24 @@ jobs:
           php -l change/tests/andromeda-retained-cli-smoke.php
           php -d allow_url_fopen=0 change/tests/andromeda-retained-cli-smoke.php runtime --installed-runtime
 
-          # Only after the installed baseline is proven, assemble the current candidate.
-          cp change/v2/api-andromeda-search3-preview.php runtime/v2/
-          cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
-          cp change/app/integrations/andromeda-client.php change/app/integrations/andromeda-claim-actions.php change/app/integrations/andromeda-search-surcharge.php runtime/app/integrations/
-          cp change/app/integrations/andromeda-transport.php runtime/app/integrations/
-          cp change/app/integrations/andromeda-claiminc-contract.php change/app/integrations/andromeda-network-transport-failure.php change/app/integrations/andromeda-package-retry-policy.php change/app/integrations/andromeda-package-attempt-state.php runtime/app/integrations/
-          php -l runtime/v2/api-andromeda-search3-preview.php
-          php -l runtime/app/integrations/andromeda-saved-package-runtime.php
-          php -l runtime/app/integrations/andromeda-client.php
-          php -l runtime/app/integrations/andromeda-claim-actions.php
-          php -l runtime/app/integrations/andromeda-search-surcharge.php
-          php -l runtime/app/integrations/andromeda-transport.php
-          php -l runtime/app/integrations/andromeda-claiminc-contract.php
-          php -l runtime/app/integrations/andromeda-network-transport-failure.php
-          php -l runtime/app/integrations/andromeda-package-retry-policy.php
-          php -l runtime/app/integrations/andromeda-package-attempt-state.php
+          # The publisher inventory is also the candidate overlay; legacy tests above stay pinned.
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          from andromeda_runtime_source_publish import assemble_runtime, SOURCE_PATHS
+          assemble_runtime(Path('change'), Path('package'), Path('runtime'))
+          for path in SOURCE_PATHS:
+              subprocess.run(['php', '-l', str(Path('runtime') / path)], check=True)
+          PY
+          # Load both real entrypoints without invoking their HTTP/supplier handlers.
+          php -d allow_url_fopen=0 -r 'require "runtime/v2/api-andromeda-quote-preview.php"; if (!function_exists("anytour_andromeda_quote_run") || !method_exists("AnyTourAndromedaPriceObservation", "resolveServed") || !class_exists("AnyTourAndromedaQuoteAttemptState")) exit(1);'
+          cp change/tests/andromeda-selected-quote-smoke.php change/tests/andromeda-price-observation-smoke.php change/tests/andromeda-quote-attempt-state-test.php runtime/tests/
+          php -d allow_url_fopen=0 runtime/tests/andromeda-selected-quote-smoke.php
+          php -d allow_url_fopen=0 runtime/tests/andromeda-quote-attempt-state-test.php
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
           php change/tests/andromeda-saved-package-attempt-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-attempt-fixture"
           php -d allow_url_fopen=0 change/tests/andromeda-saved-surcharge-runtime-smoke.php runtime "$RUNNER_TEMP/saved-surcharge-fixture"
-          php -d allow_url_fopen=0 change/tests/andromeda-price-observation-smoke.php runtime
+          php -d allow_url_fopen=0 runtime/tests/andromeda-price-observation-smoke.php runtime
           php -l change/scripts/diagnostics/andromeda_search_surcharge_e2e.php
           php -d allow_url_fopen=0 change/tests/andromeda_search_surcharge_e2e_smoke.php
           php change/tests/andromeda-retained-mapping-smoke.php runtime
@@ -121,39 +128,11 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python3 - <<'PY'
-          import hashlib, json, os, pathlib
-          root = pathlib.Path('runtime')
-          out = pathlib.Path('source-handoff')
-          paths = ['v2/api-andromeda-search3-preview.php'] + [
-              'app/integrations/' + name + '.php' for name in [
-                  'andromeda-client', 'andromeda-package-capture', 'andromeda-selected-offer',
-                  'andromeda-transport', 'andromeda-saved-package-runtime',
-                  'andromeda-claiminc-contract', 'andromeda-network-transport-failure',
-                  'andromeda-package-retry-policy', 'andromeda-package-attempt-state',
-                  'andromeda-claim-actions', 'andromeda-search-surcharge']]
-          files = {}
-          for path in paths:
-              data = (root / path).read_bytes()
-              target = out / path
-              target.parent.mkdir(parents=True, exist_ok=True)
-              target.write_bytes(data)
-              files[path] = hashlib.sha256(data).hexdigest()
-              assert target.read_bytes() == data
-          receipt = {'source': os.environ['SOURCE_SHA'], 'files_sha256': files,
-              'dependencies': {'runtime': '95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa',
-                  'package': '7c3c5bb55c88e376d97c998d0ba77a46960584d6',
-                  'candidate_client': os.environ['SOURCE_SHA'],
-                  'candidate_surcharge': os.environ['SOURCE_SHA'],
-                  'candidate_transport': os.environ['SOURCE_SHA'],
-                  'retained_install_transport': '1f628e4b172ce9706eabe875784ce2b226175a0d',
-                  'retained_install_baseline': '163ef9eed9993c08558b84b7a0295e8b4295d2e8'},
-              'scope': 'private-source-handoff-only', 'supplier_calls': 0,
-              'published': False, 'package_captured_live': False, 'quote_verified': False,
-              'typed_transport_in_candidate': True, 'live_retry_enabled': False,
-              'saved_surcharge_available': True, 'live_surcharge_enabled': False}
-          manifest = out / 'receipt.json'
-          manifest.write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
-          assert json.loads(manifest.read_text()) == receipt
+          import json, os
+          from pathlib import Path
+          from andromeda_runtime_source_publish import export_handoff
+          receipt = export_handoff(Path('change'), Path('package'), Path('runtime'),
+                                   Path('source-handoff'), os.environ['SOURCE_SHA'])
           print(json.dumps(receipt, sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4

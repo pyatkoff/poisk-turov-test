@@ -42,12 +42,18 @@ jobs:
           merge-multiple: true
       - name: Check actual remote PHP on disposable local files
         run: python3 -B change/tests/andromeda_detail_publish_test.py handoff --previous previous --details details
+      - name: Load the exact historical caller for the sealed capture contract
+        uses: actions/checkout@v4
+        with:
+          ref: 06f9303347ada44d6f32330c428bc67bd17f8095
+          path: retained-caller
+          persist-credentials: false
       - name: Check retained-capture wire without SSH or supplier access
         run: |
           cp -R previous runtime
           cp -R handoff/app/integrations/. runtime/app/integrations/
           cp handoff/v2/api-andromeda-search3-preview.php runtime/v2/
-          python3 -B change/tests/andromeda_selected_capture_transport_test.py change --runtime runtime
+          python3 -B change/tests/andromeda_selected_capture_transport_test.py retained-caller --runtime runtime
       - name: Check read-only current retained contexts
         run: python3 -B change/tests/andromeda_retained_contexts_test.py --runtime runtime
       - uses: actions/download-artifact@v4
@@ -57,11 +63,28 @@ jobs:
           github-token: ${{ github.token }}
           path: runtime-handoff
           merge-multiple: true
-      - name: Check fresh runtime publisher on the exact green source handoff
+      - name: Check current complete runtime publisher with pinned package-only inputs
         env:
-          RUNTIME_SOURCE_SHA: b32993261eb8657004e7d4fd146b65a95264d4bc
-          ANDROMEDA_RUNTIME_HANDOFF: ${{ github.workspace }}/runtime-handoff
+          RUNTIME_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          PYTHONPATH: change/scripts/diagnostics
+          ANDROMEDA_RUNTIME_HANDOFF: ${{ github.workspace }}/candidate-handoff
           ANDROMEDA_PUBLISH_HELPER: ${{ github.workspace }}/previous/scripts/diagnostics/anex_search3_owner_decisions.py
         run: |
           python3 -m py_compile change/scripts/diagnostics/andromeda_runtime_source_publish.py
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          from andromeda_runtime_source_publish import assemble_runtime, export_handoff, SOURCE_ORIGINS
+          package = Path('runtime-handoff')
+          receipt = json.loads((package / 'receipt.json').read_text())
+          assert receipt['source'] == 'b32993261eb8657004e7d4fd146b65a95264d4bc'
+          assert receipt['dependencies']['package'] == '7c3c5bb55c88e376d97c998d0ba77a46960584d6'
+          for name, origin in SOURCE_ORIGINS.items():
+              if origin == 'package':
+                  assert hashlib.sha256((package / name).read_bytes()).hexdigest() == receipt['files_sha256'][name]
+          candidate = Path('candidate-runtime')
+          candidate.mkdir()
+          assemble_runtime(Path('change'), package, candidate)
+          export_handoff(Path('change'), package, candidate, Path('candidate-handoff'), os.environ['RUNTIME_SOURCE_SHA'])
+          PY
           python3 -B change/tests/andromeda_runtime_source_publish_test.py
