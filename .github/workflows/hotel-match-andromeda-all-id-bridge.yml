@@ -9,10 +9,10 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-match-andromeda-all-id-bridge-1971-v3
+  group: anytour-match-andromeda-all-id-bridge-1971-v4
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v3
+  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v4
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -43,11 +43,11 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-all-id-bridge-reservation-v3
+          name: match-andromeda-all-id-bridge-reservation-v4
           path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Fresh documented all probe
+      - name: Fresh raw all probe
         env:
           ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
           ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
@@ -69,7 +69,7 @@ jobs:
           reservation=json.loads((p/'reservation.json').read_text())
           digest=hashlib.sha256((p/'result.json').read_bytes()).hexdigest() if (p/'result.json').exists() else None
           ok=(reservation.get('state')=='reserved_before_supplier_access' and reservation.get('operation_id')==os.environ['OPERATION_ID'] and receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and all(receipt.get(k)==0 for k in ('database_writes','mapping_writes','tourvisor_calls')))
-          gate={'operation_id':os.environ['OPERATION_ID'],'verified':ok,'state':result.get('state'),'hotel_count':result.get('hotel_count'),'mapping_like_fields':result.get('mapping_like_fields'),'mapping_like_row_count':result.get('mapping_like_row_count'),'supplier_calls':result.get('supplier_calls'),'result_sha256':digest,'no_replay':True}
+          gate={'operation_id':os.environ['OPERATION_ID'],'verified':ok,'state':result.get('state'),'hotel_count':result.get('hotel_count'),'top_level_keys':result.get('top_level_keys'),'interesting_path_count':len(result.get('interesting_paths') or {}),'supplier_calls':result.get('supplier_calls'),'result_sha256':digest,'no_replay':True}
           (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
           print(json.dumps(gate,sort_keys=True))
           if not ok: raise SystemExit(2)
@@ -77,7 +77,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-andromeda-all-id-bridge-evidence-v3
+          name: match-andromeda-all-id-bridge-evidence-v4
           path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/
           if-no-files-found: warn
           retention-days: 90
