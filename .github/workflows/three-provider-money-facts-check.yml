@@ -7,6 +7,7 @@ on:
       - 'scripts/diagnostics/anex_egypt_248_apd_retained.php'
       - 'v2/api-anex-search3-preview.php'
       - 'tests/three-provider-money-facts-test.php'
+      - 'tests/three-provider-search-price-with-surcharge-smoke.php'
       - 'tests/anex-additional-prices-client-test.php'
       - 'tests/anex-egypt-248-apd-retained-test.php'
       - 'tests/anex-retained-additional-prices-test.php'
@@ -35,6 +36,10 @@ jobs:
           php -l tests/anex-retained-additional-prices-test.php
           php -l tests/anex-additional-prices-batch-test.php
           php -d allow_url_fopen=0 tests/three-provider-money-facts-test.php
+          if [ -f tests/three-provider-search-price-with-surcharge-smoke.php ]; then
+            php -l tests/three-provider-search-price-with-surcharge-smoke.php
+            php -d allow_url_fopen=0 tests/three-provider-search-price-with-surcharge-smoke.php
+          fi
           php -d allow_url_fopen=0 tests/anex-additional-prices-client-test.php
           php -d allow_url_fopen=0 tests/anex-egypt-248-apd-retained-test.php
           php -d allow_url_fopen=0 tests/anex-retained-additional-prices-test.php
@@ -46,18 +51,20 @@ jobs:
           assert "'quote_price' => null" in src
           assert "'final_price_verified' => false" in src
           assert "'arithmetic_applied' => false" in src
+          assert 'function withSearchSurchargeEstimate' in src
+          assert 'THREE_PROVIDER_SURCHARGE_UNKNOWN' in src
+          assert "'search_price_with_surcharge'" in src
           assert 'function withVerifiedQuote' in src
           assert "THREE_PROVIDER_MONEY_QUOTE_CAPABILITY" in src
           assert "self::moneyFact($packageBuyerPrice, false, 'andromeda', 'package')" in src
           assert "self::moneyFact($quotePrice, false, 'andromeda', 'quote')" in src
           assert "$next['final_price_verified'] = true" in src
-          assert "$next['arithmetic_applied'] = false" in src
           assert "$source !== $provider . '_' . $expectedKind" in src
           assert "strpos($source" not in src
           assert "'tourvisor' => ['fuel' => true, 'additional' => false]" in src
           assert "'anex' => ['fuel' => false, 'additional' => true]" in src
-          assert "'andromeda' => ['fuel' => false, 'additional' => false]" in src
-          for forbidden in ('+ $fuel', '+$fuel', 'agency_cost', 'buyerClaimMoney', 'broninit', 'curl_', 'PDO'):
+          assert "'andromeda' => ['fuel' => false, 'additional' => true]" in src
+          for forbidden in ('agency_cost', 'buyerClaimMoney', 'broninit', 'curl_', 'PDO'):
               assert forbidden not in src
 
           b2b=Path('app/integrations/anex-additional-prices-client.php').read_text()
@@ -70,8 +77,11 @@ jobs:
               assert forbidden not in b2b
 
           runtime=Path('v2/api-anex-search3-preview.php').read_text()
-          assert runtime.count("'b2b_tour_binding_unverified'") >= 2
-          assert "'status' => 'additional_prices_unavailable'" in runtime
-          assert "'status' => 'additional_prices_unknown'" in runtime
+          assert "anytour_anex_additional_prices_batch_execute($plan, $state, $reader, $persist)" in runtime
+          assert "'search_plus_additional'" in runtime
+          assert "'party_surcharge'" in runtime
+          assert "'per_person_by_party_type'" in runtime
+          assert "'final_price_verified' => false" in runtime
+          assert "b2b_tour_binding_unverified" not in runtime
           print('Three-provider money static boundary: PASS')
           PY

@@ -485,10 +485,7 @@ function anytour_anex_search3_additional_application(array $evidence, array $off
     return $evidence;
 }
 
-/**
- * Bounded visible-card AdditionalPricesDaily surface. SearchTour program/currency IDs are retained diagnostics only;
- * no authoritative binding from them to the ANEX B2B `tour` namespace has been established, so runtime stays fail-closed.
- */
+/** Bounded visible-card batch for retained direct-ANEX AdditionalPricesDaily evidence. */
 function anytour_anex_search3_additional_batch(array $request, array &$state, callable $resolver, callable $metadataReader,
     ?callable $clock = null, ?callable $checkpoint = null, ?callable $additionalFactory = null): array
 {
@@ -533,23 +530,47 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
             return array_replace($reply, ['status' => 'not_available']);
         }
     }
+    if ($checkpoint === null || $additionalFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
 
-    $reason = 'b2b_tour_binding_unverified';
+    $persist = static function (array &$batchState, string $digest) use ($checkpoint, $clock): void {
+        $checkpoint($batchState);
+        $after = $clock();
+        if (!is_int($after) || !anytour_anex_search3_current($batchState, $after)) {
+            throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        }
+    };
+    $reader = static function (array $context) use (&$state, $additionalFactory, $clock): array {
+        $before = $clock();
+        if (!is_int($before) || !anytour_anex_search3_current($state, $before)) {
+            throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        }
+        $additional = $additionalFactory();
+        if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
+            throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
+        }
+        $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10,
+            'tour' => (int) $context['supplier_tour_program_id'], 'dateBeg' => $context['checkin'],
+            'nights' => $context['nights'], 'currency' => (int) $context['supplier_currency_id']]);
+        if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $evidence = anytour_anex_search3_additional_evidence($payload);
+        $observed = $clock();
+        if (!is_int($observed) || !anytour_anex_search3_current($state, $observed)) {
+            throw new RuntimeException('ANEX_SESSION_EXPIRED');
+        }
+        $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $observed);
+        return $evidence;
+    };
+    $batch = anytour_anex_additional_prices_batch_execute($plan, $state, $reader, $persist);
     $public = [];
-    foreach ($plan['offers'] as $item) {
-        $public[] = [
-            'offer_ref' => $item['offer_ref'],
-            'local_hotel_id' => $item['local_hotel_id'],
-            'status' => 'additional_prices_unknown',
-            'additional_prices' => null,
-            'additional_prices_reason' => $reason,
-        ];
+    foreach ($batch['offers'] as $item) {
+        $key = $item['offer_ref'];
+        $complete = ($item['status'] ?? null) === 'complete' && is_array($item['additional_prices'] ?? null);
+        $public[] = ['offer_ref' => $key, 'local_hotel_id' => $item['local_hotel_id'],
+            'status' => $complete ? 'additional_prices' : 'additional_prices_unknown',
+            'additional_prices' => $complete
+                ? anytour_anex_search3_additional_application($item['additional_prices'], $offersByRef[$key]) : null];
     }
-    return array_replace($reply, [
-        'status' => 'additional_prices_batch',
-        'offers' => $public,
-        'additional_prices_reason' => $reason,
-    ]);
+    return array_replace($reply, ['status' => 'additional_prices_batch', 'offers' => $public]);
 }
 
 function anytour_anex_search3_followup(array $request, array &$state, callable $resolver, callable $clientFactory,
@@ -594,10 +615,47 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     }
     if ($request['action'] === 'additional_prices') {
         if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
-        return array_replace($reply, [
-            'status' => 'additional_prices_unavailable',
-            'additional_prices_reason' => 'b2b_tour_binding_unverified',
-        ]);
+        $tour = $savedEntry['supplier_tour_program_id'] ?? null;
+        $currency = $savedEntry['supplier_currency_id'] ?? null;
+        $checkin = $offer['checkin'] ?? null;
+        $nights = $offer['nights'] ?? null;
+        if (!is_string($tour) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $tour)
+            || !is_string($currency) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $currency)
+            || !is_string($checkin) || !preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $checkin)
+            || !is_int($nights) || $nights < 1 || $nights > 60) {
+            return array_replace($reply, ['status' => 'additional_prices_unavailable']);
+        }
+        $digest = hash('sha256', implode("\0", [$tour, $currency, $checkin, (string) $nights]));
+        $attempt = $state['additional_prices'][$digest] ?? null;
+        if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
+            return array_replace($reply, ['status' => 'additional_prices',
+                'additional_prices' => anytour_anex_search3_additional_application($attempt['evidence'], $offer)]);
+        }
+        if ($attempt !== null) return array_replace($reply, ['status' => 'additional_prices_unknown']);
+        if ($checkpoint === null || $additionalFactory === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
+        $state['additional_prices'][$digest] = ['status' => 'unknown'];
+        $checkpoint($state);
+        if (!anytour_anex_search3_current($state, $clock())) return $reply;
+        $additional = $additionalFactory();
+        if (!is_object($additional) || !is_callable([$additional, 'additionalPricesDaily'])) {
+            throw new RuntimeException('ANEX_ADDITIONAL_CLIENT_UNAVAILABLE');
+        }
+        try {
+            $payload = $additional->additionalPricesDaily(['page' => 1, 'pageSize' => 10, 'tour' => (int) $tour,
+                'dateBeg' => $checkin, 'nights' => $nights, 'currency' => (int) $currency]);
+        } catch (RuntimeException $error) {
+            if ($error->getMessage() === 'ANEX_B2B_DAILY_UNKNOWN') {
+                return array_replace($reply, ['status' => 'additional_prices_unknown']);
+            }
+            throw $error;
+        }
+        if (!is_array($payload)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
+        $evidence = anytour_anex_search3_additional_evidence($payload);
+        $evidence['observed_at'] = gmdate('Y-m-d\TH:i:s\Z', $clock());
+        $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
+        if (!anytour_anex_search3_current($state, $clock())) return $reply;
+        return array_replace($reply, ['status' => 'additional_prices',
+            'additional_prices' => anytour_anex_search3_additional_application($evidence, $offer)]);
     }
     $gateway = new AnyTourAnexPreviewGateway($clientFactory, $resolver, [], $clock);
     if ($request['action'] === 'offer') {

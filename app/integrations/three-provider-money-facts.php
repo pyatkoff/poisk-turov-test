@@ -4,11 +4,11 @@ declare(strict_types=1);
 /**
  * Provider-neutral money facts for Search3 offers.
  *
- * This object deliberately does no arithmetic. Search price, fuel, additional charges,
- * package buyer money and quote money are independent facts with independent evidence.
- * The search-layer constructor never invents package/quote values and never marks a
- * search price final. A verified quote may enrich only an untampered canonical search
- * state and only for a provider whose quote contract has been proven.
+ * Search price, fuel, additional charges, package buyer money and quote money remain
+ * independent facts with independent evidence. No surcharge is inferred implicitly.
+ * The dedicated search-estimate method may add only explicit per-passenger surcharge
+ * facts to the preserved base search price; missing/ambiguous surcharge stays unknown.
+ * A verified quote is still a later, supplier-authoritative fact.
  */
 final class AnyTourThreeProviderMoneyFacts
 {
@@ -16,7 +16,10 @@ final class AnyTourThreeProviderMoneyFacts
     private const SEARCH_CAPABILITIES = [
         'tourvisor' => ['fuel' => true, 'additional' => false],
         'anex' => ['fuel' => false, 'additional' => true],
-        'andromeda' => ['fuel' => false, 'additional' => false],
+        // Transport surcharge facts are allowed only when an upstream Andromeda
+        // transport-directory contract has actually supplied them. This class does not
+        // discover, guess or synthesize that still-unproven supplier binding.
+        'andromeda' => ['fuel' => false, 'additional' => true],
     ];
 
     public static function fromSearch(
@@ -50,7 +53,8 @@ final class AnyTourThreeProviderMoneyFacts
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
             }
             $kind = $fact['kind'];
-            if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)) {
+            if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)
+                || ($provider === 'andromeda' && !in_array($kind, ['fuel_adult', 'fuel_child'], true))) {
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
             }
             $money = self::moneyFact([
@@ -74,6 +78,74 @@ final class AnyTourThreeProviderMoneyFacts
             'final_price_verified' => false,
             'arithmetic_applied' => false,
         ];
+    }
+
+    /**
+     * Derive the search-card estimate from an explicit adult/child surcharge contract.
+     *
+     * This never turns the estimate into a verified final price and never mutates the
+     * base search or surcharge facts. Direct ANEX supplies these rates from
+     * AdditionalPricesDaily. Andromeda may use the same neutral shape only after its
+     * transport-directory binding is independently proven upstream.
+     */
+    public static function withSearchSurchargeEstimate(
+        array $searchFacts,
+        int $adults,
+        int $children
+    ): array {
+        self::assertCanonicalSearchFacts($searchFacts);
+        if (!in_array($searchFacts['provider'], ['anex', 'andromeda'], true)) {
+            throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_CAPABILITY');
+        }
+        if ($adults < 1 || $adults > 6 || $children < 0 || $children > 3) {
+            throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_PARTY');
+        }
+
+        $rates = [];
+        foreach ($searchFacts['additional_prices_reported'] as $fact) {
+            $kind = $fact['kind'];
+            if (!in_array($kind, ['fuel_adult', 'fuel_child'], true)) continue;
+            if (array_key_exists($kind, $rates)) {
+                throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+            }
+            if ($fact['currency'] !== $searchFacts['search_price']['currency']) {
+                throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+            }
+            $rates[$kind] = $fact['amount'];
+        }
+        if (!array_key_exists('fuel_adult', $rates)
+            || ($children > 0 && !array_key_exists('fuel_child', $rates))) {
+            throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+        }
+
+        $amounts = [$searchFacts['search_price']['amount'], $rates['fuel_adult']];
+        if ($children > 0) $amounts[] = $rates['fuel_child'];
+        $scale = 0;
+        foreach ($amounts as $amount) $scale = max($scale, self::decimalScale($amount));
+
+        $base = self::decimalUnits($searchFacts['search_price']['amount'], $scale);
+        $adult = self::decimalUnits($rates['fuel_adult'], $scale);
+        $child = $children > 0 ? self::decimalUnits($rates['fuel_child'], $scale) : 0;
+        if ($base === null || $adult === null || $child === null
+            || $adult > intdiv(PHP_INT_MAX, $adults)
+            || ($children > 0 && $child > intdiv(PHP_INT_MAX, $children))) {
+            throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+        }
+        $adultTotal = $adult * $adults;
+        $childTotal = $child * $children;
+        if ($adultTotal > PHP_INT_MAX - $childTotal
+            || $base > PHP_INT_MAX - ($adultTotal + $childTotal)) {
+            throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+        }
+
+        $next = $searchFacts;
+        $next['search_price_with_surcharge'] = [
+            'amount' => self::decimalString($base + $adultTotal + $childTotal, $scale),
+            'currency' => $searchFacts['search_price']['currency'],
+            'source' => 'derived_search_estimate',
+        ];
+        $next['arithmetic_applied'] = true;
+        return $next;
     }
 
     /**
@@ -103,7 +175,7 @@ final class AnyTourThreeProviderMoneyFacts
         $next['package_buyer_price'] = $package;
         $next['quote_price'] = $quote;
         $next['final_price_verified'] = true;
-        // Explicitly preserve the no-arithmetic search/fuel semantics.
+        // Explicitly preserve the no-arithmetic search/fuel semantics of the final quote path.
         $next['search_price_fuel_relation'] = 'unknown';
         $next['arithmetic_applied'] = false;
         return $next;
@@ -143,6 +215,34 @@ final class AnyTourThreeProviderMoneyFacts
         if ($facts !== $expected) {
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_SEARCH_STATE');
         }
+    }
+
+    private static function decimalScale(string $amount): int
+    {
+        $dot = strpos($amount, '.');
+        return $dot === false ? 0 : strlen($amount) - $dot - 1;
+    }
+
+    private static function decimalUnits(string $amount, int $scale): ?int
+    {
+        if ($scale < 0 || $scale > 2 || !preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $amount)) {
+            return null;
+        }
+        $parts = explode('.', $amount, 2);
+        $fraction = $parts[1] ?? '';
+        if (strlen($fraction) > $scale) return null;
+        $factor = 10 ** $scale;
+        return ((int) $parts[0] * $factor) + (int) str_pad($fraction, $scale, '0');
+    }
+
+    private static function decimalString(int $units, int $scale): string
+    {
+        if ($units < 0 || $scale < 0 || $scale > 2) {
+            throw new InvalidArgumentException('THREE_PROVIDER_MONEY_AMOUNT');
+        }
+        if ($scale === 0) return (string) $units;
+        $factor = 10 ** $scale;
+        return intdiv($units, $factor) . '.' . str_pad((string) ($units % $factor), $scale, '0', STR_PAD_LEFT);
     }
 
     private static function moneyFact(
