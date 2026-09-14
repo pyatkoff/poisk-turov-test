@@ -1,12 +1,43 @@
 <?php
 declare(strict_types=1);
-// Preserve only an already verified private panel across a later own-preview release.
+// Preserve only verified scoped runtime that is not yet carried by the new own-preview payload.
 if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
 try{
     $root=realpath($argv[1]??'');$stage=realpath($argv[2]??'');$home=realpath((string)getenv('HOME'));
     if(!$root||!$stage||!$home||$root!==$home.'/www/anytoour.ru'||!preg_match('#\A'.preg_quote($root,'#').'/_preview/\.search3-anex-[0-9a-f]{40}-[0-9a-f]{12}\z#D',$stage))throw new RuntimeException('preserve_scope');
-    $private=$home.'/.anytoour-anex/review-owner';$target=$root.'/_preview/search3-anex-candidate';
-    if(!file_exists($private)){echo json_encode(['owner_panel'=>'not_installed']).PHP_EOL;exit;}
+    $target=$root.'/_preview/search3-anex-candidate';
+
+    // These five Andromeda core files are installed by the scoped provider publisher but are not yet
+    // tracked on the INT base. A full ANEX preview refresh must not silently delete them. If a future
+    // payload carries any of them itself, that current source wins and the installed copy is ignored.
+    $runtimeNames=['andromeda-normalizer.php','andromeda-hotel-resolver.php','andromeda-search.php','andromeda-hotel-observations.php','andromeda-offer-store.php'];
+    $runtimeDir=$stage.'/app/integrations';
+    if(!is_dir($runtimeDir)||is_link($runtimeDir))throw new RuntimeException('preserve_runtime_stage');
+    $runtimeHashes=[];$runtimeBytes=[];$runtimeSources=[];
+    foreach($runtimeNames as $name){
+        $destination=$runtimeDir.'/'.$name;
+        if(is_file($destination)&&!is_link($destination)){
+            $size=filesize($destination);
+            if(!is_int($size)||$size<1||$size>300000)throw new RuntimeException('preserve_runtime_bound');
+            $runtimeHashes[$name]=hash_file('sha256',$destination);$runtimeBytes[$name]=$size;$runtimeSources[$name]='current_source';
+            continue;
+        }
+        if(file_exists($destination)||is_link($destination))throw new RuntimeException('preserve_runtime_stage');
+        $source=$target.'/app/integrations/'.$name;
+        if(!is_file($source)||is_link($source))throw new RuntimeException('preserve_runtime_missing');
+        $size=filesize($source);
+        if(!is_int($size)||$size<1||$size>300000)throw new RuntimeException('preserve_runtime_bound');
+        $raw=file_get_contents($source);
+        if(!is_string($raw)||strlen($raw)!==$size||file_put_contents($destination,$raw)!==$size||!chmod($destination,0644))throw new RuntimeException('preserve_runtime_write');
+        $runtimeHashes[$name]=hash_file('sha256',$destination);$runtimeBytes[$name]=$size;$runtimeSources[$name]='installed_preview';
+        if($runtimeHashes[$name]!==hash_file('sha256',$source))throw new RuntimeException('preserve_runtime_drift');
+    }
+    $runtimeOverlay=['status'=>'preserved','sha256'=>$runtimeHashes,'bytes'=>$runtimeBytes,'sources'=>$runtimeSources];
+
+    // Preserve the separate owner panel when it is installed. Runtime preservation above is independent
+    // of the panel so a preview refresh remains safe even when the panel has never been activated.
+    $private=$home.'/.anytoour-anex/review-owner';
+    if(!file_exists($private)){echo json_encode(['owner_panel'=>'not_installed','runtime_overlay'=>$runtimeOverlay],JSON_THROW_ON_ERROR).PHP_EOL;exit;}
     if(realpath($private)!==$private||(fileperms($private)&0777)!==0700)throw new RuntimeException('preserve_private');
     $manifest=json_decode(file_get_contents($private.'/manifest.json'),true,16,JSON_THROW_ON_ERROR);
     if(($manifest['status']??'')!=='published'||!preg_match('/\A[0-9a-f]{40}\z/D',$manifest['source_sha']??''))throw new RuntimeException('preserve_manifest');
@@ -27,7 +58,7 @@ try{
     // An explicit overlay keeps both old owner-runtime and new site provenance.
     $files['anex-owner-panel-manifest.json']=hash_file('sha256',$stage.'/anex-owner-panel-manifest.json');
     $sizes=[];foreach($files as $name=>$sha)$sizes[$name]=filesize($stage.'/'.$name);
-    $overlay=['owner_panel'=>'preserved','owner_source_sha'=>$manifest['source_sha'],'baseline_sha256'=>$baseline,'applied_sha256'=>$files,'applied_bytes'=>$sizes,'write_enabled'=>false];
+    $overlay=['owner_panel'=>'preserved','owner_source_sha'=>$manifest['source_sha'],'baseline_sha256'=>$baseline,'applied_sha256'=>$files,'applied_bytes'=>$sizes,'write_enabled'=>false,'runtime_overlay'=>$runtimeOverlay];
     $sitePath=$stage.'/anex-preview-manifest.json';
     if(is_file($sitePath)){
         $site=json_decode(file_get_contents($sitePath),true,32,JSON_THROW_ON_ERROR);
