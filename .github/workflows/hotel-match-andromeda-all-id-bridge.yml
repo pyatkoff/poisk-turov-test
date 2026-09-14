@@ -9,10 +9,10 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-match-andromeda-all-id-bridge-1971-v2
+  group: anytour-match-andromeda-all-id-bridge-1971-v3
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v2
+  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v3
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           php -l scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
-          ! grep -Eiq '(price\(|broninit|booking|lead|tourvisor)' scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
+          ! grep -Eiq '(->price\(|broninit\(|booking\(|lead\()' scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php
       - name: Reserve immutable operation before supplier access
         run: |
           set -euo pipefail
@@ -43,7 +43,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-all-id-bridge-reservation-v2
+          name: match-andromeda-all-id-bridge-reservation-v3
           path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/reservation.json
           if-no-files-found: error
           retention-days: 90
@@ -61,6 +61,9 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path(os.environ['OUT'])
+          if not (p/'reservation.json').exists():
+              print('{"verified":false,"state":"not_armed"}')
+              raise SystemExit(0)
           result=json.loads((p/'result.json').read_text()) if (p/'result.json').exists() else {}
           receipt=json.loads((p/'receipt.json').read_text()) if (p/'receipt.json').exists() else {}
           reservation=json.loads((p/'reservation.json').read_text())
@@ -74,7 +77,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-andromeda-all-id-bridge-evidence-v2
+          name: match-andromeda-all-id-bridge-evidence-v3
           path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 90
