@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* MATCH-only append: supplier-native namespaces plus free ANEX preview mappings. */
-const MOS_OP='hotel-match-operator-original-store-1971-20260915-v1';
+const MOS_OP='hotel-match-operator-original-store-1971-20260915-v2';
 const MOS_INPUT_OP='hotel-match-operator-original-batch-1971-20260915-v2';
 const MOS_INPUT_SOURCE='0ba983e53ba3cef37f4400828d5efe9d2530381e';
 const MOS_POLICY='owner_exact_and_strong_20260908';
