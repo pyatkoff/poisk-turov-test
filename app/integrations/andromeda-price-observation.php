@@ -53,6 +53,58 @@ final class AnyTourAndromedaPriceObservation
         return $base;
     }
 
+    /** Read only a price receipt from the server session, after retained-offer resolution. */
+    public static function resolveServed(array $receipts, mixed $reference, array $resolved,
+        int $createdAt, int $expiresAt, int $now): ?array
+    {
+        if (!is_string($reference) || !preg_match('/^listing_[a-f0-9]{64}$/D', $reference)) return null;
+        $receipt = $receipts[$reference] ?? null;
+        try {
+            if (!is_array($receipt) || !self::exactKeys($receipt,
+                ['context','local_id','base_price','served_price','basis','issued_at'])
+                || !is_array($receipt['context']) || !self::exactKeys($receipt['context'],
+                    ['provider','search_ref','generation','page','offer_ref'])
+                || !is_int($receipt['issued_at']) || $receipt['issued_at'] < $createdAt
+                || $receipt['issued_at'] > $now || $now - $receipt['issued_at'] >= 900
+                || $now >= $expiresAt || $createdAt < 1
+                || !in_array($receipt['basis'], ['search_base','transport_surcharge_estimate'], true)
+                || !is_int($receipt['local_id']) || $receipt['local_id'] < 1
+                || $receipt['local_id'] !== ($resolved['offer']['local_hotel_id'] ?? null)
+                || !hash_equals($reference, 'listing_' . hash('sha256', json_encode($receipt, JSON_THROW_ON_ERROR)))) return null;
+            foreach ($receipt['context'] as $key => $value) {
+                if (!array_key_exists($key, $resolved['context'] ?? []) || $resolved['context'][$key] !== $value) return null;
+            }
+            $base = self::money($receipt['base_price'], false, false, 'ANDROMEDA_SERVED_PRICE_INVALID');
+            self::money($receipt['served_price'], false, false, 'ANDROMEDA_SERVED_PRICE_INVALID');
+            if ($base !== ($resolved['offer']['price'] ?? null)) return null;
+            return $receipt;
+        } catch (Throwable $ignored) { return null; }
+    }
+
+    /** Separate corpus: the echoed search response, NOT a new estimate during calc. */
+    public static function compareServed(?array $receipt, array $quote, int $now): ?array
+    {
+        if ($receipt === null || ($quote['state'] ?? null) !== 'quote_verified'
+            || ($quote['final_price_verified'] ?? null) !== true) return null;
+        try {
+            $price = self::money($receipt['served_price'], false, false, 'ANDROMEDA_SERVED_PRICE_INVALID');
+            if (!is_int($receipt['issued_at']) || $now < $receipt['issued_at']
+                || !in_array($receipt['basis'] ?? null, ['search_base','transport_surcharge_estimate'], true)) return null;
+            // Reuse the established decimal delta arithmetic, not its estimator provenance.
+            $delta = self::build($price + ['source'=>'derived_search_estimate'], $quote['final_price']);
+            return [
+                'schema_version'=>1, 'provider'=>'andromeda', 'basis'=>'search_api_response',
+                'state'=>$delta['state'], 'price_basis'=>$receipt['basis'],
+                'served_at'=>$receipt['issued_at'], 'actualized_at'=>$now,
+                'served_price'=>$price, 'final_price'=>$delta['final_price'],
+                'signed_delta_amount'=>$delta['signed_delta_amount'],
+                'absolute_delta_amount'=>$delta['absolute_delta_amount'],
+                'relative_delta_bps'=>$delta['relative_delta_bps'],
+                'final_price_verified'=>true,
+            ];
+        } catch (Throwable $ignored) { return null; } // Measurement must not invalidate a completed quote.
+    }
+
     /** Aggregate completed observations without encoding the owner's 80% target as a gate. */
     public static function summarize(array $observations): array
     {

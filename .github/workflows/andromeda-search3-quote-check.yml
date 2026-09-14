@@ -9,6 +9,7 @@ on:
       - 'app/integrations/andromeda-price-observation.php'
       - 'app/integrations/andromeda-quote-attempt-state.php'
       - 'v2/api-andromeda-quote-preview.php'
+      - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-selected-quote-smoke.php'
       - 'tests/andromeda-price-observation-smoke.php'
       - 'tests/andromeda-quote-attempt-state-test.php'
