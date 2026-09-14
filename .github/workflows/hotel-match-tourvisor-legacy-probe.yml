@@ -1,7 +1,12 @@
 name: MATCH legacy Tourvisor viability probe v3
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [match/legacy-tourvisor-viability-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php'
+      - 'tests/hotel-match-tourvisor-legacy-probe-test.php'
+      - '.github/workflows/hotel-match-tourvisor-legacy-probe.yml'
 
 permissions:
   contents: read
