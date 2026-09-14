@@ -838,7 +838,7 @@ async function run(browser, width, previous) {
     }
     await localOperatorSelect.selectOption('name:test operator');
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
-    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
     if (width < 1025) {
       assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · до 100[\s\u00a0]*000 ₽ · TEST OPERATOR/, 'compact summary names active exact-offer filters instead of exposing only their count');
@@ -848,13 +848,13 @@ async function run(browser, width, previous) {
       assert.equal((await snapshot(page)).overflow, false, 'active filter values safely fit the compact toolbar');
       await mobileSummary.click();
     }
-    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'restoring budget keeps the active operator projection');
     await localOperatorSelect.selectOption('');
-    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['cheap'], 'clearing operator restores the exact qualifying budget offer');
     assert.equal(await page.locator('#results [data-hotel-id=cheap] .hotel-price').innerText().then(text => text.replace(/\s/g, '')), '90000₽', 'budget retains the exact qualifying offer price');
-    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('change', { bubbles: true })); });
     await localRatingSelect.selectOption('4.5');
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'rating threshold filters the loaded hotels locally');
     await localRatingSelect.selectOption('0');
