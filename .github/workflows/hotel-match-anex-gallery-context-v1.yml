@@ -1,0 +1,61 @@
+name: MATCH ANEX gallery context v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-gallery-context-v1.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-gallery-context-1971-20260914-v1}
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Fetch and isolate hotel-specific context
+        run: |
+          set -euo pipefail; mkdir -p /tmp/out
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+          curl --fail --location --max-redirs 4 --connect-timeout 10 --max-time 25 --user-agent 'AnyTour-MATCH-gallery-evidence/1.0' -o /tmp/page.html 'https://anextour.ru/tours/vietnam/le-van-hotel'
+          python3 - <<'PY'
+          import re,json,html,hashlib,pathlib,urllib.parse
+          raw=pathlib.Path('/tmp/page.html').read_text(errors='replace')
+          text=html.unescape(raw.replace('\\/','/').replace('\\u0026','&').replace('\\u003d','=').replace('\\u003D','='))
+          needles=['le van','le-van','hotelCode','gallery','photos','photo','images','image']
+          contexts=[]
+          low=text.lower()
+          for needle in needles:
+            pos=0;n=0
+            while n<40:
+              i=low.find(needle.lower(),pos)
+              if i<0: break
+              a=max(0,i-900);b=min(len(text),i+1800);chunk=text[a:b]
+              urls=sorted(set(re.findall(r'https?://[^\\s"\'<>\\\\]+',chunk,re.I)))
+              nums=sorted(set(re.findall(r'(?<![A-Za-z])([0-9]{2,12})(?![A-Za-z])',chunk)))
+              contexts.append({'needle':needle,'offset':i,'snippet':re.sub(r'\\s+',' ',chunk)[:2700],'urls':urls[:30],'numeric_tokens':nums[:60]})
+              pos=i+len(needle);n+=1
+          # Candidate URLs with hotel/name/gallery semantics, rather than all site assets.
+          urls=sorted(set(re.findall(r'https?://[^\\s"\'<>\\\\]+',text,re.I)))
+          cand=[]
+          for u in urls:
+            lu=urllib.parse.unquote(u).lower()
+            if any(k in lu for k in ['le-van','le_van','levan','/hotel/','gallery','photo','image']):
+              p=urllib.parse.urlparse(u); nums=sorted(set(re.findall(r'(?<![A-Za-z])([0-9]{2,12})(?![A-Za-z])',u)))
+              cand.append({'url':u,'host':p.hostname,'path':p.path,'query':p.query,'numeric_tokens':nums})
+          # Also enumerate JSON-ish key/value identifiers near exact hotel-name occurrences.
+          ids=[]
+          for c in contexts:
+            if c['needle'] not in {'le van','le-van'}: continue
+            for m in re.finditer(r'["\']([A-Za-z][A-Za-z0-9_-]{1,40})["\']\\s*:\\s*["\']?([0-9]{2,12})',c['snippet']): ids.append({'key':m.group(1),'value':m.group(2),'offset':c['offset']})
+          out={'status':'completed','operation_id':'hotel-match-anex-gallery-context-1971-20260914-v1','page_sha256':hashlib.sha256(raw.encode()).hexdigest(),'context_count':len(contexts),'candidate_url_count':len(cand),'candidate_urls':cand[:500],'near_name_ids':ids[:200],'contexts':contexts,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'contexts':len(contexts),'candidate_urls':len(cand),'near_name_ids':ids[:30],'candidate_sample':cand[:30]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-gallery-context-v1-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+          retention-days: 90
