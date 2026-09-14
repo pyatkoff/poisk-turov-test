@@ -42,11 +42,11 @@ if (anytour_andromeda_surcharge_e2e_find($projection, $offerRef) !== $before) {
 $after = $before;
 $after['base_search_price'] = $before['price'];
 // Use the real calculator, not a hand-built fact that copies extra base metadata.
-$after['search_surcharge'] = AnyTourAndromedaSearchSurcharge::estimate([
-    'claimDocument' => [[]],
-    'variants' => [['transports' => [['transport' => [['type' => 'ttAvia',
-        'details' => [['detail' => [['markup' => '14356.00', 'currency' => 'RUB']]]]]]]],
-], $before['price']);
+$claim = ['claimDocument' => [[]], 'variants' => []];
+$claim['variants'][0]['transports'][0]['transport'][0] = [
+    'type' => 'ttAvia', 'details' => [['detail' => [['markup' => '14356.00', 'currency' => 'RUB']]]],
+];
+$after['search_surcharge'] = AnyTourAndromedaSearchSurcharge::estimate($claim, $before['price']);
 $after['price'] = $after['search_surcharge']['search_price_with_surcharge'];
 $money = anytour_andromeda_surcharge_e2e_verify($before, $after);
 if (($money['base']['amount'] ?? null) !== '100000.00'
