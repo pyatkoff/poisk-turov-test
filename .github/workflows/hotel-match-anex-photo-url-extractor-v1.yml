@@ -1,0 +1,45 @@
+name: MATCH ANEX photo URL extractor v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths:
+      - scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php
+      - .github/workflows/hotel-match-anex-photo-url-extractor-v1.yml
+permissions: {contents: read}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Syntax and exhaustive media fixtures
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php
+          cat >/tmp/fixture.html <<'EOF'
+          <img src="/plain.jpg">
+          <img data-src="https://files.anextour.ru/hotel/a.jpg?hotelCode=544">
+          <source srcset="https://files.anextour.ru/hotel/b.jpg?hotelCode=544 1x, https://files.anextour.ru/hotel/c.jpg?hotelCode=544 2x">
+          <div style="background:url('https://files.anextour.ru/hotel/d.jpg?hotelCode=544')"></div>
+          <script>window.x={"photoUrl":"https:\/\/files.anextour.ru\/hotel\/e.jpg?hotelCode=544\u0026x=1"};</script>
+          EOF
+          php scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php https://anextour.ru/hotels/test </tmp/fixture.html >/tmp/out.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('/tmp/out.json'))
+          assert x['status']=='completed'
+          assert x['hotel_codes']==[544],x
+          assert x['hotelcode_url_count']==5,x
+          assert x['source_counts'].get('srcset',0)>=2,x
+          assert x['source_counts'].get('css',0)>=1,x
+          assert x['source_counts'].get('json',0)>=1,x
+          print(x)
+          PY
+      - name: Reject misleading/non-ANEX codes
+        run: |
+          set -euo pipefail
+          printf '%s\n' '<img src="https://evil.example/hotel/x.jpg?hotelCode=999"><img src="https://files.anextour.ru/not-hotel/x.jpg?hotelCode=888">' | php scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php https://anextour.ru/hotels/test >/tmp/reject.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('/tmp/reject.json')); assert x['hotel_codes']==[],x
+          PY
