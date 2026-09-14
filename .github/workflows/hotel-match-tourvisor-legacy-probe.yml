@@ -1,0 +1,111 @@
+name: MATCH legacy Tourvisor viability probe v1
+
+on:
+  push:
+    branches: [match/legacy-tourvisor-viability-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php'
+      - 'tests/hotel-match-tourvisor-legacy-probe-test.php'
+      - '.github/workflows/hotel-match-tourvisor-legacy-probe.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-legacy-tourvisor-viability-1971-20260914-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-legacy-tourvisor-viability-1971-20260914-v1
+
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: '${{ github.sha }}'
+
+      - name: Validate MATCH-only read-only probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php >/dev/null
+          php -l tests/hotel-match-tourvisor-legacy-probe-test.php >/dev/null
+          php tests/hotel-match-tourvisor-legacy-probe-test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php
+          ! grep -Fq 'api.tourvisor.ru' scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php
+          ! grep -Fq '/xml/search.php' scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php
+          ! grep -Fq '/xml/result.php' scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php
+
+      - name: Reserve immutable operation before server access
+        shell: bash
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_server_access","database_reads":0,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"new_tourvisor_calls":0,"legacy_tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-legacy-tourvisor-v1-reservation
+          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-viability-1971-20260914-v1/reservation.json'
+          retention-days: 90
+
+      - name: Prepare existing AnyTour SSH key
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Probe legacy capability and one operator-list request only
+        env:
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          S="$RUNNER_TEMP/$OPERATION_ID"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ControlMaster=no -o ControlPath=none -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" 'set -euo pipefail; root="$HOME/www/anytoour.ru"; test -f "$root/v2/config.php"; php -- "--config=$root/v2/config.php"' < scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php > "$S/result.json"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          r=json.loads((S/'result.json').read_text())
+          allowed={'legacy_credentials_absent','private_config_missing','curl_unavailable','legacy_connection_error','legacy_http_error','legacy_empty_response','legacy_auth_rejected','legacy_non_json_response','legacy_list_available'}
+          if r.get('status') not in allowed: raise SystemExit('unexpected_status')
+          for key in ('database_reads','database_writes','mapping_writes','supplier_calls','new_tourvisor_calls','booking_calls','lead_calls'):
+              if int(r.get(key,-1)) != 0: raise SystemExit('nonzero_'+key)
+          if int(r.get('legacy_tourvisor_calls',-1)) not in (0,1): raise SystemExit('bad_legacy_call_count')
+          receipt={
+              'operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],
+              'state':'completed_read_only','status':r['status'],'credential_source':r.get('credential_source'),
+              'credential_names':r.get('credential_names') or [],'present_legacy_names':r.get('present_legacy_names') or [],
+              'http_status':r.get('http_status'),'legacy_tourvisor_calls':int(r.get('legacy_tourvisor_calls',0)),
+              'new_tourvisor_calls':0,'supplier_calls':0,'database_reads':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,
+              'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest(),'no_replay':True,
+          }
+          (S/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-legacy-tourvisor-v1-result
+          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-viability-1971-20260914-v1/'
+          retention-days: 90
