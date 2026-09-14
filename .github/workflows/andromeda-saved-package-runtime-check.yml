@@ -6,6 +6,8 @@ on:
       - 'app/integrations/andromeda-client.php'
       - 'app/integrations/andromeda-claim-actions.php'
       - 'app/integrations/andromeda-search-surcharge.php'
+      - 'app/integrations/andromeda-price-observation.php'
+      - 'tests/andromeda-price-observation-smoke.php'
       - 'tests/andromeda-saved-surcharge-runtime-smoke.php'
       - 'app/integrations/andromeda-package-public.php'
       - 'app/integrations/andromeda-claiminc-contract.php'
@@ -102,6 +104,7 @@ jobs:
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
           php change/tests/andromeda-saved-package-attempt-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-attempt-fixture"
           php -d allow_url_fopen=0 change/tests/andromeda-saved-surcharge-runtime-smoke.php runtime "$RUNNER_TEMP/saved-surcharge-fixture"
+          php -d allow_url_fopen=0 change/tests/andromeda-price-observation-smoke.php runtime
           php -l change/scripts/diagnostics/andromeda_search_surcharge_e2e.php
           php -d allow_url_fopen=0 change/tests/andromeda_search_surcharge_e2e_smoke.php
           php change/tests/andromeda-retained-mapping-smoke.php runtime
