@@ -982,8 +982,10 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#status').isVisible(), false, 'ordinary terminal empty result also keeps a single final state');
     await checkPrimaryForm(page, 'terminal empty results', true);
     const continuation = await page.locator('#v2SearchMore').evaluate(node => {
-      const box = element => { const r = element.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}; };
-      return {group:box(node),button:box(node.querySelector('button')),helper:box(node.querySelector('small')),results:box(document.getElementById('results'))};
+      const results = document.getElementById('results'), origin = results.getBoundingClientRect();
+      // Compare local layout; keyboard recovery and screenshots may scroll the page.
+      const box = element => { const r = element.getBoundingClientRect(); return {x:r.x-origin.x,y:r.y-origin.y,width:r.width,height:r.height,right:r.right-origin.x,bottom:r.bottom-origin.y}; };
+      return {group:box(node),button:box(node.querySelector('button')),helper:box(node.querySelector('small')),results:box(results)};
     });
     assert.ok(continuation.button.height >= 44, 'the current continuation action retains a full touch target');
     assert.ok(continuation.group.y >= continuation.results.bottom && Math.abs(continuation.group.x-continuation.results.x) < 1, 'continuation follows and aligns with the actual results column');
