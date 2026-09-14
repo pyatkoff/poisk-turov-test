@@ -1,0 +1,90 @@
+name: MATCH Tourvisor ANEX observation CURRENT v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-tourvisor-anex-observation-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-tv-anex-observation-current-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-tourvisor-anex-observation-current-1971-20260914-v1
+  SOURCE_RUN_ID: '34837638490'
+  SOURCE_ARTIFACT: match-anex-bridge-current-v1-result
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable CURRENT read
+        run: |
+          set -euo pipefail; STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_ssh","database_writes":0,"mapping_writes":0,"tourvisor_http_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" > "$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-tv-anex-observation-current-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-tourvisor-anex-observation-current-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download immutable CURRENT unresolved queue
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/queue.json"
+      - name: Reconcile passive Tourvisor ANEX operator hotelCode against CURRENT DB
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shlex,subprocess,tempfile
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          src=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source'/'queue.json').read_text())
+          payload=[]
+          for r in src.get('rows') or []:
+            eid=int(r.get('anex_hotel_id') or 0); cid=int(r.get('country_id') or 0)
+            if eid>0 and cid in (1,2,4,8,9,10,12,16): payload.append({'anex_hotel_id':eid,'country_id':cid,'observed':bool(r.get('observed')),'search_count':int(r.get('search_count') or 0),'source_names':r.get('source_names') or [],'source_places':r.get('source_places') or []})
+          if len(payload)!=182: raise RuntimeError('queue_contract:'+str(len(payload)))
+          helper=pathlib.Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text()
+          planner=pathlib.Path('scripts/diagnostics/hotel_match_current_bulk_review.php').read_text()
+          def body(t):
+            if t.startswith('<?php'): t=t[len('<?php'):]
+            return t.replace('declare(strict_types=1);','',1)
+          helper=body(helper)
+          planner=body(planner).replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          wrapper=r'''
+          function toa_code(?string $url, ?string $query): ?int {$q=[];if(is_string($query)&&$query!=='')parse_str($query,$q);if(!$q&&is_string($url)&&$url!==''){$p=parse_url($url);if(is_array($p))parse_str((string)($p['query']??''),$q);}foreach($q as $k=>$v){if(strtolower((string)$k)!=='hotelcode'||is_array($v)||!preg_match('/^[1-9][0-9]{0,11}$/D',(string)$v))continue;return(int)$v;}return null;}
+          function toa_q(array $names): array {$want=['annex'=>1,'beach'=>1,'garden'=>1,'north'=>1,'south'=>1];$o=[];foreach($names as$n)foreach(fc_tokens((string)$n,false)as$t)if(isset($want[$t]))$o[$t]=true;return array_keys($o);}
+          function toa_qok(array$q,array$names):bool{if(!$q)return true;$s=[];foreach($names as$n)foreach(fc_tokens((string)$n,false)as$t)$s[$t]=true;foreach($q as$x)if(!isset($s[$x]))return false;return true;}
+          function toa_best(array$src,array$dst):array{$best=['score'=>0.0,'shared'=>0,'strict'=>false,'broad'=>false,'source'=>'','target'=>''];foreach($src as$s)foreach($dst as$d){if(!is_string($s)||!is_string($d)||trim($s)===''||trim($d)==='')continue;[$sc,$sh]=mbr_similarity($s,$d);$st=fc_key($s,false)===fc_key($d,false);$br=fc_key($s,true,true)===fc_key($d,true,true);$take=($st&&!$best['strict'])||($st===$best['strict']&&(($br&&!$best['broad'])||($br===$best['broad']&&($sc>$best['score']||($sc===$best['score']&&$sh>$best['shared'])))));if($take)$best=['score'=>$sc,'shared'=>$sh,'strict'=>$st,'broad'=>$br,'source'=>$s,'target'=>$d];}return$best;}
+          $payload=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);$seed=[];foreach($payload as$p)$seed[(int)$p['anex_hotel_id']]=$p;
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$h)throw new RuntimeException('db_helper');require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+          try{[$hotels,$names,$strict,$broad,$places,$scope]=mbr_catalog($db);$manual=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN)),true);$existing=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings')->fetchAll(PDO::FETCH_COLUMN)),true);$excluded=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions')->fetchAll(PDO::FETCH_ASSOC)as$x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=true;$staging=[];foreach($db->query('SELECT * FROM anex_hotels')->fetchAll(PDO::FETCH_ASSOC)as$s)$staging[(int)$s['anex_hotel_id']]=$s;
+          $table=(bool)$db->query("SELECT 1 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='tour_operator_identity_observations' LIMIT 1")->fetchColumn();if(!$table){$db->commit();echo fc_json(['status'=>'completed','operation_id'=>'hotel-match-tourvisor-anex-observation-current-1971-20260914-v1','reason'=>'observation_table_absent','database_writes'=>0,'mapping_writes'=>0,'tourvisor_http_calls'=>0]),"\n";return;}
+          $obs=$db->query("SELECT country_id,hotel_id,hotel_name,region_name,subregion_name,latitude,longitude,operator_name,operator_link,operator_link_host,operator_link_query,observation_count,last_seen_at FROM tour_operator_identity_observations WHERE operator_link IS NOT NULL AND (UPPER(COALESCE(operator_name,'')) LIKE '%ANEX%' OR LOWER(COALESCE(operator_link_host,'')) LIKE '%anextour%') ORDER BY last_seen_at DESC,id DESC")->fetchAll(PDO::FETCH_ASSOC);
+          $by=[];$obsCode=0;foreach($obs as$o){$code=toa_code($o['operator_link']??null,$o['operator_link_query']??null);if($code===null||!isset($seed[$code]))continue;$obsCode++;$lid=(int)$o['hotel_id'];$by[$code][$lid][]=$o;}
+          $rows=[];$counts=['queue'=>count($seed),'operator_observations'=>count($obs),'queue_hotelcode_observations'=>$obsCode,'queue_codes_with_observation'=>count($by),'protected'=>0,'ambiguous_target'=>0,'target_missing'=>0,'country_conflict'=>0,'pair_exclusion'=>0,'coordinate_conflict'=>0,'name_guard'=>0,'safe'=>0,'safe_live'=>0];
+          foreach($seed as$id=>$p){if(isset($manual[$id])||isset($existing[$id])){$counts['protected']++;continue;}if(!isset($by[$id]))continue;$targets=array_keys($by[$id]);if(count($targets)!==1){$counts['ambiguous_target']++;$rows[]=['anex_hotel_id'=>$id,'bucket'=>'review','reason'=>'multiple_tourvisor_targets','target_ids'=>$targets];continue;}$lid=(int)$targets[0];if(!isset($hotels[$lid])){$counts['target_missing']++;$rows[]=['anex_hotel_id'=>$id,'bucket'=>'review','reason'=>'tourvisor_target_not_in_local_catalog','target_id'=>$lid];continue;}$o=$by[$id][$lid][0];if((int)$p['country_id']!==(int)$o['country_id']||(int)$hotels[$lid]['country_id']!==(int)$p['country_id']){$counts['country_conflict']++;$rows[]=['anex_hotel_id'=>$id,'bucket'=>'hard_conflict','reason'=>'country_mismatch','target_id'=>$lid];continue;}if(isset($excluded[$id][$lid])){$counts['pair_exclusion']++;$rows[]=['anex_hotel_id'=>$id,'bucket'=>'hard_conflict','reason'=>'pair_exclusion_protected','target_id'=>$lid];continue;}$s=$staging[$id]??[];$src=array_values(array_filter(array_merge($p['source_names']??[],[$s['api_name']??'',$s['xml_name']??'',$s['xml_alternate_name']??'']),fn($x)=>is_string($x)&&trim($x)!==''));$dst=array_values(array_filter(array_merge([$o['hotel_name']??''],$names[$lid]??[]),fn($x)=>is_string($x)&&trim($x)!==''));$best=toa_best($src,$dst);$qual=toa_qok(toa_q($src),$dst);$d=fc_dist($s['latitude']??null,$s['longitude']??null,$o['latitude']??($hotels[$lid]['latitude']??null),$o['longitude']??($hotels[$lid]['longitude']??null));if($d!==null&&$d>5000){$counts['coordinate_conflict']++;$rows[]=['anex_hotel_id'=>$id,'bucket'=>'hard_conflict','reason'=>'coordinate_conflict_gt_5km','target'=>mbr_row_target($hotels[$lid]),'distance_m'=>$d,'best'=>$best];continue;}$geo=fc_place($p['source_places']??[],[$o['region_name']??'',$o['subregion_name']??'',$hotels[$lid]['region_name']??'',$hotels[$lid]['subregion_name']??'']);$nameOk=$qual&&($best['strict']||$best['broad']||($best['score']>=0.55&&$best['shared']>=2&&(($d!==null&&$d<=1000)||$geo))||($best['score']>=0.72&&$best['shared']>=2));if(!$nameOk){$counts['name_guard']++;$rows[]=['anex_hotel_id'=>$id,'bucket'=>'review','reason'=>'hotelcode_direct_but_name_guard','target'=>mbr_row_target($hotels[$lid]),'distance_m'=>$d,'place_match'=>$geo,'best'=>$best,'observation_count'=>(int)$o['observation_count']];continue;}$counts['safe']++;if($p['observed'])$counts['safe_live']++;$rows[]=['anex_hotel_id'=>$id,'country_id'=>(int)$p['country_id'],'observed'=>(bool)$p['observed'],'search_count'=>(int)$p['search_count'],'bucket'=>'safe','reason'=>'tourvisor_anex_operator_hotelcode_direct_current','target'=>mbr_row_target($hotels[$lid]),'distance_m'=>$d,'place_match'=>$geo,'best'=>$best,'operator_host'=>$o['operator_link_host'],'observation_count'=>(int)$o['observation_count'],'last_seen_at'=>$o['last_seen_at']];}
+          usort($rows,static fn($a,$b)=>(($a['bucket']==='safe'?0:1)<=>($b['bucket']==='safe'?0:1))?:(($b['search_count']??0)<=>($a['search_count']??0))?:(($a['anex_hotel_id']??0)<=>($b['anex_hotel_id']??0)));$coverage=fc_coverage($db);$db->commit();echo fc_json(['status'=>'completed','operation_id'=>'hotel-match-tourvisor-anex-observation-current-1971-20260914-v1','counts'=>$counts,'coverage'=>$coverage,'rows'=>$rows,'database_writes'=>0,'mapping_writes'=>0,'tourvisor_http_calls'=>0,'supplier_calls'=>0,'guards'=>['direct_hotelcode_only'=>true,'hotellist_not_identity'=>true,'coordinate_conflict_auto_block_m'=>5000,'manual_decisions_overwritten'=>false,'existing_mappings_overwritten'=>false,'pair_exclusions_overwritten'=>false,'historical_operations_replayed'=>false,'no_replay'=>true]]),"\n";}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+wrapper
+          req=['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER']; vals=[os.environ.get(k,'').strip() for k in req]
+          if not all(vals): raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(dir=os.environ['RUNNER_TEMP']) as td:
+            key=pathlib.Path(td)/'key';key.write_text(vals[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'known'
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',vals[2],vals[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+            p=subprocess.run(cmd,input=json.dumps(payload,ensure_ascii=False,separators=(',',':')),text=True,capture_output=True,timeout=420)
+          if p.returncode!=0: (state/'blocker.json').write_text(json.dumps({'status':'failed','exit_code':p.returncode,'stderr_tail':p.stderr[-1600:]},ensure_ascii=False)+'\n'); raise RuntimeError('remote_review_failed')
+          x=json.loads(p.stdout); rp=state/'review.json';rp.write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if x.get('status')!='completed' or int(x.get('database_writes') or 0)!=0: raise RuntimeError('review_contract')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'counts':x.get('counts'),'coverage':x.get('coverage'),'review_sha256':hashlib.sha256(rp.read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'tourvisor_http_calls':0,'historical_operations_replayed':False,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-tv-anex-observation-current-v1-result
+          path: ${{ runner.temp }}/hotel-match-tourvisor-anex-observation-current-1971-20260914-v1/
+          retention-days: 90
