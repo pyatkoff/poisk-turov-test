@@ -1,47 +1,62 @@
-name: MATCH Andromeda targeted price original v2
+name: MATCH Andromeda targeted price original v3
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-andromeda-price-original-current-v1.yml]
 permissions: {contents: read}
-concurrency: {group: match-andromeda-price-original-1971-v2, cancel-in-progress: false}
+concurrency: {group: match-andromeda-price-original-1971-v3, cancel-in-progress: false}
 env:
-  FAMILY_ID: hotel-match-andromeda-price-original-1971-20260914-v2
+  FAMILY_ID: hotel-match-andromeda-price-original-1971-20260914-v3
   TARGET_HOTEL: '416247'
 jobs:
   canary:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 3
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        date: ['2026-09-22','2026-10-06','2026-10-27','2026-11-10','2026-12-08']
+        include:
+          - window: w1
+            date_from: '2026-09-15'
+            date_to: '2026-10-14'
+          - window: w2
+            date_from: '2026-10-15'
+            date_to: '2026-11-14'
+          - window: w3
+            date_from: '2026-11-15'
+            date_to: '2026-12-14'
+          - window: w4
+            date_from: '2026-12-15'
+            date_to: '2027-01-15'
     env:
-      SEARCH_DATE: ${{ matrix.date }}
-      OUT: /tmp/match-price-original
+      WINDOW: ${{ matrix.window }}
+      DATE_FROM: ${{ matrix.date_from }}
+      DATE_TO: ${{ matrix.date_to }}
+      OUT: /tmp/match-price-original-v3
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false, ref: '${{ github.sha }}'}
-      - name: Reserve immutable targeted price read
+      - name: Reserve immutable supplier-context price read
         run: |
           set -euo pipefail
           mkdir -p "$OUT"
-          OPERATION_ID="${FAMILY_ID}-${TARGET_HOTEL}-${SEARCH_DATE}"
-          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_hotel":"%s","date":"%s","state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$TARGET_HOTEL" "$SEARCH_DATE" > "$OUT/reservation.json"
+          OPERATION_ID="${FAMILY_ID}-${TARGET_HOTEL}-${WINDOW}"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_hotel":"%s","window":"%s","date_from":"%s","date_to":"%s","townfrominc":1,"stateinc":3,"operators":5,"nights_from":5,"nights_to":14,"state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$TARGET_HOTEL" "$WINDOW" "$DATE_FROM" "$DATE_TO" > "$OUT/reservation.json"
       - uses: actions/upload-artifact@v4
         with:
-          name: price-original-${{ matrix.date }}-reserved-v2
+          name: price-original-v3-${{ matrix.window }}-reserved
           path: ${{ env.OUT }}/reservation.json
           retention-days: 90
-      - name: Build targeted price program
+      - name: Build exact supplier-context price program
         run: |
           set -euo pipefail
           cat > "$OUT/program.php" <<'PHP'
           <?php
           declare(strict_types=1);
-          const HM_DATE='__DATE__';
+          const HM_FROM='__FROM__';
+          const HM_TO='__TO__';
           const HM_OPERATION='__OP__';
           const HM_TARGET=416247;
           function hm_collect($n,array &$out):void{
@@ -49,21 +64,25 @@ jobs:
               if(isset($n['operatorKey'],$n['hotelKey']) && is_array($n['original']??null) && isset($n['original']['hotelKey'])) $out[]=$n;
               foreach($n as $v) if(is_array($v)) hm_collect($v,$out);
           }
-          function hm_fail(string $stage,string $reason):void{
-              echo 'MATCH_PRICE_ORIGINAL_JSON:'.json_encode(['status'=>'failed','stage'=>$stage,'reason'=>$reason,'operation_id'=>HM_OPERATION,'target_hotel'=>HM_TARGET,'date'=>HM_DATE,'database_writes'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL; exit(2);
+          function hm_fail(string $stage,string $reason,array $extra=[]):void{
+              echo 'MATCH_PRICE_ORIGINAL_JSON:'.json_encode(array_merge(['status'=>'failed','stage'=>$stage,'reason'=>$reason,'operation_id'=>HM_OPERATION,'target_hotel'=>HM_TARGET,'date_from'=>HM_FROM,'date_to'=>HM_TO,'database_writes'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true],$extra),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL; exit(2);
           }
           try{
               $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru') hm_fail('bootstrap','root');
               $preview=$root.'/_preview/search3-anex-candidate'; $api=$preview.'/api-andromeda-search3-preview.php'; if(!is_file($api)) hm_fail('bootstrap','runtime_missing'); require_once $api;
               $private=$preview.'/.andromeda-private.php'; if(!is_file($private)) hm_fail('bootstrap','private_missing'); $cfg=require $private;
               require_once $root.'/config.php'; require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'); $db=v2_data_db();
-              $criteria=['departureId'=>1,'countryId'=>4,'dateFrom'=>HM_DATE,'dateTo'=>HM_DATE,'nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'childs'=>[],'currency'=>'RUB','meal'=>'','hotelIds'=>[HM_TARGET],'regionIds'=>[],'subregionIds'=>[],'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>''];
+              $criteria=['departureId'=>1,'countryId'=>4,'dateFrom'=>HM_FROM,'dateTo'=>HM_TO,'nightsFrom'=>5,'nightsTo'=>14,'adults'=>2,'childs'=>[],'currency'=>'RUB','meal'=>'','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>''];
               $req=['generation'=>1,'page'=>1,'params'=>$criteria,'andromeda_operator_ids'=>['5']];
-              $saved=anytour_andromeda_search3_catalog($cfg,$req); $saved['excluded_operator_ids']=$cfg['excluded_operator_ids']??[]; $p=anytour_andromeda_search3_params($req,$db,$saved); $p['HOTELS']=(string)HM_TARGET; $p['OPERATORS']='5';
+              $saved=anytour_andromeda_search3_catalog($cfg,$req); $saved['excluded_operator_ids']=$cfg['excluded_operator_ids']??[]; $p=anytour_andromeda_search3_params($req,$db,$saved);
+              $p['TOWNFROMINC']='1'; $p['STATEINC']='3'; $p['HOTELS']=(string)HM_TARGET; $p['OPERATORS']='5';
+              $p['CHECKIN_BEG']=str_replace('-','',HM_FROM); $p['CHECKIN_END']=str_replace('-','',HM_TO); $p['NIGHTS_FROM']='5'; $p['NIGHTS_TO']='14';
+              $requestContext=[]; foreach(['TOWNFROMINC','STATEINC','HOTELS','OPERATORS','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TO','ADULT','CHILD','CURRENCY'] as $k) if(array_key_exists($k,$p)) $requestContext[$k]=$p[$k];
               $budget=dirname((string)$cfg['catalog_path']); $transport=new AnyTourAndromedaTransport(true); $client=new AnyTourAndromedaClient(static function($url,$opts)use($transport,$budget){ anytour_andromeda_search3_budget($budget); return $transport($url,$opts); },true);
-              $client->login((string)$cfg['username'],(string)$cfg['password']); $raw=$client->price($p); $rows=[]; hm_collect($raw,$rows); $hits=[]; $mapped=0; $namespace=0;
+              $client->login((string)$cfg['username'],(string)$cfg['password']); $raw=$client->price($p); $rows=[]; hm_collect($raw,$rows); $hits=[]; $mapped=0; $namespace=0; $otherTarget=0;
               foreach($rows as $r){
-                  if((int)($r['operatorKey']??0)!==5 || (int)($r['hotelKey']??0)!==HM_TARGET) continue;
+                  if((int)($r['operatorKey']??0)!==5) continue;
+                  if((int)($r['hotelKey']??0)!==HM_TARGET){$otherTarget++;continue;}
                   $provider=is_array($r['provider']??null)?strtolower(trim((string)($r['provider']['name']??''))):'';
                   if($provider==='mappedtour'||!empty($r['mappedOperator'])){$mapped++;continue;}
                   if((int)($r['isOperatorHotelKey']??0)===1){$namespace++;continue;}
@@ -71,10 +90,10 @@ jobs:
                   $hits[]=['andromeda_id'=>(int)$r['hotelKey'],'anex_id'=>$aid,'hotel'=>(string)($r['hotel']??''),'town'=>(string)($r['town']??''),'hotel_url'=>(string)($r['hotelUrl']??''),'hotel_image'=>(string)($r['hotelImage']??'')];
               }
               $ids=array_values(array_unique(array_map(static fn($x)=>$x['anex_id'],$hits))); sort($ids,SORT_NUMERIC);
-              echo 'MATCH_PRICE_ORIGINAL_JSON:'.json_encode(['status'=>'completed','operation_id'=>HM_OPERATION,'target_hotel'=>HM_TARGET,'date'=>HM_DATE,'raw_rows'=>count($rows),'matching_rows'=>count($hits),'mappedtour_excluded'=>$mapped,'operator_namespace_excluded'=>$namespace,'original_hotel_keys'=>$ids,'rows'=>array_slice($hits,0,20),'database_writes'=>0,'mapping_writes'=>0,'provider_calls'=>['andromeda_login'=>1,'andromeda_price'=>1],'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
+              echo 'MATCH_PRICE_ORIGINAL_JSON:'.json_encode(['status'=>'completed','operation_id'=>HM_OPERATION,'target_hotel'=>HM_TARGET,'date_from'=>HM_FROM,'date_to'=>HM_TO,'request_context'=>$requestContext,'raw_rows'=>count($rows),'matching_rows'=>count($hits),'other_target_rows'=>$otherTarget,'mappedtour_excluded'=>$mapped,'operator_namespace_excluded'=>$namespace,'original_hotel_keys'=>$ids,'rows'=>array_slice($hits,0,30),'database_writes'=>0,'mapping_writes'=>0,'provider_calls'=>['andromeda_login'=>1,'andromeda_price'=>1],'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
           }catch(Throwable $e){ hm_fail('runtime',preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,120))?:'exception'); }
           PHP
-          sed -i "s/__DATE__/$SEARCH_DATE/g; s/__OP__/${FAMILY_ID}-${TARGET_HOTEL}-${SEARCH_DATE}/g" "$OUT/program.php"
+          sed -i "s/__FROM__/$DATE_FROM/g; s/__TO__/$DATE_TO/g; s/__OP__/${FAMILY_ID}-${TARGET_HOTEL}-${WINDOW}/g" "$OUT/program.php"
           php -l "$OUT/program.php"
       - name: Execute through existing server runtime
         env:
@@ -85,37 +104,41 @@ jobs:
           set -euo pipefail
           key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
           if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
-          chmod 600 "$key"
-          ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          chmod 600 "$key"; ok=0
+          for n in 1 2 3; do
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi
+            sleep 8
+          done
+          test "$ok" = 1
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"
           rc=$?
-          set -e
-          export RC="$rc"
+          set -e; export RC="$rc"
           python3 - <<'PY'
-          import json,os,pathlib
-          d=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_text(errors='replace'); vals=[x.split('MATCH_PRICE_ORIGINAL_JSON:',1)[1] for x in raw.splitlines() if x.startswith('MATCH_PRICE_ORIGINAL_JSON:')]
-          x=json.loads(vals[-1]) if len(vals)==1 else {'status':'unknown','reason':'result_marker_missing_or_ambiguous','database_writes':0,'mapping_writes':0,'no_replay':True}
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes(); vals=[x.split('MATCH_PRICE_ORIGINAL_JSON:',1)[1] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_PRICE_ORIGINAL_JSON:')]
+          x=json.loads(vals[-1]) if len(vals)==1 else {'status':'unknown','reason':'result_marker_missing_or_ambiguous','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True}
           x['remote_exit']=int(os.environ['RC']); (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
-          print(json.dumps({k:x.get(k) for k in ['status','target_hotel','date','matching_rows','original_hotel_keys','mappedtour_excluded','operator_namespace_excluded']},ensure_ascii=False))
+          print(json.dumps({k:x.get(k) for k in ['status','target_hotel','date_from','date_to','request_context','raw_rows','matching_rows','original_hotel_keys','mappedtour_excluded','operator_namespace_excluded']},ensure_ascii=False))
           if x.get('database_writes')!=0 or x.get('mapping_writes')!=0: raise SystemExit(3)
+          if int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
           PY
           ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true
           rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: price-original-${{ matrix.date }}-final-v2
+          name: price-original-v3-${{ matrix.window }}-final
           path: ${{ env.OUT }}/
           retention-days: 90
   aggregate:
-    if: always() && github.run_attempt == 1 && github.run_number == 2
+    if: always() && github.run_attempt == 1 && github.run_number == 3
     needs: canary
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: price-original-*-final-v2
+          pattern: price-original-v3-*-final
           path: /tmp/all
       - name: Aggregate direct original IDs
         run: |
@@ -126,8 +149,8 @@ jobs:
               try: xs.append(json.loads(p.read_text()))
               except Exception: pass
           ids=sorted({int(i) for x in xs if x.get('status')=='completed' for i in x.get('original_hotel_keys',[])})
-          out={'status':'completed' if xs else 'unknown','family_id':os.environ['FAMILY_ID'],'target_hotel':int(os.environ['TARGET_HOTEL']),'completed_slices':sum(x.get('status')=='completed' for x in xs),'slices_with_hit':sum(bool(x.get('original_hotel_keys')) for x in xs),'original_hotel_keys':ids,'conflict':len(ids)>1,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          out={'status':'completed' if xs else 'unknown','family_id':os.environ['FAMILY_ID'],'target_hotel':int(os.environ['TARGET_HOTEL']),'completed_slices':sum(x.get('status')=='completed' for x in xs),'slices_with_hit':sum(bool(x.get('original_hotel_keys')) for x in xs),'total_matching_rows':sum(int(x.get('matching_rows') or 0) for x in xs),'original_hotel_keys':ids,'conflict':len(ids)>1,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
           pathlib.Path('aggregate.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
-        with: {name: price-original-canary-v2-aggregate, path: aggregate.json, retention-days: 90}
+        with: {name: price-original-v3-aggregate, path: aggregate.json, retention-days: 90}
