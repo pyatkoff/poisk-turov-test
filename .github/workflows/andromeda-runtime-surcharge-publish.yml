@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Type publish-andromeda-surcharge-runtime-1717-v1"
+        description: "Type publish-andromeda-surcharge-runtime-1717-v2"
         required: true
         type: string
   issue_comment:
@@ -19,11 +19,11 @@ jobs:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
-      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-surcharge-runtime-1717-v1') ||
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-surcharge-runtime-1717-v2') ||
        (github.event_name == 'issue_comment' && github.event.action == 'created' &&
         github.event.issue.number == 996 && !github.event.issue.pull_request &&
         github.event.comment.user.id == 226193297 &&
-        github.event.comment.body == '/publish-andromeda-surcharge-runtime-1717-v1'))
+        github.event.comment.body == '/publish-andromeda-surcharge-runtime-1717-v2'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -32,16 +32,16 @@ jobs:
         with:
           script: |
             const owner = 226193297;
-            const command = '/publish-andromeda-surcharge-runtime-1717-v1';
+            const command = '/publish-andromeda-surcharge-runtime-1717-v2';
             const runtimeHead = 'b32993261eb8657004e7d4fd146b65a95264d4bc';
             const runtimeMerge = '716c8a41bc7f15a3bb1a032a7b5b88438a343100';
-            const publisherHead = '15b2a4012922c05095cf3688b8385cd7686171ea';
-            const publisherMerge = 'b94473c4201f89b5a4209e3590666e9e966d80c7';
+            const publisherHead = 'f44220bc8dd5d0a34c29b8a89c4ba73c9cf4acd7';
+            const publisherMerge = '59822613b2089974d243095ffcb503918c88e8d1';
             if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay an unknown publication; inspect its receipt.');
             if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
             if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
             if (context.eventName === 'workflow_dispatch') {
-              if (context.payload.inputs?.confirmation !== 'publish-andromeda-surcharge-runtime-1717-v1') throw new Error('Confirmation mismatch.');
+              if (context.payload.inputs?.confirmation !== 'publish-andromeda-surcharge-runtime-1717-v2') throw new Error('Confirmation mismatch.');
             } else if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
                        context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
                        context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) {
@@ -51,15 +51,15 @@ jobs:
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
             const {data: runtimePr} = await github.rest.pulls.get({...context.repo, pull_number: 2439});
             if (!runtimePr.merged || runtimePr.head.sha !== runtimeHead || runtimePr.merge_commit_sha !== runtimeMerge || runtimePr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Runtime PR provenance mismatch.');
-            const {data: publisherPr} = await github.rest.pulls.get({...context.repo, pull_number: 2440});
+            const {data: publisherPr} = await github.rest.pulls.get({...context.repo, pull_number: 2444});
             if (!publisherPr.merged || publisherPr.head.sha !== publisherHead || publisherPr.merge_commit_sha !== publisherMerge || publisherPr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Publisher PR provenance mismatch.');
             const gates = [
               [34870778284, runtimeHead],
               [34870778296, runtimeHead],
               [34870778282, runtimeHead],
               [34870778300, runtimeHead],
-              [34871701517, publisherHead],
-              [34871701544, publisherHead]
+              [34872843017, publisherHead],
+              [34872842955, publisherHead]
             ];
             for (const [run_id, sha] of gates) {
               const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
@@ -71,7 +71,7 @@ jobs:
                 artifact.digest !== 'sha256:2882cf8ae2da4145a4ea450624a1132b02fb4b7c0dd0de074f85fe35ee259220') throw new Error('Artifact identity/digest mismatch.');
       - uses: actions/checkout@v4
         with:
-          ref: b94473c4201f89b5a4209e3590666e9e966d80c7
+          ref: 59822613b2089974d243095ffcb503918c88e8d1
           path: publisher
           persist-credentials: false
       - uses: actions/checkout@v4
