@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One fresh broad Egypt half-board control in a known Tourvisor-positive inventory window."""
+"""One fresh broad Egypt solo control in a known Tourvisor-positive inventory window."""
 import json
 from pathlib import Path
 import re
@@ -7,10 +7,10 @@ import sys
 
 import anex_three_source_egypt_broad as egypt
 
-EXPERIMENT='anex_three_source_egypt_full_pages_20260914_v6'
+EXPERIMENT='anex_three_source_egypt_full_pages_20260914_v7'
 CASES=egypt.CASES
 SPEC={'experiment_id':EXPERIMENT,'country':'Egypt','date':'2026-12-07','nights':10,
-      'adults':2,'child_ages':[],'meal_family':'hb','currency':'RUB'}
+      'adults':1,'child_ages':[],'meal_family':'ai','currency':'RUB'}
 
 
 def _replace(text,old,new,minimum=1):
@@ -21,7 +21,7 @@ def _replace(text,old,new,minimum=1):
 
 
 def source():
-    """Use a known Tourvisor-positive date/stay with HB and walk all advertised Andromeda pages."""
+    """Use a known Tourvisor-positive date/stay with one adult and walk all advertised Andromeda pages."""
     text=egypt.source()
     text=_replace(text,egypt.EXPERIMENT,EXPERIMENT)
     text=_replace(text,'2026-11-03',SPEC['date'])
@@ -33,25 +33,13 @@ def source():
     text=_replace(text,"'nightsTo'=>8","'nightsTo'=>10")
     text=_replace(text,"'nights_from'=>8","'nights_from'=>10")
     text=_replace(text,"'nights_till'=>8","'nights_till'=>10")
-    text=_replace(text,"($value['meal_family'] ?? null) !== 'ai'","($value['meal_family'] ?? null) !== 'hb'")
-    old_meal=("function anex_three_price_meal($value): ?string\n"
-              "{\n"
-              "    $name = anex_three_price_norm($value);\n"
-              "    return in_array($name, ['ai','all','all inclusive','uai','ultra all inclusive','ai without alcohol',\n"
-              "        'все включено','ультра все включено','все включено без алкоголя'], true) ? 'ai' : null;\n"
-              "}")
-    new_meal=("function anex_three_price_meal($value): ?string\n"
-              "{\n"
-              "    $name = anex_three_price_norm($value);\n"
-              "    return in_array($name, ['hb','half board','полупансион'], true) ? 'hb' : null;\n"
-              "}")
-    text=_replace(text,old_meal,new_meal)
-    text=_replace(text,"$mealFamily !== 'ai'","$mealFamily !== 'hb'")
-    text=_replace(text,"'meal_family'=>'ai'","'meal_family'=>'hb'")
-    text=_replace(text,"'currency'=>'RUB','meal'=>7,'onlyCharter'=>false,'onlyDirect'=>false,'hotelIds'=>[]",
-                  "'currency'=>'RUB','meal'=>4,'onlyCharter'=>false,'onlyDirect'=>false,'hotelIds'=>[]")
-    text=_replace(text,"'three-price-egypt-broad-20260913-v1'","'three-price-egypt-half-board-20260914-v6'")
-    text=_replace(text,"'generation'=>26091306","'generation'=>26091405")
+    text=_replace(text,"($value['adults'] ?? null) !== 2","($value['adults'] ?? null) !== 1")
+    text=_replace(text,"(int)$adults !== 2","(int)$adults !== 1")
+    text=_replace(text,"'adults'=>2","'adults'=>1")
+    text=_replace(text,"'ADULT'=>2","'ADULT'=>1")
+    text=_replace(text,"$tour['adults']??2","$tour['adults']??1")
+    text=_replace(text,"'three-price-egypt-broad-20260913-v1'","'three-price-egypt-solo-20260914-v7'")
+    text=_replace(text,"'generation'=>26091306","'generation'=>26091407")
 
     single="$result=anytour_andromeda_search3_run($request,$pdo,$saved,$config,$session);$offers=[];"
     paged=("$offers=[];$receivedTotal=0;$mappedTotal=0;$pagesCount=1;$pagesLoaded=0;"
@@ -79,16 +67,15 @@ def source():
 
     leaks=(egypt.EXPERIMENT,'2026-11-03','20261103',"($value['nights'] ?? null) !== 8","(int)$nights !== 8",
            "'nights'=>8","'nightsFrom'=>8","'nightsTo'=>8","'nights_from'=>8","'nights_till'=>8",
-           "($value['meal_family'] ?? null) !== 'ai'","$mealFamily !== 'ai'","'meal_family'=>'ai'",
-           "'currency'=>'RUB','meal'=>7,'onlyCharter'=>false,'onlyDirect'=>false,'hotelIds'=>[]",
+           "($value['adults'] ?? null) !== 2","(int)$adults !== 2","'adults'=>2","'ADULT'=>2","$tour['adults']??2",
            "'three-price-egypt-broad-20260913-v1'","'generation'=>26091306",single)
     if any(value in text for value in leaks):
         raise ValueError('egypt_full_pages_old_scenario_leaked')
     required=(EXPERIMENT,"'Egypt'","'Египет'",SPEC['date'],'20261207',"'nightsFrom'=>10","'nightsTo'=>10",
-              "'nights_from'=>10","'nights_till'=>10","'adults'=>2","'ADULT'=>2","'children'=>0",
-              "'childs'=>[]","'CHILD'=>0","($value['meal_family'] ?? null) !== 'hb'","$mealFamily !== 'hb'",
-              "'meal_family'=>'hb'","['hb','half board','полупансион']","'meal'=>4","'hotelIds'=>[]",
-              "'three-price-egypt-half-board-20260914-v6'","'generation'=>26091405",
+              "'nights_from'=>10","'nights_till'=>10","'adults'=>1","'ADULT'=>1","'children'=>0",
+              "'childs'=>[]","'CHILD'=>0","($value['meal_family'] ?? null) !== 'ai'","$mealFamily !== 'ai'",
+              "'meal_family'=>'ai'","'meal'=>7","'hotelIds'=>[]",
+              "'three-price-egypt-solo-20260914-v7'","'generation'=>26091407",
               "for($pageNo=1;$pageNo<=$pagesCount&&$pageNo<=5;++$pageNo)","'pages_loaded'=>$pagesLoaded",
               "'page_context_missing'=>'PAGE_CONTEXT_MISSING'","'supplier_unavailable'=>'SUPPLIER_UNAVAILABLE'",
               "'THREE_PRICE_ANDROMEDA_PAGE_'.$pageNo.'_'.$pageCategory")
@@ -127,8 +114,8 @@ def validate_case(value,case_id):
             raise ValueError('egypt_full_pages_pagination_incomplete')
     for row in value['offers']:
         if not isinstance(row,dict) or row.get('provider')!=case_id or not isinstance(row.get('local_hotel_id'),int) or row['local_hotel_id']<1 \
-                or row.get('date')!=SPEC['date'] or row.get('nights')!=10 or row.get('adults')!=2 or row.get('children')!=0 \
-                or row.get('meal_family')!='hb' or row.get('currency')!='RUB' or row.get('fuel_inclusion_verified') is not False \
+                or row.get('date')!=SPEC['date'] or row.get('nights')!=10 or row.get('adults')!=1 or row.get('children')!=0 \
+                or row.get('meal_family')!='ai' or row.get('currency')!='RUB' or row.get('fuel_inclusion_verified') is not False \
                 or row.get('final_price_verified') is not False or not isinstance(row.get('price'),str) \
                 or not isinstance(row.get('room_norm'),str) or not isinstance(row.get('placement_norm'),str):
             raise ValueError('egypt_full_pages_offer_invalid')
@@ -155,7 +142,7 @@ def build_report(results,status,transport=None):
                                    'anex_unmapped_received':direct.get('unmapped_received'),'andromeda_received_offers':andromeda.get('received_offers'),
                                    'andromeda_mapped_offers':andromeda.get('mapped_offers'),'andromeda_pages_count':andromeda.get('pages_count'),
                                    'andromeda_pages_loaded':andromeda.get('pages_loaded')},
-            'p1_scope':'Egypt half-board coverage and display-money evidence in a previously Tourvisor-positive date/stay window',
+            'p1_scope':'Egypt solo-party coverage and display-money evidence in a previously Tourvisor-positive date/stay window',
             'anchor_policy':'current unique triple identity is checkpoint/current-context anchor only and is not sent as a hotel filter',
             'unmapped_evidence_policy':'observation evidence only; matching remains external #1759',
             'money_policy':'search price, Tourvisor fuelCharge, AdditionalPricesDaily, package and quote/final remain separate facts',
