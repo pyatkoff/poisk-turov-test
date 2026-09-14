@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/andromeda-claim-actions.php';
+require_once __DIR__ . '/andromeda-search-surcharge.php';
+require_once __DIR__ . '/andromeda-price-observation.php';
 
 /** Read-only selected-tour quote flow. This class has no booking operation. */
 final class AnyTourAndromedaSelectedQuote
@@ -22,12 +24,20 @@ final class AnyTourAndromedaSelectedQuote
         $packagePrice = self::touristPrice($package);
         $claim = $package;
         $selectedFlights = [];
+        $searchPriceEstimate = null;
 
         if ((int)($doc['freightExternal'] ?? 0) > 0) {
             $claim = $actions->getFlights($claim);
+            $estimate = AnyTourAndromedaSearchSurcharge::estimate($claim, $offer['price'] ?? []);
+            if (($estimate['state'] ?? null) === 'estimated'
+                && is_array($estimate['search_price_with_surcharge'] ?? null)) {
+                $searchPriceEstimate = $estimate['search_price_with_surcharge'];
+            }
             $choice = self::flightChoice($claim);
             if ($choice['state'] !== 'unambiguous') {
                 return self::base($resolved, $packagePrice) + [
+                    'search_price_estimate' => $searchPriceEstimate,
+                    'price_observation' => null,
                     'state' => 'flight_selection_required',
                     'quote_state' => 'unverified',
                     'final_price' => null,
@@ -57,8 +67,11 @@ final class AnyTourAndromedaSelectedQuote
         $finalPrice = self::touristPrice($calculated);
         if ($finalPrice === null) throw new RuntimeException('ANDROMEDA_FINAL_PRICE_MISSING');
         if (!$selectedFlights) $selectedFlights = self::selectedFlights($calculated);
+        $priceObservation = AnyTourAndromedaPriceObservation::build($searchPriceEstimate, $finalPrice);
 
         return self::base($resolved, $packagePrice) + [
+            'search_price_estimate' => $searchPriceEstimate,
+            'price_observation' => $priceObservation,
             'state' => 'quote_verified',
             'quote_state' => 'verified',
             'final_price' => $finalPrice,
