@@ -118,7 +118,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist__items{grid-template-columns:1fr;gap:12px;padding:0;overflow:visible}
 }
 @media(max-width:430px){
-& .search3-shortlist-item__actions :is(.search3-shortlist-select,.search3-shortlist-remove){padding-inline:8px;font-size:14px}
+& .search3-shortlist-item__actions :is(.search3-shortlist-select,.search3-shortlist-remove){padding-inline:6px;font-size:13px}
 }
 @media(min-width:760px) and (max-width:1024px){
 & .results-tools__actions{grid-template-columns:auto minmax(200px,240px) minmax(0,1fr)}
