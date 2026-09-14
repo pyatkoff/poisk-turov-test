@@ -587,7 +587,7 @@ async function run(browser, width, previous) {
       toolbarLayout.belowTablet = await checkToolbarLayout(page, 759, previous);
       await page.setViewportSize({ width, height: 1000 });
     }
-    if (!previous && [375, 720, 1024, 1440].includes(width)) {
+    if (!previous && [375, 390, 720, 1024, 1200, 1440].includes(width)) {
       await snapshot(page);
       await page.screenshot({ path: path.join(output, `primary-with-results-${width}.png`), fullPage: true });
       if (width === 1440) {
@@ -638,6 +638,10 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'keyboard edit action focuses the permanently available primary form');
     await checkPrimaryForm(page, 'keyboard edit', true);
     assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form).entries()]), parameters, 'editing preserves all current search parameters');
+    if (!previous && [375, 390, 720, 1200, 1440].includes(width)) {
+      await snapshot(page);
+      await page.screenshot({ path: path.join(output, `primary-editor-${width}.png`), fullPage: true });
+    }
     await page.evaluate(items => window.V2Results.render(items), hotels);
     await checkPrimaryForm(page, 'results rerender after edit', true);
     assert.equal(await page.locator('#results .hotel-card').first().getAttribute('data-hotel-id'), 'cheap', 'price sorting retained');
