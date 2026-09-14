@@ -17,6 +17,12 @@ money_check($tv['package_buyer_price']===null&&$tv['quote_price']===null);
 money_check($tv['search_price_fuel_relation']==='unknown');
 money_check($tv['final_price_verified']===false&&$tv['arithmetic_applied']===false);
 money_check(!array_key_exists('display_price',$tv)&&!array_key_exists('total_price',$tv));
+try {
+    AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($tv,2,0);
+    money_check(false);
+} catch (InvalidArgumentException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_SURCHARGE_CAPABILITY');
+}
 
 $anex=AnyTourThreeProviderMoneyFacts::fromSearch(
     'anex',
@@ -35,6 +41,25 @@ money_check($anex['additional_prices_reported'][0]['amount']==='31710');
 money_check($anex['additional_prices_reported'][1]['amount']==='0');
 money_check($anex['arithmetic_applied']===false);
 
+$anexParty=AnyTourThreeProviderMoneyFacts::fromSearch(
+    'anex',
+    ['amount'=>'100000','currency'=>'RUB','source'=>'anex_search'],
+    null,
+    [
+        ['kind'=>'fuel_adult','amount'=>'5000','currency'=>'RUB','source'=>'anex_additional'],
+        ['kind'=>'fuel_child','amount'=>'3000','currency'=>'RUB','source'=>'anex_additional'],
+    ]
+);
+$anexEstimate=AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($anexParty,2,1);
+money_check($anexEstimate['search_price_with_surcharge']['amount']==='113000');
+money_check($anexEstimate['search_price_with_surcharge']['currency']==='RUB');
+money_check($anexEstimate['search_price_with_surcharge']['source']==='derived_search_estimate');
+money_check($anexEstimate['search_price']===$anexParty['search_price']);
+money_check($anexEstimate['additional_prices_reported']===$anexParty['additional_prices_reported']);
+money_check($anexEstimate['final_price_verified']===false);
+money_check($anexEstimate['arithmetic_applied']===true);
+money_check($anexParty['arithmetic_applied']===false&&!array_key_exists('search_price_with_surcharge',$anexParty));
+
 $andromeda=AnyTourThreeProviderMoneyFacts::fromSearch(
     'andromeda',
     ['amount'=>'119114','currency'=>'RUB','source'=>'andromeda_search']
@@ -43,6 +68,63 @@ money_check($andromeda['fuel_charge_reported']===null);
 money_check($andromeda['package_buyer_price']===null);
 money_check($andromeda['quote_price']===null);
 money_check($andromeda['final_price_verified']===false);
+
+$andromedaSurcharge=AnyTourThreeProviderMoneyFacts::fromSearch(
+    'andromeda',
+    ['amount'=>'124864','currency'=>'RUB','source'=>'andromeda_search'],
+    null,
+    [['kind'=>'fuel_adult','amount'=>'5389.50','currency'=>'RUB','source'=>'andromeda_additional']]
+);
+$andromedaEstimate=AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromedaSurcharge,2,0);
+money_check($andromedaEstimate['search_price_with_surcharge']['amount']==='135643.00');
+money_check($andromedaEstimate['search_price']['amount']==='124864');
+money_check($andromedaEstimate['final_price_verified']===false&&$andromedaEstimate['arithmetic_applied']===true);
+
+try {
+    AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromeda,2,0);
+    money_check(false);
+} catch (DomainException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_SURCHARGE_UNKNOWN');
+}
+$missingChild=AnyTourThreeProviderMoneyFacts::fromSearch(
+    'anex',
+    ['amount'=>'100000','currency'=>'RUB','source'=>'anex_search'],
+    null,
+    [['kind'=>'fuel_adult','amount'=>'5000','currency'=>'RUB','source'=>'anex_additional']]
+);
+try {
+    AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($missingChild,2,1);
+    money_check(false);
+} catch (DomainException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_SURCHARGE_UNKNOWN');
+}
+$duplicateAdult=AnyTourThreeProviderMoneyFacts::fromSearch(
+    'anex',
+    ['amount'=>'100000','currency'=>'RUB','source'=>'anex_search'],
+    null,
+    [
+        ['kind'=>'fuel_adult','amount'=>'5000','currency'=>'RUB','source'=>'anex_additional'],
+        ['kind'=>'fuel_adult','amount'=>'6000','currency'=>'RUB','source'=>'anex_additional'],
+    ]
+);
+try {
+    AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($duplicateAdult,2,0);
+    money_check(false);
+} catch (DomainException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_SURCHARGE_UNKNOWN');
+}
+$wrongCurrency=AnyTourThreeProviderMoneyFacts::fromSearch(
+    'andromeda',
+    ['amount'=>'100000','currency'=>'RUB','source'=>'andromeda_search'],
+    null,
+    [['kind'=>'fuel_adult','amount'=>'50','currency'=>'USD','source'=>'andromeda_additional']]
+);
+try {
+    AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($wrongCurrency,2,0);
+    money_check(false);
+} catch (DomainException $e) {
+    money_check($e->getMessage()==='THREE_PROVIDER_SURCHARGE_UNKNOWN');
+}
 
 $quoted=AnyTourThreeProviderMoneyFacts::withVerifiedQuote(
     $andromeda,
@@ -140,7 +222,7 @@ $badCases=[
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('anex',['amount'=>'1','currency'=>'RUB','source'=>'anex_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'anex_additional_estimated']]),
     fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('tourvisor',['amount'=>'1','currency'=>'RUB','source'=>'tourvisor_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
-    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'andromeda_additional']]),
+    fn()=>AnyTourThreeProviderMoneyFacts::fromSearch('andromeda',['amount'=>'1','currency'=>'RUB','source'=>'andromeda_search'],null,[['kind'=>'fee','amount'=>'1','currency'=>'RUB','source'=>'tourvisor_additional']]),
 ];
 foreach($badCases as $case){try{$case();money_check(false);}catch(InvalidArgumentException $e){money_check(true);}}
 
@@ -148,4 +230,4 @@ $original=['amount'=>'150824','currency'=>'RUB','source'=>'tourvisor_search'];
 $copy=$original;AnyTourThreeProviderMoneyFacts::fromSearch('tourvisor',$original);
 money_check($original===$copy);
 
-echo 'Three-provider money facts: '.$checks." checks passed; arithmetic/supplier/DB=0.\n";
+echo 'Three-provider money facts: '.$checks." checks passed; supplier/DB=0.\n";
