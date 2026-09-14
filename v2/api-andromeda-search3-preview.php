@@ -209,7 +209,7 @@ function anytour_andromeda_search3_params(array $request, PDO $pdo, array $saved
     return $params;
 }
 
-function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[]): array {
+function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page, array $saved=[], array $retained=[]): array {
     // A retained local ID is evidence of an earlier mapping, not current authority.
     // Revalidate the whole page once; do not mutate its saved snapshot/observations.
     $current=anytour_andromeda_search3_current_mappings($pdo,(int)$request['params']['countryId'],$page['offers']);
@@ -218,9 +218,37 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         return is_int($offer['local_hotel_id']) && $offer['local_hotel_id']>0
             && ($current[$key]??null)===$offer['local_hotel_id'];
     }));
+    // Only the trusted saved-search owner supplies this private context. Never read
+    // paths from the HTTP request and never fetch missing surcharge facts here.
+    $readSurcharge=null;
+    if($retained && is_string($retained['directory']??null) && is_array($retained['store']??null)
+        && is_int($retained['created_at']??null)){
+        global $andromedaApp;
+        $reader=$andromedaApp.'/andromeda-saved-package-runtime.php';
+        if(is_file($reader) && !is_link($reader))require_once $reader;
+        if(function_exists('anytour_andromeda_read_saved_surcharge')){
+            $allows=static function(array $offer)use($current):bool{
+                $key=json_encode([$offer['supplier_namespace'],(string)$offer['external_hotel_id']]);
+                return ($current[$key]??null)===$offer['local_hotel_id'];
+            };
+            $readSurcharge=static function(array $offer)use($retained,$page,$allows):?array{
+                $context=['provider'=>'andromeda','search_ref'=>$page['search_ref'],
+                    'generation'=>$page['generation'],'page'=>$page['page'],'offer_ref'=>$offer['offer_ref']];
+                return anytour_andromeda_read_saved_surcharge($retained['directory'],$retained['store'],
+                    $retained['created_at'],$context,$allows,time());
+            };
+        }
+    }
     $converted=[];$ids=[];
-    foreach($offers as $offer){
+    foreach($offers as $index=>$offer){
         $id=$offer['local_hotel_id'];if(!$id || (isset($request['hotel_scope']) && $id!==$request['hotel_scope']['local_id']))continue;$ids[$id]=true;
+        $fact=$readSurcharge!==null?$readSurcharge($offer):null;
+        if($fact!==null && $fact['search_price']===['amount'=>(string)$offer['price']['amount'],'currency'=>$offer['price']['currency']]){
+            // Display copy only: the retained snapshot and selected DTO keep their
+            // original base price, so later calc comparison cannot add markup twice.
+            $offer['base_search_price']=$offer['price'];$offer['search_surcharge']=$fact;
+            $offer['price']=$fact['search_price_with_surcharge'];$offers[$index]=$offer;
+        }
         $converted[]=['hotel'=>['local_id'=>$id,'mapping_status'=>'resolved'],'price'=>$offer['price'],
             'checkin'=>$offer['check_in'],'nights'=>$offer['nights'],'adults'=>$offer['adults'],'children'=>$offer['children'],
             'meal'=>$offer['meal']['label'],'room'=>$offer['room'],'kind'=>'offer'];
@@ -243,6 +271,7 @@ function anytour_andromeda_search3_project(array $request, PDO $pdo, array $page
         $tour['provider']='andromeda';
         foreach($matches as $match)if(!isset($used[$match['offer_ref']])){
             $tour['operator']=$match['operator'];$tour['offer_ref']=$match['offer_ref'];
+            if(isset($match['search_surcharge'])){$tour['base_search_price']=$match['base_search_price'];$tour['search_surcharge']=$match['search_surcharge'];}
             $tour['offer_context']=['provider'=>'andromeda','search_ref'=>$page['search_ref'],'generation'=>$page['generation'],'page'=>$page['page'],'offer_ref'=>$match['offer_ref']];
             if(isset($request['hotel_scope']))$tour['offer_context']['hotel_scope']=$request['hotel_scope'];
             if(!isset($hotel['andromeda_content'])||empty($hotel['andromeda_content']['image_url']))$hotel['andromeda_content']=$match['hotel_content']??null;$used[$match['offer_ref']]=true;break;
@@ -321,7 +350,8 @@ function anytour_andromeda_search3_cached_hotel_offers(array $request,PDO $pdo,a
         $hotel=null;$seen=[];$received=0;$mapped=0;
         foreach($states as $state){
             $copy=$state;$handler=new AnyTourAndromedaSearch($copy,static fn($next)=>false,true,true);
-            $page=$handler->resume($ref,$seed['generation'],$now);$projected=anytour_andromeda_search3_project($seedRequest,$pdo,$page,$saved);
+            $page=$handler->resume($ref,$seed['generation'],$now);$projected=anytour_andromeda_search3_project($seedRequest,$pdo,$page,$saved,
+                ['directory'=>$directory,'store'=>$state['store'],'created_at'=>$created]);
             $received+=(int)($projected['received_offers']??0);$mapped+=(int)($projected['mapped_offers']??0);
             foreach($projected['hotels'] as $row)if(($row['local_id']??null)===$scope['local_id']){
                 if($hotel===null){$hotel=$row;$hotel['tours']=[];}
@@ -398,7 +428,8 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
             AnyTourAndromedaHotelObservations::record($pdo,$page,$observationCountry);
         }
         catch(Throwable $ignored) {}
-        return anytour_andromeda_search3_project($request,$pdo,$page,$saved);
+        return anytour_andromeda_search3_project($request,$pdo,$page,$saved,
+            ['directory'=>$directory,'store'=>$state['store'],'created_at'=>$number===1?$state['store']['created_at']:$first['store']['created_at']]);
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
 
