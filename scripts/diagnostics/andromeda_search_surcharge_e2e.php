@@ -75,13 +75,21 @@ function anytour_andromeda_surcharge_e2e_verify_quote(array $listedTour, array $
     $reference = $listedTour['listing_price_ref'] ?? null;
     $observation = $quote['served_price_observation'] ?? null;
     $priceBasis = isset($listedTour['search_surcharge']) ? 'transport_surcharge_estimate' : 'search_base';
+    // The listing carries provenance; the server receipt intentionally carries money only.
+    $servedMoney = $listedTour['price'] ?? null;
+    if (is_array($servedMoney) && array_key_exists('source', $servedMoney)) {
+        if ($priceBasis !== 'transport_surcharge_estimate' || $servedMoney['source'] !== 'derived_search_estimate') {
+            throw new RuntimeException('served_quote_observation_invalid');
+        }
+        unset($servedMoney['source']);
+    }
     if (!is_string($reference) || !preg_match('/^listing_[a-f0-9]{64}$/D', $reference)
         || ($quote['state'] ?? null) !== 'quote_verified' || ($quote['final_price_verified'] ?? null) !== true
         || !is_array($quote['final_price'] ?? null) || !is_array($observation)
         || ($observation['schema_version'] ?? null) !== 1 || ($observation['provider'] ?? null) !== 'andromeda'
         || ($observation['basis'] ?? null) !== 'search_api_response' || ($observation['state'] ?? null) !== 'comparable'
         || ($observation['price_basis'] ?? null) !== $priceBasis
-        || ($observation['served_price'] ?? null) !== ($listedTour['price'] ?? null)
+        || ($observation['served_price'] ?? null) !== $servedMoney
         || ($observation['final_price'] ?? null) !== $quote['final_price']
         || ($observation['final_price_verified'] ?? null) !== true
         || !is_string($observation['signed_delta_amount'] ?? null)
@@ -335,5 +343,7 @@ if (!defined('ANYTOUR_ANDROMEDA_SURCHARGE_E2E_TEST_MODE')) {
     $result = anytour_andromeda_surcharge_e2e_run((string)getcwd());
     while (ob_get_level()) ob_end_clean();
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
-    exit(($result['status'] ?? null) === 'complete' ? 0 : 1);
+    // ssh_php discards nonzero-exit output. Preserve application failure JSON;
+    // the owner-controlled caller must validate status and fail AFTER saving it.
+    exit(0);
 }
