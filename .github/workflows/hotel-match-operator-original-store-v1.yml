@@ -1,19 +1,19 @@
-name: MATCH operator original CURRENT store v1
+name: MATCH operator original CURRENT store v2
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-original-store-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-operator-original-store-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-operator-original-store-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-operator-original-store-1971-20260915-v1
+  OPERATION_ID: hotel-match-operator-original-store-1971-20260915-v2
   INPUT_RUN_ID: '34900396467'
   INPUT_ARTIFACT_ID: '10371125528'
   INPUT_ZIP_SHA256: 886eb380318fbf7699a49541662544bf5ae9624a865247a77a8a46bda88e1431
   INPUT_RESULT_SHA256: f379062abd43c36e6feb792f8e0313466ddd579a1959cfe814e90b863a43968e
 jobs:
   store:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           php -l scripts/diagnostics/hotel_match_operator_original_store.php
           php tests/hotel_match_operator_original_test.php
-          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_store.php)" = 778c9039cced7f9f9264ca4199cc020968c8650b
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_store.php)" = 3c58ea618fc1a6abf353742b5aaaa2765f4247a1
           out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
           python3 - <<'PY'
           import hashlib,io,json,os,pathlib,subprocess,zipfile
@@ -45,7 +45,7 @@ jobs:
           assert len({(str(x['operator_key']),str(x['native_hotel_id']).lower()) for x in doc['facts']})==813
           out.joinpath('input.json').write_bytes(raw)
           PY
-          php -r 'define("MOS_LIBRARY_ONLY",true);require "scripts/diagnostics/hotel_match_operator_original_store.php";$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/".getenv("OPERATION_ID")."/input.json"),true,64,JSON_THROW_ON_ERROR);$g=mos_groups($x);if(count($g)!==813)throw new RuntimeException("group_count");$c=[];foreach($g as $r)$c[$r["operator_key"]]=($c[$r["operator_key"]]??0)+1;ksort($c);if($c!==["115"=>3,"315"=>300,"342"=>252,"5"=>258])throw new RuntimeException("operator_split");echo "sealed input 813 groups PASS\n";'
+          php -r 'define("MOS_LIBRARY_ONLY",true);require "scripts/diagnostics/hotel_match_operator_original_store.php";$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/".getenv("OPERATION_ID")."/input.json"),true,64,JSON_THROW_ON_ERROR);$g=mos_groups($x);if(count($g)!==813)throw new RuntimeException("group_count");$c=[];foreach($g as $r)$c[(string)$r["operator_key"]]=($c[(string)$r["operator_key"]]??0)+1;if(($c["5"]??0)!==258||($c["115"]??0)!==3||($c["315"]??0)!==300||($c["342"]??0)!==252||count($c)!==4)throw new RuntimeException("operator_split");echo "sealed input 813 groups PASS\n";'
           ! grep -Eiq '\b(UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_operator_original_store.php
           ! grep -Eiq '(gateway\.samo|api\.anextour|tourvisor|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_operator_original_store.php
       - name: Reserve exact store operation before SSH or DB
@@ -61,8 +61,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-operator-original-store-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v1/reservation.json
+          name: match-operator-original-store-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Server-CURRENT guarded append and post-COMMIT readback
@@ -90,13 +90,10 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
-          if not s.joinpath('result.json').exists():
-              raise SystemExit('NO_RESULT_READBACK')
-          raw=s.joinpath('result.json').read_bytes(); result=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()) if s.joinpath('receipt.json').exists() else {}
-          digest=hashlib.sha256(raw).hexdigest()
+          if not s.joinpath('result.json').exists(): raise SystemExit('NO_RESULT_READBACK')
+          raw=s.joinpath('result.json').read_bytes(); result=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()) if s.joinpath('receipt.json').exists() else {}; digest=hashlib.sha256(raw).hexdigest()
           ok=(receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True and result.get('state')=='completed_committed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and result.get('source_result_sha256')==os.environ['INPUT_RESULT_SHA256'] and result.get('source_pairs')==813 and result.get('native_groups')==813 and result.get('supplier_calls')==0 and int(os.environ['REMOTE_RC'])==0)
-          if ok:
-              ok=(len(result.get('post_commit_readback') or [])==result.get('native_rows_written')==receipt.get('post_commit_native_rows') and len(result.get('anex_post_commit_readback') or [])==result.get('anex_mappings_written')==receipt.get('post_commit_anex_rows') and result.get('native_rows_written',0)+len(result.get('holds') or [])==813)
+          if ok: ok=(len(result.get('post_commit_readback') or [])==result.get('native_rows_written')==receipt.get('post_commit_native_rows') and len(result.get('anex_post_commit_readback') or [])==result.get('anex_mappings_written')==receipt.get('post_commit_anex_rows') and result.get('native_rows_written',0)+len(result.get('holds') or [])==813)
           gate={'operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['REMOTE_RC']),'verified':ok,'state':result.get('state'),'native_groups':result.get('native_groups'),'native_rows_written':result.get('native_rows_written'),'anex_mappings_written':result.get('anex_mappings_written'),'by_operator':result.get('by_operator'),'holds':len(result.get('holds') or []),'coverage_before':result.get('coverage_before'),'coverage_after':result.get('coverage_after'),'result_sha256':digest,'no_replay':True}
           root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
           if not ok: raise SystemExit(5)
@@ -104,7 +101,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-operator-original-store-v1-result
-          path: ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v1/
+          name: match-operator-original-store-v2-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v2/
           if-no-files-found: warn
           retention-days: 90
