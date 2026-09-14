@@ -52,7 +52,7 @@ jobs:
           php change/tests/andromeda-canonical-transport-smoke.php runtime
           php change/tests/andromeda-filter-request-smoke.php runtime
           php change/tests/andromeda-detail-selection-smoke.php runtime
-          php change/tests/andromeda-cached-hotel-offers-smoke.php runtime "$RUNNER_TEMP/andromeda-cached-hotel-offers"
+          php change/tests/andromeda-cached-hotel-offers-smoke.php change "$RUNNER_TEMP/andromeda-cached-hotel-offers"
           node change/tests/andromeda-public-projection-contract.cjs runtime shared/v2/andromeda-provider-v1.js accepted
           php change/tests/andromeda-live-search-smoke.php runtime
       - name: Preserve the checked API and selection module candidate
