@@ -1,0 +1,56 @@
+name: MATCH ANEX rendered media dual-id v4
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-rendered-media-dual-id-v4.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-rendered-media-dual-id-1971-v4, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-rendered-media-dual-id-1971-20260914-v4
+  SOURCE_RUN_ID: '34837373180'
+  SOURCE_ARTIFACT: match-live-anex-public-evidence-v1-result
+jobs:
+  rendered:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable rendered-page operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_browser","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" >"$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-rendered-media-dual-id-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-rendered-media-dual-id-1971-20260914-v4/reservation.json
+          retention-days: 90
+      - name: Download live ANEX evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/evidence.json"
+      - name: Render ordinary ANEX hotel pages and capture media URLs
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+          node scripts/diagnostics/anex_rendered_media_dual_id_probe.mjs "$RUNNER_TEMP/source/evidence.json" "$STATE/result.json" | tee "$STATE/summary.log"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          s=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];x=json.loads((s/'result.json').read_text())
+          if x.get('status')!='completed' or x.get('database_writes')!=0 or x.get('mapping_writes')!=0: raise SystemExit('render_contract')
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'source_seed_count':x['source_seed_count'],'direct_pair_count':x['direct_pair_count'],'unique_anex_with_pair':x['unique_anex_with_pair'],'unique_samo_with_pair':x['unique_samo_with_pair'],'conflicts':x['conflicts'],'result_sha256':hashlib.sha256((s/'result.json').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True}; (s/'receipt.json').write_text(json.dumps(r,sort_keys=True)+'\n');print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-rendered-media-dual-id-v4-result
+          path: ${{ runner.temp }}/hotel-match-anex-rendered-media-dual-id-1971-20260914-v4/
+          retention-days: 90
