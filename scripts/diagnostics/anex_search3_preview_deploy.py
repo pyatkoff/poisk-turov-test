@@ -45,6 +45,9 @@ HTACCESS = '''Options -Indexes
 <Files "api-anex-search3-preview.php">
   Require all granted
 </Files>
+<Files "api-andromeda-search3-preview.php">
+  Require all granted
+</Files>
 '''
 
 
@@ -101,9 +104,10 @@ def build_payload(repo: Path, payload: Path, source_sha: str) -> dict:
         encoding="utf-8")
     # PHP includes remain readable by the interpreter, never routable directly.
     (payload / "app" / ".htaccess").write_text("Require all denied\n", encoding="utf-8")
-    required = ("poisk-turov/index.php", "api-anex-search3-preview.php",
+    required = ("poisk-turov/index.php", "api-anex-search3-preview.php", "api-andromeda-search3-preview.php",
                 "anex-search3-preview-v1.js", "preview-lead-disabled.php",
-                "app/integrations/anex-search-mapping-registry.php")
+                "app/integrations/anex-search-mapping-registry.php",
+                "app/integrations/anex-additional-prices-client.php")
     if any(not (payload / name).is_file() for name in required):
         raise ValueError("preview runtime dependency is missing")
     files = [{"path": path.relative_to(payload).as_posix(),
@@ -195,6 +199,8 @@ if ! mv "$stage" "$target"; then
   exit 1
 fi
 test -f "$target/api-anex-search3-preview.php"
+test -f "$target/api-andromeda-search3-preview.php"
+test -f "$target/app/integrations/anex-additional-prices-client.php"
 printf '%s\\n' 'ANEX_PREVIEW_DEPLOYED'
 '''
 
