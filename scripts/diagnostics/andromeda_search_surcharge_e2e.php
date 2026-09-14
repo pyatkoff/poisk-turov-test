@@ -1,20 +1,21 @@
 <?php
 declare(strict_types=1);
 
-/** One immutable P0 proof: retained PRICE -> selected offer -> saved surcharge -> retained list. */
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v1-egypt-2026-12-10-2a';
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = 'b32993261eb8657004e7d4fd146b65a95264d4bc';
+/** One immutable P0/P1 proof: retained PRICE -> saved surcharge -> served response -> verified quote. */
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '64706822fc54f4d4423ea6bbd0ad966144151387';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_MIN_HEADROOM = 100;
 
 function anytour_andromeda_surcharge_e2e_request(): array
 {
     return [
-        'generation' => 17171210,
+        'generation' => 17171215,
         'page' => 1,
         'params' => [
             'countryId' => '1', 'departureId' => '1',
-            'dateFrom' => '2026-12-10', 'dateTo' => '2026-12-10',
-            'nightsFrom' => 10, 'nightsTo' => 10, 'adults' => 2, 'childs' => [],
-            'meal' => '7', 'hotelCategory' => '', 'hotelIds' => [], 'regionIds' => [],
+            'dateFrom' => '2026-12-15', 'dateTo' => '2026-12-15',
+            'nightsFrom' => 7, 'nightsTo' => 7, 'adults' => 2, 'childs' => [8],
+            'meal' => '', 'hotelCategory' => '', 'hotelIds' => [], 'regionIds' => [],
             'subregionIds' => [], 'operatorIds' => [], 'currency' => 'RUB',
         ],
         'andromeda_operator_ids' => ['5'],
@@ -63,9 +64,80 @@ function anytour_andromeda_surcharge_e2e_verify(array $before, array $after): ar
     return [
         'base' => ['amount' => $base['amount'], 'currency' => $base['currency']],
         'surcharge' => ['amount' => $fact['party_surcharge']['amount'], 'currency' => $fact['party_surcharge']['currency']],
-        'display_estimate' => ['amount' => $display['amount'], 'currency' => $display['currency']],
+        'served_price' => ['amount' => $display['amount'], 'currency' => $display['currency']],
+        'price_basis' => 'transport_surcharge_estimate',
         'arithmetic_applied' => true, 'final_price_verified' => false,
     ];
+}
+
+function anytour_andromeda_surcharge_e2e_verify_quote(array $listedTour, array $quote): array
+{
+    $reference = $listedTour['listing_price_ref'] ?? null;
+    $observation = $quote['served_price_observation'] ?? null;
+    $priceBasis = isset($listedTour['search_surcharge']) ? 'transport_surcharge_estimate' : 'search_base';
+    if (!is_string($reference) || !preg_match('/^listing_[a-f0-9]{64}$/D', $reference)
+        || ($quote['state'] ?? null) !== 'quote_verified' || ($quote['final_price_verified'] ?? null) !== true
+        || !is_array($quote['final_price'] ?? null) || !is_array($observation)
+        || ($observation['schema_version'] ?? null) !== 1 || ($observation['provider'] ?? null) !== 'andromeda'
+        || ($observation['basis'] ?? null) !== 'search_api_response' || ($observation['state'] ?? null) !== 'comparable'
+        || ($observation['price_basis'] ?? null) !== $priceBasis
+        || ($observation['served_price'] ?? null) !== ($listedTour['price'] ?? null)
+        || ($observation['final_price'] ?? null) !== $quote['final_price']
+        || ($observation['final_price_verified'] ?? null) !== true
+        || !is_string($observation['signed_delta_amount'] ?? null)
+        || !is_string($observation['absolute_delta_amount'] ?? null)
+        || !is_int($observation['relative_delta_bps'] ?? null) || $observation['relative_delta_bps'] < 0) {
+        throw new RuntimeException('served_quote_observation_invalid');
+    }
+    return [
+        'listing_price_ref_sha256' => hash('sha256', $reference),
+        'price_basis' => $priceBasis,
+        'served_price' => $observation['served_price'],
+        'final_price' => $observation['final_price'],
+        'signed_delta_amount' => $observation['signed_delta_amount'],
+        'absolute_delta_amount' => $observation['absolute_delta_amount'],
+        'relative_delta_bps' => $observation['relative_delta_bps'],
+        'final_price_verified' => true,
+    ];
+}
+
+/** Integration counter evidence only; concurrent consumers mean its delta is not exact operation billing. */
+function anytour_andromeda_surcharge_e2e_counter(string $directory): array
+{
+    $path = $directory . '/monthly-requests.json';
+    $month = gmdate('Y-m');
+    if (!file_exists($path)) {
+        return ['month' => $month, 'reserved_requests' => 0, 'monthly_limit' => 5000000,
+            'remaining' => 5000000, 'scope' => 'this_integration'];
+    }
+    if (!is_file($path) || is_link($path) || filesize($path) > 4096) throw new RuntimeException('monthly_counter_invalid');
+    $state = json_decode((string)file_get_contents($path), true, 8, JSON_THROW_ON_ERROR);
+    if (!is_array($state)) throw new RuntimeException('monthly_counter_invalid');
+    if (($state['month'] ?? null) !== $month) {
+        return ['month' => $month, 'reserved_requests' => 0, 'monthly_limit' => 5000000,
+            'remaining' => 5000000, 'scope' => 'this_integration'];
+    }
+    $reserved = $state['reserved_requests'] ?? null;
+    $limit = $state['monthly_limit'] ?? null;
+    if (!is_int($reserved) || $reserved < 0 || !is_int($limit) || $limit !== 5000000
+        || ($state['scope'] ?? null) !== 'this_integration' || $reserved > $limit) {
+        throw new RuntimeException('monthly_counter_invalid');
+    }
+    return ['month' => $month, 'reserved_requests' => $reserved, 'monthly_limit' => $limit,
+        'remaining' => $limit - $reserved, 'scope' => 'this_integration'];
+}
+
+function anytour_andromeda_surcharge_e2e_listing_receipts(): array
+{
+    if (session_status() !== PHP_SESSION_NONE || session_id() === '') throw new RuntimeException('listing_session_invalid');
+    if (!session_start()) throw new RuntimeException('listing_session_invalid');
+    try {
+        $receipts = $_SESSION['andromeda_listing_prices_v1'] ?? [];
+        if (!is_array($receipts)) throw new RuntimeException('listing_session_invalid');
+        return $receipts;
+    } finally {
+        if (!session_write_close()) throw new RuntimeException('listing_session_invalid');
+    }
 }
 
 function anytour_andromeda_surcharge_e2e_durable(string $path, array $value): void
@@ -91,8 +163,10 @@ function anytour_andromeda_surcharge_e2e_reason(Throwable $error): string
 function anytour_andromeda_surcharge_e2e_run(string $root): array
 {
     $lock = null; $pdo = null; $readOnly = false; $reserved = false; $operationDir = null;
+    $phase = 'preflight'; $quoteStarted = false; $private = '';
     $result = ['status' => 'blocked', 'operation' => ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION,
-        'supplier_scenario' => 1, 'mapping_writes' => 0, 'booking_calls' => 0, 'calc_calls' => 0];
+        'supplier_scenario' => 1, 'mapping_writes' => 0, 'booking_calls' => 0, 'calc_calls' => 0,
+        'phase' => $phase];
     try {
         if (PHP_SAPI !== 'cli' || $root === '' || basename($root) !== 'anytoour.ru' || realpath($root) !== $root) {
             throw new RuntimeException('project_invalid');
@@ -108,10 +182,11 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
         if (!$lock || !flock($lock, LOCK_SH | LOCK_NB)) throw new RuntimeException('publication_busy');
 
         global $andromedaApp;
-        require_once $target . '/api-andromeda-search3-preview.php';
+        require_once $target . '/api-andromeda-quote-preview.php';
         require_once $target . '/app/integrations/andromeda-saved-package-runtime.php';
         foreach (['anytour_andromeda_search3_run', 'anytour_andromeda_search3_detail',
-            'anytour_andromeda_capture_selected_package', 'anytour_andromeda_read_saved_surcharge'] as $function) {
+            'anytour_andromeda_search3_record_response', 'anytour_andromeda_capture_selected_package',
+            'anytour_andromeda_quote_run'] as $function) {
             if (!function_exists($function)) throw new RuntimeException('runtime_not_installed');
         }
         $dbPath = $root . (is_file($root . '/data/db-v1.php') ? '/data/db-v1.php' : '/v2/data/db-v1.php');
@@ -123,6 +198,12 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
         $config = require $configPath;
         if (!is_array($config) || ($config['enabled'] ?? null) !== true) throw new RuntimeException('private_runtime_missing');
 
+        $counterBefore = anytour_andromeda_surcharge_e2e_counter($private);
+        $result['supplier_counter_before'] = $counterBefore;
+        if ($counterBefore['remaining'] < ANYTOUR_ANDROMEDA_SURCHARGE_E2E_MIN_HEADROOM) {
+            throw new OverflowException('monthly_quota_headroom');
+        }
+
         $operationDir = $private . '/' . ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION;
         if (file_exists($operationDir) || is_link($operationDir)) throw new RuntimeException('operation_exists_no_replay');
         if (!mkdir($operationDir, 0700)) throw new RuntimeException('reservation_failed');
@@ -131,17 +212,25 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
             'operation' => ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION,
             'runtime_source' => ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE,
             'scenario_sha256' => hash('sha256', json_encode($request, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)),
+            'minimum_counter_headroom' => ANYTOUR_ANDROMEDA_SURCHARGE_E2E_MIN_HEADROOM,
             'created_at' => time(),
         ]);
-        $reserved = true;
+        $reserved = true; $phase = 'reserved'; $result['phase'] = $phase;
 
         $pdo = v2_data_db();
         if (!$pdo instanceof PDO) throw new RuntimeException('database_missing');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->exec('START TRANSACTION READ ONLY'); $readOnly = true;
         $catalog = anytour_andromeda_search3_catalog($config, $request);
-        $session = hash('sha256', ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION . '|session');
 
+        session_name('ANYTOUR_ANDROMEDA_SEARCH3');
+        ini_set('session.use_strict_mode', '1'); ini_set('session.use_only_cookies', '1');
+        if (!session_start()) throw new RuntimeException('listing_session_invalid');
+        $session = session_id();
+        $_SESSION = [];
+        if (!session_write_close() || $session === '') throw new RuntimeException('listing_session_invalid');
+
+        $phase = 'search'; $result['phase'] = $phase;
         $beforeProjection = anytour_andromeda_search3_run($request, $pdo, $catalog, $config, $session);
         $picked = anytour_andromeda_surcharge_e2e_pick($beforeProjection); $beforeTour = $picked['tour'];
         $detailRequest = $request; $detailRequest['offer_context'] = $beforeTour['offer_context'];
@@ -150,42 +239,87 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
         if (!is_array($selection) || ($selection['provider'] ?? null) !== 'andromeda'
             || ($selection['local_id'] ?? null) !== $picked['local_id']) throw new RuntimeException('selected_offer_invalid');
 
+        $phase = 'surcharge_capture'; $result['phase'] = $phase;
         $capture = anytour_andromeda_capture_selected_package($config, $catalog, $selection, $pdo,
             ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE, true, null, null, true);
-        if (($capture['status'] ?? null) !== 'captured' || !is_array($capture['surcharge'] ?? null)) {
+        $surchargeStatus = $capture['surcharge']['status'] ?? null;
+        if (($capture['status'] ?? null) !== 'captured' || !is_array($capture['surcharge'] ?? null)
+            || !in_array($surchargeStatus, ['complete', 'unavailable'], true)) {
             throw new RuntimeException('surcharge_capture_invalid');
         }
-        if (($capture['surcharge']['status'] ?? null) !== 'complete' || !is_array($capture['surcharge']['fact'] ?? null)) {
-            $result = array_replace($result, [
-                'status' => 'complete', 'outcome' => 'surcharge_unavailable',
-                'received_offers' => (int)($beforeProjection['received_offers'] ?? 0),
-                'mapped_offers' => (int)($beforeProjection['mapped_offers'] ?? 0),
-                'local_hotel_id' => $picked['local_id'],
-                'package_reused' => (bool)($capture['reused'] ?? false),
-                'surcharge_reused' => (bool)($capture['surcharge']['reused'] ?? false),
-            ]);
+
+        $phase = 'retained_listing'; $result['phase'] = $phase;
+        $afterProjection = anytour_andromeda_search3_run($request, $pdo, $catalog, $config, $session);
+        $afterTour = anytour_andromeda_surcharge_e2e_find($afterProjection, (string)$beforeTour['offer_ref']);
+        if ($surchargeStatus === 'complete') {
+            $listingMoney = anytour_andromeda_surcharge_e2e_verify($beforeTour, $afterTour);
         } else {
-            $afterProjection = anytour_andromeda_search3_run($request, $pdo, $catalog, $config, $session);
-            $afterTour = anytour_andromeda_surcharge_e2e_find($afterProjection, (string)$beforeTour['offer_ref']);
-            $money = anytour_andromeda_surcharge_e2e_verify($beforeTour, $afterTour);
-            $result = array_replace($result, [
-                'status' => 'complete', 'outcome' => 'listing_estimate_applied',
-                'received_offers' => (int)($beforeProjection['received_offers'] ?? 0),
-                'mapped_offers' => (int)($beforeProjection['mapped_offers'] ?? 0),
-                'local_hotel_id' => $picked['local_id'],
-                'offer_ref_sha256' => hash('sha256', (string)$beforeTour['offer_ref']),
-                'package_reused' => (bool)($capture['reused'] ?? false),
-                'surcharge_reused' => (bool)($capture['surcharge']['reused'] ?? false),
-                'retained_reprojection' => true, 'money' => $money,
-            ]);
+            if (($afterTour['price'] ?? null) !== ($beforeTour['price'] ?? null) || isset($afterTour['search_surcharge'])) {
+                throw new RuntimeException('unavailable_surcharge_changed_listing');
+            }
+            $listingMoney = ['base' => $beforeTour['price'], 'surcharge' => null,
+                'served_price' => $afterTour['price'], 'price_basis' => 'search_base',
+                'arithmetic_applied' => false, 'final_price_verified' => false];
         }
+
+        $phase = 'listing_recorded'; $result['phase'] = $phase;
+        $recordedProjection = anytour_andromeda_search3_record_response($afterProjection);
+        $listedTour = anytour_andromeda_surcharge_e2e_find($recordedProjection, (string)$beforeTour['offer_ref']);
+        $listingRef = $listedTour['listing_price_ref'] ?? null;
+        if (!is_string($listingRef) || !preg_match('/^listing_[a-f0-9]{64}$/D', $listingRef)) {
+            throw new RuntimeException('listing_price_ref_missing');
+        }
+        $listingPrices = anytour_andromeda_surcharge_e2e_listing_receipts();
+        if (!isset($listingPrices[$listingRef])) throw new RuntimeException('listing_price_receipt_missing');
+
+        $quoteRequest = $request;
+        $quoteRequest['action'] = 'quote';
+        $quoteRequest['offer_context'] = $listedTour['offer_context'];
+        $quoteRequest['listing_price_ref'] = $listingRef;
+        $phase = 'quote'; $result['phase'] = $phase; $quoteStarted = true;
+        $quote = anytour_andromeda_quote_run($quoteRequest, $pdo, $catalog, $config, $session, $listingPrices);
+        $quoteEvidence = anytour_andromeda_surcharge_e2e_verify_quote($listedTour, $quote);
+        $result['calc_calls'] = 1;
+
+        $counterAfter = anytour_andromeda_surcharge_e2e_counter($private);
+        $counterDelta = $counterAfter['month'] === $counterBefore['month']
+            ? max(0, $counterAfter['reserved_requests'] - $counterBefore['reserved_requests']) : null;
+        $phase = 'complete';
+        $result = array_replace($result, [
+            'status' => 'complete', 'outcome' => 'served_quote_compared', 'phase' => $phase,
+            'received_offers' => (int)($beforeProjection['received_offers'] ?? 0),
+            'mapped_offers' => (int)($beforeProjection['mapped_offers'] ?? 0),
+            'local_hotel_id' => $picked['local_id'],
+            'offer_ref_sha256' => hash('sha256', (string)$beforeTour['offer_ref']),
+            'package_reused' => (bool)($capture['reused'] ?? false),
+            'surcharge_status' => $surchargeStatus,
+            'surcharge_reused' => (bool)($capture['surcharge']['reused'] ?? false),
+            'retained_reprojection' => true,
+            'listing_money' => $listingMoney,
+            'quote_observation' => $quoteEvidence,
+            'supplier_counter_after' => $counterAfter,
+            'supplier_counter_delta' => $counterDelta,
+            'supplier_counter_delta_is_exact_operation_billing' => false,
+        ]);
         $pdo->rollBack(); $readOnly = false;
         anytour_andromeda_surcharge_e2e_durable($operationDir . '/result.json', $result);
         return $result;
     } catch (Throwable $error) {
         if ($readOnly && $pdo instanceof PDO && $pdo->inTransaction()) { try { $pdo->rollBack(); } catch (Throwable $ignored) {} }
         $result['status'] = $reserved ? 'unknown' : 'blocked';
+        $result['phase'] = $phase;
         $result['reason'] = anytour_andromeda_surcharge_e2e_reason($error);
+        if ($quoteStarted && ($result['calc_calls'] ?? 0) === 0) $result['calc_calls'] = null;
+        if ($private !== '') {
+            try {
+                $after = anytour_andromeda_surcharge_e2e_counter($private);
+                $result['supplier_counter_after'] = $after;
+                $before = $result['supplier_counter_before'] ?? null;
+                $result['supplier_counter_delta'] = is_array($before) && $after['month'] === ($before['month'] ?? null)
+                    ? max(0, $after['reserved_requests'] - $before['reserved_requests']) : null;
+                $result['supplier_counter_delta_is_exact_operation_billing'] = false;
+            } catch (Throwable $ignored) {}
+        }
         if ($reserved && is_string($operationDir) && is_dir($operationDir) && !file_exists($operationDir . '/result.json')) {
             try { anytour_andromeda_surcharge_e2e_durable($operationDir . '/result.json', $result); } catch (Throwable $ignored) {}
         }
