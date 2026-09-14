@@ -36,15 +36,15 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not pretend to be a concrete offer CTA');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
     const collapsedComposition=[];
-    if(width===375){
+    if(width===375||width===1440){
       const viewport=page.viewportSize();
-      for(const inspectedWidth of [320,350,375,390,700]){
+      for(const inspectedWidth of width===375?[320,350,375,390,700]:[1199,1200,1440]){
         await page.setViewportSize({...viewport,width:inspectedWidth});
         const geometry=await card.evaluate(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
           const summary=node.querySelector('.hotel-offers-summary');
           const price=summary.querySelector('.hotel-price');
-          return{card:box(node),summary:box(summary),price:box(price),priceLineHeight:parseFloat(getComputedStyle(price).lineHeight),toggle:box(summary.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
+          return{card:box(node),main:box(node.querySelector('.hotel-main')),photo:box(node.querySelector('.hotel-photo')),summary:box(summary),price:box(price),priceFontSize:parseFloat(getComputedStyle(price).fontSize),priceLineHeight:parseFloat(getComputedStyle(price).lineHeight),toggle:box(summary.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
         });
         assert.ok(geometry.toggle.height>=44,`${inspectedWidth}: collapsed disclosure keeps a full touch target`);
         assert.equal(geometry.overflow,false,`${inspectedWidth}: collapsed hotel card stays contained`);
@@ -52,7 +52,14 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.ok(geometry.summary.y>=0&&geometry.summary.bottom<=geometry.card.bottom+1,`${inspectedWidth}: hotel-level offer summary stays inside the hotel card`);
         assert.ok(geometry.price.right<=geometry.card.right+1&&geometry.toggle.right<=geometry.card.right+1,`${inspectedWidth}: minimum and disclosure stay within the card`);
         assert.ok(geometry.price.height<=geometry.priceLineHeight+1,`${inspectedWidth}: minimum prefix, amount and currency remain one readable line`);
+        assert.ok(geometry.priceFontSize>=22,`${inspectedWidth}: hotel minimum is readable at a glance`);
         if(inspectedWidth<=350)assert.ok(geometry.toggle.y>=geometry.price.bottom,`${inspectedWidth}: narrow disclosure follows the complete minimum price`);
+        if(inspectedWidth>=1200){
+          assert.ok(geometry.summary.x>=geometry.main.right-1,`${inspectedWidth}: minimum and disclosure form a side block beside the hotel`);
+          assert.ok(geometry.toggle.y>=geometry.price.bottom,`${inspectedWidth}: disclosure follows the minimum in the decision block`);
+          assert.ok(geometry.photo.height>=200,`${inspectedWidth}: real hotel photo has useful height`);
+          assert.ok(geometry.card.height<=240,`${inspectedWidth}: side block avoids the former full-width footer strip`);
+        }else assert.ok(geometry.summary.y>=geometry.main.bottom-1,`${inspectedWidth}: summary follows hotel content without overlap`);
         assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,`${inspectedWidth}: no concrete offer leaks into collapsed hotel`);
         collapsedComposition.push({width:inspectedWidth,geometry});
         await card.screenshot({path:path.join(output,`operator-card-collapsed-action-${inspectedWidth}.png`),animations:'disabled'});
@@ -148,6 +155,27 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle,[data-operator-brand]').count(),0,'collapsing returns to a hotel-only surface');
     assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽');
     assert.equal(await page.evaluate(()=>JSON.stringify(window.__brandOriginal)),JSON.stringify(hotel));
+    if(width===375){
+      const viewport=page.viewportSize();
+      const longPriceHotel={...hotel,id:'brand-long-price',price:1234567.89,tours:Array.from({length:100},(_,i)=>({...base,id:'long-'+i,price:1234567.89+i}))};
+      await page.evaluate(h=>window.V2Results.render([h]),longPriceHotel);
+      const longCard=page.locator('.hotel-card[data-hotel-id="brand-long-price"]');
+      for(const inspectedWidth of [320,375,1200,1440]){
+        await page.setViewportSize({...viewport,width:inspectedWidth});
+        const geometry=await longCard.evaluate(node=>{
+          const summary=node.querySelector('.hotel-offers-summary'),price=summary.querySelector('.hotel-price'),toggle=summary.querySelector('.tour-more-toggle');
+          const card=node.getBoundingClientRect(),p=price.getBoundingClientRect(),t=toggle.getBoundingClientRect();
+          return{contained:p.right<=card.right+1&&t.right<=card.right+1&&t.bottom<=card.bottom+1,priceHeight:p.height,lineHeight:parseFloat(getComputedStyle(price).lineHeight),targetHeight:t.height};
+        });
+        assert.equal(await longCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от1234567,89₽');
+        assert.equal(await longCard.locator('.tour-more-toggle').innerText(),'Показать варианты · 100');
+        assert.ok(geometry.contained&&geometry.priceHeight<=geometry.lineHeight+1&&geometry.targetHeight>=44,`${inspectedWidth}: long minimum and three-digit offer count stay readable and contained`);
+        if(inspectedWidth>=1200)assert.ok(geometry.targetHeight<=45,`${inspectedWidth}: a three-digit offer count fits one desktop disclosure line`);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
+        await longCard.screenshot({path:path.join(output,`operator-card-long-minimum-${inspectedWidth}.png`),animations:'disabled'});
+      }
+      await page.setViewportSize(viewport);
+    }
     // A single concrete Biblio-Globus offer has a real operator logo and no minimum prefix.
     await page.evaluate(({hotel,base})=>window.V2Results.render([{...hotel,id:'brand-single',tours:[{...base,id:'brand-bg',operator:'Библио Глобус'}]}]),{hotel,base});
     const single=page.locator('.hotel-card[data-hotel-id="brand-single"]');

@@ -821,6 +821,7 @@ async function run(browser, width, previous) {
       return { photo: rect(node.querySelector('.hotel-photo')), body: rect(node.querySelector('.hotel-body')) };
     });
     assert.ok(photo.height >= 150, 'hotel photo remains legible at the current width');
+    if (width >= 1200) assert.ok(photo.height >= 200, 'wide desktop gives the actual hotel photo a useful area');
     if (width <= 760) assert.ok(body.y >= photo.y + photo.height - 1, 'mobile hotel content follows the photo without overlap: '+JSON.stringify({width,previous,photo,body}));
     else assert.ok(body.x >= photo.x + photo.width - 1, 'desktop hotel content sits beside the photo without overlap');
     const collapsed = await snapshot(page);
