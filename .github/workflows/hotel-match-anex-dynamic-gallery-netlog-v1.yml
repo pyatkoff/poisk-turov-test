@@ -1,0 +1,84 @@
+name: MATCH ANEX dynamic gallery netlog v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-dynamic-gallery-netlog-v1.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-dynamic-gallery-netlog-1971-20260914-v1}
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve and render public hotel page
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/out /tmp/chrome-profile
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME" ]; then echo 'chrome_not_found'; exit 2; fi
+          "$CHROME" --headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu \
+            --user-data-dir=/tmp/chrome-profile --virtual-time-budget=15000 \
+            --log-net-log=/tmp/out/netlog.json \
+            --dump-dom 'https://anextour.ru/tours/vietnam/le-van-hotel' >/tmp/out/dom.html 2>/tmp/out/chrome.stderr || true
+          python3 - <<'PY'
+          import json,re,html,pathlib,urllib.parse,hashlib
+          dom=pathlib.Path('/tmp/out/dom.html').read_text(errors='replace') if pathlib.Path('/tmp/out/dom.html').exists() else ''
+          urls=[]
+          for raw in re.findall(r'https?://[^\s"\'<>\\]+',html.unescape(dom.replace('\\/','/')),re.I):
+            u=raw.rstrip('),;]')
+            if u not in urls: urls.append(u)
+          net=[]
+          p=pathlib.Path('/tmp/out/netlog.json')
+          if p.exists():
+            try:
+              n=json.loads(p.read_text(errors='replace'))
+              for e in n.get('events',[]):
+                params=e.get('params') or {}
+                for k in ('url','source_dependency'):
+                  v=params.get(k)
+                  if isinstance(v,str) and v.startswith('http') and v not in net: net.append(v)
+                headers=params.get('headers')
+                if isinstance(headers,list):
+                  for h in headers:
+                    if isinstance(h,str) and h.lower().startswith(':path:'):
+                      pass
+            except Exception as ex:
+              net_error=type(ex).__name__+':'+str(ex)[:200]
+            else: net_error=None
+          else: net_error='missing'
+          allu=list(dict.fromkeys(urls+net))
+          interesting=[]
+          for u in allu:
+            lu=urllib.parse.unquote(u).lower(); pr=urllib.parse.urlparse(u)
+            if any(x in lu for x in ['le-van','levan','hotel','gallery','photo','image','media','api','graphql','search']) or (pr.hostname or '').endswith('anextour.com') or (pr.hostname or '').endswith('anextour.ru'):
+              nums=sorted(set(re.findall(r'(?<![A-Za-z])([0-9]{2,12})(?![A-Za-z])',u)))
+              interesting.append({'url':u,'host':pr.hostname,'path':pr.path,'query':pr.query,'numeric_tokens':nums})
+          hotelcode=[]
+          for row in interesting:
+            q=urllib.parse.parse_qs(row['query'])
+            vals=q.get('hotelCode') or q.get('hotelcode') or q.get('HOTELLIST') or q.get('hotellist')
+            if vals: hotelcode.append({'url':row['url'],'values':vals})
+          # dynamic image candidates from rendered DOM
+          imgs=[]
+          for m in re.finditer(r'<img\b[^>]*>',dom,re.I):
+            tag=m.group(0)
+            attrs={k.lower():html.unescape(v) for k,v in re.findall(r'([:\w-]+)=["\']([^"\']*)["\']',tag)}
+            cand=attrs.get('src') or attrs.get('data-src') or attrs.get('data-original')
+            if cand: imgs.append({'src':cand,'alt':attrs.get('alt',''),'class':attrs.get('class','')})
+          out={'status':'completed','operation_id':'hotel-match-anex-dynamic-gallery-netlog-1971-20260914-v1','source_sha':__import__('os').environ['GITHUB_SHA'],'dom_sha256':hashlib.sha256(dom.encode()).hexdigest(),'dom_bytes':len(dom.encode()),'dom_url_count':len(urls),'net_url_count':len(net),'interesting_count':len(interesting),'hotelcode_refs':hotelcode,'rendered_images':imgs[:1000],'interesting_urls':interesting[:3000],'netlog_error':net_error,'database_writes':0,'mapping_writes':0,'supplier_search_calls':0,'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'dom_bytes':out['dom_bytes'],'net_urls':out['net_url_count'],'interesting':out['interesting_count'],'hotelcode_refs':hotelcode[:20],'rendered_images':imgs[:30]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-dynamic-gallery-netlog-v1-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+            /tmp/out/chrome.stderr
+          retention-days: 90
