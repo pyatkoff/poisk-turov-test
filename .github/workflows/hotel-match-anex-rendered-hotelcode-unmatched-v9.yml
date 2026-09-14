@@ -1,0 +1,52 @@
+name: MATCH ANEX rendered hotelCode unmatched v9
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-rendered-hotelcode-unmatched-v9.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-rendered-hotelcode-unmatched-1971-v9, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-rendered-hotelcode-unmatched-1971-20260914-v9
+  SOURCE_RUN_ID: '34839217307'
+  SOURCE_ARTIFACT: match-anex-public-full-current-v3-result
+jobs:
+  recover:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve and download immutable unmatched cohort
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S" "$RUNNER_TEMP/source"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_browser","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" > "$S/reservation.json"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/evidence.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: match-anex-rendered-hotelcode-unmatched-v9-reservation, path: '${{ runner.temp }}/hotel-match-anex-rendered-hotelcode-unmatched-1971-20260914-v9/reservation.json', retention-days: 90}
+      - name: Render direct ordinary ANEX page guesses and read photo hotelCode
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"
+          npm init -y >/dev/null 2>&1; npm install --silent playwright@1.55.0; npx playwright install --with-deps chromium >/dev/null
+          node <<'NODE'
+          const fs=require('fs'),{chromium}=require('playwright');
+          const root=process.env.RUNNER_TEMP,S=root+'/'+process.env.OPERATION_ID,ev=JSON.parse(fs.readFileSync(root+'/source/evidence.json','utf8'));
+          const C={1:'egypt',2:'thailand',4:'turkey',8:'uae',9:'vietnam',10:'sri-lanka',12:'maldives',16:'cuba'};
+          const media=/^https?:\/\/(?:files\.anextour\.(?:ru|com)|cdn\.anextour\.ru)\//i;
+          function slug(s){return String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\b(?:ex|former|formerly)\b\.?/g,' ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}
+          const seeds=[];for(const r of ev.unmatched||[]){const aid=Number(r.anex_hotel_id||0),cid=Number(r.country_id||0);if(!aid||!C[cid])continue;const guesses=[];for(const q of r.ranked_candidates||[]){let p=String(q.path||'');let m=p.match(/^\/hotels\/[^/]+\/(.+)$/);if(m)guesses.push(m[1])}for(const n of r.source_names||[])guesses.push(slug(n));const uniq=[...new Set(guesses.filter(Boolean))].slice(0,3);seeds.push({aid,cid,guesses:uniq.map(g=>`https://www.anextour.ru/tours/${C[cid]}/${g}`)})}
+          (async()=>{const browser=await chromium.launch({headless:true}),ctx=await browser.newContext({userAgent:'Mozilla/5.0 AnyTour-MATCH-photo-hotelCode/1.0'});let idx=0;const rows=[];
+          async function worker(){while(true){const i=idx++;if(i>=seeds.length)break;const s=seeds[i];let hit=null,attempts=[];for(const url of s.guesses){const p=await ctx.newPage(),urls=new Set();p.on('request',q=>{if(media.test(q.url())&&/hotelCode=/i.test(q.url()))urls.add(q.url())});p.on('response',q=>{if(media.test(q.url())&&/hotelCode=/i.test(q.url()))urls.add(q.url())});let err=null,final=null;try{await p.goto(url,{waitUntil:'domcontentloaded',timeout:10000});await p.waitForTimeout(1500);final=p.url();for(const u of await p.locator('img').evaluateAll(xs=>xs.flatMap(x=>[x.src,x.currentSrc,x.getAttribute('data-src'),x.getAttribute('srcset')].filter(Boolean))))if(media.test(u)&&/hotelCode=/i.test(u))urls.add(u)}catch(e){err=String(e).slice(0,160)}await p.close();const codes=[...new Set([...urls].map(u=>{try{return Number(new URL(u).searchParams.get('hotelCode')||0)}catch{return 0}}).filter(Boolean))].sort((a,b)=>a-b);attempts.push({url,final_url:final,photo_url_count:urls.size,hotel_codes:codes,error:err});if(codes.length===1&&codes[0]===s.aid){hit={page_url:final||url,photo_url_count:urls.size,hotel_code:s.aid};break}}
+          rows.push({anex_hotel_id:s.aid,country_id:s.cid,confirmed:!!hit,hit,attempts})}}
+          await Promise.all(Array.from({length:12},()=>worker()));await browser.close();rows.sort((a,b)=>a.anex_hotel_id-b.anex_hotel_id);const ok=rows.filter(r=>r.confirmed);const out={status:'completed',operation_id:process.env.OPERATION_ID,source_unmatched:seeds.length,confirmed_by_photo_hotelcode:ok.length,still_unmatched:seeds.length-ok.length,confirmed_ids:ok.map(r=>r.anex_hotel_id),rows,database_writes:0,mapping_writes:0,tourvisor_calls:0,supplier_search_calls:0,no_replay:true};fs.writeFileSync(S+'/result.json',JSON.stringify(out,null,2)+'\n');console.log(JSON.stringify({source_unmatched:out.source_unmatched,confirmed_by_photo_hotelcode:out.confirmed_by_photo_hotelcode,still_unmatched:out.still_unmatched}));})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];x=json.loads((S/'result.json').read_text());assert x['status']=='completed' and x['source_unmatched']==86
+          r={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'source_unmatched':x['source_unmatched'],'confirmed_by_photo_hotelcode':x['confirmed_by_photo_hotelcode'],'still_unmatched':x['still_unmatched'],'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'no_replay':True};(S/'receipt.json').write_text(json.dumps(r,sort_keys=True)+'\n');print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: match-anex-rendered-hotelcode-unmatched-v9-result, path: '${{ runner.temp }}/hotel-match-anex-rendered-hotelcode-unmatched-1971-20260914-v9/', retention-days: 90}
