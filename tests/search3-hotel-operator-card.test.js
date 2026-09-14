@@ -29,7 +29,8 @@ for(const offer of [tour,other]){
   assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
   assert.match(row,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/,'room and placement stay together as one exact offer fact');
-  assert.doesNotMatch(row,/<small>(?:Туристы|Источник|Размещение)<\/small>/,'exact offer rows do not repeat search-level or internal source facts');
+  assert.match(row,/<small>Источник<\/small><b>Tourvisor<\/b>/,'exact offer keeps provider source distinct from tour operator');
+  assert.doesNotMatch(row,/<small>(?:Туристы|Размещение)<\/small>/,'exact offer does not repeat search party or a second placement field');
 }
 assert.equal(api.operatorIdentity({provider:'anex'}),null,'provider is not tour operator');
 assert.equal(api.operatorIdentity({operator:'ANEX SERVICES'}).logo,'','unknown similar name is not branded');
