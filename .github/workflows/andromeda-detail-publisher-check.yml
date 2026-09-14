@@ -61,6 +61,7 @@ jobs:
         env:
           RUNTIME_SOURCE_SHA: b32993261eb8657004e7d4fd146b65a95264d4bc
           ANDROMEDA_RUNTIME_HANDOFF: ${{ github.workspace }}/runtime-handoff
+          ANDROMEDA_PUBLISH_HELPER: ${{ github.workspace }}/previous/scripts/diagnostics/anex_search3_owner_decisions.py
         run: |
           python3 -m py_compile change/scripts/diagnostics/andromeda_runtime_source_publish.py
           python3 -B change/tests/andromeda_runtime_source_publish_test.py

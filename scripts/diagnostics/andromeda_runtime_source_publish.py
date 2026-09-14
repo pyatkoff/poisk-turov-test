@@ -36,6 +36,9 @@ SUPPORT_PATHS = [
     'app/integrations/andromeda-hotel-observations.php',
     'app/integrations/anex-normalizer.php',
 ]
+# The pinned SSH helper accepts exactly 64 KiB for ordinary diagnostic receipts
+# (or 4 MiB for explicitly large diagnostics). This publisher's receipt is small.
+SSH_RESPONSE_LIMIT = 65536
 
 
 def _sha(data: bytes) -> str:
@@ -190,7 +193,7 @@ def main() -> None:
     reservation = out / 'reservation.json'
     reservation.write_text(json.dumps({'source': source, 'sha256': hashes}, sort_keys=True))
     try:
-        result = ssh_php(remote_source(), {'source': source, 'files': files, 'sha256': hashes}, maximum_bytes=131072)
+        result = ssh_php(remote_source(), {'source': source, 'files': files, 'sha256': hashes}, maximum_bytes=SSH_RESPONSE_LIMIT)
     except Exception:
         (out / 'result.json').write_text(json.dumps({'status':'unknown','source':source,'reason':'ssh_outcome_unknown'}))
         raise SystemExit('publication unconfirmed; inspect checkpoint, do not replay')
