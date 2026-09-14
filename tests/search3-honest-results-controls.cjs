@@ -23,8 +23,8 @@ assert.doesNotMatch(redesign, /results-map-requested|data-results-map/);
 assert.doesNotMatch(styles, /results-map-button/);
 assert.match(renderer, /if\(m==='rating'\)/);
 assert.match(renderer, /if\(m==='stars'\)/);
-assert.ok(renderer.includes("return tours.length===1?'1 вариант тура':'';"),
-  'one offer keeps its label; multi-offer count belongs to the disclosure or comparison header');
+assert.ok(renderer.includes("return tours.length===1&&!h.andromedaExpansion?'1 вариант тура':'';"),
+  'one complete offer keeps its label; grouped seeds and multi-offer counts belong to the common disclosure');
 assert.ok(renderer.includes("'Показать варианты · '+tours.length") && renderer.includes("esc(tourCountLabel(tours.length))+'</strong>'"),
   'collapsed and expanded states each retain one grammatically correct loaded-offer count');
 assert.match(

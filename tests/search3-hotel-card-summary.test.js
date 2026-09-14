@@ -107,4 +107,8 @@ const single={...multi,tours:[multi.tours[0]]};
 assert.equal(api.toursHtml(single),api.tourRow(multi.tours[0]));
 assert.equal(api.choiceHint(multi),'');
 assert.equal(api.choiceHint(single),'1 вариант тура');
+const grouped={...single,andromedaExpansion:{status:'idle',count:0}};
+assert.equal(api.choiceHint(grouped),'','grouped seed does not claim that the hotel has only one tour');
+assert.match(api.toursHtml(grouped),/hotel-offers-summary/);
+assert.doesNotMatch(api.toursHtml(grouped),/class="tour-row"|data-andromeda-expand|provider-expansion-toggle/);
 console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 source_unchanged=1');
