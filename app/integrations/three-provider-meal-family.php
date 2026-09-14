@@ -30,11 +30,16 @@ final class AnyTourThreeProviderMealFamily
             'без питания' => 'ro', 'без еды' => 'ro',
             'bb' => 'bb', 'bed breakfast' => 'bb', 'bed and breakfast' => 'bb',
             'breakfast' => 'bb', 'завтрак' => 'bb', 'только завтрак' => 'bb',
+            'bb только завтрак' => 'bb', 'bb завтрак' => 'bb', 'bb bed breakfast' => 'bb',
             'hb' => 'hb', 'half board' => 'hb', 'полупансион' => 'hb',
+            'hb полупансион' => 'hb', 'hb half board' => 'hb',
             'fb' => 'fb', 'full board' => 'fb', 'полный пансион' => 'fb',
+            'fb полный пансион' => 'fb', 'fb full board' => 'fb',
             'ai' => 'ai', 'all inclusive' => 'ai', 'все включено' => 'ai', 'всё включено' => 'ai',
+            'ai все включено' => 'ai', 'ai всё включено' => 'ai', 'ai all inclusive' => 'ai',
             'uai' => 'uai', 'ultra all inclusive' => 'uai', 'ultra ai' => 'uai',
             'ультра все включено' => 'uai', 'ультра всё включено' => 'uai',
+            'uai ультра все включено' => 'uai', 'uai ультра всё включено' => 'uai', 'uai ultra all inclusive' => 'uai',
         ];
         if (isset($exact[$label])) {
             $family = $exact[$label];
@@ -74,6 +79,7 @@ final class AnyTourThreeProviderMealFamily
             'raw' => $raw,
             'normalized_label' => $label,
             'family' => $family,
+            'display_label' => self::display($family, $plus, $withoutAlcohol),
             'qualifiers' => [
                 'plus' => $plus,
                 'without_alcohol' => $withoutAlcohol,
@@ -84,6 +90,29 @@ final class AnyTourThreeProviderMealFamily
             'cross_provider_equivalence_verified' => false,
             'package_equivalence_verified' => false,
         ];
+    }
+
+    private static function display(?string $family, bool $plus, bool $withoutAlcohol): ?string
+    {
+        if ($family === null) {
+            return null;
+        }
+        $labels = [
+            'ro' => 'RO · Без питания',
+            'bb' => 'BB · Завтрак',
+            'hb' => 'HB · Полупансион',
+            'fb' => 'FB · Полный пансион',
+            'ai' => 'AI · Всё включено',
+            'uai' => 'UAI · Ультра всё включено',
+        ];
+        $label = $labels[$family];
+        if ($plus) {
+            $label .= ' Plus';
+        }
+        if ($withoutAlcohol) {
+            $label .= ' · без алкоголя';
+        }
+        return $label;
     }
 
     private static function key(string $value): string
