@@ -840,6 +840,9 @@ async function run(browser, width, previous) {
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
+    if (!previous && [320, 375, 720, 1025, 1440].includes(width)) {
+      await page.screenshot({ path: path.join(output, `exact-budget-${width}.png`), fullPage: true });
+    }
     if (width < 1025) {
       assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · до 100[\s\u00a0]*000 ₽ · TEST OPERATOR/, 'compact summary names active exact-offer filters instead of exposing only their count');
       assert.match(await mobileSummaryText.getAttribute('aria-label'), /активные фильтры: до 100[\s\u00a0]*000 ₽; TEST OPERATOR/, 'compact summary exposes the full active-filter meaning accessibly');
