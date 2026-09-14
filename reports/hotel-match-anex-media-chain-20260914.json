@@ -1,0 +1,208 @@
+{
+  "schema": "match-anex-photo-namespace-evidence/1",
+  "issue": 1971,
+  "scope": "MATCH public evidence only, not DB acceptance",
+  "date": "2026-09-14",
+  "execution_sources": [
+    {
+      "operation_id": "hotel-match-anex-media-chain-1971-20260914-v1",
+      "run_id": 34891092743,
+      "source_sha": "ae308936e1d03546ebd6e5fcb07b434b60787116",
+      "artifact_id": 10367085367,
+      "reservation_artifact_id": 10367255045,
+      "zip_sha256": "2c8698a2f869d051dff91244037c489d2c800efb6da6d1684d7cb2c90802311b",
+      "result_sha256": "55d5ee912d3dae36554a61097b16ff965b79243837dbe48fc338441451b73c3e",
+      "public_http_requests": 16,
+      "image_http_200": 8,
+      "card_http_200": 4,
+      "image_redirects": 0,
+      "complete_no_replay": true
+    },
+    {
+      "operation_id": "hotel-match-anex-gallery-assets-1971-20260914-v1",
+      "run_id": 34891461527,
+      "source_sha": "5db57de332e3b055c5113749ed8604e920fc5a9f",
+      "artifact_id": 10366823360,
+      "reservation_artifact_id": 10367160526,
+      "zip_sha256": "6f74c4bfde2e11b20900968116e90b399c2895b67ce4d8938183c6ed9acf1702",
+      "result_sha256": "6681a4588e3d8e713e9fa0f9983d5a5ecd7aced5a630f5c19263cdfc76652190",
+      "public_http_requests": 67,
+      "static_http_200": 67,
+      "complete_no_replay": true
+    },
+    {
+      "operation_id": "hotel-match-anex-gallery-identity-1971-20260914-v2",
+      "run_id": 34891959021,
+      "source_sha": "8396b9fa41083986265f0ee4549d0ee7f7c2cbd2",
+      "artifact_id": 10367615429,
+      "reservation_artifact_id": 10366519880,
+      "zip_sha256": "db06b192634c94ff79dc104c5a117f55d5be712d416ed01653f8fb40bd5df223",
+      "result_sha256": "fe80ec8e18a50d193e30bb42c97dd00f4a5ed25d2d9021ca9bdad26a2b9be411",
+      "public_http_requests": 4,
+      "gallery_http_200": 4,
+      "complete_no_replay": true
+    }
+  ],
+  "independent_local_checks": {
+    "archive_digests": 3,
+    "result_and_all_receipt_file_digests_verified": true,
+    "offline_regression_tests": 8,
+    "strict_yaml_duplicate_key_check": true,
+    "gallery_source_tested_bytes_match_git_blob": "532ff5d22819c19dc479d64f79d5156496a2829d"
+  },
+  "finding": "Official ANEX primary-gallery JSON explicitly identifies the /oNNN token as PhotoId. Room-image trailing numbers also equal PhotoId. The observed hotel-level hotelCode values are the known ANEX keys; no separate SAMO or Andromeda hotel key is established by these responses.",
+  "gallery_contract": {
+    "loader_asset_url": "https://anextour.ru/_next/static/chunks/0battrnx_0ia6.js",
+    "loader_sha256": "bba83e3da36d0711cee124e8b5dfe93decd281a84149e2ce4264757a9ab4ae95",
+    "function": "useFetchHotelImages",
+    "endpoint": "https://files.anextour.ru/hotel/hotelimagelist",
+    "binding": "SSR info.inc -> request code -> response Img hotelCode; response PhotoId -> Img /o token or room-photo trailing number",
+    "response_fields": [
+      "Alt",
+      "Img",
+      "Note",
+      "PhotoId",
+      "RoomId",
+      "RoomLname",
+      "RoomName",
+      "State",
+      "Town"
+    ]
+  },
+  "totals": {
+    "hotels": 4,
+    "gallery_records": 143,
+    "hotel_photo_urls": 101,
+    "room_photo_urls": 42,
+    "photo_id_path_matches": 143,
+    "photo_id_mismatches": 0,
+    "public_http_requests": 87,
+    "tourvisor_calls": 0,
+    "andromeda_calls": 0,
+    "supplier_search_calls": 0,
+    "database_reads": 0,
+    "mapping_writes": 0,
+    "new_triples": 0,
+    "bookings": 0,
+    "leads": 0
+  },
+  "hotels": [
+    {
+      "anex_hotel_id": 4158,
+      "hotel_name": "Barcelo Tiran Sharm Hotel Sharm El Sheikh",
+      "gallery_records": 35,
+      "hotel_photo_urls": 12,
+      "room_photo_urls": 23,
+      "photo_id_path_matches": 35,
+      "photo_id_mismatches": 0,
+      "hotelCode_equals_seed": 12,
+      "photo_object_range": [
+        495437,
+        495448
+      ],
+      "independent_samo_hotel_id": null,
+      "andromeda_hotel_key": null,
+      "raw_file": "gallery-4158.json",
+      "raw_sha256": "2d4c3a004220896e300158797300d4a20456c14915b15a8ace8e5f334e5671bc"
+    },
+    {
+      "anex_hotel_id": 1767,
+      "hotel_name": "Domina Coral Bay Aquamarine Beach Sharm El Sheikh",
+      "gallery_records": 36,
+      "hotel_photo_urls": 31,
+      "room_photo_urls": 5,
+      "photo_id_path_matches": 36,
+      "photo_id_mismatches": 0,
+      "hotelCode_equals_seed": 31,
+      "photo_object_range": [
+        699145,
+        699175
+      ],
+      "independent_samo_hotel_id": null,
+      "andromeda_hotel_key": null,
+      "raw_file": "gallery-1767.json",
+      "raw_sha256": "8bfb91c19aa53af86f9783dff2108d4929853632fb3d96f6ba24a9cd6d9cc46b"
+    },
+    {
+      "anex_hotel_id": 1768,
+      "hotel_name": "Domina Coral Bay Aquamarine Pool Sharm El Sheikh",
+      "gallery_records": 37,
+      "hotel_photo_urls": 33,
+      "room_photo_urls": 4,
+      "photo_id_path_matches": 37,
+      "photo_id_mismatches": 0,
+      "hotelCode_equals_seed": 33,
+      "photo_object_range": [
+        698661,
+        698693
+      ],
+      "independent_samo_hotel_id": null,
+      "andromeda_hotel_key": null,
+      "raw_file": "gallery-1768.json",
+      "raw_sha256": "aa497df29477ca565d61238b6c585f5c5e55ffbb5b48831ecc98833c795f7625"
+    },
+    {
+      "anex_hotel_id": 5215,
+      "hotel_name": "Aurora Oriental Resort Sharm El Sheikh",
+      "gallery_records": 35,
+      "hotel_photo_urls": 25,
+      "room_photo_urls": 10,
+      "photo_id_path_matches": 35,
+      "photo_id_mismatches": 0,
+      "hotelCode_equals_seed": 25,
+      "photo_object_range": [
+        532683,
+        532707
+      ],
+      "independent_samo_hotel_id": null,
+      "andromeda_hotel_key": null,
+      "raw_file": "gallery-5215.json",
+      "raw_sha256": "cc1497d859e2105ebf2bf16d213a2c799ac862ce593da4335a8f34a8253eff3a"
+    }
+  ],
+  "direct_typed_examples": [
+    {
+      "anex_hotel_id": 4158,
+      "records": [
+        {
+          "Img": "https://files.anextour.ru/hotel/egypt/hotel/barcelo-tiran-sharm-hotel-sharm-el-sheikh-sharm-el-sheikh/o495437?&hotelCode=4158",
+          "PhotoId": 495437
+        },
+        {
+          "Img": "https://files.anextour.ru/hotel/egypt/hotel/barcelo-tiran-sharm-hotel-sharm-el-sheikh-sharm-el-sheikh/o495438?&hotelCode=4158",
+          "PhotoId": 495438
+        }
+      ]
+    }
+  ],
+  "independent_negative_evidence": {
+    "same_image_bytes_at_different_hotel_codes": {
+      "anex_hotel_codes": [
+        1767,
+        1768
+      ],
+      "photo_ids": [
+        699145,
+        698661
+      ],
+      "image_sha256": "b3eaaf1241492c57d8836b0db66103248e0212bf0a3061c386e3b81d4d0305e8",
+      "meaning": "Shared photograph must not collapse meaningful Beach/Pool hotel identities."
+    }
+  },
+  "limits": [
+    "These four public cards do not prove that no other ANEX page or URL format has additional identifiers.",
+    "A supplier-native SAMO installation key and the global Andromeda hotelKey are separate namespaces; this report does not equate them.",
+    "No photo object, RoomId, topHotelId, shared photo bytes or place samoId may be auto-promoted as hotel identity.",
+    "Previously captured Tourvisor/ANEX direct pairs remain evidence to consume; no new tour search or candidate-ranking pass is justified by this photo finding."
+  ],
+  "pre_execution_failure": {
+    "source_sha": "f952049b95ef50f32b0a1e0d0bcdc7335602703f",
+    "run_id": 34891853318,
+    "reason": "duplicate uses key introduced while transmitting workflow; rejected by GitHub before jobs",
+    "job_count": 0,
+    "public_requests": 0,
+    "replacement_operation": "hotel-match-anex-gallery-identity-1971-20260914-v2",
+    "no_replay": true
+  },
+  "no_production_change": true
+}
