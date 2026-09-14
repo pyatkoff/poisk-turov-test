@@ -1,0 +1,76 @@
+name: MATCH ANEX observed public identity evidence v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-observed-public-evidence-v1.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-anex-observed-public-evidence-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-observed-public-evidence-1971-20260914-v1
+  SOURCE_QUEUE_RUN_ID: '34835297397'
+  SOURCE_QUEUE_ARTIFACT: match-anex-hotelcode-current-queue-v2-result
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: '${{ github.sha }}'
+      - name: Static scope check
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/diagnostics/anex_public_sitemap_observed_evidence.py
+      - name: Reserve immutable operation before public network
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_queue_run_id":%s,"source_queue_artifact":"%s","state":"reserved_before_public_network","database_writes":0,"mapping_writes":0,"supplier_search_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_QUEUE_RUN_ID" "$SOURCE_QUEUE_ARTIFACT" >"$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-observed-public-evidence-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-observed-public-evidence-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download immutable CURRENT queue artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source-queue"
+          gh run download "$SOURCE_QUEUE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_QUEUE_ARTIFACT" -D "$RUNNER_TEMP/source-queue"
+          test -s "$RUNNER_TEMP/source-queue/queue.json"
+          test -s "$RUNNER_TEMP/source-queue/receipt.json"
+      - name: Crawl official ANEX sitemaps and verify observed identities via public hotel API
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 scripts/diagnostics/anex_public_sitemap_observed_evidence.py \
+            --queue "$RUNNER_TEMP/source-queue/queue.json" \
+            --out "$STATE/evidence.json" \
+            --max-pages-per-country 240 \
+            --max-api-calls 1500 \
+            --top-candidates 15 \
+            --delay 0.08 | tee "$STATE/summary.log"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          x=json.loads((state/'evidence.json').read_text())
+          if x.get('status')!='completed' or x.get('database_writes')!=0 or x.get('mapping_writes')!=0 or x.get('supplier_search_calls')!=0:
+              raise SystemExit('evidence_contract_failed')
+          raw=(state/'evidence.json').read_bytes()
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_queue_operation':x.get('source_queue_operation'),'evidence_sha256':hashlib.sha256(raw).hexdigest(),'seed_count':x.get('seed_count'),'confirmed_count':x.get('confirmed_count'),'unmatched_count':x.get('unmatched_count'),'sitemap_hotel_count':x.get('sitemap_hotel_count'),'sitemap_page_count':x.get('sitemap_page_count'),'api_candidate_path_count':x.get('api_candidate_path_count'),'api_detail_count':x.get('api_detail_count'),'public_get_calls':x.get('public_get_calls'),'database_writes':0,'mapping_writes':0,'supplier_search_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-observed-public-evidence-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-observed-public-evidence-1971-20260914-v1/
+          retention-days: 90
