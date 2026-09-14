@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Publish one CI-checked Andromeda source handoff to the isolated integration preview.
 
-This is deployment-only tooling. It never calls a supplier, database, quote or booking API.
+Assembly and publication share one explicit source inventory. It never calls a supplier, database, quote or booking API.
 The caller must pin and verify the source artifact/run before invoking it.
 """
 from __future__ import annotations
@@ -13,20 +13,27 @@ import os
 from pathlib import Path
 import sys
 
-SOURCE_PATHS = [
-    'app/integrations/andromeda-client.php',
-    'app/integrations/andromeda-package-capture.php',
-    'app/integrations/andromeda-selected-offer.php',
-    'app/integrations/andromeda-transport.php',
-    'app/integrations/andromeda-saved-package-runtime.php',
-    'app/integrations/andromeda-claiminc-contract.php',
-    'app/integrations/andromeda-network-transport-failure.php',
-    'app/integrations/andromeda-package-retry-policy.php',
-    'app/integrations/andromeda-package-attempt-state.php',
-    'app/integrations/andromeda-claim-actions.php',
-    'app/integrations/andromeda-search-surcharge.php',
-    'v2/api-andromeda-search3-preview.php',
-]
+# One inventory for the candidate overlay, tested artifact and publisher allowlist.
+# The two package-only files retain their reviewed historical source, not a fallback.
+SOURCE_ORIGINS = {
+    'app/integrations/andromeda-client.php': 'current',
+    'app/integrations/andromeda-package-capture.php': 'package',
+    'app/integrations/andromeda-selected-offer.php': 'package',
+    'app/integrations/andromeda-transport.php': 'current',
+    'app/integrations/andromeda-saved-package-runtime.php': 'current',
+    'app/integrations/andromeda-claiminc-contract.php': 'current',
+    'app/integrations/andromeda-network-transport-failure.php': 'current',
+    'app/integrations/andromeda-package-retry-policy.php': 'current',
+    'app/integrations/andromeda-package-attempt-state.php': 'current',
+    'app/integrations/andromeda-claim-actions.php': 'current',
+    'app/integrations/andromeda-search-surcharge.php': 'current',
+    'app/integrations/andromeda-selected-quote.php': 'current',
+    'app/integrations/andromeda-price-observation.php': 'current',
+    'app/integrations/andromeda-quote-attempt-state.php': 'current',
+    'v2/api-andromeda-quote-preview.php': 'current',
+    'v2/api-andromeda-search3-preview.php': 'current',
+}
+SOURCE_PATHS = list(SOURCE_ORIGINS)
 TARGET_PATHS = [p[3:] if p.startswith('v2/') else p for p in SOURCE_PATHS]
 SUPPORT_PATHS = [
     'app/integrations/andromeda-offer-store.php',
@@ -43,6 +50,80 @@ SSH_RESPONSE_LIMIT = 65536
 
 def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def handoff_metadata(source: str) -> dict:
+    if not __import__('re').fullmatch(r'[0-9a-f]{40}', source):
+        raise ValueError('source_sha')
+    return {
+        'source': source,
+        'dependencies': {
+            'runtime': '95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa',
+            'package': '7c3c5bb55c88e376d97c998d0ba77a46960584d6',
+            'candidate_client': source, 'candidate_surcharge': source,
+            'candidate_transport': source, 'candidate_quote': source,
+            'retained_install_transport': '1f628e4b172ce9706eabe875784ce2b226175a0d',
+            'retained_install_baseline': '163ef9eed9993c08558b84b7a0295e8b4295d2e8',
+        },
+        'scope': 'private-source-handoff-only', 'supplier_calls': 0,
+        'published': False, 'package_captured_live': False, 'quote_verified': False,
+        'typed_transport_in_candidate': True, 'live_retry_enabled': False,
+        'saved_surcharge_available': True, 'live_surcharge_enabled': False,
+    }
+
+
+def candidate_files(current: Path, package: Path) -> dict[str, bytes]:
+    roots = {'current': Path(current), 'package': Path(package)}
+    files = {}
+    for name, origin in SOURCE_ORIGINS.items():
+        root = roots[origin]
+        path = root / name
+        if (root.is_symlink() or not root.is_dir() or not path.is_file()
+                or path.resolve() != root.resolve() / name or path.stat().st_size > 524288):
+            raise ValueError('candidate_source:' + name)
+        data = path.read_bytes()
+        if not data:
+            raise ValueError('candidate_source:' + name)
+        files[name] = data
+    return files
+
+
+def assemble_runtime(current: Path, package: Path, runtime: Path) -> None:
+    """Overlay the exact candidate only after historical install regressions finish."""
+    files = candidate_files(current, package)  # Validate every source before writing.
+    runtime = Path(runtime)
+    if runtime.is_symlink() or not runtime.is_dir():
+        raise ValueError('runtime_directory')
+    for name, data in files.items():
+        target = runtime / name
+        if target.resolve() != runtime.resolve() / name:
+            raise ValueError('runtime_entry')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+
+def export_handoff(current: Path, package: Path, runtime: Path, output: Path, source: str) -> dict:
+    """Export only bytes still identical to the sources after candidate runtime tests."""
+    metadata = handoff_metadata(source)
+    files = candidate_files(current, package)
+    runtime = Path(runtime)
+    if runtime.is_symlink() or not runtime.is_dir():
+        raise ValueError('runtime_directory')
+    for name, data in files.items():
+        tested = runtime / name
+        if (tested.resolve() != runtime.resolve() / name or not tested.is_file()
+                or tested.read_bytes() != data):
+            raise ValueError('tested_runtime_changed:' + name)
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=False)
+    for name, data in files.items():
+        target = output / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    receipt = metadata | {'files_sha256': {name: _sha(data) for name, data in files.items()}}
+    (output / 'receipt.json').write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
+    load_handoff(output, source)  # The publisher consumes the exact exported inventory.
+    return receipt
 
 
 def load_handoff(directory: Path, source: str) -> tuple[dict[str, str], dict[str, str]]:
@@ -64,21 +145,10 @@ def load_handoff(directory: Path, source: str) -> tuple[dict[str, str], dict[str
     if receipt_path.stat().st_size > 16384:
         raise ValueError('handoff_receipt')
     receipt = json.loads(receipt_path.read_text())
-    deps = receipt.get('dependencies')
-    if (receipt.get('source') != source or receipt.get('scope') != 'private-source-handoff-only'
-            or receipt.get('supplier_calls') != 0 or receipt.get('published') is not False
-            or receipt.get('package_captured_live') is not False or receipt.get('quote_verified') is not False
-            or receipt.get('typed_transport_in_candidate') is not True
-            or receipt.get('live_retry_enabled') is not False
-            or receipt.get('saved_surcharge_available') is not True
-            or receipt.get('live_surcharge_enabled') is not False
-            or not isinstance(deps, dict)
-            or deps.get('runtime') != '95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa'
-            or deps.get('package') != '7c3c5bb55c88e376d97c998d0ba77a46960584d6'
-            or deps.get('candidate_client') != source or deps.get('candidate_surcharge') != source
-            or deps.get('candidate_transport') != source
-            or deps.get('retained_install_transport') != '1f628e4b172ce9706eabe875784ce2b226175a0d'
-            or deps.get('retained_install_baseline') != '163ef9eed9993c08558b84b7a0295e8b4295d2e8'):
+    metadata = handoff_metadata(source)
+    if not isinstance(receipt, dict) or any(
+            type(receipt.get(key)) is not type(value) or receipt[key] != value
+            for key, value in metadata.items()):
         raise ValueError('handoff_receipt')
     expected_hashes = receipt.get('files_sha256')
     if (not isinstance(expected_hashes, dict) or len(expected_hashes) != len(SOURCE_PATHS)

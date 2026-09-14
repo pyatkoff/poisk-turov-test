@@ -120,6 +120,10 @@ Owner-approved модель: базовая PRICE + доступная тран�
 
 Это source-only функциональный пакет, не публикация и не доказательство просмотра человеком. Receiving SEARCH #1646 должен сохранить поле рядом с конкретным предложением и вернуть его как top-level `listing_price_ref` в существующий quote request; текущий JS это поле отбрасывает. До согласованной публикации API/quote и receiving wiring не заявлять live coverage/80% accuracy. E2E v1/run34874678175 остаётся terminal/no-replay; его уже закреплённый read-only checkpoint-разбор не дублировать.
 
+Целевой refactor-pass сборки: единый `SOURCE_ORIGINS` в существующем `scripts/diagnostics/andromeda_runtime_source_publish.py` теперь задаёт candidate overlay, экспорт и publisher allowlist. Полный пакет содержит 16 файлов, включая quote API, selected quote, price observation и quote-attempt state; только два package-only файла берутся из прежнего закреплённого package source. Исторические install/capture регрессии выполняются отдельно до current overlay. Экспорт проверяет, что после тестов каждый файл runtime всё ещё равен исходнику, и передаёт тот же комплект существующему publisher. Missing quote dependency или изменённый tested runtime останавливают сборку, а не подставляют старый файл. Нового workflow/модуля/механизма публикации нет; PHP install/rollback/no-replay остаётся прежним.
+
+Это source-side closure, не новая установка. Следующий шаг — существующая owner-controlled публикация полного exact checked artifact и receiving SEARCH handoff, а не расширение generic contracts. Исправление validated country context #2459 уже входит в текущую базу; terminal E2E и его readback не повторять. Факт реальной цены с доплатой и статистику точности подтверждать только после согласованного live/read-only результата.
+
 ## 5. Закрытые source-side contracts — второй слой не создавать
 
 Без нового evidence/regression не открывать заново:
@@ -217,7 +221,7 @@ Andromeda current source доказывает отдельный provider-specif
 1. request country обязан совпадать с installed saved `local_country_id`;
 2. current active local departure name разрешается exact unique match в saved supplier `TOWNFROM` dictionary;
 3. supplier country берётся из installed saved catalog pin `STATEINC` для этого local country slice;
-4. только при доказанных exact departure mapping + explicit country pin provider-specific supplier IDs считаются usable;
+4. только при доказанных exact departure mapping + explicit country pin provider-specific IDs считаются usable;
 5. local numeric form IDs не становятся supplier IDs; missing/mismatched context fail closed.
 
 Это **не** тот же mapping contract, что у direct ANEX: ANEX country dictionary разрешается departure-scoped exact lookup, Andromeda country сейчас pinned installed catalog slice. Supplier IDs остаются opaque/provider-specific; cross-provider equivalence=false. Tourvisor departure/country mapping остаётся `not_verified_in_this_boundary`; protected payload не менять. Departure/country similarity не hotel identity proof.
