@@ -31,147 +31,77 @@ const multi = {
   price: 62400,
   tours: [
     { id: 'a', price: 62400, date: '2026-09-16', nights: 7, meal: { name: 'BB', fullName: 'Завтраки' }, operator: { name: 'FUN&SUN' }, isCharter: true },
-    { id: 'b', price: 70100, date: '2026-09-16', nights: 10, meal: { name: 'AI', fullName: 'Всё включено' }, operator: { name: 'ANEX' }, isCharter: false },
-    { id: 'c', price: 71500, date: '2026-09-16', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, operator: { name: 'FUN&SUN' } },
+    { id: 'b', price: 70100, date: '2026-09-17', nights: 10, meal: { name: 'AI', fullName: 'Всё включено' }, operator: { name: 'ANEX' }, isCharter: false },
+    { id: 'c', price: 71500, date: '2026-09-18', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, operator: { name: 'FUN&SUN' } },
   ],
 };
 
-assert.deepEqual(api.hotelSummary(multi), {
-  date: '16.09.2026',
-  nights: '7–10 ноч.',
-  meal: 'Завтрак · Всё включено',
-  operators: 'FUN&SUN · ANEX',
-  flight: 'Уточняется по варианту',
-  party: '',
-  count: 3,
-});
-assert.equal(api.priceContext(multi), '16.09.2026 · 7–10 ноч. · Завтрак · Всё включено');
-const collapsed = api.toursHtml(multi);
-assert.match(collapsed, /class="hotel-trip-summary"/);
-assert.doesNotMatch(collapsed, /Доступные варианты/, 'collapsed hotel has one current aggregate summary');
-assert.match(collapsed, /7–10 ноч\./);
-assert.match(collapsed, /Завтрак · Всё включено/);
-assert.match(collapsed, /data-operator-brand="funsun"/);
-assert.match(collapsed, /data-operator-brand="anex"/);
-assert.match(collapsed, /от 62(?:\s| )?400/);
-assert.match(collapsed, /Показать варианты · 3/);
-assert.doesNotMatch(collapsed, /Завтраки/);
-assert.match(collapsed, /Уточняется по варианту/);
-assert.doesNotMatch(collapsed, />Чартер</, 'mixed offers cannot promise a charter on every variant');
-assert.doesNotMatch(collapsed, /2 взрослых/);
-assert.doesNotMatch(collapsed, /direct-tour/);
-
-// The displayed minimum belongs to its own exact-price offers, never to a
-// different, selectable offer elsewhere in the same hotel.
-const checkNote = 'Минимальная цена требует проверки перед выбором';
-const mixedNote = 'Часть вариантов по минимальной цене требует проверки';
-const withMinimum = cheapest => ({ ...multi, tours: [cheapest, multi.tours[1]] });
-for (const flags of [{ selectionEnabled: false }, { selection_enabled: false }, { provider: 'andromeda' }, { provider: 'ANDROMEDA', selectionEnabled: true }]) {
-  const sample = withMinimum({ ...multi.tours[0], ...flags });
-  const original = JSON.stringify(sample);
-  const html = api.toursHtml(sample);
-  assert.ok(html.includes(checkNote), 'collapsed minimum inherits the exact cheapest offer readiness');
-  assert.match(html, /от 62(?:\s| )?400/);
-  assert.doesNotMatch(html, /direct-tour/, 'a summary does not create a new select action');
-  assert.equal(JSON.stringify(sample), original, 'readiness presentation preserves source offers and prices');
-  assert.doesNotMatch(api.tourAction(sample.tours[0]), /direct-tour/, 'expanded action agrees with the summary');
+// The owner-reported regression: one displayed price must have one original
+// departure, duration, meal and operator, even before alternatives are opened.
+const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
+freeze(multi);
+const original=JSON.stringify(multi);
+for(const tours of [multi.tours,[...multi.tours].reverse()]){
+  const hotel={...multi,tours};
+  assert.equal(api.representativeTour(hotel),multi.tours[0]);
+  const html=api.toursHtml(hotel);
+  assert.ok(html.startsWith(api.tourRow(multi.tours[0])),'collapsed row is the exact original cheapest offer');
+  assert.equal((html.match(/class="tour-row"/g)||[]).length,1);
+  assert.equal((html.match(/class="hotel-price"/g)||[]).length,1);
+  assert.match(html,/data-tid="a"/);
+  assert.match(html,/16\.09\.2026/);
+  assert.match(html,/ · 7 ноч\./);
+  assert.match(html,/Завтраки/);
+  assert.match(html,/Показать варианты · 3/);
+  assert.doesNotMatch(html,/7[–-]10|7[–-]9|Несколько дат|BB · AI|17\.09\.2026|18\.09\.2026|Всё включено|hotel-trip-summary|hotel-summary-total/);
+  assert.doesNotMatch(html,/от 62|data-tid="[bc]"/,'no aggregate minimum or action belonging to another tour');
 }
-const mixedMinimum = { ...multi, tours: [{ ...multi.tours[0], provider: 'andromeda' }, { ...multi.tours[1], price: multi.price }] };
-assert.ok(api.toursHtml(mixedMinimum).includes(mixedNote), 'equal-price mixed readiness is not reported as uniformly blocked');
-assert.ok(api.toursHtml({ ...mixedMinimum, tours: [...mixedMinimum.tours].reverse() }).includes(mixedNote), 'equal-price readiness does not depend on supplier order');
-assert.doesNotMatch(api.toursHtml(withMinimum(multi.tours[0])), /tour-selection-note/, 'normal selectable minima receive no invented confirmation or extra warning');
-assert.doesNotMatch(api.toursHtml({ ...multi, tours: [multi.tours[0], { ...multi.tours[1], selectionEnabled: false }] }), /tour-selection-note/, 'a blocked expensive offer does not mark the minimum blocked');
-assert.match(api.toursHtml({ ...multi, price: 61000 }), /Условия минимальной цены уточняются/, 'unmatched summary price never borrows another offer readiness');
-for (const price of [undefined, null, 0, -1, 'unknown']) {
-  assert.match(api.toursHtml({ ...multi, price }), /Цена и условия уточняются/, 'unknown or invalid minimum stays explicitly unknown');
+assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтраки');
+// A stale/missing hotel-level minimum never lends its price to another offer.
+for(const price of [61000,999999,undefined,null,0,-1,'unknown']){
+  const html=api.toursHtml({...multi,price});
+  assert.ok(html.startsWith(api.tourRow(multi.tours[0])));
+  assert.match(html,/62(?:\s| )?400/);
+  assert.doesNotMatch(html,/61(?:\s| )?000|999(?:\s| )?999/);
 }
-assert.match(api.toursHtml({ ...multi, price: '62400', tours: [{ ...multi.tours[0], selectionEnabled: false }, multi.tours[1]] }), /Минимальная цена требует проверки/, 'numeric supplier prices follow the existing renderer price normalization');
-
-const allCharter = {
-  ...multi,
-  tours: multi.tours.map((tour, index) => ({ ...tour, id: 'charter-' + index, isCharter: true })),
-};
-assert.equal(api.hotelSummary(allCharter).flight, 'Чартеры');
-assert.match(api.toursHtml(allCharter), /Чартеры/);
-
-// Unknown or mixed package facts must not become a uniform hotel promise.
-const noCharterFact = { ...multi, tours: multi.tours.map(({ isCharter, ...tour }) => tour) };
-assert.equal(api.hotelSummary(noCharterFact).flight, 'Уточняется по варианту');
-const family = { ...multi, tours: multi.tours.map(tour => ({ ...tour, adults: 2, childs: 1 })) };
-assert.equal(api.hotelSummary(family).party, '2 взрослых · 1 ребёнок');
-const mixedParty = { ...family, tours: [family.tours[0], { ...family.tours[1], childs: 0 }] };
-assert.equal(api.hotelSummary(mixedParty).party, '', 'different placements are described only on their exact offer');
-assert.doesNotMatch(api.toursHtml(mixedParty), /2 взрослых|1 ребёнок/);
+// Equal prices do not merge readiness or conditions of distinct source offers.
+for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider:'andromeda'},{provider:'ANDROMEDA',selectionEnabled:true}]){
+  const blocked={...multi.tours[0],...flags},other={...multi.tours[1],price:62400};
+  const html=api.toursHtml({...multi,tours:[blocked,other]});
+  assert.ok(html.startsWith(api.tourRow(blocked)));
+  assert.match(html,/нужна проверка/);
+  assert.doesNotMatch(html,/direct-tour/);
+  const reversed=api.toursHtml({...multi,tours:[other,blocked]});
+  assert.ok(reversed.startsWith(api.tourRow(other)));
+  assert.match(reversed,/data-tid="b"/);
+  assert.doesNotMatch(reversed,/нужна проверка|Часть вариантов/);
+}
+// Per-offer party validation must not borrow missing counts from siblings/form.
 for(const [adults,childs,label] of [[2,0,'2 взрослых'],[2,1,'2 взрослых · 1 ребёнок'],[1,2,'1 взрослый · 2 ребёнка'],['3','0','3 взрослых']]){
   const offer=Object.freeze({...multi.tours[0],adults,childs});
-  assert.ok(api.tourRow(offer).includes('<small>Туристы</small><b>'+label+'</b>'),'each exact offer says whom its price covers');
-  assert.equal(api.hotelSummary({tours:[offer]}).party,label,'summary and exact row use the same validated party label');
+  assert.ok(api.toursHtml({...multi,tours:[offer,multi.tours[1]]}).includes('<small>Туристы</small><b>'+label+'</b>'));
 }
 for(const counts of [{adults:2},{adults:2,childs:null},{adults:2,childs:''},{adults:2,childs:false},{adults:2,childs:-1},{adults:2,childs:1.5},{adults:0,childs:0},{adults:true,childs:0},{adults:'unknown',childs:0}]){
   const offer=Object.freeze({...multi.tours[0],...counts});
-  assert.doesNotMatch(api.tourRow(offer), /<small>Туристы<\/small>/,'incomplete or invalid supplier counts never become a fabricated party');
-  assert.equal(api.hotelSummary({tours:[offer]}).party,'','unknown party is not filled from another offer or the form');
+  assert.doesNotMatch(api.toursHtml({...multi,tours:[offer,{...multi.tours[1],adults:2,childs:1}]}),/<small>Туристы<\/small>/);
 }
-assert.match(api.tourRow(mixedParty.tours[0]),/2 взрослых · 1 ребёнок/);
-assert.match(api.tourRow(mixedParty.tours[1]),/<small>Туристы<\/small><b>2 взрослых<\/b>/);
-assert.equal(api.hotelSummary({ ...multi, tours: [] }).count, 0);
-assert.match(api.toursHtml({ ...multi, tours: [] }), /Нет доступных вариантов/);
-
-const differentDates = {
-  ...multi,
-  tours: [multi.tours[0], { ...multi.tours[1], date: '2026-09-18' }],
-};
-assert.equal(api.hotelSummary(differentDates).date, 'Несколько дат вылета');
-
-const equivalentMeals = {
-  ...multi,
-  tours: [
-    { ...multi.tours[0], meal: { name: 'AI', fullName: 'Всё включено' } },
-    { ...multi.tours[1], meal: { fullName: 'All Inclusive' } },
-    { ...multi.tours[2], meal: 'Всё включено' },
-  ],
-};
-assert.equal(api.hotelSummary(equivalentMeals).meal, 'Всё включено', 'supplier aliases do not invent several meal variants');
-const distinctInclusiveMeals = {
-  ...multi,
-  tours: [
-    { ...multi.tours[0], meal: { name: 'AI', fullName: 'Всё включено' } },
-    { ...multi.tours[1], meal: { name: 'UAI', fullName: 'Ультра всё включено' } },
-    { ...multi.tours[2], meal: { name: 'Soft AI', fullName: 'Мягкое всё включено' } },
-  ],
-};
-assert.equal(api.hotelSummary(distinctInclusiveMeals).meal, '3 варианта питания', 'AI, UAI and Soft AI remain distinct choices');
-const ambiguousMeals = {
-  ...multi,
-  tours: [
-    { ...multi.tours[0], meal: 'Premium All Inclusive' },
-    { ...multi.tours[1], meal: 'Not all inclusive' },
-  ],
-};
-assert.equal(api.hotelSummary(ambiguousMeals).meal, 'Premium All Inclusive · Not all inclusive', 'custom and negated supplier labels remain separate in the hotel summary');
-const equivalentUnknownLabels = {
-  ...multi,
-  tours: [
-    { ...multi.tours[0], meal: 'Premium All Inclusive' },
-    { ...multi.tours[1], meal: 'premium all inclusive' },
-  ],
-};
-assert.equal(api.hotelSummary(equivalentUnknownLabels).meal, 'Premium All Inclusive', 'one unknown identity is deduplicated by its canonical key, not display casing');
-const extendedBreakfast = {
-  ...multi,
-  tours: [
-    { ...multi.tours[0], meal: 'Breakfast' },
-    { ...multi.tours[1], meal: 'Breakfast and dinner' },
-  ],
-};
-assert.equal(api.hotelSummary(extendedBreakfast).meal, 'Завтрак · Breakfast and dinner', 'an extended meal label does not collapse into the reviewed breakfast alias');
-
-const single = { id: 'hotel-2', price: 90000, tours: [{ ...multi.tours[0], id: 'single', price: 90000 }] };
-const singleHtml = api.toursHtml(single);
-assert.match(singleHtml, /direct-tour/);
-assert.match(singleHtml, /Завтраки/);
-assert.doesNotMatch(singleHtml, /Доступные варианты/);
-
-assert.equal(api.choiceHint(multi), '', 'the disclosure or expanded heading owns the multi-offer count, not the hotel identity header');
-assert.equal(api.choiceHint(single), '1 вариант тура');
-console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK');
+const incomplete={...multi.tours[0],date:'',nights:undefined,meal:'',operator:'',isCharter:undefined};
+const incompleteHtml=api.toursHtml({...multi,tours:[incomplete,multi.tours[1]]});
+assert.doesNotMatch(incompleteHtml,/17\.09\.2026|10 ноч|Всё включено|ANEX|Регулярный рейс/,'missing primary facts are not filled from the next offer');
+assert.match(incompleteHtml,/>Уточняется</);
+// Meal facet identities remain tested independently of the removed aggregate UI.
+for(const meal of [{name:'AI',fullName:'Всё включено'},{fullName:'All Inclusive'},'Всё включено'])assert.equal(api.mealIdentity({meal}).key,'meal:all-inclusive');
+const identity=meal=>api.mealIdentity({meal}).key;
+assert.notEqual(identity('UAI'),identity('AI'));
+assert.notEqual(identity('Soft AI'),identity('AI'));
+assert.notEqual(identity('Premium All Inclusive'),identity('AI'));
+assert.notEqual(identity('Not all inclusive'),identity('AI'));
+assert.notEqual(identity('Breakfast and dinner'),identity('Breakfast'));
+assert.equal(identity('Premium All Inclusive'),identity('premium all inclusive'));
+assert.equal(JSON.stringify(multi),original,'renderer preserves all original offers, values and ordering');
+assert.match(api.toursHtml({...multi,tours:[]}),/Нет доступных вариантов/);
+const single={...multi,tours:[multi.tours[0]]};
+assert.equal(api.toursHtml(single),api.tourRow(multi.tours[0]));
+assert.equal(api.choiceHint(multi),'');
+assert.equal(api.choiceHint(single),'1 вариант тура');
+console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK exact_collapsed_offer=1 mixed_conditions_absent=1 source_unchanged=1');
