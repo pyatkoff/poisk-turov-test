@@ -11,7 +11,7 @@ env:
   OUT: /tmp/match-old-tv-operatorlink-shape
 jobs:
   probe:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -50,4 +50,7 @@ jobs:
           set -e; test $trc -eq 0; tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; cat "$OUT/result.json"; test $rc -eq 0
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: match-old-tv-operatorlink-shape-${{ github.run_id }}, path: '${{ env.OUT }}/', retention-days: 90}
+        with:
+          name: 'match-old-tv-operatorlink-shape-${{ github.run_id }}'
+          path: '${{ env.OUT }}/'
+          retention-days: 90
