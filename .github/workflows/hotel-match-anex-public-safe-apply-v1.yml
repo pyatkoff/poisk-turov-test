@@ -1,0 +1,121 @@
+name: MATCH ANEX public safe apply v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-public-safe-apply-v1.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-anex-public-safe-apply-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-anex-public-safe-apply-1971-20260914-v1
+  SOURCE_EVIDENCE_RUN_ID: '34835601806'
+  SOURCE_EVIDENCE_ARTIFACT: match-anex-observed-public-evidence-v1-result
+  SOURCE_RECONCILE_RUN_ID: '34835995570'
+  SOURCE_RECONCILE_ARTIFACT: match-anex-public-evidence-current-reconcile-v2-result
+jobs:
+  apply:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: '${{ github.sha }}'
+      - name: Reserve immutable write operation before SSH
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_evidence_run_id":%s,"source_reconcile_run_id":%s,"state":"reserved_before_ssh","database_writes":"unknown_until_receipt","mapping_table":"anex_hotel_search_mappings","historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_EVIDENCE_RUN_ID" "$SOURCE_RECONCILE_RUN_ID" >"$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-public-safe-apply-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-public-safe-apply-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download immutable source artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source-evidence" "$RUNNER_TEMP/source-reconcile"
+          gh run download "$SOURCE_EVIDENCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_EVIDENCE_ARTIFACT" -D "$RUNNER_TEMP/source-evidence"
+          gh run download "$SOURCE_RECONCILE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_RECONCILE_ARTIFACT" -D "$RUNNER_TEMP/source-reconcile"
+          test -s "$RUNNER_TEMP/source-evidence/evidence.json"
+          test -s "$RUNNER_TEMP/source-reconcile/reconcile.json"
+          test -s "$RUNNER_TEMP/source-reconcile/receipt.json"
+      - name: Revalidate CURRENT state, apply SAFE mappings atomically, and read back
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          ev=json.loads((Path(os.environ['RUNNER_TEMP'])/'source-evidence'/'evidence.json').read_text())
+          rec=json.loads((Path(os.environ['RUNNER_TEMP'])/'source-reconcile'/'reconcile.json').read_text())
+          if ev.get('status')!='completed' or rec.get('status')!='completed' or rec.get('database_writes')!=0 or rec.get('mapping_writes')!=0: raise RuntimeError('source_contract')
+          details={}
+          for row in ev.get('matched',[]):
+              hits=row.get('hits') or []
+              if hits and (hits[0].get('detail') or {}).get('inc')==row.get('anex_hotel_id'): details[int(row['anex_hotel_id'])]=hits[0]['detail']
+          proposals=[]
+          for row in rec.get('rows',[]):
+              if row.get('bucket')!='safe': continue
+              sid=int(row['anex_hotel_id']); d=details.get(sid); safe=row.get('safe') or {}; target=safe.get('target') or {}
+              if not d or d.get('inc')!=sid or not target.get('local_hotel_id'): raise RuntimeError('proposal_evidence_contract')
+              proposals.append({'anex_hotel_id':sid,'country_id':int(row['country_id']),'search_count':int(row.get('search_count') or 0),'source_names':row.get('source_names') or [],'source_places':row.get('source_places') or [],'latitude':row.get('latitude'),'longitude':row.get('longitude'),'public_slug':row.get('public_slug'),'public_inc':sid,'public_star':row.get('public_star'),'expected_target':int(target['local_hotel_id']),'expected_method':row.get('method'),'expected_reason':row.get('reason')})
+          if len(proposals)!=11: raise RuntimeError('safe_proposal_count_changed')
+          helper=Path('scripts/diagnostics/hotel_full_catalog_reconcile.php').read_text()
+          def body(t):
+              if t.startswith('<?php'): t=t[len('<?php'):]
+              return t.replace('declare(strict_types=1);','',1)
+          helper=body(helper)
+          wrapper=r'''
+          function aps_similarity($a,$b): array {$l=array_fill_keys(array_unique(fc_tokens($a,true)),true);$r=array_fill_keys(array_unique(fc_tokens($b,true)),true);$shared=count(array_intersect_key($l,$r));$union=count($l+$r);return [$union?$shared/$union:0.0,$shared];}
+          function aps_qualifiers(array $names): array {$q=['annex'=>1,'beach'=>1,'garden'=>1,'north'=>1,'south'=>1];$o=[];foreach($names as $n)foreach(fc_tokens($n,false) as $t)if(isset($q[$t]))$o[$t]=true;return array_keys($o);}
+          function aps_has_qualifiers(array $qs,array $targets): bool {if(!$qs)return true;$seen=[];foreach($targets as $n)foreach(fc_tokens($n,false) as $t)$seen[$t]=true;foreach($qs as $q)if(!isset($seen[$q]))return false;return true;}
+          function aps_star($v): ?int {return preg_match('/([1-5])/',(string)$v,$m)?(int)$m[1]:null;}
+          function aps_best_name(array $sourceNames,array $targetNames): array {$s=0.0;$sh=0;$sn='';$tn='';foreach($sourceNames as $a)foreach($targetNames as $b){[$x,$y]=aps_similarity($a,$b);if($x>$s||($x===$s&&$y>$sh)){$s=$x;$sh=$y;$sn=$a;$tn=$b;}}return ['score'=>$s,'shared'=>$sh,'source_name'=>$sn,'target_name'=>$tn];}
+          $payload=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $dbHelper;
+          $db=v2_data_db();fc_require_tables($db);$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET SESSION innodb_lock_wait_timeout=20');$before=fc_coverage($db);$writes=[];$skipped=[];
+          try{$db->beginTransaction();[$hotels,$names,$strict,$broad,$scope]=fc_catalog($db);$byCountry=[];foreach($hotels as $hid=>$h)$byCountry[(int)$h['country_id']][]=(int)$hid;
+            $manual=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_decisions ORDER BY anex_hotel_id FOR UPDATE')->fetchAll(PDO::FETCH_COLUMN)),true);$existing=array_fill_keys(array_map('intval',$db->query('SELECT anex_hotel_id FROM anex_hotel_search_mappings ORDER BY anex_hotel_id FOR UPDATE')->fetchAll(PDO::FETCH_COLUMN)),true);$excluded=[];foreach($db->query('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions ORDER BY anex_hotel_id,catalog_hotel_id FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC) as $x)$excluded[(int)$x['anex_hotel_id']][(int)$x['catalog_hotel_id']]=true;
+            $insert=$db->prepare("INSERT INTO anex_hotel_search_mappings(anex_hotel_id,catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled) VALUES(?,?,'strong_candidate','preview',?,?,?,1)");
+            foreach($payload as $p){$id=(int)$p['anex_hotel_id'];$country=(int)$p['country_id'];$target=(int)$p['expected_target'];if((int)$p['public_inc']!==$id)throw new RuntimeException('public_inc_contract');if(isset($manual[$id])){$skipped[]=['anex_hotel_id'=>$id,'reason'=>'manual_decision_exists'];continue;}if(isset($existing[$id])){$skipped[]=['anex_hotel_id'=>$id,'reason'=>'mapping_exists'];continue;}if(isset($excluded[$id][$target])){$skipped[]=['anex_hotel_id'=>$id,'reason'=>'pair_exclusion_exists'];continue;}if(!isset($hotels[$target])||(int)$hotels[$target]['country_id']!==$country)throw new RuntimeException('target_current_contract');
+              $method=(string)$p['expected_method'];$qs=aps_qualifiers($p['source_names']);if(!aps_has_qualifiers($qs,$names[$target]??[]))throw new RuntimeException('qualifier_guard_changed');$validated=false;$validation=[];
+              if($method==='baseline_safe'){$strictTarget=fc_resolve($strict,$country,$p['source_names'],false);$broadTarget=fc_resolve($broad,$country,$p['source_names'],true);if($strictTarget===$target){$validated=true;$validation=['rule'=>'current_unique_strict'];}elseif($broadTarget===$target){$d=fc_dist($p['latitude'],$p['longitude'],$hotels[$target]['latitude'],$hotels[$target]['longitude']);$place=fc_place($p['source_places'],[$hotels[$target]['region_name'],$hotels[$target]['subregion_name']]);if(($d!==null&&$d<=1000)||$place){$validated=true;$validation=['rule'=>'current_unique_broad_plus_geo','distance_m'=>$d===null?null:(int)round($d),'place_match'=>$place];}}}
+              elseif($method==='coord_name_safe'){$rank=[];foreach($byCountry[$country]??[] as $hid){$d=fc_dist($p['latitude'],$p['longitude'],$hotels[$hid]['latitude'],$hotels[$hid]['longitude']);if($d===null||$d>5000)continue;$bn=aps_best_name($p['source_names'],$names[$hid]??[]);$rank[]=['id'=>$hid,'score'=>$bn['score'],'shared'=>$bn['shared'],'distance_m'=>$d,'qualifier_ok'=>aps_has_qualifiers($qs,$names[$hid]??[])];}usort($rank,static fn($a,$b)=>$b['score']<=>$a['score']?:$b['shared']<=>$a['shared']?:$a['distance_m']<=>$b['distance_m']?:$a['id']<=>$b['id']);$top=$rank[0]??null;$second=$rank[1]??null;if($top&&$top['id']===$target&&$top['qualifier_ok']){$margin=$top['score']-($second['score']??0.0);$d=(float)$top['distance_m'];$s=(float)$top['score'];$sh=(int)$top['shared'];$ok=($d<=100&&$s>=0.55&&$sh>=2&&$margin>=0.15)||($d<=500&&$s>=0.70&&$sh>=2&&$margin>=0.20)||($d<=2000&&$s>=0.90&&$sh>=2&&$margin>=0.15);$ss=aps_star($p['public_star']);$ts=$hotels[$target]['category']===null?null:(int)$hotels[$target]['category'];$starDelta=($ss!==null&&$ts!==null)?abs($ss-$ts):null;if($starDelta!==null&&$starDelta>=2)$ok=false;if($ok){$validated=true;$validation=['rule'=>'current_public_coord_plus_name_large_margin','score'=>$s,'shared'=>$sh,'margin'=>round($margin,6),'distance_m'=>(int)round($d),'star_delta'=>$starDelta];}}}
+              else throw new RuntimeException('unexpected_method');
+              if(!$validated)throw new RuntimeException('safe_revalidation_failed_'.$id);
+              $sourceDigest=fc_hash(['anex_public_info_inc_v1',$id,$p['public_slug'],$p['source_names'],$p['source_places'],$p['latitude'],$p['longitude'],$p['public_star']]);$mappingDigest=fc_hash(['hotel-match-anex-public-safe-apply-1971-20260914-v1',$id,$target,$method,$validation]);$insert->execute([$id,$target,FC_POLICY,$sourceDigest,$mappingDigest]);if($insert->rowCount()!==1)throw new RuntimeException('insert_count');$existing[$id]=true;$writes[]=['anex_hotel_id'=>$id,'catalog_hotel_id'=>$target,'method'=>$method,'validation'=>$validation,'source_row_digest'=>$sourceDigest,'mapping_digest'=>$mappingDigest];
+            }$db->commit();
+          }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+          $readback=[];$read=$db->prepare("SELECT anex_hotel_id,catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled FROM anex_hotel_search_mappings WHERE anex_hotel_id=?");foreach($writes as $w){$read->execute([$w['anex_hotel_id']]);$r=$read->fetch(PDO::FETCH_ASSOC);if(!$r||(int)$r['catalog_hotel_id']!==$w['catalog_hotel_id']||(int)$r['enabled']!==1||$r['scope']!=='preview'||$r['approval_policy']!==FC_POLICY||$r['source_row_digest']!==$w['source_row_digest']||$r['mapping_digest']!==$w['mapping_digest'])throw new RuntimeException('post_commit_readback_failed_'.$w['anex_hotel_id']);$readback[]=$r;}
+          $after=fc_coverage($db);echo fc_json(['status'=>'completed','operation_id'=>'hotel-match-anex-public-safe-apply-1971-20260914-v1','state'=>'committed_and_read_back','source_proposals'=>count($payload),'database_writes'=>count($writes),'mapping_writes'=>count($writes),'writes'=>$writes,'skipped'=>$skipped,'readback'=>$readback,'coverage_before'=>$before,'coverage_after'=>$after,'guards'=>['public_info_inc_equals_anex_hotel_id'=>true,'current_catalog_revalidated_in_transaction'=>true,'manual_decisions_overwritten'=>false,'existing_mappings_overwritten'=>false,'pair_exclusions_overwritten'=>false,'coordinate_conflict_auto_block_m'=>5000,'meaningful_qualifiers_required'=>['annex','beach','garden','north','south'],'star_delta_ge_2_blocks_new_fuzzy'=>true,'post_commit_per_row_readback'=>true,'historical_operations_replayed'=>false,'no_replay'=>true]]),"\n";
+          '''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip()
+          with tempfile.TemporaryDirectory(prefix='match-anex-apply-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(os.environ[req[0]].rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)];clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')};p=subprocess.run(cmd,input=json.dumps(proposals,ensure_ascii=False,separators=(',',':')),text=True,capture_output=True,timeout=420,env=clean)
+          try:result=json.loads(p.stdout)
+          except Exception:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'status':'unknown_or_failed','reason':'live_output_unparseable','exit_code':p.returncode,'stderr_tail':p.stderr[-1600:],'do_not_replay_without_receipt_read':True},ensure_ascii=False,sort_keys=True)+'\n');raise
+          (state/'result.json').write_text(json.dumps(result,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if p.returncode!=0 or result.get('status')!='completed' or result.get('operation_id')!=os.environ['OPERATION_ID'] or result.get('state')!='committed_and_read_back': raise RuntimeError('write_result_contract')
+          if result.get('mapping_writes')!=len(result.get('readback') or []): raise RuntimeError('readback_count_contract')
+          raw=(state/'result.json').read_bytes();receipt={'operation_id':os.environ['OPERATION_ID'],'state':'committed_and_read_back','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_evidence_run_id':int(os.environ['SOURCE_EVIDENCE_RUN_ID']),'source_reconcile_run_id':int(os.environ['SOURCE_RECONCILE_RUN_ID']),'result_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':result.get('database_writes'),'mapping_writes':result.get('mapping_writes'),'write_ids':[w['anex_hotel_id'] for w in result.get('writes') or []],'readback_count':len(result.get('readback') or []),'coverage_before':result.get('coverage_before'),'coverage_after':result.get('coverage_after'),'historical_operations_replayed':False,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps({'mapping_writes':result.get('mapping_writes'),'writes':result.get('writes'),'skipped':result.get('skipped'),'readback':result.get('readback'),'coverage_before':result.get('coverage_before'),'coverage_after':result.get('coverage_after')},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-public-safe-apply-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-public-safe-apply-1971-20260914-v1/
+          retention-days: 90
