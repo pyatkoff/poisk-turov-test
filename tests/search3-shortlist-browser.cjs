@@ -112,13 +112,42 @@ async function discloseMatchingOffers(page) {
 async function addOffer(page, offerId, keyboard = false) {
   const button = page.locator(`.search3-shortlist-toggle[data-offer-id="${offerId}"]`);
   await button.waitFor();
+  const measure = () => button.evaluate(node => {
+    const row = node.closest('.tour-row');
+    const bounds = element => {
+      const box = element.getBoundingClientRect();
+      return { width: box.width, height: box.height, left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+    };
+    return { width: innerWidth, row: bounds(row), price: { ...bounds(row.querySelector('.hotel-price')), text: row.querySelector('.hotel-price').textContent },
+      actions: [...row.querySelectorAll('.direct-tour,.search3-shortlist-toggle')].map(element => {
+        const box = bounds(element), range = document.createRange(); range.selectNodeContents(element);
+        return { ...box, text: element.textContent, fontSize: parseFloat(getComputedStyle(element).fontSize),
+          clipped: element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1,
+          lines: [...range.getClientRects()].filter(line => line.width && line.height).length };
+      }) };
+  });
+  const before = await measure();
   assert.ok((await button.boundingBox()).height >= 44, 'save action retains a 44px target');
   if (keyboard) { await button.focus(); await button.press('Enter'); } else await button.click();
   await page.waitForFunction(id => document.querySelector(`.search3-shortlist-toggle[data-offer-id="${id}"]`)?.getAttribute('aria-pressed') === 'true', offerId);
+  const after = await measure();
+  assert.equal(await button.innerText(), 'Добавлен', 'saved state has a compact visible caption');
+  assert.equal(await button.getAttribute('title'), 'Убрать из сравнения', 'the same saved control explains its removal action');
+  assert.equal(after.price.text, before.price.text, 'saving never changes the exact offer price');
+  assert.ok(after.row.height <= before.row.height + 1, 'saving does not make the exact offer row taller: ' + JSON.stringify({ before, after }));
+  assert.ok(after.price.height <= before.price.height + 1, 'the saved caption does not squeeze the price into extra lines');
+  for (const action of after.actions) {
+    assert.ok(action.height >= 44 && action.fontSize >= 14 && !action.clipped, 'saved row keeps readable full-size actions');
+    assert.ok(action.left >= after.row.left - 1 && action.right <= after.row.right + 1, 'saved action stays inside the offer row');
+  }
+  const [select, compare] = after.actions;
+  assert.ok(select.right <= compare.left + 1 || select.bottom <= compare.top + 1, 'Select and Compare actions remain separate');
+  if (offerId === 'offer-standard') await page.locator(`.tour-row:has(.search3-shortlist-toggle[data-offer-id="${offerId}"])`).screenshot({ path: path.join(output, `shortlist-saved-row-${after.width}.png`), animations: 'disabled' });
   if (keyboard) {
     await page.waitForFunction(id => document.activeElement?.matches(`.search3-shortlist-toggle[data-offer-id="${id}"]`), offerId);
     assert.equal(await button.evaluate(node => node === document.activeElement), true, 'keyboard save retains focus after the owner redraws controls');
   }
+  return { offerId, before, after };
 }
 
 async function openComparison(page, width, options = {}) {
@@ -213,11 +242,11 @@ async function checkJourney(browser, width) {
     const meal = page.locator('.search3-meal-filter select');
     await meal.selectOption('meal:all-inclusive');
     await discloseMatchingOffers(page);
-    await addOffer(page, 'offer-standard', true);
+    const savedActions = [await addOffer(page, 'offer-standard', true)];
     const one = await checkComparisonGeometry(page, width, 1);
-    await addOffer(page, 'offer-family');
+    savedActions.push(await addOffer(page, 'offer-family'));
     const two = await checkComparisonGeometry(page, width, 2);
-    await addOffer(page, 'offer-third');
+    savedActions.push(await addOffer(page, 'offer-third'));
     await openComparison(page, width, { assertCollapsed: true });
     const shortlist = page.locator('.search3-shortlist');
     assert.equal(await shortlist.locator('.search3-shortlist-item').count(), 3, 'shortlist accepts at most three exact snapshots');
@@ -361,7 +390,7 @@ async function checkJourney(browser, width) {
     assert.equal(await page.evaluate(() => JSON.stringify(window.__shortlistSource[0].tours.map(item => [item.id, item.price, item.roomType]))), JSON.stringify(items[0].tours.map(item => [item.id, item.price, item.roomType])), 'source projection remains immutable');
     assert.deepEqual(posts, [], 'shortlist never sends POST or a real lead');
     assert.deepEqual(errors, [], 'shortlist journey has no page errors');
-    return { sourceSha, width, geometry: [one, two, three], differences: { optional: true, commonFacts: 6, perOfferFacts: 1, keyboard: true }, exactOffers: ['offer-standard', 'offer-family'], prices: [120000, 125000], max: 3, reload: true, staleBlocked: true, duplicateBlocked: true, keyboard: true, focusReturn: true, posts: 0 };
+    return { sourceSha, width, geometry: [one, two, three], savedActions, differences: { optional: true, commonFacts: 6, perOfferFacts: 1, keyboard: true }, exactOffers: ['offer-standard', 'offer-family'], prices: [120000, 125000], max: 3, reload: true, staleBlocked: true, duplicateBlocked: true, keyboard: true, focusReturn: true, posts: 0 };
   } finally { await context.close(); }
 }
 
@@ -372,14 +401,14 @@ async function checkIntermediateGeometry(browser, width) {
     await openFilters(page, width);
     await page.locator('.search3-meal-filter select').selectOption('meal:all-inclusive');
     await discloseMatchingOffers(page);
-    const geometry = [];
+    const geometry = [], savedActions = [];
     for (const [index, id] of ['offer-standard', 'offer-family', 'offer-third'].entries()) {
-      await addOffer(page, id);
+      savedActions.push(await addOffer(page, id));
       geometry.push(await checkComparisonGeometry(page, width, index + 1));
     }
     assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [], 'comparison geometry never requests tour or flight data');
     assert.deepEqual(posts, []); assert.deepEqual(errors, []);
-    return { sourceSha, width, geometry, posts: 0 };
+    return { sourceSha, width, geometry, savedActions, posts: 0 };
   } finally { await context.close(); }
 }
 async function checkSearchRecovery(browser, width) {

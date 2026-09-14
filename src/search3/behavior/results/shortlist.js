@@ -81,7 +81,7 @@ function render(){
 function isSaved(record){const key=identity(record);return saved.some(item=>identity(item)===key);}
 function decorate(){
   results.querySelectorAll('.search3-shortlist-toggle').forEach(button=>button.remove());
-  results.querySelectorAll('.direct-tour[data-tid]').forEach(select=>{const record=snapshot(select.dataset.tid);if(!record)return;const button=node('button','search3-shortlist-toggle',isSaved(record)?'Сохранено для сравнения':'Сравнить');button.type='button';button.dataset.offerId=record.offerId;button.setAttribute('aria-pressed',isSaved(record)?'true':'false');select.insertAdjacentElement('afterend',button);});
+  results.querySelectorAll('.direct-tour[data-tid]').forEach(select=>{const record=snapshot(select.dataset.tid);if(!record)return;const added=isSaved(record),button=node('button','search3-shortlist-toggle',added?'Добавлен':'Сравнить');button.type='button';button.dataset.offerId=record.offerId;button.setAttribute('aria-pressed',added?'true':'false');if(added)button.title='Убрать из сравнения';select.insertAdjacentElement('afterend',button);});
 }
 function focusToggle(offerId){requestAnimationFrame(()=>{const button=Array.from(results.querySelectorAll('.search3-shortlist-toggle')).find(node=>node.dataset.offerId===String(offerId));if(button)button.focus();});}
 function focusFallback(){const target=results.getClientRects().length?results:document.getElementById('tourSearch');if(!target)return;const temporary=!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});}
