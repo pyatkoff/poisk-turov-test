@@ -444,15 +444,16 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     tours: [{ ...tour, id: 'tv-andromeda-control', price: 165000, operator: { name: 'TEST OPERATOR' } }]
   };
   const searchParams = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
-  const start = async generation => {
-    await page.evaluate(({ generation, searchParams, tvHotel }) => {
+  const start = async (generation, baseHotels = [tvHotel]) => {
+    await page.evaluate(({ generation, searchParams, baseHotels }) => {
       Object.defineProperty(window.V2SearchLifecycle, 'generation', { configurable: true, get: () => generation });
       Object.defineProperty(window.V2SearchLifecycle, 'snapshot', { configurable: true, get: () => ({ ...searchParams }) });
       window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation } }));
-      window.V2Results.render([tvHotel], { empty: true });
-    }, { generation, searchParams, tvHotel });
-    await page.locator('[data-andromeda-expand="21477"]').waitFor();
+      window.V2Results.render(baseHotels, { empty: true });
+    }, { generation, searchParams, baseHotels });
+    await page.locator('#results .hotel-card[data-hotel-id="21477"] .tour-more-toggle').waitFor();
   };
+  const waitForExpansion = status => page.waitForFunction(status => window.V2Results.state.items.some(hotel => String(hotel.id) === '21477' && hotel.andromedaExpansion?.status === status), status);
   control.enabled = true;
   control.requests.length = 0;
   control.failSecond = false;
@@ -461,6 +462,9 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     const card = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     await page.evaluate(() => window.V2Results.render([], { empty: true }));
     assert.equal(await page.locator('#results .hotel-card').count(), 1, 'prepared local hotel remains visible without a Tourvisor offer');
+    assert.equal(await card.locator('.tour-more-toggle').count(), 1, 'a single grouped provider seed uses the same hotel offer disclosure');
+    assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false', 'the grouped seed begins at hotel level');
+    assert.equal(await card.locator('.tour-row,.direct-tour,[data-andromeda-expand]').count(), 0, 'a grouped seed does not expose a premature exact row or a separate source button');
     assert.equal(await card.locator('.hotel-photo img').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
     await card.locator('.hotel-photo img').scrollIntoViewIfNeeded();
@@ -475,21 +479,31 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'cross-provider hotel stays hotel-level before exact variants are disclosed');
     assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'cross-provider idle state exposes one truthful hotel minimum');
     assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от155079₽', 'provider discovery exposes its actual hotel minimum without turning it into a selectable quote');
-    const expansion = card.locator('.provider-expansion');
-    const expansionToggle = expansion.locator('[data-andromeda-expand]');
-    assert.equal(await expansion.locator('small').innerText(), 'Дополнительные предложения', 'provider expansion is secondary without falsely claiming that the visible minimum belongs to another source');
-    assert.equal(await expansionToggle.innerText(), 'Ещё варианты из Андромеды', 'current card distinguishes optional provider variants from the visible offer source');
-    assert.ok((await expansionToggle.boundingBox()).height >= 44, 'provider expansion keeps a full touch target');
-    assert.equal(await expansion.evaluate(node => node.scrollWidth <= node.clientWidth + 1), true, 'secondary provider disclosure stays inside the card');
-    assert.equal((await snapshot(page)).overflow, false, width + ': idle secondary provider disclosure fits the viewport');
+    const expansionToggle = card.locator('.tour-more-toggle');
+    assert.equal(await expansionToggle.count(), 1, 'the hotel exposes one common offer disclosure for all sources');
+    assert.equal(await expansionToggle.innerText(), 'Показать варианты · 2', 'the common action describes the hotel offers without asking the user to choose an API source');
+    assert.equal(await card.locator('[data-andromeda-expand],.provider-expansion,.provider-expansion-status').count(), 0, 'the collapsed hotel has no separate source action or loading status');
+    assert.doesNotMatch(await card.innerText(), /Ещё варианты из Андромеды|Дополнительные предложения/);
+    assert.ok((await expansionToggle.boundingBox()).height >= 44, 'the common disclosure keeps a full touch target');
+    assert.equal(await expansionToggle.evaluate(node => node.scrollWidth <= node.clientWidth + 1), true, 'the common disclosure stays inside the card');
+    assert.equal((await snapshot(page)).overflow, false, width + ': collapsed hotel disclosure fits the viewport');
     if (!previous) await page.screenshot({ path: path.join(output, `andromeda-idle-${width}.png`), fullPage: true });
     await expansionToggle.click();
-    await card.locator('.tour-selection-note[role=status]').filter({ hasText: 'Варианты из Андромеды загружены: 2' }).waitFor();
+    await waitForExpansion('complete');
     assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'one discovery and two scoped provider pages load sequentially');
-    assert.equal((await snapshot(page)).overflow, false, width + ': complete provider status fits the viewport');
+    const expectedScope = { local_id: 21477, seed: { provider: 'andromeda', search_ref: 'd'.repeat(64), generation: 73, page: 1, offer_ref: 'offer_' + '9'.repeat(64) } };
+    for (const request of control.requests.slice(1)) {
+      assert.deepEqual(request.hotel_scope, expectedScope, 'the common disclosure retains the exact saved hotel and seed scope');
+      assert.equal(request.generation, 73, 'scoped requests retain the current search generation');
+      assert.deepEqual(request.params, searchParams, 'scoped requests retain the original search parameters');
+    }
+    assert.equal(await expansionToggle.getAttribute('aria-expanded'), 'true', 'one click opens the hotel and retains its expanded state throughout loading');
+    assert.equal(await expansionToggle.evaluate(node => node === document.activeElement), true, 'scoped-page rerenders retain focus on the common disclosure');
+    assert.equal(await card.locator('.provider-expansion-status,[data-andromeda-expand]').count(), 0, 'completed results need no duplicate source-specific completion status');
+    assert.equal((await snapshot(page)).overflow, false, width + ': completed hotel offers fit the viewport');
     if (!previous) await page.screenshot({ path: path.join(output, `andromeda-complete-${width}.png`), fullPage: true });
-    await card.locator('.tour-more-toggle').click();
-    assert.equal(await card.locator('.tour-row').count(), 3, 'complete expansion replaces the grouped representative with exact provider variants and retains Tourvisor');
+    assert.equal(await card.locator('.tour-row').count(), 3, 'one common disclosure replaces the grouped representative with exact provider variants and retains Tourvisor');
+    assert.deepEqual((await card.locator('.tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))).sort((a, b) => a - b), [155000, 156000, 165000], 'the unified presentation preserves each exact offer price');
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
     assert.equal(await card.locator('.tour-secondary-facts').filter({ hasText: 'Андромеда' }).count(), 2, 'expanded provider variants remain visibly attributed');
     assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'перед выбором нужна проверка' }).count(), 2, 'every Andromeda variant keeps the quote-required boundary');
@@ -534,30 +548,103 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     if (!previous) await page.screenshot({ path: path.join(output, `andromeda-details-${width}.png`), fullPage: true });
     await page.evaluate(() => window.AnyTourAndromedaProvider.expandHotel('21477'));
     assert.equal(control.requests.length, 4, 'rerender or repeated expansion cannot replay provider pages');
+    await expansionToggle.click();
+    assert.equal(await expansionToggle.getAttribute('aria-expanded'), 'false', 'the same action collapses the complete hotel offers');
+    assert.equal(await card.locator('.tour-row,.provider-expansion-status').count(), 0, 'collapsed results hide both exact offers and their status');
+    await expansionToggle.click();
+    assert.equal(await card.locator('.tour-row').count(), 3, 'the same action reopens the received offers');
+    assert.equal(control.requests.length, 4, 'collapse and reopen do not replay scoped pages or offer details');
+    assert.equal(await expansionToggle.evaluate(node => node === document.activeElement), true, 'collapse and reopen retain keyboard focus on the common action');
+    const sourceFilter = page.locator('.search3-provider-filter select');
+    if (width < 1025) {
+      const panel = page.locator('.search3-mobile-filter-panel');
+      if (await panel.getAttribute('open') === null) await panel.locator('summary').click();
+    }
+    await sourceFilter.selectOption('tourvisor');
+    assert.equal(await card.locator('.tour-row').count(), 1, 'a selected source projects only its matching exact offer');
+    assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'), 'tv-andromeda-control', 'the projected selectable offer retains its original identity');
+    assert.equal(await card.locator('.provider-detail-toggle').count(), 0, 'filtering to Tourvisor never reveals the filtered provider offers');
+    assert.equal(await expansionToggle.count(), 1, 'projecting one offer retains the hotel’s common disclosure');
+    await expansionToggle.click();
+    assert.equal(await card.locator('.tour-row').count(), 0, 'the filtered single offer can be collapsed');
+    await page.locator('#sortResults').selectOption('rating');
+    assert.equal(await expansionToggle.getAttribute('aria-expanded'), 'false', 'local sorting preserves the collapsed filtered hotel');
+    await expansionToggle.click();
+    assert.equal(await card.locator('.tour-row').count(), 1, 'reopening preserves the selected source filter');
+    assert.equal(await card.locator('.provider-detail-toggle').count(), 0, 'common disclosure does not bypass the source restriction');
+    assert.equal(control.requests.length, 4, 'local source filtering, sorting and disclosure do not replay supplier requests');
+    await sourceFilter.selectOption('');
+    await page.locator('#sortResults').selectOption('price');
+    assert.equal(await card.locator('.tour-row').count(), 3, 'clearing the local restriction restores the already loaded common offers');
 
     control.failSecond = true;
     control.requests.length = 0;
     await start(74);
     const partialCard = page.locator('#results .hotel-card[data-hotel-id="21477"]');
-    await partialCard.locator('[data-andromeda-expand]').click();
-    await partialCard.locator('.tour-selection-note[role=status]').filter({ hasText: 'Не все варианты из Андромеды загрузились' }).waitFor();
-    assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'partial expansion stops after the failed scoped page without background replay');
     await partialCard.locator('.tour-more-toggle').click();
+    await partialCard.locator('.provider-expansion-status[role=status]').filter({ hasText: 'Не все варианты загрузились. Полученные предложения сохранены.' }).waitFor();
+    assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'partial expansion stops after the failed scoped page without background replay');
+    assert.equal(await partialCard.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'true', 'a partial response keeps the requested hotel offers open');
     assert.equal(await partialCard.locator('.tour-row').count(), 3, 'partial failure retains Tourvisor, grouped representative and received exact variant');
     assert.equal(await partialCard.locator('.direct-tour').count(), 1, 'partial provider data cannot enter the selection controller');
+    assert.equal(await partialCard.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'partial-page rerenders retain disclosure focus');
     assert.equal((await snapshot(page)).overflow, false, width + ': partial provider status fits the viewport');
+    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-partial-${width}.png`), fullPage: true });
+    await partialCard.locator('.tour-more-toggle').click();
+    assert.equal(await partialCard.locator('.tour-row,.provider-expansion-status').count(), 0, 'closing partial results hides the status with the offers');
+    await partialCard.locator('.tour-more-toggle').click();
+    assert.equal(await partialCard.locator('.tour-row').count(), 3, 'reopening partial results retains every received offer');
+    assert.equal(control.requests.length, 3, 'partial collapse and reopen do not retry failed provider pages');
+
+    control.failSecond = false;
+    control.requests.length = 0;
+    let pageStarted;
+    const held = { page: 1, started: new Promise(resolve => { pageStarted = resolve; }), onStart: () => pageStarted(), release: null };
+    control.held = held;
+    await start(75, []);
+    const loadingCard = page.locator('#results .hotel-card[data-hotel-id="21477"]');
+    const loadingToggle = loadingCard.locator('.tour-more-toggle');
+    assert.equal(await loadingToggle.innerText(), 'Показать варианты · 1', 'a single grouped seed has the common hotel action');
+    const firstPageRequest = page.waitForRequest(request => {
+      if (!new URL(request.url()).pathname.endsWith('/api-andromeda-search3-preview.php')) return false;
+      const input = JSON.parse(request.postData() || '{}');
+      return input.action === 'hotel_offers' && input.generation === 75 && input.page === 1;
+    });
+    await loadingToggle.click();
+    await firstPageRequest;
+    await held.started;
+    await loadingCard.locator('.provider-expansion-status[role=status]').filter({ hasText: 'Загружаем варианты тура…' }).waitFor();
+    assert.equal(await loadingToggle.getAttribute('aria-expanded'), 'true', 'the first click on a grouped seed opens the hotel while scoped pages load');
+    assert.equal(await loadingToggle.evaluate(node => node === document.activeElement), true, 'loading retains focus on the common disclosure');
+    assert.equal(await loadingCard.locator('.direct-tour').count(), 0, 'the grouped provider seed never becomes directly selectable');
+    assert.equal((await snapshot(page)).overflow, false, width + ': loading status fits the expanded hotel');
+    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-loading-${width}.png`), fullPage: true });
+    await loadingToggle.click();
+    assert.equal(await loadingToggle.getAttribute('aria-expanded'), 'false', 'the user can collapse a hotel while its scoped request is pending');
+    assert.equal(await loadingCard.locator('.tour-row,.provider-expansion-status').count(), 0, 'pending status is hidden with the collapsed offers');
+    held.release();
+    await waitForExpansion('complete');
+    assert.equal(await loadingToggle.getAttribute('aria-expanded'), 'false', 'a late completion preserves the user’s collapsed state');
+    assert.equal(await loadingCard.locator('.tour-row,.provider-expansion-status').count(), 0, 'late completion does not reopen offers or expose a separate status');
+    assert.equal(await loadingToggle.evaluate(node => node === document.activeElement), true, 'late completion retains focus on the collapsed hotel action');
+    await loadingToggle.click();
+    assert.equal(await loadingCard.locator('.tour-row').count(), 2, 'the same action reveals the two completed exact offers from a single grouped seed');
+    assert.equal(await loadingCard.locator('.direct-tour').count(), 0, 'loading through the common action preserves provider selection guards');
+    assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'opening, closing during loading and reopening use only the original scoped requests');
     return offerComposition;
   } finally {
+    if (control.held?.release) control.held.release();
+    control.held = null;
     control.enabled = false;
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
   }
 }
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
-  const andromeda = { enabled: false, failSecond: false, requests: [] };
+  const andromeda = { enabled: false, failSecond: false, requests: [], held: null };
   const catalog = { recover: false, requests: [] };
   page.on('pageerror', error => errors.push(String(error)));
-  await page.route('**/*', route => {
+  await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
     if (url.href === 'https://catalog.example/hotel-21477.svg') return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: decodeURIComponent(picture.split(',')[1]) });
     if (catalog.recover && url.pathname.endsWith('/data/departures-v1.php')) {
@@ -571,6 +658,9 @@ async function run(browser, width, previous) {
     if (andromeda.enabled && url.pathname.endsWith('/api-andromeda-search3-preview.php')) {
       const input = JSON.parse(request.postData() || '{}');
       andromeda.requests.push(input);
+      if (input.action === 'hotel_offers' && andromeda.held?.page === input.page) {
+        await new Promise(resolve => { andromeda.held.release = resolve; andromeda.held.onStart(); });
+      }
       if (input.action === 'hotel_offers' && andromeda.failSecond && input.page === 2) return route.abort('failed');
       if (input.action === 'offer_detail') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', offer_context: input.offer_context, hotel: 'Подтверждённый тестовый отель', operator: 'ANEX', room: '<script>номер<\/script>', placement: 'DBL', checkin: '2026-09-18', nights: 8, adults: 2, children: 0, meal: 'AI', price: { amount: '155079.00', currency: 'RUB' } } }) });
       const offerRef = 'offer_' + String(input.action === 'hotel_offers' ? input.page : 9).repeat(64);

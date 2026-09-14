@@ -66,6 +66,12 @@ assert.doesNotMatch(andromedaRow,/data-andromeda-detail/,'an Andromeda-shaped to
 const tvRow=rendererWindow.V2Results.tourRow(tv.tours[0]);
 assert.match(tvRow,/Источник<\/small><b>Tourvisor<\/b>/);
 assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available');
+const seedHtml=rendererWindow.V2Results.toursHtml({...normalized,andromedaExpansion:{status:'idle',count:0}});
+assert.match(seedHtml,/hotel-offers-summary/,'one grouped seed remains a hotel summary until its common disclosure opens');
+assert.equal((seedHtml.match(/class="secondary tour-more-toggle"/g)||[]).length,1,'one seed has exactly one common offer entry');
+assert.match(seedHtml,/Показать варианты · 1/);
+assert.doesNotMatch(seedHtml,/class="tour-row"|data-andromeda-expand|provider-expansion-toggle|Ещё варианты из Андромеды/,'the seed cannot bypass disclosure or expose a separate provider entry');
+assert.equal(rendererWindow.V2Results.toursHtml(tv),tvRow,'ordinary single Tourvisor offer keeps its existing direct presentation');
 
 (async()=>{
   const listeners=new Map(),renders=[],providerEvents=[];
@@ -74,10 +80,12 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
     location:window.location,V2_CONFIG:{andromedaApi:'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'},
     V2SearchLifecycle:lifecycle,V2Results:{render(items,options){renders.push({items,options});return items;}},document:{},
     addEventListener(name,listener){listeners.set(name,listener);},
-    dispatchEvent(event){providerEvents.push(event.detail);},
+    dispatchEvent(event){if(event.type==='v2:provider-status')providerEvents.push(event.detail);const listener=listeners.get(event.type);if(listener)listener(event);},
     async fetch(url,options){assert.equal(url,'https://anytoour.ru/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');assert.equal(options.method,'POST');assert.equal(options.headers['X-Requested-With'],'AnyTourSearch3');return{ok:true,async json(){return{ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[{...rawHotel(21477),catalog:undefined},rawHotel(null,'Movenpick Resort')]}};}};}
   };
   class FixtureEvent{constructor(name,options){this.type=name;this.detail=options&&options.detail;}}
+  const settle=()=>new Promise(resolve=>setImmediate(resolve));
+  const toggle=(hotelId,expanded)=>runtimeWindow.dispatchEvent(new FixtureEvent('v2:hotel-offers-toggle',{detail:{hotelId:String(hotelId),expanded}}));
   vm.runInNewContext(source,{window:runtimeWindow,URL,Map,Set,Array,Number,String,Object,RegExp,decodeURIComponent,AbortController,CustomEvent:FixtureEvent,globalThis:runtimeWindow});
   listeners.get('v2:search-reset')({detail:{generation:11}});
   runtimeWindow.V2Results.render([tv],{empty:true});
@@ -111,22 +119,29 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
     row.tours[0].offer_ref=ref;row.tours[0].offer_context={...context,offer_ref:ref,page:request.page,hotel_scope:request.hotel_scope};
     return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:request.page,pages_count:2,grouped:false,hotels:[row]}})};
   };
-  await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');
+  toggle(21477,true);await settle();
   const expanded=renders.at(-1).items[0];
   assert.equal(calls.length,2);assert.equal(expanded.tours.length,3,'two distinct equal-price expanded offers plus Tourvisor, no grouped representative');
   assert.equal(expanded.andromedaExpansion.status,'complete');
   assert.equal(expanded.tours[1].offerContext.hotel_scope.local_id,21477,'expanded context survives normalization');
   await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');assert.equal(calls.length,2,'rerender/click cannot replay expansion');
-  assert.match(rendererWindow.V2Results.toursHtml(expanded),/Варианты из Андромеды загружены: 2/);
+  toggle(21477,false);toggle(21477,true);await settle();
+  assert.equal(calls.length,2,'the common disclosure close/reopen does not replay completed expansion');
+  const completeHtml=rendererWindow.V2Results.toursHtml(expanded);
+  assert.match(completeHtml,/Показать варианты · 3/,'one common disclosure counts all retained provider offers');
+  assert.doesNotMatch(completeHtml,/data-andromeda-expand|provider-expansion-toggle|Варианты из Андромеды загружены|Ещё варианты из Андромеды/,'completion introduces no second provider entry or redundant completion banner');
   assert.equal(api.context({...context,hotel_scope:{local_id:21477,seed:{...context,hotel_scope:{}}}}),null,'nested scopes rejected');
   // Reset clears old expansion. The next incomplete result retains its representative.
   runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[rawHotel(21477)]}})});
   listeners.get('v2:search-reset')({detail:{generation:11}});await new Promise(resolve=>setImmediate(resolve));
   runtimeWindow.V2Results.render([tv],{empty:true});
-  runtimeWindow.fetch=async(url,options)=>{const request=JSON.parse(options.body);if(request.page===2)throw new Error('network');const row=rawHotel(21477);row.tours[0].offer_ref='offer_'+'c'.repeat(64);row.tours[0].offer_context={...context,offer_ref:row.tours[0].offer_ref,hotel_scope:request.hotel_scope};return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:2,grouped:false,hotels:[row]}})};};
+  let partialCalls=0;
+  runtimeWindow.fetch=async(url,options)=>{const request=JSON.parse(options.body);partialCalls++;if(request.page===2)throw new Error('network');const row=rawHotel(21477);row.tours[0].offer_ref='offer_'+'c'.repeat(64);row.tours[0].offer_context={...context,offer_ref:row.tours[0].offer_ref,hotel_scope:request.hotel_scope};return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:2,grouped:false,hotels:[row]}})};};
   await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');
   assert.equal(renders.at(-1).items[0].tours.length,3,'partial failure retains representative, extra offer and Tourvisor');
   assert.equal(renders.at(-1).items[0].andromedaExpansion.status,'unavailable');
+  toggle(21477,false);toggle(21477,true);await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');await settle();
+  assert.equal(partialCalls,2,'unavailable expansion preserves received offers without retrying when reopened');
   const retained=renders.at(-1).items[0].tours.find(t=>t.provider==='andromeda');
   assert.equal(retained.providerDetail.eligible,true,'only a retained provider offer receives detail eligibility');
   assert.match(rendererWindow.V2Results.tourRow(retained),/data-andromeda-detail/);
@@ -155,5 +170,89 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
   await runtimeWindow.AnyTourAndromedaProvider.openDetail(other.offerRef);
   assert.equal(terminalCalls,1,'closing and reopening a terminal context error cannot replay the request');
-  console.log('SEARCH3_ANDROMEDA_PROVIDER_OK resolved_merge=1 unresolved_hidden=1 expansion_complete=1 partial_retention=1 detail_eligible=1 detail_cached=1 detail_escape=1 detail_context=1 explicit_only=1 matching_writes=0');
+
+  // Two distinct local hotels opened while another is loading share one request lane.
+  // Deferred responses deliberately ignore abort so generation guards, not the mock, reject stale data.
+  const hotelIds=[21477,21478,21479],pending=[],scopedRequests=[];
+  const hotelFor=(id,generation,scope)=>{
+    const hotel=rawHotel(id,'Local hotel '+id),ref='offer_'+(id+(scope?100000:0)).toString(16).padStart(64,'0');
+    hotel.tours[0].offer_ref=ref;
+    hotel.tours[0].offer_context={...context,generation,offer_ref:ref,...(scope?{hotel_scope:scope}:{})};
+    return hotel;
+  };
+  const deferExpansion=(url,options)=>{
+    const request=JSON.parse(options.body);
+    assert.equal(request.action,'hotel_offers');assert.equal(request.page,1);
+    assert.deepEqual(request.params,lifecycle.snapshot);
+    assert.equal(request.hotel_scope.seed.generation,request.generation,'queued work retains its own search generation');
+    scopedRequests.push(request);
+    return new Promise(resolve=>pending.push({request,signal:options.signal,resolve}));
+  };
+  const discover=async generation=>{
+    lifecycle.generation=generation;lifecycle.dirty=false;
+    runtimeWindow.fetch=async(url,options)=>{
+      const request=JSON.parse(options.body);assert.equal(request.action,undefined);assert.equal(request.generation,generation);
+      return{ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation,page:1,pages_count:1,hotels:hotelIds.map(id=>hotelFor(id,generation))}})};
+    };
+    listeners.get('v2:search-reset')({detail:{generation}});await settle();
+    runtimeWindow.fetch=deferExpansion;
+  };
+  const finish=async item=>{
+    const {request}=item;
+    item.resolve({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:request.generation,page:1,pages_count:1,grouped:false,hotels:[hotelFor(request.hotel_scope.local_id,request.generation,request.hotel_scope)]}})});
+    await settle();
+  };
+  const expansionStatus=id=>renders.at(-1).items.find(h=>h.id===String(id)).andromedaExpansion.status;
+
+  await discover(20);
+  assert.equal(scopedRequests.length,0,'discovery alone never fetches exact hotel pages');
+  runtimeWindow.V2Results.render([],{empty:true});
+  assert.equal(scopedRequests.length,0,'ordinary rerender cannot start scoped expansion');
+  toggle(21477,true);toggle(21478,true);toggle(21478,true);toggle(21479,true);
+  assert.deepEqual(scopedRequests.map(request=>request.hotel_scope.local_id),[21477],'only the first explicit open starts a request');
+  assert.equal(expansionStatus(21477),'loading');
+  assert.equal(expansionStatus(21478),'queued');assert.equal(expansionStatus(21479),'queued');
+  const first=pending.shift();
+  toggle(21477,false);toggle(21478,false);
+  assert.equal(first.signal.aborted,false,'collapsing the active hotel retains its in-flight work for caching');
+  assert.equal(expansionStatus(21478),'idle','closing queued hotel cancels its pending expansion');
+  await finish(first);
+  assert.deepEqual(scopedRequests.map(request=>request.hotel_scope.local_id),[21477,21479],'completion starts the next still-open queued hotel and skips the cancelled one');
+  assert.equal(expansionStatus(21477),'complete');assert.equal(expansionStatus(21479),'loading');
+  await finish(pending.shift());
+  assert.equal(expansionStatus(21479),'complete');
+  toggle(21477,true);toggle(21479,false);toggle(21479,true);await settle();
+  assert.equal(scopedRequests.length,2,'completed queued and formerly collapsed hotels reopen from cached offers');
+  toggle(21478,true);
+  assert.equal(scopedRequests.length,3,'a cancelled queued hotel can later be opened explicitly');
+  await finish(pending.shift());
+  assert.equal(expansionStatus(21478),'complete');
+
+  await discover(21);
+  toggle(21477,true);toggle(21478,true);
+  const dirtyPending=pending.shift(),beforeDirtyRequests=scopedRequests.length;
+  lifecycle.dirty=true;listeners.get('v2:search-reset')({detail:{dirty:true}});
+  assert.equal(dirtyPending.signal.aborted,true,'dirty reset aborts in-flight expansion');
+  const afterDirtyRenders=renders.length;
+  await finish(dirtyPending);
+  assert.equal(renders.length,afterDirtyRenders,'late response after dirty reset cannot repopulate results');
+  assert.equal(scopedRequests.length,beforeDirtyRequests,'dirty reset clears queued opens instead of draining them');
+  toggle(21479,true);await settle();
+  assert.equal(scopedRequests.length,beforeDirtyRequests,'dirty lifecycle rejects later disclosure requests');
+
+  await discover(22);
+  toggle(21477,true);toggle(21478,true);
+  const replacedPending=pending.shift(),beforeNewSearchRequests=scopedRequests.length;
+  await discover(23);
+  assert.equal(replacedPending.signal.aborted,true,'a new search aborts the previous expansion');
+  const afterNewSearchRenders=renders.length;
+  await finish(replacedPending);
+  assert.equal(renders.length,afterNewSearchRenders,'old-generation completion cannot replace new-search results');
+  assert.equal(scopedRequests.length,beforeNewSearchRequests,'old-generation completion cannot drain an old queue into the new search');
+  assert.ok(hotelIds.every(id=>expansionStatus(id)==='idle'),'new search starts with fresh disclosure states');
+  toggle(21478,true);
+  assert.equal(scopedRequests.at(-1).generation,23,'the next explicit open uses only the new search context');
+  await finish(pending.shift());
+  assert.equal(pending.length,0);
+  console.log('SEARCH3_ANDROMEDA_PROVIDER_OK resolved_merge=1 unresolved_hidden=1 common_disclosure=1 single_seed=1 expansion_complete=1 partial_retention=1 sequential_queue=1 queued_close=1 stale_reset=1 detail_eligible=1 detail_cached=1 detail_escape=1 detail_context=1 explicit_only=1 matching_writes=0');
 })().catch(error=>{console.error(error);process.exitCode=1;});
