@@ -9,11 +9,10 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-match-andromeda-all-id-bridge-1971-v1
+  group: anytour-match-andromeda-all-id-bridge-1971-v2
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v1
-  OUT: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge
+  OPERATION_ID: hotel-match-andromeda-all-id-bridge-1971-20260914-v2
 jobs:
   probe:
     runs-on: ubuntu-latest
@@ -33,6 +32,7 @@ jobs:
       - name: Reserve immutable operation before supplier access
         run: |
           set -euo pipefail
+          export OUT="$RUNNER_TEMP/hotel-match-andromeda-all-id-bridge"
           test "$GITHUB_RUN_ATTEMPT" = 1 || { echo REPLAY_REFUSED; exit 2; }
           mkdir -m 700 "$OUT"
           python3 - <<'PY'
@@ -43,18 +43,21 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: match-andromeda-all-id-bridge-reservation
-          path: ${{ env.OUT }}/reservation.json
+          name: match-andromeda-all-id-bridge-reservation-v2
+          path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Fresh documented all probe
         env:
           ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
           ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
-        run: php scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php --execute "$OUT"
+        run: |
+          export OUT="$RUNNER_TEMP/hotel-match-andromeda-all-id-bridge"
+          php scripts/diagnostics/hotel_match_andromeda_all_id_bridge.php --execute "$OUT"
       - name: Verify durable readback
         if: always()
         run: |
+          export OUT="$RUNNER_TEMP/hotel-match-andromeda-all-id-bridge"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path(os.environ['OUT'])
@@ -71,7 +74,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-andromeda-all-id-bridge-evidence
-          path: ${{ env.OUT }}/
+          name: match-andromeda-all-id-bridge-evidence-v2
+          path: ${{ runner.temp }}/hotel-match-andromeda-all-id-bridge/
           if-no-files-found: error
           retention-days: 90
