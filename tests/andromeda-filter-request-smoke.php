@@ -13,7 +13,7 @@ $saved=[
  'townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'name'=>'Moscow']]]],
  'all'=>['params'=>['STATEINC'=>3],'payload'=>[
    'TOWNTO'=>[
-     ['id'=>44,'name'=>'Kemer'],['id'=>45,'name'=>'Beldibi'],['id'=>46,'name'=>'Goyuk'],['id'=>47,'name'=>'Side']
+     ['id'=>44,'name'=>'Kemer'],['id'=>45,'name'=>'Beldibi'],['id'=>46,'name'=>'Goynuk'],['id'=>47,'name'=>'Side']
    ],
    'HOTELS'=>[],
    'OPERATORS'=>[
