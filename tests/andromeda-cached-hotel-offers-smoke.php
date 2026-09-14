@@ -27,7 +27,7 @@ $saved=['local_country_id'=>4,'townfrom'=>['payload'=>['TOWNFROM'=>[['id'=>1,'na
     ]],
     'excluded_operator_ids'=>[]];
 $params=['departureId'=>1,'countryId'=>4,'dateFrom'=>'2026-09-22','dateTo'=>'2026-09-22','nightsFrom'=>7,'nightsTo'=>7,
-    'adults'=>2,'childs'=>[],'meal'=>'7','currency'=>'RUB','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],
+    'adults'=>2,'childs'=>[],'meal'=>'','currency'=>'RUB','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],
     'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,
     'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>''];
 $generation=3;$session='cache-session';$baseRequest=['generation'=>$generation,'page'=>1,'params'=>$params];
