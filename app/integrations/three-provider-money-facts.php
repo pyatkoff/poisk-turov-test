@@ -53,7 +53,8 @@ final class AnyTourThreeProviderMoneyFacts
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
             }
             $kind = $fact['kind'];
-            if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)) {
+            if (!is_string($kind) || !preg_match('/\A[a-z][a-z0-9_]{0,39}\z/D', $kind)
+                || ($provider === 'andromeda' && !in_array($kind, ['fuel_adult', 'fuel_child'], true))) {
                 throw new InvalidArgumentException('THREE_PROVIDER_MONEY_ADDITIONAL');
             }
             $money = self::moneyFact([
