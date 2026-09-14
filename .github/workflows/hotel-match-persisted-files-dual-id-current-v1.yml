@@ -1,0 +1,76 @@
+name: MATCH persisted files dual-id CURRENT v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-persisted-files-dual-id-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-persisted-files-dual-id-current-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-persisted-files-dual-id-current-1971-20260914-v1
+  SOURCE_RUN_ID: '34837638490'
+  SOURCE_ARTIFACT: match-anex-bridge-current-v1-result
+jobs:
+  scan:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable CURRENT read
+        run: |
+          set -euo pipefail; STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_ssh","database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_http_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" > "$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-persisted-files-dual-id-current-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-persisted-files-dual-id-current-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download CURRENT unresolved queue
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/queue.json"
+      - name: Scan MATCH-owned persisted text evidence and extract dual IDs
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,shlex,subprocess,tempfile
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          q=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source'/'queue.json').read_text())
+          ids=sorted({int(r.get('anex_hotel_id') or 0) for r in q.get('rows') or [] if int(r.get('anex_hotel_id') or 0)>0})
+          if len(ids)!=182: raise RuntimeError('queue_contract:'+str(len(ids)))
+          wrapper=r'''
+          $queue=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);$want=array_fill_keys(array_map('intval',$queue['ids']??[]),true);
+          $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$h)throw new RuntimeException('db_helper');require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
+          function pf_ident(string $s): string {if(!preg_match('/^[A-Za-z0-9_]+$/D',$s))throw new RuntimeException('unsafe_identifier');return '`'.$s.'`';}
+          function pf_urls(string $raw): array {$raw=str_replace(['\\/','&amp;','\\u0026'],['/','&','&'],$raw);$out=[];if(preg_match_all('~https://(?:files\.anextour\.(?:ru|com)|cdn\.anextour\.ru)/[^\\s"\'<>]+~iu',$raw,$m)){foreach($m[0]as$u){$u=rtrim($u,'.,);]}');$out[$u]=true;}}return array_keys($out);}
+          function pf_pair(string $url): ?array {$p=parse_url($url);if(!is_array($p))return null;$host=strtolower((string)($p['host']??''));if(!in_array($host,['files.anextour.ru','files.anextour.com','cdn.anextour.ru'],true))return null;if(!preg_match('~/hotel/([^/]+)/hotel/([^/]+)/o([1-9][0-9]*)~i',(string)($p['path']??''),$m))return null;$q=[];parse_str((string)($p['query']??''),$q);$hc=null;foreach($q as$k=>$v){if(strtolower((string)$k)==='hotelcode'&&!is_array($v)&&preg_match('/^[1-9][0-9]{0,11}$/D',(string)$v)){$hc=(int)$v;break;}}if(!$hc)return null;return['url'=>$url,'host'=>$host,'country_slug'=>strtolower($m[1]),'hotel_slug'=>$m[2],'samo_object_id'=>(int)$m[3],'anex_hotel_code'=>$hc];}
+          try{$cols=$db->query("SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND (TABLE_NAME LIKE 'anex\\_%' OR TABLE_NAME LIKE 'andromeda\\_%' OR TABLE_NAME='tour_operator_identity_observations') AND DATA_TYPE IN ('varchar','text','mediumtext','longtext','json') AND (COLUMN_NAME LIKE '%evidence%' OR COLUMN_NAME LIKE '%url%' OR COLUMN_NAME LIKE '%link%' OR COLUMN_NAME LIKE '%json%' OR COLUMN_NAME LIKE '%payload%' OR COLUMN_NAME LIKE '%raw%' OR COLUMN_NAME LIKE '%source%' OR COLUMN_NAME LIKE '%media%' OR COLUMN_NAME LIKE '%photo%' OR COLUMN_NAME LIKE '%image%') ORDER BY TABLE_NAME,COLUMN_NAME")->fetchAll(PDO::FETCH_ASSOC);$sources=[];$pairs=[];$urls=[];$scanned=0;$matchedRows=0;
+          foreach($cols as$c){$t=(string)$c['TABLE_NAME'];$col=(string)$c['COLUMN_NAME'];$sql='SELECT '.pf_ident($col).' v FROM '.pf_ident($t).' WHERE '.pf_ident($col)." LIKE '%anextour.%' LIMIT 2000";try{$rows=$db->query($sql)->fetchAll(PDO::FETCH_COLUMN);}catch(Throwable$e){$sources[]=['table'=>$t,'column'=>$col,'status'=>'query_failed'];continue;}$scanned++;$localRows=0;$localUrls=0;$localPairs=0;foreach($rows as$v){if(!is_string($v)||$v==='')continue;$localRows++;$matchedRows++;foreach(pf_urls($v)as$u){$urls[$u]=true;$localUrls++;$p=pf_pair($u);if($p){$key=$p['samo_object_id'].':'.$p['anex_hotel_code'];$pairs[$key]=$p;$localPairs++;}}}$sources[]=['table'=>$t,'column'=>$col,'matched_rows'=>$localRows,'url_hits'=>$localUrls,'pair_hits'=>$localPairs];}
+          $andCols=$db->query("SELECT COLUMN_NAME,DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='andromeda_hotel_identities' ORDER BY ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);
+          $hits=[];foreach($pairs as$key=>$p){$p['current_unresolved']=isset($want[$p['anex_hotel_code']]);$hits[]=$p;}usort($hits,static fn($a,$b)=>(($a['current_unresolved']?0:1)<=>($b['current_unresolved']?0:1))?:($a['anex_hotel_code']<=>$b['anex_hotel_code'])?:($a['samo_object_id']<=>$b['samo_object_id']));$current=array_values(array_filter($hits,static fn($x)=>$x['current_unresolved']));$coverage=[];if(function_exists('fc_coverage'))$coverage=fc_coverage($db);$db->commit();echo json_encode(['status'=>'completed','operation_id'=>'hotel-match-persisted-files-dual-id-current-1971-20260914-v1','candidate_columns'=>count($cols),'columns_scanned'=>$scanned,'matched_rows'=>$matchedRows,'unique_public_urls'=>count($urls),'direct_pairs'=>count($hits),'current_unresolved_pairs'=>count($current),'pairs'=>$hits,'sources'=>$sources,'andromeda_identity_schema'=>$andCols,'coverage'=>$coverage,'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_http_calls'=>0,'historical_operations_replayed'=>false,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}
+          '''
+          req=['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER'];vals=[os.environ.get(k,'').strip() for k in req]
+          if not all(vals): raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(dir=os.environ['RUNNER_TEMP']) as td:
+            key=pathlib.Path(td)/'key';key.write_text(vals[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'known'
+            cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',vals[2],vals[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(wrapper)]
+            p=subprocess.run(cmd,input=json.dumps({'ids':ids},separators=(',',':')),text=True,capture_output=True,timeout=420)
+          if p.returncode!=0:
+            (state/'blocker.json').write_text(json.dumps({'status':'failed','exit_code':p.returncode,'stderr_tail':p.stderr[-1600:]},ensure_ascii=False)+'\n');raise RuntimeError('remote_scan_failed')
+          x=json.loads(p.stdout);rp=state/'result.json';rp.write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if x.get('status')!='completed' or any(int(x.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_http_calls')):raise RuntimeError('scan_contract')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'candidate_columns':x['candidate_columns'],'columns_scanned':x['columns_scanned'],'matched_rows':x['matched_rows'],'unique_public_urls':x['unique_public_urls'],'direct_pairs':x['direct_pairs'],'current_unresolved_pairs':x['current_unresolved_pairs'],'result_sha256':hashlib.sha256(rp.read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_http_calls':0,'historical_operations_replayed':False,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n');print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-persisted-files-dual-id-current-v1-result
+          path: ${{ runner.temp }}/hotel-match-persisted-files-dual-id-current-1971-20260914-v1/
+          retention-days: 90
