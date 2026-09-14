@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/three-provider-money-facts.php';
 require_once __DIR__ . '/three-provider-operator.php';
 require_once __DIR__ . '/three-provider-offer-context.php';
+require_once __DIR__ . '/andromeda-price-observation.php';
 
 /**
  * Provider-neutral provenance envelope for a supplier-verified selected quote.
@@ -24,6 +25,9 @@ final class AnyTourThreeProviderQuoteEnvelope
     private const REPORTED_QUOTE_KEYS = [
         'fuel_surcharges_reported', 'operator_currency_rates_reported',
         'calc_money_facts_reported',
+    ];
+    private const OBSERVATION_QUOTE_KEYS = [
+        'search_price_estimate', 'price_observation',
     ];
 
     public static function verified(
@@ -155,7 +159,12 @@ final class AnyTourThreeProviderQuoteEnvelope
     {
         $legacy = self::exactKeys($quote, self::QUOTE_KEYS);
         $current = self::exactKeys($quote, array_merge(self::QUOTE_KEYS, self::REPORTED_QUOTE_KEYS));
-        if ((!$legacy && !$current)
+        $observed = self::exactKeys($quote, array_merge(
+            self::QUOTE_KEYS,
+            self::REPORTED_QUOTE_KEYS,
+            self::OBSERVATION_QUOTE_KEYS
+        ));
+        if ((!$legacy && !$current && !$observed)
             || ($quote['schema_version'] ?? null) !== 1
             || ($quote['provider'] ?? null) !== 'andromeda'
             || ($quote['selection_enabled'] ?? null) !== true
@@ -176,6 +185,24 @@ final class AnyTourThreeProviderQuoteEnvelope
             || (($quote['package_price'] ?? null) !== null && !is_array($quote['package_price']))
             || !is_array($quote['final_price'] ?? null)) {
             throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_STATE');
+        }
+        if ($observed) {
+            if (!(($quote['search_price_estimate'] ?? null) === null
+                    || is_array($quote['search_price_estimate']))
+                || !is_array($quote['price_observation'] ?? null)) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_PRICE_OBSERVATION');
+            }
+            try {
+                $expectedObservation = AnyTourAndromedaPriceObservation::build(
+                    $quote['search_price_estimate'],
+                    $quote['final_price']
+                );
+            } catch (InvalidArgumentException|OverflowException $e) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_PRICE_OBSERVATION', 0, $e);
+            }
+            if ($expectedObservation !== $quote['price_observation']) {
+                throw new InvalidArgumentException('THREE_PROVIDER_QUOTE_PRICE_OBSERVATION');
+            }
         }
         if ($legacy) {
             return [
