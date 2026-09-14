@@ -44,7 +44,7 @@ $dir = $argv[2];
 if (!is_dir($dir) || is_link($dir)) { fwrite(STDERR, "CAPTURE_DIRECTORY_REQUIRED\n"); exit(2); }
 umask(0077);
 
-$operation = 'andromeda-price-schema-egypt-3a-v2-20260914';
+$operation = 'andromeda-price-original-schema-egypt-3a-v3-20260914';
 $report = ['state'=>'reserved','operation'=>$operation,'source'=>getenv('GITHUB_SHA') ?: null,'supplier_calls_max'=>6,'raw_values_persisted'=>false];
 aps_save($dir, 'checkpoint', $report);
 
@@ -64,22 +64,31 @@ try {
 
     $params = [
         'TOWNFROMINC'=>$departure,'STATEINC'=>$country,
-        'CHECKIN_BEG'=>'20261207','CHECKIN_END'=>'20261207',
+        'CHECKIN_BEG'=>'20261208','CHECKIN_END'=>'20261208',
         'NIGHTS_FROM'=>10,'NIGHTS_TILL'=>10,
         'ADULT'=>3,'CHILD'=>0,
         'CURRENCYINC'=>643,'MEAL'=>(string)$meal,'OPERATORS'=>(string)$operator,
         'PACKETTYPE'=>0,'PAGE'=>1,
     ];
-    // PRICE is intentionally disabled by default in the transport; this bounded evidence
-    // path must opt in explicitly, matching the existing Search3 runtime consumer.
     $priceClient = new AnyTourAndromedaClient(new AnyTourAndromedaTransport(true), true);
     $priceClient->login($username, $password);
     $reply = $priceClient->price($params);
     $schema = anytour_andromeda_raw_catalog_schema($reply);
+
+    // The previous completed PRICE-schema evidence proved that `original` is an object,
+    // while first-level freightExternal/departureTimes are strings and expose no surcharge.
+    // Persist only nested field names/types here; supplier values remain deliberately absent.
+    $originalRows = [];
+    foreach (array_slice($reply['PRICES'] ?? [], 0, 50) as $priceRow) {
+        if (is_array($priceRow) && is_array($priceRow['original'] ?? null)) $originalRows[] = $priceRow['original'];
+    }
+    $originalSchema = anytour_andromeda_raw_catalog_schema(['rows'=>$originalRows]);
+
     $report = array_merge($report, [
         'state'=>'completed',
-        'criteria'=>['date'=>'2026-12-07','nights'=>10,'party'=>'3a','meal'=>'AI','operator'=>'ANEX','page'=>1],
+        'criteria'=>['date'=>'2026-12-08','nights'=>10,'party'=>'3a','meal'=>'AI','operator'=>'ANEX','page'=>1],
         'schema'=>$schema,
+        'original_rows_schema'=>$originalSchema,
         'finished_at'=>gmdate('c'),
     ]);
 } catch (Throwable $e) {
