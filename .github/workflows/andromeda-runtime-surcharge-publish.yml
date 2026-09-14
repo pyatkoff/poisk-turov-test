@@ -1,5 +1,8 @@
 name: Publish checked Andromeda surcharge runtime
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-runtime-surcharge-publish.yml'
   workflow_dispatch:
     inputs:
       confirmation:
@@ -189,5 +192,170 @@ jobs:
         with:
           name: andromeda-surcharge-e2e-${{ github.run_id }}
           path: ${{ runner.temp }}/andromeda-surcharge-e2e/
+          if-no-files-found: error
+          retention-days: 14
+
+  readback-offline:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exercise exact fixed-checkpoint reader without SSH or supplier access
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess, tempfile, textwrap
+          text = pathlib.Path('.github/workflows/andromeda-runtime-surcharge-publish.yml').read_text()
+          source = textwrap.dedent(text.rsplit("source = r'''", 1)[1].split("'''", 1)[0]).strip()
+          operation = 'andromeda-search-surcharge-e2e-1717-v1-egypt-2026-12-10-2a'
+          with tempfile.TemporaryDirectory() as tmp:
+              account = pathlib.Path(tmp) / 'account'
+              root = account / 'www' / 'anytoour.ru'; root.mkdir(parents=True)
+              private = account / '.anytoour-andromeda'; private.mkdir()
+              directory = private / operation
+              def run():
+                  process = subprocess.run(['php', '-d', 'allow_url_fopen=0', '-r', source], cwd=root, text=True, capture_output=True, check=True)
+                  assert process.stderr == '', process.stderr
+                  result = json.loads(process.stdout)
+                  assert result['supplier_calls'] == result['database_reads'] == result['database_writes'] == result['booking_calls'] == 0
+                  assert result['operation_replayed'] is False
+                  assert 'PRIVATE_SENTINEL' not in process.stdout
+                  return result
+              result = run(); assert result['status'] == 'inspected' and result['operation_exists'] is False
+              directory.mkdir()
+              reservation = directory / 'reservation.json'; outcome = directory / 'result.json'
+              reservation.write_text(json.dumps({'operation':operation,'runtime_source':'b32993261eb8657004e7d4fd146b65a95264d4bc','scenario_sha256':'a'*64,'private':'PRIVATE_SENTINEL'}))
+              outcome.write_text(json.dumps({'operation':operation,'status':'unknown','reason':'ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN','sid':'PRIVATE_SENTINEL'}))
+              before = [p.read_bytes() for p in [reservation,outcome]]
+              result = run(); assert result['operation_status'] == 'unknown' and result['reason'] == 'ANDROMEDA_PACKAGE_OUTCOME_UNKNOWN'
+              assert result['files']['result']['sha256'] == hashlib.sha256(before[1]).hexdigest()
+              assert before == [p.read_bytes() for p in [reservation,outcome]]
+              outcome.write_text(json.dumps({'operation':operation,'status':'unknown','reason':'PRIVATE_SENTINEL'}))
+              assert run()['reason'] == 'unclassified_operation_failure'
+              outcome.unlink(); outcome.symlink_to(reservation)
+              assert run()['inspection_error'] == 'checkpoint_path_invalid'
+              outcome.unlink(); outcome.write_text('{')
+              assert run()['inspection_error'] == 'checkpoint_invalid'
+              outcome.write_text(json.dumps({'operation':'other','status':'complete'}))
+              assert run()['inspection_error'] == 'checkpoint_operation_mismatch'
+              outcome.write_text('x'*65537)
+              assert run()['inspection_error'] == 'checkpoint_size_or_link'
+          print('Fixed readback: missing, retained unknown, digest, privacy, symlink, malformed, foreign and bounded-size cases passed; supplier/SSH=0')
+          PY
+
+  surcharge-e2e-readback:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 996 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.body == '/inspect-andromeda-surcharge-e2e-1717-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Bind owner-only inspection to the terminal E2E run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('No automatic rerun.');
+            if (context.ref !== 'refs/heads/main' || context.actor !== 'pyatkoff' || context.payload.sender?.id !== 226193297 ||
+                context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 ||
+                context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 ||
+                context.payload.comment?.body !== '/inspect-andromeda-surcharge-e2e-1717-v1') throw new Error('Exact owner command required.');
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref:'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; stop.');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id:34874678175});
+            if (run.head_sha !== '275a416ba3ad25d9b04523470b4eab50334808b9' || run.status !== 'completed' || run.conclusion !== 'failure') throw new Error('Terminal source run mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Read only fixed reservation and result; never invoke the E2E operation
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          from anex_search3_owner_decisions import ssh_php
+          source = r'''
+          error_reporting(0); ini_set('display_errors','0'); ini_set('log_errors','0');
+          $operation = 'andromeda-search-surcharge-e2e-1717-v1-egypt-2026-12-10-2a';
+          $out = ['status'=>'blocked','operation'=>$operation,'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'operation_replayed'=>false];
+          try {
+              $root = realpath(getcwd());
+              if (PHP_SAPI !== 'cli' || !$root || basename($root) !== 'anytoour.ru') throw new RuntimeException('project_invalid');
+              $private = dirname($root, 2) . '/.anytoour-andromeda';
+              if (realpath($private) !== $private || !is_dir($private) || !is_readable($private)) throw new RuntimeException('private_directory_unavailable');
+              $directory = $private . '/' . $operation;
+              $out['operation_exists'] = file_exists($directory);
+              if (is_link($directory) || ($out['operation_exists'] && (realpath($directory) !== $directory || !is_dir($directory) || !is_readable($directory)))) throw new RuntimeException('checkpoint_path_invalid');
+              $out['files'] = [];
+              foreach (['reservation','result'] as $name) {
+                  $path = $directory . '/' . $name . '.json';
+                  $out['files'][$name] = ['present'=>false];
+                  if (is_link($path)) throw new RuntimeException('checkpoint_path_invalid');
+                  if (!file_exists($path)) continue;
+                  if (realpath($path) !== $path || !is_file($path)) throw new RuntimeException('checkpoint_path_invalid');
+                  $file = fopen($path, 'rb');
+                  if (!$file) throw new RuntimeException('checkpoint_unreadable');
+                  try {
+                      $stat = fstat($file);
+                      if ($stat['nlink'] !== 1 || $stat['size'] > 65536) throw new RuntimeException('checkpoint_size_or_link');
+                      $bytes = stream_get_contents($file, 65537);
+                      if (!is_string($bytes) || strlen($bytes) !== $stat['size']) throw new RuntimeException('checkpoint_read_failed');
+                  } finally { fclose($file); }
+                  $value = json_decode($bytes, true, 16, JSON_THROW_ON_ERROR);
+                  if (!is_array($value) || ($value['operation'] ?? null) !== $operation) throw new RuntimeException('checkpoint_operation_mismatch');
+                  $out['files'][$name] = ['present'=>true,'sha256'=>hash('sha256',$bytes)];
+                  if ($name === 'reservation') {
+                      foreach (['runtime_source'=>40,'scenario_sha256'=>64] as $key=>$length) {
+                          if (!is_string($value[$key] ?? null) || !preg_match('/^[a-f0-9]{'.$length.'}$/D',$value[$key])) throw new RuntimeException('reservation_invalid');
+                          $out[$key] = $value[$key];
+                      }
+                  } else {
+                      $status = $value['status'] ?? null;
+                      if (!in_array($status,['blocked','unknown','complete'],true)) throw new RuntimeException('result_status_invalid');
+                      $out['operation_status'] = $status;
+                      $reason = $value['reason'] ?? null;
+                      $known = ['project_invalid','runtime_missing','publication_lock_missing','publication_busy','runtime_not_installed','private_runtime_missing','operation_exists_no_replay','reservation_failed','database_missing','no_mapped_offer','selected_offer_invalid','surcharge_capture_invalid','retained_offer_missing','listing_surcharge_not_applied','listing_money_invalid','checkpoint_exists','checkpoint_write','checkpoint_sync','checkpoint_readback','checkpoint_too_large','operation_unconfirmed','meal_not_supported','departure_not_supported','country_not_supported'];
+                      $out['reason'] = $reason === null ? null : (is_string($reason) && (in_array($reason,$known,true) || preg_match('/^ANDROMEDA_[A-Z_]{2,80}$/D',$reason)) ? $reason : 'unclassified_operation_failure');
+                      $out['reason_sha256'] = is_string($reason) ? hash('sha256',$reason) : null;
+                      $out['outcome'] = in_array($value['outcome'] ?? null,['surcharge_unavailable','listing_estimate_applied'],true) ? $value['outcome'] : null;
+                  }
+              }
+              $out['status'] = 'inspected';
+          } catch (Throwable $error) {
+              $allowed = ['project_invalid','private_directory_unavailable','checkpoint_path_invalid','checkpoint_unreadable','checkpoint_size_or_link','checkpoint_read_failed','checkpoint_operation_mismatch','reservation_invalid','result_status_invalid'];
+              $out['inspection_error'] = in_array($error->getMessage(),$allowed,true) ? $error->getMessage() : 'checkpoint_invalid';
+          }
+          echo json_encode($out, JSON_THROW_ON_ERROR);
+          '''
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'andromeda-surcharge-e2e-readback'
+          out.mkdir(mode=0o700)
+          try:
+              result = ssh_php(source, {}, maximum_bytes=65536)
+          except Exception:
+              (out / 'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','operation_replayed':False}))
+              raise
+          result['control_source'] = os.environ['GITHUB_SHA']
+          (out / 'result.json').write_text(json.dumps(result, sort_keys=True, indent=2) + '\n')
+          if result.get('status') != 'inspected' or result.get('operation_replayed') is not False:
+              raise SystemExit('Checkpoint inspection incomplete; operation was not replayed')
+          print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Preserve sanitized checkpoint inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-surcharge-e2e-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-surcharge-e2e-readback/
           if-no-files-found: error
           retention-days: 14
