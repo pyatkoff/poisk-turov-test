@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'app/integrations/andromeda-saved-package-runtime.php'
+      - 'app/integrations/andromeda-client.php'
+      - 'app/integrations/andromeda-claim-actions.php'
+      - 'app/integrations/andromeda-search-surcharge.php'
+      - 'tests/andromeda-saved-surcharge-runtime-smoke.php'
       - 'app/integrations/andromeda-package-public.php'
       - 'app/integrations/andromeda-claiminc-contract.php'
       - 'app/integrations/andromeda-network-transport-failure.php'
@@ -69,10 +73,14 @@ jobs:
           # Only after the installed baseline is proven, assemble the current candidate.
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/
           cp change/app/integrations/andromeda-saved-package-runtime.php runtime/app/integrations/
+          cp change/app/integrations/andromeda-client.php change/app/integrations/andromeda-claim-actions.php change/app/integrations/andromeda-search-surcharge.php runtime/app/integrations/
           cp change/app/integrations/andromeda-transport.php runtime/app/integrations/
           cp change/app/integrations/andromeda-claiminc-contract.php change/app/integrations/andromeda-network-transport-failure.php change/app/integrations/andromeda-package-retry-policy.php change/app/integrations/andromeda-package-attempt-state.php runtime/app/integrations/
           php -l runtime/v2/api-andromeda-search3-preview.php
           php -l runtime/app/integrations/andromeda-saved-package-runtime.php
+          php -l runtime/app/integrations/andromeda-client.php
+          php -l runtime/app/integrations/andromeda-claim-actions.php
+          php -l runtime/app/integrations/andromeda-search-surcharge.php
           php -l runtime/app/integrations/andromeda-transport.php
           php -l runtime/app/integrations/andromeda-claiminc-contract.php
           php -l runtime/app/integrations/andromeda-network-transport-failure.php
@@ -80,6 +88,7 @@ jobs:
           php -l runtime/app/integrations/andromeda-package-attempt-state.php
           php change/tests/andromeda-saved-package-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-fixture"
           php change/tests/andromeda-saved-package-attempt-runtime-smoke.php runtime "$RUNNER_TEMP/saved-package-attempt-fixture"
+          php -d allow_url_fopen=0 change/tests/andromeda-saved-surcharge-runtime-smoke.php runtime "$RUNNER_TEMP/saved-surcharge-fixture"
           php change/tests/andromeda-retained-mapping-smoke.php runtime
           php -d allow_url_fopen=0 change/tests/andromeda-package-evidence-smoke.php
           php -l change/scripts/diagnostics/andromeda-package-probe.php
@@ -102,7 +111,8 @@ jobs:
                   'andromeda-client', 'andromeda-package-capture', 'andromeda-selected-offer',
                   'andromeda-transport', 'andromeda-saved-package-runtime',
                   'andromeda-claiminc-contract', 'andromeda-network-transport-failure',
-                  'andromeda-package-retry-policy', 'andromeda-package-attempt-state']]
+                  'andromeda-package-retry-policy', 'andromeda-package-attempt-state',
+                  'andromeda-claim-actions', 'andromeda-search-surcharge']]
           files = {}
           for path in paths:
               data = (root / path).read_bytes()
@@ -114,12 +124,15 @@ jobs:
           receipt = {'source': os.environ['SOURCE_SHA'], 'files_sha256': files,
               'dependencies': {'runtime': '95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa',
                   'package': '7c3c5bb55c88e376d97c998d0ba77a46960584d6',
+                  'candidate_client': os.environ['SOURCE_SHA'],
+                  'candidate_surcharge': os.environ['SOURCE_SHA'],
                   'candidate_transport': os.environ['SOURCE_SHA'],
                   'retained_install_transport': '1f628e4b172ce9706eabe875784ce2b226175a0d',
                   'retained_install_baseline': '163ef9eed9993c08558b84b7a0295e8b4295d2e8'},
               'scope': 'private-source-handoff-only', 'supplier_calls': 0,
               'published': False, 'package_captured_live': False, 'quote_verified': False,
-              'typed_transport_in_candidate': True, 'live_retry_enabled': False}
+              'typed_transport_in_candidate': True, 'live_retry_enabled': False,
+              'saved_surcharge_available': True, 'live_surcharge_enabled': False}
           manifest = out / 'receipt.json'
           manifest.write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
           assert json.loads(manifest.read_text()) == receipt
