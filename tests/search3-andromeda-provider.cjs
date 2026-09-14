@@ -8,6 +8,7 @@ const window={location:{href:'https://anytoour.ru/_preview/search3-site-candidat
 vm.runInNewContext(source,{window,URL,Map,Set,Array,Number,String,Object,RegExp,decodeURIComponent,globalThis:window});
 const api=window.AnyTourAndromedaProvider,hex='a'.repeat(64),offer='offer_'+hex;
 assert.equal(api.version,1);
+assert.equal(api.safeUrl(''),'','missing image never resolves to the current HTML page');
 assert.equal(JSON.stringify(api.operatorHotelCodeFromImage('https://cdn.samo.ru/img/5.5844.3414.jpg')),JSON.stringify({operator:'anex',code:'5844',evidence:'hotel_image_path'}));
 assert.equal(JSON.stringify(api.operatorHotelCodeFromImage('https://files.anextour.ru/hotel/example/o417822?hotelCode=5844')),JSON.stringify({operator:'anex',code:'5844',evidence:'hotel_image_query'}));
 assert.equal(api.operatorHotelCodeFromImage('https://cdn.samo.ru/img/5844.jpg'),null,'an arbitrary number in a photo URL is not promoted to an operator code');
@@ -16,7 +17,7 @@ assert.equal(api.safeUrl('https://cdn.samo.ru/image.jpg?session=secret'),'','cre
 assert.equal(api.endpoint('/_preview/search3-anex-candidate/api-andromeda-search3-preview.php').origin,'https://anytoour.ru');
 assert.equal(api.endpoint('https://evil.example/api-andromeda-search3-preview.php'),null,'provider endpoint must remain same-origin');
 const context={provider:'andromeda',search_ref:hex,generation:7,page:1,offer_ref:offer};
-const rawHotel=(localId,name='Movenpick')=>({local_id:localId,card_key:localId===null?'andromeda:andromeda_catalog:3414':null,name,provider:'andromeda',mapping_status:localId===null?'unresolved':'resolved',country:'Египет',category:4,andromeda_content:{source:'andromeda',image_url:'https://cdn.samo.ru/img/5.5844.3414.jpg',hotel_url:'https://operator.example/hotels/movenpick',region:'Шарм-эль-Шейх'},tours:[{provider:'andromeda',offer_ref:offer,offer_context:context,price:{amount:'155079.00',currency:'RUB'},checkin:'2026-09-18',nights:8,meal:'AI',room:'STANDARD',placement:'2 ADL',operator:'ANEX'}]});
+const rawHotel=(localId,name='Movenpick')=>({local_id:localId,card_key:localId===null?'andromeda:andromeda_catalog:3414':null,name,provider:'andromeda',mapping_status:localId===null?'unresolved':'resolved',country:'Египет',region:'Шарм-эль-Шейх',category:4,rating:4.7,catalog:{hotel_id:localId,source:'tourvisor',image_url:'https://catalog.example/hotel.jpg',subregion:'Наама-Бей',description:'Локальное описание',address:'Локальный адрес',sea_distance:200},andromeda_content:{source:'andromeda',image_url:'https://cdn.samo.ru/img/5.5844.3414.jpg',hotel_url:'https://operator.example/hotels/movenpick',region:'Шарм-эль-Шейх'},tours:[{provider:'andromeda',offer_ref:offer,offer_context:context,price:{amount:'155079.00',currency:'RUB'},checkin:'2026-09-18',nights:8,meal:'AI',room:'STANDARD',placement:'2 ADL',operator:'ANEX'}]});
 const normalized=api.normalizeHotel(rawHotel(21477));
 assert.equal(normalized.id,'21477');
 assert.equal(normalized.tours[0].id,'andromeda:'+offer);
@@ -29,6 +30,26 @@ const merged=api.merge([tv],[rawHotel(21477)]);
 assert.equal(merged.length,1,'accepted local ID merges provider offers into one hotel card');
 assert.equal(merged[0].tours.length,2);
 assert.equal(merged[0].picturelink,tv.picturelink,'existing catalog presentation remains authoritative');
+const localOnly=api.merge([],[rawHotel(21477)]);
+assert.equal(localOnly.length,1,'prepared local hotel can be shown without a Tourvisor offer');
+assert.equal(localOnly[0].picturelink,'https://catalog.example/hotel.jpg','card uses the local catalog photo, never the supplier photo');
+assert.equal(localOnly[0].subRegion.name,'Наама-Бей');
+assert.equal(localOnly[0].seaDistance,200,'known local hotel facts reach result facets');
+assert.equal(localOnly[0].catalog.description,'Локальное описание');
+assert.equal(localOnly[0].tours[0].providerImageUrl,'https://cdn.samo.ru/img/5.5844.3414.jpg','supplier photo evidence stays on the exact offer');
+assert.equal(merged[0].rating,4.7,'missing base facts can be enriched from local metadata');
+assert.equal(merged[0].subRegion.name,'Наама-Бей');
+const validCatalog=rawHotel(21477).catalog;
+for(const catalog of [undefined,{...validCatalog,hotel_id:21478},{...validCatalog,source:'andromeda'},{...validCatalog,image_url:''},{...validCatalog,image_url:'javascript:bad()'}]){
+  const input=rawHotel(21477);input.catalog=catalog;
+  const before=JSON.stringify(input);
+  assert.equal(api.merge([],[input]).length,0,'local ID without prepared exact-ID local content cannot create a supplier-only card');
+  const withBase=api.merge([tv],[input]);
+  assert.equal(withBase.length,1);
+  assert.equal(withBase[0].tours.length,2,'valid offers still join an existing common hotel');
+  assert.equal(withBase[0].picturelink,tv.picturelink,'supplier artwork never replaces the common card photo');
+  assert.equal(JSON.stringify(input),before,'local presentation does not mutate retained supplier data');
+}
 const unresolved=api.merge([tv],[rawHotel(null,'Movenpick Resort')]);
 assert.equal(unresolved.length,1,'unresolved Andromeda hotels stay out of customer results');
 assert.equal(unresolved[0],tv,'an unresolved Andromeda hotel cannot replace or copy the visible local Tourvisor card');
@@ -54,7 +75,7 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
     V2SearchLifecycle:lifecycle,V2Results:{render(items,options){renders.push({items,options});return items;}},document:{},
     addEventListener(name,listener){listeners.set(name,listener);},
     dispatchEvent(event){providerEvents.push(event.detail);},
-    async fetch(url,options){assert.equal(url,'https://anytoour.ru/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');assert.equal(options.method,'POST');assert.equal(options.headers['X-Requested-With'],'AnyTourSearch3');return{ok:true,async json(){return{ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[rawHotel(21477),rawHotel(null,'Movenpick Resort')]}};}};}
+    async fetch(url,options){assert.equal(url,'https://anytoour.ru/_preview/search3-anex-candidate/api-andromeda-search3-preview.php');assert.equal(options.method,'POST');assert.equal(options.headers['X-Requested-With'],'AnyTourSearch3');return{ok:true,async json(){return{ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[{...rawHotel(21477),catalog:undefined},rawHotel(null,'Movenpick Resort')]}};}};}
   };
   class FixtureEvent{constructor(name,options){this.type=name;this.detail=options&&options.detail;}}
   vm.runInNewContext(source,{window:runtimeWindow,URL,Map,Set,Array,Number,String,Object,RegExp,decodeURIComponent,AbortController,CustomEvent:FixtureEvent,globalThis:runtimeWindow});
@@ -64,6 +85,7 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   const final=renders.at(-1);
   assert.equal(final.items.length,1,'runtime hides unresolved cards while retaining the resolved hotel');
   assert.equal(final.items[0].tours.length,2,'runtime adds Andromeda to the current shared result renderer');
+  assert.equal(final.items[0].tours[1].providerDetail.eligible,true,'missing separate catalog media does not disable a retained offer inside an existing common hotel');
   assert.equal(final.options.empty,true,'terminal Tourvisor options are restored after Andromeda completes');
   assert.deepEqual(providerEvents.map(item=>item.status),['loading','progress','complete']);
   const collision={...tv,tours:tv.tours.concat({...normalized.tours[0],offerContext:{...context,search_ref:'b'.repeat(64)}})};
