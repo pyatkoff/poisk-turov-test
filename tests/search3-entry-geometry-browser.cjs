@@ -63,7 +63,7 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
             preferenceLabels: [...preferences.querySelectorAll('.search-preference>span')].map(node => node.textContent.trim()),
             preferenceWidths: [...preferences.children].map(node => box(node).width),
             labels: visible(form.querySelectorAll('.field>span')).map(box),
-            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name })),
+            controls: visible(form.querySelectorAll('.field :is(input:not([type=checkbox]),select)')).map(node => ({ ...box(node), name: node.name, appearance: getComputedStyle(node).appearance, tag: node.tagName })),
             dateControls: [...form.querySelectorAll('.search-group--dates input')].map(box),
             partyBox: box(partyGroup), childAgesBox: box(childAges), childAgesInsideParty: childAges.parentElement === partyGroup,
             submit: box(form.querySelector('.search-submit')), extras: box(form.querySelector('.extras')),
@@ -77,7 +77,8 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
         assert.ok(state.hero.width <= 1.1 && state.hero.height <= 1.1, 'hero adds no blank form header');
         assert.ok(state.labels.every(item => item.fontSize >= 12), 'visible labels stay readable');
         assert.equal(state.controls.length, 15, 'all fourteen primary native controls plus the hydrated child age are visible');
-        assert.ok(state.controls.every(item => item.height >= 43.5 && item.fontSize >= 16), 'native controls retain 44px/16px');
+        assert.ok(state.controls.every(item => item.height >= 43.5 && item.height <= 44.5 && item.fontSize >= 16), 'all primary selects, dates, numbers and child ages share the same readable 44px box');
+        assert.ok(state.controls.filter(item => item.tag === 'SELECT').every(item => item.appearance === 'none'), 'select rendering uses the canonical box while native selection behavior remains intact');
         assert.ok(state.submit.height >= 43.5 && state.submit.fontSize >= 13, 'primary action remains readable');
         assert.deepEqual(state.groupLegends, ['Направление', 'Даты вылета', 'Продолжительность', 'Туристы']);
         assert.deepEqual(state.preferenceLabels, ['Курорт / регион', 'Конкретный отель', 'Категория отеля', 'Питание', 'Цена от', 'Цена до']);
@@ -160,6 +161,18 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
           const fields = await page.evaluate(() => { const form = document.forms.tourSearch, data = new FormData(form); return { adults: data.get('count_people'), count: data.get('child_count'), ages: data.getAll('child_age[]'), nights: [data.get('daysFrom'), data.get('daysTill')], visible: !form.querySelector('#childAges').hidden, insideParty: !!form.querySelector('.search-group--party > #childAges') }; });
           assert.deepEqual(fields, { adults: '3', count: String(count), ages, nights: ['7', '10'], visible: count > 0, insideParty: true });
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
+          if (count === 0 && width >= 1100) {
+            const geometry = await page.evaluate(() => {
+              const group = document.querySelector('.search-group--party'), adults = group.querySelector('[name=count_people]'), children = group.querySelector('[name=child_count]');
+              const rect = node => { const b = node.getBoundingClientRect(); return { left:b.left, right:b.right, top:b.top, width:b.width, height:b.height }; };
+              return { group:rect(group), adults:rect(adults), children:rect(children) };
+            });
+            assert.ok(Math.abs(geometry.adults.width - geometry.children.width) <= 1, 'no-child tourist controls use balanced columns');
+            assert.ok(Math.abs(geometry.adults.top - geometry.children.top) <= 1, 'tourist controls share a row');
+            assert.ok(geometry.children.right >= geometry.group.right - 2, 'a hidden child-age group reserves no empty third column');
+            await page.locator('#tourSearch').screenshot({ path:path.join(output, `entry-no-children-${width}.png`), animations:'disabled' });
+            fs.writeFileSync(path.join(output, `entry-no-children-${width}.json`), JSON.stringify({ width, geometry }, null, 2) + '\n');
+          }
           if (count === 2 && ([320, 350, 375].includes(width) || width >= 1099)) {
             const geometry = await page.evaluate(() => {
               const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
@@ -187,9 +200,11 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
           }
           if (count === 3 && ([320, 350, 375].includes(width) || width >= 1100)) {
             const geometry = await page.evaluate(() => {
-              const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, left: r.left, right: r.right, width: r.width }; };
+              const box = node => { const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }; };
               const ages = [...document.querySelectorAll('#childAges .child-age')].map(box), childAges = box(document.querySelector('#childAges'));
-              return { ages, childAges, rows: new Set(ages.map(item => Math.round(item.top))).size, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+              const party = box(document.querySelector('.search-group--party')), nights = box(document.querySelector('.search-group--nights'));
+              const preferences = box(document.querySelector('.search-section-title--preferences'));
+              return { ages, childAges, party, nights, preferences, rows: new Set(ages.map(item => Math.round(item.top))).size, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
             });
             fs.writeFileSync(path.join(output, `entry-party-3-${width}.json`), JSON.stringify({ width, geometry }, null, 2) + '\n');
             await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-party-3-${width}.png`), animations: 'disabled' });
@@ -201,16 +216,39 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
               assert.ok(Math.abs(geometry.ages[0].top - geometry.ages[1].top) <= 3 && geometry.ages[2].top > geometry.ages[0].top, `${width}: two ages share the first row and the third follows`);
               assert.ok(geometry.ages[2].width >= geometry.childAges.width - 26, `${width}: the odd third child age spans the mobile grid`);
             } else {
-              assert.equal(geometry.rows, 2, `${width}: third child age wraps inside the bounded age slot`);
+              assert.equal(geometry.rows, 1, `${width}: all three child ages share one coherent tourist row`);
               assert.ok(geometry.ages.every(item => item.width >= 119 && item.width <= 121), `${width}: three child ages keep compact control widths`);
+              assert.ok(geometry.party.height <= geometry.nights.height + 12, `${width}: family composition does not leave a blank band beside duration`);
+              assert.ok(geometry.childAges.bottom <= geometry.party.bottom + 1, `${width}: the tourist group contains every child age`);
+              assert.ok(geometry.preferences.top >= geometry.party.bottom + 8, `${width}: hotel preferences begin below the complete tourist group`);
             }
             assert.ok(geometry.overflow <= 1, `${width}: three child ages do not create horizontal overflow`);
           }
           party.push(fields);
         }
-        await page.locator('#tourSearch > .extras > summary').click();
+        const accessibility = await page.context().newCDPSession(page);
+        const advancedNodes = async () => (await accessibility.send('Accessibility.getFullAXTree')).nodes
+          .filter(node => !node.ignored && ['combobox', 'option', 'checkbox'].includes(node.role?.value))
+          .map(node => ({ role: node.role.value, name: node.name?.value }));
+        const closedAx = await advancedNodes();
+        assert.equal(closedAx.some(node => ['Туроператор', 'Все операторы', 'Прямой', 'Чартер'].includes(node.name)), false, 'closed advanced filters expose no orphaned options or controls');
+        assert.equal(await page.locator('#tourSearch > .extras > .extra-grid').evaluate(node => getComputedStyle(node).display), 'none', 'closed advanced fields have no rendered grid');
+        await page.locator('#tourSearch > .extras > summary').focus();
+        await page.keyboard.press('Enter');
+        const openAx = await advancedNodes();
+        for (const name of ['Район / субкурорт', 'Рейтинг отеля', 'Аэропорт прилёта', 'Туроператор', 'Тип отеля']) {
+          assert.ok(openAx.some(node => node.role === 'combobox' && node.name === name), 'opening advanced filters restores labelled control: ' + name);
+        }
+        assert.equal(await page.locator('#tourSearch .service-picker').evaluate(node => node.open), false, 'nested hotel services remain independently closed');
+        const openedData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-expanded-${width}.png`), animations: 'disabled' });
+        await page.locator('#tourSearch > .extras > summary').focus();
+        await page.keyboard.press('Enter');
+        assert.deepEqual(await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]), openedData, 'closing advanced fields preserves exact FormData');
+        assert.equal((await advancedNodes()).some(node => node.name === 'Все операторы'), false, 'closing removes orphaned options again');
+        fs.writeFileSync(path.join(output, `entry-accessibility-${width}.json`), JSON.stringify({ width, closedAx, openAx }, null, 2) + '\n');
+        await accessibility.detach();
         assert.deepEqual(errors, []);
         fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ source_sha: sourceSha, width, party, budget, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
       } finally { await page.close(); }
