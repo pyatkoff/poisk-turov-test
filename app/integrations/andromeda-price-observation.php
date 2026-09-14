@@ -76,7 +76,16 @@ final class AnyTourAndromedaPriceObservation
             }
             $base = self::money($receipt['base_price'], false, false, 'ANDROMEDA_SERVED_PRICE_INVALID');
             self::money($receipt['served_price'], false, false, 'ANDROMEDA_SERVED_PRICE_INVALID');
-            if ($base !== ($resolved['offer']['price'] ?? null)) return null;
+            $retained = $resolved['offer']['price'] ?? null;
+            if (!is_array($retained)) return null;
+            // SelectedOffer retains the normalizer's provenance; the receipt stores money only.
+            if (self::exactKeys($retained, ['amount','currency','currency_id','kind','fees','final'])) {
+                if (!is_string($retained['currency_id']) || !preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $retained['currency_id'])
+                    || $retained['kind'] !== 'offer' || $retained['fees'] !== 'unknown'
+                    || $retained['final'] !== false) return null;
+                $retained = ['amount'=>$retained['amount'], 'currency'=>$retained['currency']];
+            }
+            if ($base !== self::money($retained, false, false, 'ANDROMEDA_SERVED_PRICE_INVALID')) return null;
             return $receipt;
         } catch (Throwable $ignored) { return null; }
     }
