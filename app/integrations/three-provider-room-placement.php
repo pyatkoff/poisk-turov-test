@@ -62,6 +62,16 @@ final class AnyTourThreeProviderRoomPlacement
 
     private static function display(string $normalized): string
     {
+        $occupancy = [
+            'sgl' => 'SGL',
+            'dbl' => 'DBL',
+            'trpl' => 'TRPL',
+            'quad' => 'QUAD',
+            'exb' => 'EXB',
+        ];
+        if (isset($occupancy[$normalized])) {
+            return $occupancy[$normalized];
+        }
         if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
             return mb_strtoupper(mb_substr($normalized, 0, 1, 'UTF-8'), 'UTF-8')
                 . mb_substr($normalized, 1, null, 'UTF-8');
