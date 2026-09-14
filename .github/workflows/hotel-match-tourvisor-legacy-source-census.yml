@@ -1,0 +1,109 @@
+name: MATCH legacy Tourvisor server source census v4
+
+on:
+  push:
+    branches: [match/legacy-tourvisor-viability-1971-20260914]
+    paths:
+      - '.github/workflows/hotel-match-tourvisor-legacy-source-census.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: anytour-match-legacy-tourvisor-source-census-1971-20260914-v4
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-legacy-tourvisor-source-census-1971-20260914-v4
+
+jobs:
+  census:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: '${{ github.sha }}'
+
+      - name: Reserve immutable operation before server access
+        shell: bash
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_server_access","database_reads":0,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"new_tourvisor_calls":0,"legacy_tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-legacy-tourvisor-source-v4-reservation
+          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-source-census-1971-20260914-v4/reservation.json'
+          retention-days: 90
+
+      - name: Prepare existing AnyTour SSH key
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Read only legacy marker file names
+        env:
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          S="$RUNNER_TEMP/$OPERATION_ID"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ControlMaster=no -o ControlPath=none -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" 'set -euo pipefail; root="$HOME/www/anytoour.ru"; test -d "$root"; ROOT="$root" python3 - <<'"'"'PY'"'"'
+          import json,os,pathlib,re
+          root=pathlib.Path(os.environ["ROOT"]).resolve()
+          patterns=(re.compile(rb"authlogin",re.I),re.compile(rb"authpass",re.I),re.compile(rb"tourvisor\.ru/xml",re.I))
+          suffixes={".php",".inc",".env",".ini",".conf",".json",".js",".txt"}
+          hits=[]; examined=0; skipped_large=0; errors=0
+          for p in root.rglob("*"):
+              try:
+                  if not p.is_file() or p.suffix.lower() not in suffixes: continue
+                  rel=p.relative_to(root).as_posix()
+                  if rel.startswith((".git/","cache/","data/cache/","node_modules/","vendor/")): continue
+                  size=p.stat().st_size
+                  if size>2_000_000:
+                      skipped_large+=1; continue
+                  examined+=1
+                  b=p.read_bytes()
+                  if any(rx.search(b) for rx in patterns): hits.append(rel)
+              except Exception:
+                  errors+=1
+          hits=sorted(set(hits))[:200]
+          print(json.dumps({"status":"completed_read_only","files_examined":examined,"matching_file_count":len(hits),"matching_files":hits,"skipped_large":skipped_large,"read_errors":errors,"database_reads":0,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"new_tourvisor_calls":0,"legacy_tourvisor_calls":0,"booking_calls":0,"lead_calls":0},sort_keys=True))
+          PY' > "$S/result.json"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          r=json.loads((S/'result.json').read_text())
+          if r.get('status')!='completed_read_only': raise SystemExit('bad_status')
+          for key in ('database_reads','database_writes','mapping_writes','supplier_calls','new_tourvisor_calls','legacy_tourvisor_calls','booking_calls','lead_calls'):
+              if int(r.get(key,-1)) != 0: raise SystemExit('nonzero_'+key)
+          rec={'operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'state':'completed_read_only','matching_file_count':int(r['matching_file_count']),'files_examined':int(r['files_examined']),'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest(),'database_reads':0,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'new_tourvisor_calls':0,'legacy_tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (S/'receipt.json').write_text(json.dumps(rec,sort_keys=True)+'\n')
+          print(json.dumps(rec,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-legacy-tourvisor-source-v4-result
+          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-source-census-1971-20260914-v4/'
+          retention-days: 90
