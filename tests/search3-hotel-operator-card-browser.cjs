@@ -43,13 +43,16 @@ module.exports=async function checkOperatorCards(page,width,output){
         const geometry=await card.evaluate(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
           const summary=node.querySelector('.hotel-offers-summary');
-          return{card:box(node),summary:box(summary),price:box(summary.querySelector('.hotel-price')),toggle:box(summary.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
+          const price=summary.querySelector('.hotel-price');
+          return{card:box(node),summary:box(summary),price:box(price),priceLineHeight:parseFloat(getComputedStyle(price).lineHeight),toggle:box(summary.querySelector('.tour-more-toggle')),overflow:node.scrollWidth>node.clientWidth+1};
         });
         assert.ok(geometry.toggle.height>=44,`${inspectedWidth}: collapsed disclosure keeps a full touch target`);
         assert.equal(geometry.overflow,false,`${inspectedWidth}: collapsed hotel card stays contained`);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         assert.ok(geometry.summary.y>=0&&geometry.summary.bottom<=geometry.card.bottom+1,`${inspectedWidth}: hotel-level offer summary stays inside the hotel card`);
         assert.ok(geometry.price.right<=geometry.card.right+1&&geometry.toggle.right<=geometry.card.right+1,`${inspectedWidth}: minimum and disclosure stay within the card`);
+        assert.ok(geometry.price.height<=geometry.priceLineHeight+1,`${inspectedWidth}: minimum prefix, amount and currency remain one readable line`);
+        if(inspectedWidth<=350)assert.ok(geometry.toggle.y>=geometry.price.bottom,`${inspectedWidth}: narrow disclosure follows the complete minimum price`);
         assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,`${inspectedWidth}: no concrete offer leaks into collapsed hotel`);
         collapsedComposition.push({width:inspectedWidth,geometry});
         await card.screenshot({path:path.join(output,`operator-card-collapsed-action-${inspectedWidth}.png`),animations:'disabled'});
@@ -92,10 +95,12 @@ module.exports=async function checkOperatorCards(page,width,output){
         const rows=await card.locator('.tour-row').evaluateAll(nodes=>nodes.map(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
           const action=node.querySelector('.tour-action'),price=node.querySelector('.hotel-price'),select=node.querySelector('.direct-tour'),compare=node.querySelector('.search3-shortlist-toggle');
-          return{row:box(node),action:box(action),price:box(price),select:box(select),compare:box(compare),captionVisible:!!node.querySelector('.tour-action>small')&&getComputedStyle(node.querySelector('.tour-action>small')).display!=='none',overflow:node.scrollWidth>node.clientWidth+1};
+          return{row:box(node),operator:box(node.querySelector('.hotel-operator')),action:box(action),price:box(price),select:box(select),compare:box(compare),captionVisible:!!node.querySelector('.tour-action>small')&&getComputedStyle(node.querySelector('.tour-action>small')).display!=='none',overflow:node.scrollWidth>node.clientWidth+1};
         }));
         for(const row of rows){
           assert.equal(row.captionVisible,false,'mobile exact price does not spend a separate row on the redundant caption');
+          assert.ok(row.row.height<=(inspectedWidth===320?260:215),`${inspectedWidth}: exact offers stay compact enough to compare without the former 264–317 px rows (${row.row.height})`);
+          assert.ok(row.operator.height<=32,'operator identity stays a compact secondary fact, including original logos and unknown-name fallbacks');
           assert.ok(row.select.height>=44&&row.compare.height>=44,'mobile selection and comparison retain full touch targets');
           assert.ok(Math.abs(row.select.y-row.compare.y)<2,'mobile selection and comparison share one action row');
           assert.ok(row.price.right<=row.action.right+1&&row.select.right<=row.action.right+1&&row.compare.right<=row.action.right+1,'mobile price and both actions stay inside the canonical action group');

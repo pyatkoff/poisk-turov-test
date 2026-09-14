@@ -34,7 +34,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools{margin:20px 0;padding:20px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-hotel-filter{flex:2 1 250px}
 & :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-rating-filter,.search3-sea-filter){flex:1 1 185px}
-& :is(.search3-hotel-filter,.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-rating-filter,.search3-sea-filter)[hidden]{display:none}
+& :is(.search3-hotel-filter,.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-provider-filter,.search3-region-filter,.search3-rating-filter,.search3-sea-filter)[hidden]{display:none}
 & :is(.search3-category-filter,.search3-meal-filter){display:grid;gap:8px}
 & .search3-filter-presets{display:flex;flex-wrap:wrap;gap:6px}
 & .search3-filter-presets[hidden]{display:none}
@@ -91,6 +91,9 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist-status:empty{display:none}
 & .results-layout{display:grid;gap:22px}
 & #results{display:grid;gap:22px}
+& .results-more{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0;color:#526078}
+& .more-search{min-height:44px;padding:10px 16px;border:1px solid #c4cfeb;border-radius:11px;background:#fff;color:#2743cb;font-size:14px;font-weight:600}
+& .results-more>small{flex:1 1 240px;font-size:13px;line-height:1.4}
 & .results-filter-rail,&:not(:has(#results>*)) :is(.results-layout,.results-tools--ds2){display:none!important}
 &.search3-selected-open .v2-product-hero{display:none!important}
 &.search3-selected-open :is(#tourSearch,.results-tools,.results-layout){display:none!important}
@@ -140,6 +143,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-filter-rail{position:sticky;top:18px;max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain;scroll-padding-block:12px;display:grid!important;gap:16px;padding:18px;border:1px solid var(--at-line,#e1e7f3);border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .results-filter-rail:is(:empty,[hidden]){display:none!important}
 & .results-filter-rail:is(:empty,[hidden])+#results{grid-column:1/-1}
+& .results-layout:has(.results-filter-rail:not([hidden]):not(:empty))>.results-more{grid-column:2}
 & .search3-filter-rail__head{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--at-line-soft,#e9edf6)}
 & .search3-filter-rail__head strong{font-size:20px}
 & .search3-filter-rail__head span{color:#526078;font-size:12px}
@@ -170,10 +174,6 @@ margin:0;background:#f5f7fb;color:#17233b;
 & #results .tour-meta>.tour-facts{grid-column:2;grid-row:1/3;margin-top:0}
 & #results .tour-meta>:is(.tour-secondary-facts,.provider-detail){grid-column:1/-1}
 & #results .tour-secondary-facts .tour-operator{gap:6px}
-& #results .tour-operator .hotel-operator{width:auto;grid-template-columns:56px minmax(0,1fr);grid-template-rows:auto;gap:6px;padding:0;border:0;border-radius:0;background:transparent}
-& #results .tour-operator .hotel-operator:not([data-operator-brand]){grid-template-columns:1fr}
-& #results .tour-operator .hotel-operator-logo{height:22px}
-& #results .tour-operator .hotel-operator-name{text-align:left;font-size:12px}
 & #results .tour-action{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:6px 8px}
 & #results .tour-action>:is(small,.hotel-price,.tour-selection-note,.provider-detail-toggle){grid-column:1/-1}
 & #results .tour-action .direct-tour{grid-column:1;margin-top:4px;padding-inline:10px}
@@ -225,6 +225,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-operator-name{font-size:11px;line-height:1.3;overflow-wrap:anywhere;text-align:center;color:#34425a}
 & .hotel-offers-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 18px;color:#17233b}
 & .hotel-offers-heading>strong{font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+& .hotel-offers-summary>.hotel-price{white-space:nowrap;overflow-wrap:normal}
 & .tour-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,24%);gap:14px;align-items:center;border:0;border-top:1px solid var(--at-line-soft,#e9edf6);border-radius:0;padding:12px 16px;background:#fff}
 & .tour-meta>strong{display:block;margin-top:2px;font-size:17px;line-height:1.35}
 & .tour-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin-top:6px}
@@ -235,7 +236,9 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .tour-secondary-facts .tour-fact{display:flex;flex-wrap:wrap;gap:3px 6px;align-items:baseline}
 & .tour-secondary-facts .tour-fact b{font-size:12px;color:#526078;font-weight:400}
 & .tour-secondary-facts .tour-operator{align-items:center}
-& .tour-operator .hotel-operator{width:96px;grid-template-rows:22px auto;padding:3px 5px}
+& .tour-operator .hotel-operator{width:auto;grid-template-columns:56px minmax(0,1fr);grid-template-rows:auto;gap:6px;padding:0;border:0;border-radius:0;background:transparent}
+& .tour-operator .hotel-operator:not([data-operator-brand]){grid-template-columns:1fr}
+& .tour-operator .hotel-operator-name{text-align:left;font-size:12px}
 & .tour-operator .hotel-operator-logo{height:22px}
 & .tour-action{display:grid;gap:5px;align-content:start;justify-items:stretch;padding-left:14px;border-left:1px solid var(--at-line-soft,#e9edf6);text-align:left}
 & .tour-action>.hotel-price{font-size:24px}
@@ -307,6 +310,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .empty-actionable{padding:20px}
 }
 @media(max-width:350px){
+& .hotel-offers-summary{grid-template-columns:1fr;gap:8px}
+& .hotel-offers-summary .tour-more-toggle{justify-self:start}
 & .tour-action:has(.search3-shortlist-toggle){grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
 & .tour-action:has(.search3-shortlist-toggle)>.hotel-price{grid-column:1/-1;grid-row:1}
 & .tour-action:has(.search3-shortlist-toggle)>.direct-tour{grid-column:1;grid-row:2;width:100%}

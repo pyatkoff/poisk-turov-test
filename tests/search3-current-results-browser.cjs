@@ -914,6 +914,9 @@ async function run(browser, width, previous) {
     assert.equal(await localCategoryFilter.isVisible(), false, 'search reset hides the stale local category facet');
     assert.equal(await localOperatorSelect.inputValue(), '', 'search reset clears the local operator');
     assert.equal(await localOperatorFilter.isVisible(), false, 'search reset hides the stale local operator facet');
+    for (const selector of ['.search3-provider-filter', '.search3-region-filter']) {
+      assert.equal(await page.locator(selector).evaluate(node => node.hidden && getComputedStyle(node).display === 'none'), true, 'reset removes the stale facet from layout even inside a grid: ' + selector);
+    }
     assert.equal(await calendar.isVisible(), false, 'search reset hides stale calendar data');
     assert.equal(await calendar.locator('[data-calendar-date]').count(), 0, 'search reset clears stale calendar dates');
     await page.evaluate(() => {
@@ -978,6 +981,15 @@ async function run(browser, width, previous) {
     await page.locator('#ordinary-terminal-focus').evaluate(node => node.remove());
     assert.equal(await page.locator('#status').isVisible(), false, 'ordinary terminal empty result also keeps a single final state');
     await checkPrimaryForm(page, 'terminal empty results', true);
+    const continuation = await page.locator('#v2SearchMore').evaluate(node => {
+      const box = element => { const r = element.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom}; };
+      return {group:box(node),button:box(node.querySelector('button')),helper:box(node.querySelector('small')),results:box(document.getElementById('results'))};
+    });
+    assert.ok(continuation.button.height >= 44, 'the current continuation action retains a full touch target');
+    assert.ok(continuation.group.y >= continuation.results.bottom && Math.abs(continuation.group.x-continuation.results.x) < 1, 'continuation follows and aligns with the actual results column');
+    assert.ok(continuation.button.right <= continuation.group.right+1 && continuation.helper.right <= continuation.group.right+1, 'continuation action and helper stay inside the results width');
+    assert.ok(continuation.helper.y >= continuation.button.bottom || continuation.helper.x >= continuation.button.right, 'continuation helper has its own readable space');
+    if (!previous) await page.locator('#v2SearchMore').screenshot({path:path.join(output, `continuation-${width}.png`),animations:'disabled'});
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
@@ -992,7 +1004,7 @@ async function run(browser, width, previous) {
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
-    return { sourceSha, primaryForm: 'collapsed-with-results-editable-on-demand-and-error', toolbarLayout, minimumReadiness, expandedDensity, collapsed, expanded, logoSource };
+    return { sourceSha, primaryForm: 'collapsed-with-results-editable-on-demand-and-error', toolbarLayout, minimumReadiness, expandedDensity, continuation, collapsed, expanded, logoSource };
   } finally { await page.close(); }
 }
 (async () => {
