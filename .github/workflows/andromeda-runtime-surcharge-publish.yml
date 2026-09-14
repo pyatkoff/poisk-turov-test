@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "publish-andromeda-surcharge-runtime-1717-v2 OR run-andromeda-surcharge-e2e-1717-v1"
+        description: "publish-andromeda-surcharge-runtime-1717-v3 OR run-andromeda-surcharge-e2e-1717-v1"
         required: true
         type: string
   issue_comment:
@@ -18,15 +18,17 @@ concurrency:
   group: anytoour-andromeda-detail-publication
   cancel-in-progress: false
 jobs:
+  # v2 is completed: run34873062851/receipt10359648547. Never replay it.
+  # v3 installs the complete checked #2461 package; it does not run supplier E2E.
   publish:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
-      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-surcharge-runtime-1717-v2') ||
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-surcharge-runtime-1717-v3') ||
        (github.event_name == 'issue_comment' && github.event.action == 'created' &&
         github.event.issue.number == 996 && !github.event.issue.pull_request &&
         github.event.comment.user.id == 226193297 &&
-        github.event.comment.body == '/publish-andromeda-surcharge-runtime-1717-v2'))
+        github.event.comment.body == '/publish-andromeda-surcharge-runtime-1717-v3'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -35,16 +37,16 @@ jobs:
         with:
           script: |
             const owner = 226193297;
-            const command = '/publish-andromeda-surcharge-runtime-1717-v2';
-            const runtimeHead = 'b32993261eb8657004e7d4fd146b65a95264d4bc';
-            const runtimeMerge = '716c8a41bc7f15a3bb1a032a7b5b88438a343100';
-            const publisherHead = 'f44220bc8dd5d0a34c29b8a89c4ba73c9cf4acd7';
-            const publisherMerge = '59822613b2089974d243095ffcb503918c88e8d1';
+            const command = '/publish-andromeda-surcharge-runtime-1717-v3';
+            const runtimeHead = '64706822fc54f4d4423ea6bbd0ad966144151387';
+            const runtimeMerge = '23dd08a985eb58ed93652d97b60dac6c4145020c';
+            const publisherHead = '64706822fc54f4d4423ea6bbd0ad966144151387';
+            const publisherMerge = '23dd08a985eb58ed93652d97b60dac6c4145020c';
             if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay an unknown publication; inspect its receipt.');
             if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
             if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
             if (context.eventName === 'workflow_dispatch') {
-              if (context.payload.inputs?.confirmation !== 'publish-andromeda-surcharge-runtime-1717-v2') throw new Error('Confirmation mismatch.');
+              if (context.payload.inputs?.confirmation !== 'publish-andromeda-surcharge-runtime-1717-v3') throw new Error('Confirmation mismatch.');
             } else if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
                        context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
                        context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) {
@@ -52,29 +54,26 @@ jobs:
             }
             const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
-            const {data: runtimePr} = await github.rest.pulls.get({...context.repo, pull_number: 2439});
+            const {data: runtimePr} = await github.rest.pulls.get({...context.repo, pull_number: 2461});
             if (!runtimePr.merged || runtimePr.head.sha !== runtimeHead || runtimePr.merge_commit_sha !== runtimeMerge || runtimePr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Runtime PR provenance mismatch.');
-            const {data: publisherPr} = await github.rest.pulls.get({...context.repo, pull_number: 2444});
+            const {data: publisherPr} = await github.rest.pulls.get({...context.repo, pull_number: 2461});
             if (!publisherPr.merged || publisherPr.head.sha !== publisherHead || publisherPr.merge_commit_sha !== publisherMerge || publisherPr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Publisher PR provenance mismatch.');
             const gates = [
-              [34870778284, runtimeHead],
-              [34870778296, runtimeHead],
-              [34870778282, runtimeHead],
-              [34870778300, runtimeHead],
-              [34872843017, publisherHead],
-              [34872842955, publisherHead]
+              [34892746507, runtimeHead],
+              [34892746399, runtimeHead],
+              [34892746421, publisherHead]
             ];
             for (const [run_id, sha] of gates) {
               const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
               if (run.head_sha !== sha || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned CI gate failed: ' + run_id);
             }
-            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10358961833});
-            if (artifact.id !== 10358961833 || artifact.expired !== false || artifact.workflow_run?.id !== 34870778296 ||
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10366918073});
+            if (artifact.id !== 10366918073 || artifact.expired !== false || artifact.workflow_run?.id !== 34892746399 ||
                 artifact.workflow_run?.head_sha !== runtimeHead ||
-                artifact.digest !== 'sha256:2882cf8ae2da4145a4ea450624a1132b02fb4b7c0dd0de074f85fe35ee259220') throw new Error('Artifact identity/digest mismatch.');
+                artifact.digest !== 'sha256:b4745c6c11a2c6a1ed5d4d240a4cc902c852b3d262821111e452059fa6fd6e23') throw new Error('Artifact identity/digest mismatch.');
       - uses: actions/checkout@v4
         with:
-          ref: 59822613b2089974d243095ffcb503918c88e8d1
+          ref: 23dd08a985eb58ed93652d97b60dac6c4145020c
           path: publisher
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -84,18 +83,55 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          artifact-ids: '10358961833'
-          run-id: '34870778296'
+          artifact-ids: '10366918073'
+          run-id: '34892746399'
           github-token: ${{ github.token }}
           path: candidate
           merge-multiple: true
       - name: Publish exact checked runtime to isolated Andromeda preview
         env:
-          RUNTIME_SOURCE_SHA: b32993261eb8657004e7d4fd146b65a95264d4bc
+          RUNTIME_SOURCE_SHA: 64706822fc54f4d4423ea6bbd0ad966144151387
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: python3 -B publisher/scripts/diagnostics/andromeda_runtime_source_publish.py candidate helper
+      - name: Verify both HTTP entrypoints without search or quote operations
+        run: |
+          python3 - <<'PYHTTP'
+          import hashlib, http.client, json, os
+          from pathlib import Path
+          out = Path(os.environ['RUNNER_TEMP']) / 'andromeda-runtime-source-publication'
+          published = json.loads((out / 'result.json').read_text())
+          if published.get('status') not in ('published','already_published'):
+              raise SystemExit('Publication is unconfirmed; do not replay')
+          report = {'status':'incomplete','source':published['source'],'checks':[],
+                    'validation_only':True,'supplier_calls':0,'database_reads':0,'booking_calls':0}
+          cases = [('GET',{},405,'method_not_allowed'),
+                   ('POST',{},403,'forbidden'),
+                   ('POST',{'X-Requested-With':'AnyTourSearch3','Content-Type':'text/plain'},400,'invalid_request')]
+          try:
+              for endpoint in ('api-andromeda-search3-preview.php','api-andromeda-quote-preview.php'):
+                  for method, headers, status, error in cases:
+                      connection = http.client.HTTPSConnection('anytoour.ru', timeout=20)
+                      try:
+                          connection.request(method, '/_preview/search3-anex-candidate/' + endpoint,
+                                             body=None if method == 'GET' else b'', headers=headers)
+                          response = connection.getresponse()
+                          body = response.read(4097)
+                          row = {'endpoint':endpoint,'method':method,'expected_status':status,
+                                 'status':response.status,'body_sha256':hashlib.sha256(body).hexdigest()}
+                          report['checks'].append(row)
+                          if (response.status != status or len(body) > 4096
+                                  or json.loads(body) != {'ok':False,'error':error}):
+                              raise SystemExit('HTTP rejection readback failed; inspect receipt, do not republish')
+                          row['verified'] = True
+                      finally:
+                          connection.close()
+              report['status'] = 'verified'
+          finally:
+              (out / 'http-readback.json').write_text(json.dumps(report, sort_keys=True, indent=2) + '\n')
+          print(json.dumps(report, sort_keys=True))
+          PYHTTP
       - name: Preserve publication receipt
         if: always()
         uses: actions/upload-artifact@v4
