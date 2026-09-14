@@ -95,7 +95,7 @@ assert.match(tvRow,/class="direct-tour"/,'Tourvisor selection remains available'
   assert.equal(expanded.andromedaExpansion.status,'complete');
   assert.equal(expanded.tours[1].offerContext.hotel_scope.local_id,21477,'expanded context survives normalization');
   await runtimeWindow.AnyTourAndromedaProvider.expandHotel('21477');assert.equal(calls.length,2,'rerender/click cannot replay expansion');
-  assert.match(rendererWindow.V2Results.toursHtml(expanded),/Варианты Андромеды загружены: 2/);
+  assert.match(rendererWindow.V2Results.toursHtml(expanded),/Варианты из Андромеды загружены: 2/);
   assert.equal(api.context({...context,hotel_scope:{local_id:21477,seed:{...context,hotel_scope:{}}}}),null,'nested scopes rejected');
   // Reset clears old expansion. The next incomplete result retains its representative.
   runtimeWindow.fetch=async()=>({ok:true,json:async()=>({ok:true,data:{provider:'andromeda',generation:11,page:1,pages_count:1,hotels:[rawHotel(21477)]}})});
