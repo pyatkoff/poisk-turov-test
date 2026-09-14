@@ -22,11 +22,11 @@ $offer=$page['offers'][0];
 if(($offer['meal']['canonical_key']??null)!=='bb'||($offer['meal']['label']??null)!=='BB · Завтрак')throw new RuntimeException('meal not canonical');
 if(($offer['meal']['raw_label']??null)!=='Bed & Breakfast')throw new RuntimeException('meal raw evidence lost');
 if(($offer['room']??null)!=='Standard'||($offer['room_raw']??null)!=='standard'||($offer['room_normalized']??null)!=='standard')throw new RuntimeException('room not canonical');
-if(($offer['placement']??null)!=='Dbl'||($offer['placement_raw']??null)!=='DBL')throw new RuntimeException('placement evidence lost');
+if(($offer['placement']??null)!=='DBL'||($offer['placement_raw']??null)!=='DBL')throw new RuntimeException('placement evidence lost');
 $t=$offer['transport_context']??[];
 if(($t['tour_ref']??null)!=='4983'||($t['program_ref']??null)!=='1552'||($t['spo_ref']??null)!=='45143187')throw new RuntimeException('PRICE transport refs lost');
 if(($t['tour_label']??null)!=='Moscow Antalya'||($t['program_label']??null)!=='ANEX Light'||($t['departure_times_reported']??null)!=='00:15, 06:50')throw new RuntimeException('PRICE transport labels lost');
-if(($t['freight_external']??null)!==false||($t['surcharge_status']??null)!=='unknown'||($t['surcharge']??'not-null')!==null||($t['arithmetic_applied']??null)!==false)throw new RuntimeException('unverified surcharge became arithmetic');
+if(($t['freight_external']??null)!==false||($t['surcharge_status']??null)!=='unknown'||!array_key_exists('surcharge',$t)||$t['surcharge']!==null||($t['arithmetic_applied']??null)!==false)throw new RuntimeException('unverified surcharge became arithmetic');
 
 $bb=AnyTourThreeProviderMealFamily::normalize('BB - Только завтрак');
 $english=AnyTourThreeProviderMealFamily::normalize('Bed & Breakfast');
