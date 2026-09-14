@@ -75,6 +75,7 @@ jobs:
           php tests/anex-review-tourvisor-link-test.php
           php -l scripts/diagnostics/anex_review_owner_publish_runner.php
           php -l scripts/diagnostics/anex_review_owner_preserve.php
+          python3 tests/anex_search3_preview_deploy_test.py
           python3 tests/anex-review-owner-publish-test.py
           php tests/anex-review-panel-test.php
           php tests/anex-review-schema-test.php
