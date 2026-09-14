@@ -9,11 +9,11 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: anytour-match-manual-live-queue-1971-20260914-v1
+  group: anytour-match-manual-live-queue-1971-20260914-v8
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-manual-live-queue-1971-20260914-v1
-  OUT: /tmp/match-manual-live-queue-1971
+  OPERATION_ID: hotel-match-manual-live-queue-1971-20260914-v8
+  OUT: /tmp/match-manual-live-queue-1971-v8
 jobs:
   current-readonly:
     runs-on: ubuntu-latest
@@ -74,6 +74,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-manual-live-queue-${{ github.run_id }}
+          name: match-manual-live-queue-v8-${{ github.run_id }}
           path: ${{ env.OUT }}/
           retention-days: 90
