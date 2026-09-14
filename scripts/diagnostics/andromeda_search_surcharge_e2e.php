@@ -49,10 +49,12 @@ function anytour_andromeda_surcharge_e2e_find(array $projection, string $offerRe
 function anytour_andromeda_surcharge_e2e_verify(array $before, array $after): array
 {
     $base = $before['price'] ?? null;
+    // Keep the complete original base below; the calculated fact contains money only.
+    $baseMoney = is_array($base) ? ['amount' => $base['amount'] ?? null, 'currency' => $base['currency'] ?? null] : null;
     $fact = $after['search_surcharge'] ?? null;
     $display = $after['price'] ?? null;
     if (!is_array($base) || ($after['base_search_price'] ?? null) !== $base || !is_array($fact) || !is_array($display)
-        || ($fact['search_price'] ?? null) !== $base || ($fact['state'] ?? null) !== 'estimated'
+        || ($fact['search_price'] ?? null) !== $baseMoney || ($fact['state'] ?? null) !== 'estimated'
         || ($fact['arithmetic_applied'] ?? null) !== true || ($fact['final_price_verified'] ?? null) !== false
         || ($fact['search_price_with_surcharge'] ?? null) !== $display || !is_array($fact['party_surcharge'] ?? null)) {
         throw new RuntimeException('listing_surcharge_not_applied');
@@ -82,6 +84,17 @@ function anytour_andromeda_surcharge_e2e_verify_quote(array $listedTour, array $
             throw new RuntimeException('served_quote_observation_invalid');
         }
         unset($servedMoney['source']);
+    }
+    if ($priceBasis === 'search_base' && is_array($servedMoney)) {
+        // Only the normalizer's known metadata may be separated from receipt money.
+        if ((array_key_exists('currency_id', $servedMoney) && (!is_string($servedMoney['currency_id'])
+                || !preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $servedMoney['currency_id'])))
+            || (array_key_exists('kind', $servedMoney) && $servedMoney['kind'] !== 'offer')
+            || (array_key_exists('fees', $servedMoney) && $servedMoney['fees'] !== 'unknown')
+            || (array_key_exists('final', $servedMoney) && $servedMoney['final'] !== false)) {
+            throw new RuntimeException('served_quote_observation_invalid');
+        }
+        unset($servedMoney['currency_id'], $servedMoney['kind'], $servedMoney['fees'], $servedMoney['final']);
     }
     if (!is_string($reference) || !preg_match('/^listing_[a-f0-9]{64}$/D', $reference)
         || ($quote['state'] ?? null) !== 'quote_verified' || ($quote['final_price_verified'] ?? null) !== true
