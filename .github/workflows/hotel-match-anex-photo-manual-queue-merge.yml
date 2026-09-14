@@ -1,0 +1,75 @@
+name: MATCH photo-enriched manual live queue v2
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/anex_photo_manual_queue_merge.py'
+      - '.github/workflows/hotel-match-anex-photo-manual-queue-merge.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-photo-manual-queue-1971-20260914-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-manual-live-photo-enriched-1971-20260914-v2
+jobs:
+  merge:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: '${{ github.sha }}'
+      - name: Reserve immutable evidence merge
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_artifact_read","database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-photo-manual-v2-reservation
+          path: '${{ runner.temp }}/hotel-match-manual-live-photo-enriched-1971-20260914-v2/reservation.json'
+          retention-days: 90
+      - name: Merge immutable manual queue and CURRENT native photo evidence
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -p "$RUNNER_TEMP/manual" "$RUNNER_TEMP/photo"
+          python3 -B scripts/diagnostics/anex_photo_manual_queue_merge.py --self-test
+          python3 -m py_compile scripts/diagnostics/anex_photo_manual_queue_merge.py
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/anex_photo_manual_queue_merge.py
+          ! grep -Eiq '(curl|wget|requests\.|urllib\.request|parser\.anextour|gateway\.samo|tourvisor)' scripts/diagnostics/anex_photo_manual_queue_merge.py
+          gh run download 34825332583 --repo "$GITHUB_REPOSITORY" --name match-manual-live-queue-34825332583 -D "$RUNNER_TEMP/manual"
+          gh run download 34851039407 --repo "$GITHUB_REPOSITORY" --name match-anex-photo-current-review-v2-result -D "$RUNNER_TEMP/photo"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=pathlib.Path(os.environ['RUNNER_TEMP'])
+          m=json.loads((r/'manual/result.json').read_text()); p=json.loads((r/'photo/result.json').read_text())
+          assert m['operation_id']=='hotel-match-manual-live-queue-1971-20260914-v1' and m['queue_count']==219
+          assert all(m.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls'))
+          assert p['operation_id']=='hotel-match-anex-photo-current-review-1971-20260914-v2' and p['counts']['evidence']==31 and p['counts']['ready']==0
+          assert all(p.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls'))
+          PY
+          python3 -B scripts/diagnostics/anex_photo_manual_queue_merge.py \
+            --manual "$RUNNER_TEMP/manual/queue.json" \
+            --photo "$RUNNER_TEMP/photo/result.json" \
+            --out "$S/enriched" \
+            --operation-id "$OPERATION_ID"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; result=S/'enriched/result.json'; x=json.loads(result.read_text())
+          ok=(x.get('status')=='completed_read_only' and x.get('operation_id')==os.environ['OPERATION_ID'] and x.get('queue_count')==219 and x.get('photo_review_evidence')==31 and x.get('photo_review_ready')==0 and x.get('manual_rows_with_native_hotelcode',0)>0 and all(x.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls')))
+          if not ok: raise SystemExit('merge_readback_failed')
+          rec={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(result.read_bytes()).hexdigest(),'queue_count':x['queue_count'],'manual_rows_with_native_hotelcode':x['manual_rows_with_native_hotelcode'],'manual_rows_with_native_hotelcode_search_weight':x['manual_rows_with_native_hotelcode_search_weight'],'photo_review_ready':x['photo_review_ready'],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (S/'receipt.json').write_text(json.dumps(rec,sort_keys=True)+'\n'); print(json.dumps(rec,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-photo-manual-v2-result
+          path: '${{ runner.temp }}/hotel-match-manual-live-photo-enriched-1971-20260914-v2/'
+          retention-days: 90
