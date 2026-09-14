@@ -1,0 +1,209 @@
+name: MATCH ANEX automatch CURRENT mass review v1
+on:
+  push:
+    branches: [ops/match-anex-automatch-current-mass-1971-20260914-v1]
+    paths:
+      - .github/workflows/hotel-match-anex-automatch-current-mass-v1.yml
+permissions:
+  contents: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          ref: '${{ github.sha }}'
+      - name: Reserve immutable operation before SSH
+        run: |
+          python3 - <<'PY'
+          import json, os
+          v={
+            "operation_id":"hotel-match-anex-automatch-current-mass-review-1971-20260914-v1",
+            "state":"reserved_before_ssh",
+            "run_id":int(os.environ["GITHUB_RUN_ID"]),
+            "source_sha":os.environ["GITHUB_SHA"],
+            "database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,
+            "no_replay":True
+          }
+          open("reservation.json","w").write(json.dumps(v,sort_keys=True)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-automatch-current-mass-v1-reservation
+          path: reservation.json
+          retention-days: 90
+      - name: CURRENT DB mass reconciliation read-only
+        env:
+          SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          SSH_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          SSH_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, subprocess, tempfile
+          php=r'''<?php
+          declare(strict_types=1);
+          function hm_text($v): string {
+              if (!is_scalar($v)) return '';
+              $s=mb_strtolower(trim((string)$v),'UTF-8');
+              $s=str_replace(['ё','&'],['е',' and '],$s);
+              $s=preg_replace('/\s+/u',' ',$s) ?? $s;
+              return trim($s);
+          }
+          function hm_tokens($v): array {
+              $s=hm_text($v);
+              // former-name suffix is useful evidence but must not dominate the primary-name guard.
+              $s=preg_replace('/\b(?:ex|former(?:ly)?)\b.*$/u','',$s) ?? $s;
+              preg_match_all('/[\p{L}\p{N}]+/u',$s,$m);
+              $drop=['hotel'=>1,'hotels'=>1,'resort'=>1,'resorts'=>1,'spa'=>1,'otel'=>1,'отель'=>1,'отели'=>1,'гостиница'=>1,'the'=>1,'and'=>1,'by'=>1];
+              $out=[];
+              foreach($m[0]??[] as $t){ if(!isset($drop[$t])) $out[$t]=1; }
+              return array_keys($out);
+          }
+          function hm_norm($v): string { $t=hm_tokens($v); sort($t,SORT_STRING); return implode(' ',$t); }
+          function hm_qualifiers($v): array {
+              $set=array_fill_keys(hm_tokens($v),1);
+              $q=['annex','annexe','beach','garden','north','south','east','west'];
+              $out=[]; foreach($q as $x) if(isset($set[$x])) $out[]=$x;
+              sort($out,SORT_STRING); return $out;
+          }
+          function hm_numbers($v): array {
+              preg_match_all('/\b\d+\b/u',hm_text($v),$m);
+              $x=array_values(array_unique($m[0]??[])); sort($x,SORT_STRING); return $x;
+          }
+          function hm_geo_key($v): string {
+              $s=hm_text($v);
+              $s=str_replace([' ','.',',','-','_','/','\\'],'',$s);
+              return $s;
+          }
+          function hm_core8(string $country): bool {
+              $c=hm_text($country);
+              return in_array($c,['египет','egypt','турция','turkey','türkiye','turkiye','таиланд','thailand','оаэ','объединенные арабские эмираты','united arab emirates','uae','вьетнам','vietnam','viet nam','шри ланка','sri lanka','мальдивы','maldives','куба','cuba'],true);
+          }
+          $root=realpath(getcwd());
+          if(!$root || basename($root)!=='anytoour.ru') throw new RuntimeException('bad_root');
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          $db=v2_data_db(); $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+          $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+          $db->exec('START TRANSACTION READ ONLY');
+          $auto=$db->query("SELECT anex_hotel_id,api_xml_relation,automated_status,original_status,suggested_catalog_hotel_id,candidate_count,stored_candidate_count,evidence_json,checked_at,updated_at FROM anex_hotel_auto_matches ORDER BY anex_hotel_id")->fetchAll(PDO::FETCH_ASSOC);
+          $maps=$db->query("SELECT anex_hotel_id,catalog_hotel_id,enabled,scope,approval_policy FROM anex_hotel_search_mappings ORDER BY anex_hotel_id,catalog_hotel_id")->fetchAll(PDO::FETCH_ASSOC);
+          $dec=[]; try{$dec=$db->query("SELECT * FROM anex_hotel_decisions")->fetchAll(PDO::FETCH_ASSOC);}catch(Throwable $e){}
+          $exc=[]; try{$exc=$db->query("SELECT * FROM anex_review_pair_exclusions")->fetchAll(PDO::FETCH_ASSOC);}catch(Throwable $e){}
+          $state=[]; try{$state=$db->query("SELECT * FROM anex_review_state")->fetchAll(PDO::FETCH_ASSOC);}catch(Throwable $e){}
+          $db->exec('ROLLBACK');
+
+          $mapBy=[]; $occup=[];
+          foreach($maps as $r){
+              $aid=(string)$r['anex_hotel_id']; $lid=(int)$r['catalog_hotel_id'];
+              $mapBy[$aid][]=$r;
+              if((int)$r['enabled']===1) $occup[$lid][$aid]=1;
+          }
+          $protectId=[]; $protectPair=[];
+          foreach([$dec,$state] as $rows) foreach($rows as $r){
+              if(isset($r['anex_hotel_id'])) $protectId[(string)$r['anex_hotel_id']]=1;
+              if(isset($r['anex_hotel_id'],$r['catalog_hotel_id'])) $protectPair[(string)$r['anex_hotel_id'].'|'.(int)$r['catalog_hotel_id']]=1;
+          }
+          foreach($exc as $r){
+              if(isset($r['anex_hotel_id'])) $protectId[(string)$r['anex_hotel_id']]=1;
+              if(isset($r['anex_hotel_id'],$r['catalog_hotel_id'])) $protectPair[(string)$r['anex_hotel_id'].'|'.(int)$r['catalog_hotel_id']]=1;
+          }
+
+          $stats=['auto_rows'=>count($auto),'core8_rows'=>0,'same_record_core8'=>0,'already_target'=>0,'protected'=>0,'target_occupied'=>0,'source_multiple_enabled'=>0,'coordinate_conflict_gt5km'=>0,'qualifier_conflict'=>0,'numeric_qualifier_conflict'=>0,'weak_identity'=>0,'safe_new_or_repair'=>0,'safe_unmapped'=>0,'safe_repair_wrong_local'=>0];
+          $safe=[]; $blockedExamples=[];
+          foreach($auto as $r){
+              $ev=json_decode((string)$r['evidence_json'],true);
+              if(!is_array($ev)) continue;
+              $api=is_array($ev['api']??null)?$ev['api']:[];
+              $xml=is_array($ev['xml']??null)?$ev['xml']:[];
+              $cand=is_array($ev['candidates']??null)?$ev['candidates']:[];
+              if(!$cand || !is_array($cand[0]??null)) continue;
+              $rank1=$cand[0];
+              $country=(string)($api['country']??$rank1['country']??'');
+              if(!hm_core8($country)) continue;
+              $stats['core8_rows']++;
+              if((string)($r['api_xml_relation']??'')!=='same_record') continue;
+              $stats['same_record_core8']++;
+              $aid=(string)$r['anex_hotel_id'];
+              $target=(int)($r['suggested_catalog_hotel_id']??0);
+              if($target<=0 || (int)($rank1['catalog_hotel_id']??0)!==$target) continue;
+              $sourceName=(string)($api['name']??$xml['name']??'');
+              $targetName=(string)($rank1['name']??'');
+              $distance=array_key_exists('distance_m',$rank1)&&$rank1['distance_m']!==null?(float)$rank1['distance_m']:null;
+              $nameSim=(float)($rank1['name_similarity']??0);
+              $score=(float)($rank1['score']??0);
+              $countryOk=(bool)($rank1['country_match']??false);
+              $addressExact=(bool)($rank1['address_exact']??false);
+              $sourceRegion=(string)($api['region']??''); $targetRegion=(string)($rank1['region']??'');
+              $sourceTown=(string)($api['town']??''); $targetTown=(string)($rank1['town']??'');
+              $geoNameOk=(hm_geo_key($sourceTown)!=='' && hm_geo_key($sourceTown)===hm_geo_key($targetTown)) || (hm_geo_key($sourceRegion)!=='' && hm_geo_key($sourceRegion)===hm_geo_key($targetRegion));
+              $exactName=hm_norm($sourceName)!=='' && hm_norm($sourceName)===hm_norm($targetName);
+              $qualConflict=hm_qualifiers($sourceName)!==hm_qualifiers($targetName);
+              $numsA=hm_numbers($sourceName); $numsB=hm_numbers($targetName);
+              $numConflict=($numsA||$numsB) && $numsA!==$numsB;
+              $pairKey=$aid.'|'.$target;
+              $current=$mapBy[$aid]??[];
+              $enabled=array_values(array_filter($current,fn($x)=>(int)$x['enabled']===1));
+              $currentTargets=array_values(array_unique(array_map(fn($x)=>(int)$x['catalog_hotel_id'],$enabled)));
+              if(in_array($target,$currentTargets,true)){ $stats['already_target']++; continue; }
+              if(isset($protectId[$aid]) || isset($protectPair[$pairKey])){ $stats['protected']++; continue; }
+              if(count($currentTargets)>1){ $stats['source_multiple_enabled']++; continue; }
+              $otherOccup=array_diff(array_keys($occup[$target]??[]),[$aid]);
+              if($otherOccup){ $stats['target_occupied']++; if(count($blockedExamples)<30)$blockedExamples[]=['anex_hotel_id'=>$aid,'target'=>$target,'reason'=>'target_occupied','occupants'=>array_values($otherOccup)]; continue; }
+              if($distance!==null && $distance>5000){ $stats['coordinate_conflict_gt5km']++; continue; }
+              if($qualConflict){ $stats['qualifier_conflict']++; continue; }
+              if($numConflict){ $stats['numeric_qualifier_conflict']++; continue; }
+              // Strong independent local identity: very close coordinates + meaningful name, or exact significant name + direct geography.
+              $strong = $countryOk && (
+                  ($distance!==null && $distance<=1000 && $nameSim>=0.65 && $score>=0.78) ||
+                  ($distance!==null && $distance<=250 && $nameSim>=0.55 && $score>=0.72) ||
+                  ($exactName && $geoNameOk) ||
+                  ($addressExact && $nameSim>=0.55)
+              );
+              if(!$strong){ $stats['weak_identity']++; continue; }
+              $lane=$currentTargets?'repair_wrong_local':'unmapped';
+              $stats['safe_new_or_repair']++;
+              $stats[$lane==='unmapped'?'safe_unmapped':'safe_repair_wrong_local']++;
+              $safe[]=[
+                  'anex_hotel_id'=>$aid,'target_local_id'=>$target,'lane'=>$lane,
+                  'current_enabled_targets'=>$currentTargets,'api_xml_relation'=>'same_record',
+                  'source_name'=>$sourceName,'target_name'=>$targetName,'country'=>$country,
+                  'source_region'=>$sourceRegion,'target_region'=>$targetRegion,'source_town'=>$sourceTown,'target_town'=>$targetTown,
+                  'distance_m'=>$distance,'name_similarity'=>$nameSim,'score'=>$score,'address_exact'=>$addressExact,
+                  'exact_significant_name'=>$exactName,'direct_geo_name'=>$geoNameOk,
+                  'automated_status'=>(string)($r['automated_status']??''),'checked_at'=>(string)($r['checked_at']??'')
+              ];
+          }
+          usort($safe,fn($a,$b)=>[$a['lane'],(float)($a['distance_m']??999999),-(float)$a['score'],(int)$a['anex_hotel_id']]<=>[$b['lane'],(float)($b['distance_m']??999999),-(float)$b['score'],(int)$b['anex_hotel_id']]);
+          $out=['schema'=>'hotel-match-anex-automatch-current-mass/1','status'=>'completed','operation_id'=>'hotel-match-anex-automatch-current-mass-review-1971-20260914-v1','stats'=>$stats,'safe_count'=>count($safe),'safe'=>$safe,'blocked_examples'=>$blockedExamples,'protection_counts'=>['decision_rows'=>count($dec),'state_rows'=>count($state),'pair_exclusion_rows'=>count($exc)],'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'no_replay'=>true];
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          ?>'''
+          raw=os.environ["SSH_KEY"].strip(); host=os.environ["SSH_HOST"].strip(); user=os.environ["SSH_USER"].strip()
+          P=pathlib.Path
+          with tempfile.TemporaryDirectory(prefix="match-anex-auto-",dir=os.environ["RUNNER_TEMP"]) as td:
+              key=P(td)/"key"; known=P(td)/"known"
+              if "PRIVATE KEY" in raw: key.write_text(raw.rstrip()+"\n")
+              else: key.write_bytes(base64.b64decode(raw))
+              key.chmod(0o600)
+              cmd=["ssh","-T","-i",str(key),"-o","IdentitiesOnly=yes","-o","BatchMode=yes","-o","StrictHostKeyChecking=accept-new","-o","UserKnownHostsFile="+str(known),"-o","ConnectTimeout=20","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=4","-o","LogLevel=ERROR","-l",user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0']
+              p=subprocess.run(cmd,input=php,text=True,capture_output=True,timeout=540)
+          if p.returncode!=0:
+              raise SystemExit("remote_exit=%s stderr=%s"%(p.returncode,p.stderr[-1000:]))
+          v=json.loads(p.stdout)
+          pathlib.Path("result.json").write_text(json.dumps(v,ensure_ascii=False,sort_keys=True,indent=2)+"\n")
+          h=hashlib.sha256(pathlib.Path("result.json").read_bytes()).hexdigest()
+          rec={"operation_id":v["operation_id"],"state":"completed_read_only","run_id":int(os.environ["GITHUB_RUN_ID"]),"source_sha":os.environ["GITHUB_SHA"],"safe_count":v["safe_count"],"stats":v["stats"],"result_sha256":h,"database_writes":0,"mapping_writes":0,"supplier_calls":0,"tourvisor_calls":0,"no_replay":True}
+          pathlib.Path("receipt.json").write_text(json.dumps(rec,ensure_ascii=False,sort_keys=True,indent=2)+"\n")
+          print(json.dumps({"safe_count":v["safe_count"],"stats":v["stats"]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-automatch-current-mass-v1-result
+          path: |
+            result.json
+            receipt.json
+            reservation.json
+          retention-days: 90
