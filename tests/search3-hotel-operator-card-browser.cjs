@@ -71,6 +71,8 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.match(await row.locator('.tour-meta>small').innerText(),new RegExp(' · '+offer.nights+' ноч\\.'));
       assert.match(await row.innerText(),new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
       assert.doesNotMatch(await row.innerText(),/от \d|7–10|Разные варианты перелёта/);
+      assert.doesNotMatch(await row.innerText(),/Туристы|Источник|Размещение/,'expanded offer row does not repeat search-level/internal facts');
+      assert.match(await row.innerText(),/STANDARD · DBL/,'room and placement stay together as one compact exact-offer fact');
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
     }
     for(const brand of ['funsun','anex','intourist','biblio-globus']){
@@ -125,7 +127,7 @@ module.exports=async function checkOperatorCards(page,width,output){
             assert.ok(row.facts.x>=row.date.right-1&&Math.abs(row.facts.y-row.date.y)<2,'date and primary conditions share one desktop reading row');
             if(row.compare)assert.ok(row.compare.x>=row.select.right-1&&Math.abs(row.compare.y-row.select.y)<2,'selection and comparison share one action row');
           }
-          if(inspectedWidth===1440)assert.ok(row.row.height<=180,'heterogeneous desktop offer avoids the former tall nested action card');
+          if(inspectedWidth===1440)assert.ok(row.row.height<=160,'compact heterogeneous desktop offer stays below the former tall nested action card');
         }
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         desktopComposition.push({width:inspectedWidth,rows});
@@ -179,6 +181,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerIntersection:[0,1,0],sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };
