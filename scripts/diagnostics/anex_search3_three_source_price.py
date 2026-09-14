@@ -49,7 +49,7 @@ def source():
                   "$andromedaApp=is_file($preview.'/app/integrations/andromeda-client.php')?$preview.'/app/integrations':dirname($preview).'/app/integrations';"
                   "foreach(['andromeda-client','andromeda-transport','andromeda-normalizer','andromeda-hotel-resolver','andromeda-search','andromeda-hotel-observations','anex-normalizer'] as $file)require_once $andromedaApp.'/'.$file.'.php';")
     new_body,count=stale.subn(lambda unused: dependencies,new_body)
-    if count!=1: raise ValueError('three_source_andromeda_runtime_contract_changed')
+    if count!=2: raise ValueError('three_source_andromeda_runtime_contract_changed')
     andromeda=_current_andromeda_library(here)
     return ("declare(strict_types=1);\ndefine('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);\n"
             +old[5:]+'\n'+andromeda+'\n'+new_body)
