@@ -1,36 +1,26 @@
-name: MATCH photo hotelCode CURRENT catalog v4
+name: MATCH photo hotelCode CURRENT catalog v5
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-persisted-files-dual-id-current-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-photo-hotelcode-current-catalog-1971-v4, cancel-in-progress: false}
-env:
-  OPERATION_ID: hotel-match-photo-hotelcode-current-catalog-1971-20260914-v4
-  EVIDENCE_RUN: '34837373180'
-  RENDER_RUN: '34840850719'
+env: {OPERATION_ID: hotel-match-photo-hotelcode-current-catalog-1971-20260914-v5}
 jobs:
   join:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 4
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 5
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false, ref: '${{ github.sha }}'}
-      - name: Reserve immutable read-only operation
-        run: |
-          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
-          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
-      - uses: actions/upload-artifact@v4
-        with: {name: match-photo-hotelcode-current-v4-reservation, path: '${{ runner.temp }}/hotel-match-photo-hotelcode-current-catalog-1971-20260914-v4/reservation.json', retention-days: 90}
-      - name: Download immutable ANEX evidence and rendered photo evidence
+      - name: Reserve and download immutable evidence
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
-          set -euo pipefail; mkdir -p "$RUNNER_TEMP/evidence" "$RUNNER_TEMP/rendered"
-          gh run download "$EVIDENCE_RUN" --repo "$GITHUB_REPOSITORY" --name match-live-anex-public-evidence-v1-result -D "$RUNNER_TEMP/evidence"
-          gh run download "$RENDER_RUN" --repo "$GITHUB_REPOSITORY" --name match-anex-rendered-media-dual-id-v4-result -D "$RUNNER_TEMP/rendered"
-          test -s "$RUNNER_TEMP/evidence/evidence.json"; test -s "$RUNNER_TEMP/rendered/result.json"
-      - name: Read CURRENT Tourvisor catalog and protections
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S" "$RUNNER_TEMP/e" "$RUNNER_TEMP/r"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$S/reservation.json"
+          gh run download 34837373180 --repo "$GITHUB_REPOSITORY" --name match-live-anex-public-evidence-v1-result -D "$RUNNER_TEMP/e"
+          gh run download 34840850719 --repo "$GITHUB_REPOSITORY" --name match-anex-rendered-media-dual-id-v4-result -D "$RUNNER_TEMP/r"
+      - name: CURRENT catalog read and photo-code join
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -38,61 +28,53 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json,os,pathlib,shlex,subprocess,tempfile
-          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
-          php=r'''$root=realpath(getcwd());$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');try{$hot=$db->query("SELECT id,name,country_id,region_id,subregion_id,latitude,longitude FROM catalog_hotels WHERE country_id IN (1,2,4,8,9,10,12,16) ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);$ali=$db->query("SELECT hotel_id,alias_name FROM catalog_hotel_aliases ORDER BY hotel_id")->fetchAll(PDO::FETCH_ASSOC);$mapped=[];$manual=[];if((bool)$db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anex_hotel_search_mappings'")->fetchColumn())$mapped=$db->query("SELECT anex_hotel_id FROM anex_hotel_search_mappings")->fetchAll(PDO::FETCH_COLUMN);if((bool)$db->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='anex_hotel_decisions'")->fetchColumn())$manual=$db->query("SELECT anex_hotel_id FROM anex_hotel_decisions")->fetchAll(PDO::FETCH_COLUMN);$db->commit();echo json_encode(['hotels'=>$hot,'aliases'=>$ali,'mapped'=>$mapped,'manual'=>$manual,'database_writes'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}'''
-          v=[os.environ.get(k,'').strip() for k in ['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER']]
-          with tempfile.TemporaryDirectory(dir=os.environ['RUNNER_TEMP']) as td:
-            key=pathlib.Path(td)/'key';key.write_text(v[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'known';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',v[2],v[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)];p=subprocess.run(cmd,text=True,capture_output=True,timeout=180)
-          if p.returncode:raise SystemExit('current_read_failed:'+p.stderr[-500:])
-          x=json.loads(p.stdout);(S/'current.json').write_text(json.dumps(x,ensure_ascii=False,separators=(',',':'))+'\n');print(json.dumps({'catalog_hotels':len(x['hotels']),'aliases':len(x['aliases']),'mapped_anex':len(x['mapped']),'manual_anex':len(x['manual'])}))
-          PY
-      - name: Join photo-confirmed hotelCode to CURRENT catalog
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json,math,os,pathlib,re,unicodedata
-          root=pathlib.Path(os.environ['RUNNER_TEMP']);S=root/os.environ['OPERATION_ID'];ev=json.loads((root/'evidence/evidence.json').read_text());rr=json.loads((root/'rendered/result.json').read_text());cur=json.loads((S/'current.json').read_text());generic={'hotel','hotels','resort','resorts','spa'}
+          import json,math,os,pathlib,re,shlex,subprocess,tempfile,unicodedata
+          root=pathlib.Path(os.environ['RUNNER_TEMP']);S=root/os.environ['OPERATION_ID'];ev=json.loads((root/'e/evidence.json').read_text());rr=json.loads((root/'r/result.json').read_text())
+          php=r'''$root=realpath(getcwd());$h=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));require_once$h;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');try{$hot=$db->query("SELECT hotel_id,name,country_id,region_id,subregion_id,lat,lon FROM catalog_hotels WHERE country_id IN (1,2,4,8,9,10,12,16) ORDER BY hotel_id")->fetchAll(PDO::FETCH_ASSOC);$ali=$db->query("SELECT hotel_id,alias_name FROM catalog_hotel_aliases ORDER BY hotel_id")->fetchAll(PDO::FETCH_ASSOC);$mapped=$db->query("SELECT anex_hotel_id FROM anex_hotel_search_mappings")->fetchAll(PDO::FETCH_COLUMN);$manual=$db->query("SELECT anex_hotel_id FROM anex_hotel_decisions")->fetchAll(PDO::FETCH_COLUMN);$db->commit();echo json_encode(['hotels'=>$hot,'aliases'=>$ali,'mapped'=>$mapped,'manual'=>$manual],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}catch(Throwable$e){if($db->inTransaction())$db->rollBack();throw$e;}'''
+          v=[os.environ[k].strip() for k in ['ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER']]
+          with tempfile.TemporaryDirectory(dir=root) as td:
+            key=pathlib.Path(td)/'k';key.write_text(v[0]+'\n');key.chmod(0o600);known=pathlib.Path(td)/'h';cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-l',v[2],v[1],'cd "$HOME/www/anytoour.ru" && php -d display_errors=1 -d log_errors=0 -r '+shlex.quote(php)];p=subprocess.run(cmd,text=True,capture_output=True,timeout=180)
+          if p.returncode:raise SystemExit('current_read_failed stdout='+p.stdout[-800:]+' stderr='+p.stderr[-300:])
+          cur=json.loads(p.stdout);generic={'hotel','hotels','resort','resorts','spa'}
           def norm(v):
             v=unicodedata.normalize('NFKD',str(v or '')).encode('ascii','ignore').decode().lower();v=re.sub(r'\b(?:ex|former|formerly)\b',' ',v);return ' '.join(x for x in re.findall(r'[a-z0-9]+',v) if x not in generic)
           def km(a,b,c,d):
             try:a,b,c,d=map(float,(a,b,c,d))
             except:return None
             R=6371;pa,pc=math.radians(a),math.radians(c);q=math.sin(math.radians(c-a)/2)**2+math.cos(pa)*math.cos(pc)*math.sin(math.radians(d-b)/2)**2;return 2*R*math.asin(math.sqrt(q))
-          source={int(x['anex_hotel_id']):x for x in ev.get('matched',[])};confirmed={}
+          src={int(x['anex_hotel_id']):x for x in ev.get('matched',[])};confirmed={}
           for row in rr.get('rows',[]):
             aid=int(row.get('aid') or 0);codes={int(p['anex_hotel_code']) for p in row.get('pairs',[]) if p.get('anex_hotel_code')}
             if len(codes)==1 and aid in codes:confirmed[aid]=row
-          protected={int(x) for x in cur['mapped']}|{int(x) for x in cur['manual']};aliases={}
+          aliases={}
           for a in cur['aliases']:aliases.setdefault(int(a['hotel_id']),[]).append(a['alias_name'])
-          by={}
+          by={};hotels={int(h['hotel_id']):h for h in cur['hotels']}
           for h in cur['hotels']:
-            cid=int(h['country_id']);names=[h['name'],*aliases.get(int(h['id']),[])];
-            for n in names:
+            hid=int(h['hotel_id']);cid=int(h['country_id'])
+            for n in [h['name'],*aliases.get(hid,[])]:
               z=norm(n)
-              if z:by.setdefault((cid,z),set()).add(int(h['id']))
-          hotels={int(h['id']):h for h in cur['hotels']};safe=[];amb=[];coord=[];already=[];no=[]
+              if z:by.setdefault((cid,z),set()).add(hid)
+          protected={int(x) for x in cur['mapped']}|{int(x) for x in cur['manual']};safe=[];amb=[];coord=[];no=[];already=[]
           for aid,row in confirmed.items():
             if aid in protected:already.append(aid);continue
-            src=source.get(aid) or {};names=[x for x in src.get('source_names',[]) if x]
-            if not names:
-              hits=src.get('hits') or [];names=[(hits[0].get('detail') or {}).get('name')] if hits else []
+            e=src.get(aid) or {};names=[x for x in e.get('source_names',[]) if x];hits=e.get('hits') or []
+            if not names and hits:names=[(hits[0].get('detail') or {}).get('name')]
             ids=set()
             for n in names:ids|=by.get((int(row['cid']),norm(n)),set())
-            if len(ids)!=1:
-              (amb if ids else no).append({'anex_hotel_id':aid,'candidate_ids':sorted(ids),'names':names});continue
-            hid=next(iter(ids));h=hotels[hid];detail=((src.get('hits') or [{}])[0].get('detail') or {});d=km(h.get('latitude'),h.get('longitude'),detail.get('latitude'),detail.get('longitude'))
-            if d is not None and d>5:coord.append({'anex_hotel_id':aid,'hotel_id':hid,'distance_km':round(d,2)});continue
-            safe.append({'anex_hotel_id':aid,'local_hotel_id':hid,'local_name':h['name'],'country_id':int(h['country_id']),'distance_km':None if d is None else round(d,3),'evidence':'rendered_anex_photo_hotelCode+exact_normalized_catalog_name+country+coord_guard'})
-          out={'status':'completed','operation_id':os.environ['OPERATION_ID'],'photo_confirmed_anex':len(confirmed),'protected_existing':len(already),'safe_candidates':len(safe),'ambiguous':len(amb),'coordinate_conflicts':len(coord),'no_exact_catalog_match':len(no),'safe':safe,'ambiguous_rows':amb,'coordinate_conflict_rows':coord,'database_writes':0,'mapping_writes':0,'no_replay':True};(S/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({k:out[k] for k in ('photo_confirmed_anex','protected_existing','safe_candidates','ambiguous','coordinate_conflicts','no_exact_catalog_match')},ensure_ascii=False))
+            if len(ids)!=1:(amb if ids else no).append({'anex_hotel_id':aid,'ids':sorted(ids),'names':names});continue
+            hid=next(iter(ids));h=hotels[hid];d0=(hits[0].get('detail') or {}) if hits else {};d=km(h.get('lat'),h.get('lon'),d0.get('latitude'),d0.get('longitude'))
+            if d is not None and d>5:coord.append({'anex_hotel_id':aid,'local_hotel_id':hid,'distance_km':round(d,2)});continue
+            safe.append({'anex_hotel_id':aid,'local_hotel_id':hid,'local_name':h['name'],'country_id':int(h['country_id']),'distance_km':None if d is None else round(d,3),'evidence':'photo_hotelCode+exact_normalized_name+country+coord_guard'})
+          out={'status':'completed','operation_id':os.environ['OPERATION_ID'],'catalog_hotels':len(cur['hotels']),'photo_confirmed_anex':len(confirmed),'protected_existing':len(already),'safe_candidates':len(safe),'ambiguous':len(amb),'coordinate_conflicts':len(coord),'no_exact_catalog_match':len(no),'safe':safe,'ambiguous_rows':amb,'coordinate_conflict_rows':coord,'database_writes':0,'mapping_writes':0,'no_replay':True};(S/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps({k:out[k] for k in ('catalog_hotels','photo_confirmed_anex','protected_existing','safe_candidates','ambiguous','coordinate_conflicts','no_exact_catalog_match')},ensure_ascii=False))
           PY
-      - name: Durable receipt
+      - name: Receipt
+        if: always()
         run: |
-          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"; test -s "$S/result.json"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
-          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];r=json.loads((S/'result.json').read_text());x={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'photo_confirmed_anex':r['photo_confirmed_anex'],'safe_candidates':r['safe_candidates'],'database_writes':0,'mapping_writes':0,'historical_operations_replayed':False,'no_replay':True,'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest()};(S/'receipt.json').write_text(json.dumps(x,sort_keys=True)+'\n');print(json.dumps(x,sort_keys=True))
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];r=json.loads((S/'result.json').read_text());x={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'photo_confirmed_anex':r['photo_confirmed_anex'],'safe_candidates':r['safe_candidates'],'database_writes':0,'mapping_writes':0,'no_replay':True,'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest()};(S/'receipt.json').write_text(json.dumps(x,sort_keys=True)+'\n');print(json.dumps(x,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: match-photo-hotelcode-current-v4-result, path: '${{ runner.temp }}/hotel-match-photo-hotelcode-current-catalog-1971-20260914-v4/', retention-days: 90}
+        with: {name: match-photo-hotelcode-current-v5-result, path: '${{ runner.temp }}/hotel-match-photo-hotelcode-current-catalog-1971-20260914-v5/', retention-days: 90}
