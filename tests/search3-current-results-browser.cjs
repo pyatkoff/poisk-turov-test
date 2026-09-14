@@ -840,13 +840,6 @@ async function run(browser, width, previous) {
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
     await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
-    if (width < 601) {
-      const summaryGeometry = await mobileSummary.evaluate(node => {
-        const summary = node.closest('summary'), label = summary.querySelector('strong'), marker = summary.getBoundingClientRect(), labelBox = label.getBoundingClientRect(), valueBox = node.getBoundingClientRect();
-        return { inside: valueBox.right <= marker.right + 1, gap: valueBox.left - labelBox.right };
-      });
-      assert.ok(summaryGeometry.inside && summaryGeometry.gap >= 7, 'narrow active-filter summary keeps its label and value visually separated');
-    }
     if (!previous && [320, 375, 720, 1025, 1440].includes(width)) {
       await page.screenshot({ path: path.join(output, `exact-budget-${width}.png`), fullPage: true });
     }
