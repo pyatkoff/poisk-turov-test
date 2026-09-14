@@ -168,7 +168,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & #results .hotel-main{grid-template-columns:minmax(220px,28%) minmax(0,1fr)}
 & #results .hotel-body{padding-inline:22px}
 & #results .hotel-photo:has(img){min-height:200px}
-& #results .hotel-card:has(.hotel-offers-summary){display:grid;grid-template-columns:minmax(0,1fr) 230px}
+& #results .hotel-card:has(.hotel-offers-summary){display:grid;grid-template-columns:minmax(0,1fr) 240px}
 & #results .hotel-card:has(.hotel-offers-summary) .hotel-main:not(:has(.photo-placeholder)){grid-template-columns:minmax(240px,38%) minmax(0,1fr)}
 & #results .hotel-card:has(.hotel-offers-summary) .hotel-tours{align-content:center;border-top:0;border-left:1px solid var(--at-line-soft,#e9edf6)}
 & #results .hotel-offers-summary{flex-direction:column;align-items:stretch}

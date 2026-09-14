@@ -170,6 +170,7 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.equal(await longCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от1234567,89₽');
         assert.equal(await longCard.locator('.tour-more-toggle').innerText(),'Показать варианты · 100');
         assert.ok(geometry.contained&&geometry.priceHeight<=geometry.lineHeight+1&&geometry.targetHeight>=44,`${inspectedWidth}: long minimum and three-digit offer count stay readable and contained`);
+        if(inspectedWidth>=1200)assert.ok(geometry.targetHeight<=45,`${inspectedWidth}: a three-digit offer count fits one desktop disclosure line`);
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         await longCard.screenshot({path:path.join(output,`operator-card-long-minimum-${inspectedWidth}.png`),animations:'disabled'});
       }
