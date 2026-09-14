@@ -162,11 +162,19 @@ async function checkComparisonGeometry(page, width, count) {
     return {
       grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap),
       cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(button => ({ ...rect(button), text: button.textContent.trim(), font: getComputedStyle(button).font })) })),
-      chrome: { head: rect(head), actions: rect(headActions), legacyViewCount: root.querySelectorAll('.search3-shortlist__view').length }
+      chrome: { head: rect(head), actions: rect(headActions), buttons: [...headActions.querySelectorAll('button')].filter(button => button.getClientRects().length).map(button => ({ ...rect(button), text: button.textContent.trim(), fontSize: parseFloat(getComputedStyle(button).fontSize), clipped: button.scrollWidth > button.clientWidth + 1 || button.scrollHeight > button.clientHeight + 1 })), legacyViewCount: root.querySelectorAll('.search3-shortlist__view').length }
     };
   });
   assert.equal(geometry.chrome.legacyViewCount, 0, 'differences action has one canonical header owner instead of a separate body row');
   assert.ok(geometry.chrome.actions.x >= geometry.chrome.head.x - 1 && geometry.chrome.actions.right <= geometry.chrome.head.right + 1, 'header actions stay contained');
+  for (const action of geometry.chrome.buttons) {
+    assert.ok(action.height >= 44 && action.fontSize >= 16, 'comparison header keeps readable touch targets');
+    assert.ok(!action.clipped && action.x >= geometry.chrome.head.x - 1 && action.right <= geometry.chrome.head.right + 1, 'comparison header labels stay fully visible');
+  }
+  if (width <= 375) {
+    assert.ok(geometry.chrome.actions.height <= 104, 'mobile comparison header actions fit at most two rows: ' + JSON.stringify(geometry.chrome));
+    assert.ok(geometry.chrome.head.height <= (width <= 320 ? 280 : 225), 'compact mobile header brings the saved tours closer: ' + JSON.stringify({ width, count, chrome: geometry.chrome }));
+  }
   const cardsGap = geometry.grid.y - geometry.chrome.head.bottom;
   assert.ok(cardsGap >= (width <= 600 ? 9 : 15) && cardsGap <= 20, 'cards follow the header without the former 82px empty band');
   assert.equal(geometry.cards.length, count);
