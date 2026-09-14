@@ -137,6 +137,25 @@ async function checkFlightPriceLines(root, width) {
   return prices;
 }
 
+async function checkFlightRoutes(root, width) {
+  const routes = await root.locator('.flight-variant.is-selected .flight-route').evaluateAll(nodes => nodes.map(node => {
+    const rect = value => {
+      const box = value.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+    };
+    const endpoints = [node.firstElementChild, node.lastElementChild].map(endpoint => ({ ...rect(endpoint), text: endpoint.textContent.replace(/\s+/g, ' ').trim(), clipped: endpoint.scrollWidth > endpoint.clientWidth + 1 || endpoint.scrollHeight > endpoint.clientHeight + 1 }));
+    return { ...rect(node), columns: getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length, endpoints };
+  }));
+  assert.equal(routes.length, 2, width + ': selected round trip keeps outbound and return routes');
+  for (const route of routes) {
+    assert.equal(route.columns, 3, width + ': route keeps two side-by-side endpoints and one directional marker');
+    assert.ok(route.endpoints.every(endpoint => endpoint.text && !endpoint.clipped), width + ': complete airport/date/time endpoints remain visible');
+    assert.ok(route.endpoints[0].right <= route.endpoints[1].left + 1, width + ': route endpoints do not overlap');
+    assert.ok(route.endpoints.every(endpoint => endpoint.left >= route.left - 1 && endpoint.right <= route.right + 1), width + ': route endpoints stay inside the flight card');
+  }
+  return routes;
+}
+
 async function checkLongFlightPrice(page, width) {
   const item = { ...tour, id: 'long-flight-price-' + width, price: 1234567.89,
     roomType: 'FAMILY SUITE WITH TWO BEDROOMS AND SIDE SEA VIEW',
@@ -271,6 +290,7 @@ async function run(browser, width) {
     await settle(page);
     assert.equal(await flightToggle.getAttribute('aria-expanded'), 'false', 'disclosure returns to its compact state');
     assert.equal(await root.locator('.flight-variant:visible').count(), 1, 'collapse retains only the selected exact flight');
+    const flightRoutes = await checkFlightRoutes(root, width);
     assert.equal(detail.searchVisible, contract.invariants.selected_search_form_visible, 'selected state does not duplicate the search form');
     assert.equal(detail.overflow, contract.invariants.horizontal_overflow, `selected detail has no horizontal overflow at ${width}`);
     assert.ok(detail.rootWidth <= width + 2, 'selected root is bounded by the viewport');
@@ -336,7 +356,7 @@ async function run(browser, width) {
     const longFlightPrice = [320, 375, 1440].includes(width) ? await checkLongFlightPrice(page, width) : null;
     assert.deepEqual(posts, [], 'acceptance never sends a real lead or any POST');
     assert.deepEqual(browserErrors, [], 'acceptance fixture has no browser errors');
-    return { width, detail, factGeometry, lead, leadEntryViewports, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
+    return { width, detail, factGeometry, flightRoutes, lead, leadEntryViewports, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
   } catch (error) {
     await page.screenshot({ path: path.join(output, `selected-current-${width}-failure.png`), fullPage: true });
     fs.writeFileSync(path.join(output, `selected-current-${width}-failure.json`), JSON.stringify({ message: String(error), browserErrors }, null, 2) + '\n');
