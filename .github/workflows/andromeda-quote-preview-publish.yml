@@ -1,5 +1,8 @@
 name: Owner Andromeda quote preview publish
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-quote-preview-publish.yml'
   issue_comment:
     types: [created]
 permissions:
@@ -62,4 +65,245 @@ jobs:
           name: andromeda-quote-preview-publication-${{ github.run_id }}
           path: ${{ runner.temp }}/andromeda-quote-publication/result.json
           if-no-files-found: warn
+          retention-days: 14
+
+  # Owner-approved access correction only; installed #2461 and old v11 are not replayed.
+  allow-quote-http:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+       github.event_name == 'issue_comment' && github.event.action == 'created' &&
+       github.event.issue.number == 996 && !github.event.issue.pull_request &&
+       github.event.comment.user.id == 226193297 &&
+       github.event.comment.body == '/allow-andromeda-quote-http-1717-v1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      QUOTE_ACCESS_PHP: |
+        declare(strict_types=1);
+        error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
+        function quote_access_rule(): string {
+            return "\n" . <<<'QUOTE_RULE'
+        # AnyTour: owner-approved quote endpoint only (#1717).
+        <FilesMatch "^api-andromeda-quote-preview\.php$">
+            Require expr "%{REQUEST_URI} == '/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'"
+        </FilesMatch>
+
+        QUOTE_RULE;
+        }
+        function quote_access_read(string $path, int $limit): string {
+            if (realpath($path)!==$path || !is_file($path) || is_link($path)) throw new RuntimeException('path_invalid');
+            $f=fopen($path,'rb');if(!$f)throw new RuntimeException('read_failed');
+            try{$s=fstat($f);if($s['nlink']!==1||$s['size']>$limit)throw new RuntimeException('file_invalid');
+                $b=stream_get_contents($f,$limit+1);if(!is_string($b)||strlen($b)!==$s['size'])throw new RuntimeException('read_failed');return $b;
+            }finally{fclose($f);}
+        }
+        function quote_access_write(string $path, string $bytes, int $mode=0600): void {
+            $f=fopen($path,'x+b');if(!$f)throw new RuntimeException('write_exists');
+            try{if(!chmod($path,$mode)||fwrite($f,$bytes)!==strlen($bytes)||!fflush($f)||!fsync($f))throw new RuntimeException('write_failed');}
+            finally{fclose($f);}
+            if(hash_file('sha256',$path)!==hash('sha256',$bytes))throw new RuntimeException('write_readback');
+        }
+        function quote_access_run(array $input): array {
+            $out=['status'=>'blocked','operation'=>'quote-http-access-1717-20260914-v1',
+                'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'runtime_files_changed'=>0];
+            $lock=null;$reserved=false;$operation=null;
+            try{
+                if(array_keys($input)!==['action']||!in_array($input['action'],['activate','rollback'],true))throw new RuntimeException('action_invalid');
+                $root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');
+                $target=$root.'/_preview/search3-anex-candidate';$private=dirname($root,2).'/.anytoour-andromeda';
+                foreach([$root.'/_preview',$target,$private] as $p)if(realpath($p)!==$p||!is_dir($p))throw new RuntimeException('path_invalid');
+                foreach([$root.'/.htaccess',$root.'/_preview/.htaccess'] as $p)if(file_exists($p)||is_link($p))throw new RuntimeException('ancestor_policy_changed');
+                $lockPath=$private.'/grouped-search-update.lock';
+                quote_access_read($lockPath,65536);$lock=fopen($lockPath,'r');
+                if(!$lock||!flock($lock,LOCK_EX|LOCK_NB))throw new RuntimeException('lock_busy');
+                $apis=['api-andromeda-search3-preview.php'=>'fc338f37496290871793c6b1fe0f5614b4aea4db2a2f0503277117a676a912e4',
+                    'api-andromeda-quote-preview.php'=>'12c64956f6b98a06a282c5965c1001cb6658f902412ddf07a09ece7c8a676c48'];
+                foreach($apis as $name=>$hash)if(hash('sha256',quote_access_read($target.'/'.$name,524288))!==$hash)throw new RuntimeException('runtime_changed');
+                $path=$target.'/.htaccess';$current=quote_access_read($path,65536);
+                if((fileperms($path)&0777)!==0644)throw new RuntimeException('mode_changed');
+                $beforeHash='acc53761068a9654cb00f2507bf31df251a8480e1f79023a0e7534d319ae7f33';
+                $operation=$private.'/'.$out['operation'];
+                if($input['action']==='activate'){
+                    if(file_exists($operation)||is_link($operation))throw new RuntimeException('operation_exists_no_replay');
+                    if(hash('sha256',$current)!==$beforeHash)throw new RuntimeException('predecessor_changed');
+                    $candidate=$current.quote_access_rule();
+                    if(!mkdir($operation,0700))throw new RuntimeException('reservation_failed');$reserved=true;
+                    quote_access_write($operation.'/reservation.json',json_encode(['before'=>$beforeHash,'after'=>hash('sha256',$candidate)],JSON_THROW_ON_ERROR));
+                    quote_access_write($operation.'/before.htaccess',$current);
+                    quote_access_write($operation.'/candidate.htaccess',$candidate,0644);
+                    if(quote_access_read($path,65536)!==$current)throw new RuntimeException('predecessor_changed');
+                    if(!rename($operation.'/candidate.htaccess',$path))throw new RuntimeException('rename_failed');
+                    if(quote_access_read($path,65536)!==$candidate)throw new RuntimeException('target_readback');
+                    $out['status']='applied';$out['before_sha256']=$beforeHash;$out['after_sha256']=hash('sha256',$candidate);
+                    $out['original_rules_preserved']=true;$out['changed_path']='/_preview/search3-anex-candidate/.htaccess';
+                    quote_access_write($operation.'/result.json',json_encode($out,JSON_THROW_ON_ERROR));
+                }else{
+                    if(realpath($operation)!==$operation||!is_dir($operation))throw new RuntimeException('operation_missing');
+                    if(file_exists($operation.'/rollback.json')||is_link($operation.'/rollback.json'))throw new RuntimeException('rollback_no_replay');
+                    $before=quote_access_read($operation.'/before.htaccess',65536);
+                    if(hash('sha256',$before)!==$beforeHash||$current!==$before.quote_access_rule())throw new RuntimeException('rollback_drift');
+                    quote_access_write($operation.'/rollback.json','{"status":"reserved"}');$reserved=true;
+                    quote_access_write($operation.'/restore.htaccess',$before,0644);
+                    if(quote_access_read($path,65536)!==$current)throw new RuntimeException('rollback_drift');
+                    if(!rename($operation.'/restore.htaccess',$path)||quote_access_read($path,65536)!==$before)throw new RuntimeException('rollback_failed');
+                    $out['status']='rolled_back';$out['restored_sha256']=$beforeHash;
+                    quote_access_write($operation.'/rollback-result.json',json_encode($out,JSON_THROW_ON_ERROR));
+                }
+            }catch(Throwable $e){
+                $out['status']=$reserved?'unknown':'blocked';
+                $allowed=['path_invalid','read_failed','file_invalid','write_exists','write_failed','write_readback','action_invalid','project_invalid','ancestor_policy_changed','lock_busy','runtime_changed','mode_changed','operation_exists_no_replay','predecessor_changed','reservation_failed','rename_failed','target_readback','operation_missing','rollback_no_replay','rollback_drift','rollback_failed'];
+                $out['reason']=in_array($e->getMessage(),$allowed,true)?$e->getMessage():'operation_failed';
+            }finally{if(is_resource($lock)){flock($lock,LOCK_UN);fclose($lock);}}
+            return $out;
+        }
+        $input=json_decode(stream_get_contents(STDIN),true);
+        echo json_encode(quote_access_run(is_array($input)?$input:[]),JSON_THROW_ON_ERROR);
+    steps:
+      - name: Check exact permission delta and rollback on disposable local files
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - <<'PYTEST'
+          import hashlib,json,os,pathlib,subprocess,tempfile,shutil,socket,time,http.client,pwd,grp
+          src=os.environ['QUOTE_ACCESS_PHP']
+          base='<FilesMatch "\\.php$">\nRequire all denied\n</FilesMatch>\n<Files "api-andromeda-search3-preview.php">\nRequire all granted\n</Files>\n'
+          sha=lambda x:hashlib.sha256(x).hexdigest()
+          with tempfile.TemporaryDirectory() as tmp:
+           home=pathlib.Path(tmp);home.chmod(0o755);root=home/'www/anytoour.ru';target=root/'_preview/search3-anex-candidate';target.mkdir(parents=True)
+           private=home/'.anytoour-andromeda';private.mkdir();(private/'grouped-search-update.lock').touch()
+           path=target/'.htaccess';path.write_text(base);path.chmod(0o644)
+           fixture=src.replace('acc53761068a9654cb00f2507bf31df251a8480e1f79023a0e7534d319ae7f33',sha(base.encode()))
+           for name,expected in [('api-andromeda-search3-preview.php','fc338f37496290871793c6b1fe0f5614b4aea4db2a2f0503277117a676a912e4'),('api-andromeda-quote-preview.php','12c64956f6b98a06a282c5965c1001cb6658f902412ddf07a09ece7c8a676c48')]:
+            content=(name+' fixture').encode();(target/name).write_bytes(content);fixture=fixture.replace(expected,sha(content))
+           def run(action='activate',source=fixture):
+            p=subprocess.run(['php','-d','allow_url_fopen=0','-r',source],cwd=root,input=json.dumps({'action':action}),capture_output=True,text=True,check=True,timeout=5)
+            assert p.stderr=='',p.stderr
+            v=json.loads(p.stdout);assert all(v[k]==0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','runtime_files_changed']);return v
+           assert run('invalid')['reason']=='action_invalid'
+           assert run(source=src)['reason']=='runtime_changed'
+           path.write_text(base+'# changed\n');assert run()['reason']=='predecessor_changed';path.write_text(base)
+           first=run();assert first['status']=='applied',first
+           after=path.read_bytes();assert after.startswith(base.encode())
+           operation=private/first['operation'];assert (operation/'before.htaccess').read_bytes()==base.encode()
+           assert path.stat().st_mode&0o777==0o644 and (operation/'before.htaccess').stat().st_mode&0o777==0o600
+           inode=path.stat().st_ino;assert run()['reason']=='operation_exists_no_replay';assert path.stat().st_ino==inode
+           assert run('rollback')['status']=='rolled_back';assert path.read_text()==base
+           assert run('rollback')['reason']=='rollback_no_replay'
+           shutil.rmtree(operation);operation.mkdir();assert run()['reason']=='operation_exists_no_replay';shutil.rmtree(operation)
+           path.unlink();path.symlink_to(target/'api-andromeda-search3-preview.php');assert run()['reason']=='path_invalid';path.unlink();path.write_text(base)
+           assert run()['status']=='applied'
+           path.write_bytes(after+b'\n# later writer\n');assert run('rollback')['reason']=='rollback_drift';assert path.read_bytes().endswith(b'later writer\n');path.write_bytes(after)
+           print('Scoped install/backup/no-replay/hash/symlink/rollback regressions PASS')
+           # Real local Apache authorization; .php fixtures are inert text, not executable PHP.
+           for name in ['private.php','api-andromeda-quote-preview.php.bak','nested/api-andromeda-quote-preview.php','app/integrations/andromeda-price-observation.php']:
+            p=target/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('inert fixture')
+           sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close()
+           user='www-data' if os.getuid()==0 else pwd.getpwuid(os.getuid()).pw_name
+           group='www-data' if os.getuid()==0 else grp.getgrgid(os.getgid()).gr_name
+           conf=home/'httpd.conf';conf.write_text(f'''ServerRoot "{home}"
+          ServerName localhost
+          Listen 127.0.0.1:{port}
+          PidFile "{home}/httpd.pid"
+          LoadModule mpm_event_module /usr/lib/apache2/modules/mod_mpm_event.so
+          LoadModule authz_core_module /usr/lib/apache2/modules/mod_authz_core.so
+          User {user}
+          Group {group}
+          ErrorLog "{home}/error.log"
+          DocumentRoot "{root}"
+          <Directory "{root}">
+              AllowOverride All
+              Require all granted
+          </Directory>
+          ''')
+           server=subprocess.Popen(['/usr/sbin/apache2','-X','-f',str(conf)],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+           try:
+            for i in range(50):
+             try:
+              c=http.client.HTTPConnection('127.0.0.1',port,timeout=2);c.request('GET','/');c.getresponse().read();c.close();break
+             except OSError:time.sleep(.05)
+            else:raise AssertionError(server.communicate(timeout=2))
+            paths=[('api-andromeda-quote-preview.php',200),('api-andromeda-quote-preview.php?x=1',200),('api-andromeda-search3-preview.php',200),('private.php',403),('nested/api-andromeda-quote-preview.php',403),('app/integrations/andromeda-price-observation.php',403)]
+            for name,expected in paths:
+             c=http.client.HTTPConnection('127.0.0.1',port,timeout=2);c.request('GET','/_preview/search3-anex-candidate/'+name);r=c.getresponse();r.read();c.close();assert r.status==expected,(name,r.status,(home/'error.log').read_text());print(name,r.status)
+           finally:
+            server.terminate();server.wait(timeout=5)
+           print('Real Apache exact-URI exception / unchanged deny rules PASS')
+          PYTEST
+      - name: Require owner authorization and completed source inspection
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff' ||
+                context.actor !== 'pyatkoff' || context.payload.sender?.id !== 226193297 || context.ref !== 'refs/heads/main' ||
+                context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' ||
+                context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 ||
+                context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 ||
+                context.payload.comment?.body !== '/allow-andromeda-quote-http-1717-v1') throw new Error('Exact owner authorization required.');
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref:'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; stop.');
+            const {data: inspected} = await github.rest.actions.getWorkflowRun({...context.repo, run_id:34895733041});
+            if (inspected.head_sha !== '0cf6cf4da78e20e03b36f89698f1f461a3f80496' || inspected.status !== 'completed' || inspected.conclusion !== 'success') throw new Error('Inspection source mismatch.');
+            const {data: receipt} = await github.rest.actions.getArtifact({...context.repo, artifact_id:10368297733});
+            if (receipt.expired !== false || receipt.workflow_run?.id !== 34895733041 || receipt.digest !== 'sha256:38ba0dcb085522cdf3b192d202172e11504c1554f540d1840569dffd180b55ce') throw new Error('Inspection receipt mismatch.');
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Apply only the approved exception and verify HTTP guards
+        if: github.event_name != 'pull_request'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PYLIVE'
+          import hashlib,http.client,json,os
+          from pathlib import Path
+          from anex_search3_owner_decisions import ssh_php
+          out=Path(os.environ['RUNNER_TEMP'])/'andromeda-quote-http-activation';out.mkdir(mode=0o700)
+          source=os.environ['QUOTE_ACCESS_PHP']
+          report={'status':'unconfirmed','control_source':os.environ['GITHUB_SHA'],'supplier_calls':0,'booking_calls':0,'checks':[]}
+          def save(): (out/'result.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+          save()
+          try:
+              result=ssh_php(source,{'action':'activate'},maximum_bytes=65536)
+              report['activation']=result;save()
+              if result.get('status')!='applied': raise SystemExit('Access activation not confirmed; inspect receipt, do not replay')
+              try:
+                  cases=[('GET',{},405,'method_not_allowed'),('POST',{},403,'forbidden'),
+                         ('POST',{'X-Requested-With':'AnyTourSearch3','Content-Type':'text/plain'},400,'invalid_request')]
+                  checks=[(name,method,headers,status,error) for name in ['api-andromeda-quote-preview.php','api-andromeda-search3-preview.php'] for method,headers,status,error in cases]
+                  checks.append(('app/integrations/andromeda-price-observation.php','GET',{},403,None))
+                  for name,method,headers,status,error in checks:
+                      connection=http.client.HTTPSConnection('anytoour.ru',timeout=20)
+                      try:
+                          connection.request(method,'/_preview/search3-anex-candidate/'+name,body=None if method=='GET' else b'',headers=headers)
+                          response=connection.getresponse();body=response.read(4097)
+                          row={'path':name,'method':method,'status':response.status,'expected_status':status,'body_sha256':hashlib.sha256(body).hexdigest()}
+                          report['checks'].append(row);save()
+                          if response.status!=status or len(body)>4096 or (error is not None and json.loads(body)!={'ok':False,'error':error}):
+                              raise RuntimeError('http_guard_failed')
+                          row['verified']=True
+                      finally: connection.close()
+                  report['status']='verified'
+              except Exception:
+                  report['status']='http_failed'
+                  report['rollback']=ssh_php(source,{'action':'rollback'},maximum_bytes=65536)
+                  if report['rollback'].get('status')!='rolled_back': raise RuntimeError('Rollback unconfirmed; inspect receipt, do not replay')
+                  raise RuntimeError('HTTP acceptance failed; original access policy restored') from None
+          finally: save()
+          print(json.dumps(report,sort_keys=True))
+          PYLIVE
+      - name: Preserve activation or rollback receipt
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-quote-http-activation-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-quote-http-activation/
+          if-no-files-found: error
           retention-days: 14
