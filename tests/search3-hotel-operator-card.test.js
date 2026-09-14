@@ -28,6 +28,8 @@ for(const offer of [tour,other]){
   assert.ok(row.includes(offer.meal.fullName));
   assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
+  assert.match(row,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/,'room and placement stay together as one exact offer fact');
+  assert.doesNotMatch(row,/<small>(?:Туристы|Источник|Размещение)<\/small>/,'exact offer rows do not repeat search-level or internal source facts');
 }
 assert.equal(api.operatorIdentity({provider:'anex'}),null,'provider is not tour operator');
 assert.equal(api.operatorIdentity({operator:'ANEX SERVICES'}).logo,'','unknown similar name is not branded');
@@ -54,4 +56,4 @@ for(const asset of provenance.assets){
     assert.doesNotMatch(text,/<(?:script|foreignObject|iframe|image)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*["'](?:https?:|\/\/|data:)|url\(\s*["']?https?:/i,'brand SVG must be passive and self-contained');
   }else assert.equal(data.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
 }
-console.log('SEARCH3_OPERATOR_CARDS_OK collapsed_hotel_level=1 exact_offers=1 brands=4 provider_not_operator=1 frozen_source=1');
+console.log('SEARCH3_OPERATOR_CARDS_OK collapsed_hotel_level=1 compact_exact_offers=1 brands=4 provider_not_operator=1 frozen_source=1');
