@@ -1,0 +1,169 @@
+name: MATCH captured direct CURRENT accept v1
+on:
+  push:
+    branches: [ops/match-captured-direct-current-accept-1971-20260914-v1]
+    paths: [.github/workflows/hotel-match-captured-direct-current-accept-v1.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-captured-direct-current-accept-1971-20260914-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-captured-direct-current-accept-1971-20260914-v1
+  SOURCE_RUN_ID: '34884599885'
+  SOURCE_ARTIFACT: match-current-saved-tour-detail-34884599885
+  SOURCE_ZIP_SHA256: a740032d12381a2841c141dd0dfea269ad8cdd152e4e9f1e9a811d7702b2809f
+  SOURCE_RESULT_SHA256: d26d02edbdb8765083fa5462d22361bc893e06eac3ddfa1b9658c35827b53035
+jobs:
+  apply:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - name: Validate immutable workflow scope
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('.github/workflows/hotel-match-captured-direct-current-accept-v1.yml').read_text()
+          assert 'TOURVISOR_JWT' not in s and 'ANDROMEDA_' not in s and 'ANEX_TOKEN' not in s
+          assert 'curl_exec' not in s and 'bron' not in s.lower() and 'metrika' not in s.lower()
+          print('SCOPE_OK')
+          PY
+      - name: Reserve immutable operation before any SSH or DB access
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          v={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_db_access','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'source_result_sha256':os.environ['SOURCE_RESULT_SHA256'],'target_pairs':[[4158,37412],[1767,182],[1768,183]],'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'andromeda_calls':0,'no_replay':True}
+          p.write_text(json.dumps(v,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-captured-direct-current-accept-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-captured-direct-current-accept-1971-20260914-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Restore and verify exact sealed direct evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test "$(sha256sum "$RUNNER_TEMP/source/result.json" | awk '{print $1}')" = "$SOURCE_RESULT_SHA256"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'source/result.json'; x=json.loads(p.read_text())
+          assert x['status']=='completed' and x['operation_id']=='hotel-match-current-saved-tour-detail-1971-20260914-v1-egypt'
+          assert x['source_sha']=='4e7b64a3fdc30be2d740ea22dc0fb8018a573064' and x['direct_confirmed']==3 and x['holds']==2
+          direct=[]; holds=[]
+          for r in x['rows']:
+            if r['tier']=='DIRECT':
+              assert r['reason']=='direct_identity_confirmed' and r['operator_name']=='Anex' and r['operator_link_present'] is True
+              assert r['expected_anex_hotel_id']==r['operator_identity']['anex_hotel_id'] and r['expected_tourvisor_hotel_id']==r['detail_tourvisor_hotel_id']
+              assert r['operator_identity']['mode']=='legacy_hotellist' and r['semantic']['state']=='corroborated' and r['semantic']['ratio']==1
+              assert not r['qualifier_conflict'] and not r['numeric_conflict']
+              direct.append(r)
+            else: holds.append((r['expected_anex_hotel_id'],r['reason']))
+          got={(r['expected_anex_hotel_id'],r['expected_tourvisor_hotel_id']) for r in direct}
+          assert got=={(4158,37412),(1767,182),(1768,183)}
+          assert set(holds)=={(37719,'qualifier_conflict'),(42927,'operator_link_anex_id_mismatch')}
+          direct.sort(key=lambda r:r['expected_anex_hotel_id'])
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'evidence.json'
+          raw=(json.dumps(direct,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode();out.write_bytes(raw)
+          print('EVIDENCE_SHA256='+hashlib.sha256(raw).hexdigest())
+          PY
+      - name: CURRENT transaction, append-only apply and post-COMMIT readback
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/match-key"; known="$RUNNER_TEMP/match-known"; sock="$RUNNER_TEMP/match.sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          evidence64="$(base64 -w0 "$out/evidence.json")"
+          python3 - "$evidence64" > "$RUNNER_TEMP/payload.php" <<'PY'
+          import base64,sys
+          evidence=sys.argv[1]
+          code=r'''<?php
+          declare(strict_types=1);
+          $operation='hotel-match-captured-direct-current-accept-1971-20260914-v1';
+          $evidence=json_decode(base64_decode('__EVIDENCE__'),true,64,JSON_THROW_ON_ERROR);
+          if(count($evidence)!==3) throw new RuntimeException('evidence_count');
+          $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('bad_root');
+          require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+          $opDir=getenv('HOME').'/.anytoour-match/operations/'.$operation; if(!is_dir($opDir)) throw new RuntimeException('server_reservation_missing');
+          function wr_once(string $p,array $v): void {$raw=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";$f=@fopen($p,'x');if(!$f)throw new RuntimeException('write_once_exists');@chmod($p,0600);try{if(fwrite($f,$raw)!==strlen($raw)||!fflush($f))throw new RuntimeException('write_failed');if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('sync_failed');}finally{fclose($f);}}
+          function sig(string $s): array {$s=mb_strtolower($s,'UTF-8');$s=strtr($s,['ё'=>'е','&'=>' and ','é'=>'e','è'=>'e','ê'=>'e','á'=>'a','à'=>'a','ä'=>'a','â'=>'a','ö'=>'o','ô'=>'o','ü'=>'u','ú'=>'u','ç'=>'c','ş'=>'s','ğ'=>'g','ı'=>'i']);preg_match_all('/[\p{L}\p{N}]+/u',$s,$m);$drop=['hotel'=>1,'hotels'=>1,'resort'=>1,'resorts'=>1,'spa'=>1,'the'=>1,'and'=>1,'by'=>1];$t=[];foreach($m[0]??[] as $x)if(!isset($drop[$x]))$t[$x]=1;$t=array_keys($t);sort($t,SORT_STRING);return $t;}
+          function coverage(PDO $db): array {$policy='owner_exact_and_strong_20260908';$a=[];$q=$db->query("SELECT m.catalog_hotel_id FROM anex_hotel_search_mappings m LEFT JOIN anex_hotel_decisions d ON d.anex_hotel_id=m.anex_hotel_id WHERE m.enabled=1 AND m.scope='preview' AND m.approval_policy='$policy' AND d.anex_hotel_id IS NULL AND NOT EXISTS(SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=m.anex_hotel_id AND x.catalog_hotel_id=m.catalog_hotel_id)");foreach($q->fetchAll(PDO::FETCH_COLUMN) as $id)$a[(int)$id]=1;$q=$db->query("SELECT catalog_hotel_id FROM anex_hotel_decisions d WHERE decision_status='accepted' AND catalog_hotel_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM anex_review_pair_exclusions x WHERE x.anex_hotel_id=d.anex_hotel_id AND x.catalog_hotel_id=d.catalog_hotel_id)");foreach($q->fetchAll(PDO::FETCH_COLUMN) as $id)$a[(int)$id]=1;$n=[];$q=$db->query("SELECT DISTINCT local_hotel_id FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IS NOT NULL");foreach($q->fetchAll(PDO::FETCH_COLUMN) as $id)$n[(int)$id]=1;$tr=count(array_intersect_key($a,$n));return ['anex_unique_local'=>count($a),'andromeda_unique_local'=>count($n),'all_three'=>$tr,'anex_tv_only'=>count($a)-$tr,'andromeda_tv_only'=>count($n)-$tr];}
+          $pairs=[];foreach($evidence as $r){$a=(int)$r['expected_anex_hotel_id'];$t=(int)$r['expected_tourvisor_hotel_id'];$pairs[$a]=['target'=>$t,'detail'=>(string)$r['detail_hotel_name'],'source'=>(string)$r['source_name'],'search_count'=>(int)$r['live_search_count'],'evidence'=>$r];}
+          if(array_keys($pairs)!==[1767,1768,4158])throw new RuntimeException('pair_contract');
+          $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET SESSION innodb_lock_wait_timeout=30');$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+          $committed=false;$written=[];$skipped=[];$before=null;$after=null;$mappingDigest=hash('sha256',$operation.'|'.hash('sha256',json_encode($evidence,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)));
+          try{$db->beginTransaction();
+            $need=['catalog_hotels','anex_hotel_search_mappings','anex_hotel_decisions','anex_review_pair_exclusions','andromeda_hotel_identities','anex_search_hotel_observations'];$marks=implode(',',array_fill(0,count($need),'?'));$q=$db->prepare("SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ($marks)");$q->execute($need);$eng=$q->fetchAll(PDO::FETCH_KEY_PAIR);foreach($need as $t)if(strtoupper((string)($eng[$t]??''))!=='INNODB')throw new RuntimeException('transactional_table_missing:'.$t);
+            $before=coverage($db);
+            foreach($pairs as $aid=>$p){$target=$p['target'];$reason=null;
+              $q=$db->prepare('SELECT id,country_id,name,is_active FROM catalog_hotels WHERE id=? FOR UPDATE');$q->execute([$target]);$h=$q->fetch(PDO::FETCH_ASSOC);if(!$h||(int)$h['country_id']!==1||(int)$h['is_active']!==1)$reason='target_missing_country_or_inactive';elseif(sig((string)$h['name'])!==sig($p['detail']))$reason='current_target_name_drift';
+              if($reason===null){$q=$db->prepare('SELECT anex_hotel_id,catalog_hotel_id,enabled FROM anex_hotel_search_mappings WHERE anex_hotel_id=? OR catalog_hotel_id=? ORDER BY anex_hotel_id,catalog_hotel_id FOR UPDATE');$q->execute([$aid,$target]);$maps=$q->fetchAll(PDO::FETCH_ASSOC);$same=false;$sourceOther=false;$targetOther=false;foreach($maps as $m){if((int)$m['anex_hotel_id']===$aid&&(int)$m['catalog_hotel_id']===$target&&(int)$m['enabled']===1)$same=true;if((int)$m['anex_hotel_id']===$aid&&(int)$m['catalog_hotel_id']!==$target)$sourceOther=true;if((int)$m['catalog_hotel_id']===$target&&(int)$m['anex_hotel_id']!==$aid&&(int)$m['enabled']===1)$targetOther=true;}if($same)$reason='already_same_mapping';elseif($sourceOther)$reason='existing_source_mapping_protected';elseif($targetOther)$reason='same_provider_target_occupied';}
+              if($reason===null){$q=$db->prepare('SELECT anex_hotel_id,decision_status,catalog_hotel_id FROM anex_hotel_decisions WHERE anex_hotel_id=? FOR UPDATE');$q->execute([$aid]);if($q->fetch(PDO::FETCH_ASSOC))$reason='manual_or_conflict_protected';}
+              if($reason===null){$q=$db->prepare('SELECT anex_hotel_id,catalog_hotel_id FROM anex_review_pair_exclusions WHERE anex_hotel_id=? AND catalog_hotel_id=? FOR UPDATE');$q->execute([$aid,$target]);if($q->fetch(PDO::FETCH_ASSOC))$reason='pair_exclusion_protected';}
+              if($reason===null){$q=$db->prepare('SELECT country_id,search_count,last_seen_utc FROM anex_search_hotel_observations WHERE anex_hotel_id=? FOR UPDATE');$q->execute([$aid]);$o=$q->fetch(PDO::FETCH_ASSOC);if(!$o||(int)$o['country_id']!==1||(int)$o['search_count']<1)$reason='live_observation_drift';}
+              if($reason!==null){$skipped[]=['anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'reason'=>$reason];continue;}
+              $prov=['operation_id'=>$operation,'rule'=>'tourvisor_operatorLink_HOTELLIST_direct','source_run_id'=>34884599885,'source_result_sha256'=>'d26d02edbdb8765083fa5462d22361bc893e06eac3ddfa1b9658c35827b53035','anex_hotel_id'=>$aid,'target_local_hotel_id'=>$target,'tour_id'=>$p['evidence']['tour_id'],'detail_hotel_name'=>$p['detail'],'source_name'=>$p['source'],'live_search_count'=>$p['search_count'],'semantic'=>$p['evidence']['semantic'],'qualifier_conflict'=>false,'numeric_conflict'=>false];$digest=hash('sha256',json_encode($prov,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+              $ins=$db->prepare("INSERT INTO anex_hotel_search_mappings(anex_hotel_id,catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled) VALUES(?,?,'strong_candidate','preview','owner_exact_and_strong_20260908',?,?,1)");$ins->execute([$aid,$target,$digest,$mappingDigest]);if($ins->rowCount()!==1)throw new RuntimeException('insert_not_one');$written[$aid]=['target'=>$target,'digest'=>$digest,'search_count'=>$p['search_count']];
+            }
+            $db->commit();$committed=true;
+            $readback=[];$q=$db->prepare('SELECT catalog_hotel_id,match_class,scope,approval_policy,source_row_digest,mapping_digest,enabled FROM anex_hotel_search_mappings WHERE anex_hotel_id=?');foreach($written as $aid=>$w){$q->execute([$aid]);$rr=$q->fetchAll(PDO::FETCH_ASSOC);if(count($rr)!==1)throw new RuntimeException('post_commit_row_count');$r=$rr[0];if((int)$r['catalog_hotel_id']!==$w['target']||(int)$r['enabled']!==1||!hash_equals($w['digest'],(string)$r['source_row_digest'])||!hash_equals($mappingDigest,(string)$r['mapping_digest']))throw new RuntimeException('post_commit_readback_failed');$readback[]=['anex_hotel_id'=>$aid,'catalog_hotel_id'=>(int)$r['catalog_hotel_id'],'enabled'=>(int)$r['enabled'],'source_row_digest'=>(string)$r['source_row_digest']];}
+            $after=coverage($db);$targets=array_values(array_unique(array_map(fn($x)=>$x['target'],array_values($pairs))));$marks=implode(',',array_fill(0,count($targets),'?'));$q=$db->prepare("SELECT external_hotel_id,local_hotel_id,evidence_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND decision_status='accepted' AND local_hotel_id IN ($marks) ORDER BY local_hotel_id,external_hotel_id");$q->execute($targets);$and=$q->fetchAll(PDO::FETCH_ASSOC);
+            $result=['status'=>'completed','operation_id'=>$operation,'committed'=>true,'database_writes'=>count($written),'mapping_writes'=>count($written),'supplier_calls'=>0,'tourvisor_calls'=>0,'andromeda_calls'=>0,'accepted'=>array_values(array_map(fn($aid,$w)=>['anex_hotel_id'=>(int)$aid,'target_local_hotel_id'=>$w['target'],'search_count'=>$w['search_count']],array_keys($written),array_values($written))),'skipped'=>$skipped,'post_commit_readback'=>$readback,'coverage_before'=>$before,'coverage_after'=>$after,'accepted_andromeda_on_targets'=>$and,'no_replay'=>true];wr_once($opDir.'/result.json',$result);$raw=file_get_contents($opDir.'/result.json');$receipt=['operation_id'=>$operation,'state'=>'completed_committed','result_sha256'=>hash('sha256',$raw),'database_writes'=>count($written),'mapping_writes'=>count($written),'post_commit_readback_count'=>count($readback),'readback_verified'=>true,'no_replay'=>true];wr_once($opDir.'/receipt.json',$receipt);echo json_encode($receipt,JSON_UNESCAPED_SLASHES)."\n";
+          }catch(Throwable $e){if(!$committed&&$db->inTransaction()){$db->rollBack();$result=['status'=>'failed_before_commit','operation_id'=>$operation,'reason'=>$e->getMessage(),'database_writes'=>0,'mapping_writes'=>0,'supplier_calls'=>0,'tourvisor_calls'=>0,'andromeda_calls'=>0,'no_replay'=>true];wr_once($opDir.'/result.json',$result);wr_once($opDir.'/receipt.json',['operation_id'=>$operation,'state'=>'failed_before_commit','result_sha256'=>hash('sha256',file_get_contents($opDir.'/result.json')),'database_writes'=>0,'mapping_writes'=>0,'readback_verified'=>true,'no_replay'=>true]);fwrite(STDERR,$e->getMessage()."\n");exit(2);} $unknown=['status'=>'unknown_after_commit','operation_id'=>$operation,'reason'=>$e->getMessage(),'database_writes'=>count($written),'mapping_writes'=>count($written),'committed'=>true,'no_replay'=>true];@wr_once($opDir.'/unknown.json',$unknown);fwrite(STDERR,$e->getMessage()."\n");exit(3);}
+          ?>'''.replace('__EVIDENCE__',evidence)
+          sys.stdout.write(code)
+          PY
+          # Server-side durable reservation is created before PHP opens the DB.
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir -p \"\$p\"; test ! -e \"\$p/reservation.json\"; printf '%s\\n' '{\"operation_id\":\"$OPERATION_ID\",\"state\":\"reserved_before_db_access\",\"source_sha\":\"$GITHUB_SHA\",\"run_id\":$GITHUB_RUN_ID,\"no_replay\":true}' > \"\$p/reservation.json\"; sync"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && php" < "$RUNNER_TEMP/payload.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"
+          trc=$?
+          set -e
+          test $trc -eq 0 && test -s "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; srv=root/'server'
+          result=json.loads((srv/'result.json').read_text()) if (srv/'result.json').exists() else {}
+          receipt=json.loads((srv/'receipt.json').read_text()) if (srv/'receipt.json').exists() else {}
+          digest=hashlib.sha256((srv/'result.json').read_bytes()).hexdigest() if (srv/'result.json').exists() else None
+          verified=(receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True)
+          gate={'operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['REMOTE_RC']),'status':result.get('status'),'integrity_verified':verified,'database_writes':result.get('database_writes'),'mapping_writes':result.get('mapping_writes'),'accepted':result.get('accepted'),'skipped':result.get('skipped'),'coverage_before':result.get('coverage_before'),'coverage_after':result.get('coverage_after'),'accepted_andromeda_on_targets':result.get('accepted_andromeda_on_targets'),'result_sha256':digest,'no_replay':True}
+          (root/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not verified: raise SystemExit(4)
+          if result.get('status')!='completed': raise SystemExit(5)
+          if int(os.environ['REMOTE_RC'])!=0: raise SystemExit(6)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-captured-direct-current-accept-v1-result
+          path: ${{ runner.temp }}/hotel-match-captured-direct-current-accept-1971-20260914-v1/
+          if-no-files-found: warn
+          retention-days: 90
