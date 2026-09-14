@@ -12,12 +12,15 @@ final class AnyTourAndromedaClient
     private $expires = 0;
     private $requests = 0;
     private $priceAttempted = false;
+    private $packageEnabled;
+    private $packageAttempted = false;
 
     /** Transport accepts a secret-bearing URL and must never log it. */
-    public function __construct(callable $transport, bool $enabled = false)
+    public function __construct(callable $transport, bool $enabled = false, bool $packageEnabled = false)
     {
         $this->transport = $transport;
         $this->enabled = $enabled;
+        $this->packageEnabled = $packageEnabled;
     }
 
     public function __debugInfo(): array
@@ -128,6 +131,33 @@ final class AnyTourAndromedaClient
             throw new RuntimeException('ANDROMEDA_INVALID_PRICE_RESPONSE');
         if (count($reply['PRICES']) > 2000) throw new RuntimeException('ANDROMEDA_PRICE_ROW_BUDGET');
         if ($reply['PAGES_COUNT'] === 0 && count($reply['PRICES']) > 0) throw new RuntimeException('ANDROMEDA_INVALID_PRICE_RESPONSE');
+        return $reply;
+    }
+
+    /**
+     * Load one retained supplier package without creating a booking/application.
+     * claiminc is the opaque PRICES[].id established by the confirmed Andromeda contract.
+     * The caller owns durable operation reservation; this instance additionally prevents replay.
+     */
+    public function package(string $claiminc): array
+    {
+        if (!$this->packageEnabled) throw new RuntimeException('ANDROMEDA_PACKAGE_DISABLED');
+        if ($this->packageAttempted) throw new RuntimeException('ANDROMEDA_PACKAGE_REPLAY_REFUSED');
+        if (!preg_match('/^[\x21-\x7e]{1,4096}$/D', $claiminc)) {
+            throw new RuntimeException('ANDROMEDA_INVALID_PACKAGE_ID');
+        }
+        if ($this->sid === null || time() >= $this->expires) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
+        $this->packageAttempted = true;
+        $sid = $this->sid;
+        $reply = $this->send('broninit', ['sid' => $sid, 'claiminc' => $claiminc]);
+        $this->rejectSessionEcho($reply, $sid);
+        if (!isset($reply['claimDocument']) || !is_array($reply['claimDocument'])
+            || array_keys($reply['claimDocument']) !== [0]
+            || !is_array($reply['claimDocument'][0])
+            || !is_string($reply['claimDocument'][0]['catalogKey'] ?? null)
+            || $reply['claimDocument'][0]['catalogKey'] === '') {
+            throw new RuntimeException('ANDROMEDA_INVALID_PACKAGE_RESPONSE');
+        }
         return $reply;
     }
 
