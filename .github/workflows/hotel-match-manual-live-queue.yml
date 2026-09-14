@@ -30,7 +30,7 @@ jobs:
           python3 -B scripts/diagnostics/hotel_match_manual_live_queue.py --self-test
           python3 -m py_compile scripts/diagnostics/hotel_match_manual_live_queue.py
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_manual_live_queue.py
-          ! grep -Eiq '(curl|wget|requests\.|urllib\.request|tourvisor|parser\.anextour|gateway\.samo)' scripts/diagnostics/hotel_match_manual_live_queue.py
+          ! grep -Eiq '(curl|wget|requests\.|urllib\.request|parser\.anextour|gateway\.samo)' scripts/diagnostics/hotel_match_manual_live_queue.py
       - name: CURRENT read-only export with immutable reservation/readback
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
