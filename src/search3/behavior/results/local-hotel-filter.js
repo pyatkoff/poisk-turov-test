@@ -2,7 +2,7 @@
 const results=document.getElementById('results'),actions=document.querySelector('#resultsTools .results-tools__actions'),rail=document.querySelector('.results-filter-rail');
 if(!results||!actions||!rail)return;
 const desktop=window.matchMedia('(min-width:1025px)');
-let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,providerField=null,providerSelect=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,budgetLabel=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
+let field=null,input=null,status=null,categoryField=null,categorySelect=null,categoryPresets=null,mealField=null,mealSelect=null,mealPresets=null,providerField=null,providerSelect=null,operatorField=null,operatorSelect=null,regionField=null,regionSelect=null,budgetField=null,budgetInput=null,ratingField=null,ratingSelect=null,seaField=null,seaSelect=null,resetButton=null,count=null,mobilePanel=null,mobileBody=null,mobileSummary=null,activeList=null;
 let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false;
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function providerKey(t){const value=String(t&&t.provider||'tourvisor').trim().toLowerCase();return value==='andromeda'?'andromeda':value==='anex'?'anex':'tourvisor';}
@@ -37,7 +37,7 @@ function syncActiveList(entries){
 function focusFilter(key){return({budget:budgetInput,meal:mealSelect,provider:providerSelect,operator:operatorSelect,region:regionSelect,category:categorySelect,rating:ratingSelect,sea:seaSelect,hotel:input})[key]||input;}
 function clearActive(key){
   const target=focusFilter(key),projected=['budget','meal','provider','operator'].includes(key);
-  if(key==='budget'){budgetActive=false;budgetInput.value=budgetInput.max;syncBudgetLabel();}
+  if(key==='budget'){budgetActive=false;budgetInput.value=budgetInput.max;}
   else if(key==='meal')mealSelect.value='';
   else if(key==='provider')providerSelect.value='';
   else if(key==='operator')operatorSelect.value='';
@@ -91,7 +91,7 @@ function ensure(){
   field=document.createElement('label');field.className='search3-hotel-filter';field.hidden=true;
   field.innerHTML='<span>Название отеля</span><input type="search" autocomplete="off" placeholder="Введите название" aria-describedby="search3HotelFilterStatus"><small id="search3HotelFilterStatus" aria-live="polite"></small>';
   budgetField=document.createElement('label');budgetField.className='search3-budget-filter';budgetField.hidden=true;
-  budgetField.innerHTML='<span>Бюджет за весь тур</span><input type="range" min="0" max="0" step="5000" value="0" aria-describedby="search3BudgetLabel"><small id="search3BudgetLabel"></small>';
+  budgetField.innerHTML='<span>Максимальный бюджет, ₽</span><input type="number" min="0" max="0" step="1" inputmode="numeric" value="0">';
   mealField=document.createElement('div');mealField.className='search3-meal-filter';mealField.hidden=true;mealField.innerHTML='<label><span>Питание</span><select aria-describedby="search3HotelFilterStatus"><option value="">Любое питание</option></select></label><div class="search3-filter-presets" role="group" aria-label="Быстрый выбор питания" hidden></div>';
   providerField=document.createElement('label');providerField.className='search3-provider-filter';providerField.hidden=true;providerField.innerHTML='<span>Источник предложения</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все источники</option></select>';
   operatorField=document.createElement('label');operatorField.className='search3-operator-filter';operatorField.hidden=true;operatorField.innerHTML='<span>Туроператор</span><select aria-describedby="search3HotelFilterStatus"><option value="">Все туроператоры</option></select>';
@@ -100,13 +100,13 @@ function ensure(){
   ratingField=document.createElement('label');ratingField.className='search3-rating-filter';ratingField.hidden=true;ratingField.innerHTML='<span>Рейтинг гостей</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любой рейтинг</option><option value="4">4,0 и выше</option><option value="4.5">4,5 и выше</option></select>';
   seaField=document.createElement('label');seaField.className='search3-sea-filter';seaField.hidden=true;seaField.innerHTML='<span>До моря</span><select aria-describedby="search3HotelFilterStatus"><option value="0">Любое расстояние</option><option value="200">До 200 м</option><option value="500">До 500 м</option><option value="1000">До 1 км</option></select>';
   resetButton=document.createElement('button');resetButton.type='button';resetButton.className='search3-filter-reset';resetButton.textContent='Сбросить фильтры';resetButton.hidden=true;
-  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');budgetLabel=budgetField.querySelector('small');mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');providerSelect=providerField.querySelector('select');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');seaSelect=seaField.querySelector('select');
+  input=field.querySelector('input');status=field.querySelector('small');budgetInput=budgetField.querySelector('input');mealSelect=mealField.querySelector('select');mealPresets=mealField.querySelector('.search3-filter-presets');providerSelect=providerField.querySelector('select');operatorSelect=operatorField.querySelector('select');regionSelect=regionField.querySelector('select');categorySelect=categoryField.querySelector('select');categoryPresets=categoryField.querySelector('.search3-filter-presets');ratingSelect=ratingField.querySelector('select');seaSelect=seaField.querySelector('select');
   input.addEventListener('input',apply);regionSelect.addEventListener('change',apply);categorySelect.addEventListener('change',apply);ratingSelect.addEventListener('change',apply);seaSelect.addEventListener('change',apply);
   mealSelect.addEventListener('change',()=>window.V2Results.rerender());
   providerSelect.addEventListener('change',()=>window.V2Results.rerender());
   operatorSelect.addEventListener('change',()=>window.V2Results.rerender());
   bindPresets(mealPresets,mealSelect);bindPresets(categoryPresets,categorySelect);
-  budgetInput.addEventListener('input',()=>{budgetActive=Number(budgetInput.value)<Number(budgetInput.max);syncBudgetLabel();window.V2Results.rerender();});
+  budgetInput.addEventListener('change',()=>setBudget(budgetInput.value));
   resetButton.addEventListener('click',reset);
   if(desktop.addEventListener)desktop.addEventListener('change',mount);else desktop.addListener(mount);
   mount();
@@ -132,14 +132,17 @@ function syncHotelFacets(){
   return{regions,categories,ratings,seas,region,category,rating:Number(ratingSelect.value||0),sea:Number(seaSelect.value||0)};
 }
 function prices(items){const result=[];items.forEach(h=>(Array.isArray(h&&h.tours)?h.tours:[]).forEach(t=>{const value=Number(t&&t.price||0);if(value>0)result.push(value);}));return result;}
+function setBudget(value){
+  const min=Number(budgetInput.min||0),max=Number(budgetInput.max||0),number=Number(value),next=value===''||!Number.isFinite(number)?max:Math.min(max,Math.max(min,Math.round(number)));
+  budgetInput.value=String(next);budgetActive=next<max;window.V2Results.rerender();
+}
 function syncBudget(items){
   const list=prices(items),available=items.length>1&&items.every(h=>Array.isArray(h&&h.tours)&&h.tours.length&&h.tours.every(t=>Number(t&&t.price||0)>0))&&new Set(list).size>1;
-  if(!available){budgetActive=false;budgetInput.min='0';budgetInput.max='0';budgetInput.value='0';budgetField.hidden=true;syncBudgetLabel();return 0;}
-  const minimum=Math.floor(Math.min(...list)/5000)*5000,maximum=Math.ceil(Math.max(...list)/5000)*5000,previous=Number(budgetInput.value||0);
-  budgetInput.min=String(minimum);budgetInput.max=String(Math.max(minimum+5000,maximum));budgetInput.value=String(budgetActive?Math.min(Math.max(previous,minimum),Number(budgetInput.max)):budgetInput.max);
-  budgetActive=Number(budgetInput.value)<Number(budgetInput.max);budgetField.hidden=false;syncBudgetLabel();return budgetActive?Number(budgetInput.value):0;
+  if(!available){budgetActive=false;budgetInput.min='0';budgetInput.max='0';budgetInput.value='0';budgetField.hidden=true;return 0;}
+  const minimum=Math.floor(Math.min(...list)/5000)*5000,maximum=Math.max(minimum+5000,Math.ceil(Math.max(...list)/5000)*5000),previous=Number(budgetInput.value||0),next=budgetActive?Math.min(Math.max(previous,minimum),maximum):maximum;
+  budgetInput.min=String(minimum);budgetInput.max=String(maximum);budgetInput.value=String(next);
+  budgetActive=next<maximum;budgetField.hidden=false;return budgetActive?next:0;
 }
-function syncBudgetLabel(){budgetLabel.textContent=budgetField.hidden?'':'до '+money(budgetInput.value)+' ₽';}
 function syncMeal(items){
   const labels=new Map(),ids=new Set(),api=window.V2Results;
   const complete=items.length>1&&items.every(h=>{const hotelId=id(h);if(!hotelId||ids.has(hotelId)||!Array.isArray(h.tours)||!h.tours.length)return false;ids.add(hotelId);return h.tours.every(t=>{const identity=api.mealIdentity(t);if(!identity)return false;if(!labels.has(identity.key))labels.set(identity.key,identity.label);return true;});});
@@ -187,5 +190,5 @@ function clear(event){
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
 ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
-window.Search3LocalHotelFilter={apply,clear,project,reset,version:9};
+window.Search3LocalHotelFilter={apply,clear,project,reset,version:10};
 })();
