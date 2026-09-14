@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'v2/catalogs-v2.js'
+      - 'v2/search-lifecycle-v6.js'
       - 'scripts/build/search3-js/shared-source-normalization.cjs'
       - 'v2/search3-shared-runtime.json'
       - 'tests/search3-primary-catalog-hydration.test.js'
@@ -29,8 +30,10 @@ jobs:
           node-version: '24'
       - name: Install pinned Search3 build tools
         run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
-      - name: Syntax check canonical catalog owner
-        run: node --check v2/catalogs-v2.js
+      - name: Syntax check canonical catalog and lifecycle owners
+        run: |
+          node --check v2/catalogs-v2.js
+          node --check v2/search-lifecycle-v6.js
       - name: Verify permanent primary catalog hydration
         run: node --test tests/search3-primary-catalog-hydration.test.js
       - name: Preserve existing hydrated hotel contract
