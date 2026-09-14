@@ -161,7 +161,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), cleared.expected, 'Forward restores the newer cleared search exactly once');
   fs.writeFileSync(path.join(output, `url-round-trip-${width}.json`), JSON.stringify({ width, sourceSha: process.env.SEARCH3_SOURCE_SHA || null, submitted, submittedReload, cleared, firstLocalHistory, secondLocalHistory, blocked, navigation: ['reload', 'back', 'forward'], supplier_requests_sent: 0, lead_sent: 0 }, null, 2) + '\n');
 }
-async function run(browser, width) {
+async function run(browser, width, servicesOnly = false) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } });
   const errors = [], blocked = [];
   page.on('pageerror', error => errors.push(String(error)));
@@ -303,6 +303,52 @@ async function run(browser, width) {
       await input.focus();
       await page.keyboard.press('Space');
       assert.equal(await input.isChecked(), false, 'native keyboard toggle stays intact');
+    }
+    const servicePicker = page.locator('#tourSearch .service-picker'), serviceSummary = servicePicker.locator('summary');
+    await page.evaluate(() => {
+      const groups = ['Пляж и бассейн', 'Для семьи', 'В номере', 'Спорт и отдых'];
+      let index = 0;
+      document.getElementById('hotelServices').innerHTML = groups.map((name, groupIndex) => {
+        const size = groupIndex === groups.length - 1 ? 7 : 8;
+        const items = Array.from({ length: size }, () => {
+          index += 1;
+          return `<label class="service-check"><input type="checkbox" name="hotel_service[]" value="${index}"><span>Услуга отеля ${index} с понятным названием</span></label>`;
+        }).join('');
+        return `<div class="service-group"><strong>${name}</strong><div class="service-items">${items}</div></div>`;
+      }).join('');
+      window.V2Catalogs.updateServiceCount();
+    });
+    await serviceSummary.focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await servicePicker.evaluate(node => node.open), true, 'hotel services open through the existing native disclosure');
+    const serviceTargets = servicePicker.locator('.service-check');
+    assert.equal(await serviceTargets.count(), 31, 'all available hotel services stay reachable');
+    for (const target of await serviceTargets.all()) assert.ok((await target.boundingBox()).height >= 44, 'hotel service label has a full 44px target');
+    const firstService = serviceTargets.first(), firstServiceInput = firstService.locator('input');
+    await firstServiceInput.focus();
+    assert.ok(parseFloat(await firstService.evaluate(node => getComputedStyle(node).outlineWidth)) >= 3, 'hotel service keyboard focus is visible on its full label');
+    await page.keyboard.press('Space');
+    assert.equal(await firstServiceInput.isChecked(), true, 'native keyboard toggles the existing service checkbox');
+    assert.equal(await page.locator('#serviceCount').textContent(), '1 выбрано', 'existing live service count follows the checkbox');
+    const serviceGeometry = await servicePicker.evaluate(node => {
+      const groups = [...node.querySelectorAll('.service-group')], labels = [...node.querySelectorAll('.service-check')];
+      const root = node.getBoundingClientRect();
+      return { width: root.width, columns: new Set(groups.map(group => Math.round(group.getBoundingClientRect().left))).size,
+        minimumTarget: Math.min(...labels.map(label => label.getBoundingClientRect().height)), overflow: document.documentElement.scrollWidth > innerWidth + 2 };
+    });
+    assert.equal(serviceGeometry.overflow, false, 'expanded services do not create horizontal overflow');
+    if (width <= 700) assert.equal(serviceGeometry.columns, 1, 'mobile services use one readable stack');
+    else assert.ok(serviceGeometry.columns >= 2, 'non-mobile services use a balanced multi-column layout');
+    await page.screenshot({ path: path.join(output, `services-open-${width}.png`), fullPage: true, animations: 'disabled' });
+    await firstServiceInput.focus();
+    await page.keyboard.press('Space');
+    assert.equal(await page.locator('#serviceCount').textContent(), 'не выбраны', 'service count returns to its clean state');
+    await serviceSummary.click();
+    assert.equal(await servicePicker.evaluate(node => node.open), false, 'nested service disclosure closes natively');
+    if (servicesOnly) {
+      assert.deepEqual(errors, [], 'service-only visual acceptance has no page errors');
+      fs.writeFileSync(path.join(output, `services-open-${width}.json`), JSON.stringify({ width, ...serviceGeometry, services: 31, supplier_requests: 0, lead_sent: 0 }, null, 2) + '\n');
+      return;
     }
     await flightTargets.first().locator('span').click();
     await page.screenshot({ path: path.join(output, `entry-expanded-${width}.png`), fullPage: true });
@@ -498,7 +544,8 @@ async function runHomeRanges(browser, width) {
   const browser = await chromium.launch({ headless: true });
   try {
     for (const width of [375, 1024, 1025, 1101, 1199, 1200, 1440]) await run(browser, width);
+    for (const width of [320, 700, 1363]) await run(browser, width, true);
     for (const width of [375, 768, 1440]) await runHomeRanges(browser, width);
   } finally { await browser.close(); }
-  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=375,1024,1025,1101,1199,1200,1440 home_ranges=375,768,1440 lead_sent=0');
+  console.log('SEARCH3_ENTRY_OWNER_BROWSER_OK widths=320,375,700,1024,1025,1101,1199,1200,1363,1440 hotel_services=31 service_targets=44px home_ranges=375,768,1440 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
