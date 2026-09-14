@@ -132,6 +132,7 @@ async function checkLongFlightPrice(page, width) {
   const facts = await checkSelectedFacts(root, width);
   assert.equal(facts.cells.find(cell => cell.label.text === 'Номер').value.text, item.roomType, 'long room conditions stay complete');
   assert.equal(facts.cells.find(cell => cell.label.text === 'Оператор').value.text, item.operator.name, 'long operator identity stays complete');
+  if (width <= 375) assert.ok(facts.height <= (width === 320 ? 580 : 520), width + ': long facts use compact spacing while all text remains visible');
   assert.equal(prices[0].text.replace(/\s/g, ''), 'Стоимостьтура:1234567,89₽', 'single-flight decimal amount stays exact');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'long flight price does not create page overflow');
   assert.deepEqual(await page.evaluate(() => window.__longFlightPriceCalls), ['tour', 'flights'], 'long-price case makes only the two local fixture calls');
@@ -203,6 +204,7 @@ async function run(browser, width) {
     assert.deepEqual(detail.facts.map(item => item.value), ['Москва', '05.10.2026', '9', '2 взр. + 1 дет.', 'Всё включено',
       'STANDARD LAND VIEW', 'DBL + CHD', 'ANEX Tour', 'Чартер', 'без доплаты'], 'spacing never changes the exact selected conditions');
     const factGeometry = await checkSelectedFacts(root, width);
+    if (width <= 375) assert.ok(factGeometry.height <= 360, width + ': mobile selected facts improve on the 411px measured baseline without shrinking or hiding text');
     await root.locator('.facts').screenshot({ path: path.join(output, 'selected-facts-' + width + '.png'), animations: 'disabled' });
     assert.equal(detail.facts.find(item => item.label === 'Топливный сбор')?.value, 'без доплаты',
       'selected summary distinguishes an explicit zero fuel charge from an unknown fee');
