@@ -1,16 +1,16 @@
-name: MATCH Andromeda targeted price original v3
+name: MATCH Andromeda targeted price original v4
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-andromeda-price-original-current-v1.yml]
 permissions: {contents: read}
-concurrency: {group: match-andromeda-price-original-1971-v3, cancel-in-progress: false}
+concurrency: {group: match-andromeda-price-original-1971-v4, cancel-in-progress: false}
 env:
-  FAMILY_ID: hotel-match-andromeda-price-original-1971-20260914-v3
+  FAMILY_ID: hotel-match-andromeda-price-original-1971-20260914-v4
   TARGET_HOTEL: '416247'
 jobs:
   canary:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 3
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 4
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -34,7 +34,7 @@ jobs:
       WINDOW: ${{ matrix.window }}
       DATE_FROM: ${{ matrix.date_from }}
       DATE_TO: ${{ matrix.date_to }}
-      OUT: /tmp/match-price-original-v3
+      OUT: /tmp/match-price-original-v4
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false, ref: '${{ github.sha }}'}
@@ -43,10 +43,10 @@ jobs:
           set -euo pipefail
           mkdir -p "$OUT"
           OPERATION_ID="${FAMILY_ID}-${TARGET_HOTEL}-${WINDOW}"
-          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_hotel":"%s","window":"%s","date_from":"%s","date_to":"%s","townfrominc":1,"stateinc":3,"operators":5,"nights_from":5,"nights_to":14,"state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$TARGET_HOTEL" "$WINDOW" "$DATE_FROM" "$DATE_TO" > "$OUT/reservation.json"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_hotel":"%s","window":"%s","date_from":"%s","date_to":"%s","townfrominc":1,"stateinc":3,"operators":5,"nights_from":5,"nights_till":14,"state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$TARGET_HOTEL" "$WINDOW" "$DATE_FROM" "$DATE_TO" > "$OUT/reservation.json"
       - uses: actions/upload-artifact@v4
         with:
-          name: price-original-v3-${{ matrix.window }}-reserved
+          name: price-original-v4-${{ matrix.window }}-reserved
           path: ${{ env.OUT }}/reservation.json
           retention-days: 90
       - name: Build exact supplier-context price program
@@ -76,8 +76,8 @@ jobs:
               $req=['generation'=>1,'page'=>1,'params'=>$criteria,'andromeda_operator_ids'=>['5']];
               $saved=anytour_andromeda_search3_catalog($cfg,$req); $saved['excluded_operator_ids']=$cfg['excluded_operator_ids']??[]; $p=anytour_andromeda_search3_params($req,$db,$saved);
               $p['TOWNFROMINC']='1'; $p['STATEINC']='3'; $p['HOTELS']=(string)HM_TARGET; $p['OPERATORS']='5';
-              $p['CHECKIN_BEG']=str_replace('-','',HM_FROM); $p['CHECKIN_END']=str_replace('-','',HM_TO); $p['NIGHTS_FROM']='5'; $p['NIGHTS_TO']='14';
-              $requestContext=[]; foreach(['TOWNFROMINC','STATEINC','HOTELS','OPERATORS','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TO','ADULT','CHILD','CURRENCY'] as $k) if(array_key_exists($k,$p)) $requestContext[$k]=$p[$k];
+              $p['CHECKIN_BEG']=str_replace('-','',HM_FROM); $p['CHECKIN_END']=str_replace('-','',HM_TO); $p['NIGHTS_FROM']='5'; unset($p['NIGHTS_TO']); $p['NIGHTS_TILL']='14';
+              $requestContext=[]; foreach(['TOWNFROMINC','STATEINC','HOTELS','OPERATORS','CHECKIN_BEG','CHECKIN_END','NIGHTS_FROM','NIGHTS_TILL','ADULT','CHILD','CURRENCYINC'] as $k) if(array_key_exists($k,$p)) $requestContext[$k]=$p[$k];
               $budget=dirname((string)$cfg['catalog_path']); $transport=new AnyTourAndromedaTransport(true); $client=new AnyTourAndromedaClient(static function($url,$opts)use($transport,$budget){ anytour_andromeda_search3_budget($budget); return $transport($url,$opts); },true);
               $client->login((string)$cfg['username'],(string)$cfg['password']); $raw=$client->price($p); $rows=[]; hm_collect($raw,$rows); $hits=[]; $mapped=0; $namespace=0; $otherTarget=0;
               foreach($rows as $r){
@@ -119,7 +119,7 @@ jobs:
           d=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes(); vals=[x.split('MATCH_PRICE_ORIGINAL_JSON:',1)[1] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_PRICE_ORIGINAL_JSON:')]
           x=json.loads(vals[-1]) if len(vals)==1 else {'status':'unknown','reason':'result_marker_missing_or_ambiguous','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True}
           x['remote_exit']=int(os.environ['RC']); (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
-          print(json.dumps({k:x.get(k) for k in ['status','target_hotel','date_from','date_to','request_context','raw_rows','matching_rows','original_hotel_keys','mappedtour_excluded','operator_namespace_excluded']},ensure_ascii=False))
+          print(json.dumps({k:x.get(k) for k in ['status','reason','target_hotel','date_from','date_to','request_context','raw_rows','matching_rows','original_hotel_keys','mappedtour_excluded','operator_namespace_excluded']},ensure_ascii=False))
           if x.get('database_writes')!=0 or x.get('mapping_writes')!=0: raise SystemExit(3)
           if int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
           PY
@@ -128,17 +128,17 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: price-original-v3-${{ matrix.window }}-final
+          name: price-original-v4-${{ matrix.window }}-final
           path: ${{ env.OUT }}/
           retention-days: 90
   aggregate:
-    if: always() && github.run_attempt == 1 && github.run_number == 3
+    if: always() && github.run_attempt == 1 && github.run_number == 4
     needs: canary
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: price-original-v3-*-final
+          pattern: price-original-v4-*-final
           path: /tmp/all
       - name: Aggregate direct original IDs
         run: |
@@ -153,4 +153,4 @@ jobs:
           pathlib.Path('aggregate.json').write_text(json.dumps(out,indent=2,sort_keys=True)+'\n'); print(json.dumps(out,sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
-        with: {name: price-original-v3-aggregate, path: aggregate.json, retention-days: 90}
+        with: {name: price-original-v4-aggregate, path: aggregate.json, retention-days: 90}
