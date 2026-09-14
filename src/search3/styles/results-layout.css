@@ -56,8 +56,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-filter-reset[hidden]{display:none}
 & .search3-shortlist{display:grid;gap:18px;margin:20px 0;padding:20px;border:1px solid #cbd6ef;border-radius:18px;background:#fff;box-shadow:var(--at-shadow-sm,0 8px 24px #1e2e5a0b)}
 & .search3-shortlist[hidden]{display:none!important}
-& .search3-shortlist__head{display:flex;align-items:start;justify-content:space-between;gap:16px}
-& .search3-shortlist__copy{display:grid;gap:5px}
+& .search3-shortlist__head{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:16px}
+& .search3-shortlist__copy{display:grid;flex:1 1 320px;gap:5px}
 & .search3-shortlist__copy :is(h2,p){margin:0}
 & .search3-shortlist__copy h2{font-size:23px;line-height:1.3;letter-spacing:-.02em}
 & .search3-shortlist__copy p{max-width:720px;color:#526078;font-size:14px}
@@ -70,16 +70,16 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist__common{display:grid;gap:10px;padding:14px 16px;border:1px solid #d7e0f1;border-radius:14px;background:#fff}
 & .search3-shortlist__common h3{margin:0;font-size:16px;line-height:1.35}
 & .search3-shortlist__items{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:12px}
-& .search3-shortlist-item{display:grid;grid-template-rows:auto auto 1fr auto auto;gap:10px;padding:16px;border:1px solid var(--at-line,#e1e7f3);border-radius:14px;background:var(--at-soft,#f5f8ff)}
+& .search3-shortlist-item{display:grid;grid-template-rows:auto auto 1fr auto auto;gap:8px;padding:12px;border:1px solid var(--at-line,#e1e7f3);border-radius:14px;background:var(--at-soft,#f5f8ff)}
 & .search3-shortlist-item:only-child{max-width:640px}
 & .search3-shortlist-item :is(h3,p,dl,dt,dd){margin:0}
 & .search3-shortlist-item h3{font-size:18px;line-height:1.35;overflow-wrap:anywhere}
 & .search3-shortlist-item__place{color:#526078;font-size:13px}
-& .search3-shortlist-item__facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+& .search3-shortlist-item__facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
 & .search3-shortlist-item__facts div{display:grid;align-content:start;gap:2px}
 & .search3-shortlist-item__facts dt{color:#526078;font-size:11px}
 & .search3-shortlist-item__facts dd{font-size:13px;font-weight:600;overflow-wrap:anywhere}
-& .search3-shortlist-item__price{display:grid;gap:2px;padding-top:10px;border-top:1px solid #dfe6f3}
+& .search3-shortlist-item__price{display:grid;gap:2px;padding-top:8px;border-top:1px solid #dfe6f3}
 & .search3-shortlist-item__price small,& .search3-shortlist-item__price time{color:#526078;font-size:11px}
 & .search3-shortlist-item__price strong{color:var(--at-ink,#151b24);font-size:22px;font-variant-numeric:tabular-nums}
 & .search3-shortlist-item__actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}

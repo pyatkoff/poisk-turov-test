@@ -161,7 +161,7 @@ async function checkComparisonGeometry(page, width, count) {
     const root = list.closest('.search3-shortlist'), head = root.querySelector('.search3-shortlist__head'), headActions = root.querySelector('.search3-shortlist__head-actions');
     return {
       grid: rect(list), gap: parseFloat(getComputedStyle(list).columnGap),
-      cards: [...list.children].map(node => ({ ...rect(node), actions: [...node.querySelectorAll('button')].map(button => ({ ...rect(button), text: button.textContent.trim(), font: getComputedStyle(button).font })) })),
+      cards: [...list.children].map(node => ({ ...rect(node), facts: [...node.querySelectorAll('.search3-shortlist-item__facts>div')].map(fact => ({ label: fact.querySelector('dt').textContent.trim(), value: fact.querySelector('dd').textContent.trim(), labelFont: parseFloat(getComputedStyle(fact.querySelector('dt')).fontSize), valueFont: parseFloat(getComputedStyle(fact.querySelector('dd')).fontSize), clipped: [...fact.children].some(field => field.scrollWidth > field.clientWidth + 1 || field.scrollHeight > field.clientHeight + 1) })), actions: [...node.querySelectorAll('button')].map(button => ({ ...rect(button), text: button.textContent.trim(), font: getComputedStyle(button).font })) })),
       chrome: { head: rect(head), actions: rect(headActions), buttons: [...headActions.querySelectorAll('button')].filter(button => button.getClientRects().length).map(button => ({ ...rect(button), text: button.textContent.trim(), fontSize: parseFloat(getComputedStyle(button).fontSize), clipped: button.scrollWidth > button.clientWidth + 1 || button.scrollHeight > button.clientHeight + 1 })), legacyViewCount: root.querySelectorAll('.search3-shortlist__view').length }
     };
   });
@@ -181,6 +181,9 @@ async function checkComparisonGeometry(page, width, count) {
   for (const card of geometry.cards) {
     assert.ok(card.x >= geometry.grid.x - 1 && card.right <= geometry.grid.right + 1, 'every comparison card stays inside its grid');
     assert.ok(card.actions.every(action => action.height >= 44 && action.x >= card.x && action.right <= card.right), 'actions remain visible, contained and touch-sized');
+    assert.equal(card.facts.length, 7, 'compact saved card retains all seven exact conditions');
+    assert.ok(card.facts.every(fact => fact.label && fact.value && fact.labelFont >= 11 && fact.valueFont >= 13 && !fact.clipped), 'compact facts stay readable, complete and unclipped');
+    if (width <= 375) assert.ok(card.height <= (width <= 320 ? 465 : 405), 'saved card spacing stays compact: ' + JSON.stringify({ width, count, card }));
     if (width <= 430) {
       assert.equal(card.actions.length, 2, 'mobile saved offer keeps both exact actions');
       assert.ok(Math.abs(card.actions[0].y - card.actions[1].y) < 2, 'mobile Select and Remove share one compact action row');
