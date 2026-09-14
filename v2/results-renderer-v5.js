@@ -12,17 +12,18 @@ function mealLabel(t){const meal=t&&t.meal,label=textValue(meal),full=textValue(
 function mealIdentity(t){
 const label=mealLabel(t).replace(/\s+/g,' ').trim();if(!label)return null;
 const normalizeMeal=v=>String(v||'').toLocaleLowerCase('ru-RU').replace(/ё/g,'е').replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
-const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),normalized=normalizeMeal(label),normalizedName=normalizeMeal(name);
-const code=((normalizedName||normalized).match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)\+?$/)||[])[1]||'';
+const meal=t&&t.meal,name=textValue(meal&&meal.name).replace(/\s+/g,' ').trim(),normalized=normalizeMeal(label),normalizedName=normalizeMeal(name),identitySource=normalizedName||normalized;
+if(/^(?:soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)\+$/.test(identitySource))return{key:'meal:label:'+identitySource,label};
+const code=(identitySource.match(/^(soft\s*ai|sai|uai|ai|bb|hb|fb|ro|sc)$/)||[])[1]||'';
 let family='';
 if(/^(?:soft[ -]?(?:ai|all[ -]?inclusive)|sai|мягкое все включено|софт все включено)$/.test(normalized))family='soft-all-inclusive';
 else if(/^(?:ultra[ -]?(?:ai|all[ -]?inclusive)|uai|ai ultra|ультра все включено)$/.test(normalized))family='ultra-all-inclusive';
-else if(/^(?:ai\+?|all[ -]?inclusive|все включено)$/.test(normalized))family='all-inclusive';
-else if(/^(?:bb\+?|bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтраки?)$/.test(normalized))family='breakfast';
-else if(/^(?:hb\+?|half[ -]?board|полупансион)$/.test(normalized))family='half-board';
-else if(/^(?:fb\+?|full[ -]?board|полный пансион)$/.test(normalized))family='full-board';
-else if(/^(?:ro\+?|room[ -]?only|no[ -]?meal|без питания)$/.test(normalized))family='room-only';
-else if(/^(?:sc\+?|self[ -]?catering|самообслуживание)$/.test(normalized))family='self-catering';
+else if(/^(?:ai|all[ -]?inclusive|все включено)$/.test(normalized))family='all-inclusive';
+else if(/^(?:bb|bed\s*(?:&|and)\s*breakfast|breakfast|(?:только )?завтраки?)$/.test(normalized))family='breakfast';
+else if(/^(?:hb|half[ -]?board|полупансион)$/.test(normalized))family='half-board';
+else if(/^(?:fb|full[ -]?board|полный пансион)$/.test(normalized))family='full-board';
+else if(/^(?:ro|room[ -]?only|no[ -]?meal|без питания)$/.test(normalized))family='room-only';
+else if(/^(?:sc|self[ -]?catering|самообслуживание)$/.test(normalized))family='self-catering';
 else if(/^(?:on[ -]?request|по запросу)$/.test(normalized))family='on-request';
 else if(code&&(!normalizedName||normalized===normalizedName))family=({ai:'all-inclusive',uai:'ultra-all-inclusive','soft ai':'soft-all-inclusive',sai:'soft-all-inclusive',bb:'breakfast',hb:'half-board',fb:'full-board',ro:'room-only',sc:'self-catering'})[code]||'';
 const identities={
