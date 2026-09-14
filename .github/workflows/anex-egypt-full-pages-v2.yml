@@ -1,14 +1,14 @@
-name: ANEX Egypt solo positive-window v7
+name: ANEX Egypt two-adult positive-window v8
 on:
   push:
     branches:
-      - 'ops/int-egypt-solo-positive-window-v7-20260914'
+      - 'ops/int-egypt-two-adult-positive-window-v8-20260914'
     paths:
-      - '.github/ops/anex-egypt-solo-positive-window-v7-20260914'
+      - '.github/ops/anex-egypt-two-adult-positive-window-v8-20260914'
 permissions:
   contents: read
 concurrency:
-  group: anex-egypt-solo-v7-${{ github.ref }}
+  group: anex-egypt-two-adult-v8-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   live:
@@ -26,13 +26,13 @@ jobs:
           path: control
           fetch-depth: 2
           persist-credentials: false
-      - name: Bind exact reviewed Egypt solo v7 source
+      - name: Bind exact reviewed Egypt two-adult v8 source
         id: control
         run: |
-          MARKER='control/.github/ops/anex-egypt-solo-positive-window-v7-20260914'
-          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-solo-positive-window-v7-20260914'
+          MARKER='control/.github/ops/anex-egypt-two-adult-positive-window-v8-20260914'
+          test "$(git -C control diff-tree --no-commit-id --name-only -r HEAD)" = '.github/ops/anex-egypt-two-adult-positive-window-v8-20260914'
           SOURCE_SHA="$(git -C control rev-parse HEAD^)"
-          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-solo-positive-window-v7;scenario=Egypt-2026-12-07-10n-1a-AI-full-pages;owner=2026-09-14"
+          test "$(cat "$MARKER")" = "source=${SOURCE_SHA};operation=read-only-anex-three-source-egypt-two-adult-positive-window-v8;scenario=Egypt-2026-12-07-10n-2a-AI-full-pages;owner=2026-09-14"
           git -C control merge-base --is-ancestor "$SOURCE_SHA" HEAD
           test -n "$ANYTOOUR_DEPLOY_SSH_KEY" && test -n "$ANYTOOUR_DEPLOY_HOST" && test -n "$ANYTOOUR_DEPLOY_USER"
           echo "source=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
@@ -41,18 +41,18 @@ jobs:
           ref: ${{ steps.control.outputs.source }}
           path: source
           persist-credentials: false
-      - name: Run one fresh Egypt solo scenario
+      - name: Run one fresh Egypt two-adult scenario
         id: full_run
         continue-on-error: true
         run: |
-          mkdir -m 700 "$RUNNER_TEMP/egypt-solo-v7"
-          python3 -B source/scripts/diagnostics/anex_three_source_egypt_full_pages.py "$RUNNER_TEMP/egypt-solo-v7"
-      - name: Preserve sanitized Egypt solo v7 evidence
+          mkdir -m 700 "$RUNNER_TEMP/egypt-two-adult-v8"
+          python3 -B source/scripts/diagnostics/anex_three_source_egypt_full_pages.py "$RUNNER_TEMP/egypt-two-adult-v8"
+      - name: Preserve sanitized Egypt two-adult v8 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: anex-egypt-solo-v7-${{ github.run_id }}
-          path: ${{ runner.temp }}/egypt-solo-v7/
+          name: anex-egypt-two-adult-v8-${{ github.run_id }}
+          path: ${{ runner.temp }}/egypt-two-adult-v8/
           if-no-files-found: error
           retention-days: 30
       - name: Fail after evidence preservation
