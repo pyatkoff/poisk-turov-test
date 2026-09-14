@@ -1,4 +1,4 @@
-/* Native selected-tour CTA scrolls directly to the canonical lead form. */
+/* Native selected-tour CTA reveals the focused phone in the canonical form. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -7,12 +7,15 @@ const iife = require('./search3-bundle-iife.cjs');
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
 const events = new Map(), clicks = [], timers = [], trace = [];
 const classes = new Set();
-const phone = { focus(options) { trace.push(['focus', options]); } };
+const phone = {
+  focus(options) { trace.push(['focus', options]); },
+  scrollIntoView(options) { trace.push(['phone-scroll', options]); }
+};
 const button = { textContent: '', disabled: false };
 const action = { hidden: true, querySelector(selector) { assert.equal(selector, 'button'); return button; } };
 const flights = { querySelector(selector) { assert.equal(selector, '.search3-flight-continue'); return action; } };
 const form = {
-  scrollIntoView(options) { trace.push(['scroll', options]); },
+  scrollIntoView(options) { trace.push(['form-scroll', options]); },
   querySelector(selector) { assert.equal(selector, 'input[name="phone"]'); return phone; }
 };
 const selected = {
@@ -41,7 +44,7 @@ const click = { target: { closest: selector => selector === '#selectedTour .sear
 clicks.forEach(fn => fn(click));
 assert.ok(classes.has('search3-lead-entry'));
 assert.ok(!classes.has('search3-final-review'));
-assert.deepEqual(trace.map(row => row[0]), ['prevent', 'event', 'scroll', 'focus']);
+assert.deepEqual(trace.map(row => row[0]), ['prevent', 'event', 'focus', 'phone-scroll']);
 assert.ok(classes.has('search3-selected-open'));
 assert.equal(window.Search3SummaryCta.version, 14);
 console.log('PASS: native CTA enters the canonical lead form with one click');
