@@ -115,7 +115,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-shortlist[data-mobile-open=true] .search3-shortlist__copy,& .search3-shortlist[data-mobile-open=true] .search3-shortlist__head-actions{grid-column:1/-1}
 & .search3-shortlist__body{gap:12px}
 & .search3-shortlist__common{padding:12px}
-& .search3-shortlist__items{grid-template-columns:1fr;gap:12px}
+& .search3-shortlist__items{grid-template-columns:1fr;gap:12px;padding:0;overflow:visible}
 }
 @media(max-width:430px){
 & .search3-shortlist-item__actions{grid-template-columns:1fr}
