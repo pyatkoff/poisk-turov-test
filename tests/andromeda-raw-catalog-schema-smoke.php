@@ -32,6 +32,17 @@ schema_check(!str_contains($json, '80'));
 schema_check(!str_contains($json, 'private-value'));
 schema_check(!str_contains($json, 'must-not-leak'));
 
+$nested = anytour_andromeda_raw_catalog_schema(['rows'=>[
+    ['freightBeg'=>'private-ref-101','freightEnd'=>'private-ref-102','programInc'=>'private-program'],
+    ['freightBeg'=>'private-ref-201','freightEnd'=>'private-ref-202','programInc'=>'private-program-2'],
+]]);
+$nestedJson = json_encode($nested, JSON_THROW_ON_ERROR);
+schema_check(($nested['top_level']['rows']['fields']['freightBeg'] ?? null) === ['string']);
+schema_check(($nested['top_level']['rows']['fields']['freightEnd'] ?? null) === ['string']);
+schema_check(($nested['top_level']['rows']['fields']['programInc'] ?? null) === ['string']);
+schema_check(!str_contains($nestedJson, 'private-ref-101'));
+schema_check(!str_contains($nestedJson, 'private-program'));
+
 $requests = [];
 $transport = static function (string $url, array $options) use (&$requests): array {
     $requests[] = $url;
