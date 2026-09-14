@@ -412,8 +412,8 @@ margin:0;background:#f5f7fb;color:#17233b;
     & .selected-head {margin-bottom:20px}
     & .selected-price {justify-self:stretch;font-size:28px}
     & .selected-picture {aspect-ratio:16/9;max-height:260px}
-    & .facts {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:20px}
-    & .facts>div {padding:12px;min-height:70px}
+    & .facts {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px}
+    & .facts>div {padding:8px 10px;min-height:0;gap:3px}
     & > .hotel-desc,& .selected-description {margin-top:20px}
     & .hotel-desc {padding:16px}
     & .selected-description summary {padding-inline:16px}
