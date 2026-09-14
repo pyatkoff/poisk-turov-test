@@ -7,7 +7,7 @@ function surcharge_check(bool $ok, string $label): void {
     if (!$ok) throw new RuntimeException('surcharge_fixture_failed: ' . $label);
 }
 $root = $argv[2];
-$ref = str_repeat('a', 64); $source = str_repeat('b', 40); $created = time(); $now = $created + 2;
+$ref = str_repeat('a', 64); $source = str_repeat('b', 40); $now = time(); $created = $now - 2;
 $criteria = ['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>'20260922','CHECKIN_END'=>'20260922',
     'ADULT'=>2,'CHILD'=>0,'NIGHTS_FROM'=>7,'NIGHTS_TILL'=>7,'CURRENCYINC'=>643,'PAGE'=>1];
 $row = ['id'=>'private-selected-offer','hotelKey'=>3414,'operatorKey'=>5,'isOperatorHotelKey'=>0,
