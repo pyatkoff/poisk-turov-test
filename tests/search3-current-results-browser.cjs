@@ -462,9 +462,13 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await expansionToggle.innerText(), 'Ещё варианты из Андромеды', 'current card distinguishes optional provider variants from the visible offer source');
     assert.ok((await expansionToggle.boundingBox()).height >= 44, 'provider expansion keeps a full touch target');
     assert.equal(await expansion.evaluate(node => node.scrollWidth <= node.clientWidth + 1), true, 'secondary provider disclosure stays inside the card');
+    assert.equal((await snapshot(page)).overflow, false, width + ': idle secondary provider disclosure fits the viewport');
+    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-idle-${width}.png`), fullPage: true });
     await expansionToggle.click();
     await card.locator('.tour-selection-note[role=status]').filter({ hasText: 'Варианты из Андромеды загружены: 2' }).waitFor();
     assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'one discovery and two scoped provider pages load sequentially');
+    assert.equal((await snapshot(page)).overflow, false, width + ': complete provider status fits the viewport');
+    if (!previous) await page.screenshot({ path: path.join(output, `andromeda-complete-${width}.png`), fullPage: true });
     await card.locator('.tour-more-toggle').click();
     assert.equal(await card.locator('.tour-row').count(), 3, 'complete expansion replaces the grouped representative with exact provider variants and retains Tourvisor');
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
@@ -975,7 +979,7 @@ async function run(browser, width, previous) {
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
     let minimumReadiness = null, expandedDensity = null;
-    if ([375, 390, 720, 1440].includes(width)) {
+    if ([320, 375, 390, 720, 1200, 1363, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkExactOfferParty(page, width, previous);
@@ -992,11 +996,11 @@ async function run(browser, width, previous) {
   const browser = await chromium.launch({ headless: true });
   try {
     // 720 CSS px is the 200% reflow equivalent of the 1440px desktop viewport.
-    for (const width of [375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1200, 1440]) {
+    for (const width of [320, 375, 390, 720, 760, 761, 999, 1000, 1024, 1025, 1200, 1363, 1440]) {
       const rawState = await run(browser, width, true), servedState = await run(browser, width, false);
       assert.deepEqual(servedState, rawState, width + ': served compact JS preserves actual result DOM and geometry');
       fs.writeFileSync(path.join(output, `current-${width}.json`), JSON.stringify(servedState, null, 2) + '\n');
     }
   } finally { await browser.close(); }
-  console.log('SEARCH3_CURRENT_RESULTS_OK states=20 widths=375,390,720,760,761,999,1000,1024,1025,1200,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
+  console.log('SEARCH3_CURRENT_RESULTS_OK states=26 widths=320,375,390,720,760,761,999,1000,1024,1025,1200,1363,1440 reflow_200pct_equivalent=1440_to_720 raw_served_parity=1 native_header=1 external_calls=0 lead_sent=0');
 })().catch(error => { console.error(error); process.exitCode = 1; });
