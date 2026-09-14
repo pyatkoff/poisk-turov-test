@@ -73,6 +73,8 @@ async function checkToolbarLayout(page, width, previous) {
   });
   await page.evaluate(() => document.fonts.ready);
   const closed = await measure();
+  assert.equal(await sort.evaluate(node => getComputedStyle(node).appearance), 'none', 'native result selector uses the same controllable geometry as the search form');
+  assert.ok(Math.abs(closed.edit.height - closed.sort.height) <= 2, 'sorting and edit actions have consistent heights');
   for (const control of [closed.edit, closed.sort, closed.summary].filter(Boolean)) {
     assert.ok(control.height >= 44 && control.width > 0, 'toolbar retains visible 44px controls');
     assert.ok(control.x >= 0 && control.x + control.width <= closed.width + 1, 'toolbar controls stay inside their container');
@@ -223,7 +225,7 @@ async function checkExpandedDensity(page, width, previous) {
       const geometry = await card.evaluate(node => {
         const origin = node.getBoundingClientRect(), rect = element => { const r = element.getBoundingClientRect(); return { x: Math.round(r.x-origin.x), y: Math.round(r.y-origin.y), width: Math.round(r.width), height: Math.round(r.height) }; };
         const heading = node.querySelector('.hotel-offers-heading'), collapse = heading.querySelector('button'), first = node.querySelector('.tour-row'), action = first.querySelector('.direct-tour');
-        return { width: Math.round(origin.width), heading: rect(heading), collapse: rect(collapse), first: rect(first), action: rect(action), collapseColor: getComputedStyle(collapse).backgroundColor, actionColor: getComputedStyle(action).backgroundColor, pageOverflow: document.documentElement.scrollWidth > innerWidth + 1 };
+        return { width: Math.round(origin.width), hotelHeader: rect(node.querySelector('.hotel-main')), heading: rect(heading), collapse: rect(collapse), first: rect(first), action: rect(action), collapseColor: getComputedStyle(collapse).backgroundColor, actionColor: getComputedStyle(action).backgroundColor, pageOverflow: document.documentElement.scrollWidth > innerWidth + 1 };
       });
       assert.ok(geometry.heading.height <= 80, 'count and collapse fit one compact header instead of two stacked rows');
       assert.ok(geometry.collapse.height >= 44 && geometry.collapse.width < geometry.heading.width * 0.6, 'secondary collapse stays touch-sized without becoming a full-width CTA');
@@ -231,6 +233,7 @@ async function checkExpandedDensity(page, width, previous) {
       assert.ok(Math.abs(geometry.first.y - geometry.heading.y - geometry.heading.height) <= 1, 'the first actual offer immediately follows its header');
       assert.notEqual(geometry.collapseColor, geometry.actionColor, 'collapse is visually secondary to choosing a tour');
       assert.equal(geometry.pageOverflow, false);
+      if (inspectedWidth >= 1200) assert.ok(geometry.hotelHeader.height >= 140 && geometry.hotelHeader.height <= 160, 'expanded hotel keeps a readable compact identity header above the offers');
       if (inspectedWidth <= 390) assert.ok(geometry.action.y + geometry.action.height <= 760, 'first exact selection is reachable within the initial expanded card viewport');
       measurements.push({ viewportWidth: inspectedWidth, ...geometry });
       if (!previous) {
@@ -428,6 +431,7 @@ async function checkMealFacet(page, width, previous) {
   } finally { page.off('request', record); }
 }
 async function checkAndromedaExpansion(page, width, previous, control) {
+  let offerComposition;
   const tvHotel = {
     id: 21477,
     name: 'Movenpick Resort',
@@ -436,6 +440,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     category: 4,
     rating: 4.7,
     price: 165000,
+    picturelink: picture,
     tours: [{ ...tour, id: 'tv-andromeda-control', price: 165000, operator: { name: 'TEST OPERATOR' } }]
   };
   const searchParams = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
@@ -481,6 +486,22 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'перед выбором нужна проверка' }).count(), 2, 'every Andromeda variant keeps the quote-required boundary');
     const detailToggle = card.locator('[data-andromeda-detail]').first();
     assert.ok((await detailToggle.boundingBox()).height >= 44, 'provider detail action keeps a full touch target');
+    offerComposition = await card.locator('.tour-row:has(.provider-detail-toggle)').evaluateAll(rows => rows.map(row => {
+      const origin = row.getBoundingClientRect();
+      const rect = node => { const r = node.getBoundingClientRect(); return { x:r.x-origin.x, y:r.y-origin.y, width:r.width, height:r.height }; };
+      const price = row.querySelector('.hotel-price'), button = row.querySelector('.provider-detail-toggle'), note = row.querySelector('.tour-selection-note');
+      return { height:origin.height, width:origin.width, price:rect(price), button:rect(button), note:rect(note), noteFont:parseFloat(getComputedStyle(note).fontSize), clipped:[price,button,note].some(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1) };
+    }));
+    for (const offer of offerComposition) {
+      assert.ok(offer.button.height >= 44 && offer.noteFont >= 13 && !offer.clipped, 'provider action and full price warning remain readable');
+      for (const box of [offer.price, offer.button, offer.note]) assert.ok(box.x >= 0 && box.x + box.width <= offer.width + 1, 'provider price, action and warning stay inside the offer');
+      assert.ok(offer.price.x + offer.price.width <= offer.button.x + 1 || offer.price.y + offer.price.height <= offer.button.y + 1, 'price and detail action never overlap');
+      assert.ok(offer.note.y >= offer.button.y + offer.button.height - 1, 'the full quote warning follows the action without a tall interruption');
+    }
+    if (!previous) {
+      await page.locator('#resultsTools').evaluate(node => scrollTo({ top:node.getBoundingClientRect().top + scrollY - 12, behavior:'instant' }));
+      await page.screenshot({ path:path.join(output, `offers-composition-${width}.png`), animations:'disabled' });
+    }
     await detailToggle.click();
     await card.locator('.provider-detail').filter({ hasText: 'Подтверждённый тестовый отель' }).waitFor();
     assert.equal(await detailToggle.getAttribute('aria-expanded'), 'true', 'provider detail disclosure exposes its open state');
@@ -515,6 +536,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await partialCard.locator('.tour-row').count(), 3, 'partial failure retains Tourvisor, grouped representative and received exact variant');
     assert.equal(await partialCard.locator('.direct-tour').count(), 1, 'partial provider data cannot enter the selection controller');
     assert.equal((await snapshot(page)).overflow, false, width + ': partial provider status fits the viewport');
+    return offerComposition;
   } finally {
     control.enabled = false;
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { dirty: true } })));
@@ -996,18 +1018,18 @@ async function run(browser, width, previous) {
     await page.locator('.empty-edit-search').click();
     assert.equal(await page.locator('#tourSearch').isVisible(), true, 'empty results return to native search form');
     assert.equal(await page.locator('[name=from]').evaluate(node => node === document.activeElement), true, 'empty edit action focuses the existing departure control');
-    let minimumReadiness = null, expandedDensity = null;
+    let minimumReadiness = null, expandedDensity = null, offerComposition = null;
     if ([320, 375, 390, 720, 1200, 1363, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkExactOfferParty(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);
-      await checkAndromedaExpansion(page, width, previous, andromeda);
+      offerComposition = await checkAndromedaExpansion(page, width, previous, andromeda);
       await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
-    return { sourceSha, primaryForm: 'collapsed-with-results-editable-on-demand-and-error', toolbarLayout, minimumReadiness, expandedDensity, continuation, collapsed, expanded, logoSource };
+    return { sourceSha, primaryForm: 'collapsed-with-results-editable-on-demand-and-error', toolbarLayout, minimumReadiness, expandedDensity, offerComposition, continuation, collapsed, expanded, logoSource };
   } finally { await page.close(); }
 }
 (async () => {
