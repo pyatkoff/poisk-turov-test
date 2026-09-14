@@ -74,6 +74,7 @@ final class AnyTourThreeProviderMealFamily
             'raw' => $raw,
             'normalized_label' => $label,
             'family' => $family,
+            'display_label' => self::display($family, $plus, $withoutAlcohol),
             'qualifiers' => [
                 'plus' => $plus,
                 'without_alcohol' => $withoutAlcohol,
@@ -84,6 +85,29 @@ final class AnyTourThreeProviderMealFamily
             'cross_provider_equivalence_verified' => false,
             'package_equivalence_verified' => false,
         ];
+    }
+
+    private static function display(?string $family, bool $plus, bool $withoutAlcohol): ?string
+    {
+        if ($family === null) {
+            return null;
+        }
+        $labels = [
+            'ro' => 'RO · Без питания',
+            'bb' => 'BB · Завтрак',
+            'hb' => 'HB · Полупансион',
+            'fb' => 'FB · Полный пансион',
+            'ai' => 'AI · Всё включено',
+            'uai' => 'UAI · Ультра всё включено',
+        ];
+        $label = $labels[$family];
+        if ($plus) {
+            $label .= ' Plus';
+        }
+        if ($withoutAlcohol) {
+            $label .= ' · без алкоголя';
+        }
+        return $label;
     }
 
     private static function key(string $value): string
