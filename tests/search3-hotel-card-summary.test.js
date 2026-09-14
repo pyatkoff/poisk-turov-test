@@ -36,8 +36,7 @@ const multi = {
   ],
 };
 
-// The owner-reported regression: one displayed price must have one original
-// departure, duration, meal and operator, even before alternatives are opened.
+// A HOTEL aggregate must not borrow one concrete tour's conditions before disclosure.
 const freeze=value=>{if(value&&typeof value==='object'){Object.values(value).forEach(freeze);Object.freeze(value);}return value;};
 freeze(multi);
 const original=JSON.stringify(multi);
@@ -45,50 +44,44 @@ for(const tours of [multi.tours,[...multi.tours].reverse()]){
   const hotel={...multi,tours};
   assert.equal(api.representativeTour(hotel),multi.tours[0]);
   const html=api.toursHtml(hotel);
-  assert.ok(html.startsWith(api.tourRow(multi.tours[0])),'collapsed row is the exact original cheapest offer');
-  assert.equal((html.match(/class="tour-row"/g)||[]).length,1);
-  assert.equal((html.match(/class="hotel-price"/g)||[]).length,1);
-  assert.match(html,/data-tid="a"/);
-  assert.match(html,/16\.09\.2026/);
-  assert.match(html,/ · 7 ноч\./);
-  assert.match(html,/Завтраки/);
+  assert.match(html,/hotel-offers-summary/);
+  assert.match(html,/от 62(?:\s| )?400/);
   assert.match(html,/Показать варианты · 3/);
-  assert.doesNotMatch(html,/7[–-]10|7[–-]9|Несколько дат|BB · AI|17\.09\.2026|18\.09\.2026|Всё включено|hotel-trip-summary|hotel-summary-total/);
-  assert.doesNotMatch(html,/от 62|data-tid="[bc]"/,'no aggregate minimum or action belonging to another tour');
+  assert.doesNotMatch(html,/class="tour-row"|data-tid=|direct-tour|data-operator-brand=|16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Всё включено|FUN&SUN|ANEX|Чартер|Регулярный рейс/);
 }
 assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтраки');
-// A stale/missing hotel-level minimum never lends its price to another offer.
-for(const price of [61000,999999,undefined,null,0,-1,'unknown']){
+// The collapsed aggregate reads the canonical hotel-level minimum and never invents tour conditions around it.
+for(const [price,label] of [[61000,'61'],[999999,'999'],[undefined,'62'],[null,'62'],[0,'62'],[-1,'62'],['unknown','62']]){
   const html=api.toursHtml({...multi,price});
-  assert.ok(html.startsWith(api.tourRow(multi.tours[0])));
-  assert.match(html,/62(?:\s| )?400/);
-  assert.doesNotMatch(html,/61(?:\s| )?000|999(?:\s| )?999/);
+  assert.match(html,new RegExp('от '+label));
+  assert.doesNotMatch(html,/data-tid=|16\.09\.2026|Завтраки|FUN&SUN|Чартер/);
 }
-// Equal prices do not merge readiness or conditions of distinct source offers.
+// Readiness remains per concrete offer and is not projected onto the hotel aggregate.
 for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider:'andromeda'},{provider:'ANDROMEDA',selectionEnabled:true}]){
   const blocked={...multi.tours[0],...flags},other={...multi.tours[1],price:62400};
-  const html=api.toursHtml({...multi,tours:[blocked,other]});
-  assert.ok(html.startsWith(api.tourRow(blocked)));
-  assert.match(html,/нужна проверка/);
-  assert.doesNotMatch(html,/direct-tour/);
-  const reversed=api.toursHtml({...multi,tours:[other,blocked]});
-  assert.ok(reversed.startsWith(api.tourRow(other)));
-  assert.match(reversed,/data-tid="b"/);
-  assert.doesNotMatch(reversed,/нужна проверка|Часть вариантов/);
+  const collapsed=api.toursHtml({...multi,tours:[blocked,other]});
+  assert.doesNotMatch(collapsed,/нужна проверка|direct-tour/);
+  const blockedRow=api.tourRow(blocked);
+  assert.match(blockedRow,/нужна проверка/);
+  assert.doesNotMatch(blockedRow,/direct-tour/);
+  const otherRow=api.tourRow(other);
+  assert.match(otherRow,/data-tid="b"/);
+  assert.doesNotMatch(otherRow,/нужна проверка|Часть вариантов/);
 }
-// Per-offer party validation must not borrow missing counts from siblings/form.
+// Per-offer party validation stays exact inside offer rows, never on the collapsed hotel aggregate.
 for(const [adults,childs,label] of [[2,0,'2 взрослых'],[2,1,'2 взрослых · 1 ребёнок'],[1,2,'1 взрослый · 2 ребёнка'],['3','0','3 взрослых']]){
   const offer=Object.freeze({...multi.tours[0],adults,childs});
-  assert.ok(api.toursHtml({...multi,tours:[offer,multi.tours[1]]}).includes('<small>Туристы</small><b>'+label+'</b>'));
+  assert.ok(api.tourRow(offer).includes('<small>Туристы</small><b>'+label+'</b>'));
+  assert.doesNotMatch(api.toursHtml({...multi,tours:[offer,multi.tours[1]]}),/<small>Туристы<\/small>/);
 }
 for(const counts of [{adults:2},{adults:2,childs:null},{adults:2,childs:''},{adults:2,childs:false},{adults:2,childs:-1},{adults:2,childs:1.5},{adults:0,childs:0},{adults:true,childs:0},{adults:'unknown',childs:0}]){
   const offer=Object.freeze({...multi.tours[0],...counts});
-  assert.doesNotMatch(api.toursHtml({...multi,tours:[offer,{...multi.tours[1],adults:2,childs:1}]}),/<small>Туристы<\/small>/);
+  assert.doesNotMatch(api.tourRow(offer),/<small>Туристы<\/small>/);
 }
 const incomplete={...multi.tours[0],date:'',nights:undefined,meal:'',operator:'',isCharter:undefined};
-const incompleteHtml=api.toursHtml({...multi,tours:[incomplete,multi.tours[1]]});
-assert.doesNotMatch(incompleteHtml,/17\.09\.2026|10 ноч|Всё включено|ANEX|Регулярный рейс/,'missing primary facts are not filled from the next offer');
-assert.match(incompleteHtml,/>Уточняется</);
+const incompleteCollapsed=api.toursHtml({...multi,tours:[incomplete,multi.tours[1]]});
+assert.doesNotMatch(incompleteCollapsed,/17\.09\.2026|10 ноч|Всё включено|ANEX|Регулярный рейс|Уточняется/,'collapsed hotel does not fill or expose exact-offer gaps');
+assert.match(api.tourRow(incomplete),/>Уточняется</);
 // Meal facet identities remain tested independently of the removed aggregate UI.
 for(const meal of [{name:'AI',fullName:'Всё включено'},{fullName:'All Inclusive'},'Всё включено'])assert.equal(api.mealIdentity({meal}).key,'meal:all-inclusive');
 const identity=meal=>api.mealIdentity({meal}).key;
@@ -104,4 +97,4 @@ const single={...multi,tours:[multi.tours[0]]};
 assert.equal(api.toursHtml(single),api.tourRow(multi.tours[0]));
 assert.equal(api.choiceHint(multi),'');
 assert.equal(api.choiceHint(single),'1 вариант тура');
-console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK exact_collapsed_offer=1 mixed_conditions_absent=1 source_unchanged=1');
+console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 exact_offer_details_disclosed=1 source_unchanged=1');
