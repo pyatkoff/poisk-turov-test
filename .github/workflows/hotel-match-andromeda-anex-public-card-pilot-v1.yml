@@ -1,0 +1,57 @@
+name: MATCH Andromeda ANEX public-card pilot v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-andromeda-anex-public-card-pilot-v1.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-andromeda-anex-public-card-pilot-1971-20260914-v1}
+jobs:
+  pilot:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve and validate known public-card bridge read-only
+        run: |
+          set -euo pipefail; mkdir -p /tmp/out
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+          python3 - <<'PY'
+          import json,urllib.request,math,pathlib,hashlib
+          # First pilot proves the public-card side of the bridge on an exact known ANEX page.
+          # It deliberately does not write a mapping until an Andromeda row is supplied from CURRENT server evidence.
+          url='https://anextour.ru/api/v1/hotels/le-van-hotel'
+          req=urllib.request.Request(url,headers={'User-Agent':'AnyTour-MATCH-public-card/1.0','Accept':'application/json'})
+          with urllib.request.urlopen(req,timeout=20) as r: body=r.read(4*1024*1024); status=r.status
+          x=json.loads(body)
+          # tolerate envelope shapes while preserving exact raw evidence
+          d=x.get('data',x) if isinstance(x,dict) else {}
+          def first(obj,*keys):
+            for k in keys:
+              if isinstance(obj,dict) and obj.get(k) not in (None,''): return obj[k]
+          hid=first(d,'id','hotelId','hotelID'); name=first(d,'name','hotelName'); slug=first(d,'slug')
+          country=first(d,'countryName','country'); resort=first(d,'resortName','resort','townName')
+          lat=first(d,'latitude','lat'); lon=first(d,'longitude','lng','lon')
+          # recursively inventory identifiers/coordinates without guessing semantics
+          found=[]
+          def walk(v,path='$'):
+            if isinstance(v,dict):
+              for k,z in v.items():
+                if any(t in k.lower() for t in ('id','code','lat','lon','lng','coord','slug','name')) and isinstance(z,(str,int,float,bool,type(None))): found.append({'path':path+'.'+k,'value':z})
+                walk(z,path+'.'+k)
+            elif isinstance(v,list):
+              for i,z in enumerate(v[:200]): walk(z,f'{path}[{i}]')
+          walk(x)
+          out={'status':'completed','operation_id':'hotel-match-andromeda-anex-public-card-pilot-1971-20260914-v1','http_status':status,'response_sha256':hashlib.sha256(body).hexdigest(),'anex_card':{'id':hid,'name':name,'slug':slug,'country':country,'resort':resort,'lat':lat,'lon':lon},'identifier_inventory':found[:1000],'andromeda_current_row_attached':False,'auto_accept_allowed':False,'reason':'await_current_andromeda_row_for_same_identity','database_writes':0,'mapping_writes':0,'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out['anex_card'],ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-andromeda-anex-public-card-pilot-v1-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+          retention-days: 90
