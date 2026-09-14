@@ -52,6 +52,59 @@ const settle = page => page.evaluate(async () => {
 });
 const columnCount = value => String(value || '').trim().split(/\s+/).filter(Boolean).length;
 
+async function checkFlightPriceLines(root, width) {
+  const prices = await root.locator('.flight-choice > b').evaluateAll(nodes => nodes.map(node => {
+    const choice = node.closest('.flight-choice').getBoundingClientRect();
+    const glyphs = [];
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+      for (let offset = 0; offset < text.length; offset++) {
+        if (!/[\d,.₽]/.test(text.data[offset])) continue;
+        const range = document.createRange();
+        range.setStart(text, offset); range.setEnd(text, offset + 1);
+        const rect = range.getBoundingClientRect();
+        glyphs.push({ text: text.data[offset], x: rect.x - choice.x, y: rect.y - choice.y, right: rect.right - choice.x });
+      }
+    }
+    return { text: node.textContent.replace(/\s+/g, ' ').trim(), glyphs, choiceWidth: choice.width, priceHeight: node.getBoundingClientRect().height };
+  }));
+  assert.ok(prices.length, width + ': flight prices are visible');
+  for (const price of prices) {
+    assert.match(price.text, /^Стоимость тура:/, 'flight total keeps its truthful whole-tour caption');
+    assert.equal(price.glyphs.filter(glyph => glyph.text === '₽').length, 1, 'each flight total keeps exactly one currency marker');
+    const tops = price.glyphs.map(glyph => glyph.y);
+    assert.ok(Math.max(...tops) - Math.min(...tops) <= 1, width + ': complete amount and currency share one line: ' + JSON.stringify(price));
+    assert.ok(price.glyphs.every(glyph => glyph.x >= -1 && glyph.right <= price.choiceWidth + 1), width + ': the complete amount fits within the flight choice');
+  }
+  return prices;
+}
+
+async function checkLongFlightPrice(page, width) {
+  const item = { ...tour, id: 'long-flight-price-' + width, price: 1234567.89 };
+  const choices = [{ ...flights[0], price: { value: item.price } }];
+  await page.evaluate(({ item, choices }) => {
+    const calls = window.__longFlightPriceCalls = [];
+    window.V2Runtime.api = async (action, params) => {
+      if (params?.tourId !== item.id) throw new Error('long-price fixture must retain its offer identity');
+      calls.push(action);
+      if (action === 'tour') return item;
+      if (action === 'flights') return choices;
+      throw new Error('unexpected long-price API action');
+    };
+    window.V2TourController.selectTour(item.id);
+  }, { item, choices });
+  const root = page.locator('#selectedTour');
+  await root.locator('.search3-flight-continue button').waitFor();
+  await page.waitForFunction(id => window.V2TourController.currentTour?.id === id && document.querySelectorAll('#selectedTour .flight-choice').length === 1, item.id);
+  await settle(page);
+  const prices = await checkFlightPriceLines(root, width);
+  assert.equal(prices[0].text.replace(/\s/g, ''), 'Стоимостьтура:1234567,89₽', 'single-flight decimal amount stays exact');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'long flight price does not create page overflow');
+  assert.deepEqual(await page.evaluate(() => window.__longFlightPriceCalls), ['tour', 'flights'], 'long-price case makes only the two local fixture calls');
+  await root.locator('.flight-variant').screenshot({ path: path.join(output, 'flight-price-long-' + width + '.png'), animations: 'disabled' });
+  return { prices, exactOffer: item.id, realSupplierRequests: 0 };
+}
+
 async function run(browser, width) {
   const expected = contract.widths[String(width)];
   assert.ok(expected, `missing acceptance contract for ${width}`);
@@ -122,10 +175,18 @@ async function run(browser, width) {
     assert.ok(detail.flightMoments.some(value => value.includes('14.10.2026')), 'return flight uses the canonical date display');
     assert.equal(detail.flightMoments.some(value => /\b2026-10-(?:05|14)\b/.test(value)), false,
       'selected flight routes never expose raw supplier ISO dates');
+    const flightPrices = await checkFlightPriceLines(root, width);
     const fuelLabels = await root.locator('.flight-fuel').allTextContents();
     assert.deepEqual(fuelLabels.map(value => value.replace(/\s+/g, ' ').trim()), contract.invariants.flight_fuel_display,
       'flight fee display distinguishes unknown, explicit zero and known values');
     assert.equal(fuelLabels.some(value => /:\s*₽\s*$/.test(value)), false, 'flight fee never renders a bare currency marker');
+    await root.locator('input[name="v2flight"][value="2"]').check();
+    await settle(page);
+    assert.match((await root.locator('.selected-price').innerText()).replace(/\s/g, ''), /149900₽/, 'changing the flight retains its exact total');
+    await checkFlightPriceLines(root, width);
+    await root.locator('input[name="v2flight"][value="0"]').check();
+    await settle(page);
+    assert.match((await root.locator('.selected-price').innerText()).replace(/\s/g, ''), /148500₽/, 'returning to the original flight restores its exact total');
     assert.equal(detail.searchVisible, contract.invariants.selected_search_form_visible, 'selected state does not duplicate the search form');
     assert.equal(detail.overflow, contract.invariants.horizontal_overflow, `selected detail has no horizontal overflow at ${width}`);
     assert.ok(detail.rootWidth <= width + 2, 'selected root is bounded by the viewport');
@@ -177,9 +238,10 @@ async function run(browser, width) {
     assert.deepEqual(await page.evaluate(() => window.__selectedAcceptanceCalls), { tour: 1, flights: 1, other: 0 }, 'fixture performs only the expected local tour/flights calls');
     const recovery = [375, 1440].includes(width) ? await checkLeadRecovery(page, width) : null;
     const loadingRecovery = [375, 1440].includes(width) ? await checkSelectedLoadRecovery(page, width) : null;
+    const longFlightPrice = [320, 375, 1440].includes(width) ? await checkLongFlightPrice(page, width) : null;
     assert.deepEqual(posts, [], 'acceptance never sends a real lead or any POST');
     assert.deepEqual(browserErrors, [], 'acceptance fixture has no browser errors');
-    return { width, detail, lead, recovery, loadingRecovery, realLeads: 0, realSupplierRequests: 0 };
+    return { width, detail, lead, recovery, loadingRecovery, flightPrices, longFlightPrice, realLeads: 0, realSupplierRequests: 0 };
   } catch (error) {
     await page.screenshot({ path: path.join(output, `selected-current-${width}-failure.png`), fullPage: true });
     fs.writeFileSync(path.join(output, `selected-current-${width}-failure.json`), JSON.stringify({ message: String(error), browserErrors }, null, 2) + '\n');
