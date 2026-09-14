@@ -221,7 +221,7 @@ Andromeda current source доказывает отдельный provider-specif
 1. request country обязан совпадать с installed saved `local_country_id`;
 2. current active local departure name разрешается exact unique match в saved supplier `TOWNFROM` dictionary;
 3. supplier country берётся из installed saved catalog pin `STATEINC` для этого local country slice;
-4. только при доказанных exact departure mapping + explicit country pin provider-specific IDs считаются usable;
+4. только при доказанных exact departure mapping + explicit country pin provider-specific supplier IDs считаются usable;
 5. local numeric form IDs не становятся supplier IDs; missing/mismatched context fail closed.
 
 Это **не** тот же mapping contract, что у direct ANEX: ANEX country dictionary разрешается departure-scoped exact lookup, Andromeda country сейчас pinned installed catalog slice. Supplier IDs остаются opaque/provider-specific; cross-provider equivalence=false. Tourvisor departure/country mapping остаётся `not_verified_in_this_boundary`; protected payload не менять. Departure/country similarity не hotel identity proof.

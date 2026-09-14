@@ -42,12 +42,18 @@ jobs:
           merge-multiple: true
       - name: Check actual remote PHP on disposable local files
         run: python3 -B change/tests/andromeda_detail_publish_test.py handoff --previous previous --details details
+      - name: Load the exact historical caller for the sealed capture contract
+        uses: actions/checkout@v4
+        with:
+          ref: 06f9303347ada44d6f32330c428bc67bd17f8095
+          path: retained-caller
+          persist-credentials: false
       - name: Check retained-capture wire without SSH or supplier access
         run: |
           cp -R previous runtime
           cp -R handoff/app/integrations/. runtime/app/integrations/
           cp handoff/v2/api-andromeda-search3-preview.php runtime/v2/
-          python3 -B change/tests/andromeda_selected_capture_transport_test.py change --runtime runtime
+          python3 -B change/tests/andromeda_selected_capture_transport_test.py retained-caller --runtime runtime
       - name: Check read-only current retained contexts
         run: python3 -B change/tests/andromeda_retained_contexts_test.py --runtime runtime
       - uses: actions/download-artifact@v4
