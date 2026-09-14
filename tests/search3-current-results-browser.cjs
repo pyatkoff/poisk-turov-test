@@ -406,11 +406,14 @@ async function checkMealFacet(page, width, previous) {
     await page.evaluate(items => { window.V2Results.render(items); window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { searchId: 102, items } })); }, boundaryItems);
     assert.deepEqual(Object.fromEntries(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent]))), {
       '': 'Любое питание',
-      'meal:half-board': 'Полупансион',
+      'meal:label:hb+': 'HB+',
       'meal:label:premium all inclusive': 'Premium All Inclusive',
       'meal:label:breakfast and dinner': 'Breakfast and dinner',
       'meal:label:not all inclusive': 'Not all inclusive'
-    }, 'the actual result facet keeps one reviewed code family and three ambiguous supplier labels distinct');
+    }, 'the actual result facet preserves a plus supplier code and three ambiguous supplier labels as distinct');
+    await select.selectOption('meal:label:hb+');
+    assert.deepEqual(await visible(), ['meal-boundary-a']);
+    assert.equal(await page.locator('[data-hotel-id=meal-boundary-a] .direct-tour').getAttribute('data-tid'), 'boundary-hb-plus', 'a plus supplier code cannot enter the ordinary half-board bucket');
     await select.selectOption('meal:label:not all inclusive');
     assert.deepEqual(await visible(), ['meal-boundary-b']);
     assert.equal(await page.locator('[data-hotel-id=meal-boundary-b] .direct-tour').getAttribute('data-tid'), 'boundary-not-ai', 'a negated label cannot enter the ordinary all-inclusive result bucket');
