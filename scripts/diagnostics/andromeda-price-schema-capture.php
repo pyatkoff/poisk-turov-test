@@ -45,19 +45,23 @@ if (!is_dir($dir) || is_link($dir)) { fwrite(STDERR, "CAPTURE_DIRECTORY_REQUIRED
 umask(0077);
 
 $operation = 'andromeda-price-schema-egypt-family-v1-20260914';
-$report = ['state'=>'reserved','operation'=>$operation,'source'=>getenv('GITHUB_SHA') ?: null,'supplier_calls_max'=>5,'raw_values_persisted'=>false];
+$report = ['state'=>'reserved','operation'=>$operation,'source'=>getenv('GITHUB_SHA') ?: null,'supplier_calls_max'=>6,'raw_values_persisted'=>false];
 aps_save($dir, 'checkpoint', $report);
 
 try {
-    $client = new AnyTourAndromedaClient(new AnyTourAndromedaTransport(), true);
-    $client->login($username, $password);
-    $townfrom = $client->catalog('townfrom');
+    // The protocol client intentionally caps one instance at four supplier requests.
+    // Resolve dictionary IDs within one bounded instance, then use a fresh authenticated
+    // instance for the single PRICE request rather than weakening the shared client guard.
+    $catalogClient = new AnyTourAndromedaClient(new AnyTourAndromedaTransport(), true);
+    $catalogClient->login($username, $password);
+    $townfrom = $catalogClient->catalog('townfrom');
     $departure = aps_id($townfrom['TOWNFROM'], ['Москва']);
-    $state = $client->catalog('state', ['TOWNFROMINC'=>$departure]);
+    $state = $catalogClient->catalog('state', ['TOWNFROMINC'=>$departure]);
     $country = aps_id($state['STATE'], ['Египет']);
-    $all = $client->catalog('all', ['TOWNFROMINC'=>$departure,'STATEINC'=>$country]);
+    $all = $catalogClient->catalog('all', ['TOWNFROMINC'=>$departure,'STATEINC'=>$country]);
     $meal = aps_id($all['MEAL'], ['AI','All Inclusive','Все включено']);
     $operator = aps_id($all['OPERATORS'], ['ANEX','ANEX TOUR','Анекс Тур']);
+
     $params = [
         'TOWNFROMINC'=>$departure,'STATEINC'=>$country,
         'CHECKIN_BEG'=>'20261207','CHECKIN_END'=>'20261207',
@@ -66,7 +70,9 @@ try {
         'CURRENCYINC'=>643,'MEAL'=>(string)$meal,'OPERATORS'=>(string)$operator,
         'PACKETTYPE'=>0,'PAGE'=>1,
     ];
-    $reply = $client->price($params);
+    $priceClient = new AnyTourAndromedaClient(new AnyTourAndromedaTransport(), true);
+    $priceClient->login($username, $password);
+    $reply = $priceClient->price($params);
     $schema = anytour_andromeda_raw_catalog_schema($reply);
     $report = array_merge($report, [
         'state'=>'completed',
