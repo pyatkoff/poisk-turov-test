@@ -1,0 +1,66 @@
+name: MATCH ANEX hotel API hotelCode control v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-public-hotel-api-control-v1.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-public-hotel-api-control-1971-20260914-v1}
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve before public GETs
+        run: |
+          set -euo pipefail; mkdir -p /tmp/out
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+      - uses: actions/upload-artifact@v4
+        with: {name: match-anex-public-hotel-api-control-v1-reservation, path: /tmp/out/reservation.json, retention-days: 90}
+      - name: Validate known hotelCode 5844 against public hotel detail inc
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import urllib.request,urllib.parse,json,hashlib,pathlib,os
+          base='https://api.anextour.ru/b2c/hotel?hotel='
+          start='/hotels/egypt/sharming-inn-hotel-sharm-el-sheikh'
+          expected=5844
+          calls=[]; path=start; detail=None
+          for step in range(3):
+            url=base+urllib.parse.quote(path,safe='')
+            req=urllib.request.Request(url,headers={'User-Agent':'AnyTour-MATCH-hotelcode-control/1.0','Accept':'application/json,text/plain,*/*'})
+            with urllib.request.urlopen(req,timeout=25) as r:
+              final=r.geturl(); raw=r.read(2*1024*1024); status=r.status; ctype=r.headers.get('content-type')
+            pr=urllib.parse.urlparse(final)
+            if pr.scheme!='https' or pr.hostname!='api.anextour.ru': raise RuntimeError('unexpected redirect '+final)
+            data=json.loads(raw)
+            calls.append({'request_path':path,'url':url,'final_url':final,'http':status,'content_type':ctype,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'top_type':type(data).__name__})
+            # API canonicalization response is [{"url":"/hotels/...","code":301}]
+            if isinstance(data,list) and len(data)==1 and isinstance(data[0],dict) and data[0].get('code')==301 and isinstance(data[0].get('url'),str):
+              nxt=data[0]['url']
+              calls[-1]['canonical_to']=nxt
+              if nxt==path: break
+              path=nxt; continue
+            detail=data; break
+          info=None
+          if isinstance(detail,list) and detail and isinstance(detail[0],dict) and isinstance(detail[0].get('info'),dict): info=detail[0]['info']
+          inc=info.get('inc') if info else None
+          room_hotels=[]
+          if isinstance(detail,list) and detail and isinstance(detail[0],dict):
+            for r in detail[0].get('rooms') or []:
+              if isinstance(r,dict) and isinstance(r.get('hotel'),int): room_hotels.append(r['hotel'])
+          room_hotels=sorted(set(room_hotels))
+          out={'status':'completed','operation_id':os.environ['OPERATION_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'control':{'known_photo_hotelCode':expected,'source_path':'/hotel/egypt/hotel/sharming-inn-hotel-sharm-el-sheikh/...?...hotelCode=5844'},'calls':calls,'canonical_path':path,'hotel_info':({'inc':inc,'name':info.get('name'),'lname':info.get('lname'),'slug':info.get('slug'),'state':info.get('state'),'stateKey':info.get('stateKey'),'town':info.get('town'),'townKey':info.get('townKey'),'latitude':info.get('latitude'),'longitude':info.get('longitude'),'partnerInc':info.get('partnerInc')} if info else None),'room_hotel_values':room_hotels,'inc_equals_known_hotelCode':inc==expected,'room_hotel_equals_inc':room_hotels==[inc] if isinstance(inc,int) else False,'database_writes':0,'mapping_writes':0,'supplier_search_calls':0,'no_replay':True}
+          pathlib.Path('/tmp/out/result.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-public-hotel-api-control-v1-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+          retention-days: 90
