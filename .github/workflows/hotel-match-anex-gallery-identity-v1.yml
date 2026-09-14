@@ -1,15 +1,15 @@
-name: MATCH public ANEX primary gallery identity v1
+name: MATCH public ANEX primary gallery identity v2
 on:
   push:
     branches: [match/anex-media-chain-1971-20260914]
     paths: [.github/workflows/hotel-match-anex-gallery-identity-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-anex-gallery-identity-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-anex-gallery-identity-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-anex-gallery-identity-1971-20260914-v1
+  OPERATION_ID: hotel-match-anex-gallery-identity-1971-20260914-v2
 jobs:
   public-gallery-evidence:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -25,8 +25,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-anex-gallery-identity-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-anex-gallery-identity-1971-20260914-v1/reservation.json
+          name: match-anex-gallery-identity-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-gallery-identity-1971-20260914-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Read the two completed evidence artifacts, not their public sources
@@ -94,9 +94,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-anex-gallery-identity-v1-result
-          path: ${{ runner.temp }}/hotel-match-anex-gallery-identity-1971-20260914-v1/
+          name: match-anex-gallery-identity-v2-result
+          path: ${{ runner.temp }}/hotel-match-anex-gallery-identity-1971-20260914-v2/
           if-no-files-found: warn
           retention-days: 90
