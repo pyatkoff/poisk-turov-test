@@ -1,18 +1,18 @@
-name: MATCH captured direct CURRENT accept v3
+name: MATCH captured direct CURRENT accept v4
 on:
   push:
     branches: [ops/match-captured-direct-current-accept-1971-20260914-v1]
     paths: [.github/workflows/hotel-match-captured-direct-current-accept-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-captured-direct-current-accept-1971-v3, cancel-in-progress: false}
+concurrency: {group: match-captured-direct-current-accept-1971-v4, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-captured-direct-current-accept-1971-20260914-v3
+  OPERATION_ID: hotel-match-captured-direct-current-accept-1971-20260914-v4
   SOURCE_RUN_ID: '34884599885'
   SOURCE_ARTIFACT: match-current-saved-tour-detail-34884599885
   SOURCE_RESULT_SHA256: d26d02edbdb8765083fa5462d22361bc893e06eac3ddfa1b9658c35827b53035
 jobs:
   apply:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 3
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 4
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -31,8 +31,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-captured-direct-current-accept-v3-reservation
-          path: ${{ runner.temp }}/hotel-match-captured-direct-current-accept-1971-20260914-v3/reservation.json
+          name: match-captured-direct-current-accept-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-captured-direct-current-accept-1971-20260914-v4/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Restore exact sealed evidence
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-captured-direct-current-accept-v3-result
-          path: ${{ runner.temp }}/hotel-match-captured-direct-current-accept-1971-20260914-v3/
+          name: match-captured-direct-current-accept-v4-result
+          path: ${{ runner.temp }}/hotel-match-captured-direct-current-accept-1971-20260914-v4/
           if-no-files-found: warn
           retention-days: 90
