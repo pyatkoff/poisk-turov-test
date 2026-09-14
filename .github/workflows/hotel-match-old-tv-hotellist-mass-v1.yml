@@ -1,4 +1,4 @@
-name: MATCH old Tourvisor HOTELLIST mass v3
+name: MATCH old Tourvisor HOTELLIST mass targeted v4
 on:
   push:
     branches: [match/manual-live-review-queue-1971-20260914]
@@ -12,13 +12,14 @@ concurrency:
   group: anytour-match-old-tv-hotellist-mass-1971-v1
   cancel-in-progress: false
 env:
-  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260914-v3-egypt
-  MATCH_DATE: '2026-11-02'
+  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260914-v4-egypt
+  MATCH_DATE: '2026-11-04'
+  MATCH_FOCUS_PAIRS: '42927:131347,19226:14140,37048:97122,1361:125,16232:522,4158:37412,28396:293,36906:21636,1286:482,780:464,37721:111423,37719:132075,1771:190,1655:157782,37012:83106,30600:129,1772:191,44562:159,30599:159159,1767:182,835:196,28563:73342,4131:488,1768:183,524:338,781:483,1328:128,5215:121626,45330:130621,45249:127294'
   MATCH_LIMIT: '30'
-  OUT: /tmp/match-old-tv-hotellist-mass-v3
+  OUT: /tmp/match-old-tv-hotellist-mass-v4
 jobs:
   probe:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 3
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 4
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -31,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s  %s\n' '38792e690adff4a3223214e49b759ed0870310860b1a78097b44670254a7b957' 'scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php' | sha256sum -c -
+          printf '%s  %s\n' '23d62460a78ca5378471c4d848acf5f30538f4513b4398904ebf32cb74b83d0c' 'scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php' | sha256sum -c -
           php -l scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
           php scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php --self-test
           ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
@@ -51,7 +52,7 @@ jobs:
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           ssh -M -S "$sock" -fnNT -o ControlPersist=900 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=6 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_DATE='$MATCH_DATE' MATCH_LIMIT='$MATCH_LIMIT' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=6 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_DATE='$MATCH_DATE' MATCH_LIMIT='$MATCH_LIMIT' MATCH_FOCUS_PAIRS='$MATCH_FOCUS_PAIRS' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
           trc=$?
