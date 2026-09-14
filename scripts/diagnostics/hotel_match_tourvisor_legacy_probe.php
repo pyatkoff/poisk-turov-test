@@ -210,6 +210,7 @@ function legacy_tv_main(array $argv): int
     return 0;
 }
 
-if (realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) === __FILE__) {
+$explicitStdinExecution = getenv('MATCH_LEGACY_PROBE_EXEC') === '1';
+if ($explicitStdinExecution || realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) === __FILE__) {
     exit(legacy_tv_main($argv ?? []));
 }
