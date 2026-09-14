@@ -1,0 +1,95 @@
+name: MATCH current Turkey alternate candidates
+on:
+  push:
+    branches: [match/current-turkey-alternate-candidates-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py'
+      - '.github/workflows/hotel-match-current-turkey-alternate-candidates.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-current-turkey-alternate-candidates-1971-20260914-v1
+  cancel-in-progress: false
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPERATION_ID: hotel-match-current-turkey-alternate-candidates-1971-20260914-v1
+      OUT: /tmp/match-current-turkey-alternate-candidates
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Offline fail-closed checks
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py
+          python3 scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py --self-test
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py
+          grep -Fq 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py
+          grep -Fq "candidate_rank<=5" scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py
+      - name: Reserve runner evidence before SSH
+        run: |
+          set -euo pipefail
+          mkdir -m 700 -p "$OUT"
+          printf '{"operation_id":"%s","source_sha":"%s","run_id":%s,"state":"runner_reserved_before_ssh","read_only":true,"supplier_calls":0,"tourvisor_calls":0,"database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$OUT/runner-reservation.json"
+      - name: Upload runner reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-turkey-alternate-candidates-v1-reservation
+          path: ${{ env.OUT }}/runner-reservation.json
+          retention-days: 90
+      - name: Run immutable CURRENT read-only review
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ok=0
+          for n in 1 2 3; do
+            rm -f "$sock"
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi
+            sleep $((n*8))
+          done
+          test "$ok" = 1
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=6 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' python3 -" < scripts/diagnostics/hotel_match_current_turkey_alternate_candidates.py > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz"
+          test -s "$OUT/server-operation.tgz"
+          mkdir "$OUT/readback"
+          tar -C "$OUT/readback" -xzf "$OUT/server-operation.tgz"
+      - name: Verify receipt and zero-write boundary
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['OUT'])/'readback'
+          result=json.loads((root/'result.json').read_text())
+          receipt=json.loads((root/'receipt.json').read_text())
+          got=hashlib.sha256((root/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==got and receipt['readback_verified'] is True
+          assert result['status']=='read_only_complete'
+          assert result['input_identities']==71
+          for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls'):
+              assert result[k]==0 and receipt[k]==0
+          assert result['no_replay'] is True and receipt['no_replay'] is True
+          assert all(0 < b['count'] <= 30 and len(b['hotelIds'])==b['count'] for b in result['alternate_batches'])
+          print(json.dumps({k:result[k] for k in ('current_unresolved_identities','identities_with_alternates','unique_alternate_hotel_ids','alternate_batches')},sort_keys=True))
+          PY
+      - name: Upload verified result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-current-turkey-alternate-candidates-v1-result
+          path: ${{ env.OUT }}/
+          retention-days: 90
