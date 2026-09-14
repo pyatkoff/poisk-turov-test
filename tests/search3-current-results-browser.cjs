@@ -458,7 +458,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
     const expansion = card.locator('.provider-expansion');
     const expansionToggle = expansion.locator('[data-andromeda-expand]');
-    assert.equal(await expansion.locator('small').innerText(), 'Другой источник', 'provider expansion is explicitly secondary to the visible exact offer');
+    assert.equal(await expansion.locator('small').innerText(), 'Дополнительные предложения', 'provider expansion is secondary without falsely claiming that the visible minimum belongs to another source');
     assert.equal(await expansionToggle.innerText(), 'Ещё варианты из Андромеды', 'current card distinguishes optional provider variants from the visible offer source');
     assert.ok((await expansionToggle.boundingBox()).height >= 44, 'provider expansion keeps a full touch target');
     assert.equal(await expansion.evaluate(node => node.scrollWidth <= node.clientWidth + 1), true, 'secondary provider disclosure stays inside the card');
