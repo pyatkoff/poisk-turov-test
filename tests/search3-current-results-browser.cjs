@@ -456,9 +456,14 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     }
     assert.equal(await card.locator('.tour-row').count(), 1, 'one provider offer keeps its own conditions and guarded action');
     assert.equal(await card.locator('.direct-tour').count(), 0, 'an unquoted provider representative cannot enter the selection controller');
-    assert.equal(await card.locator('[data-andromeda-expand]').innerText(), 'Все варианты Андромеды', 'current card exposes one explicit provider expansion action');
-    await card.locator('[data-andromeda-expand]').click();
-    await card.locator('.tour-selection-note[role=status]').filter({ hasText: 'Варианты Андромеды загружены: 2' }).waitFor();
+    const expansion = card.locator('.provider-expansion');
+    const expansionToggle = expansion.locator('[data-andromeda-expand]');
+    assert.equal(await expansion.locator('small').innerText(), 'Другой источник', 'provider expansion is explicitly secondary to the visible exact offer');
+    assert.equal(await expansionToggle.innerText(), 'Ещё варианты из Андромеды', 'current card distinguishes optional provider variants from the visible offer source');
+    assert.ok((await expansionToggle.boundingBox()).height >= 44, 'provider expansion keeps a full touch target');
+    assert.equal(await expansion.evaluate(node => node.scrollWidth <= node.clientWidth + 1), true, 'secondary provider disclosure stays inside the card');
+    await expansionToggle.click();
+    await card.locator('.tour-selection-note[role=status]').filter({ hasText: 'Варианты из Андромеды загружены: 2' }).waitFor();
     assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'one discovery and two scoped provider pages load sequentially');
     await card.locator('.tour-more-toggle').click();
     assert.equal(await card.locator('.tour-row').count(), 3, 'complete expansion replaces the grouped representative with exact provider variants and retains Tourvisor');
@@ -495,7 +500,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     await start(74);
     const partialCard = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     await partialCard.locator('[data-andromeda-expand]').click();
-    await partialCard.locator('.tour-selection-note[role=status]').filter({ hasText: 'Не все варианты Андромеды загрузились' }).waitFor();
+    await partialCard.locator('.tour-selection-note[role=status]').filter({ hasText: 'Не все варианты из Андромеды загрузились' }).waitFor();
     assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'partial expansion stops after the failed scoped page without background replay');
     await partialCard.locator('.tour-more-toggle').click();
     assert.equal(await partialCard.locator('.tour-row').count(), 3, 'partial failure retains Tourvisor, grouped representative and received exact variant');
