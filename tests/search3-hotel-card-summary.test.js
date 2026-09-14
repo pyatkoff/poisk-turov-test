@@ -68,16 +68,16 @@ for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider
   assert.match(otherRow,/data-tid="b"/);
   assert.doesNotMatch(otherRow,/нужна проверка|Часть вариантов/);
 }
-// Per-offer party validation stays exact inside offer rows, never on the collapsed hotel aggregate.
-for(const [adults,childs,label] of [[2,0,'2 взрослых'],[2,1,'2 взрослых · 1 ребёнок'],[1,2,'1 взрослый · 2 ребёнка'],['3','0','3 взрослых']]){
-  const offer=Object.freeze({...multi.tours[0],adults,childs});
-  assert.ok(api.tourRow(offer).includes('<small>Туристы</small><b>'+label+'</b>'));
-  assert.doesNotMatch(api.toursHtml({...multi,tours:[offer,multi.tours[1]]}),/<small>Туристы<\/small>/);
-}
-for(const counts of [{adults:2},{adults:2,childs:null},{adults:2,childs:''},{adults:2,childs:false},{adults:2,childs:-1},{adults:2,childs:1.5},{adults:0,childs:0},{adults:true,childs:0},{adults:'unknown',childs:0}]){
-  const offer=Object.freeze({...multi.tours[0],...counts});
-  assert.doesNotMatch(api.tourRow(offer),/<small>Туристы<\/small>/);
-}
+// Exact offer rows keep decision-critical differences, but do not repeat search-level/internal context.
+const compact=api.tourRow({...multi.tours[0],roomType:'STANDARD',placement:'DBL',adults:2,childs:1,provider:'tourvisor'});
+assert.match(compact,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/);
+assert.doesNotMatch(compact,/<small>(?:Туристы|Источник|Размещение)<\/small>/,'expanded rows do not repeat search party, internal provider source, or a second placement field');
+assert.match(compact,/<small>Оператор<\/small>/);
+assert.match(compact,/<small>Перелёт<\/small><b>Чартер<\/b>/);
+assert.match(compact,/16\.09\.2026/);
+assert.match(compact,/7 ноч\./);
+assert.match(compact,/Завтраки/);
+assert.match(compact,/62(?:\s| )?400/);
 const incomplete={...multi.tours[0],date:'',nights:undefined,meal:'',operator:'',isCharter:undefined};
 const incompleteCollapsed=api.toursHtml({...multi,tours:[incomplete,multi.tours[1]]});
 assert.doesNotMatch(incompleteCollapsed,/17\.09\.2026|10 ноч|Всё включено|ANEX|Регулярный рейс|Уточняется/,'collapsed hotel does not fill or expose exact-offer gaps');
@@ -97,4 +97,4 @@ const single={...multi,tours:[multi.tours[0]]};
 assert.equal(api.toursHtml(single),api.tourRow(multi.tours[0]));
 assert.equal(api.choiceHint(multi),'');
 assert.equal(api.choiceHint(single),'1 вариант тура');
-console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 exact_offer_details_disclosed=1 source_unchanged=1');
+console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 source_unchanged=1');
