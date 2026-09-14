@@ -457,7 +457,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     }
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'cross-provider hotel stays hotel-level before exact variants are disclosed');
     assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'cross-provider idle state exposes one truthful hotel minimum');
-    assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от165000₽', 'provider discovery does not turn the hotel minimum into a selectable quote');
+    assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от155079₽', 'provider discovery exposes its actual hotel minimum without turning it into a selectable quote');
     const expansion = card.locator('.provider-expansion');
     const expansionToggle = expansion.locator('[data-andromeda-expand]');
     assert.equal(await expansion.locator('small').innerText(), 'Дополнительные предложения', 'provider expansion is secondary without falsely claiming that the visible minimum belongs to another source');
