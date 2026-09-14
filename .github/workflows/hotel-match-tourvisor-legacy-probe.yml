@@ -1,4 +1,4 @@
-name: MATCH legacy Tourvisor viability probe v1
+name: MATCH legacy Tourvisor viability probe v2
 
 on:
   push:
@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: anytour-match-legacy-tourvisor-viability-1971-20260914-v1
+  group: anytour-match-legacy-tourvisor-viability-1971-20260914-v2
   cancel-in-progress: false
 
 env:
-  OPERATION_ID: hotel-match-legacy-tourvisor-viability-1971-20260914-v1
+  OPERATION_ID: hotel-match-legacy-tourvisor-viability-1971-20260914-v2
 
 jobs:
   probe:
@@ -50,8 +50,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: match-legacy-tourvisor-v1-reservation
-          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-viability-1971-20260914-v1/reservation.json'
+          name: match-legacy-tourvisor-v2-reservation
+          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-viability-1971-20260914-v2/reservation.json'
           retention-days: 90
 
       - name: Prepare existing AnyTour SSH key
@@ -81,7 +81,7 @@ jobs:
           S="$RUNNER_TEMP/$OPERATION_ID"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ControlMaster=no -o ControlPath=none -o ServerAliveInterval=10 -o ServerAliveCountMax=2)
           remote="$USER_VALUE@$HOST_VALUE"
-          ssh "${opts[@]}" "$remote" 'set -euo pipefail; root="$HOME/www/anytoour.ru"; test -f "$root/v2/config.php"; php -- "--config=$root/v2/config.php"' < scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php > "$S/result.json"
+          ssh "${opts[@]}" "$remote" 'set -euo pipefail; root="$HOME/www/anytoour.ru"; test -f "$root/config.php"; php -- "--config=$root/config.php"' < scripts/diagnostics/hotel_match_tourvisor_legacy_probe.php > "$S/result.json"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
@@ -106,6 +106,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: match-legacy-tourvisor-v1-result
-          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-viability-1971-20260914-v1/'
+          name: match-legacy-tourvisor-v2-result
+          path: '${{ runner.temp }}/hotel-match-legacy-tourvisor-viability-1971-20260914-v2/'
           retention-days: 90
