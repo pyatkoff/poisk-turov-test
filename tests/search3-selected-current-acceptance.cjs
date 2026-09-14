@@ -257,10 +257,19 @@ async function run(browser, width) {
         phoneLabel: phone.closest('label')?.childNodes[0]?.textContent?.trim() || '',
         consentRequired: !!form.querySelector('[name="consent"]')?.required,
         activeName: document.activeElement?.name || '',
+        selectedHotel: node.querySelector('.selected-head h2')?.textContent?.trim() || '',
+        selectedDate: [...node.querySelectorAll('.facts>div')].find(item => item.querySelector('span')?.textContent?.trim() === 'Дата')?.querySelector('b')?.textContent?.trim() || '',
+        summary: [...form.querySelectorAll('.lead-selection-summary span')].map(item => ({
+          label: item.querySelector('small')?.textContent?.trim() || '',
+          value: item.querySelector('b')?.textContent?.trim() || ''
+        })),
         overflow: document.documentElement.scrollWidth > innerWidth + 2
       };
     });
     assert.equal(columnCount(lead.leadColumns), expected.lead_columns, `lead fields columns at ${width}`);
+    assert.deepEqual(lead.summary.map(item => item.label), ['Тур', 'Ваш выбор', 'Рейс'], 'lead summary keeps one compact tour/price/flight hierarchy');
+    assert.equal(lead.summary[0].value, lead.selectedHotel + ' · ' + lead.selectedDate, 'lead summary repeats the exact selected hotel and departure date beside contacts');
+    assert.ok(lead.selectedHotel && lead.selectedDate, 'selected hotel and exact date remain available to the lead summary');
     assert.equal(lead.phoneRequired, true, 'phone remains required');
     assert.equal(lead.consentRequired, true, 'consent remains required');
     assert.equal(lead.phoneLabel, 'Телефон (обязательно)', 'phone keeps a visible associated required label');
