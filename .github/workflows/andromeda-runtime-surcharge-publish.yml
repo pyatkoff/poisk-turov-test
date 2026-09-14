@@ -553,3 +553,126 @@ jobs:
           path: ${{ runner.temp }}/andromeda-quote-access-inspection/
           if-no-files-found: error
           retention-days: 14
+
+  surcharge-e2e-v2-readback:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+       github.event_name == 'issue_comment' && github.event.action == 'created' &&
+       github.event.issue.number == 996 && !github.event.issue.pull_request &&
+       github.event.comment.user.id == 226193297 &&
+       github.event.comment.body == '/inspect-andromeda-surcharge-e2e-1717-v2')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      SURCHARGE_V2_READBACK_PHP: |
+        error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
+        $operation='andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8';
+        $out=['status'=>'blocked','operation'=>$operation,'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'filesystem_writes'=>0,'operation_replayed'=>false];
+        function anytour_safe_money_readback($value){
+          if(!is_array($value)||!is_string($value['amount']??null)||!preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,4})?$/D',$value['amount'])||!is_string($value['currency']??null)||!preg_match('/^[A-Z]{3}$/D',$value['currency']))return null;
+          return ['amount'=>$value['amount'],'currency'=>$value['currency']];
+        }
+        try{
+          $root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');
+          $private=dirname($root,2).'/.anytoour-andromeda';
+          if(realpath($private)!==$private||!is_dir($private)||!is_readable($private))throw new RuntimeException('private_directory_unavailable');
+          $directory=$private.'/'.$operation;$exists=file_exists($directory);$out['operation_exists']=$exists;
+          if(is_link($directory)||($exists&&(realpath($directory)!==$directory||!is_dir($directory)||!is_readable($directory))))throw new RuntimeException('checkpoint_path_invalid');
+          if(!$exists){$out['checkpoint_state']='absent';$out['status']='inspected';echo json_encode($out,JSON_THROW_ON_ERROR);return;}
+          $out['files']=[];$reservationPresent=false;$resultPresent=false;
+          foreach(['reservation','result'] as $name){
+            $path=$directory.'/'.$name.'.json';$out['files'][$name]=['present'=>false];
+            if(is_link($path))throw new RuntimeException('checkpoint_path_invalid');if(!file_exists($path))continue;
+            if(realpath($path)!==$path||!is_file($path))throw new RuntimeException('checkpoint_path_invalid');
+            $file=fopen($path,'rb');if(!$file)throw new RuntimeException('checkpoint_unreadable');
+            try{$stat=fstat($file);if($stat['nlink']!==1||$stat['size']>65536)throw new RuntimeException('checkpoint_size_or_link');$bytes=stream_get_contents($file,65537);if(!is_string($bytes)||strlen($bytes)!==$stat['size'])throw new RuntimeException('checkpoint_read_failed');}finally{fclose($file);}
+            $value=json_decode($bytes,true,24,JSON_THROW_ON_ERROR);if(!is_array($value)||($value['operation']??null)!==$operation)throw new RuntimeException('checkpoint_operation_mismatch');
+            $out['files'][$name]=['present'=>true,'sha256'=>hash('sha256',$bytes)];
+            if($name==='reservation'){
+              $reservationPresent=true;
+              foreach(['runtime_source'=>40,'scenario_sha256'=>64] as $key=>$length){if(!is_string($value[$key]??null)||!preg_match('/^[a-f0-9]{'.$length.'}$/D',$value[$key]))throw new RuntimeException('reservation_invalid');$out[$key]=$value[$key];}
+            }else{
+              $resultPresent=true;$status=$value['status']??null;if(!in_array($status,['blocked','unknown','complete'],true))throw new RuntimeException('result_status_invalid');
+              $out['operation_status']=$status;$out['checkpoint_state']=$status;
+              $phase=$value['phase']??null;$phases=['preflight','reserved','search','surcharge_capture','listing_recorded','quote','complete'];$out['phase']=is_string($phase)&&in_array($phase,$phases,true)?$phase:null;
+              $reason=$value['reason']??null;$out['reason']=is_string($reason)&&preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$reason)?$reason:($reason===null?null:'unclassified_operation_failure');$out['reason_sha256']=is_string($reason)?hash('sha256',$reason):null;
+              $out['outcome']=in_array($value['outcome']??null,['served_quote_compared','surcharge_unavailable','listing_estimate_applied'],true)?$value['outcome']:null;
+              foreach(['supplier_scenario','mapping_writes','booking_calls'] as $key){$out[$key]=is_int($value[$key]??null)?$value[$key]:null;}
+              $out['calc_calls']=(is_int($value['calc_calls']??null)||($value['calc_calls']??'x')===null)?($value['calc_calls']??null):null;
+              foreach(['received_offers','mapped_offers','local_hotel_id','supplier_counter_delta','relative_delta_bps'] as $key){if(is_int($value[$key]??null))$out[$key]=$value[$key];}
+              if(is_array($value['listing_money']??null)){
+                $listing=$value['listing_money'];$out['listing_money']=['base'=>anytour_safe_money_readback($listing['base']??null),'surcharge'=>anytour_safe_money_readback($listing['surcharge']??null),'served_price'=>anytour_safe_money_readback($listing['served_price']??null),'price_basis'=>in_array($listing['price_basis']??null,['search_base','transport_surcharge_estimate'],true)?$listing['price_basis']:null,'arithmetic_applied'=>is_bool($listing['arithmetic_applied']??null)?$listing['arithmetic_applied']:null,'final_price_verified'=>is_bool($listing['final_price_verified']??null)?$listing['final_price_verified']:null];
+              }
+              if(is_array($value['quote_observation']??null)){
+                $quote=$value['quote_observation'];$out['quote_observation']=['served_price'=>anytour_safe_money_readback($quote['served_price']??null),'final_price'=>anytour_safe_money_readback($quote['final_price']??null),'signed_delta_amount'=>is_string($quote['signed_delta_amount']??null)&&preg_match('/^-?(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,4})?$/D',$quote['signed_delta_amount'])?$quote['signed_delta_amount']:null,'absolute_delta_amount'=>is_string($quote['absolute_delta_amount']??null)&&preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,4})?$/D',$quote['absolute_delta_amount'])?$quote['absolute_delta_amount']:null,'relative_delta_bps'=>is_int($quote['relative_delta_bps']??null)?$quote['relative_delta_bps']:null,'price_basis'=>in_array($quote['price_basis']??null,['search_base','transport_surcharge_estimate'],true)?$quote['price_basis']:null,'final_price_verified'=>($quote['final_price_verified']??null)===true];
+              }
+            }
+          }
+          if(!$resultPresent)$out['checkpoint_state']=$reservationPresent?'reserved_no_result':'directory_without_checkpoint';
+          $out['status']='inspected';
+        }catch(Throwable $e){$allowed=['project_invalid','private_directory_unavailable','checkpoint_path_invalid','checkpoint_unreadable','checkpoint_size_or_link','checkpoint_read_failed','checkpoint_operation_mismatch','reservation_invalid','result_status_invalid'];$out['inspection_error']=in_array($e->getMessage(),$allowed,true)?$e->getMessage():'checkpoint_invalid';}
+        echo json_encode($out,JSON_THROW_ON_ERROR);
+    steps:
+      - name: Exercise fixed v2 checkpoint classification without SSH
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib,subprocess,tempfile
+          operation='andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8'
+          with tempfile.TemporaryDirectory() as tmp:
+              account=pathlib.Path(tmp)/'account';root=account/'www/anytoour.ru';root.mkdir(parents=True);private=account/'.anytoour-andromeda';private.mkdir();directory=private/operation
+              def run():
+                  p=subprocess.run(['php','-d','allow_url_fopen=0','-r',os.environ['SURCHARGE_V2_READBACK_PHP']],cwd=root,text=True,capture_output=True,check=True,timeout=5);assert p.stderr=='' and 'PRIVATE_SENTINEL' not in p.stdout;result=json.loads(p.stdout);assert all(result[k]==0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']);assert result['operation_replayed'] is False;return result
+              assert run()['checkpoint_state']=='absent';directory.mkdir();(directory/'reservation.json').write_text(json.dumps({'operation':operation,'runtime_source':'64706822fc54f4d4423ea6bbd0ad966144151387','scenario_sha256':'a'*64,'private':'PRIVATE_SENTINEL'}));assert run()['checkpoint_state']=='reserved_no_result'
+              (directory/'result.json').write_text(json.dumps({'operation':operation,'status':'unknown','phase':'quote','reason':'served_quote_observation_invalid','supplier_scenario':1,'mapping_writes':0,'booking_calls':0,'calc_calls':None,'private':'PRIVATE_SENTINEL'}));result=run();assert result['checkpoint_state']=='unknown' and result['phase']=='quote' and result['reason']=='served_quote_observation_invalid' and result['calc_calls'] is None
+          print('Fixed v2 checkpoint readback: absent/reserved/unknown classification and privacy pass; supplier/network0')
+          PY
+      - name: Bind owner-only v2 inspection to the terminal execution
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff' || context.actor !== 'pyatkoff' || context.payload.sender?.id !== 226193297 || context.ref !== 'refs/heads/main') throw new Error('Owner-only single inspection required.');
+            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 || context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 || context.payload.comment?.body !== '/inspect-andromeda-surcharge-e2e-1717-v2') throw new Error('Exact v2 inspection command required.');
+            const {data: main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});if(main.object.sha!==context.sha)throw new Error('Main advanced; stop.');
+            const {data: sourceComment}=await github.rest.issues.getComment({...context.repo,comment_id:5671360276});
+            if(sourceComment.user?.id!==226193297||sourceComment.created_at!=='2026-09-14T21:56:50Z'||sourceComment.updated_at!=='2026-09-14T21:56:50Z'||sourceComment.body!=='/run-andromeda-surcharge-e2e-1717-v2')throw new Error('Source command provenance mismatch.');
+            const {data: run}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34901558904});
+            if(run.head_sha!=='30106212b88616187e63fec625f91673576a0643'||run.event!=='issue_comment'||run.status!=='completed'||run.conclusion!=='failure'||run.run_attempt!==1)throw new Error('Terminal v2 run mismatch.');
+            const {data: receipt}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10370532737});
+            if(receipt.expired!==false||receipt.workflow_run?.id!==34901558904||receipt.workflow_run?.head_sha!=='30106212b88616187e63fec625f91673576a0643'||receipt.digest!=='sha256:83b9f85a611cabff94fa7ae7535289101f80ed812d635d40f108ca4bc7959266')throw new Error('Terminal v2 fallback receipt mismatch.');
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Read only the fixed v2 reservation and result
+        if: github.event_name != 'pull_request'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          from anex_search3_owner_decisions import ssh_php
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-surcharge-e2e-v2-readback';out.mkdir(mode=0o700)
+          try: result=ssh_php(os.environ['SURCHARGE_V2_READBACK_PHP'],{},maximum_bytes=65536)
+          except Exception:
+              (out/'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','operation_replayed':False}));raise
+          result['control_source']=os.environ['GITHUB_SHA'];(out/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          if result.get('status')!='inspected' or result.get('operation_replayed') is not False or any(result.get(k)!=0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']):raise SystemExit('V2 checkpoint inspection incomplete; operation not replayed')
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - name: Preserve sanitized v2 checkpoint inspection
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-surcharge-e2e-v2-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-surcharge-e2e-v2-readback/
+          if-no-files-found: error
+          retention-days: 14
