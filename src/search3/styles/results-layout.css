@@ -103,6 +103,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools{position:static;top:auto;padding:16px;margin-block:16px}
 & .results-tools>div:first-child>strong{font-size:22px}
 & .results-tools__actions{grid-template-columns:minmax(0,1fr)}
+& .search3-mobile-filter-panel>summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px}
+& .search3-mobile-filter-panel>summary span{margin-left:0;text-align:right}
 & .search3-mobile-filter-panel__body{grid-template-columns:1fr}
 & .search3-mobile-filter-panel__body>.search3-hotel-filter{grid-column:auto}
 & .search3-hotel-filter{flex-basis:100%}
