@@ -41,12 +41,15 @@ jobs:
       - name: Verify the fixed server response and existing guards
         run: |
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/api-andromeda-search3-preview.php
+          cp change/v2/api-anex-search3-preview.php runtime/v2/api-anex-search3-preview.php
+          cp change/app/integrations/anex-additional-prices-batch.php runtime/app/integrations/anex-additional-prices-batch.php
           cp change/app/integrations/andromeda-client.php runtime/app/integrations/andromeda-client.php
           cp change/app/integrations/andromeda-normalizer.php runtime/app/integrations/andromeda-normalizer.php
           cp change/app/integrations/three-provider-meal-family.php runtime/app/integrations/three-provider-meal-family.php
           cp change/app/integrations/three-provider-room-placement.php runtime/app/integrations/three-provider-room-placement.php
           cp change/app/integrations/andromeda-selected-offer.php runtime/app/integrations/andromeda-selected-offer.php
           php -l runtime/v2/api-andromeda-search3-preview.php
+          php -l runtime/v2/api-anex-search3-preview.php
           php -l runtime/app/integrations/andromeda-client.php
           php -l runtime/app/integrations/andromeda-normalizer.php
           php change/tests/andromeda-canonical-transport-smoke.php runtime
