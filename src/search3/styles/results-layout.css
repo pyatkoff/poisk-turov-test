@@ -42,9 +42,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .search3-filter-presets[hidden]{display:none}
 & .search3-filter-presets>button{flex:1 1 auto;min-height:44px;padding:7px 9px;border-color:#c4cfeb;border-radius:9px;color:#2743cb;font-size:13px;font-weight:600}
 & .search3-filter-presets>button[aria-pressed=true]{border-color:#2743cb;background:#eef2ff;color:#172a86}
-& :is(.search3-hotel-filter,.search3-budget-filter) small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
-& :is(.search3-hotel-filter,.search3-budget-filter) small:empty{display:none}
-& .search3-budget-filter input[type=range]{padding:0;accent-color:#2743cb}
+& .search3-hotel-filter small{font-size:12px;line-height:1.5;color:#2743cb;font-weight:400}
+& .search3-hotel-filter small:empty{display:none}
 & .search3-mobile-filter-panel{grid-column:1/-1;width:100%;border:1px solid #cbd6ef;border-radius:12px;background:var(--at-soft,#f5f8ff);overflow:hidden}
 & .search3-mobile-filter-panel[hidden]{display:none}
 & .search3-mobile-filter-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:10px 12px;border:0;border-radius:0;background:transparent;color:#2743cb;font-weight:700;list-style:none}
@@ -104,6 +103,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-tools{position:static;top:auto;padding:16px;margin-block:16px}
 & .results-tools>div:first-child>strong{font-size:22px}
 & .results-tools__actions{grid-template-columns:minmax(0,1fr)}
+& .search3-mobile-filter-panel>summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px}
+& .search3-mobile-filter-panel>summary span{margin-left:0;text-align:right}
 & .search3-mobile-filter-panel__body{grid-template-columns:1fr}
 & .search3-mobile-filter-panel__body>.search3-hotel-filter{grid-column:auto}
 & .search3-hotel-filter{flex-basis:100%}

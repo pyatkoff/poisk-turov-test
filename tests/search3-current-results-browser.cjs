@@ -310,11 +310,17 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'sort uses matching offer prices, not excluded cheaper meals');
     assert.deepEqual(await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate)), ['2026-09-11', '2026-09-12', '2026-09-14'], 'meal facet removes excluded offers from the current price calendar');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'calendar best date follows the cheapest matching meal');
-    const budget = page.locator('.search3-budget-filter input');
-    await budget.evaluate(node => { node.value = '110000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    const budget = page.locator('.search3-budget-filter input[type=number]');
+    assert.ok((await budget.boundingBox()).height >= 44, 'exact budget keeps a full touch target');
+    await budget.fill('110001');
+    await budget.press('Enter');
+    assert.deepEqual(await visible(), ['meal-b'], 'exact budget and meal match the same loaded offer without rounding');
+    await budget.fill('110000');
+    await budget.press('Enter');
     assert.deepEqual(await visible(), ['meal-b'], 'budget and meal must match the same loaded offer');
     assert.equal(await calendar.isVisible(), false, 'one matching departure hides a calendar that has no dates left to compare');
-    await budget.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await budget.fill(await budget.getAttribute('max'));
+    await budget.press('Enter');
     assert.deepEqual(await visible(), ['meal-b', 'meal-a'], 'restoring the budget keeps the active meal projection');
     assert.equal(await calendar.locator('.is-best').getAttribute('data-calendar-date'), '2026-09-11', 'restoring the budget restores the matching meal calendar minimum');
     await page.evaluate(() => {
@@ -832,8 +838,11 @@ async function run(browser, width, previous) {
     }
     await localOperatorSelect.selectOption('name:test operator');
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'operator facet narrows already loaded offers without using the provider label');
-    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), [], 'operator and budget must match the same exact loaded offer');
+    if (!previous && [320, 375, 720, 1025, 1440].includes(width)) {
+      await page.screenshot({ path: path.join(output, `exact-budget-${width}.png`), fullPage: true });
+    }
     if (width < 1025) {
       assert.match(await mobileSummaryText.innerText(), /Подходит: 0 · до 100[\s\u00a0]*000 ₽ · TEST OPERATOR/, 'compact summary names active exact-offer filters instead of exposing only their count');
       assert.match(await mobileSummaryText.getAttribute('aria-label'), /активные фильтры: до 100[\s\u00a0]*000 ₽; TEST OPERATOR/, 'compact summary exposes the full active-filter meaning accessibly');
@@ -842,13 +851,13 @@ async function run(browser, width, previous) {
       assert.equal((await snapshot(page)).overflow, false, 'active filter values safely fit the compact toolbar');
       await mobileSummary.click();
     }
-    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'restoring budget keeps the active operator projection');
     await localOperatorSelect.selectOption('');
-    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = '100000'; node.dispatchEvent(new Event('change', { bubbles: true })); });
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['cheap'], 'clearing operator restores the exact qualifying budget offer');
     assert.equal(await page.locator('#results [data-hotel-id=cheap] .hotel-price').innerText().then(text => text.replace(/\s/g, '')), '90000₽', 'budget retains the exact qualifying offer price');
-    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('input', { bubbles: true })); });
+    await localBudgetInput.evaluate(node => { node.value = node.max; node.dispatchEvent(new Event('change', { bubbles: true })); });
     await localRatingSelect.selectOption('4.5');
     assert.deepEqual(await page.locator('#results .hotel-card:visible').evaluateAll(nodes => nodes.map(node => node.dataset.hotelId)), ['expensive'], 'rating threshold filters the loaded hotels locally');
     await localRatingSelect.selectOption('0');
