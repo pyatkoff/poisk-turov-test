@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "Type publish-andromeda-surcharge-runtime-1717-v2"
+        description: "publish-andromeda-surcharge-runtime-1717-v2 OR run-andromeda-surcharge-e2e-1717-v1"
         required: true
         type: string
   issue_comment:
@@ -99,5 +99,95 @@ jobs:
         with:
           name: andromeda-runtime-surcharge-publication-${{ github.run_id }}
           path: ${{ runner.temp }}/andromeda-runtime-source-publication/
+          if-no-files-found: error
+          retention-days: 14
+
+  surcharge-e2e:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'run-andromeda-surcharge-e2e-1717-v1') ||
+       (github.event_name == 'issue_comment' && github.event.action == 'created' &&
+        github.event.issue.number == 996 && !github.event.issue.pull_request &&
+        github.event.comment.user.id == 226193297 &&
+        github.event.comment.body == '/run-andromeda-surcharge-e2e-1717-v1'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require exact owner command, checked E2E source and published runtime
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = 226193297;
+            const command = '/run-andromeda-surcharge-e2e-1717-v1';
+            const e2eHead = '055fdc690a7fdefa9bd6b610ba9d32de8c15f59e';
+            const e2eMerge = '4a4021d9bdc72ea19fc229be3047714eab92a1ca';
+            const publicationRun = 34873062851;
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('No replay; inspect the E2E checkpoint.');
+            if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
+            if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if (context.eventName === 'workflow_dispatch') {
+              if (context.payload.inputs?.confirmation !== 'run-andromeda-surcharge-e2e-1717-v1') throw new Error('Confirmation mismatch.');
+            } else if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
+                       context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
+                       context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) {
+              throw new Error('Exact created owner command in issue996 required.');
+            }
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
+            const {data: e2ePr} = await github.rest.pulls.get({...context.repo, pull_number: 2446});
+            if (!e2ePr.merged || e2ePr.head.sha !== e2eHead || e2ePr.merge_commit_sha !== e2eMerge || e2ePr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('E2E PR provenance mismatch.');
+            for (const run_id of [34874275091, 34874275109]) {
+              const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
+              if (run.head_sha !== e2eHead || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned E2E CI failed: ' + run_id);
+            }
+            const {data: published} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: publicationRun});
+            if (published.head_sha !== '9733a3c764ad5398b8d15c634599658d5d8537c1' || published.status !== 'completed' || published.conclusion !== 'success') throw new Error('Published runtime gate failed.');
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10359648547});
+            if (artifact.expired !== false || artifact.workflow_run?.id !== publicationRun ||
+                artifact.digest !== 'sha256:57d7578586d40549c5f596dc373053daea5aa6f3ea1b4eb2455d03ccb8043da8') throw new Error('Published runtime receipt mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: 4a4021d9bdc72ea19fc229be3047714eab92a1ca
+          path: e2e
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Execute one immutable retained surcharge E2E operation
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          from anex_search3_owner_decisions import ssh_php
+          source = pathlib.Path('e2e/scripts/diagnostics/andromeda_search_surcharge_e2e.php').read_text()
+          if not source.startswith('<?php\n') or len(source.encode()) > 65536:
+              raise SystemExit('checked E2E source invalid')
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'andromeda-surcharge-e2e'
+          out.mkdir(mode=0o700)
+          try:
+              result = ssh_php(source.removeprefix('<?php\n'), {}, maximum_bytes=65536)
+          except Exception:
+              (out / 'result.json').write_text(json.dumps({'status':'unconfirmed','operation':'andromeda-search-surcharge-e2e-1717-v1-egypt-2026-12-10-2a'}))
+              raise
+          (out / 'result.json').write_text(json.dumps(result, sort_keys=True, indent=2) + '\n')
+          if not isinstance(result, dict) or result.get('status') != 'complete' or result.get('supplier_scenario') != 1:
+              raise SystemExit('E2E operation not complete; do not replay')
+          if result.get('mapping_writes') != 0 or result.get('booking_calls') != 0 or result.get('calc_calls') != 0:
+              raise SystemExit('E2E guard mismatch')
+          print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Preserve sanitized E2E receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-surcharge-e2e-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-surcharge-e2e/
           if-no-files-found: error
           retention-days: 14
