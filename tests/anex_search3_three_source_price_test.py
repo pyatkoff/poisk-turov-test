@@ -17,6 +17,12 @@ def check(value):
 combined=mod.source(); check(combined.startswith('declare(strict_types=1);\n'))
 check(combined.count('declare(strict_types=1);')==1); check("define('ANYTOUR_ANEX_PAIRED_LIBRARY_ONLY', true);" in combined)
 check(mod.EXPERIMENT=='anex_three_source_price_20260911_v2'); check(mod.SPEC['date']=='2026-09-27')
+check("require_once $preview.'/api-andromeda-search3-preview.php'" not in combined)
+check("require_once $preview.'/api-anex-search3-preview.php'" in combined)
+check(combined.count('function anytour_andromeda_search3_meal')==1)
+check("'4'=>[['HB','Half Board','Полупансион','Завтрак и ужин']]" in combined)
+check("if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__)anytour_andromeda_search3_http();" not in combined)
+check("'andromeda-search','andromeda-hotel-observations','anex-normalizer'" in combined)
 
 subject={'local_hotel_id':6319,'anex_hotel_id':8121,'andromeda_hotel_id':'9001','hotel_name':'APERION BEACH','selection_basis':'current_unique_triple_mapping','anex_observation_count':9}
 def row(provider,price,room='standard',placement='dbl',fuel=None):
