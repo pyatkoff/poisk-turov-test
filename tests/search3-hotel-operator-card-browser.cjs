@@ -130,7 +130,7 @@ module.exports=async function checkOperatorCards(page,width,output){
         const rows=await card.locator('.tour-row').evaluateAll(nodes=>nodes.map(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
           const action=node.querySelector('.direct-tour'),compare=node.querySelector('.search3-shortlist-toggle');
-          return{row:box(node),date:box(node.querySelector('.tour-meta>small')),facts:box(node.querySelector('.tour-facts')),select:box(action),compare:compare?box(compare):null,price:box(node.querySelector('.tour-action')),overflow:node.scrollWidth>node.clientWidth+1};
+          return{row:box(node),date:box(node.querySelector('.tour-meta>strong')),caption:box(node.querySelector('.tour-meta>small')),facts:box(node.querySelector('.tour-facts')),select:box(action),compare:compare?box(compare):null,price:box(node.querySelector('.tour-action')),overflow:node.scrollWidth>node.clientWidth+1};
         }));
         for(const row of rows){
           assert.equal(row.overflow,false,'all exact offer facts remain within their row');
@@ -138,6 +138,7 @@ module.exports=async function checkOperatorCards(page,width,output){
           assert.ok(row.price.right<=row.row.right&&row.select.right<=row.price.right+1,'price/action group is contained');
           if(inspectedWidth>=1200){
             assert.ok(row.facts.x>=row.date.right-1&&Math.abs(row.facts.y-row.date.y)<2,'date and primary conditions share one desktop reading row');
+            assert.ok(row.caption.y>=row.date.bottom-1&&Math.abs(row.caption.x-row.date.x)<2,'departure caption follows its actual date in the same column');
             if(row.compare)assert.ok(row.compare.x>=row.select.right-1&&Math.abs(row.compare.y-row.select.y)<2,'selection and comparison share one action row');
           }
           if(inspectedWidth===1440)assert.ok(row.row.height<=160,'compact heterogeneous desktop offer stays below the former tall nested action card');
