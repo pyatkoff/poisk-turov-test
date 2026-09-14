@@ -4,11 +4,10 @@ declare(strict_types=1);
 /**
  * Provider-neutral money facts for Search3 offers.
  *
- * This object deliberately does no arithmetic. Search price, fuel, additional charges,
- * package buyer money and quote money are independent facts with independent evidence.
- * The search-layer constructor never invents package/quote values and never marks a
- * search price final. A verified quote may enrich only an untampered canonical search
- * state and only for a provider whose quote contract has been proven.
+ * Raw search price, fuel/additional charges, package buyer money and quote money stay
+ * independent evidence facts. A search-only surcharge estimate may additionally sum
+ * a supplier-reported per-passenger flight-program surcharge for the current party;
+ * that estimate is never marked as the final supplier price.
  */
 final class AnyTourThreeProviderMoneyFacts
 {
@@ -16,7 +15,7 @@ final class AnyTourThreeProviderMoneyFacts
     private const SEARCH_CAPABILITIES = [
         'tourvisor' => ['fuel' => true, 'additional' => false],
         'anex' => ['fuel' => false, 'additional' => true],
-        'andromeda' => ['fuel' => false, 'additional' => false],
+        'andromeda' => ['fuel' => false, 'additional' => true],
     ];
 
     public static function fromSearch(
@@ -67,7 +66,6 @@ final class AnyTourThreeProviderMoneyFacts
             'search_price' => $search,
             'fuel_charge_reported' => $fuel,
             'additional_prices_reported' => $additional,
-            // Search evidence cannot fill these fields. They require later package/quote evidence.
             'package_buyer_price' => null,
             'quote_price' => null,
             'search_price_fuel_relation' => 'unknown',
@@ -77,13 +75,61 @@ final class AnyTourThreeProviderMoneyFacts
     }
 
     /**
-     * Attach a supplier-verified quote without changing any search money fact.
-     *
-     * Current evidence proves this flow only for Andromeda. Tourvisor/direct ANEX
-     * remain unsupported here until an equivalent selected-package quote contract is
-     * independently verified. This method never calculates delta, fuel, conversion or
-     * a fallback between search/package/quote amounts.
+     * Add supplier-reported flight-program/date surcharge to the search package price.
+     * Adult and child rates are intentionally separate. Missing required rate is unknown,
+     * never zero. Raw source facts remain untouched and the result is not a final quote.
      */
+    public static function withSearchSurchargeEstimate(array $searchFacts, int $adults, int $children): array
+    {
+        self::assertCanonicalSearchFacts($searchFacts);
+        if (!in_array($searchFacts['provider'], ['anex', 'andromeda'], true)
+            || $adults < 1 || $adults > 6 || $children < 0 || $children > 3) {
+            throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_CONTEXT');
+        }
+
+        $rates = [];
+        foreach ($searchFacts['additional_prices_reported'] as $fact) {
+            $kind = $fact['kind'];
+            if (!in_array($kind, ['fuel_adult', 'fuel_child'], true)) continue;
+            if (isset($rates[$kind])) throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_AMBIGUOUS');
+            if ($fact['currency'] !== $searchFacts['search_price']['currency']) {
+                throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+            }
+            $rates[$kind] = $fact;
+        }
+        if (!isset($rates['fuel_adult']) || ($children > 0 && !isset($rates['fuel_child']))) {
+            throw new DomainException('THREE_PROVIDER_SURCHARGE_UNKNOWN');
+        }
+
+        $base = self::moneyCents($searchFacts['search_price']['amount']);
+        $adult = self::moneyCents($rates['fuel_adult']['amount']);
+        $child = $children === 0 ? 0 : self::moneyCents($rates['fuel_child']['amount']);
+        $surcharge = ($adult * $adults) + ($child * $children);
+        if ($surcharge < 0 || $base > PHP_INT_MAX - $surcharge) {
+            throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_AMOUNT');
+        }
+        $keepDecimals = self::hasDecimals($searchFacts['search_price']['amount'])
+            || self::hasDecimals($rates['fuel_adult']['amount'])
+            || ($children > 0 && self::hasDecimals($rates['fuel_child']['amount']));
+
+        $next = $searchFacts;
+        $next['search_price_with_surcharge'] = [
+            'amount' => self::moneyFromCents($base + $surcharge, $keepDecimals),
+            'currency' => $searchFacts['search_price']['currency'],
+            'source' => $searchFacts['provider'] . '_search_estimate',
+        ];
+        $next['search_surcharge_total'] = [
+            'amount' => self::moneyFromCents($surcharge, $keepDecimals),
+            'currency' => $searchFacts['search_price']['currency'],
+            'source' => $searchFacts['provider'] . '_additional',
+        ];
+        $next['search_surcharge_party'] = ['adults' => $adults, 'children' => $children];
+        $next['search_price_fuel_relation'] = 'base_plus_per_passenger_program_surcharge';
+        $next['arithmetic_applied'] = true;
+        return $next;
+    }
+
+    /** Attach a supplier-verified quote without changing any raw search money fact. */
     public static function withVerifiedQuote(
         array $searchFacts,
         ?array $packageBuyerPrice,
@@ -103,7 +149,6 @@ final class AnyTourThreeProviderMoneyFacts
         $next['package_buyer_price'] = $package;
         $next['quote_price'] = $quote;
         $next['final_price_verified'] = true;
-        // Explicitly preserve the no-arithmetic search/fuel semantics.
         $next['search_price_fuel_relation'] = 'unknown';
         $next['arithmetic_applied'] = false;
         return $next;
@@ -143,6 +188,29 @@ final class AnyTourThreeProviderMoneyFacts
         if ($facts !== $expected) {
             throw new InvalidArgumentException('THREE_PROVIDER_MONEY_SEARCH_STATE');
         }
+    }
+
+    private static function moneyCents(string $amount): int
+    {
+        if (!preg_match('/\A(0|[1-9][0-9]{0,11})(?:\.([0-9]{1,2}))?\z/D', $amount, $m)) {
+            throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_AMOUNT');
+        }
+        $fraction = str_pad($m[2] ?? '', 2, '0');
+        return ((int) $m[1] * 100) + (int) $fraction;
+    }
+
+    private static function moneyFromCents(int $cents, bool $keepDecimals): string
+    {
+        if ($cents < 0) throw new InvalidArgumentException('THREE_PROVIDER_SURCHARGE_AMOUNT');
+        $whole = intdiv($cents, 100);
+        $fraction = $cents % 100;
+        if (!$keepDecimals && $fraction === 0) return (string) $whole;
+        return $whole . '.' . str_pad((string) $fraction, 2, '0', STR_PAD_LEFT);
+    }
+
+    private static function hasDecimals(string $amount): bool
+    {
+        return strpos($amount, '.') !== false;
     }
 
     private static function moneyFact(
