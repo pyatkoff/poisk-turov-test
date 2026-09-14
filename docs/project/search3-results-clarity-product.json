@@ -1663,7 +1663,16 @@
       "exact_build_job": 102989113809,
       "canonical_source_output_import_check": "success",
       "existing_tests_or_gates_changed": false,
-      "result_widths": [375, 760, 761, 999, 1000, 1024, 1025, 1440],
+      "result_widths": [
+        375,
+        760,
+        761,
+        999,
+        1000,
+        1024,
+        1025,
+        1440
+      ],
       "collapsed_expanded_states": 16,
       "result_html_unchanged": true,
       "recorded_geometry_through_1024_unchanged": true,
@@ -1723,5 +1732,44 @@
     ],
     "protected": "API URL-payload, price arithmetic, lead transport/field mapping, analytics/goals, SEO/indexation, catalog identities, main product and production unchanged. PR1861 renderer/shared-runtime/test ownership and the blocked status/filter-rail proposal remained untouched.",
     "rollback": "Revert PR1923 independently for source; restore only the ownership-checked predecessor retained by deploy34513129735 for preview. This documentation update requires no build, browser or deployment."
+  },
+  "hotel_card_decision_brief_20260914": {
+    "baseline_release_sha": "0a03852898ef0683aa0f4f9827133a792858f2c8",
+    "scope": "Second pass on the existing collapsed hotel card; CSS composition only.",
+    "before": [
+      "The collapsed minimum is styled as a 15 px heading.",
+      "At wide desktop the minimum and disclosure occupy a full-width bottom strip below a 164 px photo.",
+      "The operator badge has obsolete framed declarations overridden by the current inline presentation."
+    ],
+    "intended_result": [
+      "A readable 22 px minimum and flexible disclosure group; narrow widths wrap safely.",
+      "At 1200 px and wider the price/disclosure sit beside hotel facts, with a useful 200 px photo and no extra footer strip.",
+      "Retain current inline operator identity through one declaration set."
+    ],
+    "truth_sources": {
+      "minimum": "Existing hotel price, falling back to the renderer-selected primary offer price; no arithmetic changes.",
+      "photo_and_facts": "Existing hotel picturelink, category, location, rating and seaDistance; preserve missing-photo behavior.",
+      "disclosure": "Existing count, identity, keyboard focus and expansion handler."
+    },
+    "acceptance": [
+      "Collapsed geometry and screenshots at 320/350/375/390/700/1199/1200/1440, including a long minimum.",
+      "Minimum and disclosure stay contained; complete price on one line, disclosure target at least 44 px.",
+      "Keep exact-offer density, known/unknown operators, single-offer and missing-photo behavior.",
+      "Raw/served parity, atomic generated asset/import hash, existing eight-asset budget and exact CI artifact review before release/preview."
+    ],
+    "owned_paths": [
+      "src/search3/styles/results-layout.css",
+      "v2/search3-results-filters-v1.css",
+      "docs/project/search3-production-import.json",
+      "tests/search3-current-results-browser.cjs",
+      "tests/search3-hotel-operator-card-browser.cjs",
+      "docs/project/search3-results-clarity-product.json"
+    ],
+    "out_of_scope": [
+      "Renderer or controller changes",
+      "Price calculations or API contracts",
+      "Supplier requests and leads",
+      "Production deployment"
+    ]
   }
 }
