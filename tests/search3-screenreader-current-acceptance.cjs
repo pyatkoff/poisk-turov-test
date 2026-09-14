@@ -54,8 +54,8 @@ const flights = [
     const root = page.locator('#selectedTour');
     await root.locator('.search3-flight-continue button').waitFor();
     assert.equal(await root.getByRole('heading', { name: 'SUNRISE Resort & Spa' }).count(), 1, 'selected hotel has one accessible heading');
-    const flightToggle = root.getByRole('button', { name: 'Показать другие рейсы (1)' });
-    assert.equal(await flightToggle.count(), 1, 'alternative flights have one named disclosure control');
+    assert.equal(await root.getByRole('button', { name: 'Показать другие рейсы (1)' }).count(), 1, 'alternative flights have one named disclosure control');
+    const flightToggle = root.locator('.search3-flight-toggle');
     assert.equal(await flightToggle.getAttribute('aria-expanded'), 'false', 'alternative flights start collapsed');
     assert.equal(await root.getByRole('radio').count(), 1, 'the selected native radio remains exposed while alternatives are collapsed');
     assert.equal(await root.locator('input[name="v2flight"]:checked').count(), 1, 'one flight choice is exposed as selected');
