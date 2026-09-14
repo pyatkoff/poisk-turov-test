@@ -3,7 +3,7 @@ declare(strict_types=1);
 /* MATCH identity evidence only. Existing client/transport, no database or bookings. */
 require_once __DIR__.'/../../app/integrations/andromeda-client.php';
 require_once __DIR__.'/../../app/integrations/andromeda-transport.php';
-const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v1';
+const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v2';
 const MOB_MAX_PRICE=120;
 function mob_json(array $x): string {return json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";}
 function mob_write(string $file,array $x): string {
@@ -21,6 +21,18 @@ function mob_fact(array $r,array $wanted,string $operator,int $country,string $r
     if((!is_int($native)&&!is_string($native))||!preg_match('/^[A-Za-z0-9_.-]{1,32}$/D',(string)$native)||(string)$native==='0'||!is_string($name)||trim($name)===''||strlen($name)>512||!is_string($original)||trim($original)===''||strlen($original)>512)return null;
     if(preg_match('/roulette|fortuna|фортуна|рулетк|excursion|экскурсион/ui',$name.' '.$original))return null;
     return ['operator_key'=>$operator,'native_hotel_id'=>(string)$native,'andromeda_hotel_id'=>(string)$r['hotelKey'],'country_id'=>$country,'hotel_name'=>$name,'original_name'=>$original,'town'=>is_string($r['town']??null)?mb_substr($r['town'],0,200):null,'operator_name'=>is_string($r['operator']??null)?mb_substr($r['operator'],0,200):null,'is_operator_hotel_key'=>false,'action'=>'price','request_sha256'=>$request,'response_sha256'=>$response];
+}
+function mob_inspect(array $rows,array $wanted,string $operator,int $country,string $request,string $response): array {
+    $facts=[];$holds=[];$observations=[];
+    foreach($rows as $i=>$r){
+        if(!is_array($r)){$holds[]=['row'=>$i,'reason'=>'invalid_row'];continue;}
+        $safe=[];foreach(['hotelKey','hotel','operatorKey','operator','isOperatorHotelKey'] as $k)if(isset($r[$k])&&is_scalar($r[$k]))$safe[$k]=is_string($r[$k])?mb_substr($r[$k],0,512):$r[$k];
+        $safe['original']=array_intersect_key(is_array($r['original']??null)?$r['original']:[],['hotelKey'=>true,'hotel'=>true]);$observations[]=$safe;
+        try{$f=mob_fact($r,$wanted,$operator,$country,$request,$response);}catch(RuntimeException $e){if($e->getMessage()!=='supplier_filter_mismatch')throw $e;$holds[]=['row'=>$i,'reason'=>'outside_requested_hotel_or_operator','identity'=>$safe];continue;}
+        if($f===null){$holds[]=['row'=>$i,'reason'=>'unusable_or_operator_scoped_identity','identity'=>$safe];continue;}
+        $f['source']='live_price';$facts[]=$f;
+    }
+    return ['facts'=>$facts,'holds'=>$holds,'observations'=>$observations];
 }
 function mob_plan(string $src): array {
     $current=mob_input($src.'/current/server/result.json','faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed');
@@ -40,7 +52,13 @@ function mob_plan(string $src): array {
         foreach(mob_chunks($ids) as $chunk){$p=['TOWNFROMINC'=>1,'STATEINC'=>$state,'CHECKIN_BEG'=>'20260922','CHECKIN_END'=>'20260922','NIGHTS_FROM'=>7,'NIGHTS_TILL'=>10,'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,'OPERATORS'=>(string)$op,'HOTELS'=>implode(',',$chunk),'GROUP_BY'=>32,'PACKETTYPE'=>0,'PAGE'=>1];AnyTourAndromedaClient::validatePriceParams($p);$queries[]=['country_id'=>$country,'operator_key'=>(string)$op,'hotel_ids'=>$chunk,'params'=>$p];}
     }
     if(count($targets)!==385||count($queries)>60)throw new RuntimeException('plan_scope');
-    return ['target_count'=>count($targets),'operator_count'=>4,'target_operator_count'=>count($targets)*4,'saved_covered_count'=>count($covered),'saved_facts'=>array_values($facts),'queries'=>$queries,'query_count'=>count($queries),'current_result_sha256'=>'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'];
+    $prior=mob_input($src.'/previous/result.json','3db1ae69cbfa14d29bfd4780212628293936f2a920b5afea9c5441b88cb793f3');
+    $consumed=hash('sha256',mob_json($queries[0]['params']));
+    if($prior['operation_id']!=='hotel-match-operator-original-batch-1971-20260915-v1'||$prior['state']!=='stopped_no_retry'||$prior['price_calls']!==1||count($prior['facts'])!==6||$consumed!=='2d0fe9829779cd7535da8807ebfb5d13bd35238a38b4d7a0a2730e9e08ab1b73')throw new RuntimeException('prior_receipt_contract');
+    foreach($prior['facts'] as $f){if($f['request_sha256']!==$consumed)throw new RuntimeException('prior_request');$key=$f['operator_key'].'|'.$f['native_hotel_id'].'|'.$f['andromeda_hotel_id'];$facts[$key]=$f;$covered[$f['operator_key'].'|'.$f['andromeda_hotel_id']]=true;}
+    $previous=['operation_id'=>$prior['operation_id'],'result_sha256'=>'3db1ae69cbfa14d29bfd4780212628293936f2a920b5afea9c5441b88cb793f3','params'=>$queries[0]['params'],'request_sha256'=>$consumed,'response_sha256'=>$prior['http_calls'][1]['response_sha256'],'replayed'=>false];
+    array_shift($queries);
+    return ['target_count'=>count($targets),'operator_count'=>4,'target_operator_count'=>count($targets)*4,'saved_covered_count'=>count($covered),'saved_facts'=>array_values($facts),'queries'=>$queries,'query_count'=>count($queries),'previous_request'=>$previous,'current_result_sha256'=>'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'];
 }
 function mob_run(string $src,string $out): void {
     $reservation=json_decode(file_get_contents($out.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);$sha=getenv('GITHUB_SHA')?:'';
@@ -60,11 +78,11 @@ function mob_run(string $src,string $out): void {
                 if($requests>=MOB_MAX_PRICE)throw new RuntimeException('price_budget');$params=$query['params'];$params['PAGE']=$page;$digest=hash('sha256',mob_json($params));if(isset($seen[$digest]))throw new RuntimeException('request_replay');$seen[$digest]=true;
                 mob_write($out.'/request-'.str_pad((string)$requests,3,'0',STR_PAD_LEFT).'.json',['operation_id'=>MOB_OP,'request_sha256'=>$digest,'params'=>$params,'state'=>'reserved_before_supplier_access']);$requests++;
                 $client=new AnyTourAndromedaClient($transport,true);$client->restorePrivateSession($session);$reply=$client->price($params);$valid=0;$held=0;$observed=[];
-                foreach($reply['PRICES'] as $r){$f=mob_fact($r,$wanted,$query['operator_key'],$query['country_id'],$digest,$responseDigest);if($f===null){$held++;continue;}$f['source']='live_price';$key=$f['operator_key'].'|'.$f['native_hotel_id'].'|'.$f['andromeda_hotel_id'];$facts[$key]=$f;$resolved[$f['andromeda_hotel_id']]=true;$valid++;$observed[]=$f;}
-                $row=['query_index'=>$qi,'page'=>$page,'operator_key'=>$query['operator_key'],'country_id'=>$query['country_id'],'hotel_ids'=>$query['hotel_ids'],'params'=>$params,'returned_rows'=>count($reply['PRICES']),'pages_count'=>$reply['PAGES_COUNT'],'valid_rows'=>$valid,'held_rows'=>$held,'request_sha256'=>$digest,'response_sha256'=>$responseDigest,'facts'=>$observed];
-                mob_write($out.'/response-'.str_pad((string)($requests-1),3,'0',STR_PAD_LEFT).'.json',$row);unset($row['facts']);$pages[]=$row;
+                $inspection=mob_inspect($reply['PRICES'],$wanted,$query['operator_key'],$query['country_id'],$digest,$responseDigest);$observed=$inspection['facts'];$held=count($inspection['holds']);$valid=count($observed);foreach($observed as $f){$key=$f['operator_key'].'|'.$f['native_hotel_id'].'|'.$f['andromeda_hotel_id'];$facts[$key]=$f;$resolved[$f['andromeda_hotel_id']]=true;}
+                $row=['query_index'=>$qi,'page'=>$page,'operator_key'=>$query['operator_key'],'country_id'=>$query['country_id'],'hotel_ids'=>$query['hotel_ids'],'params'=>$params,'returned_rows'=>count($reply['PRICES']),'pages_count'=>$reply['PAGES_COUNT'],'valid_rows'=>$valid,'held_rows'=>$held,'request_sha256'=>$digest,'response_sha256'=>$responseDigest,'facts'=>$observed,'holds'=>$inspection['holds'],'observations'=>$inspection['observations']];
+                mob_write($out.'/response-'.str_pad((string)($requests-1),3,'0',STR_PAD_LEFT).'.json',$row);unset($row['facts'],$row['observations']);$pages[]=$row;
                 echo json_encode(['query'=>$qi,'page'=>$page,'operator'=>$query['operator_key'],'rows'=>count($reply['PRICES']),'valid'=>$valid,'unique_total'=>count($facts)])."\n";
-                if(count($reply['PRICES'])>0&&$valid===0)throw new RuntimeException('no_usable_original_in_grouped_response');
+                // Non-target or missing-original rows stay quarantined, never auto-mapped.
                 if(count($resolved)===count($wanted)||$page>=$reply['PAGES_COUNT'])break;
             }
         }
