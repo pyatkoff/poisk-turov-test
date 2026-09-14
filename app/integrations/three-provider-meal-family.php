@@ -30,11 +30,16 @@ final class AnyTourThreeProviderMealFamily
             'без питания' => 'ro', 'без еды' => 'ro',
             'bb' => 'bb', 'bed breakfast' => 'bb', 'bed and breakfast' => 'bb',
             'breakfast' => 'bb', 'завтрак' => 'bb', 'только завтрак' => 'bb',
+            'bb только завтрак' => 'bb', 'bb завтрак' => 'bb', 'bb bed breakfast' => 'bb',
             'hb' => 'hb', 'half board' => 'hb', 'полупансион' => 'hb',
+            'hb полупансион' => 'hb', 'hb half board' => 'hb',
             'fb' => 'fb', 'full board' => 'fb', 'полный пансион' => 'fb',
+            'fb полный пансион' => 'fb', 'fb full board' => 'fb',
             'ai' => 'ai', 'all inclusive' => 'ai', 'все включено' => 'ai', 'всё включено' => 'ai',
+            'ai все включено' => 'ai', 'ai всё включено' => 'ai', 'ai all inclusive' => 'ai',
             'uai' => 'uai', 'ultra all inclusive' => 'uai', 'ultra ai' => 'uai',
             'ультра все включено' => 'uai', 'ультра всё включено' => 'uai',
+            'uai ультра все включено' => 'uai', 'uai ультра всё включено' => 'uai', 'uai ultra all inclusive' => 'uai',
         ];
         if (isset($exact[$label])) {
             $family = $exact[$label];
