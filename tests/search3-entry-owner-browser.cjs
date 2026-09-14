@@ -92,20 +92,20 @@ async function checkUrlRoundTrip(page, width, blocked) {
   assert.deepEqual(submitted.state, { retained: 'entry-fixture' }, 'existing history state is retained');
   const saved = new URL(submitted.url);
   for (const [name, value] of Object.entries(submitted.values)) {
-    if (name !== 'operator') assert.equal(saved.searchParams.get(name), value, 'URL retains exact ' + name);
+    assert.equal(saved.searchParams.get(name), value, 'URL retains exact ' + name);
   }
   assert.deepEqual(saved.searchParams.getAll('child_age[]'), ['0', '17'], 'both boundary child ages retain their order');
   assert.deepEqual(saved.searchParams.getAll('hotel_service[]'), ['9', '10'], 'all selected services are retained');
   assert.equal(saved.searchParams.get('onlyDirect'), '1');
   assert.equal(saved.searchParams.get('child_count'), '2');
-  for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'operator', 'phone', 'email', 'consent', 'random_secret']) assert.equal(saved.searchParams.has(name), false, 'stale alias, supplier restriction or private field is excluded: ' + name);
+  for (const name of ['date_from', 'days_from', 'child_age', 'only_charter', 'onlyCharter', 'phone', 'email', 'consent', 'random_secret']) assert.equal(saved.searchParams.has(name), false, 'stale alias or private field is excluded: ' + name);
   assert.equal(saved.searchParams.get('utm_source'), 'entry-fixture'); assert.equal(saved.hash, '#parameters');
   const firstLocalHistory = await checkLocalHistory(page);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle && document.querySelectorAll('#childAges select').length === 2 && document.querySelector('#childAges select').value === '0');
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
-  const submittedReload = { ...submitted.expected, operatorIds: [] };
-  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'reload restores the exact shareable conditions without turning operator into an initial restriction');
+  const submittedReload = submitted.expected;
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'reload restores the exact shareable conditions including the explicitly chosen advanced operator');
   await page.screenshot({ path: path.join(output, `url-restored-${width}.png`), fullPage: true });
   const cleared = await page.evaluate(async () => {
     const form = document.getElementById('tourSearch'), lifecycle = window.V2SearchLifecycle;
@@ -151,7 +151,7 @@ async function checkUrlRoundTrip(page, width, blocked) {
   ]);
   await page.waitForFunction(expected => location.href === expected && document.getElementById('tourSearch')?.dataset.catalogSource && window.V2SearchLifecycle, saved.href);
   await page.waitForFunction(() => window.V2SearchLifecycle.generation > 0 && !window.V2SearchLifecycle.pending);
-  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'Back restores the previous shareable search without the operator restriction');
+  assert.deepEqual(await page.evaluate(() => window.V2SearchLifecycle.params()), submittedReload, 'Back restores the previous shareable search including its explicit advanced operator');
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
     page.evaluate(() => history.forward()),
