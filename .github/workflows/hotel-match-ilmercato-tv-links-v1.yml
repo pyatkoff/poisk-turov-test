@@ -1,4 +1,4 @@
-name: MATCH IL Mercato Tourvisor URL capture v1
+name: MATCH IL Mercato Tourvisor URL capture v2
 on:
   push:
     branches: [match/ilmercato-links-1971-20260915]
@@ -6,10 +6,11 @@ on:
 permissions: {contents: read, actions: read}
 concurrency: {group: match-ilmercato-url-evidence-1971, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-ilmercato-tv-links-1971-20260915-v1
+  OPERATION_ID: hotel-match-ilmercato-tv-links-1971-20260915-v2
+  PRIOR_SHA: caedc7d8efcef4fcf2691ff0f16a76278e41b1824382bc3d38a3f26b029c3b81
 jobs:
   targeted-read:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
@@ -18,35 +19,41 @@ jobs:
       - name: Offline target and privacy checks
         run: |
           set -euo pipefail
-          test "$(git hash-object scripts/diagnostics/hotel_match_ilmercato_tv_links.php)" = 401aad0c2e7b7a61bc499b53a7fed30ca64115bb
+          test "$(git hash-object scripts/diagnostics/hotel_match_ilmercato_tv_links.php)" = 5e8e8d8e5905e42d3b50ab4eb0a0c9fb098e5b93
           php -l scripts/diagnostics/hotel_match_ilmercato_tv_links.php
           php scripts/diagnostics/hotel_match_ilmercato_tv_links.php --self-test
-      - name: Verify completed saved-data result before any provider access
+      - name: Verify the two completed results, never repeat their calls
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
           gh run download 34907881459 --repo "$GITHUB_REPOSITORY" --name match-ilmercato-saved-links-v1-result -D "$RUNNER_TEMP/saved"
+          gh run download 34908397317 --repo "$GITHUB_REPOSITORY" --name match-ilmercato-tv-links-v1-result -D "$RUNNER_TEMP/prior"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
-          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'saved';raw=(p/'result.json').read_bytes()
-          assert hashlib.sha256(raw).hexdigest()=='66b608ac498de96235c9a507cf7eda4b26bfeb4559c4e136f94e819c090a2548'
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          raw=(root/'saved/result.json').read_bytes();assert hashlib.sha256(raw).hexdigest()=='66b608ac498de96235c9a507cf7eda4b26bfeb4559c4e136f94e819c090a2548'
           r=json.loads(raw);assert r['state']=='completed_read_only' and r['scan_complete']
           assert any(x.get('operator_refs_json')==['342'] and x.get('hotel_url')=='https://intourist.ru/info/egypt/sharm-elj-shejh/hadaba/hotel/il-mercato-hotel' for x in r['database_observations'])
+          raw=(root/'prior/result.json').read_bytes();r=json.loads(raw);receipt=json.loads((root/'prior/receipt.json').read_text())
+          assert hashlib.sha256(raw).hexdigest()==os.environ['PRIOR_SHA']==receipt['result_sha256']
+          assert r['state']=='stopped_read_only_no_retry' and r['reason']=='http_404_stop_no_retry' and r['new_searches']==0
+          assert r['tourvisor_operator']['id']==43 and r['supplier_calls']==2
+          assert [(x['path'],x['status']) for x in r['calls']]==[('/operators',200),('/tours/search/13616631542',404)]
           PY
-      - name: Reserve one exact read before server access
+      - name: Reserve the one never-attempted exact search before server access
         run: |
           python3 - <<'PY'
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
-          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_targeted_tv_capture','target':{'tourvisor':2904,'andromeda':238653,'operator':342,'native':12114},'max_tv_calls':10,'max_new_searches':1,'minimum_interval_seconds':1.2,'andromeda_calls':0,'mapping_writes':0,'no_replay':True}
-          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_targeted_tv_capture','prior_result_sha256':os.environ['PRIOR_SHA'],'target':{'tourvisor':2904,'andromeda':238653,'tv_operator':43,'andromeda_operator':342,'native':12114},'max_tv_calls':8,'max_new_searches':1,'minimum_interval_seconds':1.2,'database_reads':0,'andromeda_calls':0,'mapping_writes':0,'no_replay':True,'search_scope':{'departureId':1,'countryId':1,'hotelIds':'2904','operatorIds':'43','dateFrom':'2026-09-23','dateTo':'2026-09-23','nightsFrom':8,'nightsTo':8,'adults':2}}
+          with (p/'reservation.json').open('x') as f:f.write(json.dumps(d,sort_keys=True)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-ilmercato-tv-links-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-ilmercato-tv-links-1971-20260915-v1/reservation.json
+          name: match-ilmercato-tv-links-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-ilmercato-tv-links-1971-20260915-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
-      - name: Read saved Tourvisor result or one exact hotel search, never book or write mappings
+      - name: One targeted read, no database or site writes
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -59,26 +66,27 @@ jobs:
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           trap 'rm -f "$key" "$known"' EXIT
           set +e
-          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H" "MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php" < scripts/diagnostics/hotel_match_ilmercato_tv_links.php > "$out/result.json" 2> "$out/remote-stderr.txt"
+          ssh -T -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H" "MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_PRIOR_RESULT_SHA='$PRIOR_SHA' php" < scripts/diagnostics/hotel_match_ilmercato_tv_links.php > "$out/result.json" 2> "$out/remote-stderr.txt"
           rc=$?
           set -e
           export REMOTE_RC="$rc"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];raw=(p/'result.json').read_bytes()
-          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'result_sha256':hashlib.sha256(raw).hexdigest(),'remote_exit':int(os.environ['REMOTE_RC']),'no_replay':True,'readback_verified':False}
+          receipt={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'result_sha256':hashlib.sha256(raw).hexdigest(),'remote_exit':int(os.environ['REMOTE_RC']),'no_replay':True,'readback_verified':False,'capture_complete':False}
           try:
-              r=json.loads(raw);ok=(receipt['remote_exit']==0 and r['operation_id']==receipt['operation_id'] and r['source_sha']==receipt['source_sha'] and r['state']=='completed_read_only' and r['supplier_calls']==len(r['calls'])<=10 and r['new_searches']<=1 and r['andromeda_calls']==r['database_writes']==r['mapping_writes']==r['booking_calls']==r['site_changes']==0)
-              receipt.update(state=r.get('state'),readback_verified=ok)
+              r=json.loads(raw)
+              verified=(r['operation_id']==receipt['operation_id'] and r['source_sha']==receipt['source_sha'] and r['supplier_calls']==len(r['calls'])<=8 and r['new_searches']<=1 and r['andromeda_calls']==r['database_reads']==r['database_writes']==r['mapping_writes']==r['booking_calls']==r['site_changes']==0)
+              ok=verified and receipt['remote_exit']==0 and r['state']=='completed_read_only'
+              receipt.update(state=r.get('state'),readback_verified=verified,capture_complete=ok)
           except Exception:receipt['state']='unknown_read_result';ok=False
-          (p/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
-          print(json.dumps(receipt))
+          (p/'receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n');print(json.dumps(receipt))
           if not ok:raise SystemExit(2)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-ilmercato-tv-links-v1-result
-          path: ${{ runner.temp }}/hotel-match-ilmercato-tv-links-1971-20260915-v1/
+          name: match-ilmercato-tv-links-v2-result
+          path: ${{ runner.temp }}/hotel-match-ilmercato-tv-links-1971-20260915-v2/
           if-no-files-found: warn
           retention-days: 90
