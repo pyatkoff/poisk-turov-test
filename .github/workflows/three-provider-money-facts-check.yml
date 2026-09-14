@@ -5,9 +5,12 @@ on:
       - 'app/integrations/three-provider-money-facts.php'
       - 'app/integrations/anex-additional-prices-client.php'
       - 'scripts/diagnostics/anex_egypt_248_apd_retained.php'
+      - 'v2/api-anex-search3-preview.php'
       - 'tests/three-provider-money-facts-test.php'
       - 'tests/anex-additional-prices-client-test.php'
       - 'tests/anex-egypt-248-apd-retained-test.php'
+      - 'tests/anex-retained-additional-prices-test.php'
+      - 'tests/anex-additional-prices-batch-test.php'
       - '.github/workflows/three-provider-money-facts-check.yml'
 permissions:
   contents: read
@@ -25,12 +28,17 @@ jobs:
           php -l app/integrations/three-provider-money-facts.php
           php -l app/integrations/anex-additional-prices-client.php
           php -l scripts/diagnostics/anex_egypt_248_apd_retained.php
+          php -l v2/api-anex-search3-preview.php
           php -l tests/three-provider-money-facts-test.php
           php -l tests/anex-additional-prices-client-test.php
           php -l tests/anex-egypt-248-apd-retained-test.php
+          php -l tests/anex-retained-additional-prices-test.php
+          php -l tests/anex-additional-prices-batch-test.php
           php -d allow_url_fopen=0 tests/three-provider-money-facts-test.php
           php -d allow_url_fopen=0 tests/anex-additional-prices-client-test.php
           php -d allow_url_fopen=0 tests/anex-egypt-248-apd-retained-test.php
+          php -d allow_url_fopen=0 tests/anex-retained-additional-prices-test.php
+          php -d allow_url_fopen=0 tests/anex-additional-prices-batch-test.php
           python3 - <<'PY'
           from pathlib import Path
           src=Path('app/integrations/three-provider-money-facts.php').read_text()
@@ -60,5 +68,10 @@ jobs:
           assert 'function additionalPricesDaily' in b2b
           for forbidden in ('final_price_verified', 'search_price_fuel_relation', 'arithmetic_applied', 'bron(', 'bron_ticket', 'PDO', 'mysqli_'):
               assert forbidden not in b2b
+
+          runtime=Path('v2/api-anex-search3-preview.php').read_text()
+          assert runtime.count("'b2b_tour_binding_unverified'") >= 2
+          assert "'status' => 'additional_prices_unavailable'" in runtime
+          assert "'status' => 'additional_prices_unknown'" in runtime
           print('Three-provider money static boundary: PASS')
           PY
