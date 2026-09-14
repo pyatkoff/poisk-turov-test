@@ -1,0 +1,182 @@
+name: MATCH Barcelo targeted price original v1
+'on':
+  push:
+    branches: [match/barcelo-price-original-1971-20260914]
+    paths: [.github/workflows/hotel-match-barcelo-price-original-v1.yml]
+permissions: {contents: read}
+concurrency: {group: match-barcelo-price-original-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-barcelo-price-original-1971-20260914-v1
+jobs:
+  targeted-price:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Prepare isolated reader and run offline cases
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/match-price-original.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const MP_OP = 'hotel-match-barcelo-price-original-1971-20260914-v1';
+          function mp_params(): array {
+              return ['TOWNFROMINC'=>1,'STATEINC'=>3,'CHECKIN_BEG'=>'20260922','CHECKIN_END'=>'20260922',
+                  'NIGHTS_FROM'=>8,'NIGHTS_TILL'=>8,'ADULT'=>2,'CHILD'=>0,'CURRENCYINC'=>643,
+                  'PACKETTYPE'=>0,'PAGE'=>1,'OPERATORS'=>'5','HOTELS'=>'177152'];
+          }
+          function mp_json(array $value): string {
+              return json_encode($value,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";
+          }
+          function mp_write(string $path,string $raw): string {
+              $f=fopen($path,'x+b');if($f===false)throw new RuntimeException('IMMUTABLE_OUTPUT_EXISTS');
+              try {if(fwrite($f,$raw)!==strlen($raw)||!fflush($f))throw new RuntimeException('OUTPUT_WRITE_FAILED');
+                  if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('OUTPUT_SYNC_FAILED');
+                  rewind($f);if(stream_get_contents($f)!==$raw)throw new RuntimeException('OUTPUT_READBACK_FAILED');
+              } finally {fclose($f);} return hash('sha256',$raw);
+          }
+          function mp_inspect(array $reply): array {
+              if(!isset($reply['PRICES'])||!is_array($reply['PRICES']))throw new RuntimeException('PRICE_ROWS_MISSING');
+              $result=['price_rows'=>count($reply['PRICES']),'matched_rows'=>0,'held_rows'=>0,'contradictions'=>0,
+                  'page'=>$reply['PAGE']??null,'pages_count'=>$reply['PAGES_COUNT']??null,'rows'=>[]];
+              foreach($reply['PRICES'] as $i=>$row){
+                  if(!is_array($row))throw new RuntimeException('MALFORMED_PRICE_ROW');
+                  $original=is_array($row['original']??null)?$row['original']:[];
+                  $x=['row_index'=>$i,'hotelKey'=>$row['hotelKey']??null,'operatorKey'=>$row['operatorKey']??null,
+                      'isOperatorHotelKey'=>$row['isOperatorHotelKey']??null,'original'=>$original,
+                      'hotel'=>$row['hotel']??$row['hotelName']??$row['hotelLName']??null];
+                  if((string)$x['hotelKey']!=='177152'||(string)$x['operatorKey']!=='5'){
+                      $x['outcome']='target_or_operator_mismatch';++$result['contradictions'];
+                  }elseif(!array_key_exists('isOperatorHotelKey',$row)||(string)$row['isOperatorHotelKey']!=='0'){
+                      $x['outcome']='operator_scoped_or_untyped_hold';++$result['held_rows'];
+                  }elseif(!array_key_exists('hotelKey',$original)){
+                      $x['outcome']='original_hotel_key_missing';++$result['held_rows'];
+                  }elseif((string)$original['hotelKey']!=='4158'){
+                      $x['outcome']='observed_native_key_contradicts_expected';++$result['contradictions'];
+                  }else{$x['outcome']='direct_original_identity_confirmed';++$result['matched_rows'];}
+                  $result['rows'][]=$x;
+              }
+              $result['identity_confirmed']=$result['matched_rows']>0&&$result['contradictions']===0;
+              return $result;
+          }
+          function mp_test(): void {
+              $row=['hotelKey'=>177152,'operatorKey'=>5,'isOperatorHotelKey'=>0,'original'=>['hotelKey'=>4158,'townKey'=>9]];
+              $run=static fn($rows)=>mp_inspect(['PRICES'=>$rows,'PAGE'=>1,'PAGES_COUNT'=>1]);
+              $check=static function($x){if(!$x)throw new RuntimeException('OFFLINE_TEST_FAILED');};
+              $a=$run([$row]);$check($a['identity_confirmed']&&$a['rows'][0]['original']===$row['original']);
+              $bad=$row;$bad['original']['hotelKey']=999;$check($run([$bad])['contradictions']===1);
+              $bad=$row;$bad['hotelKey']=4158;$check($run([$bad])['contradictions']===1);
+              $bad=$row;$bad['operatorKey']=2;$check($run([$bad])['contradictions']===1);
+              $bad=$row;$bad['isOperatorHotelKey']=1;$check($run([$bad])['held_rows']===1);
+              $bad=$row;unset($bad['original']);$check($run([$bad])['held_rows']===1);
+              $check(!$run([])['identity_confirmed']);
+              $a=$run(array_fill(0,1000,$row));$check($a['matched_rows']===1000&&count($a['rows'])===1000);
+              echo "8 OFFLINE CASES PASS\n";
+          }
+          if(($argv[1]??'')==='--self-test'){mp_test();exit(0);}
+          $dir=getenv('MATCH_OUT')?:'';
+          $res=json_decode(file_get_contents($dir.'/reservation.json'),true,32,JSON_THROW_ON_ERROR);
+          if(($res['operation_id']??'')!==MP_OP||($res['state']??'')!=='reserved_before_supplier_access'
+              ||($res['params']??null)!=mp_params()||($res['source_sha']??'')!==getenv('GITHUB_SHA')
+              ||getenv('GITHUB_RUN_ATTEMPT')!=='1')throw new RuntimeException('RESERVATION_INVALID');
+          $result=['operation_id'=>MP_OP,'source_sha'=>getenv('GITHUB_SHA'),'run_id'=>getenv('GITHUB_RUN_ID'),
+              'action'=>'price','params'=>mp_params(),'state'=>'started','supplier_calls'=>0,
+              'database_reads'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'bookings'=>0,'leads'=>0,'no_replay'=>true];
+          $events=[];$priceBody=null;$phase='credentials';$exit=2;
+          try {
+              $username=getenv('ANDROMEDA_USERNAME')?:'';$password=getenv('ANDROMEDA_PASSWORD')?:'';
+              if($username===''||$password==='')throw new RuntimeException('ANDROMEDA_CREDENTIALS_REQUIRED');
+              require_once getcwd().'/app/integrations/andromeda-client.php';
+              require_once getcwd().'/app/integrations/andromeda-transport.php';
+              AnyTourAndromedaClient::validatePriceParams(mp_params());
+              $transport=new AnyTourAndromedaTransport(true);
+              $bounded=static function(string $url,array $options=[])use($transport,&$events,&$priceBody){
+                  parse_str((string)parse_url($url,PHP_URL_QUERY),$q);$action=$q['action']??'';
+                  $expected=count($events)===0?'login':'price';
+                  if(count($events)>=2||$action!==$expected)throw new RuntimeException('REQUEST_BOUNDARY');
+                  if($action==='price'){foreach(mp_params() as $k=>$v)if((string)($q[$k]??'')!==(string)$v)throw new RuntimeException('PRICE_TARGET_BOUNDARY');}
+                  $index=count($events);$events[]=['action'=>$action,'status'=>null];
+                  $response=$transport($url,$options);$events[$index]['status']=$response['status']??null;
+                  if($action==='price'&&is_string($response['body']??null)){
+                      $priceBody=$response['body'];$events[$index]['body_sha256']=hash('sha256',$priceBody);
+                  } return $response;
+              };
+              $client=new AnyTourAndromedaClient($bounded,true);
+              $phase='login';$client->login($username,$password);
+              $phase='price';$reply=$client->price(mp_params());
+              $phase='secret_echo_guard';$sid=$client->privateSession()['sid']??'';
+              $encoded=mp_json($reply);
+              foreach([$username,$password,$sid] as $secret){if($secret!==''&&(str_contains($encoded,$secret)||str_contains((string)$priceBody,$secret)))throw new RuntimeException('SECRET_ECHO_REFUSED');}
+              if(!is_string($priceBody)||$priceBody==='')throw new RuntimeException('RAW_PRICE_NOT_CAPTURED');
+              $result['raw_price_sha256']=mp_write($dir.'/raw-price.json',$priceBody);
+              $phase='original_block';$result['inspection']=mp_inspect($reply);
+              $result['state']=$result['inspection']['identity_confirmed']?'verified_original_bridge':
+                  ($result['inspection']['price_rows']===0?'no_prices_for_exact_parameters':'original_identity_not_confirmed');
+              $exit=$result['inspection']['identity_confirmed']?0:2;
+          }catch(Throwable $e){
+              $result['state']='blocked';$result['phase']=$phase;
+              $safe=$e->getMessage();$result['error_code']=preg_match('/^[A-Z][A-Z0-9_]{1,100}$/D',$safe)?$safe:'SAFE_UNCLASSIFIED_ERROR';
+          }
+          $result['supplier_calls']=count($events);$result['requests']=$events;
+          $digest=mp_write($dir.'/result.json',mp_json($result));
+          $receipt=['operation_id'=>MP_OP,'source_sha'=>getenv('GITHUB_SHA'),'run_id'=>getenv('GITHUB_RUN_ID'),
+              'state'=>$result['state'],'result_sha256'=>$digest,'raw_price_sha256'=>$result['raw_price_sha256']??null,
+              'supplier_calls'=>count($events),'mapping_writes'=>0,'readback_verified'=>hash_file('sha256',$dir.'/result.json')===$digest,'no_replay'=>true];
+          mp_write($dir.'/receipt.json',mp_json($receipt));
+          echo mp_json(['state'=>$result['state'],'supplier_calls'=>count($events),'price_rows'=>$result['inspection']['price_rows']??null,
+              'matched_rows'=>$result['inspection']['matched_rows']??null,'contradictions'=>$result['inspection']['contradictions']??null,
+              'phase'=>$result['phase']??null,'error_code'=>$result['error_code']??null,'result_sha256'=>$digest]);
+          exit($exit);
+          PHP
+          php -l "$RUNNER_TEMP/match-price-original.php"
+          php "$RUNNER_TEMP/match-price-original.php" --self-test
+      - name: Reserve immutable operation before supplier access
+        run: |
+          python3 - <<'PY'
+          import os,json,pathlib
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];out.mkdir(mode=0o700)
+          params={'TOWNFROMINC':1,'STATEINC':3,'CHECKIN_BEG':'20260922','CHECKIN_END':'20260922','NIGHTS_FROM':8,'NIGHTS_TILL':8,'ADULT':2,'CHILD':0,'CURRENCYINC':643,'PACKETTYPE':0,'PAGE':1,'OPERATORS':'5','HOTELS':'177152'}
+          value={'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_supplier_access','source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'action':'price','params':params,'max_supplier_calls':2,'input_acceptance_run':34896507778,'input_result_sha256':'e45f7c8c6dc14bcb9d9c7e4a3064147612727777b025e0b3b26863e0a0f30802','database_reads':0,'mapping_writes':0,'no_replay':True}
+          with (out/'reservation.json').open('x') as f:
+              json.dump(value,f,sort_keys=True,indent=2);f.write('\n');f.flush();os.fsync(f.fileno())
+          assert json.loads((out/'reservation.json').read_text())==value
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-barcelo-price-original-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-barcelo-price-original-1971-20260914-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Exactly login and targeted price through unchanged client
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+          MATCH_OUT: ${{ runner.temp }}/hotel-match-barcelo-price-original-1971-20260914-v1
+        run: php "$RUNNER_TEMP/match-price-original.php"
+      - name: Independent result and receipt readback
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,json,hashlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          if not (p/'receipt.json').exists(): raise SystemExit('NO_LIVE_RECEIPT; DO_NOT_REPLAY')
+          receipt=json.loads((p/'receipt.json').read_text());result=json.loads((p/'result.json').read_text())
+          assert receipt['operation_id']==result['operation_id']==os.environ['OPERATION_ID']
+          assert receipt['source_sha']==result['source_sha']==os.environ['GITHUB_SHA']
+          assert receipt['result_sha256']==hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert receipt['readback_verified'] is True and result['supplier_calls']<=2 and result['mapping_writes']==0
+          if receipt.get('raw_price_sha256'):
+              assert receipt['raw_price_sha256']==hashlib.sha256((p/'raw-price.json').read_bytes()).hexdigest()
+          gate={'operation_id':os.environ['OPERATION_ID'],'verified':True,'state':result['state'],'result_sha256':receipt['result_sha256'],'no_replay':True}
+          with (p/'workflow-readback.json').open('x') as f: json.dump(gate,f,sort_keys=True)
+          print(json.dumps(gate,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-barcelo-price-original-v1-result
+          path: ${{ runner.temp }}/hotel-match-barcelo-price-original-1971-20260914-v1/
+          if-no-files-found: warn
+          retention-days: 90
