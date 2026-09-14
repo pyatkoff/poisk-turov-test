@@ -73,7 +73,9 @@ const compact=api.tourRow({...multi.tours[0],roomType:'STANDARD',placement:'DBL'
 assert.match(compact,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/);
 assert.match(compact,/<small>Источник<\/small><b>Tourvisor<\/b>/,'expanded exact offer keeps provider source distinct from tour operator');
 assert.doesNotMatch(compact,/<small>(?:Туристы|Размещение)<\/small>/,'expanded rows do not repeat search party or a second placement field');
-assert.match(compact,/<small>Оператор<\/small>/);
+assert.doesNotMatch(compact,/<small>Оператор<\/small>/,'known operator does not repeat a caption beside its logo');
+assert.match(compact,/title="Туроператор: FUN&amp;SUN"/,'operator remains named in its tooltip');
+assert.match(compact,/alt="Туроператор: FUN&amp;SUN"/,'operator remains named for assistive technology');
 assert.match(compact,/<small>Перелёт<\/small><b>Чартер<\/b>/);
 assert.match(compact,/16\.09\.2026/);
 assert.match(compact,/7 ноч\./);
