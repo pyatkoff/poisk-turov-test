@@ -242,7 +242,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .provider-detail-toggle{min-height:44px;padding:10px 12px;border-color:#c4cfeb;background:#fff;color:#2743cb;font-weight:600}
 & .tour-selection-note{font-size:13px;line-height:1.4;color:#526078}
 & .tour-action:has(.provider-detail-toggle){display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
-& .tour-action:has(.provider-detail-toggle)>small{flex:0 0 100%}
+& .tour-action:has(.provider-detail-toggle)>small{display:none}
 & .tour-action:has(.provider-detail-toggle)>.hotel-price{flex:1 1 auto;white-space:nowrap}
 & .tour-action>.provider-detail-toggle{flex:1 1 100px;font-size:14px;line-height:1.35}
 & .tour-action:has(.provider-detail-toggle)>.tour-selection-note{flex:0 0 100%;order:1}

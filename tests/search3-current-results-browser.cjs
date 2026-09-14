@@ -493,6 +493,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
       return { height:origin.height, width:origin.width, price:rect(price), button:rect(button), note:rect(note), noteFont:parseFloat(getComputedStyle(note).fontSize), clipped:[price,button,note].some(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1) };
     }));
     for (const offer of offerComposition) {
+      if (width <= 375 || width >= 1200) assert.ok(offer.height <= (width <= 320 ? 240 : width <= 375 ? 190 : 135), 'provider rows stay compact with the full price warning: '+JSON.stringify({width,offer}));
       assert.ok(offer.button.height >= 44 && offer.noteFont >= 13 && !offer.clipped, 'provider action and full price warning remain readable');
       for (const box of [offer.price, offer.button, offer.note]) assert.ok(box.x >= 0 && box.x + box.width <= offer.width + 1, 'provider price, action and warning stay inside the offer');
       assert.ok(offer.price.x + offer.price.width <= offer.button.x + 1 || offer.price.y + offer.price.height <= offer.button.y + 1, 'price and detail action never overlap');
