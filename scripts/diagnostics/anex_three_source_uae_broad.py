@@ -12,6 +12,39 @@ EXPERIMENT='anex_three_source_uae_broad_20260914_v1'
 CASES=broad3.CASES
 SPEC={'experiment_id':EXPERIMENT,'country':'UAE','date':'2026-11-20','nights':8,
       'adults':2,'child_ages':[],'meal_family':'ai','currency':'RUB'}
+COUNTRY_ID=9
+COUNTRY_PREFLIGHT_PHP=r'''
+error_reporting(0);ob_start();
+$out=['status'=>'unconfirmed','reason'=>'THREE_PRICE_COUNTRY_PREFLIGHT_UNCONFIRMED','supplier_effect'=>'none',
+      'automatic_retry'=>false,'supplier_calls'=>0,'booking_calls'=>0,'mapping_writes'=>0];
+try{
+  if(PHP_SAPI!=='cli')throw new RuntimeException('runtime');
+  $input=json_decode(stream_get_contents(STDIN),true,8,JSON_THROW_ON_ERROR);
+  if(!is_array($input)||array_keys($input)!==['country_id']||($input['country_id']??null)!==9)throw new RuntimeException('input');
+  $home=(string)getenv('HOME');$root=realpath($home.'/www/anytoour.ru');
+  $preview=$root?realpath($root.'/_preview/search3-anex-candidate'):false;
+  if(!$root||!$preview||$preview!==$root.'/_preview/search3-anex-candidate')throw new RuntimeException('runtime');
+  $configPath=$preview.'/.andromeda-private.php';
+  if(!is_file($configPath)||is_link($configPath))throw new RuntimeException('config');
+  $config=require $configPath;
+  if(!is_array($config)||($config['enabled']??null)!==true)throw new RuntimeException('config');
+  $_SERVER['SCRIPT_FILENAME']='';require_once $preview.'/api-andromeda-search3-preview.php';
+  try{$catalog=anytour_andromeda_search3_catalog($config,['params'=>['countryId'=>9]]);}
+  catch(Throwable $e){
+    if($e->getMessage()==='country_not_loaded'){
+      $out=['status'=>'blocked','reason'=>'THREE_PRICE_COUNTRY_NOT_LOADED','supplier_effect'=>'none',
+            'automatic_retry'=>false,'supplier_calls'=>0,'booking_calls'=>0,'mapping_writes'=>0];
+      throw new RuntimeException('__reported__');
+    }
+    throw $e;
+  }
+  if(!is_array($catalog)||(int)($catalog['local_country_id']??0)!==9)throw new RuntimeException('catalog');
+  $out=['status'=>'ready','reason'=>null,'supplier_effect'=>'none','automatic_retry'=>false,
+        'supplier_calls'=>0,'booking_calls'=>0,'mapping_writes'=>0];
+}catch(Throwable $e){if($e->getMessage()!=='__reported__'){$out=['status'=>'unconfirmed','reason'=>'THREE_PRICE_COUNTRY_PREFLIGHT_UNCONFIRMED',
+  'supplier_effect'=>'none','automatic_retry'=>false,'supplier_calls'=>0,'booking_calls'=>0,'mapping_writes'=>0];}}
+while(ob_get_level())ob_end_clean();echo json_encode($out,JSON_UNESCAPED_SLASHES);
+'''
 
 
 def _replace(text,old,new,minimum=1):
@@ -50,6 +83,25 @@ def source():
     if any(value not in text for value in required):
         raise ValueError('uae_broad_source_incomplete')
     return text
+
+
+def validate_preflight(value):
+    common=(isinstance(value,dict) and value.get('supplier_effect')=='none' and value.get('automatic_retry') is False
+            and value.get('supplier_calls')==0 and value.get('booking_calls')==0 and value.get('mapping_writes')==0)
+    if not common:
+        raise ValueError('uae_country_preflight_invalid')
+    if value.get('status')=='ready' and value.get('reason') is None:
+        return value
+    if value.get('status')=='blocked' and value.get('reason')=='THREE_PRICE_COUNTRY_NOT_LOADED':
+        return value
+    if value.get('status')=='unconfirmed' and value.get('reason')=='THREE_PRICE_COUNTRY_PREFLIGHT_UNCONFIRMED':
+        return value
+    raise ValueError('uae_country_preflight_invalid')
+
+
+def country_preflight(execute=None):
+    execute=execute or broad3.base.ssh_php_no_mux
+    return validate_preflight(execute(COUNTRY_PREFLIGHT_PHP,{'country_id':COUNTRY_ID}))
 
 
 def validate_case(value,case_id):
@@ -101,7 +153,7 @@ def save(path,value):
         raise ValueError('uae_broad_report_readback')
 
 
-def build_report(results,status,transport=None):
+def build_report(results,status,transport=None,preflight=None):
     direct=results.get('anex',{}).get('details',{}) if results.get('anex',{}).get('status')=='completed' else {}
     andromeda=results.get('andromeda',{}).get('details',{}) if results.get('andromeda',{}).get('status')=='completed' else {}
     report={'schema_version':1,'experiment_id':EXPERIMENT,'status':status,'spec':SPEC,
@@ -118,11 +170,23 @@ def build_report(results,status,transport=None):
             'supplier_replay_requested':False,'unknown_replay_allowed':False}
     if transport is not None:
         report['transport_failure']=transport
+    if preflight is not None:
+        report['country_catalog_preflight']=preflight
     return report
 
 
 def run(output):
     output=Path(output);php=source();results={}
+    try:
+        preflight=country_preflight()
+    except Exception as exc:
+        if type(exc).__name__!='SSHBatchError':
+            raise
+        failure=broad3.base.transport_failure(exc);save(output/'failure.json',failure)
+        report=build_report(results,failure['status'],failure);save(output/'report.json',report);return report
+    save(output/'country-preflight.json',preflight)
+    if preflight['status']!='ready':
+        report=build_report(results,preflight['status'],preflight=preflight);save(output/'report.json',report);return report
     for case in CASES:
         try:
             value=validate_case(broad3.base.ssh_php_no_mux(php,dict(SPEC,case_id=case)),case)
@@ -130,13 +194,13 @@ def run(output):
             if type(exc).__name__!='SSHBatchError':
                 raise
             failure=broad3.base.transport_failure(exc);save(output/'failure.json',failure)
-            report=build_report(results,failure['status'],failure);save(output/'report.json',report);return report
+            report=build_report(results,failure['status'],failure,preflight);save(output/'report.json',report);return report
         results[case]=value;save(output/f'{case}.json',value)
         if value['status']!='completed':
             break
     all_done=len(results)==len(CASES) and all(v['status']=='completed' for v in results.values())
     status='completed' if all_done else next(v['status'] for v in results.values() if v['status']!='completed')
-    report=build_report(results,status);save(output/'report.json',report);return report
+    report=build_report(results,status,preflight=preflight);save(output/'report.json',report);return report
 
 
 def main():
