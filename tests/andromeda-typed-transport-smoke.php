@@ -61,13 +61,25 @@ $success = new AnyTourAndromedaTransport(false, true,
 $reply = $success($packageUrl);
 typed_transport_check($execCalls === 1 && $reply['status'] === 0 && $reply['body'] === '{"ok":true}');
 
+$priceUrl = 'https://gateway.samo.ru/api/?version=1.01&action=price&sid=fixture&TOWNFROMINC=1&STATEINC=3&PAGE=1';
 $neverCalls = 0;
 $never = static function($handle, $writer) use (&$neverCalls): bool { ++$neverCalls; return true; };
 $guarded = new AnyTourAndromedaTransport(false, false, $never);
 typed_transport_error(static fn() => $guarded($packageUrl), RuntimeException::class, 'ANDROMEDA_ACTION_NOT_ALLOWED');
+typed_transport_error(static fn() => $guarded($priceUrl), RuntimeException::class, 'ANDROMEDA_ACTION_NOT_ALLOWED');
 typed_transport_error(static fn() => $guarded('http://gateway.samo.ru/api/?version=1.01&action=login'),
     RuntimeException::class, 'ANDROMEDA_ENDPOINT_REJECTED');
 typed_transport_check($neverCalls === 0);
+
+$priceCalls = 0;
+$price = new AnyTourAndromedaTransport(true, false,
+    static function($handle, $writer) use (&$priceCalls): bool {
+        ++$priceCalls;
+        typed_transport_check($writer($handle, '{"PAGE":1,"PAGES_COUNT":0,"PRICES":[]}') === 38);
+        return true;
+    });
+$priceReply = $price($priceUrl);
+typed_transport_check($priceCalls === 1 && $priceReply['body'] === '{"PAGE":1,"PAGES_COUNT":0,"PRICES":[]}');
 
 typed_transport_check(AnyTourAndromedaPackageRetryPolicy::classify(
     new RuntimeException('ANDROMEDA_TRANSPORT_ERROR')) === 'unclassified');

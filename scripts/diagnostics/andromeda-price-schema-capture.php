@@ -44,7 +44,7 @@ $dir = $argv[2];
 if (!is_dir($dir) || is_link($dir)) { fwrite(STDERR, "CAPTURE_DIRECTORY_REQUIRED\n"); exit(2); }
 umask(0077);
 
-$operation = 'andromeda-price-schema-egypt-family-v1-20260914';
+$operation = 'andromeda-price-schema-egypt-3a-v2-20260914';
 $report = ['state'=>'reserved','operation'=>$operation,'source'=>getenv('GITHUB_SHA') ?: null,'supplier_calls_max'=>6,'raw_values_persisted'=>false];
 aps_save($dir, 'checkpoint', $report);
 
@@ -66,17 +66,19 @@ try {
         'TOWNFROMINC'=>$departure,'STATEINC'=>$country,
         'CHECKIN_BEG'=>'20261207','CHECKIN_END'=>'20261207',
         'NIGHTS_FROM'=>10,'NIGHTS_TILL'=>10,
-        'ADULT'=>2,'CHILD'=>1,'AGES'=>'7',
+        'ADULT'=>3,'CHILD'=>0,
         'CURRENCYINC'=>643,'MEAL'=>(string)$meal,'OPERATORS'=>(string)$operator,
         'PACKETTYPE'=>0,'PAGE'=>1,
     ];
-    $priceClient = new AnyTourAndromedaClient(new AnyTourAndromedaTransport(), true);
+    // PRICE is intentionally disabled by default in the transport; this bounded evidence
+    // path must opt in explicitly, matching the existing Search3 runtime consumer.
+    $priceClient = new AnyTourAndromedaClient(new AnyTourAndromedaTransport(true), true);
     $priceClient->login($username, $password);
     $reply = $priceClient->price($params);
     $schema = anytour_andromeda_raw_catalog_schema($reply);
     $report = array_merge($report, [
         'state'=>'completed',
-        'criteria'=>['date'=>'2026-12-07','nights'=>10,'party'=>'2a+child7','meal'=>'AI','operator'=>'ANEX','page'=>1],
+        'criteria'=>['date'=>'2026-12-07','nights'=>10,'party'=>'3a','meal'=>'AI','operator'=>'ANEX','page'=>1],
         'schema'=>$schema,
         'finished_at'=>gmdate('c'),
     ]);
