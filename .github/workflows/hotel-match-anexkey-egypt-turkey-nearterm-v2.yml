@@ -1,0 +1,121 @@
+name: MATCH ANEX-key Egypt Turkey nearterm v2
+on:
+  push:
+    branches: [ops/match-learned-geo-global-2333-20260914-v1]
+    paths: [.github/workflows/hotel-match-anexkey-egypt-turkey-nearterm-v2.yml]
+permissions: {contents: read, issues: write}
+concurrency: {group: anytour-match-anexkey-egypt-turkey-nearterm-v2, cancel-in-progress: false}
+env:
+  FAMILY_ID: hotel-match-anexkey-core8-mass-1971-20260914-v2
+jobs:
+  slice:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        country: [egypt, turkey]
+        date: ['2026-09-18','2026-09-25','2026-10-02','2026-10-09','2026-10-23','2026-11-06','2026-11-20','2026-12-04','2026-12-18','2027-01-08','2027-01-15','2027-01-29']
+    env:
+      COUNTRY: ${{ matrix.country }}
+      SEARCH_DATE: ${{ matrix.date }}
+      OUT: /tmp/match-key-nearterm-v2
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1, persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate source and reserve immutable slice
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          export OPERATION_ID="${FAMILY_ID}-${COUNTRY}-${SEARCH_DATE}"
+          php -l scripts/diagnostics/hotel_match_andromeda_anex_operator_key_core8.php
+          python3 - <<'PY'
+          import os,pathlib,hashlib,json
+          p=pathlib.Path('scripts/diagnostics/hotel_match_andromeda_anex_operator_key_core8.php').read_text()
+          assert p.count('__MATCH_COUNTRY__')==1 and p.count('__MATCH_DATE__')==1 and p.count('__MATCH_OPERATION__')==1
+          p=p.replace('__MATCH_COUNTRY__',os.environ['COUNTRY']).replace('__MATCH_DATE__',os.environ['SEARCH_DATE']).replace('__MATCH_OPERATION__',os.environ['OPERATION_ID'])
+          assert "str_starts_with(HM_OPERATION,'hotel-match-anexkey-core8-mass-1971-')" in p
+          d=pathlib.Path(os.environ['OUT']); (d/'program.php').write_text(p)
+          r={'family_id':os.environ['FAMILY_ID'],'operation_id':os.environ['OPERATION_ID'],'country':os.environ['COUNTRY'],'date':os.environ['SEARCH_DATE'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'program_sha256':hashlib.sha256(p.encode()).hexdigest(),'state':'reserved_before_supplier_access','database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (d/'reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+          php -l "$OUT/program.php"
+      - uses: actions/upload-artifact@v4
+        with: {name: 'key-nearterm-v2-${{ matrix.country }}-${{ matrix.date }}-${{ github.run_id }}-reserved', path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Execute fresh direct-key slice plus CURRENT readback
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ok=0
+          for n in 1 2 3; do
+            if ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"; then ok=1; break; fi
+            sleep 10
+          done
+          test "$ok" = 1
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=1024M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"; rc=$?
+          set -e; export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']); raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes()
+          vals=[x[len('MATCH_CORE8_KEY_JSON:'):] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_CORE8_KEY_JSON:')]
+          x=json.loads(vals[-1]) if vals else {'status':'unknown','reason':'result_marker_missing','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True}
+          x['remote_exit']=int(os.environ['RC']); (d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          assert x.get('database_writes')==0 and x.get('mapping_writes')==0 and (x.get('provider_calls') or {}).get('tourvisor',0)==0
+          if int(os.environ['RC'])!=0 or x.get('status')!='completed': raise SystemExit(2)
+          print(json.dumps({k:x.get(k) for k in ['country','date','pages','direct_anex_hotels','bridges','counts']},ensure_ascii=False,sort_keys=True))
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true
+          rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: key-nearterm-v2-${{ matrix.country }}-${{ matrix.date }}-${{ github.run_id }}-final
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/result.json
+          retention-days: 90
+  aggregate:
+    if: always() && github.run_attempt == 1 && github.run_number == 1
+    needs: slice
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {pattern: 'key-nearterm-v2-*-final', path: /tmp/all, merge-multiple: false}
+      - name: Aggregate globally one-to-one CURRENT-safe evidence
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,collections,os
+          files=list(pathlib.Path('/tmp/all').rglob('result.json')); completed=[]; failed=[]
+          for p in files:
+            x=json.loads(p.read_text()); (completed if x.get('status')=='completed' else failed).append(x)
+          totals=collections.Counter(); bycountry=collections.defaultdict(collections.Counter); obs=collections.defaultdict(list); by_d=collections.defaultdict(set); by_a=collections.defaultdict(set)
+          for x in completed:
+            for k,v in (x.get('counts') or {}).items(): totals[k]+=v; bycountry[x['country']][k]+=v
+            for r in x.get('rows') or []:
+              aid=str(r.get('anex_id') or ''); did=str(r.get('andromeda_id') or '')
+              if aid and did: by_d[did].add(aid); by_a[aid].add(did)
+              if r.get('bucket') not in {'safe_missing_andromeda_side','safe_missing_anex_side'}: continue
+              k=(r['bucket'],aid,did,str(r['anchor_local_id']))
+              obs[k].append({'country':x['country'],'date':x['date'],'image':bool(r.get('image_pattern_verified')),'name_exact':bool(r.get('name_exact_normalized')),'anex_name':r.get('direct_anex_name'),'andromeda_name':r.get('andromeda_name'),'hotel_url':r.get('hotel_url')})
+          conflict_d={k:sorted(v) for k,v in by_d.items() if len(v)>1}; conflict_a={k:sorted(v) for k,v in by_a.items() if len(v)>1}
+          candidates=[]
+          for k,a in obs.items():
+            c={'bucket':k[0],'anex_id':k[1],'andromeda_id':k[2],'local_id':k[3],'country':a[0]['country'],'recurrence':len({z['date'] for z in a}),'observations':a,'global_one_to_one':k[2] not in conflict_d and k[1] not in conflict_a}
+            candidates.append(c)
+          candidates.sort(key=lambda r:(not r['global_one_to_one'],-r['recurrence'],r['country'],int(r['local_id']),int(r['anex_id'])))
+          safe=[r for r in candidates if r['global_one_to_one']]
+          out={'status':'completed' if len(completed)==24 else 'partial','family_id':os.environ['FAMILY_ID'],'run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'completed_slices':len(completed),'failed_slices':len(failed),'totals':dict(totals),'country_counts':{k:dict(v) for k,v in bycountry.items()},'safe_observations':sum(len(v) for v in obs.values()),'distinct_current_safe_candidates':len(candidates),'global_one_to_one_candidates':len(safe),'global_one_to_one_recurring_ge2':sum(r['recurrence']>=2 for r in safe),'global_one_to_one_recurring_ge3':sum(r['recurrence']>=3 for r in safe),'global_conflict_andromeda':len(conflict_d),'global_conflict_anex':len(conflict_a),'candidates':candidates,'failed':[{'country':x.get('country'),'date':x.get('date'),'stage':x.get('stage'),'reason':x.get('reason')} for x in failed],'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          pathlib.Path('aggregate.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          s=f"MATCH #1971 new near-term exact operator-key evidence `{out['family_id']}`: completed **{out['completed_slices']}/24** slices; distinct CURRENT-safe candidates **{out['distinct_current_safe_candidates']}**, globally one-to-one **{out['global_one_to_one_candidates']}** (recurring >=2: **{out['global_one_to_one_recurring_ge2']}**, >=3: **{out['global_one_to_one_recurring_ge3']}**); global provider conflicts D/A **{out['global_conflict_andromeda']}/{out['global_conflict_anex']}**. DB/mapping/Tourvisor/booking/lead writes/calls **0**; fresh provider evidence only. Run `{out['run_id']}`. Any acceptance requires a NEW server-CURRENT guarded operation; no prior operation is replayed."
+          pathlib.Path('summary.md').write_text(s+'\n'); print(s)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: 'key-nearterm-v2-${{ github.run_id }}-aggregate', path: aggregate.json, retention-days: 90}
+      - name: Record result
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file summary.md
