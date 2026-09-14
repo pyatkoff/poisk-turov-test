@@ -1,0 +1,70 @@
+name: MATCH ANEX rendered hotelCode full CURRENT v8
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-rendered-hotelcode-full-current-v8.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-anex-rendered-hotelcode-full-current-1971-v8, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-anex-rendered-hotelcode-full-current-1971-20260914-v8
+  SOURCE_RUN_ID: '34839217307'
+  SOURCE_ARTIFACT: match-anex-public-full-current-v3-result
+jobs:
+  render:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve immutable read-only operation
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$S"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_browser","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"supplier_search_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" > "$S/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-rendered-hotelcode-full-current-v8-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-rendered-hotelcode-full-current-1971-20260914-v8/reservation.json
+          retention-days: 90
+      - name: Download immutable full CURRENT public evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail; mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/evidence.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          x=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source/evidence.json').read_text())
+          assert x['status']=='completed' and x['seed_count']==182 and x['confirmed_count']==96
+          print({'source_seed_count':x['seed_count'],'official_page_candidates':x['confirmed_count'],'unmatched':x['unmatched_count']})
+          PY
+      - name: Render official hotel pages and extract native photo hotelCode
+        run: |
+          set -euo pipefail; S="$RUNNER_TEMP/$OPERATION_ID"
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright@1.55.0
+          npx playwright install --with-deps chromium >/dev/null
+          node scripts/diagnostics/anex_rendered_media_dual_id_probe.mjs "$RUNNER_TEMP/source/evidence.json" "$S/raw.json" > "$S/probe.log"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          S=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];x=json.loads((S/'raw.json').read_text())
+          rows=[]; all_codes=set(); media_urls=0; mismatches=[]
+          for r in x.get('rows',[]):
+            codes=sorted({int(p['anex_hotel_code']) for p in r.get('pairs',[]) if p.get('anex_hotel_code')})
+            media_urls += len(r.get('pairs',[]))
+            aid=int(r.get('aid') or 0)
+            if codes and codes != [aid]: mismatches.append({'anex_hotel_id':aid,'photo_hotel_codes':codes})
+            if codes: all_codes.update(codes)
+            rows.append({'anex_hotel_id':aid,'country_id':int(r.get('cid') or 0),'page_url':r.get('url'),'photo_url_count':len(r.get('pairs',[])),'photo_hotel_codes':codes,'error':r.get('error')})
+          out={'status':'completed','operation_id':os.environ['OPERATION_ID'],'source_current_unresolved':182,'official_page_candidates':x.get('source_seed_count',0),'rendered_pages':len(rows),'pages_with_photo_hotelcode':sum(bool(r['photo_hotel_codes']) for r in rows),'unique_photo_hotelcodes':len(all_codes),'photo_urls_with_hotelcode':media_urls,'hotelcode_mismatches':mismatches,'rows':rows,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'no_replay':True}
+          (S/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_run_id':int(os.environ['SOURCE_RUN_ID']),'source_current_unresolved':182,'official_page_candidates':out['official_page_candidates'],'rendered_pages':out['rendered_pages'],'pages_with_photo_hotelcode':out['pages_with_photo_hotelcode'],'unique_photo_hotelcodes':out['unique_photo_hotelcodes'],'photo_urls_with_hotelcode':out['photo_urls_with_hotelcode'],'hotelcode_mismatch_count':len(mismatches),'result_sha256':hashlib.sha256((S/'result.json').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'no_replay':True}
+          (S/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n'); print(json.dumps(receipt,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-anex-rendered-hotelcode-full-current-v8-result
+          path: ${{ runner.temp }}/hotel-match-anex-rendered-hotelcode-full-current-1971-20260914-v8/
+          retention-days: 90
