@@ -1,0 +1,37 @@
+name: MATCH ANEX photo live v2
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-photo-live-v2.yml]
+permissions: {contents: read}
+env: {OPERATION_ID: hotel-match-anex-photo-live-1971-20260914-v2}
+jobs:
+  inspect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Reserve before GET
+        run: |
+          mkdir -p /tmp/out
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","state":"reserved_before_network","database_writes":0,"mapping_writes":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" >/tmp/out/reservation.json
+      - uses: actions/upload-artifact@v4
+        with: {name: match-anex-photo-live-v2-reservation, path: /tmp/out/reservation.json, retention-days: 90}
+      - name: Fetch page and retain image-like URLs
+        run: |
+          set -euo pipefail
+          curl --fail --location --max-redirs 4 --connect-timeout 10 --max-time 25 --user-agent 'AnyTour-MATCH-photo-evidence/2.0' --output /tmp/page.html 'https://anextour.ru/tours/vietnam/le-van-hotel'
+          php scripts/diagnostics/hotel_match_anex_photo_url_extract_v1.php 'https://anextour.ru/tours/vietnam/le-van-hotel' </tmp/page.html >/tmp/out/result.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('/tmp/out/result.json'))
+          print(json.dumps({'url_count':x['url_count'],'image_like_url_count':x['image_like_url_count'],'hotel_codes':x['hotel_codes'],'sample':x['image_like_urls'][:20]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-photo-live-v2-result
+          path: |
+            /tmp/out/reservation.json
+            /tmp/out/result.json
+          retention-days: 90
