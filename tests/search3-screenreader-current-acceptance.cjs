@@ -54,10 +54,17 @@ const flights = [
     const root = page.locator('#selectedTour');
     await root.locator('.search3-flight-continue button').waitFor();
     assert.equal(await root.getByRole('heading', { name: 'SUNRISE Resort & Spa' }).count(), 1, 'selected hotel has one accessible heading');
-    assert.equal(await root.getByRole('radio').count(), 2, 'flight choices expose native radio semantics');
+    assert.equal(await root.getByRole('button', { name: 'Показать другие рейсы (1)' }).count(), 1, 'alternative flights have one named disclosure control');
+    const flightToggle = root.locator('.search3-flight-toggle');
+    assert.equal(await flightToggle.getAttribute('aria-expanded'), 'false', 'alternative flights start collapsed');
+    assert.equal(await root.getByRole('radio').count(), 1, 'the selected native radio remains exposed while alternatives are collapsed');
+    assert.equal(await root.locator('input[name="v2flight"]:checked').count(), 1, 'one flight choice is exposed as selected');
+    await flightToggle.click();
+    assert.equal(await flightToggle.getAttribute('aria-expanded'), 'true', 'the disclosure exposes its expanded state');
+    assert.equal(await root.getByRole('radio').count(), 2, 'expansion exposes every original native radio');
     assert.equal(await root.getByRole('radio', { name: /Вариант 1/ }).count(), 1, 'recommended flight has an accessible name');
     assert.equal(await root.getByRole('radio', { name: /Вариант 2/ }).count(), 1, 'alternate flight has an accessible name');
-    assert.equal(await root.locator('input[name="v2flight"]:checked').count(), 1, 'one flight choice is exposed as selected');
+    assert.equal(await page.evaluate(() => document.activeElement?.name), 'v2flight', 'expansion focuses the selected native radio');
     const continueButton = root.locator('.search3-flight-continue button');
     assert.ok((await continueButton.innerText()).trim(), 'continue action has a visible accessible name');
 
@@ -70,7 +77,7 @@ const flights = [
     assert.equal(await page.evaluate(() => document.activeElement?.name), 'phone', 'lead transition moves focus to the required phone field');
     assert.deepEqual(posts, [], 'screen-reader acceptance sends no POST requests');
     assert.deepEqual(browserErrors, [], 'screen-reader fixture has no browser errors');
-    console.log('SEARCH3_SCREENREADER_CURRENT_OK heading=1 radios=2 phone=labelled consent=labelled submit=labelled live=polite focus=phone real_leads=0 supplier_requests=0');
+    console.log('SEARCH3_SCREENREADER_CURRENT_OK heading=1 disclosure=expanded radios=2 phone=labelled consent=labelled submit=labelled live=polite focus=phone real_leads=0 supplier_requests=0');
   } finally {
     await browser.close();
   }

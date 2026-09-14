@@ -216,6 +216,16 @@ async function run(browser, width) {
     assert.ok(detail.flightMoments.some(value => value.includes('14.10.2026')), 'return flight uses the canonical date display');
     assert.equal(detail.flightMoments.some(value => /\b2026-10-(?:05|14)\b/.test(value)), false,
       'selected flight routes never expose raw supplier ISO dates');
+    const flightToggle = root.locator('.search3-flight-toggle');
+    assert.equal(await flightToggle.count(), 1, 'multiple flights use the canonical local disclosure');
+    assert.equal(await flightToggle.getAttribute('aria-expanded'), 'false', 'alternative flights start collapsed');
+    assert.equal(await flightToggle.innerText(), 'Показать другие рейсы (2)', 'collapsed disclosure states the exact alternative count');
+    assert.equal(await root.locator('.flight-variant:visible').count(), 1, 'only the selected exact flight is initially visible');
+    await flightToggle.click();
+    await settle(page);
+    assert.equal(await flightToggle.getAttribute('aria-expanded'), 'true', 'alternative flights expand from the canonical control');
+    assert.equal(await root.locator('.flight-variant:visible').count(), 3, 'expansion exposes every original flight variant');
+    assert.equal(await page.evaluate(() => document.activeElement?.name), 'v2flight', 'expansion focuses the selected flight radio');
     const flightPrices = await checkFlightPriceLines(root, width);
     const fuelLabels = await root.locator('.flight-fuel').allTextContents();
     assert.deepEqual(fuelLabels.map(value => value.replace(/\s+/g, ' ').trim()), contract.invariants.flight_fuel_display,
@@ -228,6 +238,10 @@ async function run(browser, width) {
     await root.locator('input[name="v2flight"][value="0"]').check();
     await settle(page);
     assert.match((await root.locator('.selected-price').innerText()).replace(/\s/g, ''), /148500₽/, 'returning to the original flight restores its exact total');
+    await flightToggle.click();
+    await settle(page);
+    assert.equal(await flightToggle.getAttribute('aria-expanded'), 'false', 'disclosure returns to its compact state');
+    assert.equal(await root.locator('.flight-variant:visible').count(), 1, 'collapse retains only the selected exact flight');
     assert.equal(detail.searchVisible, contract.invariants.selected_search_form_visible, 'selected state does not duplicate the search form');
     assert.equal(detail.overflow, contract.invariants.horizontal_overflow, `selected detail has no horizontal overflow at ${width}`);
     assert.ok(detail.rootWidth <= width + 2, 'selected root is bounded by the viewport');
@@ -339,7 +353,7 @@ async function checkLeadRecovery(page, width) {
   const openOffer = async id => {
     await page.locator('#results .direct-tour[data-tid="' + id + '"]').click();
     await page.waitForFunction(id => window.V2TourController.currentTour?.id === id, id);
-    await root.locator('.flight-variant').nth(2).waitFor();
+    await root.locator('.flight-variant').nth(2).waitFor({ state: 'attached' });
     await root.locator('.search3-flight-continue button').click();
     await page.waitForFunction(() => document.activeElement?.name === 'phone');
   };
@@ -378,6 +392,7 @@ async function checkLeadRecovery(page, width) {
   assert.equal(await captureCount(), 0, 'valid contact without consent cannot enter lead transport');
   assert.equal(await form.locator('[name="consent"]').evaluate(node => node.validity.valueMissing), true);
   await form.locator('[name="consent"]').check();
+  await root.locator('.search3-flight-toggle').click();
   await root.locator('input[name="v2flight"][value="1"]').check();
   await submit.click();
   await page.waitForFunction(() => window.__leadRecovery.pending.length === 1);
@@ -498,7 +513,7 @@ async function checkSelectedLoadRecovery(page, width) {
   assert.equal(await root.locator('.retry-tour').count(), 0, 'successful retry retires the tour error control');
   await root.locator('.load-flights').focus();
   await root.locator('.load-flights').press('Enter');
-  await root.locator('.flight-variant').nth(2).waitFor();
+  await root.locator('.flight-variant').nth(2).waitFor({ state: 'attached' });
   assert.equal(await root.locator('[role="alert"]').count(), 0, 'successful flight retry clears stale alerts');
   const evidence = await page.evaluate(() => ({ tours: window.__selectedLoadRecovery.tours, flights: window.__selectedLoadRecovery.flights, other: window.__selectedLoadRecovery.other }));
   assert.deepEqual(evidence, { tours: 2, flights: 2, other: 0 }, 'each explicit retry makes one local request of the correct kind');
