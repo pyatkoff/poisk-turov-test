@@ -85,6 +85,13 @@ module.exports=async function checkOperatorCards(page,width,output){
       assert.doesNotMatch(await row.innerText(),/Туристы|Размещение/,'expanded offer row does not repeat search party or a second placement field');
       assert.match(await row.innerText(),/STANDARD · DBL/,'room and placement stay together as one compact exact-offer fact');
       assert.equal(await row.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),String(offer.price)+'₽');
+      const identity=await page.evaluate(t=>window.V2Results.operatorIdentity(t),offer),badge=row.locator('.hotel-operator');
+      assert.equal(await badge.getAttribute('title'),'Туроператор: '+identity.label,'hover text names the actual operator');
+      assert.equal(await row.locator('.tour-operator>small').count(),0,'redundant operator caption is removed');
+      if(identity.logo){
+        assert.equal(await badge.locator('.hotel-operator-name').count(),0,'brand name is not repeated beside its logo');
+        assert.equal(await row.getByRole('img',{name:'Туроператор: '+identity.label,exact:true}).count(),1,'logo has an accessible operator name');
+      }else assert.equal(await badge.innerText(),identity.label,'unknown operator retains its visible name');
     }
     for(const brand of ['funsun','anex','intourist','biblio-globus']){
       const logo=card.locator('[data-operator-brand="'+brand+'"] .hotel-operator-logo').first();

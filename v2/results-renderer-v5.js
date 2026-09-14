@@ -44,9 +44,9 @@ const operatorBrands=[
 function operatorIdentity(t){const label=operatorName(t).replace(/\s+/g,' ').trim();if(!label)return null;const normalized=label.toLocaleLowerCase('ru-RU'),brand=operatorBrands.find(item=>item.aliases.includes(normalized));return brand?{key:brand.key,label:brand.name,logo:brand.key+(brand.key==='intourist'?'.png':'.svg')}:{key:'name:'+normalized,label,logo:''};}
 function operatorLogoBase(){const script=document.currentScript&&document.currentScript.src||document.querySelector('script[src*="bundle-v1.php"]')?.src;return script?new URL('assets/operator-logos/',script).pathname:'../assets/operator-logos/';}
 const operatorLogoRoot=operatorLogoBase();
-function operatorBadge(identity){return '<span class="hotel-operator"'+(identity.logo?' data-operator-brand="'+esc(identity.key)+'"':'')+'>'+(identity.logo?'<img class="hotel-operator-logo" src="'+esc(operatorLogoRoot+identity.logo)+'" alt="" width="100" height="36" loading="lazy">':'')+'<span class="hotel-operator-name">'+esc(identity.label)+'</span></span>';}
+function operatorBadge(identity){const description=esc('Туроператор: '+identity.label);return '<span class="hotel-operator" title="'+description+'"'+(identity.logo?' data-operator-brand="'+esc(identity.key)+'"':'')+'>'+(identity.logo?'<img class="hotel-operator-logo" src="'+esc(operatorLogoRoot+identity.logo)+'" alt="'+description+'" width="100" height="36" loading="lazy">':'<span class="hotel-operator-name">'+esc(identity.label)+'</span>')+'</span>';}
 
-function operatorFact(t){const identity=operatorIdentity(t);return identity?'<span class="tour-fact tour-operator"><small>Оператор</small><b>'+operatorBadge(identity)+'</b></span>':'';}
+function operatorFact(t){const identity=operatorIdentity(t);return identity?'<span class="tour-fact tour-operator"><b>'+operatorBadge(identity)+'</b></span>':'';}
 function providerName(t){const value=String(t&&t.provider||'tourvisor').toLowerCase();return value==='andromeda'?'Андромеда':value==='anex'?'ANEX API':'Tourvisor';}
 function hotelPhotoAlt(h){return h&&h.name?'Фото отеля '+String(h.name):'Фото отеля';}
 function tourCountLabel(value){const n=Math.max(0,Number(value)||0),mod10=n%10,mod100=n%100,word=mod10===1&&mod100!==11?'вариант':mod10>=2&&mod10<=4&&(mod100<12||mod100>14)?'варианта':'вариантов';return n+' '+word;}
