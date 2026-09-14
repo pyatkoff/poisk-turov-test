@@ -2,7 +2,7 @@
 declare(strict_types=1);
 if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);
 require_once __DIR__ . '/hotel_match_current_bulk_review.php';
-const APH_OPERATION='hotel-match-anex-photo-current-review-1971-20260914-v1';
+const APH_OPERATION='hotel-match-anex-photo-current-review-1971-20260914-v2';
 function aph_review(PDO $db,array $evidence,string $op):array{
     if($op!==APH_OPERATION)throw new RuntimeException('operation_scope');
     $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');
@@ -22,7 +22,7 @@ function aph_review(PDO $db,array $evidence,string $op):array{
             if(isset($existing[$id])){$counts['protected_existing']++;$rows[]=['anex_hotel_id'=>$id,'status'=>'protected_existing','current_mappings'=>$existing[$id]];continue;}
             $o=$obs[$id]??[];$s=$st[$id]??[];$currentCountry=(int)($o['country_id']??0);if(!$currentCountry)$currentCountry=(int)(fc_country($s['api_country']??'')??0);if($currentCountry!==$country){$counts['country_mismatch']++;$rows[]=['anex_hotel_id'=>$id,'status'=>'country_mismatch','evidence_country'=>$country,'current_country'=>$currentCountry];continue;}
             $source=['observed'=>isset($obs[$id]),'search_count'=>(int)($o['search_count']??0),'last_seen_utc'=>$o['last_seen_utc']??null,'names'=>[$o['hotel_name']??'',$s['api_name']??'',$s['xml_name']??'',$s['xml_alternate_name']??''],'places'=>[$s['api_region']??'',$s['api_town']??''],'latitude'=>$s['latitude']??null,'longitude'=>$s['longitude']??null];
-            $review=mbr_review_anex($source,$id,$country,$hotels,$names,$strict,$broad,$places);$status='needs_extra';$target=$review['target']['local_hotel_id']??null;$reason=$review['reason']??'';
+            $review=mbr_review_anex($source,$id,$country,$hotels,$names,$strict,$broad,$places);$status='needs_extra';$target=$review['target']['local_hotel_id']??null;
             if(($review['bucket']??'')==='hard_conflict'){$status='hard_conflict';$counts['hard_conflict']++;}
             elseif(($review['bucket']??'')==='auto_accept'&&$target!==null){if(isset($excluded[$id][(int)$target])){$status='pair_exclusion';$counts['pair_exclusion']++;}else{$status='ready_current_auto';$counts['ready']++;$counts['current_auto']++;}}
             else{
