@@ -1,6 +1,9 @@
+import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -10,6 +13,13 @@ SPEC = importlib.util.spec_from_file_location("preview_deploy", ROOT / "scripts/
 deploy = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(deploy)
 SHA = "a" * 40
+RUNTIME_NAMES = (
+    "andromeda-normalizer.php",
+    "andromeda-hotel-resolver.php",
+    "andromeda-search.php",
+    "andromeda-hotel-observations.php",
+    "andromeda-offer-store.php",
+)
 
 
 class PreviewDeploymentTest(unittest.TestCase):
@@ -54,6 +64,33 @@ require dirname(__DIR__) . '/index.php';
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
 
+    def runtime_fixture(self, case, missing=None, current=None, linked=None):
+        home = self.root / case
+        project = home / "www/anytoour.ru"
+        target = project / "_preview/search3-anex-candidate/app/integrations"
+        stage = project / "_preview" / (".search3-anex-" + SHA + "-" + "b" * 12)
+        stage_runtime = stage / "app/integrations"
+        target.mkdir(parents=True)
+        stage_runtime.mkdir(parents=True)
+        for name in RUNTIME_NAMES:
+            if name == missing or name == linked:
+                continue
+            (target / name).write_text("<?php // installed " + name + "\n")
+        if linked is not None:
+            real = target / (linked + ".real")
+            real.write_text("<?php // linked source\n")
+            (target / linked).symlink_to(real)
+        if current is not None:
+            (stage_runtime / current).write_text("<?php // current source wins\n")
+        return home, project, stage, target, stage_runtime
+
+    def run_runtime_preserver(self, home, project, stage):
+        env = os.environ.copy()
+        env["HOME"] = str(home)
+        return subprocess.run(
+            ["php", str(ROOT / "scripts/diagnostics/anex_review_owner_preserve.php"), str(project), str(stage)],
+            text=True, capture_output=True, env=env, timeout=30)
+
     def test_payload_isolates_copy_without_touching_source(self):
         original = (self.repo / "v2/index.php").read_bytes()
         self.write("v2/api-v2.php", "PRODUCTION_API")
@@ -94,6 +131,34 @@ require dirname(__DIR__) . '/index.php';
         with self.assertRaisesRegex(ValueError, "runtime dependency"):
             deploy.build_payload(self.repo, self.root / "missing-andromeda", SHA)
 
+    def test_installed_andromeda_runtime_is_preserved_but_current_source_wins(self):
+        home, project, stage, target, stage_runtime = self.runtime_fixture("runtime-ok", current=RUNTIME_NAMES[0])
+        current = (stage_runtime / RUNTIME_NAMES[0]).read_bytes()
+        result = self.run_runtime_preserver(home, project, stage)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        value = json.loads(result.stdout)
+        self.assertEqual(value["owner_panel"], "not_installed")
+        overlay = value["runtime_overlay"]
+        self.assertEqual(overlay["status"], "preserved")
+        self.assertEqual(set(overlay["sha256"]), set(RUNTIME_NAMES))
+        self.assertEqual(overlay["sources"][RUNTIME_NAMES[0]], "current_source")
+        self.assertEqual((stage_runtime / RUNTIME_NAMES[0]).read_bytes(), current)
+        for name in RUNTIME_NAMES[1:]:
+            self.assertEqual(overlay["sources"][name], "installed_preview")
+            self.assertEqual((stage_runtime / name).read_bytes(), (target / name).read_bytes())
+            self.assertEqual(overlay["sha256"][name], hashlib.sha256((target / name).read_bytes()).hexdigest())
+            self.assertEqual(overlay["bytes"][name], (target / name).stat().st_size)
+
+    def test_missing_or_linked_installed_andromeda_runtime_is_rejected(self):
+        home, project, stage, _, _ = self.runtime_fixture("runtime-missing", missing=RUNTIME_NAMES[-1])
+        missing = self.run_runtime_preserver(home, project, stage)
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertEqual(missing.stderr, "OWNER_PANEL_PRESERVATION_FAILED\n")
+        home, project, stage, _, _ = self.runtime_fixture("runtime-linked", linked=RUNTIME_NAMES[-1])
+        linked = self.run_runtime_preserver(home, project, stage)
+        self.assertNotEqual(linked.returncode, 0)
+        self.assertEqual(linked.stderr, "OWNER_PANEL_PRESERVATION_FAILED\n")
+
     def test_symbolic_links_and_existing_payload_are_rejected(self):
         (self.repo / "v2/linked.js").symlink_to(self.repo / "v2/anex-search3-preview-v1.js")
         with self.assertRaisesRegex(ValueError, "symbolic link"):
@@ -119,6 +184,8 @@ require dirname(__DIR__) . '/index.php';
         self.assertIn('test -f "$target/api-anex-search3-preview.php"', script)
         self.assertIn('test -f "$target/api-andromeda-search3-preview.php"', script)
         self.assertIn('test -f "$target/app/integrations/anex-additional-prices-client.php"', script)
+        self.assertIn('owner-panel-preserve.php', script)
+        self.assertLess(script.index('owner-panel-preserve.php'), script.index('mv "$stage" "$target"'))
         self.assertIn('chmod 600 "$work/search3-preview.php"', script)
         self.assertIn('tar -xzf - -C "$work"', script)
         with self.assertRaises(ValueError):
