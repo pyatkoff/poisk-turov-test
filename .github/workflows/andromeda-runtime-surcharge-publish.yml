@@ -395,3 +395,155 @@ jobs:
           path: ${{ runner.temp }}/andromeda-surcharge-e2e-readback/
           if-no-files-found: error
           retention-days: 14
+
+  quote-access-inspection:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+       github.event_name == 'issue_comment' && github.event.action == 'created' &&
+       github.event.issue.number == 996 && !github.event.issue.pull_request &&
+       github.event.comment.user.id == 226193297 &&
+       github.event.comment.body == '/inspect-andromeda-quote-http-2464')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      QUOTE_INSPECTION_PHP: |
+        error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
+        ini_set('pcre.backtrack_limit','10000');ini_set('pcre.recursion_limit','1000');
+        $out=['status'=>'blocked','source'=>'64706822fc54f4d4423ea6bbd0ad966144151387',
+          'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'filesystem_writes'=>0];
+        try{
+          $root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');
+          $prefix='_preview/search3-anex-candidate/';$out['files']=[];$out['directories']=[];
+          foreach(['','_preview','_preview/search3-anex-candidate'] as $rel){
+            $path=$root.($rel===''?'':'/'.$rel);
+            if(!is_dir($path)||realpath($path)!==$path)throw new RuntimeException('directory_invalid');
+            $out['directories'][$rel===''?'project':$rel]=['mode'=>sprintf('%04o',fileperms($path)&0777)];
+          }
+          $apis=['api-andromeda-search3-preview.php'=>'fc338f37496290871793c6b1fe0f5614b4aea4db2a2f0503277117a676a912e4',
+            'api-andromeda-quote-preview.php'=>'12c64956f6b98a06a282c5965c1001cb6658f902412ddf07a09ece7c8a676c48'];
+          $paths=['.htaccess','_preview/.htaccess',$prefix.'.htaccess'];
+          foreach(array_keys($apis) as $api)$paths[]=$prefix.$api;
+          foreach($paths as $rel){
+            $path=$root.'/'.$rel;if(is_link($path))throw new RuntimeException('file_path_invalid');
+            if(!file_exists($path)){$out['files'][$rel]=['present'=>false];continue;}
+            if(!is_file($path)||realpath($path)!==$path)throw new RuntimeException('file_path_invalid');
+            $stat=stat($path);$limit=str_ends_with($rel,'.htaccess')?65536:524288;
+            if($stat['nlink']!==1||$stat['size']>$limit)throw new RuntimeException('file_size_or_link');
+            $bytes=file_get_contents($path,false,null,0,$limit+1);
+            if(!is_string($bytes)||strlen($bytes)!==$stat['size'])throw new RuntimeException('file_read_failed');
+            $item=['present'=>true,'mode'=>sprintf('%04o',$stat['mode']&0777),'sha256'=>hash('sha256',$bytes)];
+            if(isset($apis[basename($rel)])){$item['expected_hash']=$item['sha256']===$apis[basename($rel)];}
+            else{
+              $item['file_blocks']=[];
+              preg_match_all('~<(FilesMatch|Files)\s+([^>\r\n]{1,800})>(.*?)</\1>~is',$bytes,$blocks,PREG_SET_ORDER);
+              foreach(array_slice($blocks,0,64) as $block){
+                $selector=trim(trim($block[2]),"\"'");
+                $rule=['kind'=>strtolower($block[1]),'selector_sha256'=>hash('sha256',$selector),
+                  'require_all_denied'=>(bool)preg_match('/^\s*Require\s+all\s+denied\s*$/mi',$block[3]),
+                  'require_all_granted'=>(bool)preg_match('/^\s*Require\s+all\s+granted\s*$/mi',$block[3]),
+                  'deny_from_all'=>(bool)preg_match('/^\s*Deny\s+from\s+all\s*$/mi',$block[3])];
+                foreach(array_keys($apis) as $api){
+                  $match=strtolower($block[1])==='filesmatch'?preg_match('~'.str_replace('~','\\~',$selector).'~',$api):(int)fnmatch($selector,$api);
+                  $rule['matches'][$api]=$match===false?null:(bool)$match;
+                }
+                $item['file_blocks'][]=$rule;
+              }
+              $item['quote_name_mentioned']=str_contains($bytes,'api-andromeda-quote-preview');
+              $item['rewrite_forbidden_present']=(bool)preg_match('/^\s*RewriteRule\b[^\r\n]*\[(?:[^\]\r\n]*,)?F(?:,|\])/mi',$bytes);
+            }
+            $out['files'][$rel]=$item;
+          }
+          $out['status']='inspected';
+        }catch(Throwable $e){
+          $allowed=['project_invalid','directory_invalid','file_path_invalid','file_size_or_link','file_read_failed'];
+          $out['reason']=in_array($e->getMessage(),$allowed,true)?$e->getMessage():'inspection_failed';
+        }
+        echo json_encode($out,JSON_THROW_ON_ERROR);
+    steps:
+      - name: Exercise the exact read-only inspection on local fixtures
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,subprocess,tempfile
+          with tempfile.TemporaryDirectory() as tmp:
+              root=pathlib.Path(tmp)/'anytoour.ru'; target=root/'_preview/search3-anex-candidate';target.mkdir(parents=True)
+              quote=target/'api-andromeda-quote-preview.php';quote.write_text('PRIVATE_SENTINEL');quote.chmod(0o600)
+              access=target/'.htaccess';access.write_text('<FilesMatch "^api-andromeda-quote-preview[.]php$">\nRequire all denied\n</FilesMatch>\nAuthUserFile /PRIVATE_SENTINEL\n')
+              def run():
+                  p=subprocess.run(['php','-d','allow_url_fopen=0','-r',os.environ['QUOTE_INSPECTION_PHP']],cwd=root,text=True,capture_output=True,check=True,timeout=5)
+                  assert p.stderr=='' and 'PRIVATE_SENTINEL' not in p.stdout
+                  result=json.loads(p.stdout)
+                  assert all(result[k]==0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes'])
+                  return result
+              before={p:p.read_bytes() for p in [quote,access]}
+              result=run();assert result['status']=='inspected'
+              q=result['files']['_preview/search3-anex-candidate/api-andromeda-quote-preview.php'];assert q['mode']=='0600' and q['expected_hash'] is False
+              rule=result['files']['_preview/search3-anex-candidate/.htaccess']['file_blocks'][0]
+              assert rule['require_all_denied'] and rule['matches']=={'api-andromeda-quote-preview.php':True,'api-andromeda-search3-preview.php':False}
+              assert before=={p:p.read_bytes() for p in before}
+              access.write_text('<FilesMatch "^(?!api-andromeda-search3-preview[.]php$).*\\.php$">\nRequire all denied\n</FilesMatch>')
+              rule=run()['files']['_preview/search3-anex-candidate/.htaccess']['file_blocks'][0]
+              assert rule['matches']=={'api-andromeda-quote-preview.php':True,'api-andromeda-search3-preview.php':False}
+              access.write_text('<Files "api-andromeda-quote-preview.php">\nRequire all granted\n</Files>')
+              assert run()['files']['_preview/search3-anex-candidate/.htaccess']['file_blocks'][0]['require_all_granted']
+              access.write_text('x'*65537);assert run()['reason']=='file_size_or_link'
+              access.unlink();access.symlink_to(quote);assert run()['reason']=='file_path_invalid'
+              access.unlink();assert run()['files']['_preview/search3-anex-candidate/.htaccess']['present'] is False
+              quote.unlink();assert run()['files']['_preview/search3-anex-candidate/api-andromeda-quote-preview.php']['present'] is False
+          print('Read-only quote access inspection: modes, hash, explicit/negative file rules, privacy, size, links and missing cases pass; network0')
+          PY
+      - name: Bind inspection to the completed publication and exact owner command
+        if: github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff' ||
+                context.actor !== 'pyatkoff' || context.payload.sender?.id !== 226193297 || context.ref !== 'refs/heads/main' ||
+                context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 ||
+                context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 ||
+                context.payload.comment?.body !== '/inspect-andromeda-quote-http-2464') throw new Error('Exact owner inspection required.');
+            const {data: main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('Main advanced; stop.');
+            const {data: run}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34894766843});
+            if(run.head_sha!=='8412314bcf19fd1b658895c49726499730ec8b85'||run.status!=='completed'||run.conclusion!=='failure') throw new Error('Terminal publication mismatch.');
+            const {data: receipt}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10367874902});
+            if(receipt.expired!==false||receipt.workflow_run?.id!==34894766843||receipt.digest!=='sha256:92817ff32131aa980beb7c5936d0d7d441d7c74fbdc09d7f4c844cb5b58f0132') throw new Error('Publication receipt mismatch.');
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request'
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Read fixed preview file metadata and non-secret rule matches only
+        if: github.event_name != 'pull_request'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          from anex_search3_owner_decisions import ssh_php
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-quote-access-inspection';out.mkdir(mode=0o700)
+          try:
+              result=ssh_php(os.environ['QUOTE_INSPECTION_PHP'],{},maximum_bytes=65536)
+          except Exception:
+              (out/'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','publication_replayed':False}))
+              raise
+          result['control_source']=os.environ['GITHUB_SHA'];result['publication_replayed']=False
+          (out/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          if result.get('status')!='inspected' or any(result.get(k)!=0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']):
+              raise SystemExit('Read-only inspection incomplete; publication not replayed')
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - name: Preserve sanitized access inspection
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-quote-access-inspection-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-quote-access-inspection/
+          if-no-files-found: error
+          retention-days: 14
