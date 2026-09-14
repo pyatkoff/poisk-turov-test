@@ -1,0 +1,103 @@
+name: MATCH live ANEX public Andromeda mass v1
+on:
+  push:
+    branches: [match/anex-photo-url-extractor-1971-20260914]
+    paths: [.github/workflows/hotel-match-live-anex-public-andromeda-mass-v1.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: match-live-anex-public-andromeda-mass-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-live-anex-public-evidence-1971-20260914-v1
+  SOURCE_RUN_ID: '34825332583'
+  SOURCE_ARTIFACT: match-manual-live-queue-34825332583
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Validate MATCH dependency
+        run: python3 -m py_compile scripts/diagnostics/anex_public_sitemap_observed_evidence.py
+      - name: Reserve immutable read-only operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","source_run_id":%s,"state":"reserved_before_public_network","database_writes":0,"mapping_writes":0,"supplier_search_calls":0,"historical_operations_replayed":false,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" "$SOURCE_RUN_ID" >"$STATE/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: match-live-anex-public-evidence-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-live-anex-public-evidence-1971-20260914-v1/reservation.json
+          retention-days: 90
+      - name: Download immutable live unresolved queue
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source"
+          gh run download "$SOURCE_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" -D "$RUNNER_TEMP/source"
+          test -s "$RUNNER_TEMP/source/queue.json"
+          test -s "$RUNNER_TEMP/source/receipt.json"
+      - name: Build full live ANEX seed cohort
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          src=pathlib.Path(os.environ['RUNNER_TEMP'])/'source'/'queue.json'
+          raw=json.loads(src.read_text())
+          rows=raw.get('rows') or []
+          seeds=[]
+          for r in rows:
+            if r.get('provider')!='anex': continue
+            cid=int(r.get('country_id') or 0)
+            if cid not in (1,4): continue
+            eid=int(r.get('external_hotel_id') or 0)
+            if eid<=0: continue
+            names=[]
+            for v in [r.get('source_name'),*(r.get('source_aliases') or [])]:
+              if isinstance(v,str) and v.strip() and v.strip() not in names:names.append(v.strip())
+            places=[]
+            for v in [r.get('source_region')]:
+              if isinstance(v,str) and v.strip() and v.strip() not in places:places.append(v.strip())
+            seeds.append({'observed':True,'anex_hotel_id':eid,'country_id':cid,'search_count':int(r.get('search_count') or 0),'source_names':names,'source_places':places,'source_queue_rank':int(r.get('rank') or 0),'last_seen_utc':r.get('last_seen_utc')})
+          seeds.sort(key=lambda x:(-x['search_count'],x['anex_hotel_id']))
+          if len(seeds)!=115: raise SystemExit(f'live_anex_seed_contract:{len(seeds)}')
+          out={'operation_id':'hotel-match-manual-live-queue-1971-20260914-v1','seed_count':len(seeds),'seeds':seeds}
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'live-anex-seeds.json';p.write_text(json.dumps(out,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps({'seed_count':len(seeds),'frequency_sum':sum(x['search_count'] for x in seeds),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()},sort_keys=True))
+          PY
+      - name: Crawl official ANEX public identity surface for all 115 live unresolved identities
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"
+          python3 scripts/diagnostics/anex_public_sitemap_observed_evidence.py \
+            --queue "$RUNNER_TEMP/live-anex-seeds.json" \
+            --out "$STATE/evidence.json" \
+            --max-pages-per-country 300 \
+            --max-api-calls 2500 \
+            --top-candidates 20 \
+            --delay 0.08 | tee "$STATE/summary.log"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          state=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          x=json.loads((state/'evidence.json').read_text())
+          if x.get('status')!='completed' or int(x.get('seed_count') or 0)!=115: raise SystemExit('evidence_contract')
+          if any(int(x.get(k) or 0)!=0 for k in ('database_writes','mapping_writes','supplier_search_calls')): raise SystemExit('write_guard')
+          matched=x.get('matched') or []
+          confirmed_ids=[]
+          for row in matched:
+            hits=row.get('hits') or []
+            if hits and (hits[0].get('detail') or {}).get('inc')==row.get('anex_hotel_id'): confirmed_ids.append(int(row['anex_hotel_id']))
+          receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'source_queue_operation':'hotel-match-manual-live-queue-1971-20260914-v1','seed_count':115,'confirmed_count':len(set(confirmed_ids)),'unmatched_count':115-len(set(confirmed_ids)),'sitemap_hotel_count':x.get('sitemap_hotel_count'),'sitemap_page_count':x.get('sitemap_page_count'),'api_candidate_path_count':x.get('api_candidate_path_count'),'api_detail_count':x.get('api_detail_count'),'public_get_calls':x.get('public_get_calls'),'evidence_sha256':hashlib.sha256((state/'evidence.json').read_bytes()).hexdigest(),'database_writes':0,'mapping_writes':0,'supplier_search_calls':0,'historical_operations_replayed':False,'no_replay':True}
+          (state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          print(json.dumps(receipt,ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-live-anex-public-evidence-v1-result
+          path: ${{ runner.temp }}/hotel-match-live-anex-public-evidence-1971-20260914-v1/
+          retention-days: 90
