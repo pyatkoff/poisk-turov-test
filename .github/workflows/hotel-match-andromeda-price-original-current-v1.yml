@@ -1,36 +1,71 @@
-name: MATCH Andromeda catalog all source v9
+name: MATCH Andromeda valid all price original v10
 on:
   push:
     branches: [match/anex-photo-url-extractor-1971-20260914]
     paths: [.github/workflows/hotel-match-andromeda-price-original-current-v1.yml]
 permissions: {contents: read}
+concurrency: {group: match-andromeda-price-original-1971-v10-416247, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-andromeda-catalog-all-source-1971-20260914-v9
+  OPERATION_ID: hotel-match-andromeda-valid-all-price-original-1971-20260914-v10-416247
 jobs:
-  inspect:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 9
+  canary:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 10
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env: {OUT: /tmp/match-andromeda-v10}
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false, ref: '${{ github.sha }}'}
-      - name: Inspect deployed catalog method only
+      - name: Reserve immutable supplier read
+        run: |
+          set -euo pipefail; mkdir -p "$OUT"
+          printf '{"operation_id":"%s","run_id":%s,"source_sha":"%s","target_andromeda_id":416247,"operator":5,"state":"reserved_before_supplier_access","database_writes":0,"mapping_writes":0,"tourvisor_calls":0,"booking_calls":0,"lead_calls":0,"no_replay":true}\n' "$OPERATION_ID" "$GITHUB_RUN_ID" "$GITHUB_SHA" > "$OUT/reservation.json"
+      - uses: actions/upload-artifact@v4
+        with: {name: andromeda-original-v10-reserved, path: '${{ env.OUT }}/reservation.json', retention-days: 90}
+      - name: Build valid all to targeted price program
+        run: |
+          set -euo pipefail
+          cat > "$OUT/program.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const HM_OPERATION='hotel-match-andromeda-valid-all-price-original-1971-20260914-v10-416247';
+          const HM_TARGET=416247;
+          function hm_fail(string $stage,string $reason,array $extra=[]):void{echo 'MATCH_ORIGINAL_JSON:'.json_encode(array_merge(['status'=>'failed','stage'=>$stage,'reason'=>$reason,'operation_id'=>HM_OPERATION,'database_writes'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true],$extra),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;exit(2);}
+          function hm_date($v):string{$v=trim((string)$v);foreach(['d.m.Y','Y-m-d','Ymd']as$f){$d=DateTimeImmutable::createFromFormat('!'.$f,$v);if($d instanceof DateTimeImmutable)return$d->format('Ymd');}return'';}
+          function hm_selected_id($n,int$fallback):int{if(!is_array($n))return$fallback;foreach($n as$v){if(is_array($v)&&($v['selected']??0)&&isset($v['id'])&&(int)$v['id']>0)return(int)$v['id'];}return$fallback;}
+          function hm_collect($n,array&$out):void{if(!is_array($n))return;if(isset($n['hotelKey'])||isset($n['operatorKey']))$out[]=$n;foreach($n as$v)if(is_array($v))hm_collect($v,$out);}
+          function hm_keys($n):array{if(!is_array($n))return[];$k=array_keys($n);sort($k,SORT_STRING);return array_slice($k,0,80);}
+          try{
+            $root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')hm_fail('bootstrap','root');$preview=$root.'/_preview/search3-anex-candidate';require_once $preview.'/api-andromeda-search3-preview.php';$cfg=require $preview.'/.andromeda-private.php';
+            $budget=dirname((string)$cfg['catalog_path']);$transport=new AnyTourAndromedaTransport(true);$client=new AnyTourAndromedaClient(static function($url,$opts)use($transport,$budget){anytour_andromeda_search3_budget($budget);return$transport($url,$opts);},true);$client->login((string)$cfg['username'],(string)$cfg['password']);
+            $all=$client->catalog('all',['TOWNFROMINC'=>'1','STATEINC'=>'3']);
+            $sel=(string)($all['CHECKIN_BEG']['selected']??'');$date=hm_date($sel);$currency=hm_selected_id($all['CURRENCY']??[],643);if($date==='')hm_fail('all','selected_date_missing',['all_top_keys'=>hm_keys($all),'checkin_selected'=>$sel,'provider_calls'=>['login'=>1,'all'=>1]]);
+            $hotelInAll=false;$hotelName='';foreach((array)($all['HOTELS']??[])as$h){if((int)($h['id']??0)===HM_TARGET){$hotelInAll=true;$hotelName=(string)($h['name']??'');break;}}
+            $operatorInAll=false;foreach((array)($all['OPERATORS']??[])as$o)if((int)($o['id']??0)===5){$operatorInAll=true;break;}
+            $p=AnyTourAndromedaClient::priceProbeParams();foreach(['TOWNFROMINC'=>'1','STATEINC'=>'3','CHECKIN_BEG'=>$date,'CHECKIN_END'=>$date,'ADULT'=>'2','CHILD'=>'0','CURRENCYINC'=>(string)$currency,'OPERATORS'=>'5','HOTELS'=>(string)HM_TARGET,'NIGHTS_FROM'=>'7','NIGHTS_TILL'=>'7','PAGE'=>'1']as$k=>$v)$p[$k]=$v;unset($p['NIGHTS_TO']);
+            $raw=$client->price($p);$rows=[];hm_collect($raw,$rows);$hits=[];$targetRows=0;$withOriginal=0;
+            foreach($rows as$r){if((int)($r['operatorKey']??0)!==5||(int)($r['hotelKey']??0)!==HM_TARGET)continue;$targetRows++;$orig=is_array($r['original']??null)?$r['original']:[];$aid=(int)($orig['hotelKey']??0);if($aid<=0)continue;$withOriginal++;$hits[]=['andromeda_id'=>HM_TARGET,'anex_id'=>$aid,'hotel'=>(string)($r['hotel']??''),'town'=>(string)($r['town']??''),'check_in'=>(string)($r['checkIn']??''),'nights'=>(string)($r['nights']??''),'original_keys'=>hm_keys($orig)];}
+            $ids=array_values(array_unique(array_map(static fn($x)=>$x['anex_id'],$hits)));sort($ids,SORT_NUMERIC);
+            echo 'MATCH_ORIGINAL_JSON:'.json_encode(['status'=>'completed','operation_id'=>HM_OPERATION,'all_checkin_selected'=>$sel,'resolved_checkin'=>$date,'currency'=>$currency,'hotel_in_all'=>$hotelInAll,'hotel_name'=>$hotelName,'operator5_in_all'=>$operatorInAll,'pages_count'=>(int)($raw['PAGES_COUNT']??0),'raw_candidate_rows'=>count($rows),'target_rows'=>$targetRows,'target_rows_with_original'=>$withOriginal,'original_hotel_keys'=>$ids,'rows'=>array_slice($hits,0,20),'provider_calls'=>['login'=>1,'all'=>1,'price'=>1],'database_writes'=>0,'mapping_writes'=>0,'tourvisor_calls'=>0,'booking_calls'=>0,'lead_calls'=>0,'no_replay'=>true],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
+          }catch(Throwable$e){hm_fail('runtime',preg_replace('/[^A-Za-z0-9_.:-]+/','_',substr($e->getMessage(),0,180))?:'exception');}
+          PHP
+          php -l "$OUT/program.php"
+      - name: Execute valid supplier canary
         env:
           KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
-          set -euo pipefail
-          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
+          set -euo pipefail; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/ssh.sock"
           if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi; chmod 600 "$key"
           ssh -M -S "$sock" -fnNT -o ControlPersist=600 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$USER@$HOST"
-          ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' <<'PHP'
-          <?php
-          require_once __DIR__.'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';
-          $m=new ReflectionMethod('AnyTourAndromedaClient','catalog');
-          $lines=file($m->getFileName());
-          $src=implode('',array_slice($lines,$m->getStartLine()-1,$m->getEndLine()-$m->getStartLine()+1));
-          echo "MATCH_CATALOG_SOURCE_BEGIN\n".$src."\nMATCH_CATALOG_SOURCE_END\n";
-          echo 'MATCH_SOURCE_META:'.json_encode(['status'=>'completed','operation_id'=>'hotel-match-andromeda-catalog-all-source-1971-20260914-v9','supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true],JSON_UNESCAPED_SLASHES)."\n";
-          PHP
-          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"
+          set +e; ssh -S "$sock" -T -o ControlMaster=no -l "$USER" "$HOST" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -d memory_limit=768M' < "$OUT/program.php" > "$RUNNER_TEMP/stdout" 2> "$RUNNER_TEMP/stderr"; rc=$?; set -e; export RC="$rc"
+          python3 - <<'PY'
+          import json,os,pathlib,hashlib
+          d=pathlib.Path(os.environ['OUT']);raw=pathlib.Path(os.environ['RUNNER_TEMP'],'stdout').read_bytes();vals=[x.split('MATCH_ORIGINAL_JSON:',1)[1] for x in raw.decode(errors='replace').splitlines() if x.startswith('MATCH_ORIGINAL_JSON:')];x=json.loads(vals[-1]) if len(vals)==1 else {'status':'unknown','reason':'marker_missing','stdout_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'mapping_writes':0,'no_replay':True};x['remote_exit']=int(os.environ['RC']);(d/'result.json').write_text(json.dumps(x,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(x,ensure_ascii=False));
+          if x.get('database_writes')!=0 or x.get('mapping_writes')!=0 or int(os.environ['RC'])!=0 or x.get('status')!='completed':raise SystemExit(2)
+          PY
+          ssh -S "$sock" -O exit "$HOST" >/dev/null 2>&1||true;rm -f "$key" "$known" "$RUNNER_TEMP/stdout" "$RUNNER_TEMP/stderr"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: andromeda-original-v10-final, path: '${{ env.OUT }}/', retention-days: 90}
