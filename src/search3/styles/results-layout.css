@@ -92,7 +92,7 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .results-layout{display:grid;gap:22px}
 & #results{display:grid;gap:22px}
 & .results-more{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0;color:#526078}
-& .more-search{min-height:44px;padding:10px 16px;border:1px solid #c4cfeb;border-radius:11px;background:#fff;color:#2743cb;font-size:14px;font-weight:600}
+& .results-more>.more-search{min-height:44px;padding:10px 16px;border:1px solid #c4cfeb;border-radius:11px;background:#fff;color:#2743cb;font-size:14px;font-weight:600}
 & .results-more>small{flex:1 1 240px;font-size:13px;line-height:1.4}
 & .results-filter-rail,&:not(:has(#results>*)) :is(.results-layout,.results-tools--ds2){display:none!important}
 &.search3-selected-open .v2-product-hero{display:none!important}
@@ -276,7 +276,10 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-body{padding:16px 18px}
 & .hotel-title{font-size:21px}
 & .tour-row{grid-template-columns:1fr;padding:10px 12px;gap:10px}
-& .tour-meta>strong{font-size:16px}
+& .tour-meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 10px;align-items:baseline}
+& .tour-meta>small{grid-column:2;grid-row:1}
+& .tour-meta>strong{grid-column:1;grid-row:1;margin-top:0;font-size:16px}
+& .tour-meta>:is(.tour-facts,.tour-secondary-facts,.provider-detail){grid-column:1/-1}
 & .tour-facts{gap:6px 10px;margin-top:6px}
 & .tour-action{grid-template-columns:1fr auto;gap:5px 12px;align-items:center;padding:8px 0 0;border-left:0;border-top:1px solid var(--at-line-soft,#e9edf6)}
 & .tour-action>small{grid-column:1}
