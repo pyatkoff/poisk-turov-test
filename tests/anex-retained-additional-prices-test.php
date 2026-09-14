@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
-require_once __DIR__ . '/../app/integrations/anex-additional-prices-client.php';
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 $checks = 0;
@@ -33,6 +32,7 @@ $stateTemplate = [
     'gateway' => [
         'saved_offers' => ['search_ref' => $searchRef, 'created_at' => 1789220000, 'expires_at' => 1789220900,
             'offers' => [$offerRef => ['offer' => $offer, 'observed_at' => 1789220010,
+                // SearchTour-scoped diagnostics only; not an authoritative B2B AdditionalPricesDaily binding.
                 'supplier_tour_program_id' => '987654321', 'supplier_currency_id' => '345']]],
         'search' => ['offers' => [['offer_key' => $offerRef, 'kind' => 'concrete', 'hotel_external_id' => '8121']]],
     ],
@@ -49,79 +49,73 @@ $metadata = static function (array $offers): array {
         'category' => 4, 'rating' => 4.5]];
 };
 $clock = static function (): int { return 1789220100; };
-$directFactory = static function () { throw new RuntimeException('DIRECT_CLIENT_MUST_NOT_RUN'); };
-$checkpoints = 0;
-$checkpoint = static function (array &$state) use (&$checkpoints, $assert): void {
-    ++$checkpoints;
-    $attempts = array_values($state['additional_prices'] ?? []);
-    $assert(count($attempts) === 1 && ($attempts[0]['status'] ?? null) === 'unknown', 'reservation before transport');
+$directCalls = 0;
+$directFactory = static function () use (&$directCalls) {
+    ++$directCalls;
+    throw new RuntimeException('DIRECT_CLIENT_MUST_NOT_RUN');
 };
-
-$factoryCalls = 0;
-$transportCalls = [];
-$additionalFactory = static function () use (&$factoryCalls, &$transportCalls) {
-    ++$factoryCalls;
-    return new AnyTourAnexAdditionalPricesClient('test-token',
-        static function (string $url, array $headers, array $options) use (&$transportCalls): array {
-            $transportCalls[] = ['url' => $url, 'headers' => $headers, 'options' => $options];
-            return ['status' => 200, 'body' => json_encode(['data' => [[
-                'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
-                'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
-                'tour' => 987654321, 'currency' => 345, 'dateBeg' => '2026-09-20T00:00:00', 'nights' => 7,
-            ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
-        });
+$checkpoints = 0;
+$checkpoint = static function (array &$state) use (&$checkpoints): void { ++$checkpoints; };
+$additionalCalls = 0;
+$additionalFactory = static function () use (&$additionalCalls) {
+    ++$additionalCalls;
+    throw new RuntimeException('B2B_CLIENT_MUST_NOT_RUN');
 };
 
 $state = $stateTemplate;
 $result = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
-$assert($result['status'] === 'additional_prices', 'completed status');
-$assert($factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1, 'one real client transport after one checkpoint');
-$assert(strpos($transportCalls[0]['url'], 'tour=987654321') !== false
-    && strpos($transportCalls[0]['url'], 'dateBeg=2026-09-20') !== false
-    && strpos($transportCalls[0]['url'], 'nights=7') !== false
-    && strpos($transportCalls[0]['url'], 'currency=345') !== false, 'private retained criteria drive real client request');
-$evidence = $result['additional_prices'];
-$assert($evidence['rows'][0]['price_adult'] === '120' && $evidence['rows'][0]['cashrate'] === '104.23'
-    && $evidence['rows'][0]['price_converted_adult'] === '12507.6', 'raw supplier money facts preserved');
-$assert($evidence['scope'] === 'tour_program_date_nights_currency' && $evidence['offer_specific'] === false,
-    'supplier scope remains program/date based');
-$assert($evidence['converted_currency'] === 'RUB' && $evidence['per_person_or_package'] === 'per_person_by_party_type',
-    'retained party application identifies converted per-person rates');
-$assert($evidence['fuel_equivalence_verified'] === false && $evidence['included_in_search_price'] === false
-    && $evidence['arithmetic_applied'] === true && $evidence['final_price_verified'] === false,
-    'program addition is applied without claiming Tourvisor fuel or final quote equivalence');
-$assert($evidence['party'] === ['adults' => 2, 'children' => 0]
-    && $evidence['rates']['adult'] === ['amount' => '12507.6', 'currency' => 'RUB']
-    && $evidence['rates']['child'] === null, 'two-adult party uses adult program rate only');
-$assert($evidence['party_surcharge'] === ['amount' => '25015.2', 'currency' => 'RUB', 'source' => 'anex_b2b_additional_prices_daily'],
-    'two-adult program surcharge summed exactly');
-$assert($evidence['search_price'] === ['amount' => '100000', 'currency' => 'RUB', 'source' => 'direct_anex_search']
-    && $evidence['search_plus_additional']['amount'] === '125015.2'
-    && $evidence['search_plus_additional']['currency'] === 'RUB', 'base search price and price with additional stay separate');
-$json = json_encode($result, JSON_THROW_ON_ERROR);
-$assert(strpos($json, '987654321') === false && strpos($json, '"currency":345') === false,
-    'private supplier criteria do not cross public result');
+$assert($result['status'] === 'additional_prices_unavailable', 'runtime APD is unavailable without authoritative B2B tour binding');
+$assert(($result['additional_prices_reason'] ?? null) === 'b2b_tour_binding_unverified', 'runtime exposes the exact binding blocker');
+$assert($directCalls === 0 && $additionalCalls === 0 && $checkpoints === 0, 'binding blocker stops before reservation or supplier client');
+$assert($state['additional_prices'] === [], 'binding blocker creates no semantic APD attempt');
 
-$again = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
-$assert($again['status'] === 'additional_prices' && $factoryCalls === 1 && count($transportCalls) === 1 && $checkpoints === 1,
-    'completed evidence is supplier-free cached read');
-$assert($again['additional_prices']['party_surcharge']['amount'] === '25015.2'
-    && $again['additional_prices']['search_plus_additional']['amount'] === '125015.2', 'cached raw evidence reapplies the same party arithmetic');
+// Previously cached evidence keyed by the same unverified SearchTour identifiers is not surfaced as current B2B authority.
+$digest = hash('sha256', implode("\0", ['987654321', '345', '2026-09-20', '7']));
+$state = $stateTemplate;
+$state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => [
+    'source' => 'anex_b2b_additional_prices_daily', 'rows' => [[
+        'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
+        'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
+    ]], 'total_count' => 1, 'truncated' => false,
+]];
+$cached = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
+$assert($cached['status'] === 'additional_prices_unavailable'
+    && ($cached['additional_prices_reason'] ?? null) === 'b2b_tour_binding_unverified',
+    'unverified legacy cache never crosses runtime boundary');
+$assert($additionalCalls === 0 && $checkpoints === 0, 'legacy cache refusal remains supplier-free');
 
+$changed = anytour_anex_search3_followup($request, $stateTemplate,
+    static function (): ?int { return 999; }, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
+$assert($changed['status'] === 'identity_changed', 'current identity drift still wins before binding blocker');
+
+$missing = anytour_anex_search3_followup($request, $stateTemplate, $resolver, $directFactory,
+    static function (): array { return []; }, $clock, $checkpoint, $additionalFactory);
+$assert($missing['status'] === 'not_available', 'current catalog/filter loss still wins before binding blocker');
+
+$groupState = $stateTemplate;
+$groupState['gateway']['saved_offers']['offers'][$offerRef]['offer']['kind'] = 'group_minimum';
+$groupState['gateway']['search']['offers'][0]['kind'] = 'group_minimum';
+$group = anytour_anex_search3_followup($request, $groupState, $resolver, $directFactory, $metadata, $clock, $checkpoint, $additionalFactory);
+$assert($group['status'] === 'not_concrete', 'group minimum is still not eligible for additional-price followup');
+
+// Keep the existing pure money-evidence helper independently usable for supplier-authoritative evidence once binding exists.
 $childOffer = $offer;
 $childOffer['children'] = 1;
-$childApplied = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
+$applied = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
     'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
     'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
 ]], 'totalCount' => 1]), $childOffer);
-$assert($childApplied['party_surcharge']['amount'] === '31269'
-    && $childApplied['search_plus_additional']['amount'] === '131269', 'child program rate is added once for one child');
+$assert($applied['party_surcharge']['amount'] === '31269' && $applied['search_plus_additional']['amount'] === '131269',
+    'pure application preserves exact party arithmetic for authoritative evidence');
+$assert($applied['fuel_equivalence_verified'] === false && $applied['final_price_verified'] === false,
+    'pure application does not claim Tourvisor fuel or final-price equivalence');
+
 $missingChild = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
     'price_adult' => '120', 'cashrate' => '104.23', 'price_converted_adult' => '12507.6',
 ]], 'totalCount' => 1]), $childOffer);
 $assert($missingChild['application_state'] === 'unknown' && $missingChild['party_surcharge'] === null
-    && $missingChild['search_plus_additional'] === null && $missingChild['arithmetic_applied'] === false,
-    'missing child rate is unknown and never treated as zero');
+    && $missingChild['arithmetic_applied'] === false, 'missing child rate remains unknown rather than zero');
+
 $ambiguous = anytour_anex_search3_additional_application(anytour_anex_search3_additional_evidence(['data' => [[
     'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
     'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
@@ -130,144 +124,6 @@ $ambiguous = anytour_anex_search3_additional_application(anytour_anex_search3_ad
     'price_converted_adult' => '12611.83', 'price_converted_chd' => '6358.03',
 ]], 'totalCount' => 2]), $offer);
 $assert($ambiguous['application_state'] === 'unknown' && $ambiguous['arithmetic_applied'] === false,
-    'multiple program/date rate rows do not choose one silently');
+    'multiple program/date rows never choose one silently');
 
-$state = $stateTemplate;
-$mismatchFactoryCalls = 0;
-$mismatchTransportCalls = 0;
-$mismatchFactory = static function () use (&$mismatchFactoryCalls, &$mismatchTransportCalls) {
-    ++$mismatchFactoryCalls;
-    return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$mismatchTransportCalls): array {
-        ++$mismatchTransportCalls;
-        return ['status' => 200, 'body' => json_encode(['data' => [[
-            'price_adult' => '120', 'price_chd' => '60', 'cashrate' => '104.23',
-            'price_converted_adult' => '12507.6', 'price_converted_chd' => '6253.8',
-            'tour' => 987654320, 'currency' => 345, 'dateBeg' => '2026-09-20', 'nights' => 7,
-        ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
-    });
-};
-$mismatchFailed = false;
-try {
-    anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $mismatchFactory);
-} catch (RuntimeException $error) {
-    $mismatchFailed = $error->getMessage() === 'ANEX_B2B_CONTEXT_MISMATCH';
-}
-$assert($mismatchFailed && $mismatchFactoryCalls === 1 && $mismatchTransportCalls === 1,
-    'wrong supplier program fails closed in real client');
-$attempts = array_values($state['additional_prices']);
-$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown', 'context mismatch remains no-replay unknown');
-$never = static function () { throw new RuntimeException('REPLAY_FORBIDDEN'); };
-$unknown = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
-$assert($unknown['status'] === 'additional_prices_unknown', 'context mismatch is not replayed');
-
-$state = $stateTemplate;
-$badFactoryCalls = 0;
-$badTransportCalls = 0;
-$badFactory = static function () use (&$badFactoryCalls, &$badTransportCalls) {
-    ++$badFactoryCalls;
-    return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$badTransportCalls): array {
-        ++$badTransportCalls;
-        return ['status' => 200, 'body' => json_encode(['data' => [[
-            'price_adult' => 'bad', 'tour' => 987654321, 'currency' => 345,
-            'dateBeg' => '2026-09-20', 'nights' => 7,
-        ]], 'totalCount' => 1, 'totalPages' => 1], JSON_THROW_ON_ERROR)];
-    });
-};
-$failed = false;
-try {
-    anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $badFactory);
-} catch (RuntimeException $error) {
-    $failed = $error->getMessage() === 'ANEX_INVALID_ADDITIONAL_PRICES';
-}
-$assert($failed && $badFactoryCalls === 1 && $badTransportCalls === 1, 'malformed supplier money fails closed after valid context');
-$attempts = array_values($state['additional_prices']);
-$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown', 'malformed money remains no-replay unknown');
-$unknown = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
-$assert($unknown['status'] === 'additional_prices_unknown', 'malformed money is not replayed');
-
-$cacheDir = sys_get_temp_dir() . '/anytour-anex-apd-single-' . bin2hex(random_bytes(6));
-if (!mkdir($cacheDir, 0700, true) && !is_dir($cacheDir)) throw new RuntimeException('FAIL: cache fixture directory');
-$criteria = ['page' => 1, 'pageSize' => 10, 'tour' => 987654321, 'dateBeg' => '2026-09-20', 'nights' => 7, 'currency' => 345];
-$seedTransportCalls = 0;
-$seedClient = new AnyTourAnexAdditionalPricesClient('test-token',
-    static function () use (&$seedTransportCalls): array {
-        ++$seedTransportCalls;
-        throw new RuntimeException('seed transport failure');
-    }, $cacheDir, $clock);
-$seedFailed = false;
-try { $seedClient->additionalPricesDaily($criteria); }
-catch (RuntimeException $error) { $seedFailed = $error->getMessage() === 'ANEX_B2B_TRANSPORT_ERROR'; }
-$assert($seedFailed && $seedTransportCalls === 1 && $seedClient->requestsMade() === 1,
-    'first process leaves a durable same-day shared unknown after transport failure');
-
-$state = $stateTemplate;
-$dailyFactoryCalls = 0;
-$dailyTransportCalls = 0;
-$dailyCheckpoints = 0;
-$dailyClient = null;
-$dailyCheckpoint = static function (array &$state) use (&$dailyCheckpoints, $assert): void {
-    ++$dailyCheckpoints;
-    $attempts = array_values($state['additional_prices'] ?? []);
-    $assert(count($attempts) === 1 && ($attempts[0]['status'] ?? null) === 'unknown',
-        'single retained action reserves session unknown before shared-cache read');
-};
-$dailyFactory = static function () use (&$dailyFactoryCalls, &$dailyTransportCalls, &$dailyClient, $cacheDir, $clock) {
-    ++$dailyFactoryCalls;
-    return $dailyClient = new AnyTourAnexAdditionalPricesClient('test-token',
-        static function () use (&$dailyTransportCalls): array {
-            ++$dailyTransportCalls;
-            throw new RuntimeException('shared unknown must prevent transport');
-        }, $cacheDir, $clock);
-};
-$dailyUnknown = anytour_anex_search3_followup(
-    $request, $state, $resolver, $directFactory, $metadata, $clock, $dailyCheckpoint, $dailyFactory);
-$assert($dailyUnknown['status'] === 'additional_prices_unknown'
-    && $dailyFactoryCalls === 1 && $dailyTransportCalls === 0 && $dailyCheckpoints === 1
-    && $dailyClient instanceof AnyTourAnexAdditionalPricesClient && $dailyClient->requestsMade() === 0,
-    'same-day shared unknown is a normal unknown result with zero supplier replay');
-$attempts = array_values($state['additional_prices']);
-$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown',
-    'shared daily unknown keeps the single-offer session attempt unknown');
-$dailyAgain = anytour_anex_search3_followup(
-    $request, $state, $resolver, $directFactory, $metadata, $clock, $dailyCheckpoint, $dailyFactory);
-$assert($dailyAgain['status'] === 'additional_prices_unknown'
-    && $dailyFactoryCalls === 1 && $dailyTransportCalls === 0 && $dailyCheckpoints === 1,
-    'same session does not re-open a shared or supplier attempt after daily unknown');
-foreach (glob($cacheDir . '/*/*') ?: [] as $path) @unlink($path);
-foreach (glob($cacheDir . '/*') ?: [] as $path) is_dir($path) ? @rmdir($path) : @unlink($path);
-@rmdir($cacheDir);
-
-$state = $stateTemplate;
-$freshTransportCalls = 0;
-$freshTransportFactory = static function () use (&$freshTransportCalls) {
-    return new AnyTourAnexAdditionalPricesClient('test-token', static function () use (&$freshTransportCalls): array {
-        ++$freshTransportCalls;
-        throw new RuntimeException('fresh transport failure');
-    });
-};
-$freshTransportFailed = false;
-try {
-    anytour_anex_search3_followup(
-        $request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $freshTransportFactory);
-} catch (RuntimeException $error) {
-    $freshTransportFailed = $error->getMessage() === 'ANEX_B2B_TRANSPORT_ERROR';
-}
-$assert($freshTransportFailed && $freshTransportCalls === 1,
-    'fresh transport failure still propagates and is not converted to cached unknown');
-$attempts = array_values($state['additional_prices']);
-$assert(count($attempts) === 1 && $attempts[0]['status'] === 'unknown',
-    'fresh transport failure remains durable no-replay unknown');
-
-$state = $stateTemplate;
-$state['gateway']['saved_offers']['offers'][$offerRef]['supplier_currency_id'] = null;
-$missing = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
-$assert($missing['status'] === 'additional_prices_unavailable' && $state['additional_prices'] === [],
-    'missing native currency stays unavailable without supplier call');
-
-$state = $stateTemplate;
-$state['gateway']['saved_offers']['offers'][$offerRef]['offer']['kind'] = 'group_minimum';
-$state['gateway']['search']['offers'][0]['kind'] = 'group_minimum';
-$group = anytour_anex_search3_followup($request, $state, $resolver, $directFactory, $metadata, $clock, $checkpoint, $never);
-$assert($group['status'] === 'not_concrete' && $state['additional_prices'] === [], 'group minimum cannot request additional evidence');
-
-echo "ANEX retained additional-prices party arithmetic: {$checks} checks passed; network=0\n";
+echo "ANEX retained additional-prices runtime binding: {$checks} checks passed; live_network=0\n";
