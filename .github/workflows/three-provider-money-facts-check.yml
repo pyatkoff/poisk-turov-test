@@ -70,8 +70,11 @@ jobs:
               assert forbidden not in b2b
 
           runtime=Path('v2/api-anex-search3-preview.php').read_text()
-          assert runtime.count("'b2b_tour_binding_unverified'") >= 2
-          assert "'status' => 'additional_prices_unavailable'" in runtime
-          assert "'status' => 'additional_prices_unknown'" in runtime
+          assert "anytour_anex_additional_prices_batch_execute($plan, $state, $reader, $persist)" in runtime
+          assert "'search_plus_additional'" in runtime
+          assert "'party_surcharge'" in runtime
+          assert "'per_person_by_party_type'" in runtime
+          assert "'final_price_verified' => false" in runtime
+          assert "b2b_tour_binding_unverified" not in runtime
           print('Three-provider money static boundary: PASS')
           PY
