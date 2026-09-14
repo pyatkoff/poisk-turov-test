@@ -173,6 +173,12 @@ async function checkComparisonGeometry(page, width, count) {
   for (const card of geometry.cards) {
     assert.ok(card.x >= geometry.grid.x - 1 && card.right <= geometry.grid.right + 1, 'every comparison card stays inside its grid');
     assert.ok(card.actions.every(action => action.height >= 44 && action.x >= card.x && action.right <= card.right), 'actions remain visible, contained and touch-sized');
+    if (width <= 430) {
+      assert.equal(card.actions.length, 2, 'mobile saved offer keeps both exact actions');
+      assert.ok(Math.abs(card.actions[0].y - card.actions[1].y) < 2, 'mobile Select and Remove share one compact action row');
+      const actionRowHeight = Math.max(...card.actions.map(action => action.bottom)) - Math.min(...card.actions.map(action => action.y));
+      assert.ok(actionRowHeight <= (width <= 320 ? 72 : 48), 'mobile action row stays compact without hiding a touch target');
+    }
   }
   if (count === 1) {
     assert.ok(geometry.cards[0].width <= 641, 'one saved offer stays bounded instead of becoming a giant card');
@@ -559,7 +565,7 @@ async function checkCorruptStorage(browser, width) {
       evidence.push(await checkStorageFailure(browser, width, 'quota'));
       evidence.push(await checkCorruptStorage(browser, width));
     }
-    for (const width of [600, 601, 768, 1024]) evidence.push(await checkIntermediateGeometry(browser, width));
+    for (const width of [320, 600, 601, 768, 1024]) evidence.push(await checkIntermediateGeometry(browser, width));
   } finally { await browser.close(); }
   fs.writeFileSync(path.join(output, 'shortlist-contract.json'), JSON.stringify(evidence, null, 2));
   console.log('SEARCH3_SHORTLIST_OK ' + JSON.stringify(evidence));
