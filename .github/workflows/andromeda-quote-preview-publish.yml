@@ -16,7 +16,7 @@ jobs:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/main' &&
-      github.event.issue.number == 996 &&
+      github.event.issue.number == 2530 &&
       !github.event.issue.pull_request &&
       github.event.comment.user.login == 'pyatkoff' &&
       github.event.sender.id == 226193297 &&
@@ -28,7 +28,7 @@ jobs:
       - name: Require exact owner command and first attempt
         run: |
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test "${{ github.event.issue.number }}" = 996
+          test "${{ github.event.issue.number }}" = 2530
           test "${{ github.event.comment.user.login }}" = pyatkoff
           test "${{ github.event.comment.body }}" = /publish-andromeda-quote-preview-1717-v11
       - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
       (github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
        github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
        github.event_name == 'issue_comment' && github.event.action == 'created' &&
-       github.event.issue.number == 996 && !github.event.issue.pull_request &&
+       github.event.issue.number == 2530 && !github.event.issue.pull_request &&
        github.event.comment.user.id == 226193297 &&
        github.event.comment.body == '/allow-andromeda-quote-http-1717-v1')
     runs-on: ubuntu-latest
@@ -238,7 +238,7 @@ jobs:
             if (process.env.GITHUB_RUN_ATTEMPT !== '1' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff' ||
                 context.actor !== 'pyatkoff' || context.payload.sender?.id !== 226193297 || context.ref !== 'refs/heads/main' ||
                 context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' ||
-                context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 ||
+                context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 2530 ||
                 context.payload.issue?.pull_request || context.payload.comment?.user?.id !== 226193297 ||
                 context.payload.comment?.body !== '/allow-andromeda-quote-http-1717-v1') throw new Error('Exact owner authorization required.');
             const {data: main} = await github.rest.git.getRef({...context.repo, ref:'heads/main'});
