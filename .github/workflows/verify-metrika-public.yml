@@ -1,0 +1,40 @@
+name: Verify production Metrika presence
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'diagnostics/metrika_public_smoke.cjs'
+      - '.github/workflows/verify-metrika-public.yml'
+      - 'v2/analytics-config.php'
+      - 'v2/analytics-v4.js'
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: metrika-public-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  public-browser:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser for public smoke
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Inspect real public counter and browser requests
+        run: node diagnostics/metrika_public_smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metrika-public-${{ github.run_id }}
+          path: artifacts/metrika-public-smoke.json
+          retention-days: 7
