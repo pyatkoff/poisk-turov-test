@@ -10,6 +10,7 @@ final class AnyTourAndromedaClient {
 }
 require_once __DIR__.'/../app/integrations/andromeda-claim-actions.php';
 require_once __DIR__.'/../app/integrations/andromeda-selected-quote.php';
+require_once __DIR__.'/../app/integrations/andromeda-quote-attempt-state.php';
 
 $checks=0;
 $money=static fn(string $amount):array => [['buyerClaimMoney'=>[['net'=>$amount,'currency'=>'RUB']]]];
@@ -32,7 +33,7 @@ $package=[
 $resolved=[
     'supplier_offer_id'=>'opaque-claiminc',
     'offer'=>['local_hotel_id'=>6319,'operator'=>['id'=>'5','name'=>'ANEX'],
-        'price'=>['amount'=>'119114','currency'=>'RUB']],
+        'price'=>['amount'=>'119114','currency'=>'RUB','source'=>'andromeda_search','observed_at'=>'2026-09-15T00:00:00Z']],
 ];
 $getFlights=$package;
 $getFlights['groups']=[['group'=>[
@@ -78,7 +79,7 @@ $actions=new AnyTourAndromedaClaimActions('SID_test_123',static function()use(&$
 $result=AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient($package),$actions);
 if(($result['state']??null)!=='quote_verified')throw new RuntimeException('state');++$checks;
 if(($result['final_price']['amount']??null)!=='135643'||($result['final_price']['currency']??null)!=='RUB')throw new RuntimeException('price');++$checks;
-if(($result['package_price']['amount']??null)!=='124864'||($result['search_price']['amount']??null)!=='119114')throw new RuntimeException('provenance');++$checks;
+if(($result['package_price']['amount']??null)!=='124864'||($result['search_price']??null)!==['amount'=>'119114','currency'=>'RUB'])throw new RuntimeException('provenance');++$checks;
 if(($result['final_price_verified']??null)!==true||($result['booking_enabled']??null)!==false)throw new RuntimeException('flags');++$checks;
 if($seen!==['get_flights','changeservice','changeservice','calc']||$reserved!==4)throw new RuntimeException('calls');++$checks;
 if(count($result['flights']??[])!==2||($result['flights'][0]['direction']??null)!=='0'||($result['flights'][1]['direction']??null)!=='1')throw new RuntimeException('flights');++$checks;
@@ -98,8 +99,11 @@ if(($result['calc_money_facts_reported']??null)!==[
     ['currency'=>'RUB','gross_amount'=>'135643','net_amount'=>'125942','commissionable_amount'=>'121251.64','commission_amount'=>'9702','source'=>'andromeda_calc_money','arithmetic_applied'=>false],
 ])throw new RuntimeException('calc money facts');++$checks;
 if(isset($result['fuel_total'])||isset($result['surcharge_total'])||isset($result['price_with_fuel'])||isset($result['commission_rate'])||isset($result['derived_price']))throw new RuntimeException('synthetic arithmetic');++$checks;
+$attempt=AnyTourAndromedaQuoteAttemptState::reserve(str_repeat('a',64),str_repeat('b',64));
+$completed=AnyTourAndromedaQuoteAttemptState::completed($attempt,$result);
+if(($completed['status']??null)!=='completed'||($completed['result']['search_price']??null)!==['amount'=>'119114','currency'=>'RUB'])throw new RuntimeException('public quote persistence');++$checks;
 $encoded=json_encode($result,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
-foreach(['opaque-claiminc','out_uid','back_uid','fuel_out','fuel_back','other_service','private-request-0','private-request-1','private-offer','SID_test_123','catalog-reduced'] as $secret)if(str_contains($encoded,$secret))throw new RuntimeException('private leak '.$secret);++$checks;
+foreach(['opaque-claiminc','out_uid','back_uid','fuel_out','fuel_back','other_service','private-request-0','private-request-1','private-offer','SID_test_123','catalog-reduced','andromeda_search','observed_at'] as $secret)if(str_contains($encoded,$secret))throw new RuntimeException('private leak '.$secret);++$checks;
 
 $ambiguous=$getFlights;
 $ambiguous['variants'][0]['transports'][0]['transport'][]=['uid'=>'out_two','groupId'=>'20001','direction'=>'0','type'=>'ttAvia','name'=>'OUT 202'];
@@ -193,7 +197,7 @@ try{
             ||$typed['flights'][0]['transport_markup_reported']['amount']!==(string)$valid
             ||$typed['operator_currency_rates_reported'][0]['rate']!=='1.234567'
             ||$typed['operator_currency_rates_reported'][0]['arithmetic_applied']!==false
-            ||$typed['search_price']!==$resolved['offer']['price'])throw new RuntimeException('VALID_MONEY_CHANGED');
+            ||$typed['search_price']!==['amount'=>'119114','currency'=>'RUB'])throw new RuntimeException('VALID_MONEY_CHANGED');
         ++$checks;
     }
     foreach([0,0.0,'0.00'] as $zero){
