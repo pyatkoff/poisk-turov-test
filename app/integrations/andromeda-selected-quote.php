@@ -88,6 +88,15 @@ final class AnyTourAndromedaSelectedQuote
     private static function base(array $resolved, ?array $packagePrice): array
     {
         $offer = $resolved['offer'];
+        $searchPrice = null;
+        if (is_array($offer['price'] ?? null)) {
+            $amount = self::moneyFactValue($offer['price']['amount'] ?? null);
+            $currency = $offer['price']['currency'] ?? null;
+            if ($amount !== null && preg_match('/[1-9]/', $amount) === 1
+                && is_string($currency) && preg_match('/^[A-Z0-9_]{2,8}$/D', $currency) === 1) {
+                $searchPrice = ['amount' => $amount, 'currency' => $currency];
+            }
+        }
         return [
             'schema_version' => 1,
             'provider' => 'andromeda',
@@ -95,7 +104,7 @@ final class AnyTourAndromedaSelectedQuote
             'booking_enabled' => false,
             'local_id' => $offer['local_hotel_id'] ?? null,
             'operator' => $offer['operator'] ?? null,
-            'search_price' => $offer['price'] ?? null,
+            'search_price' => $searchPrice,
             'package_price' => $packagePrice,
         ];
     }
