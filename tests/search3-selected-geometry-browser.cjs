@@ -388,7 +388,12 @@ async function run(browser, width, previous) {
         // Card/disclosure/optional-field wrappers are intentionally removed. Do
         // not pretend their old pixel tree is the new design contract: retain
         // exact facts, prices, lead fields/required flags and stage transitions.
-        if(JSON.stringify(a.contract)!==JSON.stringify(b.contract)) evidence.differences.push({width,phase,before:a.contract,after:b.contract});
+        const beforeContract=JSON.parse(JSON.stringify(a.contract)),afterContract=JSON.parse(JSON.stringify(b.contract));
+        const beforeRoom=beforeContract.facts.find(fact=>fact[0]==='Номер'),afterRoom=afterContract.facts.find(fact=>fact[0]==='Номер');
+        if(!beforeRoom||!afterRoom||beforeRoom[1]!=='STANDARD LAND VIEW'||afterRoom[1]!=='Стандарт · территория') {
+          evidence.differences.push({width,phase,error:'reviewed room display changed outside the exact alias contract',beforeRoom,afterRoom});
+        } else afterRoom[1]=beforeRoom[1];
+        if(JSON.stringify(beforeContract)!==JSON.stringify(afterContract)) evidence.differences.push({width,phase,before:a.contract,after:b.contract});
         if(b.rootWidth<=0||b.rootWidth>width+2) evidence.differences.push({width,phase,error:'selected content is not bounded and visible'});
         if(b.overflow) evidence.differences.push({width,phase,error:'horizontal overflow'});
       }
