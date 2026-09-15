@@ -1,4 +1,4 @@
-name: MATCH operator original bulk price v2
+name: MATCH operator original bulk price v3
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
@@ -6,10 +6,10 @@ on:
 permissions: {contents: read, actions: read}
 concurrency: {group: match-operator-original-1971, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-operator-original-batch-1971-20260915-v2
+  OPERATION_ID: hotel-match-operator-original-batch-1971-20260915-v3
 jobs:
   collect:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -51,10 +51,10 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-operator-original-batch-v2-reservation
+          name: match-operator-original-batch-v3-reservation
           path: |
-            ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v2/reservation.json
-            ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v2/reserved-plan.json
+            ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v3/reservation.json
+            ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v3/reserved-plan.json
           if-no-files-found: error
           retention-days: 90
       - name: Collect original hotel keys only through hotel-filtered price
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-operator-original-batch-v2-result
-          path: ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v2/
+          name: match-operator-original-batch-v3-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-batch-1971-20260915-v3/
           if-no-files-found: warn
           retention-days: 90
