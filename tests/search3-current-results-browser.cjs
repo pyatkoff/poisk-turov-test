@@ -444,7 +444,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('[data-tid=a-ro]').count(), 1, 'clear restores original tours, including earlier excluded meals, on explicit expansion');
     await a.locator('.tour-more-toggle').click();
     await select.selectOption('meal:all-inclusive');
-    await page.evaluate(items => window.V2Results.render(items.concat([{ id: 'meal-incomplete', name: 'Неполные данные', price: 70000, tours: [{ id: 'unknown', price: 70000, meal: { id: 7 } }] }])), items);
+    await page.evaluate(items => window.V2Results.render(items.concat([{ id: 'meal-incomplete', name: 'Неполные данные', price: 70000, tours: [{ id: 'unknown', price: 70000, fuelCharge: 0, meal: { id: 7 } }] }])), items);
     assert.equal(await field.isVisible(), false, 'incomplete progressive set hides the facet');
     assert.equal(await select.inputValue(), '', 'incomplete set resets selection before rendering prices');
     assert.equal((await visible()).length, 4, 'no silent filtering remains on incomplete data');
