@@ -1,0 +1,81 @@
+name: MATCH post50 104 CURRENT identity guards
+on:
+  push:
+    branches: [ops/match-post50-current-guards-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-post50-current-guards-v1.yml]
+permissions: {contents: read}
+concurrency: {group: match-post50-current-guards-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-post50-current-guards-1971-20260915-v1
+jobs:
+  current-intake:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Verify pinned helpers and guard bundle before reservation
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/hotel_match_provider_geo_consensus_review_test.php
+          php -d allow_url_fopen=0 tests/hotel_match_state_accepted_country_consensus_test.php
+          php -d allow_url_fopen=0 tests/hotel_match_live_residual_current_review_test.php
+          python3 scripts/diagnostics/hotel_match_post50_current_guards_bundle.py "$RUNNER_TEMP/post50-current.php"
+          php -l "$RUNNER_TEMP/post50-current.php"
+          php -d allow_url_fopen=0 "$RUNNER_TEMP/post50-current.php" --self-test
+      - name: Reserve before SSH or database access
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5681251725,'queue_issue':1971,'purpose':'read-only CURRENT guards over all104 PR2558 post50 full-country dossiers; no acceptance/write','bundle_sha256':hashlib.sha256(pathlib.Path(os.environ['RUNNER_TEMP'],'post50-current.php').read_bytes()).hexdigest(),'parent_current_run_id':34974809346,'candidate_dossier_sha256':'719943413e6bf60752b72b81b0bef33aea4c7d57ce5e43efe62ec08896462984','database_writes':0,'supplier_calls':0,'tourvisor_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-post50-current-guards-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-post50-current-guards-1971-20260915-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read CURRENT pending identities and active core8 names aliases geography once
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test ! -e \"\$p\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/post50-current.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified']
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          rows=[x for bucket in r['routes'].values() for x in bucket]
+          assert not set(r['excluded_claim_ids']).intersection(str(x['external_hotel_id']) for x in rows)
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,receipt))
+          assert r.get('planned_count')==104 and r.get('input_dossier_sha256')=='719943413e6bf60752b72b81b0bef33aea4c7d57ce5e43efe62ec08896462984'
+          gate={'operation_id':os.environ['OPERATION_ID'],'state':r['state'],'result_sha256':digest,'planned':r.get('planned_count'),'not_current_pending':len(r.get('not_current_pending_ids',[])),'pending':r.get('pending_andromeda_rows'),'prepared_count':r.get('candidate_count'),'route_counts':{k:len(v) for k,v in r.get('routes',{}).items()},'reason_counts':r.get('reason_counts'),'readback_verified':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n');print(json.dumps(gate,sort_keys=True))
+          assert os.environ['REMOTE_RC']=='0' and r['state']=='completed_read_only' and r['db_writes']==r['supplier_calls']==0 and r['prepared_only'] is True and r['accepted_mappings']==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-post50-current-guards-v1-result
+          path: ${{ runner.temp }}/hotel-match-post50-current-guards-1971-20260915-v1/
+          if-no-files-found: warn
+          retention-days: 90
