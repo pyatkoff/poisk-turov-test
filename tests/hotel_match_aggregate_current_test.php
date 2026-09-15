@@ -1,0 +1,3 @@
+<?php
+declare(strict_types=1);
+$p=__DIR__.'/../scripts/diagnostics/hotel_match_aggregate_current.php';$s=file_get_contents($p);if($s===false)throw new RuntimeException('read');foreach(['START TRANSACTION READ ONLY','active_anex_lane_excluded','coordinate_conflict_gt5km','same_provider_target_occupied','already_resolved_same','no_replay'] as $n)if(strpos($s,$n)===false)throw new RuntimeException('missing_'.$n);if(preg_match('/\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s/i',$s))throw new RuntimeException('mutation_sql');exec('php '.escapeshellarg($p).' --self-test',$o,$rc);if($rc!==0||implode("\n",$o)!=='aggregate guard self-tests PASS')throw new RuntimeException('self_test');echo "aggregate CURRENT static/read-only tests PASS\n";
