@@ -1,0 +1,160 @@
+name: MATCH operator native direct bridge CURRENT store v4
+on:
+  push:
+    branches: [ops/match-operator-original-store-1971-20260915-v4]
+    paths: [.github/workflows/hotel-match-operator-original-store-v4.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-operator-original-store-1971-v4, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-operator-original-store-1971-20260915-v4
+  INPUT_OPERATION_ID: hotel-match-operator-original-bridge-aggregate-1971-20260915-v4
+  EXPECTED_DELTA_SHA256: 8348320f50175dda5531b0b126cd0bc2ce868b8933506265c3c6e36a2f25cd88
+  PARENT_ARTIFACT_ID: '10393560710'
+  PARENT_ZIP_SHA256: 1fb5a2d9cb1b0fcc0c4be22b983b81cb61ca3da16df9606d1ce7a71cb0dfa578
+  PARENT_RESULT_SHA256: e2cb9bc626773fe583cf5fabd72f35896d1cb64c7ceb0914a86fa67860a29ce9
+  PARENT_INPUT_SHA256: 79538cb0bb22500c3d3833acf2af7dcc0c31442de3663faa65afa525a53fa3eb
+jobs:
+  store:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}', fetch-depth: 1}
+      - name: Derive sealed direct-bridge delta from verified store-v3 holds
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_store.php)" = 3c58ea618fc1a6abf353742b5aaaa2765f4247a1
+          php -l scripts/diagnostics/hotel_match_operator_original_store.php
+          php tests/hotel_match_operator_original_test.php
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,zipfile,collections
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; repo=os.environ['GITHUB_REPOSITORY']
+          p=subprocess.run(['gh','api',f"repos/{repo}/actions/artifacts/{os.environ['PARENT_ARTIFACT_ID']}/zip"],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=120)
+          assert hashlib.sha256(p.stdout).hexdigest()==os.environ['PARENT_ZIP_SHA256']
+          with zipfile.ZipFile(io.BytesIO(p.stdout)) as z:
+              parent_raw=z.read('server/result.json'); receipt=json.loads(z.read('server/receipt.json')); input_raw=z.read('input.json')
+          assert hashlib.sha256(parent_raw).hexdigest()==os.environ['PARENT_RESULT_SHA256']
+          assert hashlib.sha256(input_raw).hexdigest()==os.environ['PARENT_INPUT_SHA256']
+          parent=json.loads(parent_raw); inp=json.loads(input_raw)
+          assert parent['operation_id']=='hotel-match-operator-original-store-1971-20260915-v3' and parent['state']=='completed_committed'
+          assert receipt['result_sha256']==os.environ['PARENT_RESULT_SHA256'] and receipt['readback_verified'] is True and receipt['post_commit_native_rows']==2
+          assert parent['native_groups']==33 and parent['native_rows_written']==2 and len(parent['holds'])==31
+          holds={(h['supplier_namespace'],str(h['external_hotel_id']).lower()):h for h in parent['holds']}
+          selected=[]
+          for f in inp['facts']:
+              op=str(f['operator_key']); ns='operator_'+op; h=holds.get((ns,str(f['native_hotel_id']).lower()))
+              if h and h['reason']=='name_or_qualifier_conflict' and op in ('315','342'):
+                  selected.append(f)
+          selected.sort(key=lambda f:(str(f['operator_key']),str(f['native_hotel_id']).lower(),str(f['andromeda_hotel_id'])))
+          assert len(selected)==16
+          split=collections.Counter(str(f['operator_key']) for f in selected); assert split=={'315':9,'342':7}
+          minimal=[{'operator_key':str(f['operator_key']),'native_hotel_id':str(f['native_hotel_id']),'andromeda_hotel_id':str(f['andromeda_hotel_id']),'country_id':int(f['country_id'])} for f in selected]
+          delta_raw=json.dumps(minimal,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          assert hashlib.sha256(delta_raw).hexdigest()==os.environ['EXPECTED_DELTA_SHA256']
+          wanted={f['request_sha256'] for f in selected}; pages=[]; seen=set()
+          for p in inp['pages']+[inp['plan_summary']['previous_request']]:
+              if p['request_sha256'] in wanted and p['request_sha256'] not in seen:
+                  pages.append(p); seen.add(p['request_sha256'])
+          assert seen==wanted and pages
+          synthetic={
+              'operation_id':os.environ['INPUT_OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'completed',
+              'plan_summary':{'previous_request':pages[0],'parent_store_operation':parent['operation_id'],'parent_store_result_sha256':os.environ['PARENT_RESULT_SHA256'],'evidence_rule':'direct original.hotelKey bridge to exact Andromeda hotelKey; CURRENT country/activity/coords guards retained'},
+              'supplier_calls':0,'price_calls':0,'http_calls':[],'pages':pages,'facts':selected,'unique_pair_count':16,
+              'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'all_calls':0,'booking_calls':0,'no_replay':True}
+          raw=(json.dumps(synthetic,ensure_ascii=False,indent=4,separators=(',', ': '))+'\n').encode()
+          out.joinpath('input.json').write_bytes(raw)
+          out.joinpath('input-sha256.txt').write_text(hashlib.sha256(raw).hexdigest()+'\n')
+          out.joinpath('provenance.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'parent_artifact_id':int(os.environ['PARENT_ARTIFACT_ID']),'parent_result_sha256':os.environ['PARENT_RESULT_SHA256'],'parent_input_sha256':os.environ['PARENT_INPUT_SHA256'],'delta_rows':16,'operator_split':dict(split),'delta_identity_sha256':os.environ['EXPECTED_DELTA_SHA256'],'supplier_calls':0,'tourvisor_calls':0},sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'delta_rows':16,'operator_split':dict(split),'proof_pages':len(pages),'input_sha256':hashlib.sha256(raw).hexdigest()},sort_keys=True))
+          PY
+      - name: Bind tested writer to direct operator-native bridge rule
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path('scripts/diagnostics/hotel_match_operator_original_store.php'); s=p.read_text()
+          replacements={
+            "const MOS_OP='hotel-match-operator-original-store-1971-20260915-v2';":f"const MOS_OP='{os.environ['OPERATION_ID']}';",
+            "const MOS_INPUT_OP='hotel-match-operator-original-batch-1971-20260915-v2';":f"const MOS_INPUT_OP='{os.environ['INPUT_OPERATION_ID']}';",
+            "const MOS_INPUT_SOURCE='0ba983e53ba3cef37f4400828d5efe9d2530381e';":f"const MOS_INPUT_SOURCE='{os.environ['GITHUB_SHA']}';",
+            "if(!mos_name_guard([$f['hotel_name'],$f['original_name']],$h['name']))return ['state'=>'hold','reason'=>'name_or_qualifier_conflict'];":"if(!in_array($group['operator_key'],['315','342'],true)&&!mos_name_guard([$f['hotel_name'],$f['original_name']],$h['name']))return ['state'=>'hold','reason'=>'name_or_qualifier_conflict'];",
+            "if($local!==null&&!mos_name_guard($names,$hotels[$local]['name']))return ['state'=>'hold','reason'=>'group_name_or_qualifier_conflict'];":"if($local!==null&&!in_array($group['operator_key'],['315','342'],true)&&!mos_name_guard($names,$hotels[$local]['name']))return ['state'=>'hold','reason'=>'group_name_or_qualifier_conflict'];",
+            "'direct_original_to_current_accepted_catalog'":"'direct_provider_native_bridge_to_current_accepted_catalog'"}
+          for old,new in replacements.items():
+              assert s.count(old)==1 and new not in s
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          php -l scripts/diagnostics/hotel_match_operator_original_store.php
+          grep -F "direct_provider_native_bridge_to_current_accepted_catalog" scripts/diagnostics/hotel_match_operator_original_store.php >/dev/null
+          php -r 'define("MOS_LIBRARY_ONLY",true);require "scripts/diagnostics/hotel_match_operator_original_store.php";$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/".getenv("OPERATION_ID")."/input.json"),true,64,JSON_THROW_ON_ERROR);$g=mos_groups($x);if(count($g)!==16)throw new RuntimeException("group_count");foreach($g as $r)if(!in_array((string)$r["operator_key"],["315","342"],true))throw new RuntimeException("operator_scope");echo "sealed direct-bridge 16 groups PASS\n";'
+          ! grep -Eiq '(gateway\.samo|api\.anextour|tourvisor|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_operator_original_store.php
+          sha256sum scripts/diagnostics/hotel_match_operator_original_store.php | awk '{print $1}' > "$RUNNER_TEMP/$OPERATION_ID/runtime-script-sha256.txt"
+      - name: Reserve exact direct-bridge store before SSH or DB
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; raw=out.joinpath('input.json').read_bytes(); inputsha=hashlib.sha256(raw).hexdigest()
+          assert inputsha==out.joinpath('input-sha256.txt').read_text().strip()
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'state':'reserved_before_db_access','input_operation_id':os.environ['INPUT_OPERATION_ID'],'input_result_sha256':inputsha,'input_groups':16,'delta_identity_sha256':os.environ['EXPECTED_DELTA_SHA256'],'database_writes':0,'supplier_calls':0,'tourvisor_calls':0,'booking_calls':0,'no_replay':True}
+          out.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator-original-store-v4-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v4/reservation.json
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v4/input.json
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v4/provenance.json
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v4/runtime-script-sha256.txt
+          if-no-files-found: error
+          retention-days: 90
+      - name: Server-CURRENT guarded append and post-COMMIT readback
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; inputsha="$(cat "$out/input-sha256.txt")"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -s \"\$p/reservation.json\"; test ! -e \"\$p/input.json\"; cat > \"\$p/input.json\"; h=\$(sha256sum \"\$p/input.json\" | awk '{print \$1}'); test \"\$h\" = '$inputsha'; sync" < "$out/input.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_INPUT_SHA='$inputsha' php" < scripts/diagnostics/hotel_match_operator_original_store.php > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0 -a -s "$out/server-operation.tgz"; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc" INPUT_SHA="$inputsha"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
+          if not s.joinpath('result.json').exists():
+              state='unknown' if s.joinpath('unknown.json').exists() else 'no_result'
+              root.joinpath('workflow-readback.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'verified':False,'state':state,'remote_exit':int(os.environ['REMOTE_RC']),'no_replay':True},sort_keys=True)+'\n')
+              raise SystemExit('NO_RESULT_READBACK')
+          raw=s.joinpath('result.json').read_bytes(); result=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()) if s.joinpath('receipt.json').exists() else {}; digest=hashlib.sha256(raw).hexdigest()
+          ok=(receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True and result.get('state')=='completed_committed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and result.get('source_result_sha256')==os.environ['INPUT_SHA'] and result.get('source_pairs')==16 and result.get('native_groups')==16 and result.get('supplier_calls')==0 and result.get('anex_mappings_written')==0 and int(os.environ['REMOTE_RC'])==0)
+          if ok:
+              ok=(len(result.get('post_commit_readback') or [])==result.get('native_rows_written')==receipt.get('post_commit_native_rows') and len(result.get('anex_post_commit_readback') or [])==0 and result.get('native_rows_written',0)+len(result.get('holds') or [])==16)
+          gate={'operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['REMOTE_RC']),'verified':ok,'state':result.get('state'),'native_groups':result.get('native_groups'),'native_rows_written':result.get('native_rows_written'),'by_operator':result.get('by_operator'),'holds':len(result.get('holds') or []),'hold_details':result.get('holds'),'result_sha256':digest,'no_replay':True}
+          root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(5)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator-original-store-v4-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v4/
+          if-no-files-found: warn
+          retention-days: 90
