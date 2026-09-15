@@ -156,7 +156,8 @@ async function checkOfferJourney(page,width){
       await card.locator('.direct-tour[data-tid="'+id+'"]').click();
       await root.locator('.search3-flight-continue button').waitFor();
       assert.equal(await page.evaluate(()=>window.V2TourController.currentTour.id),id,'selected identity matches the clicked complete offer');
-      assert.equal(await root.locator('.facts>div').filter({hasText:'Номер'}).locator('b').innerText(),room,'room comes from the selected offer');
+      const expectedRoom=await page.evaluate(value=>window.V2Results.roomLabel({roomType:value}),room);
+      assert.equal(await root.locator('.facts>div').filter({hasText:'Номер'}).locator('b').innerText(),expectedRoom,'room comes from the selected offer through the shared display label');
       assert.equal(await root.locator('.facts>div').filter({hasText:'Питание'}).locator('b').innerText(),'Всё включено','meal comes from the same selected offer');
       assert.equal((await root.locator('.selected-price').innerText()).replace(/\D/g,''),String(price),'selected price matches the same offer');
       await root.locator('.search3-flight-continue button').click();
