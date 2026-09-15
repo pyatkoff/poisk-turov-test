@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+putenv('MATCH_STATE_APPLY_TEST_LIBRARY=1');
+require __DIR__.'/../scripts/diagnostics/hotel_match_state_country_consensus_apply.php';
+function ta(bool $ok,string $m):void{if(!$ok){fwrite(STDERR,"FAIL $m\n");exit(1);}}
+$review=['candidates'=>[]];for($i=1;$i<=17;$i++)$review['candidates'][]=['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=>(string)(1000+$i),'route'=>'auto_accept_candidate','target'=>$i,'evidence_sha256'=>str_repeat('a',64),'state_key'=>'73','inferred_country_id'=>8];$plan=msa_plan($review);ta(count($plan)===17&&$plan['1001']['target']===1,'full 17 plan');
+$core=[8=>'Мальдивы'];$aliases=msc_country_aliases($core);$hotels=[1=>['id'=>1,'country_id'=>8,'name'=>'Park Hyatt Hadahaa','region_name'=>null,'subregion_name'=>null,'latitude'=>0.5,'longitude'=>73.0]];$forms=[1=>['Park Hyatt Hadahaa']];$exact=[8=>['park hyatt hadahaa'=>[1]]];$tokens=[8=>['park'=>[1=>true],'hyatt'=>[1=>true],'hadahaa'=>[1=>true]]];$geo=[];[$cx,$ct]=msc_countryless_indexes($hotels,$forms,$aliases);$e=['source'=>['name'=>'Park Hyatt Maldives Hadahaa','stateKey'=>73,'latitude'=>0.5,'longitude'=>73.0]];$r=msa_resolve($e,8,$hotels,$forms,$exact,$tokens,$geo,$aliases,$cx,$ct);ta(($r['route']??'')==='auto_accept_candidate'&&($r['target']??0)===1,'country strip resolver accepted');$e2=['source'=>['name'=>'Park Hyatt Turkey Hadahaa','stateKey'=>73]];$r=msa_resolve($e2,8,$hotels,$forms,$exact,$tokens,$geo,$aliases,$cx,$ct);ta(($r['route']??'')==='hard_conflict'&&($r['reason']??'')==='row_explicit_country_conflict','row country conflict blocked');
+$row=['decision_status'=>'accepted','local_hotel_id'=>1,'evidence_json'=>json_encode(['match_promotion'=>['operation_id'=>MSA_OP,'target_local_hotel_id'=>1]])];ta(msa_readback_ok($row,1),'post commit readback helper');ta(!msa_readback_ok($row,2),'wrong target readback blocked');
+echo "hotel_match_state_country_consensus_apply_test: OK\n";
