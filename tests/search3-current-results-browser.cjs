@@ -597,6 +597,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(control.quoteRequests.length, 1, 'selected presentation does not replay the quote');
     if (!previous) await selected.screenshot({ path: path.join(output, `andromeda-selected-${width}.png`), animations: 'disabled' });
     await selected.locator('.back-results').click();
+    await page.waitForFunction(() => document.activeElement?.matches('[data-andromeda-select]'));
     assert.equal(await selectButton.evaluate(node => node === document.activeElement), true, 'return restores focus to the exact provider selection action');
     await detailToggle.click();
     assert.equal(await card.locator('.provider-detail').count(), 0, 'detail action closes the disclosure');
