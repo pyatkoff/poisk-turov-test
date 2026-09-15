@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const executable = value => value.replace(/\/\*[\s\S]*?\*\//g, '').trim();
@@ -62,4 +63,77 @@ assert.match(markup, /<\?php else:\?><section class="v2-product-hero"/, 'legacy 
 assert.match(catalogs, /function renderChildAges\(\)/, 'canonical child-age owner remains');
 assert.match(lifecycle, /new FormData\(form\)/, 'canonical FormData owner remains');
 assert.match(lifecycle, /hydrateUrlState\(\)/, 'canonical URL hydration remains');
+
+// Execute the actual form owner through the lifecycle events that preserve the
+// submitted query while the user edits a draft or returns from a selected tour.
+const listeners = new Map(), clicks = new Map();
+const route = { textContent: '' }, details = { textContent: '' };
+const trip = { hidden: true, querySelector: selector => selector === '[data-search3-trip-route]' ? route : details };
+let hotelsPresent = false, snapshot = null, focused = false;
+const field = options => ({ value: options[0][0], options: options.map(([value, textContent]) => ({ value, textContent })) });
+const form = {
+  dataset: {}, elements: {
+    from: field([['1', 'Москва'], ['2', 'Санкт-Петербург']]),
+    country: field([['4', 'Турция'], ['1', 'Египет']])
+  }, querySelectorAll: () => [], scrollIntoView() {}
+};
+form.elements.from.focus = () => { focused = true; };
+const results = { querySelector: () => hotelsPresent ? {} : null, setAttribute() {} };
+const edit = { setAttribute() {} };
+const nodes = { tourSearch: form, results, resultsSearchEdit: edit, resultsTripContext: trip };
+const context = {
+  document: { getElementById: id => nodes[id] || null, addEventListener: (name, handler) => clicks.set(name, handler) },
+  window: { addEventListener: (name, handler) => listeners.set(name, handler), V2SearchLifecycle: { get snapshot() { return snapshot; } } }
+};
+vm.runInNewContext(formOwner, context);
+const emit = (name, detail = {}) => listeners.get(name)?.({ detail });
+const first = { departureId: '1', countryId: '4', dateFrom: '2026-10-02', dateTo: '2026-10-08', nightsFrom: '7', nightsTo: '10', adults: '2', childs: [0, 5] };
+snapshot = first;
+emit('v2:search-reset');
+assert.equal(trip.hidden, true, 'pre-request reset never publishes an unconfirmed query');
+assert.equal(details.textContent, '', 'submitted context is accepted only after search-start success');
+// Matching submitted option IDs must not depend on the draft selected value.
+form.elements.from.value = '2'; form.elements.country.value = '1';
+emit('v2:search-started');
+hotelsPresent = true; emit('v2:results-rendered');
+assert.equal(form.dataset.search3View, 'summary');
+assert.equal(trip.hidden, false);
+assert.equal(route.textContent, 'Москва → Турция');
+assert.equal(details.textContent, 'Вылет 02.10.2026 — 08.10.2026 · 7–10 ночей · 2 взрослых · 2 ребёнка');
+const accepted = details.textContent;
+snapshot = { ...first, dateFrom: '2026-11-01', adults: '4' };
+emit('v2:results-rendered');
+assert.equal(details.textContent, accepted, 'rerender and selected-tour return retain the started query, never an unsent edit');
+clicks.get('click')({ target: { closest: () => edit } });
+assert.equal(focused, true, 'the existing edit action keeps canonical departure focus');
+assert.equal(trip.hidden, true, 'editing does not duplicate the visible full form');
+snapshot = null; emit('v2:search-reset', { dirty: true }); emit('v2:results-rendered');
+assert.equal(form.dataset.search3View, 'editor', 'dirty retained results do not collapse the draft editor');
+assert.equal(details.textContent, accepted, 'dirty reset does not overwrite the accepted query');
+hotelsPresent = false;
+snapshot = { departureId: '2', countryId: '1', dateFrom: '2026-11-01', dateTo: '2026-11-01', nightsFrom: '1', nightsTo: '1', adults: '1', childs: [] };
+emit('v2:search-reset'); emit('v2:search-started');
+hotelsPresent = true; emit('v2:results-rendered');
+assert.equal(route.textContent, 'Санкт-Петербург → Египет');
+assert.equal(details.textContent, 'Вылет 01.11.2026 · 1 ночь · 1 взрослый', 'new successful search replaces dates/party and removes old children');
+assert.equal(trip.hidden, false);
+snapshot = { departureId: 'unknown', countryId: 'unknown', dateFrom: 'bad', dateTo: '', nightsFrom: 0, nightsTo: '', adults: null, childs: [null] };
+emit('v2:search-reset'); emit('v2:search-error');
+assert.equal(details.textContent, 'Вылет 01.11.2026 · 1 ночь · 1 взрослый', 'failed initiation cannot replace last accepted query');
+emit('v2:search-started'); emit('v2:results-rendered');
+assert.equal(route.textContent, ''); assert.equal(details.textContent, '');
+assert.equal(trip.hidden, true, 'unknown context is omitted without fabricated dates, counts or route');
+snapshot = first;
+context.window.V2SearchLifecycle.searchId = 901;
+context.window.V2SearchLifecycle.dirty = false;
+vm.runInNewContext(formOwner, context);
+assert.equal(trip.hidden, false, 'late presentation initialization recovers an already-started canonical search');
+assert.equal(route.textContent, 'Москва → Турция');
+assert.equal(details.textContent, accepted);
+context.window.V2SearchLifecycle.searchId = 0;
+context.window.V2SearchLifecycle.dirty = true;
+vm.runInNewContext(formOwner, context);
+assert.equal(trip.hidden, true, 'late initialization cannot present unsent draft criteria as an active search');
+emit('v2:results-rendered');
+assert.equal(form.dataset.search3View, 'editor', 'late initialization preserves the canonical dirty editor through retained-results rerenders');
 console.log('PASS: native server form keeps six primary OTA hotel/price preferences visible, groups child ages with tourists, keeps tour operator under extras, and preserves URL hydration/FormData');
