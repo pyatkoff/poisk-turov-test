@@ -1,0 +1,71 @@
+name: Search3 hotel-details card live acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/search3-hotel-details-card-live-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-card:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/browser" --no-audit --no-fund --no-save playwright@1.55.0
+          "$RUNNER_TEMP/browser/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Verify published renderer with live local hotel DTO
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/browser/node_modules"
+          cat > "$RUNNER_TEMP/check.cjs" <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('node:fs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            const supplier=[];
+            page.on('request',req=>{const u=req.url(); if(/api-v2\.php.*(?:search|result|actual|tour)/i.test(u)) supplier.push(u);});
+            await page.goto('https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/',{waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForFunction(()=>window.V2Results&&typeof window.V2Results.render==='function',{timeout:15000});
+            await page.evaluate(()=>{
+              const hotel={id:453,name:'SWISS HEAVEN SHARMING INN',country:{name:'Египет'},region:{name:'Шарм-эль-Шейх'},price:143169,tours:[{id:'acceptance-only',price:143169,date:'2026-10-05',nights:7,meal:'AI',operator:'ANEX',selectionEnabled:false}]};
+              window.V2Results.render([hotel],{results:document.getElementById('results'),tools:document.getElementById('resultsTools'),summary:document.getElementById('resultSummary')});
+              const card=document.querySelector('#results .hotel-card[data-hotel-id="453"]');
+              if(card) card.scrollIntoView({block:'center'});
+            });
+            await page.waitForSelector('#results .hotel-card[data-hotel-id="453"] .hotel-description-summary',{state:'visible',timeout:15000});
+            const result=await page.evaluate(()=>{
+              const card=document.querySelector('#results .hotel-card[data-hotel-id="453"]');
+              const summary=card&&card.querySelector('.hotel-description-summary');
+              const details=card&&card.querySelector('.hotel-details');
+              return {hotel_id:card&&card.dataset.hotelId||null,description_length:(summary&&summary.textContent||'').trim().length,summary_visible:!!summary,details_visible:!!details,details_label:(details&&details.querySelector('summary')&&details.querySelector('summary').textContent||'').trim(),html_has_script:!!(summary&&summary.querySelector('script'))};
+            });
+            if(result.hotel_id!=='453'||result.description_length<=0||!result.summary_visible||!result.details_visible||result.details_label!=='Подробнее об отеле'||result.html_has_script) throw new Error('card acceptance failed '+JSON.stringify(result));
+            if(supplier.length) throw new Error('unexpected supplier/search request during synthetic card acceptance');
+            fs.writeFileSync('hotel-details-card-live-acceptance.json',JSON.stringify({...result,supplier_search_requests:0},null,2)+'\n');
+            await page.locator('#results .hotel-card[data-hotel-id="453"]').screenshot({path:'hotel-details-card-live.png'});
+            console.log('SEARCH3_HOTEL_DETAILS_CARD_LIVE_OK',JSON.stringify(result));
+            await browser.close();
+          })().catch(err=>{console.error(err);process.exit(1)});
+          JS
+          node "$RUNNER_TEMP/check.cjs"
+
+      - name: Retain card acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-hotel-details-card-live-${{ github.event.pull_request.head.sha }}
+          path: |
+            hotel-details-card-live-acceptance.json
+            hotel-details-card-live.png
+          if-no-files-found: warn
+          retention-days: 7
