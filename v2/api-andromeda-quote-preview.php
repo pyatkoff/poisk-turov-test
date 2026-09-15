@@ -261,6 +261,61 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
     }
 }
 
+/** Map private exception states to one fixed browser-safe category; never expose exception details. */
+function anytour_andromeda_quote_failure_category(Throwable $error): string
+{
+    static $map = [
+        'ANDROMEDA_TRANSPORT_ERROR' => 'supplier_transport',
+        'ANDROMEDA_NETWORK_TRANSPORT_FAILURE' => 'supplier_transport',
+        'ANDROMEDA_CURL_REQUIRED' => 'supplier_transport',
+        'ANDROMEDA_HTTP_ERROR' => 'supplier_http',
+        'ANDROMEDA_SUPPLIER_ERROR' => 'supplier_rejected',
+        'ANDROMEDA_INVALID_RESPONSE' => 'supplier_response',
+        'ANDROMEDA_INVALID_CLAIM_RESPONSE' => 'supplier_response',
+        'ANDROMEDA_INVALID_PACKAGE_RESPONSE' => 'supplier_response',
+        'ANDROMEDA_RESPONSE_TOO_LARGE' => 'supplier_response',
+        'ANDROMEDA_SECRET_ECHO' => 'supplier_response',
+        'ANDROMEDA_LOGIN_REQUIRED' => 'supplier_auth',
+        'ANDROMEDA_CREDENTIALS_REQUIRED' => 'supplier_auth',
+        'ANDROMEDA_CLAIM_SESSION_INVALID' => 'supplier_auth',
+        'ANDROMEDA_QUOTE_CONTEXT_MISMATCH' => 'quote_state',
+        'ANDROMEDA_QUOTE_CHECKPOINT_INVALID' => 'quote_state',
+        'ANDROMEDA_QUOTE_CHECKPOINT_CHANGED' => 'quote_state',
+        'ANDROMEDA_QUOTE_CHECKPOINT_FAILED' => 'quote_state',
+        'ANDROMEDA_QUOTE_LOCK_FAILED' => 'quote_state',
+        'ANDROMEDA_QUOTE_NOT_OFFER' => 'quote_state',
+        'ANDROMEDA_FLIGHT_STATE_CHANGED' => 'quote_state',
+        'ANDROMEDA_FLIGHT_STATE_FAILED' => 'quote_state',
+        'ANDROMEDA_FLIGHT_STATE_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_SELECTION_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_UID_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_OPTIONS_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_REF_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_REFS_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_CONTEXT_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_ALREADY_SELECTED' => 'quote_state',
+        'ANDROMEDA_SELECTED_FLIGHTS_INVALID' => 'quote_state',
+        'ANDROMEDA_FINAL_PRICE_MISSING' => 'quote_state',
+        'ANDROMEDA_CLAIM_SHAPE_INVALID' => 'quote_state',
+        'ANDROMEDA_CLAIM_TOO_LARGE' => 'quote_state',
+        'ANDROMEDA_CLAIM_REQUEST_BUDGET' => 'quote_state',
+        'ANDROMEDA_CLAIM_ACTION_NOT_ALLOWED' => 'quote_state',
+        'ANDROMEDA_PACKAGE_DISABLED' => 'quote_state',
+        'ANDROMEDA_PACKAGE_REPLAY_REFUSED' => 'quote_state',
+        'ANDROMEDA_INVALID_PACKAGE_ID' => 'quote_state',
+    ];
+    return $map[$error->getMessage()] ?? 'internal';
+}
+
+function anytour_andromeda_quote_supplier_failure(Throwable $error): array
+{
+    return [
+        'ok' => false,
+        'error' => 'supplier_unavailable',
+        'failure_category' => anytour_andromeda_quote_failure_category($error),
+    ];
+}
+
 function anytour_andromeda_quote_http(): void
 {
     header('Content-Type: application/json; charset=utf-8');
@@ -310,7 +365,7 @@ function anytour_andromeda_quote_http(): void
     } catch (OverflowException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'monthly_quota_exhausted'],429);
     } catch (DomainException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'quote_not_available'],422);
     } catch (InvalidArgumentException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'invalid_request'],400);
-    } catch (Throwable $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'supplier_unavailable'],502); }
+    } catch (Throwable $e) { anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502); }
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) anytour_andromeda_quote_http();
