@@ -76,6 +76,11 @@ assert.doesNotMatch(compact,/<small>(?:Туристы|Размещение)<\/sm
 assert.equal(api.roomLabel({roomType:'economy room'}),'Эконом','common supplier room code has a customer-facing label');
 assert.equal(api.roomLabel({roomType:'promo room'}),'Промо','common promotional room code has a customer-facing label');
 assert.equal(api.roomLabel({roomType:'standard pool view room'}),'Стандарт · вид на бассейн','actual supplier pool-view spelling uses the canonical customer label');
+for (const value of ['standard garden view','standard garden view room','standard room with garden view']) assert.equal(api.roomLabel({roomType:value}),'Стандарт · вид на сад',value+' uses the canonical garden-view label');
+assert.equal(api.roomLabel({roomType:'standard sea view room'}),'Стандарт · море','standard sea-view room uses the canonical customer label');
+assert.equal(api.roomLabel({roomType:'standard side sea view room'}),'Стандарт · боковой вид на море','standard side-sea-view room uses the canonical customer label');
+for (const value of ['superior garden view','superior garden view room','superior room garden view']) assert.equal(api.roomLabel({roomType:value}),'Улучшенный · вид на сад',value+' uses the canonical superior garden-view label');
+assert.equal(api.roomLabel({roomType:'superior side sea view'}),'Улучшенный · боковой вид на море','superior side-sea-view uses the canonical customer label');
 assert.match(api.tourRow({...multi.tours[0],roomType:'standard pool view room',placement:'DBL',provider:'tourvisor'}),/<small>Номер<\/small><b>Стандарт · вид на бассейн · Двухместное<\/b>/,'result row uses the same canonical pool-view room label');
 assert.equal(api.roomLabel({roomType:'supplier special room'}),'supplier special room','unknown supplier room label remains verbatim');
 assert.equal(api.placementLabel('DBL + CHD'),'Двухместное + ребёнок','common placement codes have a customer-facing label');
