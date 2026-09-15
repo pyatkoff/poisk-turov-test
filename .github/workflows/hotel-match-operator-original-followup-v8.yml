@@ -25,23 +25,20 @@ jobs:
           php tests/hotel_match_operator_original_test.php
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('scripts/diagnostics/hotel_match_operator_original_batch.php')
-          raw=p.read_text()
+          p=Path('scripts/diagnostics/hotel_match_operator_original_batch.php'); raw=p.read_text()
           replacements=[
             ("const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v2';", "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v8';", 1),
             ("'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'", "'17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'", 2),
             ("array_shift($queries);", "foreach($queries as &$q){$q['params']['CHECKIN_BEG']='20260929';$q['params']['CHECKIN_END']='20260929';AnyTourAndromedaClient::validatePriceParams($q['params']);}unset($q);", 1),
           ]
           for old,new,count in replacements:
-            assert raw.count(old)==count, (old, raw.count(old), count)
-            assert new not in raw
-            raw=raw.replace(old,new)
+            assert raw.count(old)==count, (old,raw.count(old),count); assert new not in raw; raw=raw.replace(old,new)
           p.write_text(raw)
           PY
           grep -Fx "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v8';" scripts/diagnostics/hotel_match_operator_original_batch.php
           php -l scripts/diagnostics/hotel_match_operator_original_batch.php
           sha256sum scripts/diagnostics/hotel_match_operator_original_batch.php | awk '{print $1}' > "$RUNNER_TEMP/runtime-script-sha256"
-      - name: Restore hash-pinned evidence inputs
+      - name: Restore hash-pinned evidence inputs only
         env: {GH_TOKEN: '${{ github.token }}'}
         run: |
           set -euo pipefail
@@ -54,15 +51,18 @@ jobs:
             ('turkey',10118184869,'b03e15604fb3a3035efeab97a7099aaafca76ee6ae9a70513cbf176bc70dc49a','capture.json'),
             ('saved',10109677472,'0a31817b0032c2bf4fedf2c827a4450e2b5a71333facf2a1aec95af0f6ff7aff','price.json'),
             ('barcelo',10369008837,'6fca5684069fbc7e5bb09bea11073e5eaa3d29385ec1173e0d2061b69a8518d6','result.json'),
-            ('previous',10370118140,'03f897d267d9db5a7cc7957835fe27a1f6d2cfdb0386ddfb308fad852527d832','result.json'),
-          ]
+            ('previous',10370118140,'03f897d267d9db5a7cc7957835fe27a1f6d2cfdb0386ddfb308fad852527d832','result.json')]
           for name,aid,digest,member in inputs:
             p=subprocess.run(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/artifacts/{aid}/zip'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=90)
-            assert hashlib.sha256(p.stdout).hexdigest()==digest, name
+            got=hashlib.sha256(p.stdout).hexdigest(); assert got==digest,(name,got)
             with zipfile.ZipFile(io.BytesIO(p.stdout)) as z:
-              assert z.getinfo(member).file_size<30*1024*1024
+              info=z.getinfo(member); assert info.file_size<30*1024*1024
               dest=root/name/member;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(member))
+            print(name,member,'ok')
           PY
+      - name: Build and verify fresh-date plan
+        run: |
+          set -euo pipefail
           php scripts/diagnostics/hotel_match_operator_original_batch.php plan "$RUNNER_TEMP/source" > "$RUNNER_TEMP/plan.json"
           python3 - <<'PY'
           import json,os,pathlib
@@ -79,8 +79,7 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           root=pathlib.Path(os.environ['RUNNER_TEMP']);p=root/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
-          plan=(root/'plan.json').read_bytes();d=json.loads(plan)
-          (p/'reserved-plan.json').write_bytes(plan)
+          plan=(root/'plan.json').read_bytes();d=json.loads(plan);(p/'reserved-plan.json').write_bytes(plan)
           script_sha=(root/'runtime-script-sha256').read_text().strip()
           runtime={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'original_script_git_blob':'b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4','runtime_script_sha256':script_sha,'binding':'exact_v2_to_v8_current_v3_and_fresh_date_20260929'}
           (p/'runtime-code.json').write_text(json.dumps(runtime,sort_keys=True)+'\n')
