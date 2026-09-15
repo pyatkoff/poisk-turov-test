@@ -24,6 +24,6 @@ on('v2:search-reset',()=>{editing=true;setEditor(true);busy('true')});
 on('v2:search-error',()=>{editing=true;setEditor(true);busy('false')});
 on('v2:results-rendered',()=>{if(hasHotels()&&!editing)setEditor(false);else if(!hasHotels())setEditor(true);busy('false')});
 document.addEventListener('click',event=>{if(event.target.closest('#resultsSearchEdit,.empty-edit-search')){editing=true;setEditor(true,true)}});
-const lifecycle=window.V2SearchLifecycle;if(lifecycle&&Number(lifecycle.searchId)>0&&!lifecycle.dirty)captureTrip();
-setEditor(!hasHotels());
+const lifecycle=window.V2SearchLifecycle;if(lifecycle){editing=!!lifecycle.dirty;if(Number(lifecycle.searchId)>0&&!editing)captureTrip()}
+setEditor(editing||!hasHotels());
 })();

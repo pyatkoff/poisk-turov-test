@@ -134,4 +134,6 @@ context.window.V2SearchLifecycle.searchId = 0;
 context.window.V2SearchLifecycle.dirty = true;
 vm.runInNewContext(formOwner, context);
 assert.equal(trip.hidden, true, 'late initialization cannot present unsent draft criteria as an active search');
+emit('v2:results-rendered');
+assert.equal(form.dataset.search3View, 'editor', 'late initialization preserves the canonical dirty editor through retained-results rerenders');
 console.log('PASS: native server form keeps six primary OTA hotel/price preferences visible, groups child ages with tourists, keeps tour operator under extras, and preserves URL hydration/FormData');
