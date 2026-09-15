@@ -11,7 +11,7 @@ env:
   REVIEW_RESULT_SHA256: 5338dd98e15fb15db67547122d684eb5d51ec5e78e011efb5f30223417df4d79
 jobs:
   apply:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 17
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 18
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -30,7 +30,7 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = e93113da264b9bb1a17d0cb65287b4d1dc5b476b
           test "$(git hash-object scripts/diagnostics/hotel_match_state_country_consensus.php)" = 2a443380b28e3a4267650d988e524971b77f56c3
           test "$(git hash-object scripts/diagnostics/hotel_match_state_country_consensus_apply.php)" = 88ed7a785dc8f089e842994e69fa6e6433d046d8
-          test "$(git hash-object tests/hotel_match_state_country_consensus_apply_test.php)" = 59ffb63dc1750d772dbcf19022f549c277b7945b
+          test "$(git hash-object tests/hotel_match_state_country_consensus_apply_test.php)" = e63516f0ba60167ed8b27d1c068ea0f215d30723
           ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_state_country_consensus.php scripts/diagnostics/hotel_match_state_country_consensus_apply.php
           ! grep -Eiq '\b(INSERT INTO|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_state_country_consensus_apply.php
           test "$(grep -Eic "UPDATE andromeda_hotel_identities SET local_hotel_id=" scripts/diagnostics/hotel_match_state_country_consensus_apply.php)" -eq 1
