@@ -119,6 +119,64 @@ async function checkToolbarLayout(page, width, previous) {
   }
   return { closed, opened };
 }
+async function checkOfferFacets(page, width, previous) {
+  const items = [
+    { ...hotels[0], id:'facet-a', name:'Первый отель', tours:[{...tour,id:'a7',nights:7,isCharter:true,meal:'BB',price:90000},{...tour,id:'a9',nights:9,isCharter:false,meal:'AI',price:120000}] },
+    { ...hotels[1], id:'facet-b', name:'Второй отель', tours:[{...tour,id:'b7',nights:7,isCharter:false,meal:'AI',price:130000},{...tour,id:'b9',nights:9,isCharter:true,meal:'BB',price:95000}] },
+    { ...hotels[1], id:'facet-c', name:'Третий отель', tours:[{...tour,id:'c7',nights:7,isCharter:false,meal:'BB',price:125000},{...tour,id:'c9',nights:9,isCharter:true,meal:'AI',price:150000}] }
+  ];
+  const requests=[],record=request=>{if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname))requests.push(request.url());};
+  page.on('request',record);
+  const render=async list=>page.evaluate(items=>{window.V2Results.render(items);window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items}}));},list);
+  const reset=async()=>page.evaluate(()=>window.Search3LocalHotelFilter.reset());
+  const visible=async()=>page.locator('#results .hotel-card:visible').evaluateAll(nodes=>nodes.map(node=>node.dataset.hotelId).sort());
+  const panel=page.locator('.search3-mobile-filter-panel'),nights=page.locator('.search3-nights-filter select'),flight=page.locator('.search3-flight-filter select'),meal=page.locator('.search3-meal-filter select'),upper=page.locator('.search3-budget-max');
+  try {
+    await reset();await render(items);
+    if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
+    assert.equal(await nights.isVisible(),true);assert.equal(await flight.isVisible(),true);
+    for(const select of [nights,flight])assert.ok((await select.boundingBox()).height>=44,'new filters retain a native touch target');
+    await nights.selectOption('7');await flight.selectOption('regular');
+    assert.deepEqual(await visible(),['facet-b','facet-c'],'nights and flight must match the same tour, not different offers at the same hotel');
+    await meal.selectOption('meal:all-inclusive');
+    assert.deepEqual(await visible(),['facet-b'],'meal joins the same exact seven-night regular-flight tour');
+    assert.equal((await page.locator('#results [data-hotel-id=facet-b] .hotel-price').innerText()).replace(/\s/g,''),'130000₽');
+    assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 1 из 3 · цены из текущего поиска');
+    await upper.fill('125000');await upper.press('Tab');
+    assert.deepEqual(await visible(),[],'a cheaper different offer cannot satisfy the budget');
+    await page.locator('.search3-active-filters [data-filter-key=budget]').click();
+    assert.deepEqual(await visible(),['facet-b']);
+    await page.locator('#sortResults').selectOption('rating');
+    assert.equal(await nights.inputValue(),'7');assert.equal(await flight.inputValue(),'regular');
+    assert.deepEqual(await visible(),['facet-b'],'sort preserves both exact-offer facets');
+    assert.equal(await page.locator('.search3-active-filters [data-filter-key=nights]').count(),1);
+    assert.equal(await page.locator('.search3-active-filters [data-filter-key=flight]').count(),1);
+    if(!previous&&[320,375,720,1440].includes(width))await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`offer-filters-${width}.png`),animations:'disabled'});
+    await nights.selectOption('9');assert.deepEqual(await visible(),['facet-a']);
+    const continued=items.concat({...items[0],id:'facet-d',name:'Новый отель',tours:[{...tour,id:'d9',nights:9,isCharter:false,meal:'AI',price:110000}]});
+    await render(continued);assert.deepEqual(await visible(),['facet-a','facet-d'],'progressive results retain the selected conjunction');
+    assert.equal(await nights.inputValue(),'9');assert.equal(await flight.inputValue(),'regular');
+    await page.locator('.search3-active-filters [data-filter-key=flight]').click();
+    assert.deepEqual(await visible(),['facet-a','facet-c','facet-d'],'removing only flight retains nights and meal');
+    await page.locator('.search3-active-filters [data-filter-key=nights]').click();
+    assert.deepEqual(await visible(),['facet-a','facet-b','facet-c','facet-d']);
+    await reset();await render(items);await nights.selectOption('7');await flight.selectOption('regular');
+    const incomplete=items.concat({...items[0],id:'unknown-facet',tours:[{...tour,id:'unknown-facet-tour',nights:0,isCharter:'false'}]});
+    await render(incomplete);
+    assert.equal(await nights.isVisible(),false);assert.equal(await flight.isVisible(),false);
+    assert.equal(await nights.inputValue(),'0');assert.equal(await flight.inputValue(),'');
+    assert.equal((await visible()).length,4,'unknown facts hide/reset facets and do not silently exclude hotels');
+    await render(items);await nights.selectOption('7');await flight.selectOption('regular');
+    await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:search-started')));
+    await render(items);
+    assert.equal(await nights.inputValue(),'0');assert.equal(await flight.inputValue(),'');
+    assert.equal((await visible()).length,3,'new search clears both facets');
+    await render([items[0]]);
+    if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
+    assert.equal(await nights.isVisible(),true);assert.equal(await flight.isVisible(),true,'multiple offers at one hotel still allow useful choices');
+    assert.deepEqual(requests,[],'local nights/flight interactions never call supplier or lead endpoints');
+  } finally {page.off('request',record);await reset();await render(hotels);if(width<1025&&await panel.evaluate(node=>node.open))await panel.locator('summary').click();}
+}
 async function checkBudgetRange(page, width, previous) {
   const requests=[];
   const record=request=>{if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url());};
@@ -1397,6 +1455,7 @@ async function run(browser, width, previous) {
     if ([320, 375, 390, 720, 1200, 1363, 1440].includes(width)) {
       await checkMealFacet(page, width, previous);
       await checkBudgetRange(page, width, previous);
+      await checkOfferFacets(page, width, previous);
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkExactOfferParty(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);
