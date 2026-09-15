@@ -6,17 +6,17 @@ require __DIR__ . '/../app/integrations/andromeda-price-observation.php';
 require __DIR__ . '/../app/integrations/andromeda-search-surcharge.php';
 
 $request = anytour_andromeda_surcharge_e2e_request();
-if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v3-egypt-2026-12-20-3a-10n'
-    || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '6c174898ebf4876ae024f7173d53e1f6dc4837f7'
-    || ($request['generation'] ?? null) !== 17171220
+if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v4-egypt-2026-12-27-2a2c5-11-8n'
+    || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '067bba00e664b0f76d7239d72306f8fb70252f00'
+    || ($request['generation'] ?? null) !== 17171227
     || ($request['params']['countryId'] ?? null) !== '1'
     || ($request['params']['departureId'] ?? null) !== '1'
-    || ($request['params']['dateFrom'] ?? null) !== '2026-12-20'
-    || ($request['params']['dateTo'] ?? null) !== '2026-12-20'
-    || ($request['params']['nightsFrom'] ?? null) !== 10
-    || ($request['params']['nightsTo'] ?? null) !== 10
-    || ($request['params']['adults'] ?? null) !== 3
-    || ($request['params']['childs'] ?? null) !== []
+    || ($request['params']['dateFrom'] ?? null) !== '2026-12-27'
+    || ($request['params']['dateTo'] ?? null) !== '2026-12-27'
+    || ($request['params']['nightsFrom'] ?? null) !== 8
+    || ($request['params']['nightsTo'] ?? null) !== 8
+    || ($request['params']['adults'] ?? null) !== 2
+    || ($request['params']['childs'] ?? null) !== [5, 11]
     || ($request['params']['meal'] ?? null) !== ''
     || ($request['andromeda_operator_ids'] ?? null) !== ['5']) {
     throw new RuntimeException('scenario changed');
@@ -189,4 +189,4 @@ if ($record === false || $quoteCall === false || $record >= $quoteCall) {
     throw new RuntimeException('verified listing evidence delayed until after quote');
 }
 
-echo "Andromeda surcharge E2E: new cohort + served listing to verified quote contract passed\n";
+echo "Andromeda surcharge E2E: new family cohort + served listing to verified quote contract passed\n";
