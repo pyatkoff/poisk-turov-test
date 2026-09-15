@@ -2,19 +2,19 @@
 declare(strict_types=1);
 
 /** One immutable P0/P1 proof: retained PRICE -> saved surcharge -> served response -> verified quote. */
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8';
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '64706822fc54f4d4423ea6bbd0ad966144151387';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v3-egypt-2026-12-20-3a-10n';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '6c174898ebf4876ae024f7173d53e1f6dc4837f7';
 const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_MIN_HEADROOM = 100;
 
 function anytour_andromeda_surcharge_e2e_request(): array
 {
     return [
-        'generation' => 17171215,
+        'generation' => 17171220,
         'page' => 1,
         'params' => [
             'countryId' => '1', 'departureId' => '1',
-            'dateFrom' => '2026-12-15', 'dateTo' => '2026-12-15',
-            'nightsFrom' => 7, 'nightsTo' => 7, 'adults' => 2, 'childs' => [8],
+            'dateFrom' => '2026-12-20', 'dateTo' => '2026-12-20',
+            'nightsFrom' => 10, 'nightsTo' => 10, 'adults' => 3, 'childs' => [],
             'meal' => '', 'hotelCategory' => '', 'hotelIds' => [], 'regionIds' => [],
             'subregionIds' => [], 'operatorIds' => [], 'currency' => 'RUB',
         ],
@@ -254,6 +254,7 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
         $phase = 'search'; $result['phase'] = $phase;
         $beforeProjection = anytour_andromeda_search3_run($request, $pdo, $catalog, $config, $session);
         $picked = anytour_andromeda_surcharge_e2e_pick($beforeProjection); $beforeTour = $picked['tour'];
+        $result['local_hotel_id'] = $picked['local_id'];
         $detailRequest = $request; $detailRequest['offer_context'] = $beforeTour['offer_context'];
         $detail = anytour_andromeda_search3_detail($detailRequest, $pdo, $catalog, $config, $session);
         $selection = $detail['selected_offer'] ?? null;
@@ -282,6 +283,8 @@ function anytour_andromeda_surcharge_e2e_run(string $root): array
                 'served_price' => $afterTour['price'], 'price_basis' => 'search_base',
                 'arithmetic_applied' => false, 'final_price_verified' => false];
         }
+        // Retain verified earlier facts even if a later quote is refused or unknown.
+        $result['listing_money'] = $listingMoney;
 
         $phase = 'listing_recorded'; $result['phase'] = $phase;
         $recordedProjection = anytour_andromeda_search3_record_response($afterProjection);

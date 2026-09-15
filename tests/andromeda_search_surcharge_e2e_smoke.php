@@ -6,16 +6,17 @@ require __DIR__ . '/../app/integrations/andromeda-price-observation.php';
 require __DIR__ . '/../app/integrations/andromeda-search-surcharge.php';
 
 $request = anytour_andromeda_surcharge_e2e_request();
-if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8'
-    || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '64706822fc54f4d4423ea6bbd0ad966144151387'
+if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v3-egypt-2026-12-20-3a-10n'
+    || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '6c174898ebf4876ae024f7173d53e1f6dc4837f7'
+    || ($request['generation'] ?? null) !== 17171220
     || ($request['params']['countryId'] ?? null) !== '1'
     || ($request['params']['departureId'] ?? null) !== '1'
-    || ($request['params']['dateFrom'] ?? null) !== '2026-12-15'
-    || ($request['params']['dateTo'] ?? null) !== '2026-12-15'
-    || ($request['params']['nightsFrom'] ?? null) !== 7
-    || ($request['params']['nightsTo'] ?? null) !== 7
-    || ($request['params']['adults'] ?? null) !== 2
-    || ($request['params']['childs'] ?? null) !== [8]
+    || ($request['params']['dateFrom'] ?? null) !== '2026-12-20'
+    || ($request['params']['dateTo'] ?? null) !== '2026-12-20'
+    || ($request['params']['nightsFrom'] ?? null) !== 10
+    || ($request['params']['nightsTo'] ?? null) !== 10
+    || ($request['params']['adults'] ?? null) !== 3
+    || ($request['params']['childs'] ?? null) !== []
     || ($request['params']['meal'] ?? null) !== ''
     || ($request['andromeda_operator_ids'] ?? null) !== ['5']) {
     throw new RuntimeException('scenario changed');
@@ -178,6 +179,14 @@ if ($exit !== 0 || $stderr !== '' || $reply['status'] !== 'blocked'
     || $reply['phase'] !== 'preflight' || $reply['reason'] !== 'project_invalid'
     || $reply['calc_calls'] !== 0 || $reply['booking_calls'] !== 0) {
     throw new RuntimeException('structured rejection lost on CLI wire');
+}
+
+// Keep already verified listing money on the existing failure result before entering quote.
+$source = file_get_contents(__DIR__ . '/../scripts/diagnostics/andromeda_search_surcharge_e2e.php');
+$record = strpos($source, "\$result['listing_money'] = \$listingMoney;");
+$quoteCall = strpos($source, '$quote = anytour_andromeda_quote_run(');
+if ($record === false || $quoteCall === false || $record >= $quoteCall) {
+    throw new RuntimeException('verified listing evidence delayed until after quote');
 }
 
 echo "Andromeda surcharge E2E: new cohort + served listing to verified quote contract passed\n";
