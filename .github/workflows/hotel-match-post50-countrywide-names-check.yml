@@ -1,0 +1,40 @@
+name: MATCH post50 full-country name evidence
+on:
+  push:
+    branches: [match/post50-countrywide-names-1971-20260915-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_post50_countrywide_names.py
+      - tests/hotel_match_post50_countrywide_names_test.py
+      - reports/hotel-match-post50-countrywide-names-20260915.json
+      - .github/workflows/hotel-match-post50-countrywide-names-check.yml
+permissions: {contents: read, actions: read}
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - run: python3 -m pip install numpy==2.3.5
+      - run: python3 tests/hotel_match_post50_countrywide_names_test.py
+      - name: Read immutable prior evidence artifacts only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/rank-inputs"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394524643/zip > "$RUNNER_TEMP/rank-inputs/census.zip"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10399235322/zip > "$RUNNER_TEMP/rank-inputs/current.zip"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10398688348/zip > "$RUNNER_TEMP/rank-inputs/applied.zip"
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394794968/zip > "$RUNNER_TEMP/rank-inputs/guards.zip"
+      - name: Reproduce complete prepared report
+        run: |
+          set -euo pipefail
+          python3 scripts/diagnostics/hotel_match_post50_countrywide_names.py "$RUNNER_TEMP/rank-inputs/census.zip" "$RUNNER_TEMP/rank-inputs/current.zip" "$RUNNER_TEMP/rank-inputs/applied.zip" "$RUNNER_TEMP/rank-inputs/guards.zip" "$RUNNER_TEMP/reproduced.json"
+          cmp reports/hotel-match-post50-countrywide-names-20260915.json "$RUNNER_TEMP/reproduced.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-post50-countrywide-names-checked
+          path: ${{ runner.temp }}/reproduced.json
+          if-no-files-found: error
+          retention-days: 90
