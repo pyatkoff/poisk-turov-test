@@ -100,6 +100,13 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   assert.equal(JSON.stringify(results.roomIdentity(tour)), JSON.stringify({ key: 'room:standard-land-view', label: 'Стандарт · территория' }),
     'one reviewed room alias has a stable customer-facing identity');
   assert.equal(results.roomLabel({ roomType: 'Standard room' }), 'Стандарт');
+  for (const name of ['Standard Pool View', 'STANDARD ROOM POOL VIEW', 'Стандартный номер · вид на бассейн', 'Стандарт · вид на бассейн']) {
+    const offer = Object.freeze({ ...tour, roomType: name });
+    assert.equal(JSON.stringify(results.roomIdentity(offer)), JSON.stringify({ key: 'room:standard-pool-view', label: 'Стандарт · вид на бассейн' }));
+    assert.match(results.tourRow(offer), /<small>Номер<\/small><b>Стандарт · вид на бассейн<\/b>/);
+    assert.equal(results.rawRoomLabel(offer), name, 'the local display alias preserves the original supplier room');
+  }
+  assert.equal(results.roomLabel({ roomType: 'STANDARD POOL VIEW WITH PRIVATE POOL' }), 'STANDARD POOL VIEW WITH PRIVATE POOL', 'additional room conditions are not folded into the pool-view alias');
   assert.equal(results.roomLabel({ roomType: 'FAMILY SUITE WITH TWO BEDROOMS AND SIDE SEA VIEW' }), 'Семейный люкс · 2 спальни · боковой вид на море');
   assert.equal(results.roomLabel({ roomType: 'EXECUTIVE SEA VIEW WITH BALCONY' }), 'EXECUTIVE SEA VIEW WITH BALCONY',
     'unreviewed supplier room text remains verbatim');
