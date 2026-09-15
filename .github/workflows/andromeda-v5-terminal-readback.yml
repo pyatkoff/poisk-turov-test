@@ -12,7 +12,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: anytoour-andromeda-detail-publication
+  group: anytoour-andromeda-v5-terminal-readback
   cancel-in-progress: false
 
 jobs:
