@@ -97,13 +97,13 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     'supplier fullName-only meal appears in the tour facts');
   assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'Всё включено',
     'representative tour context uses the same meal normalization');
-  assert.equal(JSON.stringify(results.roomIdentity(tour)), JSON.stringify({ key: 'room:standard-land-view', label: 'Стандартный номер · вид на территорию' }),
+  assert.equal(JSON.stringify(results.roomIdentity(tour)), JSON.stringify({ key: 'room:standard-land-view', label: 'Стандарт · вид на территорию' }),
     'one reviewed room alias has a stable customer-facing identity');
-  assert.equal(results.roomLabel({ roomType: 'Standard room' }), 'Стандартный номер');
+  assert.equal(results.roomLabel({ roomType: 'Standard room' }), 'Стандарт');
   assert.equal(results.roomLabel({ roomType: 'FAMILY SUITE WITH TWO BEDROOMS AND SIDE SEA VIEW' }), 'Семейный люкс · 2 спальни · боковой вид на море');
   assert.equal(results.roomLabel({ roomType: 'EXECUTIVE SEA VIEW WITH BALCONY' }), 'EXECUTIVE SEA VIEW WITH BALCONY',
     'unreviewed supplier room text remains verbatim');
-  assert.match(results.tourRow(tour), /<small>Номер<\/small><b>Стандартный номер · вид на территорию<\/b>/,
+  assert.match(results.tourRow(tour), /<small>Номер<\/small><b>Стандарт · вид на территорию<\/b>/,
     'result facts use the shared room display label');
   for (const meal of ['Всё включено', { russianName: 'Всё включено', fullName: 'All Inclusive' },
     { fullRussianName: 'Всё включено', fullName: 'All Inclusive' },
@@ -202,7 +202,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     assert.equal(results.priceContext({ price: sample.price, tours: [sample] }), item.label);
     const current = await selectedMeal(sample), standalone = await selectedMeal(sample, false);
     assert.ok(current.html.includes('<span>Питание</span><b>' + (item.label || '—') + '</b>'), 'selected fact uses the same visible label');
-    assert.ok(current.html.includes('<span>Номер</span><b>Стандартный номер · вид на территорию</b>'), 'selected facts use the same room display label');
+    assert.ok(current.html.includes('<span>Номер</span><b>Стандарт · вид на территорию</b>'), 'selected facts use the same room display label');
     assert.equal(current.payload.meal, item.payload, 'existing lead meal value remains unchanged');
     assert.equal(current.payload.roomType, tour.roomType, 'existing lead room value remains unchanged');
     assert.deepEqual(current.payload, standalone.payload, 'display helper does not change any lead field');
