@@ -1,0 +1,77 @@
+name: Verify Search3 production fingerprint (read only)
+on:
+  push:
+    branches: [verify/search3-site-23993e90-v1]
+    paths: ['.github/workflows/verify-search3-site-final.yml']
+permissions:
+  contents: read
+concurrency:
+  group: deploy-anytoour-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/verify/search3-site-23993e90-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Prepare SSH transport
+        id: ssh
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KEY" && test -n "$HOST" && test -n "$USER"
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          key="$(mktemp "$RUNNER_TEMP/site-key.XXXXXXXXXXXX")"
+          scan="$(mktemp "$RUNNER_TEMP/site-scan.XXXXXXXXXXXX")"
+          known="$(mktemp "$RUNNER_TEMP/site-known.XXXXXXXXXXXX")"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$scan"
+          test -s "$scan"
+          fingerprints="$(ssh-keygen -lf "$scan" -E sha256 | awk '{print $2}' | LC_ALL=C sort -u)"
+          test "$(printf '%s\n' "$fingerprints" | wc -l)" -eq 1
+          [[ "$fingerprints" =~ ^SHA256:[A-Za-z0-9+/]{43}$ ]]
+          LC_ALL=C sort -u "$scan" > "$known"; chmod 600 "$known"
+          echo "key=$key" >> "$GITHUB_OUTPUT"; echo "known=$known" >> "$GITHUB_OUTPUT"
+          echo SEARCH3_SITE_SSH_OK
+
+
+      - name: Verify protected files without uploading or activating
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY: ${{ steps.ssh.outputs.key }}
+          KNOWN: ${{ steps.ssh.outputs.known }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          opts=(-i "$KEY" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          passed=false
+          for attempt in 1 2 3; do
+            if timeout 45s ssh "${opts[@]}" "$USER@$HOST" 'set -euo pipefail; cd "$HOME/www/anytoour.ru"; for path in index.php search-page-v2.php poisk-turov/index.php assets.php api-v2.php lead-adapter-v2.php lead-bridge-v1.php lead-receiver-v1.php lead-price-v1.php lead-idempotency-v1.php analytics-config.php bundle-manifest-v1.php config.php; do test -f "$path" && test ! -L "$path"; sha256sum "$path"; done' > "$RUNNER_TEMP/site-production-final.sha256"; then passed=true; break; fi
+            sleep 5
+          done
+          test "$passed" = true
+          test "$(wc -l < "$RUNNER_TEMP/site-production-final.sha256")" -eq 13
+          echo '5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340  site-production-final.sha256' > "$RUNNER_TEMP/expected.sha256"
+          cd "$RUNNER_TEMP"
+          sha256sum --check expected.sha256
+          echo 'Verified against before/after evidence 9971297501 of publication 33972333244; source 23993e90975a6001f9e0d6b0de2d1511fd7e248b.' > verification-context.txt
+          echo SEARCH3_SITE_PRODUCTION_FINAL_UNCHANGED
+      - name: Save final verification evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-final-fingerprint-23993e90
+          path: |
+            ${{ runner.temp }}/site-production-final.sha256
+            ${{ runner.temp }}/expected.sha256
+            ${{ runner.temp }}/verification-context.txt
+          retention-days: 30
