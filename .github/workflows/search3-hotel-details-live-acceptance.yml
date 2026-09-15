@@ -1,0 +1,71 @@
+name: Search3 hotel-details live acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/search3-hotel-details-live-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-hotel-details:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read published local hotel DTO
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://anytoour.ru/_preview/search3-site-candidate/data/hotel-details-read-v1.php?hotelId=453'
+          body="$RUNNER_TEMP/hotel-details.json"
+          status="$(curl --silent --show-error --location --max-time 20 --output "$body" --write-out '%{http_code}' "$url")"
+          export STATUS="$status" BODY="$body"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          status = os.environ['STATUS']
+          body_path = Path(os.environ['BODY'])
+          raw = body_path.read_text('utf-8', errors='replace')
+          result = {'http_status': int(status) if status.isdigit() else status}
+          if status != '200':
+              try:
+                  payload = json.loads(raw)
+                  result['error'] = str(payload.get('error') or 'non_200')[:120]
+              except Exception:
+                  result['error'] = 'non_json_non_200'
+              Path('hotel-details-live-acceptance.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+              raise SystemExit(f'hotel-details live HTTP {status}: {result["error"]}')
+          try:
+              payload = json.loads(raw)
+          except Exception as exc:
+              result['error'] = 'invalid_json'
+              Path('hotel-details-live-acceptance.json').write_text(json.dumps(result, indent=2) + '\n', 'utf-8')
+              raise SystemExit('hotel-details live response is not JSON') from exc
+          item = payload.get('item') if isinstance(payload, dict) else None
+          description = item.get('description') if isinstance(item, dict) else None
+          result.update({
+              'ok': payload.get('ok') is True,
+              'hotel_id': item.get('id') if isinstance(item, dict) else None,
+              'hotel_name': item.get('name') if isinstance(item, dict) else None,
+              'description_length': len(description.strip()) if isinstance(description, str) else 0,
+              'details_available': item.get('detailsAvailable') if isinstance(item, dict) else None,
+              'source': payload.get('source') if isinstance(payload, dict) else None,
+          })
+          Path('hotel-details-live-acceptance.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+          assert result['ok'], 'hotel-details ok is not true'
+          assert result['hotel_id'] == 453, 'unexpected hotel id'
+          assert result['description_length'] > 0, 'hotel description is empty'
+          assert result['details_available'] is True, 'hotel details are not marked available'
+          print('SEARCH3_HOTEL_DETAILS_LIVE_OK', json.dumps(result, ensure_ascii=False))
+          PY
+
+      - name: Retain sanitized acceptance result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-hotel-details-live-acceptance-${{ github.event.pull_request.head.sha }}
+          path: hotel-details-live-acceptance.json
+          if-no-files-found: warn
+          retention-days: 7
