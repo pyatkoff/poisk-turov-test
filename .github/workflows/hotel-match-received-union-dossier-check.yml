@@ -1,0 +1,36 @@
+name: MATCH received union offline dossier checks
+on:
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_received_union_dossier.py
+      - tests/hotel_match_received_union_dossier_test.py
+      - reports/hotel-match-received-union-current-20260915.json
+      - .github/workflows/hotel-match-received-union-dossier-check.yml
+permissions:
+  contents: read
+jobs:
+  offline-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Verify receiving guards without network or database
+        run: python3 -m unittest discover -s tests -p hotel_match_received_union_dossier_test.py -v
+      - name: Verify retained full-pool report has no write authority
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          r=json.loads(pathlib.Path('reports/hotel-match-received-union-current-20260915.json').read_text())
+          assert r['pair_count']==len(r['full_pair_index'])==922
+          assert sum(r['relation_counts'].values())==922
+          assert r['candidate_count_not_safe']==len(r['candidates'])==139
+          assert len(r['unresolved_anchors'])==123
+          assert r['safe_mappings']==r['mapping_writes']==r['database_writes']==r['supplier_calls']==r['tourvisor_calls']==0
+          assert r['auto_accept'] is False and r['apply_manifest'] is False
+          assert all(x['auto_accept'] is False for x in r['candidates']+r['unresolved_anchors'])
+          assert r['current_operation_id']=='hotel-match-received-union-current-1971-20260915-v1'
+          assert r['provenance']['current_result_sha256']=='48ba69fad8e190c897db01a4d2bb6fc5b36f5ae47c951ee9964ba472be4a9270'
+          print('Full 922-pair / 139-candidate CURRENT receiving report verified; no apply authority')
+          PY
