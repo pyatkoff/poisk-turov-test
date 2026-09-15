@@ -1,0 +1,58 @@
+name: MATCH current ANEX detail acceptance v19
+run-name: MATCH current ANEX detail acceptance #1971 v19
+on:
+  pull_request:
+    paths:
+      - 'scripts/diagnostics/hotel_match_anex_current_detail_accept_v19.php'
+      - 'tests/hotel-match-anex-current-detail-accept-v19-test.php'
+      - '.github/workflows/hotel-match-anex-current-detail-accept-v19.yml'
+      - '.github/match-anex-current-detail-accept-1971-v19.manifest.json'
+      - '.github/match-anex-current-detail-accept-1971-v19.arm'
+permissions:
+  contents: read
+concurrency:
+  group: match-anex-current-detail-accept-1971-v19-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  OPERATION_ID: hotel-match-anex-current-detail-accept-1971-20260913-v19
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate guarded acceptance source and immutable evidence manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_anex_current_detail_accept_v19.php
+          php -l tests/hotel-match-anex-current-detail-accept-v19-test.php
+          php tests/hotel-match-anex-current-detail-accept-v19-test.php
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('.github/match-anex-current-detail-accept-1971-v19.manifest.json').read_text())
+          assert m['operation_id']=='hotel-match-anex-current-detail-accept-1971-20260913-v19'
+          assert len(m['intents'])==22
+          assert len({x['anex_hotel_id'] for x in m['intents']})==22
+          assert len({x['target_local_hotel_id'] for x in m['intents']})==22
+          assert 28450 not in {x['anex_hotel_id'] for x in m['intents']}
+          assert any(x['anex_hotel_id']==28450 and x['target_local_hotel_id']==63682 for x in m['explicitly_excluded'])
+          assert m['source_artifacts']['v16']['zip_sha256']=='d29728b346ed17d38a1c8d29930beae151204f7480711a32e3f80bec04b9e802'
+          assert m['source_artifacts']['v17']['zip_sha256']=='417daff4b017bfb85591fcdbe81c682052ecda38c99cc818cf6e38fe564bf697'
+          assert m['source_artifacts']['v18']['zip_sha256']=='a09b24c4140f0d14d3afd8bb2724f500460f8ea6411f108e05c52b52092723e5'
+          s=Path('scripts/diagnostics/hotel_match_anex_current_detail_accept_v19.php').read_text()
+          for x in ('REPEATABLE READ','FOR UPDATE','current_state_changed_after_review','manual_or_conflict_protected','existing_mapping_protected','pair_exclusion_protected','same_provider_target_occupied','post_commit_readback_failed','unknown_after_commit','INSERT INTO anex_hotel_search_mappings'):
+              assert x in s,x
+          for bad in ('curl_init','curl_exec','AnyTourAnexClient','v2_data_tv_get','UPDATE anex_hotel','DELETE FROM anex_hotel','REPLACE INTO anex_hotel'):
+              assert bad not in s,bad
+          print('MATCH_V19_PREPARED_ONLY_OK')
+          PY
+      - name: Enforce prepared-only gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(head -n1 .github/match-anex-current-detail-accept-1971-v19.arm)" = "$OPERATION_ID"
+          echo 'V19_PREPARED_ONLY_NO_LIVE_TRIGGER'
