@@ -42,6 +42,41 @@ final class AnyTourThreeProviderSearchHandoff
         );
     }
 
+    /**
+     * Customer-result DTO for the existing SEARCH fail-closed consumer.
+     *
+     * `finalPriceReady` is listing/display readiness, not supplier quote verification.
+     * Tourvisor already reports the displayed search price and its fuel fact separately;
+     * that price is usable only when the fuel fact is present. Direct ANEX/Andromeda are
+     * usable only when the existing canonical surcharge estimator has already produced the
+     * exact party-specific search_price_with_surcharge. Missing/unknown surcharge never
+     * falls back to the base search price.
+     */
+    public static function fromCustomerSearchOffer(
+        array $offer,
+        array $retained,
+        array $current,
+        int $now,
+        ?array $pricedMoney = null
+    ): array {
+        self::assertCurrentOffer($offer, $retained, $current, $now);
+        self::assertCanonicalSearchSurface($offer);
+        $readiness = self::customerPriceReadiness($offer, $pricedMoney);
+        $out = self::project(
+            $offer,
+            $retained,
+            $pricedMoney ?? $offer['money'],
+            'unknown',
+            false,
+            null
+        );
+        $out['finalPriceReady'] = $readiness['ready'];
+        $out['finalPrice'] = $readiness['amount'];
+        $out['price'] = $readiness['amount'];
+        $out['currency'] = 'RUB';
+        return $out;
+    }
+
     public static function fromVerifiedQuote(
         array $offer,
         array $retained,
@@ -221,6 +256,56 @@ final class AnyTourThreeProviderSearchHandoff
             || $observed->format('Y-m-d\\TH:i:s\\Z') !== $observedAt) {
             throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_TIMESTAMP');
         }
+    }
+
+    private static function customerPriceReadiness(array $offer, ?array $pricedMoney): array
+    {
+        $provider = $offer['provider'];
+        $searchMoney = $offer['money'];
+        if ($provider === 'tourvisor') {
+            if ($pricedMoney !== null && $pricedMoney !== $searchMoney) {
+                throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_PRICE');
+            }
+            if (($searchMoney['fuel_charge_reported'] ?? null) === null) {
+                return ['ready' => false, 'amount' => null];
+            }
+            $amount = self::readyRubAmount($searchMoney['search_price'] ?? null);
+            return $amount === null
+                ? ['ready' => false, 'amount' => null]
+                : ['ready' => true, 'amount' => $amount];
+        }
+
+        if (!in_array($provider, ['anex', 'andromeda'], true) || $pricedMoney === null) {
+            return ['ready' => false, 'amount' => null];
+        }
+        try {
+            $expected = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate(
+                $searchMoney,
+                $offer['party']['adults'],
+                $offer['party']['children']
+            );
+        } catch (DomainException $error) {
+            throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_PRICE', 0, $error);
+        }
+        if ($pricedMoney !== $expected) {
+            throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_PRICE');
+        }
+        $amount = self::readyRubAmount($pricedMoney['search_price_with_surcharge'] ?? null);
+        return $amount === null
+            ? ['ready' => false, 'amount' => null]
+            : ['ready' => true, 'amount' => $amount];
+    }
+
+    private static function readyRubAmount($money): ?string
+    {
+        if (!is_array($money) || ($money['currency'] ?? null) !== 'RUB') return null;
+        $amount = $money['amount'] ?? null;
+        if (!is_string($amount)
+            || !preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $amount)
+            || !preg_match('/[1-9]/', $amount)) {
+            return null;
+        }
+        return $amount;
     }
 
     private static function project(
