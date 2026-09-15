@@ -1,0 +1,213 @@
+name: Inspect terminal Andromeda v5 quote checkpoint
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-v5-terminal-readback.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: anytoour-andromeda-detail-publication
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify terminal readback is filesystem-only and owner-bound
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/andromeda-v5-terminal-readback.yml').read_text()
+          required = [
+              "github.event.issue.number == 1717",
+              "github.event.comment.body == '/inspect-andromeda-surcharge-e2e-1717-v5'",
+              "const sourceRun = 34956584254;",
+              "const sourceArtifact = 10391232881;",
+              "sha256:8423ee3949dca80c1595de875f39f2048b39e904a7cfd1782a3c02d012a2afcc",
+              "ANYTOOUR_DEPLOY_HOST: $" + "{{ secrets.ANYTOOUR_DEPLOY_HOST }}",
+              "ANYTOOUR_DEPLOY_USER: $" + "{{ secrets.ANYTOOUR_DEPLOY_USER }}",
+              "'supplier_calls'=>0",
+              "'database_reads'=>0",
+              "'database_writes'=>0",
+              "'booking_calls'=>0",
+              "'filesystem_writes'=>0",
+              "'operation_replayed'=>false",
+          ]
+          for needle in required:
+              if text.count(needle) < 1:
+                  raise SystemExit('terminal readback pin missing: ' + needle)
+          live = text.split('      - name: Inspect only retained filesystem evidence', 1)[1]
+          forbidden = [
+              'anytour_andromeda_quote_run', 'AnyTourAndromedaClient', 'new PDO', 'curl_',
+              'file_put_contents', 'fopen(', 'mkdir(', 'unlink(', 'rename(', 'copy(', 'touch(',
+              'shell_exec', 'passthru(', 'system(',
+          ]
+          for needle in forbidden:
+              if needle in live:
+                  raise SystemExit('readback may perform an operation: ' + needle)
+          trigger = text.split('\npermissions:', 1)[0]
+          if '\n  workflow_dispatch:' in trigger or '\n  push:' in trigger:
+              raise SystemExit('manual/push trigger is not allowed')
+          print('v5 terminal readback is owner-bound, filesystem-only and supplier-free')
+          PY
+
+  inspect-v5-terminal:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 1717 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.body == '/inspect-andromeda-surcharge-e2e-1717-v5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Bind readback to exact terminal v5 run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = 226193297;
+            const command = '/inspect-andromeda-surcharge-e2e-1717-v5';
+            const sourceRun = 34956584254;
+            const sourceArtifact = 10391232881;
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Inspect the retained readback artifact; do not rerun blindly.');
+            if (context.actor !== 'pyatkoff' || context.payload.sender?.id !== owner || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
+            if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
+                context.payload.issue?.number !== 1717 || context.payload.issue?.pull_request ||
+                context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) {
+              throw new Error('Exact owner readback command in issue1717 required.');
+            }
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; review control before reading.');
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: sourceRun});
+            if (run.head_sha !== '339c954b56762df4c499110473f81621e53afe40' || run.event !== 'issue_comment' ||
+                run.status !== 'completed' || run.conclusion !== 'failure' || run.run_attempt !== 1) throw new Error('Terminal v5 run provenance mismatch.');
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: sourceArtifact});
+            if (artifact.expired !== false || artifact.workflow_run?.id !== sourceRun || artifact.workflow_run?.head_sha !== run.head_sha ||
+                artifact.digest !== 'sha256:8423ee3949dca80c1595de875f39f2048b39e904a7cfd1782a3c02d012a2afcc') throw new Error('Terminal v5 receipt mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Inspect only retained filesystem evidence
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          from anex_search3_owner_decisions import ssh_php
+          source = r'''
+          error_reporting(0); ini_set('display_errors','0'); ini_set('log_errors','0');
+          $operation='andromeda-search-surcharge-e2e-1717-v5-turkey-2026-12-13-2a-7n';
+          $out=['status'=>'blocked','operation'=>$operation,'supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,
+              'booking_calls'=>0,'filesystem_writes'=>0,'operation_replayed'=>false];
+          function v5_money($value){
+              if(!is_array($value)||array_keys($value)!==['amount','currency']||!is_string($value['amount'])
+                  ||!preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\\.[0-9]{1,2})?$/D',$value['amount'])
+                  ||!is_string($value['currency'])||!preg_match('/^[A-Z0-9_]{2,8}$/D',$value['currency'])) return null;
+              return ['amount'=>$value['amount'],'currency'=>$value['currency']];
+          }
+          function v5_observation($value){
+              if(!is_array($value)||($value['schema_version']??null)!==1||($value['provider']??null)!=='andromeda') return null;
+              $out=['state'=>$value['state']??null,'final_price_verified'=>$value['final_price_verified']??null];
+              foreach(['basis','price_basis','signed_delta_amount','absolute_delta_amount','relative_delta_bps'] as $key){
+                  if(array_key_exists($key,$value)) $out[$key]=$value[$key];
+              }
+              foreach(['served_price','search_price_estimate','final_price'] as $key){
+                  if(array_key_exists($key,$value)) $out[$key]=$value[$key]===null?null:v5_money($value[$key]);
+              }
+              return $out;
+          }
+          try{
+              $root=realpath(getcwd());
+              if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('project_invalid');
+              $private=dirname($root,2).'/.anytoour-andromeda';
+              $opDir=$private.'/'.$operation;
+              $reservationPath=$opDir.'/reservation.json'; $resultPath=$opDir.'/result.json';
+              foreach([$private,$opDir] as $dir) if(!is_dir($dir)||is_link($dir)||!is_readable($dir)) throw new RuntimeException('checkpoint_directory_invalid');
+              foreach([$reservationPath,$resultPath] as $path) if(!is_file($path)||is_link($path)||filesize($path)>65536) throw new RuntimeException('checkpoint_file_invalid');
+              $reservation=json_decode((string)file_get_contents($reservationPath),true,16,JSON_THROW_ON_ERROR);
+              $terminal=json_decode((string)file_get_contents($resultPath),true,16,JSON_THROW_ON_ERROR);
+              if(!is_array($reservation)||($reservation['operation']??null)!==$operation||!is_int($reservation['created_at']??null)
+                  ||!is_array($terminal)||($terminal['operation']??null)!==$operation||($terminal['status']??null)!=='unknown'
+                  ||($terminal['phase']??null)!=='quote'||($terminal['reason']??null)!=='served_quote_observation_invalid'
+                  ||($terminal['local_hotel_id']??null)!==67477||($terminal['mapping_writes']??null)!==0||($terminal['booking_calls']??null)!==0){
+                  throw new RuntimeException('terminal_checkpoint_mismatch');
+              }
+              $searches=$private.'/searches';
+              if(!is_dir($searches)||is_link($searches)||!is_readable($searches)) throw new RuntimeException('search_checkpoint_directory_invalid');
+              $from=$reservation['created_at']-5; $to=filemtime($resultPath)+15; $matches=[]; $scanned=0;
+              foreach((glob($searches.'/*-quote-v1.json')?:[]) as $path){
+                  if(!is_file($path)||is_link($path)||filesize($path)>131072) continue;
+                  $mtime=filemtime($path); if($mtime<$from||$mtime>$to) continue; ++$scanned;
+                  try{$envelope=json_decode((string)file_get_contents($path),true,32,JSON_THROW_ON_ERROR);}catch(Throwable $ignored){continue;}
+                  if(!is_array($envelope)||array_keys($envelope)!==['state']||!is_array($envelope['state'])) continue;
+                  $state=$envelope['state']; $attempt=$state['status']??null;
+                  if(!in_array($attempt,['reserved','unknown','completed'],true)||$attempt!=='completed'||!is_array($state['result']??null)) continue;
+                  $quote=$state['result'];
+                  if(($quote['schema_version']??null)!==1||($quote['provider']??null)!=='andromeda'||($quote['local_id']??null)!==67477) continue;
+                  $search=v5_money($quote['search_price']??null);
+                  if($search!==['amount'=>'73092','currency'=>'RUB']) continue;
+                  $matches[]=[
+                      'checkpoint_sha256'=>hash('sha256',basename($path)),
+                      'attempt_status'=>'completed',
+                      'state'=>$quote['state']??null,
+                      'quote_state'=>$quote['quote_state']??null,
+                      'selection_enabled'=>$quote['selection_enabled']??null,
+                      'booking_enabled'=>$quote['booking_enabled']??null,
+                      'flight_selection_required'=>$quote['flight_selection_required']??null,
+                      'flights_count'=>is_array($quote['flights']??null)?count($quote['flights']):null,
+                      'search_price'=>$search,
+                      'package_price'=>($quote['package_price']??null)===null?null:v5_money($quote['package_price']),
+                      'final_price'=>($quote['final_price']??null)===null?null:v5_money($quote['final_price']),
+                      'final_price_verified'=>$quote['final_price_verified']??null,
+                      'served_price_observation'=>v5_observation($quote['served_price_observation']??null),
+                      'price_observation'=>v5_observation($quote['price_observation']??null),
+                      'fuel_surcharges_count'=>is_array($quote['fuel_surcharges_reported']??null)?count($quote['fuel_surcharges_reported']):null,
+                  ];
+              }
+              $out['terminal_status']='unknown'; $out['terminal_reason']='served_quote_observation_invalid';
+              $out['local_hotel_id']=67477; $out['candidate_files_scanned']=$scanned; $out['matching_quote_checkpoints']=count($matches);
+              if(count($matches)!==1) throw new RuntimeException('quote_checkpoint_not_unique');
+              $out['quote']=$matches[0]; $out['status']='inspected';
+          }catch(Throwable $error){$out['reason']=preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$error->getMessage())?$error->getMessage():'inspection_failed';}
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          '''
+          out = pathlib.Path(os.environ['RUNNER_TEMP']) / 'andromeda-v5-terminal-readback'
+          out.mkdir(mode=0o700)
+          try:
+              result = ssh_php(source, {}, maximum_bytes=65536)
+          except Exception:
+              (out / 'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','operation_replayed':False}) + '\n')
+              raise
+          (out / 'result.json').write_text(json.dumps(result, sort_keys=True, indent=2) + '\n')
+          zeros = ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']
+          if result.get('status') != 'inspected' or result.get('operation_replayed') is not False or any(result.get(k) != 0 for k in zeros):
+              raise SystemExit('Terminal checkpoint inspection incomplete; operation was not replayed')
+          print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Preserve sanitized terminal readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-v5-terminal-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-v5-terminal-readback/result.json
+          if-no-files-found: error
+          retention-days: 14
