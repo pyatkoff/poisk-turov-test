@@ -293,7 +293,7 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     await select.selectOption('meal:breakfast');
     assert.deepEqual(await visible(), ['meal-a', 'meal-b'], 'code-description and English breakfast share the existing local facet');
-    assert.deepEqual(await page.locator('#results .hotel-card:visible .tour-facts').allTextContents(), ['ПитаниеЗавтракНомерСтандартный номер · вид на территорию · DBL', 'ПитаниеЗавтракНомерСтандартный номер · вид на территорию · DBL'], 'filtered exact offers use the same Russian meal and reviewed room labels while preserving placement');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible .tour-facts').allTextContents(), ['ПитаниеЗавтракНомерСтандарт · вид на территорию · DBL', 'ПитаниеЗавтракНомерСтандарт · вид на территорию · DBL'], 'filtered exact offers use the same Russian meal and reviewed room labels while preserving placement');
     assert.deepEqual((await page.locator('#results .hotel-card:visible .tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))), [140000, 142000], 'display normalization preserves exact offer prices');
     if (!previous) await page.locator('#results').screenshot({ path: path.join(output, `meal-labels-${width}.png`), animations: 'disabled' });
     await select.selectOption('meal:ultra-all-inclusive');
@@ -979,7 +979,7 @@ async function run(browser, width, previous) {
     assert.match(await primary.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName expands the abbreviation in offer facts');
     assert.equal(await primary.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await primary.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
-    assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'Стандартный номер · вид на территорию · DBL']], 'primary comparison facts use shared Russian display labels without changing the offer');
+    assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'Стандарт · вид на территорию · DBL']], 'primary comparison facts use shared Russian display labels without changing the offer');
     assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact:not(.tour-operator)').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor']], 'source remains a distinct exact-offer fact');
     assert.equal(await primary.locator('.hotel-operator').innerText(), 'TEST OPERATOR', 'unknown operator keeps its visible name');
     assert.equal(await primary.locator('.hotel-operator').getAttribute('title'), 'Туроператор: TEST OPERATOR', 'tooltip explains the operator identity');
