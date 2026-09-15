@@ -1,0 +1,51 @@
+name: Search3 hotel media live diagnostic
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/search3-hotel-media-live-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  media-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect bounded public hotel media
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 'https://anytoour.ru/_preview/search3-site-candidate/data/hotel-details-read-v1.php?hotelId=453' -o "$RUNNER_TEMP/hotel.json"
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          from urllib.parse import urlparse
+          payload=json.loads((Path(__import__('os').environ['RUNNER_TEMP'])/'hotel.json').read_text('utf-8'))
+          item=payload.get('item') or {}
+          values=[]
+          primary=item.get('primaryImage')
+          if isinstance(primary,str) and primary.startswith('https://'): values.append(primary)
+          for value in item.get('images') or []:
+              if isinstance(value,str) and value.startswith('https://') and value not in values: values.append(value)
+          rows=[]
+          for index,url in enumerate(values[:8]):
+              host=urlparse(url).hostname or ''
+              proc=subprocess.run(['curl','--silent','--show-error','--location','--max-time','15','--range','0-65535','--output','/tmp/media.bin','--write-out','%{http_code}\t%{content_type}\t%{size_download}',url],capture_output=True,text=True)
+              parts=proc.stdout.strip().split('\t') if proc.returncode==0 else []
+              rows.append({'index':index,'host':host,'curl_exit':proc.returncode,'http_status':int(parts[0]) if parts and parts[0].isdigit() else None,'content_type':parts[1] if len(parts)>1 else None,'bytes':int(float(parts[2])) if len(parts)>2 and parts[2] else 0})
+          result={'hotel_id':item.get('id'),'primary_present':bool(primary),'unique_image_count':len(values),'checked_count':len(rows),'images':rows}
+          Path('hotel-media-live-diagnostic.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n','utf-8')
+          print('SEARCH3_HOTEL_MEDIA_LIVE',json.dumps(result,ensure_ascii=False))
+          assert item.get('id')==453
+          PY
+      - name: Retain sanitized media diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-hotel-media-live-${{ github.event.pull_request.head.sha }}
+          path: hotel-media-live-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 7
