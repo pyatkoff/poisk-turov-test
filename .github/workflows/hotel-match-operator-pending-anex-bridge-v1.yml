@@ -1,15 +1,15 @@
-name: MATCH provider coordinate identity review v1
+name: MATCH live Andromeda residual review v5
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-provider-coordinate-identity-review-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-live-andromeda-residual-review-1971-v5, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-provider-coordinate-identity-review-1971-20260915-v1
+  OPERATION_ID: hotel-match-live-andromeda-residual-review-1971-20260915-v5
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 43
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 44
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -18,13 +18,14 @@ jobs:
       - name: Exact source tests and guards
         run: |
           set -euo pipefail
-          files=(scripts/diagnostics/hotel_match_live_residual_current_review.php scripts/diagnostics/hotel_match_state_country_consensus.php scripts/diagnostics/hotel_match_state_accepted_country_consensus.php scripts/diagnostics/hotel_match_accepted_name_bridge_review.php scripts/diagnostics/hotel_match_provider_coordinate_identity_review.php tests/hotel_match_provider_coordinate_identity_review_test.php)
-          for f in "${files[@]}"; do php -l "$f"; done
-          php tests/hotel_match_provider_coordinate_identity_review_test.php
-          test "$(git hash-object scripts/diagnostics/hotel_match_provider_coordinate_identity_review.php)" = 2913f61a37c92fe6f26fe91994b97cc75905006c
-          test "$(git hash-object tests/hotel_match_provider_coordinate_identity_review_test.php)" = eab16411c6ece0ec4627c3a56073e030d738570d
-          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_provider_coordinate_identity_review.php
-          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_provider_coordinate_identity_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
+          php -l scripts/diagnostics/hotel_match_live_residual_current_review.php
+          php -l scripts/diagnostics/hotel_match_live_andromeda_residual_review_v5.php
+          php -l tests/hotel_match_live_andromeda_residual_review_v5_test.php
+          php tests/hotel_match_live_andromeda_residual_review_v5_test.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_live_andromeda_residual_review_v5.php)" = 36c1a3c4455d711dc37afd2b73f868560525dbfd
+          test "$(git hash-object tests/hotel_match_live_andromeda_residual_review_v5_test.php)" = 9cfa416280990f84aa77703065ebfde9a6a9ffa0
+          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_live_andromeda_residual_review_v5.php
+          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_live_andromeda_residual_review_v5.php|awk '{print $1}')" >> "$GITHUB_ENV"
       - name: Reserve before SSH or DB
         run: |
           set -euo pipefail
@@ -32,15 +33,15 @@ jobs:
           python3 - <<'PY'
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'state':'reserved_before_db_access','mode':'server_current_read_only_strict_coordinate_identity','supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'mapping_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'state':'reserved_before_db_access','mode':'server_current_read_only_live_andromeda_priority','supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'mapping_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-provider-coordinate-identity-review-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-provider-coordinate-identity-review-1971-20260915-v1/
+          name: match-live-andromeda-residual-review-v5-reservation
+          path: ${{ runner.temp }}/hotel-match-live-andromeda-residual-review-1971-20260915-v5/
           if-no-files-found: error
           retention-days: 90
-      - name: Server CURRENT strict coordinate identity review
+      - name: Server CURRENT live Andromeda review
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -55,9 +56,9 @@ jobs:
           trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
           remote="\$HOME/.anytoour-match/operations/$OPERATION_ID"
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
-          for f in hotel_match_live_residual_current_review.php hotel_match_state_country_consensus.php hotel_match_state_accepted_country_consensus.php hotel_match_accepted_name_bridge_review.php hotel_match_provider_coordinate_identity_review.php; do ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"; done
+          for f in hotel_match_live_residual_current_review.php hotel_match_live_andromeda_residual_review_v5.php; do ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"; done
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_provider_coordinate_identity_review.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_live_andromeda_residual_review_v5.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C $remote -czf - ." > "$out/server-operation.tgz"
           set -e
@@ -69,15 +70,16 @@ jobs:
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
           raw=s.joinpath('result.json').read_bytes(); r=json.loads(raw); rec=json.loads(s.joinpath('receipt.json').read_text()); d=hashlib.sha256(raw).hexdigest()
           zero=['supplier_calls','tourvisor_calls','external_calls','booking_calls','db_writes','mapping_writes','operator_5_writes']
-          ok=(r.get('state')=='completed_read_only' and r.get('operation_id')==os.environ['OPERATION_ID'] and int(r.get('pending_andromeda_rows',-1))>=0 and int(r.get('candidate_count',-1))>=0 and all(int(r.get(k,-1))==0 for k in zero) and rec.get('result_sha256')==d and rec.get('readback_verified') is True and int(rec.get('candidate_count',-1))==int(r.get('candidate_count',-2)))
-          gate={'verified':ok,'accepted_andromeda_rows':r.get('accepted_andromeda_rows'),'pending_andromeda_rows':r.get('pending_andromeda_rows'),'pending_with_provider_coordinates':r.get('pending_with_provider_coordinates'),'candidate_count':r.get('candidate_count'),'candidate_live_frequency_sum':r.get('candidate_live_frequency_sum'),'route_counts':r.get('route_counts'),'reason_counts':r.get('reason_counts'),'limits':r.get('limits'),'result_sha256':d}
+          pending=int(r.get('pending_andromeda_rows',-1)); live=int(r.get('live_pending_count',-1)); cand=int(r.get('live_candidate_count',-1))
+          ok=(r.get('state')=='completed_read_only' and r.get('operation_id')==os.environ['OPERATION_ID'] and pending>=0 and live>=0 and cand>=0 and live<=pending and cand<=live and all(int(r.get(k,-1))==0 for k in zero) and rec.get('result_sha256')==d and rec.get('readback_verified') is True and int(rec.get('live_pending_count',-1))==live and int(rec.get('live_candidate_count',-1))==cand)
+          gate={'verified':ok,'pending_andromeda_rows':pending,'live_pending_count':live,'live_frequency_sum':r.get('live_frequency_sum'),'live_candidate_count':cand,'live_candidate_frequency_sum':r.get('live_candidate_frequency_sum'),'live_hard_conflict_count':r.get('live_hard_conflict_count'),'live_route_counts':r.get('live_route_counts'),'live_reason_counts':r.get('live_reason_counts'),'result_sha256':d}
           root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
           if not ok: raise SystemExit(5)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-provider-coordinate-identity-review-v1-result
-          path: ${{ runner.temp }}/hotel-match-provider-coordinate-identity-review-1971-20260915-v1/
+          name: match-live-andromeda-residual-review-v5-result
+          path: ${{ runner.temp }}/hotel-match-live-andromeda-residual-review-1971-20260915-v5/
           if-no-files-found: warn
           retention-days: 90
