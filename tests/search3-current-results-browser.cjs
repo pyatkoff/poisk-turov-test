@@ -154,7 +154,7 @@ async function checkMinimumReadiness(page, width, previous) {
     await toggle.focus(); await toggle.press('Enter');
     assert.equal(await checked.locator('[data-tid="minimum-andromeda"]').count(), 0, 'unverified minimum still cannot create a select action');
     assert.equal(await checked.locator('[data-tid="minimum-selectable"]').isVisible(), true, 'more expensive selectable offer keeps its existing action');
-    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором нужна проверка/);
+    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором проверим цену и рейсы/i);
     if (!previous) await checked.screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
     await checked.locator('.tour-more-toggle').press('Enter');
     assert.equal(await checked.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'collapse retains the existing disclosure focus');
@@ -573,8 +573,8 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.ok((await card.locator('.tour-facts').allTextContents()).every(text => text.startsWith('ПитаниеВсё включено')), 'raw Andromeda AI and localized Tourvisor meal display the same existing Russian identity');
     assert.deepEqual((await card.locator('.tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))).sort((a, b) => a - b), [155000, 156000, 165000], 'the unified presentation preserves each exact offer price');
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
-    assert.equal(await card.locator('.tour-secondary-facts').filter({ hasText: 'Андромеда' }).count(), 2, 'expanded provider variants remain visibly attributed');
-    assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'перед выбором нужна проверка' }).count(), 2, 'every Andromeda variant keeps the quote-required boundary');
+    assert.equal(await card.locator('.tour-row').filter({ hasText: 'Андромеда' }).count(), 0, 'expanded offers keep internal provider provenance out of customer copy');
+    assert.equal(await card.locator('.tour-selection-note').filter({ hasText: 'Перед выбором проверим цену и рейсы' }).count(), 2, 'every quote-required offer keeps a provider-neutral readiness boundary');
     const detailToggle = card.locator('[data-andromeda-detail]').first();
     assert.ok((await detailToggle.boundingBox()).height >= 44, 'provider detail action keeps a full touch target');
     offerComposition = await card.locator('.tour-row:has(.provider-detail-toggle)').evaluateAll(rows => rows.map(row => {
