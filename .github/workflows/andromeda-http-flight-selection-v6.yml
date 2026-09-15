@@ -1,0 +1,135 @@
+name: Run checked Andromeda HTTP flight-selection v6
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-http-flight-selection-v6.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: anytoour-andromeda-detail-publication
+  cancel-in-progress: false
+
+jobs:
+  control-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 642c38113820859e3a09eaa12c233c3a790ac787
+          path: source
+          persist-credentials: false
+      - name: Run exact offline HTTP-flow regression
+        run: |
+          python3 -m py_compile source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py source/tests/andromeda_http_flight_selection_e2e_test.py
+          python3 -B source/tests/andromeda_http_flight_selection_e2e_test.py
+      - name: Verify immutable v6 source contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py')
+          t=p.read_text()
+          required=[
+            'andromeda-http-flight-selection-e2e-1717-v6-turkey-2026-12-21-2a1c7-8n',
+            '812f838191d138f391059aaa6d0d3f77ce8c7d27',
+            '"dateFrom": "2026-12-21"',
+            '"nightsFrom": 8',
+            '"adults": 2',
+            '"childs": [7]',
+            'continuation["action"] = "quote_select_flights"',
+            '"outbound_ref": outbound',
+            '"return_ref": inbound',
+          ]
+          for s in required:
+            if s not in t: raise SystemExit('v6 source contract missing: '+s)
+          for forbidden in ('bron_ticket','booking(', 'supplier_uid'):
+            if forbidden in t: raise SystemExit('forbidden live authority in v6 source: '+forbidden)
+          print('v6 exact source contract OK; supplier calls in PR=0')
+          PY
+
+  run-v6:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/run-andromeda-http-flight-selection-e2e-1717-v6'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Require fresh unique owner command and exact checked provenance
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/run-andromeda-http-flight-selection-e2e-1717-v6';
+            const sourceHead='642c38113820859e3a09eaa12c233c3a790ac787';
+            const sourceMerge='548434bd49f874716253118a6f9ba664decfb116';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1') throw new Error('NO_REPLAY: inspect the first v6 result.');
+            if(context.payload.sender?.id!==owner || context.actor!=='pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('Owner invocation required.');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if(context.payload.issue?.number!==2530 || context.payload.issue?.pull_request || context.payload.comment?.body!==command) throw new Error('Exact fresh #2530 command required.');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100});
+            const matches=comments.filter(c=>c.body===command && c.user?.id===owner && c.author_association==='OWNER');
+            if(matches.length!==1 || matches[0].id!==context.payload.comment.id) throw new Error('Duplicate/edited v6 owner command rejected.');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('Main advanced; do not replay.');
+            const {data:pr}=await github.rest.pulls.get({...context.repo,pull_number:2546});
+            if(!pr.merged || pr.head.sha!==sourceHead || pr.merge_commit_sha!==sourceMerge || pr.base.ref!=='feature/anex-search-adapter-20260907') throw new Error('v6 source provenance mismatch.');
+            const {data:security}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34968921102});
+            if(security.head_sha!==sourceHead || security.status!=='completed' || security.conclusion!=='success') throw new Error('v6 source Security not green.');
+            const {data:runtimePublish}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34968194808});
+            if(runtimePublish.status!=='completed'||runtimePublish.conclusion!=='success') throw new Error('flight-selection runtime publication not green.');
+            const {data:receipt}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10396032685});
+            if(receipt.expired!==false || receipt.workflow_run?.id!==34968194808 || receipt.digest!=='sha256:0285642020a5859a17f35bf62f33b032ff0faa20f757a703bec38e1e5169a228') throw new Error('runtime publication receipt mismatch.');
+            for(const [path,sha] of [
+              ['scripts/diagnostics/andromeda_http_flight_selection_e2e.py','b85e4f60016de0948c9038e2d51ef8d59830b10e'],
+              ['tests/andromeda_http_flight_selection_e2e_test.py','82660a686c174a96a0061d45a75640aba685e652']]){
+              const {data:file}=await github.rest.repos.getContent({...context.repo,path,ref:sourceHead});
+              if(Array.isArray(file)||file.sha!==sha) throw new Error('v6 source blob mismatch: '+path);
+            }
+      - uses: actions/checkout@v4
+        with:
+          ref: 642c38113820859e3a09eaa12c233c3a790ac787
+          path: source
+          persist-credentials: false
+      - name: Re-run offline regression before live v6
+        run: |
+          python3 -m py_compile source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py source/tests/andromeda_http_flight_selection_e2e_test.py
+          python3 -B source/tests/andromeda_http_flight_selection_e2e_test.py
+      - name: Execute one immutable real HTTPS v6 flow
+        run: |
+          mkdir -p "$RUNNER_TEMP/andromeda-http-flight-selection-v6"
+          python3 -B source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py | tee "$RUNNER_TEMP/andromeda-http-flight-selection-v6/result.json"
+      - name: Preserve v6 result before classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-http-flight-selection-v6-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-http-flight-selection-v6/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require complete verified final quote
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'andromeda-http-flight-selection-v6/result.json'
+          d=json.loads(p.read_text())
+          if d.get('status')!='complete' or d.get('outcome')!='served_quote_compared' or d.get('final_quote_state')!='quote_verified':
+            raise SystemExit('v6 is terminal non-complete; inspect artifact and DO NOT replay')
+          q=d.get('quote_observation') or {}
+          if q.get('final_price_verified') is not True or d.get('booking_calls')!=0 or d.get('mapping_writes')!=0:
+            raise SystemExit('v6 final evidence contract failed; DO NOT replay')
+          print(json.dumps(d,sort_keys=True))
+          PY
