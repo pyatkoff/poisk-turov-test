@@ -945,6 +945,7 @@ async function run(browser, width, previous) {
     const localOperatorSelect = localOperatorFilter.locator('select');
     const localRatingFilter = page.locator('.search3-rating-filter');
     const localRatingSelect = localRatingFilter.locator('select');
+    const localRatingCoverage = localRatingFilter.locator('[data-search3-rating-coverage]');
     const localSeaFilter = page.locator('.search3-sea-filter');
     const localSeaSelect = localSeaFilter.locator('select');
     const localReset = page.locator('.search3-filter-reset');
@@ -966,6 +967,7 @@ async function run(browser, width, previous) {
     assert.deepEqual(await localCategoryPresets.locator('button').allTextContents(), ['5★', '4★'], 'complete category values expose quick exact choices without inventing a threshold');
     assert.ok((await localCategoryPresets.locator('button').first().boundingBox()).height >= 44, 'category quick choice keeps a full touch target');
     assert.equal(await localRatingFilter.isVisible(), true, 'rating facet appears when every loaded hotel has a rating');
+    assert.equal(await localRatingCoverage.innerText(), 'Рейтинг указан у 2 из 2 отелей', 'rating facet discloses exact loaded-data coverage');
     assert.equal(await localSeaFilter.isVisible(), true, 'sea facet appears when every loaded hotel has a distance');
     const rail = page.locator('.results-filter-rail'), actions = page.locator('#resultsTools .results-tools__actions');
     if (width >= 1025) {
@@ -1064,6 +1066,22 @@ async function run(browser, width, previous) {
     assert.equal(await localCategoryPresets.isVisible(), false, 'incomplete category data also hides its quick choices');
     assert.equal(await localCategorySelect.inputValue(), '0', 'incomplete category data resets the local choice');
     assert.equal(await page.locator('#results .hotel-card:visible').count(), 2, 'an incomplete facet never silently removes a loaded hotel');
+    await page.evaluate(items => {
+      const base=items[0];
+      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'rating-'+index,name:'Отель рейтинга '+index,rating:index===19?0:index%2?4.6:3.8,seaDistance:0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-'+index}))})));
+    }, hotels);
+    assert.equal(await localRatingFilter.isVisible(), true, '95% known ratings keep the useful local facet available');
+    assert.equal(await localRatingCoverage.innerText(), 'Рейтинг указан у 19 из 20 отелей', 'partial high coverage is disclosed instead of presented as complete');
+    await localRatingSelect.selectOption('4.5');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 9, 'rating threshold excludes unknown and below-threshold cards locally');
+    if (!previous && [375,720,1440].includes(width)) await page.screenshot({ path: path.join(output, `rating-coverage-${width}.png`), fullPage: true });
+    await page.evaluate(items => {
+      const base=items[0];
+      window.V2Results.render(Array.from({length:20},(_,index)=>({...base,id:'rating-low-'+index,name:'Отель рейтинга '+index,rating:index>=18?0:index%2?4.6:3.8,seaDistance:0,tours:base.tours.map(tour=>({...tour,id:tour.id+'-low-'+index}))})));
+    }, hotels);
+    assert.equal(await localRatingFilter.isVisible(), false, 'rating facet hides below the explicit 95% coverage policy');
+    assert.equal(await localRatingSelect.inputValue(), '0', 'coverage loss resets the active rating threshold');
+    assert.equal(await page.locator('#results .hotel-card:visible').count(), 20, 'coverage loss cannot silently retain a filter or hide unknown cards');
     await page.evaluate(items => {
       const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } return value; };
       window.__decisionOriginal = freeze(items);

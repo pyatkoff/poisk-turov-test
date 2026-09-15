@@ -52,6 +52,10 @@ assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)")
   'region changes stay inside the local result filter owner');
 assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,ratingField,seaField];}'),
   'desktop and mobile share decision-first filter order without a provider/source control');
+assert.ok(localFilters.includes('known/total>=minimum') && localFilters.includes('numericCoverage(ratings,.95)'),
+  'guest-rating availability uses an explicit high-coverage policy instead of requiring every hotel to be complete');
+assert.ok(localFilters.includes("'Рейтинг указан у '+rating.known+' из '+rating.total+' отелей'"),
+  'a partially available rating facet discloses exact loaded-data coverage');
 
 {
   const listeners = new Map();
