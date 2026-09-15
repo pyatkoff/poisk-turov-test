@@ -22,10 +22,16 @@ jobs:
         run: |
           set -euo pipefail
           php -l scripts/diagnostics/hotel_match_pr2412_anex_current.php
-          grep -F 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' scripts/diagnostics/hotel_match_pr2412_anex_current.php >/dev/null
-          grep -F 'if(count($inputs)!==101)' scripts/diagnostics/hotel_match_pr2412_anex_current.php >/dev/null
-          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_pr2412_anex_current.php
-          ! grep -Eiq '(curl[[:space:]]|file_get_contents\([[:space:]]*["'"']https?://|stream_socket_client|fsockopen)' scripts/diagnostics/hotel_match_pr2412_anex_current.php
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('scripts/diagnostics/hotel_match_pr2412_anex_current.php').read_text()
+          assert 'START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY' in s
+          assert 'if(count($inputs)!==101)' in s
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b\s', s, re.I)
+          assert not re.search(r'https?://|\bcurl\s|stream_socket_client|fsockopen', s, re.I)
+          print('static safety: PASS')
+          PY
       - name: Execute immutable CURRENT read and verify durable receipt
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
