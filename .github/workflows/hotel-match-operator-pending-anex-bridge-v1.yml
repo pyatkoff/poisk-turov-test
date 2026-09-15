@@ -1,15 +1,15 @@
-name: MATCH live residual CURRENT apply v1
+name: MATCH live residual CURRENT apply v2
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-live-residual-current-apply-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-live-residual-current-apply-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-live-residual-current-apply-1971-20260915-v1
+  OPERATION_ID: hotel-match-live-residual-current-apply-1971-20260915-v2
 jobs:
   apply:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 5
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 6
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -23,8 +23,8 @@ jobs:
           php -l tests/hotel_match_live_residual_current_apply_test.php
           php tests/hotel_match_live_residual_current_apply_test.php
           test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = 51104cd76a5af45003e9796405dc3f357e289cde
-          test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_apply.php)" = 6cec18972a54df15ff1ea0b11e229163f1504213
-          test "$(git hash-object tests/hotel_match_live_residual_current_apply_test.php)" = 085eaf5556770977b20c125c8a383a528776b643
+          test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_apply.php)" = b71eaec6272422c4acc37bdcdddc0789fba1f771
+          test "$(git hash-object tests/hotel_match_live_residual_current_apply_test.php)" = c140862697eeeeaf9debcbc4530ea4fc322f7c4d
           ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_live_residual_current_apply.php
           ! grep -Eiq '\b(INSERT INTO|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_live_residual_current_apply.php
           test "$(grep -Eic 'UPDATE[[:space:]]+andromeda_hotel_identities' scripts/diagnostics/hotel_match_live_residual_current_apply.php)" -eq 1
@@ -41,8 +41,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-live-residual-current-apply-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-live-residual-current-apply-1971-20260915-v1/reservation.json
+          name: match-live-residual-current-apply-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-live-residual-current-apply-1971-20260915-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Server-CURRENT guarded apply and readback
@@ -58,12 +58,14 @@ jobs:
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
           trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir -p \"\$p\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          remote_op="\$HOME/.anytoour-match/operations/$OPERATION_ID"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote_op; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; cat > $remote_op/source/hotel_match_live_residual_current_review.php; sync" < scripts/diagnostics/hotel_match_live_residual_current_review.php
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; cat > $remote_op/source/hotel_match_live_residual_current_apply.php; sync" < scripts/diagnostics/hotel_match_live_residual_current_apply.php
           set +e
-          { cat scripts/diagnostics/hotel_match_live_residual_current_review.php; printf '\n'; cat scripts/diagnostics/hotel_match_live_residual_current_apply.php; } > "$out/combined.php"
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php" < "$out/combined.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php $remote_op/source/hotel_match_live_residual_current_apply.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
           rc=$?
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=$remote_op; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
           set -e
           test $trc -eq 0 -a -s "$out/server-operation.tgz"; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"; export REMOTE_RC="$rc"
           python3 - <<'PY'
@@ -72,8 +74,7 @@ jobs:
           if not s.joinpath('result.json').exists(): raise SystemExit('NO_RESULT_READBACK')
           raw=s.joinpath('result.json').read_bytes(); result=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()) if s.joinpath('receipt.json').exists() else {}; digest=hashlib.sha256(raw).hexdigest(); rows=result.get('post_commit_readback') or []
           ok=(int(os.environ['REMOTE_RC'])==0 and result.get('state')=='completed_committed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and result.get('supplier_calls')==result.get('external_calls')==result.get('booking_calls')==0 and result.get('mapping_writes')==result.get('written')==len(rows) and receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True and receipt.get('post_commit_rows')==len(rows) and receipt.get('written')==len(rows))
-          if ok:
-              ok=all(r.get('decision_status')=='accepted' and int(r.get('local_hotel_id') or 0)>0 and r.get('supplier_namespace') and r.get('external_hotel_id') for r in rows)
+          if ok: ok=all(r.get('decision_status')=='accepted' and int(r.get('local_hotel_id') or 0)>0 and r.get('supplier_namespace') and r.get('external_hotel_id') for r in rows)
           gate={'operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['REMOTE_RC']),'verified':ok,'state':result.get('state'),'planned':result.get('planned'),'validated':result.get('validated'),'written':result.get('written'),'holds_count':result.get('holds_count'),'written_by_namespace':result.get('written_by_namespace'),'written_by_rule':result.get('written_by_rule'),'post_commit_rows':len(rows),'result_sha256':digest,'no_replay':True}
           root.joinpath('workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,sort_keys=True))
           if not ok: raise SystemExit(5)
@@ -81,7 +82,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-live-residual-current-apply-v1-result
-          path: ${{ runner.temp }}/hotel-match-live-residual-current-apply-1971-20260915-v1/
+          name: match-live-residual-current-apply-v2-result
+          path: ${{ runner.temp }}/hotel-match-live-residual-current-apply-1971-20260915-v2/
           if-no-files-found: warn
           retention-days: 90
