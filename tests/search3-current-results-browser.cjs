@@ -179,6 +179,9 @@ async function checkExactOfferParty(page, width, previous) {
   assert.equal(await card.locator('.hotel-price').innerText().then(text=>text.replace(/\s/g,'')),'от71000₽','collapsed party sample exposes only the hotel minimum');
   assert.doesNotMatch(await card.locator('.hotel-tours').innerText(),/2 взрослых|1 ребёнок|2 ребёнка/,'collapsed hotel does not borrow an exact offer party');
   await card.locator('.tour-more-toggle').click();
+  assert.equal(await card.locator('.tour-row').count(),3,'the first party examples follow the bounded initial disclosure');
+  await card.locator('.tour-list-more').click();
+  assert.equal(await card.locator('.tour-row').count(),parties.length,'all party examples remain reachable through the next disclosure');
   const rows=card.locator('.tour-row');
   for(let index=0;index<parties.length;index++){
     const row=rows.nth(index);
