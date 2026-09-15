@@ -125,27 +125,39 @@ async function checkBudgetRange(page, width, previous) {
   page.on('request',record);
   try {
     await page.evaluate(items=>{window.Search3LocalHotelFilter.reset();window.V2Results.render(items);window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items}}));},hotels);
-    const panel=page.locator('.search3-mobile-filter-panel'), lower=page.locator('.search3-budget-min'), upper=page.locator('.search3-budget-max');
+    const panel=page.locator('.search3-mobile-filter-panel'), lower=page.locator('.search3-budget-min'), upper=page.locator('.search3-budget-max'), summary=page.locator('#resultSummary');
+    const expectCount=async (shown,total)=>assert.equal(await summary.innerText(),`Показано отелей: ${shown} из ${total} · цены из текущего поиска`,'header count follows the same visible hotel projection');
+    assert.equal(await summary.innerText(),'Найдено отелей: 2 · цены из текущего поиска','unfiltered count retains the current-search scope');
     if(width<1025&&!await panel.evaluate(node=>node.open)) await panel.locator('summary').click();
     const set=async (input,value)=>{await input.fill(value);await input.press('Tab');};
     await set(lower,'148501');
     await set(upper,'155000');
     const card=page.locator('#results .hotel-card:visible');
     assert.equal(await card.count(),1,'range excludes the cheaper hotel');
+    await expectCount(1,2);
     assert.equal(await card.getAttribute('data-hotel-id'),'expensive');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'third-tour','both inclusive bounds retain the exact 155000 offer, not the cheaper hotel representative');
     assert.match(await card.locator('.hotel-price').innerText(),/155\s*000/,'hotel price is derived from the offer inside the range');
     assert.equal(await page.locator('.search3-active-filters [data-filter-key=budget]').count(),1,'one removable chip represents both bounds');
     await page.locator('.search3-operator-filter select').selectOption('name:test operator');
     assert.equal(await card.count(),0,'operator and both price bounds must match one offer');
+    await expectCount(0,2);
     await page.locator('.search3-operator-filter select').selectOption('');
     await page.locator('#sortResults').selectOption('rating');
     assert.equal(await lower.inputValue(),'148501','sorting preserves the lower bound');
     assert.equal(await upper.inputValue(),'155000','sorting preserves the upper bound');
+    await expectCount(1,2);
     await page.evaluate(items=>window.V2Results.render(items),hotels);
     assert.equal(await lower.inputValue(),'148501','results refresh preserves the lower bound');
     assert.equal(await card.locator('.direct-tour').getAttribute('data-tid'),'third-tour');
     assert.deepEqual(await page.evaluate(()=>window.V2Results.state.items),hotels,'range filtering leaves source tour objects and prices unchanged');
+    const continued=hotels.concat({...hotels[0],id:'continued-budget',name:'Дополнительный отель',tours:[{...tour,id:'continued-budget-tour',price:150000}]});
+    await page.evaluate(items=>{window.V2Results.render(items);window.dispatchEvent(new CustomEvent('v2:search-continued',{detail:{items}}));},continued);
+    await expectCount(2,3);
+    assert.equal(await card.count(),2,'progressive results update both the visible and loaded hotel counts');
+    await page.evaluate(items=>window.V2Results.render(items),hotels);
+    await expectCount(1,2);
+    if(!previous&&[320,375,720,1440].includes(width)) await page.locator('#resultsTools').screenshot({path:path.join(output,`filtered-count-${width}.png`),animations:'disabled'});
     if(!previous&&[320,375,390,720,1025,1440].includes(width)) await (width<1025?panel:page.locator('.results-filter-rail')).screenshot({path:path.join(output,`budget-range-${width}.png`),animations:'disabled'});
     if(width<1025){
       const done=panel.locator('.search3-filter-results');
@@ -160,6 +172,8 @@ async function checkBudgetRange(page, width, previous) {
     }
     await set(lower,'155001');
     assert.equal(await card.count(),0,'reversed bounds do not silently swap or show an out-of-range offer');
+    await expectCount(0,2);
+    if(!previous&&[375,1440].includes(width)) await page.locator('#resultsTools').screenshot({path:path.join(output,`empty-count-${width}.png`),animations:'disabled'});
     assert.match(await page.locator('#search3BudgetHint').innerText(),/Цена «от» больше цены «до»/);
     if(width<1025){
       await panel.locator('.search3-filter-results').click();
@@ -170,6 +184,7 @@ async function checkBudgetRange(page, width, previous) {
     await page.locator('.search3-active-filters [data-filter-key=budget]').click();
     assert.equal(await lower.inputValue(),'','removing the budget chip clears both ends');
     assert.equal(await card.count(),2);
+    assert.equal(await summary.innerText(),'Найдено отелей: 2 · цены из текущего поиска','clearing the budget restores the unfiltered header count');
     await set(upper,'0');
     assert.equal(await card.count(),0,'an explicit zero upper limit never disables the budget filter');
     await set(upper,'');
@@ -179,6 +194,8 @@ async function checkBudgetRange(page, width, previous) {
     assert.equal(await card.getAttribute('data-hotel-id'),'cheap','equal bounds are inclusive');
     await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:search-started',{detail:{searchId:711}})));
     assert.equal(await lower.inputValue(),'','new search clears the old budget floor');
+    await page.evaluate(items=>window.V2Results.render(items),hotels.slice(0,1));
+    assert.equal(await summary.innerText(),'Найдено отелей: 1 · цены из текущего поиска','new search does not inherit the previous denominator or filtered count');
     assert.deepEqual(requests,[],'budget and mobile return never call supplier or lead endpoints');
   } finally {page.off('request',record);await page.evaluate(()=>window.Search3LocalHotelFilter.reset());}
 }
