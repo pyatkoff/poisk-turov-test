@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: "publish-andromeda-surcharge-runtime-1717-v4 OR run-andromeda-surcharge-e2e-1717-v2"
+        description: "publish-andromeda-surcharge-runtime-1717-v4 OR run-andromeda-surcharge-e2e-1717-v3"
         required: true
         type: string
   issue_comment:
@@ -146,11 +146,11 @@ jobs:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
-      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'run-andromeda-surcharge-e2e-1717-v2') ||
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'run-andromeda-surcharge-e2e-1717-v3') ||
        (github.event_name == 'issue_comment' && github.event.action == 'created' &&
         github.event.issue.number == 996 && !github.event.issue.pull_request &&
         github.event.comment.user.id == 226193297 &&
-        github.event.comment.body == '/run-andromeda-surcharge-e2e-1717-v2'))
+        github.event.comment.body == '/run-andromeda-surcharge-e2e-1717-v3'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -159,16 +159,16 @@ jobs:
         with:
           script: |
             const owner = 226193297;
-            const command = '/run-andromeda-surcharge-e2e-1717-v2';
-            const e2eHead = 'e3cf9dde4e1387286a05e4d20506a7a9bfa3f4a3';
-            const e2eMerge = '96dcb4c932819e6382a6343dc9bb6a0ebbbf48be';
-            const publicationRun = 34894766843;
+            const command = '/run-andromeda-surcharge-e2e-1717-v3';
+            const e2eHead = '7d09c33f4acf5b7d9b13db35f54666d96333beb6';
+            const e2eMerge = 'a9296c59935de6ba4af2b614f5c81afe3c5e0abf';
+            const publicationRun = 34911727400;
             const accessRun = 34897622645;
             if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('No replay; inspect the E2E checkpoint.');
             if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
             if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
             if (context.eventName === 'workflow_dispatch') {
-              if (context.payload.inputs?.confirmation !== 'run-andromeda-surcharge-e2e-1717-v2') throw new Error('Confirmation mismatch.');
+              if (context.payload.inputs?.confirmation !== 'run-andromeda-surcharge-e2e-1717-v3') throw new Error('Confirmation mismatch.');
             } else if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
                        context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
                        context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) {
@@ -176,17 +176,17 @@ jobs:
             }
             const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
-            const {data: e2ePr} = await github.rest.pulls.get({...context.repo, pull_number: 2471});
+            const {data: e2ePr} = await github.rest.pulls.get({...context.repo, pull_number: 2484});
             if (!e2ePr.merged || e2ePr.head.sha !== e2eHead || e2ePr.merge_commit_sha !== e2eMerge || e2ePr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('E2E PR provenance mismatch.');
-            for (const run_id of [34900110792, 34900110806]) {
+            for (const run_id of [34912403063, 34912403079]) {
               const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
               if (run.head_sha !== e2eHead || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned E2E CI failed: ' + run_id);
             }
             const {data: published} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: publicationRun});
-            if (published.head_sha !== '8412314bcf19fd1b658895c49726499730ec8b85' || published.status !== 'completed' || published.conclusion !== 'failure') throw new Error('Terminal runtime publication mismatch.');
-            const {data: publicationReceipt} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10367874902});
+            if (published.head_sha !== 'cab540a705a28272d4791a57eab17bd55f905550' || published.status !== 'completed' || published.conclusion !== 'success') throw new Error('Terminal runtime publication mismatch.');
+            const {data: publicationReceipt} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10374721928});
             if (publicationReceipt.expired !== false || publicationReceipt.workflow_run?.id !== publicationRun ||
-                publicationReceipt.digest !== 'sha256:92817ff32131aa980beb7c5936d0d7d441d7c74fbdc09d7f4c844cb5b58f0132') throw new Error('Runtime publication receipt mismatch.');
+                publicationReceipt.digest !== 'sha256:bac38b289a3e1b3953d5692b2ca7d486f6ee1eb951936ac51b4764b4fe7ba9e0') throw new Error('Runtime publication receipt mismatch.');
             const {data: access} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: accessRun});
             if (access.head_sha !== '4081970c5d2b713cc77b7ed564ab010135499156' || access.status !== 'completed' || access.conclusion !== 'success') throw new Error('Quote HTTP access gate failed.');
             const {data: accessReceipt} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10369517015});
@@ -194,7 +194,7 @@ jobs:
                 accessReceipt.digest !== 'sha256:0b80a49a788bd2db791a10762ab1a2045caa0ba14d776e0fc651aec6739796c2') throw new Error('Quote HTTP access receipt mismatch.');
       - uses: actions/checkout@v4
         with:
-          ref: 96dcb4c932819e6382a6343dc9bb6a0ebbbf48be
+          ref: a9296c59935de6ba4af2b614f5c81afe3c5e0abf
           path: e2e
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -220,7 +220,7 @@ jobs:
           try:
               result = ssh_php(source.removeprefix('<?php\n'), {}, maximum_bytes=65536)
           except Exception:
-              (out / 'result.json').write_text(json.dumps({'status':'unconfirmed','operation':'andromeda-search-surcharge-e2e-1717-v2-egypt-2026-12-15-2a1c8'}))
+              (out / 'result.json').write_text(json.dumps({'status':'unconfirmed','operation':'andromeda-search-surcharge-e2e-1717-v3-egypt-2026-12-20-3a-10n'}))
               raise
           (out / 'result.json').write_text(json.dumps(result, sort_keys=True, indent=2) + '\n')
           if not isinstance(result, dict) or result.get('status') != 'complete' or result.get('supplier_scenario') != 1:
