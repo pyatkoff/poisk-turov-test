@@ -393,6 +393,10 @@ async function run(browser, width, previous) {
         if(!beforeRoom||!afterRoom||beforeRoom[1]!=='STANDARD LAND VIEW'||afterRoom[1]!=='Стандарт · территория') {
           evidence.differences.push({width,phase,error:'reviewed room display changed outside the exact alias contract',beforeRoom,afterRoom});
         } else afterRoom[1]=beforeRoom[1];
+        const beforeFuel=beforeContract.facts.find(fact=>fact[0]==='Топливный сбор'),afterFuel=afterContract.facts.find(fact=>fact[0]==='Топливный сбор');
+        if(!beforeFuel||!afterFuel||beforeFuel[1]!=='Уточняется по рейсу'||afterFuel[1]!=='уточняется') {
+          evidence.differences.push({width,phase,error:'reviewed unknown-fuel display changed outside its exact contract',beforeFuel,afterFuel});
+        } else afterFuel[1]=beforeFuel[1];
         if(JSON.stringify(beforeContract)!==JSON.stringify(afterContract)) evidence.differences.push({width,phase,before:a.contract,after:b.contract});
         if(b.rootWidth<=0||b.rootWidth>width+2) evidence.differences.push({width,phase,error:'selected content is not bounded and visible'});
         if(b.overflow) evidence.differences.push({width,phase,error:'horizontal overflow'});
