@@ -1,0 +1,134 @@
+name: MATCH operator original low-volume follow-up v10
+on:
+  push:
+    branches: [ops/match-operator-original-followup-1971-20260915-v10]
+    paths: [.github/workflows/hotel-match-operator-original-followup-v10.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-operator-original-followup-1971-v10, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-operator-original-followup-1971-20260915-v10
+jobs:
+  collect:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Offline checks and bind low-volume v10 scope
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_batch.php)" = b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4
+          test "$(git hash-object app/integrations/andromeda-client.php)" = 7f2a444904e25f8abf1b50b70879b1650984800c
+          test "$(git hash-object app/integrations/andromeda-transport.php)" = 162e33d3f1997ec7e73e1ef276c586d4732f8957
+          php -l scripts/diagnostics/hotel_match_operator_original_batch.php
+          php tests/hotel_match_operator_original_test.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/diagnostics/hotel_match_operator_original_batch.php'); raw=p.read_text()
+          inject="""$priorEvidence=[['v4','7b014c80828aab32ba68148b079731ce7a61deb039d9eb39bbd64a54d889fa57','hotel-match-operator-original-batch-1971-20260915-v4'],['v6','555d2627d5e5485ea01a339c7934c2a6064a515f2ca18d1a1da537a03e290995','hotel-match-operator-original-batch-1971-20260915-v6'],['v7','81654eb1473386b568aa89e855eb5ed4be881e50f87cbb553dfa5e488fe4a0b3','hotel-match-operator-original-batch-1971-20260915-v7'],['v8','307dc1e97e8f4d63df0abd72e93c586e4994f8023a62e5f5ebb158188ce17dd0','hotel-match-operator-original-followup-1971-20260915-v8'],['v9','a9987974b816d96d1af14d9611813fc4e48f40fc7fff09a962fee8fa8c8e3b9c','hotel-match-operator-original-followup-1971-20260915-v9']];$seenDirect=[];foreach($priorEvidence as [$pn,$ph,$po]){$pr=mob_input($src.'/'.$pn.'/result.json',$ph);if(($pr['operation_id']??null)!==$po||!in_array($pr['state'],['completed','stopped_no_retry'],true)||($pr['database_writes']??-1)!==0||($pr['mapping_writes']??-1)!==0)throw new RuntimeException('prior_evidence_contract');foreach($pr['facts'] as $f){$op=(string)($f['operator_key']??'');$aid=(string)($f['andromeda_hotel_id']??'');$native=(string)($f['native_hotel_id']??'');if(!isset($operators[$op])||!isset($targets[$aid]))continue;if((int)($f['country_id']??0)!==(int)$targets[$aid]['country_id']||!preg_match('/^[A-Za-z0-9_.-]{1,32}$/D',$native))throw new RuntimeException('prior_evidence_shape');$pk=$op.'|'.$aid;if(isset($seenDirect[$pk])&&$seenDirect[$pk]!==$native)throw new RuntimeException('prior_evidence_ambiguous');$seenDirect[$pk]=$native;$facts[$op.'|'.$native.'|'.$aid]=$f;$covered[$pk]=true;}}$queries=[];foreach([1=>3,4=>5]"""
+          replacements=[
+            ("const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v2';", "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v10';", 1),
+            ("'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'", "'17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'", 2),
+            ("$operators=['5'=>'Anex Tour','315'=>'Fun&Sun','342'=>'Intourist','115'=>'Biblio Globus'];", "$operators=['115'=>'Biblio Globus','5'=>'Anex Tour','315'=>'Fun&Sun','342'=>'Intourist'];", 1),
+            ("$queries=[];foreach([1=>3,4=>5]", inject, 1),
+            ("$consumed=hash('sha256',mob_json($queries[0]['params']));", "$consumed='2d0fe9829779cd7535da8807ebfb5d13bd35238a38b4d7a0a2730e9e08ab1b73';", 1),
+            ("'params'=>$queries[0]['params']", "'params'=>['historical_request_sha256'=>$consumed]", 1),
+            ("array_shift($queries);", "foreach($queries as &$q){$q['params']['CHECKIN_BEG']='20261013';$q['params']['CHECKIN_END']='20261013';$q['params']['NIGHTS_FROM']=7;$q['params']['NIGHTS_TILL']=7;AnyTourAndromedaClient::validatePriceParams($q['params']);}unset($q);", 1),
+          ]
+          for old,new,count in replacements:
+            assert raw.count(old)==count,(old,raw.count(old),count); assert new not in raw; raw=raw.replace(old,new)
+          p.write_text(raw)
+          PY
+          grep -Fx "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v10';" scripts/diagnostics/hotel_match_operator_original_batch.php
+          php -l scripts/diagnostics/hotel_match_operator_original_batch.php
+          sha256sum scripts/diagnostics/hotel_match_operator_original_batch.php | awk '{print $1}' > "$RUNNER_TEMP/runtime-script-sha256"
+      - name: Restore hash-pinned CURRENT and prior evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,io,os,pathlib,subprocess,zipfile
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'source';root.mkdir()
+          inputs=[
+            ('current',10388671215,'3f962ad1afa7140be29a6d4c3bb5ee9af452a351c044b2fbcd3d0f31eafc49f1','server/result.json'),
+            ('egypt',10113498830,'8d82b5b2e4db23c8af691e98d63e0c2c40df99a5822cb27494971879ef92cb63','all.json'),
+            ('turkey',10118184869,'b03e15604fb3a3035efeab97a7099aaafca76ee6ae9a70513cbf176bc70dc49a','capture.json'),
+            ('saved',10109677472,'0a31817b0032c2bf4fedf2c827a4450e2b5a71333facf2a1aec95af0f6ff7aff','price.json'),
+            ('barcelo',10369008837,'6fca5684069fbc7e5bb09bea11073e5eaa3d29385ec1173e0d2061b69a8518d6','result.json'),
+            ('previous',10370118140,'03f897d267d9db5a7cc7957835fe27a1f6d2cfdb0386ddfb308fad852527d832','result.json'),
+            ('v4',10386624999,'6919fae1692fa63e02c5a1135e7d9059569653f727bf13d6c925173f335b0c45','result.json'),
+            ('v6',10387099703,'b58e7274f76789181d9dba9f8cf8d55e4178e9e32e12ab46b1dcdada2885a39f','result.json'),
+            ('v7',10388067365,'eceb0cb57fb7d57ca75285663e28c0ee23afe77cdf91742983e41fb8d77e9b25','result.json'),
+            ('v8',10390872790,'0ec739a0d8f0f4fa69ff76e08a953a0a64057795f481e6587169e6b09cfadc49','result.json'),
+            ('v9',10390149071,'fd67ecdcfe920be1573cfc85feef60d9f08645b9054e4060a43914a7e644bd85','result.json')]
+          for name,aid,digest,member in inputs:
+            p=subprocess.run(['gh','api',f'repos/{os.environ["GITHUB_REPOSITORY"]}/actions/artifacts/{aid}/zip'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=90)
+            got=hashlib.sha256(p.stdout).hexdigest(); assert got==digest,(name,got)
+            with zipfile.ZipFile(io.BytesIO(p.stdout)) as z:
+              info=z.getinfo(member); assert info.file_size<30*1024*1024
+              dest=root/name/member;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(z.read(member))
+          PY
+      - name: Build and verify fresh 7-night plan
+        run: |
+          set -euo pipefail
+          php scripts/diagnostics/hotel_match_operator_original_batch.php plan "$RUNNER_TEMP/source" > "$RUNNER_TEMP/plan.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'plan.json').read_text())
+          assert d['target_count']==385 and d['target_operator_count']==1540
+          assert d['saved_covered_count']==832 and d['query_count']==29 and len(d['queries'])==29
+          assert sum(len(q['hotel_ids']) for q in d['queries'])==708
+          assert d['queries'][0]['operator_key']=='115' and d['queries'][0]['country_id']==1
+          assert all(q['params']['CHECKIN_BEG']=='20261013' and q['params']['CHECKIN_END']=='20261013' and q['params']['NIGHTS_FROM']==7 and q['params']['NIGHTS_TILL']==7 for q in d['queries'])
+          assert d['current_result_sha256']=='17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'
+          PY
+      - name: Persist immutable reservation before supplier access
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP']);p=root/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          plan=(root/'plan.json').read_bytes();d=json.loads(plan);(p/'reserved-plan.json').write_bytes(plan)
+          script_sha=(root/'runtime-script-sha256').read_text().strip()
+          runtime={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'original_script_git_blob':'b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4','runtime_script_sha256':script_sha,'binding':'current_v3_prior_evidence_uncovered_20261013_fixed7_biblio_first'}
+          (p/'runtime-code.json').write_text(json.dumps(runtime,sort_keys=True)+'\n')
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_supplier_access','plan_sha256':hashlib.sha256(plan).hexdigest(),'runtime_script_sha256':script_sha,'max_price_calls':120,'targets':385,'covered_target_operator_pairs':832,'uncovered_target_operator_pairs':708,'operators':[115,5,315,342],'checkin':'20261013','nights':7,'query_count':29,'database_writes':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator-original-followup-v10-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-operator-original-followup-1971-20260915-v10/reservation.json
+            ${{ runner.temp }}/hotel-match-operator-original-followup-1971-20260915-v10/reserved-plan.json
+            ${{ runner.temp }}/hotel-match-operator-original-followup-1971-20260915-v10/runtime-code.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Short cool-down before supplier access
+        run: sleep 5
+      - name: Collect uncovered identities with reduced response volume
+        env:
+          ANDROMEDA_USERNAME: ${{ secrets.ANDROMEDA_USERNAME }}
+          ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
+        run: php scripts/diagnostics/hotel_match_operator_original_batch.php run "$RUNNER_TEMP/source" "$RUNNER_TEMP/$OPERATION_ID"
+      - name: Independent completed result readback
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];raw=(p/'result.json').read_bytes();r=json.loads(raw);receipt=json.loads((p/'receipt.json').read_text());reservation=json.loads((p/'reservation.json').read_text());runtime=json.loads((p/'runtime-code.json').read_text())
+          assert receipt['result_sha256']==hashlib.sha256(raw).hexdigest() and receipt['readback_verified']
+          assert all(x['source_sha']==os.environ['GITHUB_SHA'] and x['operation_id']==os.environ['OPERATION_ID'] for x in (r,receipt,reservation,runtime))
+          assert reservation['runtime_script_sha256']==runtime['runtime_script_sha256']
+          assert r['state']=='completed' and r['database_writes']==r['mapping_writes']==r['all_calls']==r['booking_calls']==r['tourvisor_calls']==0
+          assert r['price_calls']<=120 and r['supplier_calls']<=121
+          print(json.dumps({'unique_pairs':r['unique_pair_count'],'supplier_calls':r['supplier_calls'],'price_calls':r['price_calls'],'result_sha256':receipt['result_sha256']}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator-original-followup-v10-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-followup-1971-20260915-v10/
+          if-no-files-found: warn
+          retention-days: 90
