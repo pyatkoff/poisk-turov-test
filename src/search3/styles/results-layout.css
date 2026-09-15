@@ -222,6 +222,8 @@ margin:0;background:#f5f7fb;color:#17233b;
 & .hotel-decision-line>span{display:inline-flex;align-items:center;min-height:30px;padding:4px 8px;border-radius:9px;background:#f3f6fb;color:#34425a;font-size:13px;font-weight:600}
 & .hotel-decision-line>.hotel-decision-rating{background:#edf8f1;color:#24623b}
 & .hotel-decision-line>.hotel-decision-sea{background:#edf5ff;color:#245e99}
+& .hotel-description-summary{display:-webkit-box;margin:10px 0 2px;overflow:hidden;color:#34425a;font-size:13px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+& .hotel-description-summary:has(+.hotel-details[open]){display:none}
 & .hotel-details{margin-top:4px;border-top:1px solid var(--at-line-soft,#e9edf6)}
 & .hotel-details>summary{display:flex;align-items:center;min-height:44px;color:#2743cb;font-size:14px;font-weight:700;cursor:pointer;list-style:none}
 & .hotel-details>summary::-webkit-details-marker{display:none}

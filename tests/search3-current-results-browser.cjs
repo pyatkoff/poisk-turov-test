@@ -221,7 +221,7 @@ async function checkExpandedDensity(page, width, previous) {
     assert.equal(await card.locator('.hotel-trip-summary,.hotel-summary-total').count(), 0, 'expanded comparison has no aggregate facts or total');
     assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов', 'one grammatically correct count belongs to the comparison header');
     assert.equal(await card.locator('.hotel-price').count(), 3, 'the first decision view shows three exact offers instead of the whole long list');
-    assert.equal(await card.locator('.tour-row').nth(1).locator('.tour-fact').filter({ hasText: 'Номер' }).locator('b').innerText(), 'Стандарт · вид на бассейн · DBL', 'the visible pool-view room uses the shared Russian display label and retains placement');
+    assert.equal(await card.locator('.tour-row').nth(1).locator('.tour-fact').filter({ hasText: 'Номер' }).locator('b').innerText(), 'Стандарт · вид на бассейн · Двухместное', 'the visible pool-view room uses shared Russian room and placement labels');
     assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, 3).map(value => value.id), 'the representative offer and first alternatives retain their identity and order');
     assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.slice(0, 3).map(value => value.price), 'the first displayed prices remain the original supplier amounts');
     assert.equal(await card.locator('.tour-list-more').innerText(), 'Показать ещё 3');
@@ -336,7 +336,7 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
     await select.selectOption('meal:breakfast');
     assert.deepEqual(await visible(), ['meal-a', 'meal-b'], 'code-description and English breakfast share the existing local facet');
-    assert.deepEqual(await page.locator('#results .hotel-card:visible .tour-facts').allTextContents(), ['ПитаниеЗавтракНомерСтандарт · территория · DBL', 'ПитаниеЗавтракНомерСтандарт · территория · DBL'], 'filtered exact offers use the same Russian meal and reviewed room labels while preserving placement');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible .tour-facts').allTextContents(), ['ПитаниеЗавтракНомерСтандарт · территория · Двухместное', 'ПитаниеЗавтракНомерСтандарт · территория · Двухместное'], 'filtered exact offers use the same Russian meal, room and placement labels');
     assert.deepEqual((await page.locator('#results .hotel-card:visible .tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))), [140000, 142000], 'display normalization preserves exact offer prices');
     if (!previous) await page.locator('#results').screenshot({ path: path.join(output, `meal-labels-${width}.png`), animations: 'disabled' });
     await select.selectOption('meal:ultra-all-inclusive');
@@ -526,14 +526,18 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
     assert.equal(await card.locator('.hotel-gallery-thumb').count(), 3, 'local hotel details expose a bounded gallery in the canonical card');
     const hotelInfo = card.locator('.hotel-details');
+    assert.match(await card.locator('.hotel-description-summary').innerText(), /Локальное описание отеля/, 'trusted local description is readable before opening the hotel disclosure');
+    assert.equal(await hotelInfo.locator('summary').innerText(), 'Подробнее об отеле', 'hotel disclosure promises complete local details');
     await hotelInfo.locator('summary').press('Enter');
     assert.equal(await hotelInfo.evaluate(node => node.open), true, 'hotel description opens through the native keyboard disclosure');
+    assert.equal(await card.locator('.hotel-description-summary').isVisible(), false, 'the clamped summary does not duplicate the open full description');
     assert.match(await hotelInfo.innerText(), /Локальное описание отеля[\s\S]*Наама-Бей[\s\S]*Открытый бассейн[\s\S]*Wi-Fi/, 'trusted local description and characteristics are available before choosing an offer');
     assert.ok((await hotelInfo.locator('summary').boundingBox()).height >= 44, 'hotel details disclosure keeps a full touch target');
     await card.locator('.hotel-gallery-thumb').nth(1).click();
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
     assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
     await hotelInfo.locator('summary').press('Enter');
+    assert.equal(await card.locator('.hotel-description-summary').isVisible(), true, 'closing details restores the concise hotel summary');
     await card.locator('.hotel-gallery-main').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-gallery-main'); return img && img.complete && img.naturalWidth > 0; });
     await card.locator('.hotel-gallery-main').evaluate(img => img.decode());
@@ -598,7 +602,7 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     await card.locator('.provider-detail').filter({ hasText: 'Подтверждённый тестовый отель' }).waitFor();
     assert.equal(await detailToggle.getAttribute('aria-expanded'), 'true', 'provider detail disclosure exposes its open state');
     assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
-    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · DBL/);
+    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · Двухместное/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
     assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
     assert.match(await card.locator('.provider-detail').innerText(), /Перед выбором проверим актуальную стоимость и рейсы/);
@@ -1077,7 +1081,7 @@ async function run(browser, width, previous) {
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
     assert.equal(await card.locator('.tour-more-toggle').innerText(), 'Показать варианты · 3', 'disclosure states the total loaded offer count');
     assert.equal(await card.locator('.tour-meta').count(), 0, 'exact offer owner stays absent before disclosure');
-    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL/, 'collapsed hotel excludes concrete offer parameters');
+    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL|Двухместное/, 'collapsed hotel excludes concrete offer parameters');
     assert.equal(await card.locator('.hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от148500,6₽', 'collapsed hotel exposes only its precise minimum with a truthful prefix');
     const single = page.locator('#results [data-hotel-id=cheap].hotel-card');
     assert.equal(await single.locator('.hotel-trip-summary,.tour-more-toggle').count(), 0, 'single-offer hotel needs no redundant aggregate or disclosure');
@@ -1111,7 +1115,7 @@ async function run(browser, width, previous) {
     assert.match(await primary.locator('.tour-facts').innerText(), /Всё включено/, 'supplier fullName expands the abbreviation in offer facts');
     assert.equal(await primary.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await primary.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
-    assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'Стандарт · территория · DBL']], 'primary comparison facts use shared Russian display labels without changing the offer');
+    assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'Стандарт · территория · Двухместное']], 'primary comparison facts use shared Russian display labels without changing the offer');
     assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact:not(.tour-operator)').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [], 'provider provenance stays out of customer-facing offer facts');
     assert.equal(await primary.locator('.hotel-operator').innerText(), 'TEST OPERATOR', 'unknown operator keeps its visible name');
     assert.equal(await primary.locator('.hotel-operator').getAttribute('title'), 'Туроператор: TEST OPERATOR', 'tooltip explains the operator identity');
@@ -1129,7 +1133,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'keyboard collapse retains focus on the replacement disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false');
     assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapse restores exactly one hotel-level summary');
-    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL/, 'collapse cannot reintroduce concrete offer conditions');
+    assert.doesNotMatch(await card.locator('.hotel-tours').innerText(), /12\.09\.2026|9 ноч\.|Всё включено|STANDARD LAND VIEW|TEST OPERATOR|Tourvisor|DBL|Двухместное/, 'collapse cannot reintroduce concrete offer conditions');
     assert.equal(await page.evaluate(() => window.V2Results.state.items.every((hotel, i) => hotel === window.__decisionOriginal[i]) && window.V2Results.representativeTour(window.__decisionOriginal[0]) === window.__decisionOriginal[0].tours[1]), true, 'render and disclosure preserve original hotel and representative tour objects');
     assert.equal(await page.evaluate(() => JSON.stringify(window.V2Results.state.items)), JSON.stringify(hotels), 'disclosure leaves frozen source prices, tour order and contents unchanged');
     await page.locator('#sortResults').selectOption('rating');

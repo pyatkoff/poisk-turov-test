@@ -70,9 +70,13 @@ for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider
 }
 // Exact offer rows keep decision-critical differences, but do not repeat search-level/internal context.
 const compact=api.tourRow({...multi.tours[0],roomType:'STANDARD',placement:'DBL',adults:2,childs:1,provider:'tourvisor'});
-assert.match(compact,/<small>Номер<\/small><b>Стандарт · DBL<\/b>/);
+assert.match(compact,/<small>Номер<\/small><b>Стандарт · Двухместное<\/b>/);
 assert.doesNotMatch(compact,/Источник|Tourvisor/,'expanded exact offer keeps provider provenance out of customer copy');
 assert.doesNotMatch(compact,/<small>(?:Туристы|Размещение)<\/small>/,'expanded rows do not repeat search party or a second placement field');
+assert.equal(api.roomLabel({roomType:'economy room'}),'Эконом','common supplier room code has a customer-facing label');
+assert.equal(api.placementLabel('DBL + CHD'),'Двухместное + ребёнок','common placement codes have a customer-facing label');
+assert.equal(api.placementLabel('DBL + 2 CHD'),'Двухместное + 2 ребёнка','placement aliases keep exact child count');
+assert.equal(api.placementLabel('Villa with private pool'),'Villa with private pool','unknown supplier placement remains verbatim');
 assert.doesNotMatch(compact,/<small>Оператор<\/small>/,'known operator does not repeat a caption beside its logo');
 assert.match(compact,/title="Туроператор: FUN&amp;SUN"/,'operator remains named in its tooltip');
 assert.match(compact,/alt="Туроператор: FUN&amp;SUN"/,'operator remains named for assistive technology');
@@ -117,7 +121,8 @@ const localHtml=api.hotelMainHtml({id:21477,name:'Supplier name',picturelink:'ht
 assert.match(localHtml,/Локальный отель/,'local hotel name owns the hotel card');
 assert.match(localHtml,/hotel-gallery-thumb/,'local gallery is available before offer selection');
 assert.match(localHtml,/Показать фото 2/,'gallery keeps a named keyboard action');
-assert.match(localHtml,/Об отеле/,'trusted local details have one native disclosure');
+assert.match(localHtml,/class="hotel-description-summary">&lt;b&gt;Проверенное описание&lt;\/b&gt;<\/p>/,'trusted local description is visible in the collapsed hotel presentation');
+assert.match(localHtml,/Подробнее об отеле/,'trusted local details have one clearly labelled native disclosure');
 assert.match(localHtml,/&lt;b&gt;Проверенное описание&lt;\/b&gt;/,'local description remains escaped text');
 assert.match(localHtml,/Песчаный пляж · Бассейн[\s\S]*Wi-Fi[\s\S]*Всё включено/,'object-shaped local characteristics are presented instead of discarded');
 assert.doesNotMatch(localHtml,/<b>Проверенное описание<\/b>/,'local description cannot inject markup');
