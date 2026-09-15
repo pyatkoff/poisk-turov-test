@@ -9,7 +9,7 @@ env:
   OPERATION_ID: hotel-match-operator-current-anchor-review-1971-20260915-v4
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 37
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 38
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -22,7 +22,7 @@ jobs:
           for f in "${files[@]}"; do php -l "$f"; done
           php tests/hotel_match_operator_current_anchor_review_v4_test.php
           test "$(git hash-object scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php)" = cf8fc15ab42b4d4fcc6f8562e459288701f0d6a1
-          test "$(git hash-object tests/hotel_match_operator_current_anchor_review_v4_test.php)" = e96017861b48afef8a69350e4e8322bb78884b48
+          test "$(git hash-object tests/hotel_match_operator_current_anchor_review_v4_test.php)" = 72c256348a2856da6452ad449693d1df3a15d627
           ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php
           printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php|awk '{print $1}')" >> "$GITHUB_ENV"
       - name: Reserve before SSH or DB
