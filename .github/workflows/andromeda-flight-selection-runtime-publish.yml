@@ -1,0 +1,177 @@
+name: Publish checked Andromeda flight-selection runtime
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-flight-selection-runtime-publish.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: anytoour-andromeda-detail-publication
+  cancel-in-progress: false
+
+jobs:
+  control-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify publication control pins and supplier-free PR boundary
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/andromeda-flight-selection-runtime-publish.yml')
+          text = p.read_text()
+          required = [
+              "github.event.issue.number == 2530",
+              "github.event.comment.body == '/publish-andromeda-flight-selection-runtime-1717-v1'",
+              "const runtimeHead = '812f838191d138f391059aaa6d0d3f77ce8c7d27';",
+              "const runtimeMerge = 'c61e5647767f75d7d45c38e243348991accec8a4';",
+              "pull_number: 2527",
+              "for (const run_id of [34960168754, 34960168639, 34960168664])",
+              "artifact_id: 10393235462",
+              "sha256:37fa31b7a5fe9ed5563e0ab8dfcb41b6281886f101b18ed91697d17750d17eeb",
+              "ref: 23dd08a985eb58ed93652d97b60dac6c4145020c",
+              "RUNTIME_SOURCE_SHA: 812f838191d138f391059aaa6d0d3f77ce8c7d27",
+          ]
+          for needle in required:
+              if text.count(needle) != 1:
+                  raise SystemExit('publication control pin missing or duplicated: ' + needle)
+          trigger = text.split('\npermissions:', 1)[0]
+          if '\n  workflow_dispatch:' in trigger or '\n  push:' in trigger:
+              raise SystemExit('manual-dispatch/push trigger is not allowed')
+          forbidden = ['/run-andromeda-', 'bron_ticket', 'booking_calls=1']
+          for needle in forbidden:
+              if needle in text:
+                  raise SystemExit('supplier/booking control leaked into publication workflow: ' + needle)
+          print('Andromeda flight-selection publication control pins verified; PR supplier calls=0')
+          PY
+
+  publish:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/publish-andromeda-flight-selection-runtime-1717-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require exact owner command and checked source lineage
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = 226193297;
+            const command = '/publish-andromeda-flight-selection-runtime-1717-v1';
+            const runtimeHead = '812f838191d138f391059aaa6d0d3f77ce8c7d27';
+            const runtimeMerge = 'c61e5647767f75d7d45c38e243348991accec8a4';
+            const publisherHead = '64706822fc54f4d4423ea6bbd0ad966144151387';
+            const publisherMerge = '23dd08a985eb58ed93652d97b60dac6c4145020c';
+            if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay an unknown publication; inspect its receipt.');
+            if (context.payload.sender?.id !== owner || context.actor !== 'pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
+            if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
+                context.payload.issue?.number !== 2530 || context.payload.issue?.pull_request ||
+                context.payload.comment?.user?.id !== owner || context.payload.comment?.author_association !== 'OWNER' ||
+                context.payload.comment?.body !== command) {
+              throw new Error('Exact fresh owner command in canonical issue2530 required.');
+            }
+            const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+            if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
+            const {data: runtimePr} = await github.rest.pulls.get({...context.repo, pull_number: 2527});
+            if (!runtimePr.merged || runtimePr.head.sha !== runtimeHead || runtimePr.merge_commit_sha !== runtimeMerge || runtimePr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Runtime PR provenance mismatch.');
+            const {data: publisherPr} = await github.rest.pulls.get({...context.repo, pull_number: 2461});
+            if (!publisherPr.merged || publisherPr.head.sha !== publisherHead || publisherPr.merge_commit_sha !== publisherMerge || publisherPr.base.ref !== 'feature/anex-search-adapter-20260907') throw new Error('Publisher PR provenance mismatch.');
+            for (const run_id of [34960168754, 34960168639, 34960168664]) {
+              const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id});
+              if (run.head_sha !== runtimeHead || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Pinned runtime CI failed: ' + run_id);
+            }
+            const {data: publisherRun} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: 34892746421});
+            if (publisherRun.head_sha !== publisherHead || publisherRun.status !== 'completed' || publisherRun.conclusion !== 'success') throw new Error('Pinned publisher CI failed.');
+            const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: 10393235462});
+            if (artifact.id !== 10393235462 || artifact.expired !== false || artifact.workflow_run?.id !== 34960168639 ||
+                artifact.workflow_run?.head_sha !== runtimeHead ||
+                artifact.digest !== 'sha256:37fa31b7a5fe9ed5563e0ab8dfcb41b6281886f101b18ed91697d17750d17eeb') throw new Error('Artifact identity/digest mismatch.');
+            const {data: publisherFile} = await github.rest.repos.getContent({...context.repo, path: 'scripts/diagnostics/andromeda_runtime_source_publish.py', ref: publisherHead});
+            if (Array.isArray(publisherFile) || publisherFile.sha !== '3a0047f8b08f315231900887ecffd6e131c30781') throw new Error('Publisher implementation blob mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: 23dd08a985eb58ed93652d97b60dac6c4145020c
+          path: publisher
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          artifact-ids: '10393235462'
+          run-id: '34960168639'
+          github-token: ${{ github.token }}
+          path: candidate
+          merge-multiple: true
+      - name: Publish exact checked 16-file runtime to isolated Andromeda preview
+        env:
+          RUNTIME_SOURCE_SHA: 812f838191d138f391059aaa6d0d3f77ce8c7d27
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: python3 -B publisher/scripts/diagnostics/andromeda_runtime_source_publish.py candidate helper
+      - name: Verify both HTTP entrypoints without supplier/search/quote operations
+        run: |
+          python3 - <<'PYHTTP'
+          import hashlib, http.client, json, os
+          from pathlib import Path
+          out = Path(os.environ['RUNNER_TEMP']) / 'andromeda-runtime-source-publication'
+          published = json.loads((out / 'result.json').read_text())
+          if published.get('status') not in ('published','already_published'):
+              raise SystemExit('Publication is unconfirmed; inspect receipt, do not replay')
+          if published.get('source') != '812f838191d138f391059aaa6d0d3f77ce8c7d27':
+              raise SystemExit('Published source mismatch')
+          report = {'status':'incomplete','source':published['source'],'checks':[],
+                    'validation_only':True,'supplier_calls':0,'database_reads':0,'booking_calls':0}
+          cases = [('GET',{},405,'method_not_allowed'),
+                   ('POST',{},403,'forbidden'),
+                   ('POST',{'X-Requested-With':'AnyTourSearch3','Content-Type':'text/plain'},400,'invalid_request')]
+          try:
+              for endpoint in ('api-andromeda-search3-preview.php','api-andromeda-quote-preview.php'):
+                  for method, headers, status, error in cases:
+                      connection = http.client.HTTPSConnection('anytoour.ru', timeout=20)
+                      try:
+                          connection.request(method, '/_preview/search3-anex-candidate/' + endpoint,
+                                             body=None if method == 'GET' else b'', headers=headers)
+                          response = connection.getresponse()
+                          body = response.read(4097)
+                          row = {'endpoint':endpoint,'method':method,'expected_status':status,
+                                 'status':response.status,'body_sha256':hashlib.sha256(body).hexdigest()}
+                          report['checks'].append(row)
+                          if (response.status != status or len(body) > 4096 or json.loads(body) != {'ok':False,'error':error}):
+                              raise SystemExit('HTTP rejection readback failed; inspect receipt, do not republish')
+                          row['verified'] = True
+                      finally:
+                          connection.close()
+              report['status'] = 'verified'
+          finally:
+              (out / 'http-readback.json').write_text(json.dumps(report, sort_keys=True, indent=2) + '\n')
+          print(json.dumps(report, sort_keys=True))
+          PYHTTP
+      - name: Preserve publication receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-flight-selection-runtime-publication-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-runtime-source-publication/
+          if-no-files-found: error
+          retention-days: 14
