@@ -1,16 +1,16 @@
-name: MATCH accepted-name bridge review v2
+name: MATCH accepted-name bridge review v3
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-accepted-name-bridge-1971-v2, cancel-in-progress: false}
+concurrency: {group: match-accepted-name-bridge-1971-v3, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-accepted-name-bridge-review-1971-20260915-v2
-  PREVIOUS_OPERATION_ID: hotel-match-accepted-name-bridge-review-1971-20260915-v1
+  OPERATION_ID: hotel-match-accepted-name-bridge-review-1971-20260915-v3
+  PREVIOUS_OPERATION_ID: hotel-match-accepted-name-bridge-review-1971-20260915-v2
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 25
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 26
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,12 +28,12 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = e93113da264b9bb1a17d0cb65287b4d1dc5b476b
           test "$(git hash-object scripts/diagnostics/hotel_match_state_country_consensus.php)" = 2a443380b28e3a4267650d988e524971b77f56c3
           test "$(git hash-object scripts/diagnostics/hotel_match_state_accepted_country_consensus.php)" = 97d39cdd7817e024139bd7e962cc8496c5c9ea58
-          test "$(git hash-object scripts/diagnostics/hotel_match_accepted_name_bridge_review.php)" = e586c513d870824c846f7b56b2e5df3c905d456e
-          test "$(git hash-object tests/hotel_match_accepted_name_bridge_review_test.php)" = c2d31a7b65c86f36b3fc7a543f48ba84dc849ee9
+          test "$(git hash-object scripts/diagnostics/hotel_match_accepted_name_bridge_review.php)" = 3fd8a74b1edc2285fdfa93e598f7bf354df19d42
+          test "$(git hash-object tests/hotel_match_accepted_name_bridge_review_test.php)" = 075e296a25ea8629efc780e50fae53909977661e
           ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_accepted_name_bridge_review.php
           ! grep -Eiq '\b(INSERT INTO|UPDATE|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_accepted_name_bridge_review.php
-          printf 'SOURCE_SHA256=%s\nCOUNTRY_SHA256=%s\nSTATE_SHA256=%s\nRESOLVER_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_accepted_name_bridge_review.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_state_accepted_country_consensus.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_state_country_consensus.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_live_residual_current_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
-      - name: Reconcile v1 and reserve v2 before DB
+          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_accepted_name_bridge_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
+      - name: Reconcile v2 and reserve v3 before DB
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -43,17 +43,17 @@ jobs:
           out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
-          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -T "$U@$H" "set -euo pipefail; p=\$HOME/.anytoour-match/operations/$PREVIOUS_OPERATION_ID; test -f \"\$p/reservation.json\"; if test -f \"\$p/receipt.json\" || test -f \"\$p/result.json\"; then echo PREVIOUS_HAS_RESULT_OR_RECEIPT; test -f \"\$p/receipt.json\" && cat \"\$p/receipt.json\"; exit 9; else echo PREVIOUS_RESERVED_NO_RESULT_NO_RECEIPT; fi" | tee "$out/previous-reconciliation.txt"
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -T "$U@$H" "set -euo pipefail; p=\$HOME/.anytoour-match/operations/$PREVIOUS_OPERATION_ID; test -f \"\$p/reservation.json\"; if test -f \"\$p/receipt.json\" || test -f \"\$p/result.json\"; then echo PREVIOUS_HAS_RESULT_OR_RECEIPT; exit 9; else echo PREVIOUS_RESERVED_NO_RESULT_NO_RECEIPT; fi" | tee "$out/previous-reconciliation.txt"
           rm -f "$key" "$known"
           python3 - <<'PY'
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'previous_operation_id':os.environ['PREVIOUS_OPERATION_ID'],'previous_reconciliation':'reserved_no_result_no_receipt','state':'reserved_before_db_access','mode':'server_current_read_only_accepted_name_bridge_review_v2','supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'previous_operation_id':os.environ['PREVIOUS_OPERATION_ID'],'previous_reconciliation':'reserved_no_result_no_receipt','state':'reserved_before_db_access','mode':'server_current_read_only_accepted_name_bridge_review_v3','supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-accepted-name-bridge-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-accepted-name-bridge-review-1971-20260915-v2/
+          name: match-accepted-name-bridge-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-accepted-name-bridge-review-1971-20260915-v3/
           if-no-files-found: error
           retention-days: 90
       - name: Server CURRENT read-only accepted-name review
@@ -76,12 +76,9 @@ jobs:
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C $remote -czf - ." > "$out/server-operation.tgz"
           set -e
-          echo REMOTE_RC=$rc
-          cat "$out/remote-stdout.txt" || true
-          cat "$out/remote-stderr.txt" >&2 || true
+          echo REMOTE_RC=$rc; cat "$out/remote-stdout.txt" || true; cat "$out/remote-stderr.txt" >&2 || true
           mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
           if [ "$rc" -ne 0 ]; then exit "$rc"; fi
-          export REMOTE_RC="$rc"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
@@ -95,7 +92,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-accepted-name-bridge-v2-result
-          path: ${{ runner.temp }}/hotel-match-accepted-name-bridge-review-1971-20260915-v2/
+          name: match-accepted-name-bridge-v3-result
+          path: ${{ runner.temp }}/hotel-match-accepted-name-bridge-review-1971-20260915-v3/
           if-no-files-found: warn
           retention-days: 90
