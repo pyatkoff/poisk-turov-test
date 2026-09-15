@@ -1,0 +1,86 @@
+name: MATCH operator original CURRENT intake v2
+on:
+  push:
+    branches: [ops/match-operator-original-batch-1971-20260915-v6]
+    paths: [.github/workflows/hotel-match-operator-original-current-v2.yml]
+permissions: {contents: read}
+concurrency: {group: match-operator-original-current-1971-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-operator-original-current-1971-20260915-v2
+jobs:
+  current-intake:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Verify read-only diagnostic and bind v2
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_current.php)" = 717e6b52ccb16b286cac20660a4b5fc10c4d1ead
+          php -l scripts/diagnostics/hotel_match_operator_original_current.php
+          php scripts/diagnostics/hotel_match_operator_original_current.php --self-test
+          python3 - <<'PY'
+          import pathlib,re
+          p=pathlib.Path('scripts/diagnostics/hotel_match_operator_original_current.php');s=p.read_text()
+          assert not re.search(r'\b(?:INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)\s',s,re.I)
+          assert 'START TRANSACTION READ ONLY' in s
+          old="const MOC_OP='hotel-match-operator-original-current-1971-20260915-v1';"
+          new="const MOC_OP='hotel-match-operator-original-current-1971-20260915-v2';"
+          assert s.count(old)==1 and new not in s
+          p.write_text(s.replace(old,new))
+          PY
+          grep -Fx "const MOC_OP='hotel-match-operator-original-current-1971-20260915-v2';" scripts/diagnostics/hotel_match_operator_original_current.php
+          php -l scripts/diagnostics/hotel_match_operator_original_current.php
+      - name: Reserve before SSH or database access
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','database_writes':0,'supplier_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator-original-current-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-operator-original-current-1971-20260915-v2/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read current identity storage and live-ranked targets once
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php" < scripts/diagnostics/hotel_match_operator_original_current.php > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified']
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,receipt))
+          gate={'operation_id':os.environ['OPERATION_ID'],'state':r['state'],'result_sha256':digest,'target_count':r.get('target_count'),'operator_rows':len(r.get('existing_operator_rows',[])),'saved_typed_pairs':len(r.get('saved_typed_pairs',[])),'readback_verified':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n');print(json.dumps(gate))
+          assert os.environ['REMOTE_RC']=='0' and r['state']=='completed_read_only' and r['database_writes']==r['supplier_calls']==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator-original-current-v2-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-current-1971-20260915-v2/
+          if-no-files-found: warn
+          retention-days: 90
