@@ -20,13 +20,21 @@ function anytour_anex_additional_specimen_context_date($value): ?string
     return $match[1];
 }
 
+/**
+ * Project only the supplier money/context facts needed by the existing direct-ANEX
+ * AdditionalPricesDaily runtime. No fuel/package/final-price semantics are assigned.
+ */
 function anytour_anex_additional_specimen_fact(array $payload, array $criteria): array
 {
     $rows = $payload['data'] ?? null;
     $total = $payload['totalCount'] ?? null;
-    if (!is_array($rows) || ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1))) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESPONSE');
+    if (!is_array($rows) || ($rows !== [] && array_keys($rows) !== range(0, count($rows) - 1))) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESPONSE');
+    }
     if (is_string($total) && preg_match('/\A[0-9]{1,9}\z/D', $total)) $total = (int) $total;
-    if (!is_int($total) || $total < 0 || $total > 100000000 || $total < count($rows)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESPONSE');
+    if (!is_int($total) || $total < 0 || $total > 100000000 || $total < count($rows)) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESPONSE');
+    }
 
     $safe = [];
     foreach (array_slice($rows, 0, 100) as $row) {
@@ -38,7 +46,9 @@ function anytour_anex_additional_specimen_fact(array $payload, array $criteria):
         if ((is_int($currency) || is_string($currency)) && preg_match('/\A[1-9][0-9]{0,8}\z/D', (string) $currency)) $currency = (int) $currency; else $currency = null;
         if ((is_int($nights) || is_string($nights)) && preg_match('/\A[0-9]{1,2}\z/D', (string) $nights)) $nights = (int) $nights; else $nights = null;
         $date = anytour_anex_additional_specimen_context_date($row['dateBeg'] ?? null);
-        if ($tour !== $criteria['tour'] || $currency !== $criteria['currency'] || $date !== $criteria['dateBeg'] || $nights !== $criteria['nights']) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_CONTEXT');
+        if ($tour !== $criteria['tour'] || $currency !== $criteria['currency'] || $date !== $criteria['dateBeg'] || $nights !== $criteria['nights']) {
+            throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_CONTEXT');
+        }
         $safe[] = [
             'tour' => $tour,
             'currency' => $currency,
@@ -76,7 +86,11 @@ function anytour_anex_additional_specimen_fact(array $payload, array $criteria):
 function anytour_anex_additional_specimen_run(array $input): array
 {
     if (!class_exists('AnyTourAnexAdditionalPricesClient', false)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_CLIENT');
-    if (PHP_SAPI !== 'cli' || array_keys($input) !== ['operation_id', 'source_sha'] || $input['operation_id'] !== ANEX_ADDITIONAL_SPECIMEN_OPERATION || !is_string($input['source_sha']) || !preg_match('/\A[a-f0-9]{40}\z/D', $input['source_sha'])) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_INPUT');
+    if (PHP_SAPI !== 'cli' || array_keys($input) !== ['operation_id', 'source_sha']
+        || $input['operation_id'] !== ANEX_ADDITIONAL_SPECIMEN_OPERATION
+        || !is_string($input['source_sha']) || !preg_match('/\A[a-f0-9]{40}\z/D', $input['source_sha'])) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_INPUT');
+    }
 
     $home = (string) getenv('HOME');
     $root = realpath($home . '/www/anytoour.ru');
@@ -86,27 +100,61 @@ function anytour_anex_additional_specimen_run(array $input): array
         if (!is_file($config) || is_link($config)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_CONFIG');
         require_once $config;
     }
-    if (!defined('ANEX_B2B_TOKEN') || !is_string(ANEX_B2B_TOKEN) || trim(ANEX_B2B_TOKEN) === '') throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_TOKEN');
-    if (stripos(ANEX_B2B_TOKEN, 'Bearer ') === 0 || preg_match('/[\x00-\x20\x7f]/', ANEX_B2B_TOKEN)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_TOKEN');
+    if (!defined('ANEX_B2B_TOKEN') || !is_string(ANEX_B2B_TOKEN) || trim(ANEX_B2B_TOKEN) === '') {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_TOKEN');
+    }
+    if (stripos(ANEX_B2B_TOKEN, 'Bearer ') === 0 || preg_match('/[\x00-\x20\x7f]/', ANEX_B2B_TOKEN)) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_TOKEN');
+    }
 
     $criteriaSet = [];
     foreach (ANEX_ADDITIONAL_SPECIMEN_NIGHTS as $nights) {
-        $criteriaSet[] = ['page'=>1,'pageSize'=>10,'tour'=>ANEX_ADDITIONAL_SPECIMEN_TOUR,'dateBeg'=>ANEX_ADDITIONAL_SPECIMEN_DATE,'nights'=>$nights,'currency'=>ANEX_ADDITIONAL_SPECIMEN_CURRENCY];
+        $criteriaSet[] = [
+            'page' => 1,
+            'pageSize' => 10,
+            'tour' => ANEX_ADDITIONAL_SPECIMEN_TOUR,
+            'dateBeg' => ANEX_ADDITIONAL_SPECIMEN_DATE,
+            'nights' => $nights,
+            'currency' => ANEX_ADDITIONAL_SPECIMEN_CURRENCY,
+        ];
     }
 
     umask(0077);
     $directory = $private . '/' . ANEX_ADDITIONAL_SPECIMEN_OPERATION;
     if (!@mkdir($directory, 0700)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_NO_REPLAY');
-    $reservation = json_encode(['state'=>'unknown_reserved','replay_allowed'=>false,'operation_id'=>ANEX_ADDITIONAL_SPECIMEN_OPERATION,'source_sha'=>$input['source_sha'],'criteria'=>$criteriaSet], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n";
-    if (file_put_contents($directory . '/reservation.json', $reservation, LOCK_EX) !== strlen($reservation)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESERVATION');
+    $reservation = json_encode([
+        'state' => 'unknown_reserved',
+        'replay_allowed' => false,
+        'operation_id' => ANEX_ADDITIONAL_SPECIMEN_OPERATION,
+        'source_sha' => $input['source_sha'],
+        'criteria' => $criteriaSet,
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n";
+    if (file_put_contents($directory . '/reservation.json', $reservation, LOCK_EX) !== strlen($reservation)) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESERVATION');
+    }
 
-    $result = ['schema_version'=>1,'operation_id'=>ANEX_ADDITIONAL_SPECIMEN_OPERATION,'source_sha'=>$input['source_sha'],'observed_at'=>gmdate('c'),'supplier_replay_allowed'=>false,'criteria'=>$criteriaSet,'additional_prices_requests'=>0,'additional_prices_by_nights'=>[],'booking_calls'=>0,'mapping_writes'=>0];
+    $result = [
+        'schema_version' => 1,
+        'operation_id' => ANEX_ADDITIONAL_SPECIMEN_OPERATION,
+        'source_sha' => $input['source_sha'],
+        'observed_at' => gmdate('c'),
+        'supplier_replay_allowed' => false,
+        'criteria' => $criteriaSet,
+        'additional_prices_requests' => 0,
+        'additional_prices_by_nights' => [],
+        'booking_calls' => 0,
+        'mapping_writes' => 0,
+    ];
     try {
         $client = new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN, null, $private . '/apd-daily-cache-v1');
         foreach ($criteriaSet as $criteria) {
             $payload = $client->additionalPricesDaily($criteria);
             $result['additional_prices_requests'] = $client->requestsMade();
-            $result['additional_prices_by_nights'][] = ['nights'=>$criteria['nights'],'request_diagnostics'=>$client->lastRequestDiagnostics(),'additional_prices'=>anytour_anex_additional_specimen_fact($payload, $criteria)];
+            $result['additional_prices_by_nights'][] = [
+                'nights' => $criteria['nights'],
+                'request_diagnostics' => $client->lastRequestDiagnostics(),
+                'additional_prices' => anytour_anex_additional_specimen_fact($payload, $criteria),
+            ];
         }
         $result['status'] = 'completed';
     } catch (Throwable $e) {
@@ -117,8 +165,12 @@ function anytour_anex_additional_specimen_run(array $input): array
     }
 
     $encoded = json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n";
-    if (strpos($encoded, ANEX_B2B_TOKEN) !== false || stripos($encoded, 'Bearer ') !== false) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_SECRET_OUTPUT');
-    if (file_put_contents($directory . '/result.json', $encoded, LOCK_EX) !== strlen($encoded)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RECEIPT');
+    if (strpos($encoded, ANEX_B2B_TOKEN) !== false || stripos($encoded, 'Bearer ') !== false) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_SECRET_OUTPUT');
+    }
+    if (file_put_contents($directory . '/result.json', $encoded, LOCK_EX) !== strlen($encoded)) {
+        throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RECEIPT');
+    }
     return $result;
 }
 
@@ -133,7 +185,14 @@ if (!defined('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY')) {
         exit(($result['status'] ?? null) === 'completed' ? 0 : 2);
     } catch (Throwable $e) {
         $message = $e->getMessage();
-        fwrite(STDOUT, json_encode(['schema_version'=>1,'operation_id'=>ANEX_ADDITIONAL_SPECIMEN_OPERATION,'status'=>'unknown','error'=>preg_match('/\AANEX_[A-Z0-9_]+\z/D', $message) ? $message : 'ANEX_ADDITIONAL_SPECIMEN_FAILED','automatic_retry'=>false,'supplier_replay_allowed'=>false], JSON_THROW_ON_ERROR) . "\n");
+        fwrite(STDOUT, json_encode([
+            'schema_version' => 1,
+            'operation_id' => ANEX_ADDITIONAL_SPECIMEN_OPERATION,
+            'status' => 'unknown',
+            'error' => preg_match('/\AANEX_[A-Z0-9_]+\z/D', $message) ? $message : 'ANEX_ADDITIONAL_SPECIMEN_FAILED',
+            'automatic_retry' => false,
+            'supplier_replay_allowed' => false,
+        ], JSON_THROW_ON_ERROR) . "\n");
         exit(1);
     }
 }
