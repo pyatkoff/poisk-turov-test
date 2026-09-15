@@ -1,0 +1,184 @@
+name: Run checked Andromeda HTTP flight-selection v8
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-http-flight-selection-v8.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: anytoour-andromeda-http-flight-selection-v8
+  cancel-in-progress: false
+
+jobs:
+  control-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: control
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: bbac027346293863e40345151786197467e40d59
+          path: source
+          persist-credentials: false
+      - name: Verify core and immutable v8 control contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('control/.github/workflows/andromeda-http-flight-selection-v8.yml')
+          text=p.read_text()
+          required=[
+            'andromeda-http-flight-selection-e2e-1717-v8-turkey-2026-12-28-3a-7n',
+            'a2561f80028764a7449390d37d14d0e8e3ee502e',
+            '34990259472',
+            '10405183204',
+            'sha256:9aaa7b6e514da659d4e19994336e71dbd7ac2630099f1cfe24e217eecfa30931',
+            '/run-andromeda-http-flight-selection-e2e-1717-v8',
+            '"dateFrom": "2026-12-28"',
+            '"nightsFrom": 7',
+            '"adults": 3',
+          ]
+          for needle in required:
+              if text.count(needle) < 1:
+                  raise SystemExit('v8 control pin missing: '+needle)
+          for forbidden in ('bron_ticket', 'booking_calls=1', '/run-andromeda-http-flight-selection-e2e-1717-v7'):
+              if forbidden in text:
+                  raise SystemExit('forbidden/replay authority in v8 control: '+forbidden)
+          print('v8 control contract OK; PR supplier calls=0')
+          PY
+
+  run-v8:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/run-andromeda-http-flight-selection-e2e-1717-v8'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Require unique owner command and installed fixed runtime
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/run-andromeda-http-flight-selection-e2e-1717-v8';
+            const runtimeHead='a2561f80028764a7449390d37d14d0e8e3ee502e';
+            const runtimeMerge='506bc9a721f1b32d4c1bc8e6a7170a6cabe62c5e';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1') throw new Error('NO_REPLAY: inspect the first v8 result.');
+            if(context.payload.sender?.id!==owner || context.actor!=='pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('Owner invocation required.');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if(context.payload.issue?.number!==2530 || context.payload.issue?.pull_request || context.payload.comment?.body!==command) throw new Error('Exact fresh #2530 v8 command required.');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100});
+            const matches=comments.filter(c=>c.body===command && c.user?.id===owner && c.author_association==='OWNER');
+            if(matches.length!==1 || matches[0].id!==context.payload.comment.id) throw new Error('Duplicate/edited v8 owner command rejected.');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('Main advanced; do not execute stale v8 control.');
+            const {data:runtimePr}=await github.rest.pulls.get({...context.repo,pull_number:2566});
+            if(!runtimePr.merged || runtimePr.head.sha!==runtimeHead || runtimePr.merge_commit_sha!==runtimeMerge || runtimePr.base.ref!=='feature/anex-search-adapter-20260907') throw new Error('fixed runtime provenance mismatch.');
+            for(const run_id of [34981763791,34981763854,34981764071]){
+              const {data:run}=await github.rest.actions.getWorkflowRun({...context.repo,run_id});
+              if(run.head_sha!==runtimeHead || run.status!=='completed' || run.conclusion!=='success') throw new Error('fixed runtime CI not green: '+run_id);
+            }
+            const {data:publication}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34990259472});
+            if(publication.status!=='completed'||publication.conclusion!=='success'||publication.run_attempt!==1) throw new Error('fixed runtime publication not green.');
+            const {data:receipt}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10405183204});
+            if(receipt.expired!==false || receipt.workflow_run?.id!==34990259472 || receipt.workflow_run?.head_sha!=='ef797c254f7b3476d2c7d6b24002d82ef125c694' || receipt.digest!=='sha256:9aaa7b6e514da659d4e19994336e71dbd7ac2630099f1cfe24e217eecfa30931') throw new Error('fixed runtime publication receipt mismatch.');
+            const {data:coreFile}=await github.rest.repos.getContent({...context.repo,path:'scripts/diagnostics/andromeda_http_flight_selection_e2e.py',ref:'bbac027346293863e40345151786197467e40d59'});
+            if(Array.isArray(coreFile)||coreFile.sha!=='b85e4f60016de0948c9038e2d51ef8d59830b10e') throw new Error('HTTP canary core blob mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: bbac027346293863e40345151786197467e40d59
+          path: source
+          persist-credentials: false
+      - name: Build exact ephemeral v8 scenario runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/v8.py" <<'PY'
+          import importlib.util,json,sys
+          from pathlib import Path
+          core_path=Path('source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py').resolve()
+          spec=importlib.util.spec_from_file_location('v8_core',core_path)
+          if spec is None or spec.loader is None: raise RuntimeError('core_unavailable')
+          core=importlib.util.module_from_spec(spec); spec.loader.exec_module(core)
+          OPERATION='andromeda-http-flight-selection-e2e-1717-v8-turkey-2026-12-28-3a-7n'
+          RUNTIME_SOURCE='a2561f80028764a7449390d37d14d0e8e3ee502e'
+          ALLOWED={'supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'}
+          def scenario_request():
+              return {'generation':17171228,'page':1,'params':{'countryId':'4','departureId':'1','dateFrom':'2026-12-28','dateTo':'2026-12-28','nightsFrom':7,'nightsTo':7,'adults':3,'childs':[],'meal':'','hotelCategory':'','hotelIds':[],'regionIds':[],'subregionIds':[],'operatorIds':[],'currency':'RUB'},'andromeda_operator_ids':['5']}
+          def run_flow(post):
+              observed=None
+              def classified(endpoint,payload):
+                  nonlocal observed
+                  status,body=post(endpoint,payload)
+                  if status==502 and isinstance(body,dict):
+                      category=body.get('failure_category')
+                      if isinstance(category,str): observed=category if category in ALLOWED else 'invalid'
+                  return status,body
+              old=(core.OPERATION,core.RUNTIME_SOURCE,core.scenario_request)
+              try:
+                  core.OPERATION=OPERATION; core.RUNTIME_SOURCE=RUNTIME_SOURCE; core.scenario_request=scenario_request
+                  result=core.run_flow(classified)
+              finally:
+                  core.OPERATION,core.RUNTIME_SOURCE,core.scenario_request=old
+              result['scenario']={'country':'Turkey','date':'2026-12-28','nights':7,'adults':3,'children':[],'operator':'ANEX'}
+              if observed in ALLOWED: result['failure_category']=observed
+              elif observed=='invalid': result['failure_category']='invalid_public_category'
+              return result
+          result=run_flow(core.HttpSession().post)
+          print(json.dumps(result,ensure_ascii=False,sort_keys=True))
+          PY
+          python3 -m py_compile "$RUNNER_TEMP/v8.py"
+      - name: Execute one immutable real HTTPS v8 flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/andromeda-http-flight-selection-v8"
+          python3 -B "$RUNNER_TEMP/v8.py" | tee "$RUNNER_TEMP/andromeda-http-flight-selection-v8/result.json"
+      - name: Preserve v8 result before classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-http-flight-selection-v8-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-http-flight-selection-v8/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require verified quote or classified terminal result
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'andromeda-http-flight-selection-v8/result.json'
+          d=json.loads(p.read_text())
+          if d.get('operation')!='andromeda-http-flight-selection-e2e-1717-v8-turkey-2026-12-28-3a-7n' or d.get('runtime_source')!='a2561f80028764a7449390d37d14d0e8e3ee502e':
+              raise SystemExit('v8 identity mismatch; DO NOT replay')
+          if d.get('booking_calls')!=0 or d.get('mapping_writes')!=0:
+              raise SystemExit('v8 authority boundary failed; DO NOT replay')
+          if d.get('status')=='complete':
+              q=d.get('quote_observation') or {}
+              if d.get('outcome')!='served_quote_compared' or d.get('final_quote_state')!='quote_verified' or q.get('final_price_verified') is not True:
+                  raise SystemExit('v8 complete result failed final quote contract; DO NOT replay')
+              print(json.dumps(d,sort_keys=True)); raise SystemExit(0)
+          allowed={'supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'}
+          if d.get('status')=='unknown' and d.get('failure_category') in allowed:
+              print(json.dumps(d,sort_keys=True)); raise SystemExit(0)
+          raise SystemExit('v8 terminal result is unclassified; preserve artifact and DO NOT replay')
+          PY
