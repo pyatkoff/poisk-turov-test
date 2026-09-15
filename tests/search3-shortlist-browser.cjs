@@ -512,8 +512,8 @@ async function checkDisplayIdentity(browser, width) {
   const { context, page, errors, posts } = await openPage(browser, width);
   const aliases = [
     { ...standard, id: 'alias-a', date: '2026-09-12', meal: { name: 'AI' }, roomType: 'STANDARD', operator: 'ANEX TOUR' },
-    { ...standard, id: 'alias-b', price: 125000, date: '12.09.2026', meal: { fullName: 'Всё включено' }, roomType: 'Standard room', operator: 'Анекс' },
-    { ...standard, id: 'alias-c', price: 130000, date: '2026-09-12T04:30:00Z', meal: { fullName: 'All Inclusive' }, roomType: 'Стандартный номер', operator: 'ANEX' }
+    { ...standard, id: 'alias-b', price: 125000, date: '12.09.2026', meal: { fullName: 'Всё включено' }, roomType: 'Standard room', placement: 'dbl', operator: 'Анекс' },
+    { ...standard, id: 'alias-c', price: 130000, date: '2026-09-12T04:30:00Z', meal: { fullName: 'All Inclusive' }, roomType: 'Стандартный номер', placement: 'DBL ', operator: 'ANEX' }
   ];
   const source = [{ ...hotel, price: 120000, tours: aliases }];
   const requests = [], record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
@@ -525,10 +525,11 @@ async function checkDisplayIdentity(browser, width) {
     await openComparison(page, width);
     const shortlist = page.locator('.search3-shortlist');
     const before = await page.evaluate(() => ({ records: window.Search3Shortlist.items(), stored: localStorage.getItem(window.Search3Shortlist.storageKey) }));
-    assert.deepEqual(before.records.map(item => [item.date, item.meal, item.room, item.operator]), aliases.map(item => [item.date, item.meal.fullName || item.meal.name, item.roomType, item.operator]), 'saved snapshots retain original supplier labels');
+    assert.deepEqual(before.records.map(item => [item.date, item.meal, item.room, item.placement, item.operator]), aliases.map(item => [item.date, item.meal.fullName || item.meal.name, item.roomType, item.placement.trim(), item.operator]), 'saved snapshots retain original supplier labels');
     assert.equal(await shortlist.locator('.search3-shortlist__differences').innerText(), 'Различаются: цена при сохранении.', 'equivalent names and displayed dates do not create false differences');
     assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts > div').filter({ has: page.locator('dt', { hasText: /^Питание$/ }) }).locator('dd').allTextContents(), ['Всё включено', 'Всё включено', 'Всё включено'], 'comparison displays one Russian meal label while saved originals remain intact');
     assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts > div').filter({ has: page.locator('dt', { hasText: /^Номер$/ }) }).locator('dd').allTextContents(), ['Стандарт', 'Стандарт', 'Стандарт'], 'comparison displays one reviewed Russian room label while saved originals remain intact');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts > div').filter({ has: page.locator('dt', { hasText: /^Размещение$/ }) }).locator('dd').allTextContents(), ['Двухместное', 'Двухместное', 'Двухместное'], 'comparison reuses the canonical placement label while saved originals remain intact');
     assert.equal(await shortlist.locator('dt').evaluateAll(nodes => nodes.some(node => node.textContent.includes('отличается'))), false, 'full view does not incorrectly mark equivalent facts');
     const toggle = shortlist.locator('.search3-shortlist-view-toggle');
     await toggle.focus(); await toggle.press('Enter');
