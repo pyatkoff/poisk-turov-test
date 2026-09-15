@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-09",
+  "issue": 1646,
+  "scope": "assigned own-preview SEARCH addon only",
+  "state": "checked_source_preparation_not_published",
+  "changed": ["immutable point provider/searchId/generation/localHotelId/original criteria", "unique actual tourId identity per point search", "current-generation/form-criteria resolver; no broad searchId mutation"],
+  "comparison_preserved": "Missing, malformed and duplicate tour IDs never remove prices or offers; they have no selection handoff context.",
+  "checks": {"node_tests": 50, "new_tests": 5, "live_supplier_calls": 0, "new_ui": false, "visual": "no changed visual area; browser/Safari not performed"},
+  "selection_enabled": false,
+  "lead_transport_changed": false,
+  "published": false,
+  "next_action": "Coordinate fresh-release SEARCH controller/selected context and lead race guard before activating selection. Re-resolve immutable context on action; retained snapshots are historical after reset, not selection authority. Keep external fields and transport unchanged, never overwrite release with old ANEX controller.",
+  "evidence": "Tests cover deep mutation, malformed/duplicate IDs, two hotels with the same opaque tour ID but different searchIds, local filters/sorting/reset, stale generation/form, and unchanged broad runtime."
+}
