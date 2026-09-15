@@ -5,6 +5,8 @@ on:
     paths: [.github/workflows/hotel-match-aggregate-current-v1.yml]
 permissions: {contents: read, actions: read}
 concurrency: {group: match-aggregate-current-1971-v1, cancel-in-progress: false}
+env:
+  REPORT_BLOB_SHA: b391e9e6e1aca4d8f2bd161da32a59a2e24905bf
 jobs:
   reconcile:
     runs-on: ubuntu-latest
@@ -12,19 +14,81 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with: {persist-credentials: false, ref: '${{ github.sha }}', fetch-depth: 1}
-      - name: Inspect immutable mass-review seed
+      - name: Verify immutable seed and read-only reviewer
         run: |
           set -euo pipefail
+          p=reports/hotel-match-identity-graph-mass-review-20260913.json
+          test "$(git hash-object "$p")" = "$REPORT_BLOB_SHA"
+          php -l scripts/diagnostics/hotel_match_aggregate_current.php
+          php tests/hotel_match_aggregate_current_test.php
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|TRUNCATE)[[:space:]]' scripts/diagnostics/hotel_match_aggregate_current.php
+          grep -F 'START TRANSACTION READ ONLY' scripts/diagnostics/hotel_match_aggregate_current.php >/dev/null
+      - name: Seal exact 82-row historical evidence manifest and reservation
+        run: |
+          set -euo pipefail
+          export OPERATION_ID="hotel-match-aggregate-current-1971-20260915-v1-$GITHUB_RUN_ID"
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"; export OUT="$out"
           python3 - <<'PY'
-          import json, pathlib
+          import hashlib,json,os,pathlib,subprocess
           p=pathlib.Path('reports/hotel-match-identity-graph-mass-review-20260913.json')
+          assert subprocess.check_output(['git','hash-object',str(p)],text=True).strip()==os.environ['REPORT_BLOB_SHA']
           r=json.loads(p.read_text())
-          print('TOP_KEYS', sorted(r.keys()))
-          for k,v in r.items():
-            if isinstance(v,list):
-              print('LIST',k,'len',len(v),'sample_type',type(v[0]).__name__ if v else None)
-              if v:
-                print('SAMPLE',k,json.dumps(v[0],ensure_ascii=False,sort_keys=True)[:4000])
-            elif isinstance(v,dict): print('DICT',k,'keys',list(v)[:30])
-            else: print('SCALAR',k,repr(v))
+          assert r['schema']=='hotel-match-identity-graph-mass-review-report/1'
+          assert r['status']=='prepared_only' and r['not_write_authority'] is True
+          assert r['database_writes']==0 and r['mapping_writes']==0 and r['supplier_calls']==0 and r['tourvisor_calls']==0
+          assert len(r['prepared_rows'])==82
+          assert r['rows_columns']==['provider','external_id','local_id','country_id','source_reason','published_count','matched_keys','target_name']
+          providers={x[0] for x in r['prepared_rows']}; assert providers <= {'andromeda','anex'}
+          op=os.environ['OPERATION_ID']
+          m={'operation_id':op,'source_sha':os.environ['GITHUB_SHA'],'historical_report_blob_sha':os.environ['REPORT_BLOB_SHA'],'historical_source_operation_id':r['source_operation_id'],'historical_report_full_generated_sha256':r['full_generated_sha256'],'state':'sealed_historical_evidence_not_apply_authority','rows':r['prepared_rows'],'rows_columns':r['rows_columns'],'database_writes':0,'supplier_calls':0,'tourvisor_calls':0,'active_anex_lane_excluded':True,'no_replay':True}
+          out=pathlib.Path(os.environ['OUT']); raw=(json.dumps(m,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); out.joinpath('manifest.json').write_bytes(raw); digest=hashlib.sha256(raw).hexdigest(); out.joinpath('manifest-sha256.txt').write_text(digest+'\n')
+          res={'operation_id':op,'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5679859005,'queue_issue':1971,'historical_report_blob_sha':os.environ['REPORT_BLOB_SHA'],'manifest_sha256':digest,'rows':82,'database_writes':0,'supplier_calls':0,'tourvisor_calls':0,'active_anex_lane_excluded':True,'no_replay':True}
+          out.joinpath('reservation.json').write_text(json.dumps(res,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({'operation_id':op,'rows':82,'providers':sorted(providers),'manifest_sha256':digest,'historical_result_counts':r['result_counts']},sort_keys=True))
           PY
+          echo "OPERATION_ID=$OPERATION_ID" >> "$GITHUB_ENV"
+          echo "OUT=$out" >> "$GITHUB_ENV"
+          echo "MANIFEST_SHA=$(cat "$out/manifest-sha256.txt")" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-aggregate-current-v1-reservation
+          path: |
+            ${{ env.OUT }}/reservation.json
+            ${{ env.OUT }}/manifest.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Server CURRENT aggregate reconciliation
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$OUT/reservation.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; cat > \"\$p/manifest.json\"; test \"\$(sha256sum \"\$p/manifest.json\" | awk '{print \$1}')\" = '$MANIFEST_SHA'; sync" < "$OUT/manifest.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_MANIFEST_SHA='$MANIFEST_SHA' php" < scripts/diagnostics/hotel_match_aggregate_current.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0 -a -s "$OUT/server-operation.tgz"; mkdir "$OUT/server"; tar -xzf "$OUT/server-operation.tgz" -C "$OUT/server"; export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['OUT']); s=p/'server'; raw=s.joinpath('result.json').read_bytes(); r=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()); digest=hashlib.sha256(raw).hexdigest()
+          ok=(receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('source_sha')==os.environ['GITHUB_SHA'] and r.get('database_writes')==0 and r.get('supplier_calls')==0 and r.get('tourvisor_calls')==0 and int(os.environ['REMOTE_RC'])==0 and r.get('state')=='completed_read_only' and r.get('reviewed')==82)
+          gate={'operation_id':os.environ['OPERATION_ID'],'state':r.get('state'),'result_sha256':digest,'verified':ok,'reviewed':r.get('reviewed'),'safe_count':r.get('safe_count'),'already_resolved_same_count':r.get('already_resolved_same_count'),'reason_counts':r.get('reason_counts'),'no_replay':True}
+          p.joinpath('workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,sort_keys=True)); assert ok
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-aggregate-current-v1-result
+          path: ${{ env.OUT }}/
+          if-no-files-found: warn
+          retention-days: 90
