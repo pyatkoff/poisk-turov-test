@@ -1,8 +1,27 @@
 <?php
 declare(strict_types=1);
 
-$_SERVER['SCRIPT_FILENAME'] = __FILE__;
-require_once __DIR__ . '/../v2/api-andromeda-quote-preview.php';
+$sourcePath = __DIR__ . '/../v2/api-andromeda-quote-preview.php';
+$source = file_get_contents($sourcePath);
+if (!is_string($source)) throw new RuntimeException('FAILURE_SOURCE_READ');
+
+$extractFunction = static function (string $source, string $name): string {
+    $needle = 'function ' . $name;
+    $start = strpos($source, $needle);
+    if ($start === false) throw new RuntimeException('FAILURE_FUNCTION_MISSING_' . $name);
+    $open = strpos($source, '{', $start);
+    if ($open === false) throw new RuntimeException('FAILURE_FUNCTION_OPEN_' . $name);
+    $depth = 0;
+    $length = strlen($source);
+    for ($i = $open; $i < $length; ++$i) {
+        if ($source[$i] === '{') ++$depth;
+        elseif ($source[$i] === '}' && --$depth === 0) return substr($source, $start, $i - $start + 1);
+    }
+    throw new RuntimeException('FAILURE_FUNCTION_CLOSE_' . $name);
+};
+
+eval($extractFunction($source, 'anytour_andromeda_quote_failure_category'));
+eval($extractFunction($source, 'anytour_andromeda_quote_supplier_failure'));
 
 $cases = [
     'ANDROMEDA_TRANSPORT_ERROR' => 'supplier_transport',
@@ -76,9 +95,7 @@ foreach (['secret', 'sid=abc', 'gateway.samo.ru', 'RuntimeException'] as $forbid
     if (str_contains($encoded, $forbidden)) throw new RuntimeException('FAILURE_PAYLOAD_LEAK');
 }
 
-$source = file_get_contents(__DIR__ . '/../v2/api-andromeda-quote-preview.php');
-if (!is_string($source)
-    || !str_contains($source, 'anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502)')) {
+if (!str_contains($source, 'anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502)')) {
     throw new RuntimeException('FAILURE_HTTP_WIRING');
 }
 
