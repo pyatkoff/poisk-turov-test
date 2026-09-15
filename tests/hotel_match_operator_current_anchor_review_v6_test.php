@@ -12,5 +12,6 @@ $anchors=['700'=>['supplier_namespace'=>'andromeda_catalog','external_hotel_id'=
 $hotels=[55=>['id'=>55,'country_id'=>4,'name'=>'Innvista','latitude'=>null,'longitude'=>null,'is_active'=>1]];
 $r=ocar4_evaluate($pending,$anchors,$hotels);t6(count($r['safe'])===1&&($r['safe_by_operator']['operator_342']??0)===1,'helper policy unchanged');
 $src=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_operator_current_anchor_review_v6.php');
-foreach(["supplier_namespace IN ('operator_315','operator_342')",'START TRANSACTION READ ONLY','operator_5_writes'=>0,'mapping_writes'=>0,'ocar4_evaluate('] as $needle){if(is_int($needle))continue;t6(str_contains($src,(string)$needle),'source guard '.(string)$needle);}
+foreach(["supplier_namespace IN ('operator_315','operator_342')",'START TRANSACTION READ ONLY',"'operator_5_writes'=>0","'mapping_writes'=>0",'ocar4_evaluate('] as $needle)t6(str_contains($src,$needle),'source guard '.$needle);
+t6(!str_contains($src,"supplier_namespace IN ('operator_5'"),'operator_5 excluded');
 echo "MATCH_OPERATOR_ANCHOR_V6_TEST_OK\n";
