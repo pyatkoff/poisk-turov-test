@@ -1,15 +1,15 @@
-name: MATCH operator pending ANEX bridge v1
+name: MATCH operator pending ANEX bridge v2
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-operator-pending-anex-bridge-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-operator-pending-anex-bridge-1971-v2, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-operator-pending-anex-bridge-1971-20260915-v1
+  OPERATION_ID: hotel-match-operator-pending-anex-bridge-1971-20260915-v2
 jobs:
   reconcile:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 3
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -21,7 +21,7 @@ jobs:
           php -l scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php
           php -l tests/hotel_match_operator_pending_anex_bridge_test.php
           php tests/hotel_match_operator_pending_anex_bridge_test.php
-          test "$(git hash-object scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php)" = 4c1b3a1113a522a78529c631884eab20b70c48f6
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php)" = aa909bdaa791bde4c50cb2d376852b52ba588fb9
           ! grep -Eiq '(gateway\.samo|api\.anextour|tourvisor|curl_|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php
           ! grep -Eiq '\b(INSERT|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php
       - name: Reserve exact operation before SSH or DB
@@ -36,8 +36,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-operator-pending-anex-bridge-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-operator-pending-anex-bridge-1971-20260915-v1/reservation.json
+          name: match-operator-pending-anex-bridge-v2-reservation
+          path: ${{ runner.temp }}/hotel-match-operator-pending-anex-bridge-1971-20260915-v2/reservation.json
           if-no-files-found: error
           retention-days: 90
       - name: Server-CURRENT transaction and post-COMMIT readback
@@ -74,7 +74,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-operator-pending-anex-bridge-v1-result
-          path: ${{ runner.temp }}/hotel-match-operator-pending-anex-bridge-1971-20260915-v1/
+          name: match-operator-pending-anex-bridge-v2-result
+          path: ${{ runner.temp }}/hotel-match-operator-pending-anex-bridge-1971-20260915-v2/
           if-no-files-found: warn
           retention-days: 90
