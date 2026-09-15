@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import sys
 import tarfile
 import tempfile
@@ -60,11 +61,59 @@ class Authorization(unittest.TestCase):
         self.env = dict(GITHUB_REPOSITORY=publish.REPO,GITHUB_REF='refs/heads/main',GITHUB_ACTOR='pyatkoff',
                         GITHUB_TRIGGERING_ACTOR='pyatkoff',GITHUB_ACTOR_ID='226193297',GITHUB_RUN_ATTEMPT='1',GITHUB_EVENT_NAME='issue_comment')
         self.event = dict(repository={'id':1345518271,'full_name':publish.REPO},sender={'id':226193297,'login':'pyatkoff'},
-                          action='created',issue={'number':996},comment={'user':{'id':226193297},'author_association':'OWNER',
+                          action='created',issue={'number':2530},comment={'user':{'id':226193297},'author_association':'OWNER',
                           'body':f'/publish-search3-preview {SOURCE} {RELEASE} 456 123'})
 
     def test_owner_command(self):
         self.assertEqual(publish.checked_command(self.event,self.env)['artifact_id'],123)
+
+    def test_publisher_and_recovery_accept_only_current_coordination_issue(self):
+        repair_env = {**self.env, 'GITHUB_SHA': 'd' * 40}
+        for number in (2530, 996, 997, 1646):
+            event = copy.deepcopy(self.event)
+            event['issue']['number'] = number
+            with self.subTest(issue=number, command='publish'):
+                if number == 2530:
+                    self.assertEqual(publish.checked_command(event, self.env)['artifact_id'], 123)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'coordinator_command_only'):
+                        publish.checked_command(event, self.env)
+            event['comment']['body'] = repair.PREFIX + repair_env['GITHUB_SHA']
+            with self.subTest(issue=number, command='recovery'):
+                if number == 2530:
+                    self.assertEqual(repair.checked_repair(event, repair_env), repair_env['GITHUB_SHA'])
+                else:
+                    with self.assertRaisesRegex(ValueError, 'coordinator_only'):
+                        repair.checked_repair(event, repair_env)
+
+    def test_both_commands_still_reject_edits_PRs_and_identity_changes(self):
+        variants = [('action', 'edited'), ('action', 'deleted'),
+                    ('repository.id', 1), ('repository.full_name', 'other/repo'),
+                    ('sender.id', 1), ('sender.login', 'other'),
+                    ('issue.pull_request', {'url': 'x'}),
+                    ('comment.user.id', 1), ('comment.author_association', 'COLLABORATOR')]
+        env = {**self.env, 'GITHUB_SHA': 'd' * 40}
+        for name, value in variants:
+            for command in ('publish', 'recovery'):
+                event = copy.deepcopy(self.event)
+                if command == 'recovery':
+                    event['comment']['body'] = repair.PREFIX + env['GITHUB_SHA']
+                parent = event
+                parts = name.split('.')
+                for part in parts[:-1]:
+                    parent = parent[part]
+                parent[parts[-1]] = value
+                with self.subTest(field=name, command=command), self.assertRaises(ValueError):
+                    if command == 'publish':
+                        publish.checked_command(event, env)
+                    else:
+                        repair.checked_repair(event, env)
+
+    def test_workflow_coordination_guards_match_shared_authorization(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/deploy-search3-whole-site-preview.yml').read_text()
+        guards = re.findall(r'github\.event\.issue\.number == (\d+)', workflow)
+        self.assertEqual(guards, [str(publish.COORDINATION_ISSUE)] * 2)
+        self.assertEqual(publish.COORDINATION_ISSUE, 2530)
 
     def test_manual(self):
         self.env['GITHUB_EVENT_NAME']='workflow_dispatch'

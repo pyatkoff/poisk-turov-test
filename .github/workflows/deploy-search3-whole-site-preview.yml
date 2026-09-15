@@ -55,7 +55,7 @@ jobs:
       github.actor == 'pyatkoff' &&
       github.triggering_actor == 'pyatkoff' &&
       (github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && github.event.issue.number == 996 &&
+      (github.event_name == 'issue_comment' && github.event.issue.number == 2530 &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, '/publish-search3-preview ')))
@@ -98,7 +98,7 @@ jobs:
       github.repository == 'pyatkoff/poisk-turov-test' &&
       github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
-      github.event_name == 'issue_comment' && github.event.issue.number == 996 &&
+      github.event_name == 'issue_comment' && github.event.issue.number == 2530 &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
       startsWith(github.event.comment.body, '/restore-search3-lead-route ')
