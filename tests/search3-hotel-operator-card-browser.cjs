@@ -4,7 +4,7 @@ const path=require('node:path');
 const fs=require('node:fs');
 module.exports=async function checkOperatorCards(page,width,output){
   const picture='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#dce8f4"/><path fill="#b1c9dc" d="M0 240 150 110 310 230 480 90 640 240V360H0Z"/></svg>');
-  const base={date:'2026-09-16',price:62400,nights:7,adults:2,childs:0,meal:{name:'BB',fullName:'Завтраки'},roomType:'STANDARD',placement:'DBL',isCharter:true};
+  const base={date:'2026-09-16',price:62400,fuelCharge:0,nights:7,adults:2,childs:0,meal:{name:'BB',fullName:'Завтраки'},roomType:'STANDARD',placement:'DBL',isCharter:true};
   const offers=[
     {...base,id:'brand-funsun-7',operator:{name:'Fun&Sun (RU)'}},
     {...base,id:'brand-anex-10',date:'2026-09-17',nights:10,price:74900,meal:{name:'AI',fullName:'Всё включено'},operator:'ANEX TOUR',isCharter:false},
