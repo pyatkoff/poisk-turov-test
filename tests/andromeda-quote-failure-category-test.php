@@ -78,7 +78,7 @@ foreach (['secret', 'sid=abc', 'gateway.samo.ru', 'RuntimeException'] as $forbid
 
 $source = file_get_contents(__DIR__ . '/../v2/api-andromeda-quote-preview.php');
 if (!is_string($source)
-    || !str_contains($source, "anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502)")) {
+    || !str_contains($source, 'anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502)')) {
     throw new RuntimeException('FAILURE_HTTP_WIRING');
 }
 
