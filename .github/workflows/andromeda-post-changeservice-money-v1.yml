@@ -1,0 +1,117 @@
+name: Andromeda post-changeservice money v1
+
+on:
+  pull_request:
+    paths: ['.github/workflows/andromeda-post-changeservice-money-v1.yml']
+  issue_comment:
+    types: [created]
+
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytoour-andromeda-post-changeservice-money-v1, cancel-in-progress: false}
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - name: Verify bounded pre-calc probe contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          t=Path('.github/workflows/andromeda-post-changeservice-money-v1.yml').read_text()
+          for x in ["issue.number == 2530","/run-andromeda-post-changeservice-money-1717-v1","andromeda-post-changeservice-money-1717-v1-egypt-2026-12-22-2a-9n","'calc_calls'=>0","'booking_calls'=>0","'mapping_writes'=>0","changeservice_calls","freight_external","34990259472"]:
+              assert x in t,x
+          live=t.split("php=r'''",1)[1].split("'''",1)[0]
+          for forbidden in ["->calc(","bron_ticket","action=bron","action=bron_ticket"]:
+              assert forbidden not in live,forbidden
+          php='\n'.join(line[10:] if line.startswith('          ') else line for line in live.splitlines())
+          subprocess.run(['php','-l'],input='<?php\n'+php,text=True,check=True)
+          PY
+
+  run:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' && github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297 && github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' && github.event.comment.body == '/run-andromeda-post-changeservice-money-1717-v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Bind owner command and published runtime
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297, command='/run-andromeda-post-changeservice-money-1717-v1';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('owner/attempt mismatch');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main'||context.payload.issue?.number!==2530||context.payload.issue?.pull_request||context.payload.comment?.body!==command) throw new Error('command scope mismatch');
+            const cs=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100});
+            const ms=cs.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER');
+            if(ms.length!==1||ms[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'}); if(main.object.sha!==context.sha) throw new Error('main advanced');
+            const {data:pub}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34990259472});
+            if(pub.status!=='completed'||pub.conclusion!=='success'||pub.run_attempt!==1) throw new Error('runtime publication not green');
+
+      - uses: actions/checkout@v4
+        with: {ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa, path: helper, persist-credentials: false}
+
+      - name: Run one new post-changeservice pre-calc scenario
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          ANYTOOUR_DEPLOY_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          ANYTOOUR_DEPLOY_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          from anex_search3_owner_decisions import ssh_php
+          php=r'''
+          error_reporting(0);ini_set('display_errors','0');ini_set('log_errors','0');
+          $operation='andromeda-post-changeservice-money-1717-v1-egypt-2026-12-22-2a-9n';
+          $out=['status'=>'blocked','operation'=>$operation,'supplier_scenario'=>1,'calc_calls'=>0,'changeservice_calls'=>0,'booking_calls'=>0,'mapping_writes'=>0,'database_writes'=>0,'operation_replayed'=>false];
+          function durable($p,$v){$b=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);if(strlen($b)>65536)throw new RuntimeException('checkpoint_too_large');$f=fopen($p,'x');if(!$f)throw new RuntimeException('checkpoint_exists');try{if(fwrite($f,$b)!==strlen($b)||!fflush($f))throw new RuntimeException('checkpoint_write');if(function_exists('fsync')&&!fsync($f))throw new RuntimeException('checkpoint_sync');}finally{fclose($f);}if(hash_file('sha256',$p)!==hash('sha256',$b))throw new RuntimeException('checkpoint_readback');}
+          function counter($d){$p=$d.'/monthly-requests.json';$m=gmdate('Y-m');if(!file_exists($p))return ['month'=>$m,'reserved_requests'=>0,'monthly_limit'=>5000000,'remaining'=>5000000];if(!is_file($p)||is_link($p)||filesize($p)>4096)throw new RuntimeException('monthly_counter_invalid');$s=json_decode((string)file_get_contents($p),true,8,JSON_THROW_ON_ERROR);if(($s['month']??null)!==$m)return ['month'=>$m,'reserved_requests'=>0,'monthly_limit'=>5000000,'remaining'=>5000000];$r=$s['reserved_requests']??null;$l=$s['monthly_limit']??null;if(!is_int($r)||$r<0||$l!==5000000||$r>$l)throw new RuntimeException('monthly_counter_invalid');return ['month'=>$m,'reserved_requests'=>$r,'monthly_limit'=>$l,'remaining'=>$l-$r];}
+          function pick($p){foreach(($p['hotels']??[]) as $h){if(!is_array($h)||!is_int($h['local_id']??null)||$h['local_id']<1)continue;foreach(($h['tours']??[]) as $t){$c=is_array($t)?($t['offer_context']??null):null;if(is_array($c)&&($c['provider']??null)==='andromeda'&&is_string($c['offer_ref']??null))return ['local_id'=>$h['local_id'],'tour'=>$t];}}throw new RuntimeException('no_mapped_offer');}
+          function safe_reason($x){$m=$x->getMessage();return is_string($m)&&preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$m)?$m:'operation_unconfirmed';}
+          $lock=null;$pdo=null;$readOnly=false;$reserved=false;$dir=null;$private='';
+          try{$root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');
+            $target=$root.'/_preview/search3-anex-candidate';$private=dirname($root,2).'/.anytoour-andromeda';if(!is_dir($target)||!is_dir($private)||is_link($target)||is_link($private))throw new RuntimeException('runtime_missing');
+            $lockPath=$private.'/grouped-search-update.lock';if(!is_file($lockPath)||is_link($lockPath))throw new RuntimeException('publication_lock_missing');$lock=fopen($lockPath,'r+b');if(!$lock||!flock($lock,LOCK_SH|LOCK_NB))throw new RuntimeException('publication_busy');
+            require_once $target.'/api-andromeda-quote-preview.php';
+            foreach(['anytour_andromeda_search3_catalog','anytour_andromeda_search3_run','anytour_andromeda_quote_resolve','anytour_andromeda_quote_supplier'] as $fn)if(!function_exists($fn))throw new RuntimeException('runtime_not_installed');
+            $before=counter($private);$out['supplier_counter_before']=$before;if($before['remaining']<100)throw new RuntimeException('monthly_quota_headroom');
+            $dir=$private.'/'.$operation;if(file_exists($dir)||is_link($dir))throw new RuntimeException('operation_exists_no_replay');if(!mkdir($dir,0700))throw new RuntimeException('reservation_failed');
+            $request=['generation'=>17171222,'page'=>1,'params'=>['countryId'=>'4','departureId'=>'1','dateFrom'=>'2026-12-22','dateTo'=>'2026-12-22','nightsFrom'=>9,'nightsTo'=>9,'adults'=>2,'childs'=>[],'meal'=>'','hotelCategory'=>'','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],'operatorIds'=>[],'currency'=>'RUB'],'andromeda_operator_ids'=>['5']];
+            durable($dir.'/reservation.json',['operation'=>$operation,'runtime_source'=>'a2561f80028764a7449390d37d14d0e8e3ee502e','scenario_sha256'=>hash('sha256',json_encode($request,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)),'created_at'=>time()]);$reserved=true;
+            $dbPath=$root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');$configPath=$target.'/.andromeda-private.php';if(!is_file($dbPath)||!is_file($configPath)||is_link($dbPath)||is_link($configPath))throw new RuntimeException('private_runtime_missing');require_once $dbPath;$config=require $configPath;if(!is_array($config)||($config['enabled']??null)!==true)throw new RuntimeException('private_runtime_missing');
+            $pdo=v2_data_db();$pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$pdo->exec('START TRANSACTION READ ONLY');$readOnly=true;$catalog=anytour_andromeda_search3_catalog($config,$request);
+            session_name('ANYTOUR_ANDROMEDA_SEARCH3');ini_set('session.use_strict_mode','1');ini_set('session.use_only_cookies','1');if(!session_start())throw new RuntimeException('session_invalid');$session=session_id();$_SESSION=[];if(!session_write_close()||$session==='')throw new RuntimeException('session_invalid');
+            $projection=anytour_andromeda_search3_run($request,$pdo,$catalog,$config,$session);$picked=pick($projection);$quoteRequest=$request;$quoteRequest['action']='quote';$quoteRequest['offer_context']=$picked['tour']['offer_context'];$resolved=anytour_andromeda_quote_resolve($quoteRequest,$pdo,$catalog,$config,$session,[]);
+            [$client,$actions]=anytour_andromeda_quote_supplier($config);$claim=$client->package($resolved['supplier_offer_id']);$doc=$claim['claimDocument'][0]??null;if(!is_array($doc))throw new RuntimeException('claim_invalid');$freight=(int)($doc['freightExternal']??0);$out['freight_external']=$freight;if($freight<=0)throw new RuntimeException('external_freight_required');
+            $claim=$actions->getFlights($claim);$choice=(new ReflectionMethod(AnyTourAndromedaSelectedQuote::class,'flightChoice'))->invoke(null,$claim);$options=$choice['options']??null;if(!is_array($options)||empty($options['0'])||empty($options['1']))throw new RuntimeException('flight_options_missing');
+            $apply=new ReflectionMethod(AnyTourAndromedaSelectedQuote::class,'applyTransportSelection');$price=new ReflectionMethod(AnyTourAndromedaSelectedQuote::class,'touristPrice');$fuel=new ReflectionMethod(AnyTourAndromedaSelectedQuote::class,'fuelSurcharges');$rates=new ReflectionMethod(AnyTourAndromedaSelectedQuote::class,'operatorCurrencyRates');
+            $claim=$apply->invoke(null,$claim,$options['0'][0],$actions);$out['changeservice_calls']=1;$out['after_first_changeservice']=['buyer_price'=>$price->invoke(null,$claim),'fuel_surcharges_reported'=>$fuel->invoke(null,$claim),'operator_currency_rates_reported'=>$rates->invoke(null,$claim)];
+            $claim=$apply->invoke(null,$claim,$options['1'][0],$actions);$out['changeservice_calls']=2;$out['after_second_changeservice']=['buyer_price'=>$price->invoke(null,$claim),'fuel_surcharges_reported'=>$fuel->invoke(null,$claim),'operator_currency_rates_reported'=>$rates->invoke(null,$claim)];
+            $out['local_hotel_id']=$picked['local_id'];$out['received_offers']=(int)($projection['received_offers']??0);$out['mapped_offers']=(int)($projection['mapped_offers']??0);$out['status']='complete';$out['outcome']='post_changeservice_money_captured_pre_calc';
+            if($readOnly&&$pdo->inTransaction()){$pdo->rollBack();$readOnly=false;}$after=counter($private);$out['supplier_counter_after']=$after;$out['supplier_counter_delta']=$after['month']===$before['month']?max(0,$after['reserved_requests']-$before['reserved_requests']):null;$out['supplier_counter_delta_is_exact_operation_billing']=false;durable($dir.'/result.json',$out);
+          }catch(Throwable $x){if($readOnly&&$pdo instanceof PDO&&$pdo->inTransaction())try{$pdo->rollBack();}catch(Throwable $ignored){}$out['status']=$reserved?'unknown':'blocked';$out['reason']=safe_reason($x);if($private!=='')try{$out['supplier_counter_after']=counter($private);}catch(Throwable $ignored){}if($reserved&&is_string($dir)&&is_dir($dir)&&!file_exists($dir.'/result.json'))try{durable($dir.'/result.json',$out);}catch(Throwable $ignored){}}
+          finally{if(is_resource($lock)){flock($lock,LOCK_UN);fclose($lock);}}
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          '''
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'post-changeservice-money';out.mkdir(mode=0o700)
+          r=ssh_php(php,{},maximum_bytes=65536);(out/'result.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          if r.get('status')!='complete' or r.get('calc_calls')!=0 or r.get('changeservice_calls')!=2 or r.get('booking_calls')!=0 or r.get('mapping_writes')!=0: raise SystemExit('terminal result retained; do not replay')
+          print(json.dumps(r,ensure_ascii=False,sort_keys=True))
+          PY
+
+      - name: Preserve terminal sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-post-changeservice-money-v1-${{ github.run_id }}
+          path: '${{ runner.temp }}/post-changeservice-money/result.json'
+          if-no-files-found: error
+          retention-days: 14
