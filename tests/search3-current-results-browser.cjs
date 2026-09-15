@@ -624,6 +624,60 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(supplierRequests, [], 'local filtering issues no supplier or lead requests');
   } finally { page.off('request', record); }
 }
+async function checkHydratedHotelFacets(page, width, previous, details) {
+  const items = [
+    {...hotels[0],id:999991,name:'Исходное название',category:3,rating:4.9,region:{name:'Анталья'},price:90000,tours:[{...tour,id:'facts-a',price:90000}]},
+    {...hotels[0],id:'facts-b',name:'Второй отель',category:4,rating:4.2,region:{name:'Анталья'},price:100000,tours:[{...tour,id:'facts-b',price:100000}]},
+    {...hotels[0],id:'facts-c',name:'Третий отель',category:5,rating:4.8,region:{name:'Кемер'},price:110000,tours:[{...tour,id:'facts-c',price:110000}]}
+  ];
+  const panel=page.locator('.search3-mobile-filter-panel'),rating=page.locator('.search3-rating-filter select'),category=page.locator('.search3-category-filter select'),region=page.locator('.search3-region-filter select');
+  const visible=()=>page.locator('#results .hotel-card:visible').evaluateAll(nodes=>nodes.map(node=>node.dataset.hotelId));
+  const requests=[],record=request=>{if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname))requests.push(request.url());};
+  const render=async list=>page.evaluate(items=>{window.Search3LocalHotelFilter.reset();window.V2Results.render(items);window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items}}));},list);
+  page.on('request',record);
+  let release;
+  details.facts={item:{id:999991,name:'Локальный отель',category:5,rating:2.5,region:{name:'Сиде'},description:'Описание из локального справочника',detailsAvailable:true},ready:new Promise(resolve=>{release=resolve;})};
+  try {
+    await page.locator('#sortResults').selectOption('price');
+    await render(items);
+    await page.locator('[data-hotel-id="999991"] .hotel-title').scrollIntoViewIfNeeded();
+    if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
+    await rating.selectOption('4.5');
+    assert.deepEqual(await visible(),['999991','facts-c']);
+    release();
+    await page.waitForFunction(()=>document.querySelector('[data-hotel-id="999991"] .hotel-title')?.textContent==='Локальный отель');
+    assert.deepEqual(await visible(),['facts-c'],'late local rating immediately updates the active facet and count');
+    assert.equal(await page.locator('#resultSummary').innerText(),'Показано отелей: 1 из 3 · цены из текущего поиска');
+    assert.deepEqual(await category.locator('option').evaluateAll(nodes=>nodes.map(node=>node.value)),['0','5','4'],'local stars replace the stale source category');
+    await rating.selectOption('0');await region.selectOption({label:'Сиде'});
+    assert.deepEqual(await visible(),['999991'],'region filter matches the hydrated card geography');
+    await category.selectOption('5');
+    assert.deepEqual(await visible(),['999991']);
+    assert.match(await page.locator('[data-hotel-id="999991"]').innerText(),/Рейтинг 2,5/);
+    assert.equal((await page.locator('[data-hotel-id="999991"] .hotel-price').innerText()).replace(/\s/g,''),'90000₽','hydration does not change the exact offer price');
+    assert.equal(await page.locator('[data-hotel-id="999991"] .direct-tour').getAttribute('data-tid'),'facts-a');
+    assert.equal((await snapshot(page)).overflow,false);
+    if(!previous&&[375,1440].includes(width))await page.screenshot({path:path.join(output,`hotel-facts-${width}.png`),fullPage:true});
+    await page.evaluate(()=>window.Search3LocalHotelFilter.reset());
+    await page.locator('#sortResults').selectOption('rating');
+    assert.deepEqual(await visible(),['facts-c','facts-b','999991'],'rating sorting uses the visible local rating');
+    await page.locator('#sortResults').selectOption('stars');
+    assert.deepEqual(await visible(),['999991','facts-c','facts-b'],'star sorting uses local category and retains price tie-break');
+    details.facts={item:{id:999992,name:'Отель без оценки',category:null,rating:null,detailsAvailable:true,description:'Описание без категории и рейтинга'},ready:new Promise(resolve=>{release=resolve;})};
+    await page.locator('#sortResults').selectOption('price');
+    await render([{...items[0],id:999992},...items.slice(1)]);
+    await page.locator('[data-hotel-id="999992"] .hotel-title').scrollIntoViewIfNeeded();
+    if(width<1025&&!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
+    await rating.selectOption('4.5');release();
+    await page.waitForFunction(()=>document.querySelector('[data-hotel-id="999992"] .hotel-title')?.textContent==='Отель без оценки');
+    assert.equal(await rating.inputValue(),'0','incomplete hydrated ratings reset an unavailable facet');
+    assert.equal(await rating.isVisible(),false,'coverage is not relaxed for local details');
+    assert.equal(await category.isVisible(),false,'an unknown local category cannot masquerade as the old source category');
+    assert.equal((await visible()).length,3,'unknown facts do not leave hotels silently filtered out');
+    assert.deepEqual(requests,[],'local hydration/filtering/sorting never requests supplier or lead endpoints');
+  } finally {release();details.facts=null;page.off('request',record);await page.evaluate(()=>window.Search3LocalHotelFilter.reset());await page.locator('#sortResults').selectOption('price');}
+}
+
 async function checkAndromedaExpansion(page, width, previous, control, hotelDetails) {
   let offerComposition, selectedQuote;
   const tvHotel = {
@@ -926,6 +980,7 @@ async function run(browser, width, previous) {
     if (url.pathname.endsWith('/data/hotel-details-read-v1.php')) {
       const hotelId = url.searchParams.get('hotelId');
       hotelDetails.requests.push(hotelId);
+      if (hotelDetails.facts && hotelId === String(hotelDetails.facts.item.id)) { const facts=hotelDetails.facts; await facts.ready; return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,item:facts.item})}); }
       if (hotelId !== '21477') return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Hotel not found' }) });
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, item: {
         id: 21477, name: 'Movenpick Resort', country: { name: 'Египет' }, region: { name: 'Шарм-эль-Шейх' }, subRegion: { name: 'Наама-Бей' },
@@ -1461,6 +1516,7 @@ async function run(browser, width, previous) {
       expandedDensity = await checkExpandedDensity(page, width, previous);
       offerComposition = await checkAndromedaExpansion(page, width, previous, andromeda, hotelDetails);
       await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
+      await checkHydratedHotelFacets(page, width, previous, hotelDetails);
     }
     assert.deepEqual(errors, [], 'no runtime errors');
     if (!previous) await page.screenshot({ path: path.join(output, `current-${width}.png`), fullPage: true });
