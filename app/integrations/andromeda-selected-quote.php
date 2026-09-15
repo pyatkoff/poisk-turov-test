@@ -9,7 +9,7 @@ require_once __DIR__ . '/andromeda-price-observation.php';
 final class AnyTourAndromedaSelectedQuote
 {
     public static function run(array $resolved, AnyTourAndromedaClient $client,
-        AnyTourAndromedaClaimActions $actions): array
+        AnyTourAndromedaClaimActions $actions, ?callable $retainFlightChoices = null): array
     {
         if (!is_string($resolved['supplier_offer_id'] ?? null)
             || !isset($resolved['offer']) || !is_array($resolved['offer'])) {
@@ -28,13 +28,14 @@ final class AnyTourAndromedaSelectedQuote
 
         if ((int)($doc['freightExternal'] ?? 0) > 0) {
             $claim = $actions->getFlights($claim);
-            $estimate = AnyTourAndromedaSearchSurcharge::estimate($claim, $offer['price'] ?? []);
-            if (($estimate['state'] ?? null) === 'estimated'
-                && is_array($estimate['search_price_with_surcharge'] ?? null)) {
-                $searchPriceEstimate = $estimate['search_price_with_surcharge'];
-            }
+            $searchPriceEstimate = self::searchPriceEstimate($claim, $offer);
             $choice = self::flightChoice($claim);
             if ($choice['state'] !== 'unambiguous') {
+                $public = $choice['public'];
+                if ($retainFlightChoices !== null) {
+                    $refs = $retainFlightChoices($claim, $choice['options']);
+                    $public = self::attachFlightRefs($choice['options'], $refs);
+                }
                 return self::base($resolved, $packagePrice) + [
                     'search_price_estimate' => $searchPriceEstimate,
                     'price_observation' => null,
@@ -43,7 +44,7 @@ final class AnyTourAndromedaSelectedQuote
                     'final_price' => null,
                     'final_price_verified' => false,
                     'flight_selection_required' => true,
-                    'flights' => $choice['public'],
+                    'flights' => $public,
                     'fuel_surcharges_reported' => [],
                     'operator_currency_rates_reported' => self::operatorCurrencyRates($claim),
                     'calc_money_facts_reported' => [],
@@ -63,6 +64,49 @@ final class AnyTourAndromedaSelectedQuote
             $selectedFlights = self::selectedFlights($claim);
         }
 
+        return self::finalize($resolved, $claim, $packagePrice, $searchPriceEstimate, $selectedFlights, $actions);
+    }
+
+    /**
+     * Continue an already retained post-get_flights claim after the browser chooses
+     * exactly one outbound and one return. This method cannot call package/get_flights.
+     */
+    public static function continueWithFlights(array $resolved, array $claim, array $selected,
+        AnyTourAndromedaClaimActions $actions): array
+    {
+        if (!isset($resolved['offer']) || !is_array($resolved['offer'])) {
+            throw new InvalidArgumentException('ANDROMEDA_QUOTE_SELECTION_INVALID');
+        }
+        $doc = self::document($claim);
+        if (($doc['condition'] ?? null) !== 'ccOffer') {
+            throw new RuntimeException('ANDROMEDA_QUOTE_NOT_OFFER');
+        }
+        if (array_keys($selected) !== [0, 1]) {
+            throw new InvalidArgumentException('ANDROMEDA_FLIGHT_SELECTION_INVALID');
+        }
+        $packagePrice = self::touristPrice($claim);
+        $searchPriceEstimate = self::searchPriceEstimate($claim, $resolved['offer']);
+        foreach (['0', '1'] as $direction) {
+            $item = $selected[$direction] ?? null;
+            if (!is_array($item)
+                || (string)($item['direction'] ?? '') !== $direction
+                || !is_string($item['uid'] ?? null)
+                || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $item['uid']) !== 1) {
+                throw new InvalidArgumentException('ANDROMEDA_FLIGHT_SELECTION_INVALID');
+            }
+            $claim = self::appendTransport($claim, $item);
+            $claim = $actions->changeService($claim, $item['uid']);
+        }
+        $selectedFlights = self::selectedFlights($claim);
+        if (array_keys($selectedFlights) !== [0, 1]) {
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+        }
+        return self::finalize($resolved, $claim, $packagePrice, $searchPriceEstimate, $selectedFlights, $actions);
+    }
+
+    private static function finalize(array $resolved, array $claim, ?array $packagePrice,
+        ?array $searchPriceEstimate, array $selectedFlights, AnyTourAndromedaClaimActions $actions): array
+    {
         $calculated = $actions->calc($claim);
         $finalPrice = self::touristPrice($calculated);
         if ($finalPrice === null) throw new RuntimeException('ANDROMEDA_FINAL_PRICE_MISSING');
@@ -83,6 +127,14 @@ final class AnyTourAndromedaSelectedQuote
             'calc_money_facts_reported' => self::calcMoneyFacts($calculated),
             'booking_enabled' => false,
         ];
+    }
+
+    private static function searchPriceEstimate(array $claim, array $offer): ?array
+    {
+        $estimate = AnyTourAndromedaSearchSurcharge::estimate($claim, $offer['price'] ?? []);
+        return ($estimate['state'] ?? null) === 'estimated'
+            && is_array($estimate['search_price_with_surcharge'] ?? null)
+            ? $estimate['search_price_with_surcharge'] : null;
     }
 
     private static function base(array $resolved, ?array $packagePrice): array
@@ -259,14 +311,43 @@ final class AnyTourAndromedaSelectedQuote
                 }
             }
         }
+        $public = self::attachFlightRefs($options, null);
+        if (count($options['0']) !== 1 || count($options['1']) !== 1) {
+            return ['state' => 'choice_required', 'private' => [], 'options' => $options, 'public' => $public];
+        }
+        return [
+            'state' => 'unambiguous',
+            'private' => ['0' => $options['0'][0], '1' => $options['1'][0]],
+            'options' => $options,
+            'public' => $public,
+        ];
+    }
+
+    private static function attachFlightRefs(array $options, ?array $refs): array
+    {
         $public = [];
         foreach (['0', '1'] as $direction) {
-            foreach ($options[$direction] as $item) $public[] = self::publicFlight($item);
+            if (!is_array($options[$direction] ?? null)) {
+                throw new RuntimeException('ANDROMEDA_FLIGHT_OPTIONS_INVALID');
+            }
+            if ($refs !== null && (!is_array($refs[$direction] ?? null)
+                || count($refs[$direction]) !== count($options[$direction]))) {
+                throw new RuntimeException('ANDROMEDA_FLIGHT_REFS_INVALID');
+            }
+            foreach ($options[$direction] as $index => $item) {
+                if (!is_array($item)) throw new RuntimeException('ANDROMEDA_FLIGHT_OPTIONS_INVALID');
+                $row = self::publicFlight($item);
+                if ($refs !== null) {
+                    $ref = $refs[$direction][$index] ?? null;
+                    if (!is_string($ref) || preg_match('/^flight_[a-f0-9]{32}$/D', $ref) !== 1) {
+                        throw new RuntimeException('ANDROMEDA_FLIGHT_REFS_INVALID');
+                    }
+                    $row['flight_ref'] = $ref;
+                }
+                $public[] = $row;
+            }
         }
-        if (count($options['0']) !== 1 || count($options['1']) !== 1) {
-            return ['state' => 'choice_required', 'private' => [], 'public' => $public];
-        }
-        return ['state' => 'unambiguous', 'private' => ['0' => $options['0'][0], '1' => $options['1'][0]], 'public' => $public];
+        return $public;
     }
 
     private static function appendTransport(array $claim, array $item): array
