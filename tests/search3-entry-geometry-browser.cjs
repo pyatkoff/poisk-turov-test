@@ -240,6 +240,20 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
           assert.ok(openAx.some(node => node.role === 'combobox' && node.name === name), 'opening advanced filters restores labelled control: ' + name);
         }
         assert.equal(await page.locator('#tourSearch .service-picker').evaluate(node => node.open), false, 'nested hotel services remain independently closed');
+        const advancedGeometry = await page.locator('#tourSearch .extra-grid').evaluate(grid => {
+          const rect = node => { const bounds = node.getBoundingClientRect(); return { top: Math.round(bounds.top), bottom: Math.round(bounds.bottom), left: Math.round(bounds.left), right: Math.round(bounds.right), width: Math.round(bounds.width), height: Math.round(bounds.height) }; };
+          const fields = [...grid.children].map(node => ({ ...rect(node), label: node.querySelector(':scope>span')?.textContent.trim(), control: rect(node.querySelector('select,.toggle-row')) }));
+          const flightChoices = [...grid.querySelectorAll('.toggle-row .toggle')].map(rect);
+          return { fields, flightChoices };
+        });
+        if (width >= 1100) {
+          const rowTops = [...new Set(advancedGeometry.fields.map(field => field.top))];
+          assert.equal(rowTops.length, 2, `${width}: wide advanced filters use two balanced rows`);
+          assert.deepEqual(rowTops.map(top => advancedGeometry.fields.filter(field => field.top === top).length), [3, 3], `${width}: every advanced row contains three aligned groups`);
+          assert.ok(advancedGeometry.fields.every(field => field.width >= 280 && field.height <= 80), `${width}: advanced controls stay readable without stretched 123px cells`);
+          assert.equal(new Set(advancedGeometry.flightChoices.map(choice => choice.top)).size, 1, `${width}: direct and charter choices share one row`);
+          assert.ok(advancedGeometry.flightChoices.every(choice => choice.height >= 44), `${width}: flight choices retain 44px targets`);
+        }
         const openedData = await page.locator('#tourSearch').evaluate(form => [...new FormData(form)]);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
         await page.locator('#tourSearch').screenshot({ path: path.join(output, `entry-expanded-${width}.png`), animations: 'disabled' });
