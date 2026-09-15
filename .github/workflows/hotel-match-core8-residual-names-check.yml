@@ -1,0 +1,24 @@
+name: MATCH core8 residual offline dossier check
+on:
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_core8_residual_names.py
+      - reports/hotel-match-core8-residual-names-20260915.json
+      - .github/workflows/hotel-match-core8-residual-names-check.yml
+permissions: {contents: read, actions: read}
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - name: Download immutable completed read artifact without executing its operation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394524643/zip > /tmp/current.zip
+      - name: Verify receipt and reproduce full 1399-row residual and 156 non-safe name dossiers
+        run: |
+          set -euo pipefail
+          python3 scripts/diagnostics/hotel_match_core8_residual_names.py /tmp/current.zip /tmp/report.json
+          cmp /tmp/report.json reports/hotel-match-core8-residual-names-20260915.json
