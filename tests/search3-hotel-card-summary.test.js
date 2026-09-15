@@ -132,4 +132,27 @@ const inlineImage=api.hotelMainHtml({id:'fixture',name:'Fixture',picturelink:'da
 assert.match(inlineImage,/class="hotel-photo hotel-gallery"/,'bounded image data URI fixtures retain the established card geometry');
 const unsafeImage=api.hotelMainHtml({id:'unsafe',name:'Unsafe',picturelink:'javascript:alert(1)'});
 assert.doesNotMatch(unsafeImage,/javascript:/,'non-image and executable URL schemes never reach image markup');
-console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 local_gallery_details=1 source_unchanged=1');
+
+(async()=>{
+  const retryHotel={...local,id:21478,name:'Отель после повтора'};
+  let requests=0;
+  window.V2RetryPolicy={
+    shouldRetry(action,error,attempt){return action==='hotel_details'&&error.code==='HTTP_ERROR'&&error.status===503&&attempt===0;},
+    delayFor(){return 0;},
+  };
+  window.fetch=async()=>{
+    requests+=1;
+    if(requests===1)return{ok:false,status:503,json:async()=>({})};
+    return{ok:true,status:200,json:async()=>({ok:true,item:retryHotel})};
+  };
+  await api.loadHotelDetails({id:21478});
+  assert.equal(requests,2,'one transient hotel-details failure uses the existing bounded retry policy');
+  assert.equal(api.hotelDetailsCache.get('21478'),retryHotel,'successful retry hydrates the canonical local hotel cache');
+
+  let missingRequests=0;
+  window.fetch=async()=>{missingRequests+=1;return{ok:false,status:404,json:async()=>({})};};
+  await api.loadHotelDetails({id:21479});
+  assert.equal(missingRequests,1,'a terminal missing hotel is not retried');
+  assert.equal(api.hotelDetailsCache.get('21479'),null,'a real 404 remains a terminal negative cache entry');
+  console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 local_gallery_details=1 transient_details_retry=1 source_unchanged=1');
+})().catch(error=>{console.error(error);process.exitCode=1;});
