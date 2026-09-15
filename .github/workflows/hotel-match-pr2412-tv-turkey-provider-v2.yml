@@ -1,0 +1,144 @@
+name: MATCH PR2412 TV Turkey provider v2
+on:
+  push:
+    branches: [ops/match-pr2412-tv-provider-evidence-1971-20260916-v1]
+    paths: [.github/workflows/hotel-match-pr2412-tv-turkey-provider-v2.yml]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-pr2412-tv-turkey-provider-1971-20260916-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-old-tv-hotellist-mass-1971-20260916-v21-turkey-provider
+  MATCH_DATE: '2026-10-05'
+  MATCH_LIMIT: '30'
+  MATCH_FOCUS_PAIRS: '16330:28426,23894:1600,34680:37404,32783:54633,43984:99257,44939:77557,44413:21838,32572:68169,37885:111046,29446:17586,33110:104168,8550:1283,34804:81578,39389:1557,43077:1558,44139:67042,15072:77400,9384:77574,20470:101227,37985:77759,8319:1124,8355:1432,8460:1385,8537:1643,8538:1207,8666:1253,10115:2160,11241:1255,11756:996,12143:1004'
+  OUT: /tmp/hotel-match-pr2412-tv-turkey-provider-v2
+jobs:
+  evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Offline source and scope checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php)" = 08c75e62c8b30832f77b3d3f2a336515fc7f71e3
+          php -l scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php
+          php scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php --self-test >/dev/null
+          python3 - <<'PY'
+          import os
+          pairs=os.environ['MATCH_FOCUS_PAIRS'].split(',')
+          expected='16330:28426,23894:1600,34680:37404,32783:54633,43984:99257,44939:77557,44413:21838,32572:68169,37885:111046,29446:17586,33110:104168,8550:1283,34804:81578,39389:1557,43077:1558,44139:67042,15072:77400,9384:77574,20470:101227,37985:77759,8319:1124,8355:1432,8460:1385,8537:1643,8538:1207,8666:1253,10115:2160,11241:1255,11756:996,12143:1004'.split(',')
+          assert pairs==expected and len(pairs)==30 and len(set(pairs))==30
+          assert len({p.split(':')[1] for p in pairs})==30
+          assert os.environ['MATCH_DATE']=='2026-10-05'
+          PY
+      - name: Build credential and country selector adapter without changing Tourvisor request contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          python3 - <<'PY'
+          import pathlib,re,os,hashlib,json
+          src=pathlib.Path('scripts/diagnostics/hotel_match_old_tv_hotellist_mass.php').read_text()
+          old="hm_find_entity($countries,['егип','egypt'])"
+          new="hm_find_entity($countries,['турц','turkey'])"
+          op_old="preg_match('/^hotel-match-old-tv-hotellist-mass-1971-20260914-v[0-9]+-egypt$/D',$op)"
+          op_new="preg_match('/^hotel-match-old-tv-hotellist-mass-1971-20260916-v21-turkey-provider$/D',$op)"
+          assert src.count(old)==1 and src.count(new)==0
+          assert src.count(op_old)==1 and src.count(op_new)==0
+          src2=src.replace(old,new,1).replace(op_old,op_new,1)
+          body,n=re.subn(r'^<\?php\s*declare\(strict_types=1\);\s*','',src2,count=1)
+          assert n==1
+          prefix="""<?php
+          declare(strict_types=1);
+          $root=(string)realpath(getcwd());
+          if($root===''||basename($root)!=='anytoour.ru')throw new RuntimeException('root_guard');
+          $loaded=false;
+          foreach([$root.'/v2/config.php',$root.'/config.php'] as $cfg){if(is_file($cfg)){require_once $cfg;$loaded=true;break;}}
+          if(!$loaded||!defined('TOURVISOR_ANEX_JWT')||trim((string)TOURVISOR_ANEX_JWT)==='')throw new RuntimeException('tourvisor_anex_jwt_missing');
+          putenv('TOURVISOR_JWT='.(string)TOURVISOR_ANEX_JWT);
+          """
+          payload=prefix+body
+          p=pathlib.Path(os.environ['OUT'])/'payload.php';p.write_text(payload)
+          meta={'source_blob':'08c75e62c8b30832f77b3d3f2a336515fc7f71e3','payload_sha256':hashlib.sha256(payload.encode()).hexdigest(),'credential_source':'TOURVISOR_ANEX_JWT','client_token_slot':'TOURVISOR_JWT','country_selector':'turkey','country_selector_replacements':1,'operation_guard_replacements':1,'protected_request_contract_changed':False}
+          (pathlib.Path(os.environ['OUT'])/'adapter-meta.json').write_text(json.dumps(meta,sort_keys=True)+'\n')
+          PY
+          php -l "$OUT/payload.php"
+      - name: Persist immutable runner reservation before SSH or Tourvisor access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,pathlib
+          out=pathlib.Path(os.environ['OUT']);meta=json.loads((out/'adapter-meta.json').read_text());pairs=os.environ['MATCH_FOCUS_PAIRS'].split(',')
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_ssh_db_supplier_access','credential_source':'TOURVISOR_ANEX_JWT','client_token_slot':'TOURVISOR_JWT','country_selector':'turkey','date':os.environ['MATCH_DATE'],'focus_pairs':pairs,'target_count':len(pairs),'payload_sha256':meta['payload_sha256'],'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'no_replay':True}
+          (out/'runner-reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          assert json.loads((out/'runner-reservation.json').read_text())==r
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-pr2412-tv-turkey-provider-v2-reservation
+          path: |
+            ${{ env.OUT }}/runner-reservation.json
+            ${{ env.OUT }}/adapter-meta.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Execute one bounded ANEX-only Tourvisor search
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$OUT"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_DATE='$MATCH_DATE' MATCH_LIMIT='$MATCH_LIMIT' MATCH_FOCUS_PAIRS='$MATCH_FOCUS_PAIRS' php" < "$OUT/payload.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"
+          trc=$?
+          set -e
+          printf '%s\n' "$rc" > "$out/remote-exit.txt"
+          test $trc -eq 0 -a -s "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+      - name: Verify durable result and account provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re
+          out=pathlib.Path(os.environ['OUT']);srv=out/'server'
+          result=json.loads((srv/'result.json').read_text());receipt=json.loads((srv/'receipt.json').read_text());reservation=json.loads((srv/'reservation.json').read_text());rr=json.loads((out/'runner-reservation.json').read_text());meta=json.loads((out/'adapter-meta.json').read_text());rc=int((out/'remote-exit.txt').read_text())
+          rh=hashlib.sha256((srv/'result.json').read_bytes()).hexdigest()
+          assert result['operation_id']==receipt['operation_id']==reservation['operation_id']==rr['operation_id']==os.environ['OPERATION_ID']
+          assert result['source_sha']==receipt['source_sha']==reservation['source_sha']==rr['source_sha']==os.environ['GITHUB_SHA']
+          assert receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh
+          assert rr['credential_source']=='TOURVISOR_ANEX_JWT' and meta['credential_source']=='TOURVISOR_ANEX_JWT'
+          assert result.get('credential_identifier')=='TOURVISOR_JWT' and reservation.get('credential_identifier')=='TOURVISOR_JWT'
+          assert result.get('database_writes')==0 and result.get('mapping_writes')==0 and result.get('booking_calls')==0 and result.get('lead_calls')==0
+          status=result.get('status');reason=result.get('reason')
+          allowed=(status in {'completed','partial_rate_limited','partial_auth_rejected'}) or (status=='blocked' and (reason in {'no_unique_tours_selected','tourvisor_search_not_complete_bounded','provider_exception'} or bool(re.fullmatch(r'old_tourvisor_http_[45][0-9]{2}',str(reason)))))
+          assert allowed,(status,reason)
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':True,'remote_exit':rc,'status':status,'reason':reason,'credential_source':'TOURVISOR_ANEX_JWT','country_selector':'turkey','date':os.environ['MATCH_DATE'],'target_count':len(rr['focus_pairs']),'current_focus_count':len(result.get('current_focus') or {}),'tourvisor_calls':result.get('tourvisor_calls'),'detail_rows':result.get('detail_rows'),'direct_hotellist_identities':result.get('direct_hotellist_identities'),'safe_current_candidates':result.get('safe_current_candidates'),'holds':result.get('holds'),'search_id_present':result.get('search_id_present',bool(result.get('search_id'))),'result_sha256':rh,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n');print(json.dumps(gate,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-pr2412-tv-turkey-provider-v2-result
+          path: ${{ env.OUT }}/
+          if-no-files-found: warn
+          retention-days: 90
