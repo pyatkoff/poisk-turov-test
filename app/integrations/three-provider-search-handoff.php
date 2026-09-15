@@ -47,10 +47,12 @@ final class AnyTourThreeProviderSearchHandoff
      *
      * `finalPriceReady` is listing/display readiness, not supplier quote verification.
      * Tourvisor already reports the displayed search price and its fuel fact separately;
-     * that price is usable only when the fuel fact is present. Direct ANEX/Andromeda are
-     * usable only when the existing canonical surcharge estimator has already produced the
-     * exact party-specific search_price_with_surcharge. Missing/unknown surcharge never
-     * falls back to the base search price.
+     * that price is usable only when the fuel fact is present. Direct ANEX is usable when
+     * the existing canonical surcharge estimator has produced the exact party-specific
+     * search_price_with_surcharge. Andromeda search estimates remain evidence only: live
+     * v8 proved calc can reprice a selected external-flight package even when the selected
+     * transport markup is zero, so an estimate must not be promoted to customer final price.
+     * Missing/unknown surcharge never falls back to the base search price.
      */
     public static function fromCustomerSearchOffer(
         array $offer,
@@ -289,6 +291,12 @@ final class AnyTourThreeProviderSearchHandoff
         }
         if ($pricedMoney !== $expected) {
             throw new InvalidArgumentException('THREE_PROVIDER_HANDOFF_PRICE');
+        }
+        if ($provider === 'andromeda') {
+            // Search/get_flights surcharge is an estimate only. A selected external-flight
+            // package may still be repriced by calc, so only the verified quote path can
+            // establish Andromeda final money.
+            return ['ready' => false, 'amount' => null];
         }
         $amount = self::readyRubAmount($pricedMoney['search_price_with_surcharge'] ?? null);
         return $amount === null
