@@ -4,13 +4,8 @@ on:
     paths: ['.github/workflows/andromeda-v8-money-readback.yml']
   issue_comment:
     types: [created]
-permissions:
-  contents: read
-  actions: read
-  issues: read
-concurrency:
-  group: anytoour-andromeda-v8-money-readback
-  cancel-in-progress: false
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytoour-andromeda-v8-money-readback, cancel-in-progress: false}
 jobs:
   contract:
     if: github.event_name == 'pull_request'
@@ -24,23 +19,19 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           t=Path('.github/workflows/andromeda-v8-money-readback.yml').read_text()
-          for x in ["issue.number == 2530","/inspect-andromeda-v8-money-facts-1717-v1","sourceRun=34991136031","sourceArtifact=10406065920","9a9af940b7a2c170dd82bfdedc25cc6628fd921b75094c1278c12f6e54c0333c","glob($searches.'/*-quote-v1.json')","'supplier_calls'=>0","'operation_replayed'=>false"]:
-            assert x in t,x
-          marker='      - name: Read retained quote '+'checkpoint'
-          live=t.split(marker,1)[1]
-          for x in ['AnyTourAndromedaClient','curl_','new PDO','file_put_contents','fopen(','unlink(','rename(','bron_ticket']:
-            assert x not in live,x
+          for x in ["issue.number == 2530","/inspect-andromeda-v8-money-facts-1717-v2","sourceRun=34991136031","sourceArtifact=10406065920","9a9af940b7a2c170dd82bfdedc25cc6628fd921b75094c1278c12f6e54c0333c","glob($searches.'/*-quote-v1.json')","'supplier_calls'=>0","'operation_replayed'=>false"]: assert x in t,x
+          marker='      - name: Read unique retained v8 '+'quote'; live=t.split(marker,1)[1]
+          forbidden=['AnyTour'+'AndromedaClient','curl'+'_','new '+'PDO','file_'+'put_contents','fopen'+'(','un'+'link(','re'+'name(','bron_'+'ticket']
+          for x in forbidden: assert x not in live,x
           assert '\n  workflow_dispatch:' not in t.split('\npermissions:',1)[0]
-          print('V8_MONEY_READBACK_CONTRACT_OK')
+          print('V8_MONEY_READBACK_V2_CONTRACT_OK')
           PY
   inspect:
     if: >-
-      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
-      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
-      github.event_name == 'issue_comment' && github.event.action == 'created' &&
-      github.event.issue.number == 2530 && !github.event.issue.pull_request &&
-      github.event.comment.user.id == 226193297 &&
-      github.event.comment.body == '/inspect-andromeda-v8-money-facts-1717-v1'
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' && github.actor == 'pyatkoff' &&
+      github.event.sender.id == 226193297 && github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.body == '/inspect-andromeda-v8-money-facts-1717-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -48,20 +39,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const owner=226193297,command='/inspect-andromeda-v8-money-facts-1717-v1',sourceRun=34991136031,sourceArtifact=10406065920;
+            const owner=226193297,command='/inspect-andromeda-v8-money-facts-1717-v2',sourceRun=34991136031,sourceArtifact=10406065920;
             if(process.env.GITHUB_RUN_ATTEMPT!=='1'||context.actor!=='pyatkoff'||context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('owner/attempt mismatch');
             if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main'||context.payload.issue?.number!==2530||context.payload.issue?.pull_request||context.payload.comment?.body!==command) throw new Error('command scope mismatch');
-            const cs=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100});
-            const ms=cs.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER');
-            if(ms.length!==1||ms[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
+            const cs=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:2530,per_page:100}); const ms=cs.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER'); if(ms.length!==1||ms[0].id!==context.payload.comment.id) throw new Error('duplicate/edited command');
             const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'}); if(main.object.sha!==context.sha) throw new Error('main advanced');
-            const {data:r}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:sourceRun});
-            if(r.head_sha!=='bbce645cce6fcc9362e1bd764d66309bfe5bc061'||r.status!=='completed'||r.conclusion!=='success'||r.run_attempt!==1) throw new Error('v8 run mismatch');
-            const {data:a}=await github.rest.actions.getArtifact({...context.repo,artifact_id:sourceArtifact});
-            if(a.expired!==false||a.workflow_run?.id!==sourceRun||a.digest!=='sha256:9a9af940b7a2c170dd82bfdedc25cc6628fd921b75094c1278c12f6e54c0333c') throw new Error('v8 artifact mismatch');
+            const {data:r}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:sourceRun}); if(r.head_sha!=='bbce645cce6fcc9362e1bd764d66309bfe5bc061'||r.status!=='completed'||r.conclusion!=='success'||r.run_attempt!==1) throw new Error('v8 run mismatch');
+            const {data:a}=await github.rest.actions.getArtifact({...context.repo,artifact_id:sourceArtifact}); if(a.expired!==false||a.workflow_run?.id!==sourceRun||a.digest!=='sha256:9a9af940b7a2c170dd82bfdedc25cc6628fd921b75094c1278c12f6e54c0333c') throw new Error('v8 artifact mismatch');
       - uses: actions/checkout@v4
         with: {ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa, path: helper, persist-credentials: false}
-      - name: Read retained quote checkpoint
+      - name: Read unique retained v8 quote
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
           ANYTOOUR_DEPLOY_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
@@ -72,25 +59,18 @@ jobs:
           import json,os,pathlib
           from anex_search3_owner_decisions import ssh_php
           php=r'''
-          error_reporting(0); ini_set('display_errors','0');
-          $out=['status'=>'blocked','supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'filesystem_writes'=>0,'operation_replayed'=>false];
-          function money($v){if(!is_array($v)||!is_string($v['amount']??null)||!preg_match('/^(?:0|[1-9][0-9]{0,11})(?:\\.[0-9]{1,2})?$/D',$v['amount'])||!is_string($v['currency']??null)||!preg_match('/^[A-Z0-9_]{2,8}$/D',$v['currency']))return null;return ['amount'=>$v['amount'],'currency'=>$v['currency']];}
-          function safeRows($rows,$kind){if(!is_array($rows))return null;$o=[];foreach($rows as $r){if(!is_array($r))return null;if($kind==='calc'){if(($r['source']??null)!=='andromeda_calc_money'||($r['arithmetic_applied']??null)!==false)return null;$x=['currency'=>$r['currency']??null,'gross_amount'=>$r['gross_amount']??null,'net_amount'=>$r['net_amount']??null,'commissionable_amount'=>$r['commissionable_amount']??null,'commission_amount'=>$r['commission_amount']??null,'source'=>'andromeda_calc_money','arithmetic_applied'=>false];foreach(['currency','gross_amount'] as $k)if(!is_string($x[$k]))return null;$o[]=$x;}else{if(($r['source']??null)!=='andromeda_claim_service')return null;$m=money(['amount'=>$r['amount']??null,'currency'=>$r['currency']??null]);if($m===null)return null;$o[]=$m+['route_index'=>$r['route_index']??null,'source'=>'andromeda_claim_service'];}}return $o;}
-          try{$root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');$searches=dirname($root,2).'/.anytoour-andromeda/searches';if(!is_dir($searches)||is_link($searches))throw new RuntimeException('searches_invalid');$from=strtotime('2026-09-15T15:50:20Z');$to=strtotime('2026-09-15T15:52:10Z');$matches=[];$scanned=0;
-          foreach((glob($searches.'/*-quote-v1.json')?:[]) as $p){if(!is_file($p)||is_link($p)||filesize($p)>262144)continue;$m=filemtime($p);if($m<$from||$m>$to)continue;++$scanned;try{$e=json_decode((string)file_get_contents($p),true,48,JSON_THROW_ON_ERROR);}catch(Throwable $x){continue;}$s=$e['state']??null;if(!is_array($s)||($s['status']??null)!=='completed'||!is_array($s['result']??null))continue;$q=$s['result'];$sp=money($q['search_price']??null);$fp=money($q['final_price']??null);$obs=$q['served_price_observation']??null;$served=is_array($obs)?money($obs['served_price']??null):null;
-          if(($q['provider']??null)!=='andromeda'||($q['local_id']??null)!==17449||($q['state']??null)!=='quote_verified'||($q['final_price_verified']??null)!==true||$sp!==['amount'=>'185125','currency'=>'RUB']||$fp!==['amount'=>'199390','currency'=>'RUB']||$served!==$sp)continue;$calc=safeRows($q['calc_money_facts_reported']??null,'calc');$fuel=safeRows($q['fuel_surcharges_reported']??null,'fuel');if($calc===null||$fuel===null)throw new RuntimeException('money_projection_invalid');$matches[]=['checkpoint_sha256'=>hash('sha256',basename($p)),'search_price'=>$sp,'package_price'=>($q['package_price']??null)===null?null:money($q['package_price']),'final_price'=>$fp,'served_price'=>$served,'calc_money_facts_reported'=>$calc,'fuel_surcharges_reported'=>$fuel];}
-          $out['candidate_files_scanned']=$scanned;$out['matching_quote_checkpoints']=count($matches);if(count($matches)!==1)throw new RuntimeException('v8_quote_not_unique');$out['quote']=$matches[0];$out['status']='inspected';}catch(Throwable $x){$out['reason']=preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$x->getMessage())?$x->getMessage():'inspection_failed';}echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          error_reporting(0);ini_set('display_errors','0');$out=['status'=>'blocked','supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,'booking_calls'=>0,'filesystem_writes'=>0,'operation_replayed'=>false];
+          function money($v){if(!is_array($v)||!is_string($v['amount']??null)||!is_string($v['currency']??null))return null;return ['amount'=>$v['amount'],'currency'=>$v['currency']];}
+          function rows($v,$kind){if(!is_array($v))return null;$o=[];foreach($v as $r){if(!is_array($r))return null;if($kind==='calc'){$o[]=['currency'=>$r['currency']??null,'gross_amount'=>$r['gross_amount']??null,'net_amount'=>$r['net_amount']??null,'commissionable_amount'=>$r['commissionable_amount']??null,'commission_amount'=>$r['commission_amount']??null,'source'=>$r['source']??null,'arithmetic_applied'=>$r['arithmetic_applied']??null];}else{$o[]=['amount'=>$r['amount']??null,'currency'=>$r['currency']??null,'route_index'=>$r['route_index']??null,'source'=>$r['source']??null];}}return $o;}
+          try{$root=realpath(getcwd());if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('project_invalid');$searches=dirname($root,2).'/.anytoour-andromeda/searches';$from=strtotime('2026-09-15T15:50:20Z');$to=strtotime('2026-09-15T15:52:10Z');$c=[];
+          foreach((glob($searches.'/*-quote-v1.json')?:[]) as $p){if(!is_file($p)||is_link($p)||filesize($p)>262144)continue;$m=filemtime($p);if($m<$from||$m>$to)continue;$e=json_decode((string)file_get_contents($p),true);$s=$e['state']??null;if(!is_array($s)||($s['status']??null)!=='completed'||!is_array($s['result']??null))continue;$q=$s['result'];if(($q['provider']??null)!=='andromeda')continue;$obs=$q['served_price_observation']??null;$c[]=['checkpoint_sha256'=>hash('sha256',basename($p)),'local_id'=>$q['local_id']??null,'local_id_type'=>gettype($q['local_id']??null),'state'=>$q['state']??null,'final_price_verified'=>$q['final_price_verified']??null,'booking_enabled'=>$q['booking_enabled']??null,'search_price'=>money($q['search_price']??null),'package_price'=>money($q['package_price']??null),'final_price'=>money($q['final_price']??null),'served_price'=>is_array($obs)?money($obs['served_price']??null):null,'calc_money_facts_reported'=>rows($q['calc_money_facts_reported']??null,'calc'),'fuel_surcharges_reported'=>rows($q['fuel_surcharges_reported']??null,'fuel')];}
+          $out['candidate_files']=count($c);if(count($c)!==1)throw new RuntimeException('v8_candidate_not_unique');$out['quote']=$c[0];$out['status']='inspected';}catch(Throwable $x){$out['reason']=preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$x->getMessage())?$x->getMessage():'inspection_failed';}echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
           '''
-          d=pathlib.Path(os.environ['RUNNER_TEMP'])/'v8-money';d.mkdir(mode=0o700)
-          r=ssh_php(php,{},maximum_bytes=65536);(d/'result.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
-          if r.get('status')!='inspected' or r.get('operation_replayed') is not False or any(r.get(k)!=0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']): raise SystemExit('v8 retained readback incomplete')
+          d=pathlib.Path(os.environ['RUNNER_TEMP'])/'v8-money';d.mkdir(mode=0o700);r=ssh_php(php,{},maximum_bytes=65536);(d/'result.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          if r.get('status')!='inspected' or r.get('candidate_files')!=1 or any(r.get(k)!=0 for k in ['supplier_calls','database_reads','database_writes','booking_calls','filesystem_writes']): raise SystemExit('v8 retained readback v2 incomplete')
           print(json.dumps(r,sort_keys=True))
           PY
       - name: Preserve sanitized readback
         if: always()
         uses: actions/upload-artifact@v4
-        with:
-          name: andromeda-v8-money-readback-${{ github.run_id }}
-          path: ${{ runner.temp }}/v8-money/result.json
-          if-no-files-found: error
-          retention-days: 14
+        with: {name: 'andromeda-v8-money-readback-v2-${{ github.run_id }}', path: '${{ runner.temp }}/v8-money/result.json', if-no-files-found: error, retention-days: 14}
