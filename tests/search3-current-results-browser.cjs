@@ -736,13 +736,18 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
     assert.equal(await card.locator('.hotel-gallery-thumb').count(), 3, 'local hotel details expose a bounded gallery in the canonical card');
     const hotelInfo = card.locator('.hotel-details');
-    assert.match(await card.locator('.hotel-description-summary').innerText(), /Локальное описание отеля/, 'trusted local description is readable before opening the hotel disclosure');
+    assert.match(await card.locator('.hotel-description-summary').innerText(), /Локальное описание отеля: Hard Rock Café & SPA/, 'encoded local description is readable before opening the hotel disclosure');
     assert.equal(await hotelInfo.locator('summary').innerText(), 'Подробнее об отеле', 'hotel disclosure promises complete local details');
     await hotelInfo.locator('summary').press('Enter');
     assert.equal(await hotelInfo.evaluate(node => node.open), true, 'hotel description opens through the native keyboard disclosure');
     assert.equal(await card.locator('.hotel-description-summary').isVisible(), false, 'the clamped summary does not duplicate the open full description');
     assert.match(await hotelInfo.innerText(), /Локальное описание отеля[\s\S]*Наама-Бей[\s\S]*Открытый бассейн[\s\S]*Wi-Fi/, 'trusted local description and characteristics are available before choosing an offer');
+    assert.match(await hotelInfo.innerText(), /Kavaklı[\s\S]*Стандарт · Семейный номер/, 'numeric address entities and encoded room-list markup become readable text');
+    assert.doesNotMatch(await hotelInfo.innerText(), /&#|&(?:amp|lt|gt|nbsp);|alert\(1\)/, 'hotel details contain neither entity noise nor encoded active markup');
+    assert.equal(await hotelInfo.locator('script,img,style,iframe').count(), 0, 'encoded markup creates no active content in hotel details');
     assert.ok((await hotelInfo.locator('summary').boundingBox()).height >= 44, 'hotel details disclosure keeps a full touch target');
+    assert.equal((await snapshot(page)).overflow, false, width + ': decoded hotel details fit the viewport');
+    if (!previous && [375,1440].includes(width)) await card.screenshot({ path: path.join(output, `hotel-details-entities-${width}.png`), animations: 'disabled' });
     await card.locator('.hotel-gallery-thumb').nth(1).click();
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
     assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
@@ -986,7 +991,7 @@ async function run(browser, width, previous) {
         id: 21477, name: 'Movenpick Resort', country: { name: 'Египет' }, region: { name: 'Шарм-эль-Шейх' }, subRegion: { name: 'Наама-Бей' },
         category: 4, rating: 4.7, detailsAvailable: true,
         primaryImage: 'https://catalog.example/hotel-21477.svg', images: ['https://catalog.example/hotel-21477.svg','https://catalog.example/hotel-21477-2.svg','https://catalog.example/hotel-21477-3.svg'],
-        description: 'Локальное описание отеля без данных поставщика.', address: 'Наама-Бей, Шарм-эль-Шейх', repair: 'Реновация 2025', roomTypes: 'Стандарт, семейный номер',
+        description: 'Локальное описание отеля: Hard Rock Caf&#233; &amp; SPA&nbsp;&lt;script&gt;alert(1)&lt;/script&gt;', address: 'Наама-Бей, Kavakl&#x131;', repair: 'Реновация 2025', roomTypes: '&lt;UL&gt;&lt;LI&gt;Стандарт&lt;/LI&gt;&lt;LI&gt;Семейный номер&lt;/LI&gt;&lt;/UL&gt;',
         infrastructure: [{ name: 'Открытый бассейн' }, { name: 'Ресторан' }], services: ['Wi-Fi', 'Детский клуб'], meals: [{ name: 'Всё включено' }]
       } }) });
     }
