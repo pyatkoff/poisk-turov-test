@@ -15,7 +15,9 @@ module.exports=async function checkOperatorCards(page,width,output){
     {...base,id:'brand-anex-9',nights:9,price:70300,operator:'Анекс'},
     {...base,id:'brand-intourist-10',date:'2026-09-18',nights:10,price:77200,meal:{name:'AI',fullName:'Всё включено'},operator:'НТК Интурист',isCharter:false},
     {...base,id:'brand-biblio-7',nights:7,price:65500,meal:{name:'HB',fullName:'Полупансион'},operator:'Библио-Глобус'},
-    {...base,id:'brand-local-8',date:'2026-09-17',nights:8,price:68900,meal:{name:'AI',fullName:'Всё включено'},operator:'LOCAL OPERATOR',isCharter:false}
+    {...base,id:'brand-local-8',date:'2026-09-17',nights:8,price:68900,meal:{name:'AI',fullName:'Всё включено'},operator:'LOCAL OPERATOR',isCharter:false},
+    {...base,id:'brand-coral-7',nights:7,price:78200,meal:{name:'AI',fullName:'Всё включено'},operator:'CORAL TRAVEL',isCharter:false},
+    {...base,id:'brand-sunmar-9',date:'2026-09-18',nights:9,price:78700,meal:{name:'HB',fullName:'Полупансион'},operator:'Санмар'}
   ];
   const hotel={id:'brand-hotel',name:'ARES CITY (EX. KAMI HOTEL)',country:{name:'Турция'},region:{name:'Кемер'},subRegion:{name:'Кемер — центр'},category:3,rating:3,seaDistance:500,picturelink:picture,price:62400,tours:offers};
   const sent=[];const listener=request=>{if(/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)||request.method()!=='GET')sent.push(request.url());};page.on('request',listener);
@@ -26,11 +28,11 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('[data-operator-brand],.hotel-operator-logo').count(),0,'collapsed multi-offer hotel does not borrow one concrete operator');
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(),0,'collapsed multi-offer hotel has no concrete offer row, Select, or Compare');
     const collapsedText=await card.innerText();
-    assert.doesNotMatch(collapsedText,/16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|8 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Полупансион|Всё включено|STANDARD|DBL|Двухместное|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Чартер|Регулярный рейс/,'collapsed hotel-level surface excludes concrete offer parameters');
+    assert.doesNotMatch(collapsedText,/16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|8 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Полупансион|Всё включено|STANDARD|DBL|Двухместное|Tourvisor|FUN&SUN|ANEX|Интурист|Библио|Coral|Sunmar|Санмар|Чартер|Регулярный рейс/,'collapsed hotel-level surface excludes concrete offer parameters');
     assert.equal(await card.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')),'от62400₽','collapsed multi-offer hotel exposes only the truthful group minimum');
     assert.equal(await card.locator('.tour-more-toggle').count(),1);
     const toggle=card.locator('.tour-more-toggle');
-    assert.equal(await toggle.innerText(),'Показать варианты · 10');
+    assert.equal(await toggle.innerText(),'Показать варианты · 12');
     assert.ok((await toggle.boundingBox()).height>=44);
     assert.ok((await toggle.boundingBox()).width<260,'collapsed disclosure is a compact secondary action');
     assert.notEqual(await toggle.evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(216, 61, 0)','collapsed disclosure does not pretend to be a concrete offer CTA');
@@ -71,13 +73,13 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await card.locator('.hotel-trip-summary').count(),0,'expanded detail is exact offers, not another nested aggregate');
     assert.equal(await card.locator('.tour-row').count(),3,'operator examples start with three exact offers');
     assert.equal(await toggle.evaluate(node=>node===document.activeElement),true);
-    for(const count of [6,9,10]){
+    for(const count of [6,9,12]){
       await card.locator('.tour-list-more').click();
       assert.equal(await card.locator('.tour-row').count(),count,'all operator examples remain reachable through bounded disclosure');
     }
-    await page.waitForFunction(()=>document.querySelectorAll('[data-hotel-id="brand-hotel"] .search3-shortlist-toggle').length===10);
+    await page.waitForFunction(()=>document.querySelectorAll('[data-hotel-id="brand-hotel"] .search3-shortlist-toggle').length===12);
     await page.waitForFunction(()=>{const img=document.querySelector('[data-hotel-id="brand-hotel"] .hotel-operator-logo');return img&&img.complete&&img.naturalWidth>0;});
-    assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(),'10 вариантов');
+    assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(),'12 вариантов');
     assert.equal(await toggle.getAttribute('aria-expanded'),'true');
     for(let index=0;index<offers.length;index++){
       const offer=offers[index],action=card.locator('.direct-tour[data-tid="'+offer.id+'"]'),row=action.locator('xpath=ancestor::div[contains(@class,"tour-row")]');
@@ -97,18 +99,29 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.equal(await row.getByRole('img',{name:'Туроператор: '+identity.label,exact:true}).count(),1,'logo has an accessible operator name');
       }else assert.equal(await badge.innerText(),identity.label,'unknown operator retains its visible name');
     }
-    for(const brand of ['funsun','anex','intourist','biblio-globus']){
+    const loadedLogos=[];
+    for(const brand of ['funsun','anex','intourist','biblio-globus','coral','sunmar']){
       const logo=card.locator('[data-operator-brand="'+brand+'"] .hotel-operator-logo').first();
       await logo.scrollIntoViewIfNeeded();
       await logo.evaluate(img=>img.decode());
       assert.equal(await logo.evaluate(img=>img.complete&&img.naturalWidth>0),true,'visible original '+brand+' artwork loads');
+      const artwork=await logo.evaluate(img=>({src:new URL(img.currentSrc).pathname,width:img.naturalWidth,height:img.naturalHeight,objectFit:getComputedStyle(img).objectFit,renderedWidth:img.getBoundingClientRect().width,renderedHeight:img.getBoundingClientRect().height}));
+      if(brand==='coral'||brand==='sunmar'){
+        const [file,sourceWidth,sourceHeight]=brand==='coral'?['coral.png',352,212]:['sunmar.svg',89,51];
+        assert.ok(artwork.src.endsWith('/assets/operator-logos/'+file),'new operator loads its local original asset');
+        assert.equal(artwork.width,sourceWidth,'original '+brand+' intrinsic width is preserved');
+        assert.equal(artwork.height,sourceHeight,'original '+brand+' intrinsic height is preserved');
+        assert.equal(artwork.objectFit,'contain','original '+brand+' artwork is contained without cropping');
+        assert.ok(artwork.renderedWidth>0&&artwork.renderedHeight>0,'decoded '+brand+' artwork has a visible display box');
+      }
+      loadedLogos.push({brand,...artwork});
     }
-    assert.deepEqual([...new Set(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)))].sort(),['anex','biblio-globus','funsun','intourist']);
+    assert.deepEqual([...new Set(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)))].sort(),['anex','biblio-globus','coral','funsun','intourist','sunmar']);
     assert.equal(await card.locator('.hotel-operator:not([data-operator-brand]) img').count(),0,'unknown operators keep a text fallback');
     const mobileComposition=[];
     if(width===375){
       const viewport=page.viewportSize();
-      for(const inspectedWidth of [320,375,390]){
+      for(const inspectedWidth of [320,375,390,430]){
         await page.setViewportSize({...viewport,width:inspectedWidth});
         const rows=await card.locator('.tour-row').evaluateAll(nodes=>nodes.map(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
@@ -123,20 +136,21 @@ module.exports=async function checkOperatorCards(page,width,output){
           assert.ok(Math.abs(row.select.y-row.compare.y)<2,'mobile selection and comparison share one action row');
           assert.ok(row.price.right<=row.action.right+1&&row.select.right<=row.action.right+1&&row.compare.right<=row.action.right+1,'mobile price and both actions stay inside the canonical action group');
           assert.ok(row.select.right<=row.compare.x+1,'mobile actions do not overlap');
-          if(inspectedWidth>=375)assert.ok(Math.abs((row.price.y+row.price.height/2)-(row.select.y+row.select.height/2))<2,'375/390 vertically center price and both actions in one compact row');
+          if(inspectedWidth>=375)assert.ok(Math.abs((row.price.y+row.price.height/2)-(row.select.y+row.select.height/2))<2,'375/390/430 vertically center price and both actions in one compact row');
           else assert.ok(row.select.y>=row.price.bottom-1,'320 keeps one price row followed by one shared action row');
           assert.equal(row.overflow,false,'mobile exact offer row has no overflow');
         }
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         mobileComposition.push({width:inspectedWidth,rows});
         await card.locator('.tour-row').first().screenshot({path:path.join(output,`operator-card-mobile-action-${inspectedWidth}.png`),animations:'disabled'});
+        if(inspectedWidth===375||inspectedWidth===430)for(const brand of ['coral','sunmar'])await card.locator('.tour-row').filter({has:page.locator('[data-operator-brand="'+brand+'"]')}).screenshot({path:path.join(output,`operator-card-${brand}-${inspectedWidth}.png`),animations:'disabled'});
       }
       await page.setViewportSize(viewport);
     }
     const desktopComposition=[];
     if(width===1440){
       const viewport=page.viewportSize();
-      for(const inspectedWidth of [1199,1200,1440]){
+      for(const inspectedWidth of [1024,1199,1200,1440]){
         await page.setViewportSize({...viewport,width:inspectedWidth});
         const rows=await card.locator('.tour-row').evaluateAll(nodes=>nodes.map(node=>{
           const box=element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
@@ -157,6 +171,7 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         desktopComposition.push({width:inspectedWidth,rows});
         await card.screenshot({path:path.join(output,`operator-card-composition-${inspectedWidth}.png`),animations:'disabled'});
+        if(inspectedWidth===1024||inspectedWidth===1440)for(const brand of ['coral','sunmar'])await card.locator('.tour-row').filter({has:page.locator('[data-operator-brand="'+brand+'"]')}).screenshot({path:path.join(output,`operator-card-${brand}-${inspectedWidth}.png`),animations:'disabled'});
       }
       await page.setViewportSize(viewport);
     }
@@ -226,6 +241,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus'],exact_nights:[7,10,8,9,7,8,9,10,7,8],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:10,operatorChoices,aliasMatches:[2,2,0,0],providerFacet:false,sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus','coral','sunmar'],loadedLogos,exact_nights:[7,10,8,9,7,8,9,10,7,8,7,9],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:12,operatorChoices,aliasMatches:[2,2,0,0],providerFacet:false,sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };

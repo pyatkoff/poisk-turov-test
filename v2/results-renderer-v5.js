@@ -61,9 +61,11 @@ const operatorBrands=[
   {key:'funsun',name:'FUN&SUN',aliases:['fun&sun','fun&sun (ru)','fun & sun','fun & sun (ru)','fun&sun россия','фансан','фан сан']},
   {key:'anex',name:'ANEX',aliases:['anex','anex tour','анекс','анекс тур']},
   {key:'intourist',name:'Интурист',aliases:['intourist','интурист','нтк интурист']},
-  {key:'biblio-globus',name:'Библио-Глобус',aliases:['библио-глобус','библио глобус','библиоглобус','biblio-globus','biblio globus']}
+  {key:'biblio-globus',name:'Библио-Глобус',aliases:['библио-глобус','библио глобус','библиоглобус','biblio-globus','biblio globus']},
+  {key:'coral',name:'Coral Travel',aliases:['coral','coral travel','корал','корал тревел']},
+  {key:'sunmar',name:'Sunmar',aliases:['sunmar','санмар']}
 ];
-function operatorIdentity(t){const label=operatorName(t).replace(/\s+/g,' ').trim();if(!label)return null;const normalized=label.toLocaleLowerCase('ru-RU'),brand=operatorBrands.find(item=>item.aliases.includes(normalized));return brand?{key:brand.key,label:brand.name,logo:brand.key+(brand.key==='intourist'?'.png':'.svg')}:{key:'name:'+normalized,label,logo:''};}
+function operatorIdentity(t){const label=operatorName(t).replace(/\s+/g,' ').trim();if(!label)return null;const normalized=label.toLocaleLowerCase('ru-RU'),brand=operatorBrands.find(item=>item.aliases.includes(normalized));return brand?{key:brand.key,label:brand.name,logo:brand.key+(['intourist','coral'].includes(brand.key)?'.png':'.svg')}:{key:'name:'+normalized,label,logo:''};}
 function operatorLogoBase(){const script=document.currentScript&&document.currentScript.src||document.querySelector('script[src*="bundle-v1.php"]')?.src;return script?new URL('assets/operator-logos/',script).pathname:'../assets/operator-logos/';}
 const operatorLogoRoot=operatorLogoBase();
 function operatorBadge(identity){const description=esc('Туроператор: '+identity.label);return '<span class="hotel-operator" title="'+description+'"'+(identity.logo?' data-operator-brand="'+esc(identity.key)+'"':'')+'>'+(identity.logo?'<img class="hotel-operator-logo" src="'+esc(operatorLogoRoot+identity.logo)+'" alt="'+description+'" width="100" height="36" loading="lazy">':'<span class="hotel-operator-name">'+esc(identity.label)+'</span>')+'</span>';}
