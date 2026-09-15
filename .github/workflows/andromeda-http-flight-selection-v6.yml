@@ -44,7 +44,7 @@ jobs:
             '"nightsFrom": 8',
             '"adults": 2',
             '"childs": [7]',
-            '"action": "quote_select_flights"',
+            'continuation["action"] = "quote_select_flights"',
             '"outbound_ref": outbound',
             '"return_ref": inbound',
           ]
