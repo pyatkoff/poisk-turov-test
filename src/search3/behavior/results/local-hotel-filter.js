@@ -7,9 +7,9 @@ let sourceItems=[],projectedItems=[],unmatched=new Set(),budgetActive=false,nigh
 function normalize(value){return String(value||'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru-RU');}
 function id(value){return String(value&&value.id!==undefined&&value.id!==null?value.id:'');}
 function cards(){return Array.from(results.querySelectorAll('.hotel-card'));}
-function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Number(item&&item[key]||0)]));return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||0);}
+function cardValues(key){const byId=new Map(sourceItems.map(item=>[id(item),Number(window.V2Results.hotelFacts(item)[key]||0)]));return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||0);}
 function cardTextValues(key){
-  const api=window.V2Results,byId=new Map(sourceItems.map(item=>{const label=api.textValue(item&&item[key]).replace(/\s+/g,' ').trim();return[id(item),{key:normalize(label),label}];}));
+  const api=window.V2Results,byId=new Map(sourceItems.map(item=>{const label=api.textValue(api.hotelFacts(item)[key]).replace(/\s+/g,' ').trim();return[id(item),{key:normalize(label),label}];}));
   return cards().map(card=>byId.get(String(card.dataset.hotelId||''))||{key:'',label:''});
 }
 function money(value){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0}).format(Number(value||0));}
@@ -207,6 +207,6 @@ function clear(event){
   sourceItems=[];projectedItems=[];unmatched=new Set();input.value='';categorySelect.value='0';mealSelect.value='';nightsSelect.value='0';flightSelect.value='';operatorSelect.value='';regionSelect.value='';ratingSelect.value='0';seaSelect.value='0';budgetActive=false;budgetMinInput.value='';budgetInput.value='0';cards().forEach(card=>{card.hidden=false;});status.textContent='';fields().forEach(node=>{node.hidden=true;});mobilePanel.open=false;syncContainers(0);
 }
 function rendered(event){sourceItems=event&&event.detail&&Array.isArray(event.detail.items)?event.detail.items.slice():[];apply();}
-ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
+ensure();window.addEventListener('v2:results-rendered',rendered);window.addEventListener('v2:hotel-details-rendered',apply);window.addEventListener('v2:search-started',clear);window.addEventListener('v2:search-reset',clear);
 window.Search3LocalHotelFilter={apply,clear,project,reset,version:12};
 })();
