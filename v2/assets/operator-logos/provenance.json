@@ -54,6 +54,15 @@
       "size": 11099,
       "byte_transform": "Lossless percent-decoding of the SVG data URL from the official header stylesheet; artwork unchanged.",
       "artwork_modified": false
+    },
+    {
+      "file": "pegas.png",
+      "source": "https://s01.cdn.pegast.ru/get/6b/25/4c/233e927f58ec9367cf4f67efa15d3d9fb820ace5f5a41554c4f64a21c1/PEGAS_touristik.png",
+      "source_page": "https://pegast.am/about-company/graphics-materials",
+      "acquired_at": "2026-09-15",
+      "sha256": "6b254c233e927f58ec9367cf4f67efa15d3d9fb820ace5f5a41554c4f64a21c1",
+      "size": 6598,
+      "artwork_modified": false
     }
   ]
 }

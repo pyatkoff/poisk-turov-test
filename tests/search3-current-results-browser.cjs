@@ -1,6 +1,7 @@
 /* Current reset UI: actual renderer, native header, and raw/served JS parity.
  * Retired custom disclosures, drawers and pixel dimensions are not fabricated. */
 const assert = require('node:assert/strict');
+const withFuel = require('./fixtures/search3-andromeda-fuel.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
@@ -499,13 +500,15 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
   };
   const searchParams = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
   const start = async (generation, baseHotels = [tvHotel]) => {
-    await page.evaluate(({ generation, searchParams, baseHotels }) => {
+    await page.evaluate(({ generation, searchParams, baseHotels, unconfirmedOnly }) => {
+      if (unconfirmedOnly) { const done = event => { if (event.detail.provider === 'andromeda' && event.detail.generation === generation && event.detail.status === 'complete') { window.__fuelProviderComplete = generation; window.removeEventListener('v2:provider-status', done); } }; window.addEventListener('v2:provider-status', done); }
       Object.defineProperty(window.V2SearchLifecycle, 'generation', { configurable: true, get: () => generation });
       Object.defineProperty(window.V2SearchLifecycle, 'snapshot', { configurable: true, get: () => ({ ...searchParams }) });
       window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation } }));
       window.V2Results.render(baseHotels, { empty: true });
-    }, { generation, searchParams, baseHotels });
-    await page.locator('#results .hotel-card[data-hotel-id="21477"] .tour-more-toggle').waitFor();
+    }, { generation, searchParams, baseHotels, unconfirmedOnly: control.unconfirmedOnly });
+    if (control.unconfirmedOnly) await page.waitForFunction(generation => window.__fuelProviderComplete === generation, generation);
+    else await page.locator('#results .hotel-card[data-hotel-id="21477"] .tour-more-toggle').waitFor();
   };
   const waitForExpansion = status => page.waitForFunction(status => window.V2Results.state.items.some(hotel => String(hotel.id) === '21477' && hotel.andromedaExpansion?.status === status), status);
   control.enabled = true;
@@ -513,6 +516,20 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
   control.quoteRequests.length = 0;
   control.failSecond = false;
   try {
+    control.unconfirmedOnly = true;
+    await start(71);
+    const rejectedCard = page.locator('#results .hotel-card[data-hotel-id="21477"]');
+    assert.equal(await rejectedCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')), '165000₽', 'unconfirmed cheap SAMO offer cannot reduce the visible hotel minimum');
+    assert.equal(await rejectedCard.locator('[data-andromeda-detail],.tour-more-toggle').count(), 0, 'unconfirmed offers cannot expose tour/detail actions');
+    assert.equal(await rejectedCard.locator('.direct-tour').getAttribute('data-tid'), 'tv-andromeda-control', 'Tourvisor offer remains intact');
+    assert.doesNotMatch(await rejectedCard.innerText(), /НЕПОДТВЕРЖДЁННЫЙ/);
+    assert.equal((await snapshot(page)).overflow, false);
+    if (!previous) await rejectedCard.screenshot({path:path.join(output,`fuel-unconfirmed-hidden-${width}.png`),animations:'disabled'});
+    await page.evaluate(() => window.V2Results.render([], {empty:true}));
+    assert.equal(await page.locator('#results .hotel-card').count(), 0, 'SAMO-only hotel with no fuel evidence stays out of results');
+    assert.equal(control.quoteRequests.length, 0, 'rejection never probes or calculates a quote');
+    control.unconfirmedOnly = false;
+    control.requests.length = 0;
     await start(73);
     const card = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     await page.evaluate(() => window.V2Results.render([], { empty: true }));
@@ -604,7 +621,9 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
     assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · Двухместное/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
-    assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
+    assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]000 ₽/, 'details retain the accepted inclusive listing amount instead of an endpoint base amount');
+    assert.match(await card.locator('.provider-detail').innerText(), /Топливный сбор учтён/);
+    assert.doesNotMatch(await card.locator('.provider-detail').innerText(), /может потребовать доплаты/);
     assert.match(await card.locator('.provider-detail').innerText(), /Перед выбором проверим актуальную стоимость и рейсы/);
     assert.doesNotMatch(await card.locator('.provider-detail').innerText(), /Андромед|Источник|Бронирование пока недоступно/);
     assert.deepEqual(control.requests.map(request => request.action || 'search'), ['search', 'hotel_offers', 'hotel_offers', 'offer_detail'], 'details add one explicit saved-offer request only');
@@ -820,6 +839,8 @@ async function run(browser, width, previous) {
         catalog: { hotel_id: 21477, source: 'tourvisor', image_url: 'https://catalog.example/hotel-21477.svg', subregion: 'Наама-Бей', sea_distance: null },
         andromeda_content: { source: 'andromeda', region: 'Шарм-эль-Шейх' },
         tours: [{ provider: 'andromeda', offer_ref: offerRef, offer_context: context, listing_price_ref: 'listing_' + 'e'.repeat(64), price: { amount: input.action === 'hotel_offers' ? String(154000 + input.page * 1000) : '155079.00', currency: 'RUB' }, checkin: '2026-09-18', nights: 8, meal: 'AI', room: input.action === 'hotel_offers' ? 'ROOM ' + input.page : 'GROUPED ROOM', placement: '2 ADL', operator: 'ANEX' }] };
+      const unconfirmed = {...hotel.tours[0], offer_ref:'offer_'+'f'.repeat(64), offer_context:{...context,offer_ref:'offer_'+'f'.repeat(64)}, price:{amount:'1',currency:'RUB'}, room:'НЕПОДТВЕРЖДЁННЫЙ'};
+      hotel.tours = andromeda.unconfirmedOnly ? [unconfirmed] : [withFuel(hotel.tours[0]),unconfirmed];
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', generation: input.generation, page: input.page, pages_count: input.action === 'hotel_offers' ? 2 : 1, grouped: input.action === 'hotel_offers' ? false : true, hotels: [hotel] } }) });
     }
     if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
@@ -1093,7 +1114,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.hotel-best-offer').count(), 0, 'card does not repeat the representative tour price');
     assert.equal(await card.locator('.hotel-price').count(), 1, 'collapsed card exposes one authoritative total');
     assert.match(await card.locator('.hotel-decision-rating').innerText(), /Рейтинг 5/, 'hotel score is not confused with star category');
-    assert.match(await page.locator('#resultSummary').innerText(), /цены указаны за весь тур/, 'result summary explains price scope');
+    assert.match(await page.locator('#resultSummary').innerText(), /цены из текущего поиска/, 'result summary does not promise universal final-price readiness');
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'collapsed multi-offer hotel has no concrete row, Select, or Compare');
     assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapsed multi-offer hotel has one hotel-level summary owner');
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
