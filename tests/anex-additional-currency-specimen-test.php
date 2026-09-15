@@ -1,50 +1,84 @@
 <?php
 declare(strict_types=1);
-$path=__DIR__.'/../scripts/diagnostics/anex_additional_prices_specimen.php';
-$source=file_get_contents($path);
-if(!is_string($source)||!str_starts_with($source,'<?php'))throw new RuntimeException('specimen source');
-$source=substr($source,5);
-$needle="if(!defined('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY')){";
-if(substr_count($source,$needle)!==1)throw new RuntimeException('specimen guard');
-$source=str_replace($needle,'if(false){',$source);
-eval($source);
-function additional_check(bool $ok): void { if (!$ok) throw new RuntimeException('additional regression'); }
-function additional_reject(callable $call, string $expected): void { try{$call();}catch(RuntimeException $e){additional_check($e->getMessage()===$expected);return;}throw new RuntimeException('expected rejection'); }
-additional_check(ANEX_ADDITIONAL_GREEN_GOLD_OPERATION==='anex-additional-green-gold-20260912-v7');
-additional_check(ANEX_ADDITIONAL_GREEN_GOLD_TOUR===2637&&ANEX_ADDITIONAL_GREEN_GOLD_DATE==='2026-10-05');
-additional_check(ANEX_ADDITIONAL_GREEN_GOLD_NIGHTS===7&&ANEX_ADDITIONAL_GREEN_GOLD_CURRENCY===3);
-$criteria=['tour'=>2637,'dateBeg'=>'2026-10-05','nights'=>7,'currency'=>3,'page'=>1,'pageSize'=>10];
-additional_check(anytour_anex_additional_query($criteria)==='page=1&pageSize=10&tour=2637&dateBeg=2026-10-05&nights=7&currency=3');
-$bad=$criteria;$bad['tour']=778;additional_reject(static fn()=>anytour_anex_additional_query($bad),'ANEX_ADDITIONAL_CRITERIA');
-$payload=['data'=>[ ['cashrate'=>104.23,'currency'=>3,'dateBeg'=>'2026-10-05T00:00:00','nights'=>7,'price_adult'=>120,'price_chd'=>120,'price_converted_adult'=>12507.6,'price_converted_chd'=>12507.6,'tour'=>2637] ],'totalCount'=>1,'totalPages'=>1];
-$result=anytour_anex_additional_sanitize_payload($payload);
-additional_check($result['total_count']===1&&$result['total_pages']===1&&$result['retained_row_count']===1&&$result['truncated']===false);
-additional_check($result['contract']==='additional_prices_daily_envelope_v4_observed');
-additional_check($result['unit_semantics']==='passenger_category_rate_fields_observed_application_rule_unknown');
-$row=$result['rows'][0];
-additional_check($row['tour']==='2637'&&$row['currency']==='3'&&$row['date_beg']==='2026-10-05T00:00:00'&&$row['nights']===7);
-additional_check($row['price_adult']==='120'&&$row['price_child']==='120'&&$row['cashrate']==='104.23');
-additional_check($row['price_converted_adult']==='12507.6'&&$row['price_converted_child']==='12507.6');
-$verified=anytour_anex_additional_validate_context($result,$criteria);
-additional_check($verified['context_verified']===true&&$verified['rows']===$result['rows']);
-additional_check(anytour_anex_additional_sanitize_payload(json_encode($payload,JSON_THROW_ON_ERROR))===$result);
-$stringContext=$payload;$stringContext['data'][0]['tour']='2637';$stringContext['data'][0]['currency']='3';$stringContext['data'][0]['nights']='7';
-additional_check(anytour_anex_additional_validate_context(anytour_anex_additional_sanitize_payload($stringContext),$criteria)['context_verified']===true);
-foreach(['tour'=>778,'currency'=>4,'dateBeg'=>'2026-10-06T00:00:00','nights'=>8] as $field=>$value){
-    $mismatch=$payload;$mismatch['data'][0][$field]=$value;
-    $safe=anytour_anex_additional_sanitize_payload($mismatch);
-    additional_reject(static fn()=>anytour_anex_additional_validate_context($safe,$criteria),'ANEX_ADDITIONAL_CONTEXT');
+
+require_once __DIR__ . '/../app/integrations/anex-additional-prices-client.php';
+define('ANYTOUR_ANEX_ADDITIONAL_SPECIMEN_LIBRARY_ONLY', true);
+require_once __DIR__ . '/../scripts/diagnostics/anex_additional_prices_specimen.php';
+
+function additional_check(bool $ok): void
+{
+    if (!$ok) throw new RuntimeException('additional regression');
 }
-$midday=$payload;$midday['data'][0]['dateBeg']='2026-10-05T12:00:00';
-additional_reject(static fn()=>anytour_anex_additional_validate_context(anytour_anex_additional_sanitize_payload($midday),$criteria),'ANEX_ADDITIONAL_CONTEXT');
-$missing=$payload;unset($missing['data'][0]['dateBeg']);additional_reject(static fn()=>anytour_anex_additional_sanitize_payload($missing),'ANEX_ADDITIONAL_RESPONSE');
-additional_reject(static fn()=>anytour_anex_additional_sanitize_payload([['price_adult'=>120]]),'ANEX_ADDITIONAL_RESPONSE');
-additional_reject(static fn()=>anytour_anex_additional_sanitize_payload(['data'=>[],'totalCount'=>1,'totalPages'=>1,'extra'=>true]),'ANEX_ADDITIONAL_RESPONSE');
-additional_reject(static fn()=>anytour_anex_additional_sanitize_payload(['data'=>[['tour'=>0]],'totalCount'=>1,'totalPages'=>1]),'ANEX_ADDITIONAL_RESPONSE');
-additional_check(anytour_anex_additional_decimal('0')==='0'&&anytour_anex_additional_decimal('12507.6')==='12507.6');
-additional_check(anytour_anex_additional_decimal('-1')===null&&anytour_anex_additional_decimal('1e3')===null);
-additional_check(anytour_anex_additional_provider_id(3)==='3'&&anytour_anex_additional_provider_id('03')===null);
-additional_check(anytour_anex_additional_text('EUR',24)==='EUR'&&anytour_anex_additional_text('<x>',24)===null);
-additional_check(anytour_anex_additional_context_date('2026-10-05')==='2026-10-05'&&anytour_anex_additional_context_date('2026-10-05T00:00:00')==='2026-10-05');
-additional_check(anytour_anex_additional_context_date('2026-10-05T12:00:00')===null);
-echo "ANEX AdditionalPricesDaily request-context guards: PASS\n";
+function additional_reject(callable $call, string $expected): void
+{
+    try { $call(); } catch (RuntimeException $e) {
+        additional_check($e->getMessage() === $expected);
+        return;
+    }
+    throw new RuntimeException('expected rejection');
+}
+
+additional_check(ANEX_ADDITIONAL_SPECIMEN_OPERATION === 'anex-additional-prices-778-date-20260915-v8');
+additional_check(ANEX_ADDITIONAL_SPECIMEN_TOUR === 778);
+additional_check(ANEX_ADDITIONAL_SPECIMEN_DATE === '2026-09-27');
+additional_check(ANEX_ADDITIONAL_SPECIMEN_NIGHTS === 7);
+additional_check(ANEX_ADDITIONAL_SPECIMEN_CURRENCY === 3);
+
+$criteria = ['page'=>1,'pageSize'=>10,'tour'=>778,'dateBeg'=>'2026-09-27','nights'=>7,'currency'=>3];
+$payload = [
+    'data' => [[
+        'tour'=>778,
+        'currency'=>3,
+        'dateBeg'=>'2026-09-27T00:00:00',
+        'nights'=>7,
+        'price_adult'=>120,
+        'price_chd'=>120,
+        'cashrate'=>104.23,
+        'price_converted_adult'=>12507.6,
+        'price_converted_chd'=>12507.6,
+    ]],
+    'totalCount'=>1,
+];
+$fact = anytour_anex_additional_specimen_fact($payload, $criteria);
+additional_check($fact['state'] === 'observed');
+additional_check($fact['total_count'] === 1 && $fact['retained_row_count'] === 1 && $fact['context_verified'] === true);
+$row = $fact['rows'][0];
+additional_check($row['tour'] === 778 && $row['currency'] === 3 && $row['date_beg'] === '2026-09-27' && $row['nights'] === 7);
+additional_check($row['price_adult'] === '120' && $row['price_child'] === '120' && $row['cashrate'] === '104.23');
+additional_check($row['price_converted_adult'] === '12507.6' && $row['price_converted_child'] === '12507.6');
+additional_check($fact['money_semantics']['additional_prices_source'] === 'AdditionalPricesDaily');
+additional_check($fact['money_semantics']['supplier_program_context'] === 'authoritative_program_778_existing_evidence');
+additional_check($fact['money_semantics']['fuel_equivalence_verified'] === false);
+additional_check($fact['money_semantics']['arithmetic_applied'] === false);
+additional_check($fact['money_semantics']['empty_means_zero'] === false);
+
+$empty = anytour_anex_additional_specimen_fact(['data'=>[], 'totalCount'=>0], $criteria);
+additional_check($empty['state'] === 'empty_unknown' && $empty['retained_row_count'] === 0 && $empty['money_semantics']['empty_means_zero'] === false);
+
+foreach ([
+    'tour' => 779,
+    'currency' => 4,
+    'dateBeg' => '2026-09-28T00:00:00',
+    'nights' => 8,
+] as $field => $value) {
+    $mismatch = $payload;
+    $mismatch['data'][0][$field] = $value;
+    additional_reject(static fn() => anytour_anex_additional_specimen_fact($mismatch, $criteria), 'ANEX_ADDITIONAL_SPECIMEN_CONTEXT');
+}
+
+$midday = $payload;
+$midday['data'][0]['dateBeg'] = '2026-09-27T12:00:00';
+additional_reject(static fn() => anytour_anex_additional_specimen_fact($midday, $criteria), 'ANEX_ADDITIONAL_SPECIMEN_CONTEXT');
+additional_reject(static fn() => anytour_anex_additional_specimen_fact(['data'=>[['tour'=>778]],'totalCount'=>1], $criteria), 'ANEX_ADDITIONAL_SPECIMEN_CONTEXT');
+additional_reject(static fn() => anytour_anex_additional_specimen_fact(['data'=>'bad','totalCount'=>0], $criteria), 'ANEX_ADDITIONAL_SPECIMEN_RESPONSE');
+additional_reject(static fn() => anytour_anex_additional_specimen_fact(['data'=>[],'totalCount'=>-1], $criteria), 'ANEX_ADDITIONAL_SPECIMEN_RESPONSE');
+
+additional_check(anytour_anex_additional_specimen_decimal('0') === '0');
+additional_check(anytour_anex_additional_specimen_decimal('12507.6') === '12507.6');
+additional_check(anytour_anex_additional_specimen_decimal('-1') === null);
+additional_check(anytour_anex_additional_specimen_decimal('1e3') === null);
+additional_check(anytour_anex_additional_specimen_context_date('2026-09-27') === '2026-09-27');
+additional_check(anytour_anex_additional_specimen_context_date('2026-09-27T00:00:00') === '2026-09-27');
+additional_check(anytour_anex_additional_specimen_context_date('2026-09-27T12:00:00') === null);
+
+echo "ANEX AdditionalPricesDaily program778/date v8 evidence guards: PASS\n";
