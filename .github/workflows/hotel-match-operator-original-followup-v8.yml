@@ -29,6 +29,8 @@ jobs:
           replacements=[
             ("const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v2';", "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v8';", 1),
             ("'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'", "'17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'", 2),
+            ("$consumed=hash('sha256',mob_json($queries[0]['params']));", "$consumed='2d0fe9829779cd7535da8807ebfb5d13bd35238a38b4d7a0a2730e9e08ab1b73';", 1),
+            ("'params'=>$queries[0]['params']", "'params'=>['historical_request_sha256'=>$consumed]", 1),
             ("array_shift($queries);", "foreach($queries as &$q){$q['params']['CHECKIN_BEG']='20260929';$q['params']['CHECKIN_END']='20260929';AnyTourAndromedaClient::validatePriceParams($q['params']);}unset($q);", 1),
           ]
           for old,new,count in replacements:
@@ -71,6 +73,8 @@ jobs:
           assert len(d['queries'])==56
           assert all(q['params']['CHECKIN_BEG']=='20260929' and q['params']['CHECKIN_END']=='20260929' for q in d['queries'])
           assert d['previous_request']['replayed'] is False
+          assert d['previous_request']['request_sha256']=='2d0fe9829779cd7535da8807ebfb5d13bd35238a38b4d7a0a2730e9e08ab1b73'
+          assert d['previous_request']['params']=={'historical_request_sha256':'2d0fe9829779cd7535da8807ebfb5d13bd35238a38b4d7a0a2730e9e08ab1b73'}
           assert d['current_result_sha256']=='17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'
           PY
       - name: Persist immutable reservation before supplier access
@@ -81,7 +85,7 @@ jobs:
           root=pathlib.Path(os.environ['RUNNER_TEMP']);p=root/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
           plan=(root/'plan.json').read_bytes();d=json.loads(plan);(p/'reserved-plan.json').write_bytes(plan)
           script_sha=(root/'runtime-script-sha256').read_text().strip()
-          runtime={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'original_script_git_blob':'b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4','runtime_script_sha256':script_sha,'binding':'exact_v2_to_v8_current_v3_and_fresh_date_20260929'}
+          runtime={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'original_script_git_blob':'b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4','runtime_script_sha256':script_sha,'binding':'exact_v2_to_v8_current_v3_fresh_date_20260929_historical_v1_hash_only'}
           (p/'runtime-code.json').write_text(json.dumps(runtime,sort_keys=True)+'\n')
           r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_supplier_access','plan_sha256':hashlib.sha256(plan).hexdigest(),'runtime_script_sha256':script_sha,'max_price_calls':120,'targets':385,'operators':[5,315,342,115],'checkin':'20260929','query_count':d['query_count'],'database_writes':0,'no_replay':True}
           (p/'reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
