@@ -62,7 +62,7 @@ for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider
   const collapsed=api.toursHtml({...multi,tours:[blocked,other]});
   assert.doesNotMatch(collapsed,/нужна проверка|direct-tour/);
   const blockedRow=api.tourRow(blocked);
-  assert.match(blockedRow,/нужна проверка/);
+  assert.match(blockedRow,/(?:нужна проверка|проверим цену и рейсы)/);
   assert.doesNotMatch(blockedRow,/direct-tour/);
   const otherRow=api.tourRow(other);
   assert.match(otherRow,/data-tid="b"/);
@@ -71,7 +71,7 @@ for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider
 // Exact offer rows keep decision-critical differences, but do not repeat search-level/internal context.
 const compact=api.tourRow({...multi.tours[0],roomType:'STANDARD',placement:'DBL',adults:2,childs:1,provider:'tourvisor'});
 assert.match(compact,/<small>Номер<\/small><b>Стандарт · DBL<\/b>/);
-assert.match(compact,/<small>Источник<\/small><b>Tourvisor<\/b>/,'expanded exact offer keeps provider source distinct from tour operator');
+assert.doesNotMatch(compact,/Источник|Tourvisor/,'expanded exact offer keeps provider provenance out of customer copy');
 assert.doesNotMatch(compact,/<small>(?:Туристы|Размещение)<\/small>/,'expanded rows do not repeat search party or a second placement field');
 assert.doesNotMatch(compact,/<small>Оператор<\/small>/,'known operator does not repeat a caption beside its logo');
 assert.match(compact,/title="Туроператор: FUN&amp;SUN"/,'operator remains named in its tooltip');
@@ -111,4 +111,14 @@ const grouped={...single,andromedaExpansion:{status:'idle',count:0}};
 assert.equal(api.choiceHint(grouped),'','grouped seed does not claim that the hotel has only one tour');
 assert.match(api.toursHtml(grouped),/hotel-offers-summary/);
 assert.doesNotMatch(api.toursHtml(grouped),/class="tour-row"|data-andromeda-expand|provider-expansion-toggle/);
-console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 source_unchanged=1');
+const local={id:21477,name:'Локальный отель',country:{name:'Египет'},region:{name:'Шарм-эль-Шейх'},subRegion:{name:'Наама-Бей'},category:5,rating:4.8,detailsAvailable:true,primaryImage:'https://img.example/1.jpg',images:['https://img.example/1.jpg','https://img.example/2.jpg'],description:'<b>Проверенное описание</b>',address:'Наама-Бей',infrastructure:{beach:'Песчаный пляж',territory:'Бассейн'},services:{free:'Wi-Fi'},meals:{description:'Всё включено'},roomTypes:'Стандарт, семейный'};
+api.hotelDetailsCache.set('21477',local);
+const localHtml=api.hotelMainHtml({id:21477,name:'Supplier name',picturelink:'https://supplier.example/photo.jpg',tours:[multi.tours[0]]});
+assert.match(localHtml,/Локальный отель/,'local hotel name owns the hotel card');
+assert.match(localHtml,/hotel-gallery-thumb/,'local gallery is available before offer selection');
+assert.match(localHtml,/Показать фото 2/,'gallery keeps a named keyboard action');
+assert.match(localHtml,/Об отеле/,'trusted local details have one native disclosure');
+assert.match(localHtml,/&lt;b&gt;Проверенное описание&lt;\/b&gt;/,'local description remains escaped text');
+assert.match(localHtml,/Песчаный пляж · Бассейн[\s\S]*Wi-Fi[\s\S]*Всё включено/,'object-shaped local characteristics are presented instead of discarded');
+assert.doesNotMatch(localHtml,/<b>Проверенное описание<\/b>/,'local description cannot inject markup');
+console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 local_gallery_details=1 source_unchanged=1');

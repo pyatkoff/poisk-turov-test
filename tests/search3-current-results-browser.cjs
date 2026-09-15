@@ -484,7 +484,7 @@ async function checkMealFacet(page, width, previous) {
     assert.deepEqual(supplierRequests, [], 'local filtering issues no supplier or lead requests');
   } finally { page.off('request', record); }
 }
-async function checkAndromedaExpansion(page, width, previous, control) {
+async function checkAndromedaExpansion(page, width, previous, control, hotelDetails) {
   let offerComposition, selectedQuote;
   const tvHotel = {
     id: 21477,
@@ -520,8 +520,20 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await card.locator('.tour-more-toggle').count(), 1, 'a single grouped provider seed uses the same hotel offer disclosure');
     assert.equal(await card.locator('.tour-more-toggle').getAttribute('aria-expanded'), 'false', 'the grouped seed begins at hotel level');
     assert.equal(await card.locator('.tour-row,.direct-tour,[data-andromeda-expand]').count(), 0, 'a grouped seed does not expose a premature exact row or a separate source button');
+    await card.locator('.hotel-details').waitFor();
+    assert.deepEqual(hotelDetails.requests, ['21477'], 'one local hotel id loads its trusted details exactly once');
     assert.equal(await card.locator('.hotel-photo img').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
+    assert.equal(await card.locator('.hotel-gallery-thumb').count(), 3, 'local hotel details expose a bounded gallery in the canonical card');
+    const hotelInfo = card.locator('.hotel-details');
+    await hotelInfo.locator('summary').press('Enter');
+    assert.equal(await hotelInfo.evaluate(node => node.open), true, 'hotel description opens through the native keyboard disclosure');
+    assert.match(await hotelInfo.innerText(), /Локальное описание отеля[\s\S]*Наама-Бей[\s\S]*Открытый бассейн[\s\S]*Wi-Fi/, 'trusted local description and characteristics are available before choosing an offer');
+    assert.ok((await hotelInfo.locator('summary').boundingBox()).height >= 44, 'hotel details disclosure keeps a full touch target');
+    await card.locator('.hotel-gallery-thumb').nth(1).click();
+    assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
+    assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
+    await hotelInfo.locator('summary').press('Enter');
     await card.locator('.hotel-photo img').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-photo img'); return img && img.complete && img.naturalWidth > 0; });
     await card.locator('.hotel-photo img').evaluate(img => img.decode());
@@ -589,7 +601,8 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · DBL/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
     assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
-    assert.match(await card.locator('.provider-detail').innerText(), /Бронирование пока недоступно/);
+    assert.match(await card.locator('.provider-detail').innerText(), /Перед выбором проверим актуальную стоимость и рейсы/);
+    assert.doesNotMatch(await card.locator('.provider-detail').innerText(), /Андромед|Источник|Бронирование пока недоступно/);
     assert.deepEqual(control.requests.map(request => request.action || 'search'), ['search', 'hotel_offers', 'hotel_offers', 'offer_detail'], 'details add one explicit saved-offer request only');
     const quoteButton = card.locator('[data-andromeda-quote]').first();
     await quoteButton.waitFor();
@@ -750,10 +763,23 @@ async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
   const andromeda = { enabled: false, failSecond: false, requests: [], quoteRequests: [], held: null };
   const catalog = { recover: false, requests: [] };
+  const hotelDetails = { requests: [] };
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
-    if (url.href === 'https://catalog.example/hotel-21477.svg') return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: decodeURIComponent(picture.split(',')[1]) });
+    if (/^https:\/\/catalog\.example\/hotel-21477(?:-[23])?\.svg$/.test(url.href)) return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: decodeURIComponent(picture.split(',')[1]) });
+    if (url.pathname.endsWith('/data/hotel-details-read-v1.php')) {
+      const hotelId = url.searchParams.get('hotelId');
+      hotelDetails.requests.push(hotelId);
+      if (hotelId !== '21477') return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'Hotel not found' }) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, item: {
+        id: 21477, name: 'Movenpick Resort', country: { name: 'Египет' }, region: { name: 'Шарм-эль-Шейх' }, subRegion: { name: 'Наама-Бей' },
+        category: 4, rating: 4.7, detailsAvailable: true,
+        primaryImage: 'https://catalog.example/hotel-21477.svg', images: ['https://catalog.example/hotel-21477.svg','https://catalog.example/hotel-21477-2.svg','https://catalog.example/hotel-21477-3.svg'],
+        description: 'Локальное описание отеля без данных поставщика.', address: 'Наама-Бей, Шарм-эль-Шейх', repair: 'Реновация 2025', roomTypes: 'Стандарт, семейный номер',
+        infrastructure: [{ name: 'Открытый бассейн' }, { name: 'Ресторан' }], services: ['Wi-Fi', 'Детский клуб'], meals: [{ name: 'Всё включено' }]
+      } }) });
+    }
     if (catalog.recover && url.pathname.endsWith('/data/departures-v1.php')) {
       catalog.requests.push('departures');
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: [{ id: 1, russianName: 'Москва' }] }) });
@@ -1093,7 +1119,7 @@ async function run(browser, width, previous) {
     assert.equal(await primary.locator('.tour-meta>small').innerText(), 'Дата вылета · 9 ноч.', 'departure context states the duration beside the date');
     assert.equal(await primary.locator('.tour-meta>strong').innerText(), '12.09.2026', 'compact facts format the actual departure date for display');
     assert.deepEqual(await primary.locator('.tour-facts .tour-fact').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Питание', 'Всё включено'], ['Номер', 'Стандарт · территория · DBL']], 'primary comparison facts use shared Russian display labels without changing the offer');
-    assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact:not(.tour-operator)').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [['Источник', 'Tourvisor']], 'source remains a distinct exact-offer fact');
+    assert.deepEqual(await primary.locator('.tour-secondary-facts .tour-fact:not(.tour-operator)').evaluateAll(nodes => nodes.map(node => [node.querySelector('small').textContent, node.querySelector('b').textContent])), [], 'provider provenance stays out of customer-facing offer facts');
     assert.equal(await primary.locator('.hotel-operator').innerText(), 'TEST OPERATOR', 'unknown operator keeps its visible name');
     assert.equal(await primary.locator('.hotel-operator').getAttribute('title'), 'Туроператор: TEST OPERATOR', 'tooltip explains the operator identity');
     assert.equal(await primary.locator('.tour-operator>small').count(), 0, 'redundant operator caption is removed');
@@ -1257,7 +1283,7 @@ async function run(browser, width, previous) {
       minimumReadiness = await checkMinimumReadiness(page, width, previous);
       await checkExactOfferParty(page, width, previous);
       expandedDensity = await checkExpandedDensity(page, width, previous);
-      offerComposition = await checkAndromedaExpansion(page, width, previous, andromeda);
+      offerComposition = await checkAndromedaExpansion(page, width, previous, andromeda, hotelDetails);
       await require('./search3-hotel-operator-card-browser.cjs')(page, width, output);
     }
     assert.deepEqual(errors, [], 'no runtime errors');
