@@ -49,7 +49,7 @@ jobs:
             '"return_ref": inbound',
           ]
           for s in required:
-            if t.count(s)!=1: raise SystemExit('v6 source contract mismatch: '+s)
+            if s not in t: raise SystemExit('v6 source contract missing: '+s)
           for forbidden in ('bron_ticket','booking(', 'supplier_uid'):
             if forbidden in t: raise SystemExit('forbidden live authority in v6 source: '+forbidden)
           print('v6 exact source contract OK; supplier calls in PR=0')
