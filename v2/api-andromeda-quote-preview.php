@@ -8,7 +8,6 @@ require_once $quoteApp . '/andromeda-selected-offer.php';
 require_once $quoteApp . '/andromeda-claim-actions.php';
 require_once $quoteApp . '/andromeda-selected-quote.php';
 require_once $quoteApp . '/andromeda-quote-attempt-state.php';
-require_once $quoteApp . '/andromeda-flight-selection.php';
 
 /** Resolve a retained offer privately, under the same search/session authority as offer_detail. */
 function anytour_andromeda_quote_resolve(array $request, PDO $pdo, array $saved, array $config, string $session, array $listingPrices = []): array
