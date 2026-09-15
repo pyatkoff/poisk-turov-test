@@ -31,6 +31,10 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/andromeda-flight-selection-runtime-publish.yml')
           text = p.read_text()
+          marker = '\n  publish:\n'
+          if text.count(marker) != 1:
+              raise SystemExit('publish job boundary missing or duplicated')
+          live = text.split(marker, 1)[1]
           required = [
               "github.event.issue.number == 2530",
               "github.event.comment.body == '/publish-andromeda-flight-selection-runtime-1717-v1'",
@@ -44,14 +48,14 @@ jobs:
               "RUNTIME_SOURCE_SHA: 812f838191d138f391059aaa6d0d3f77ce8c7d27",
           ]
           for needle in required:
-              if text.count(needle) != 1:
+              if live.count(needle) != 1:
                   raise SystemExit('publication control pin missing or duplicated: ' + needle)
           trigger = text.split('\npermissions:', 1)[0]
           if '\n  workflow_dispatch:' in trigger or '\n  push:' in trigger:
               raise SystemExit('manual-dispatch/push trigger is not allowed')
           forbidden = ['/run-andromeda-', 'bron_ticket', 'booking_calls=1']
           for needle in forbidden:
-              if needle in text:
+              if live.count(needle):
                   raise SystemExit('supplier/booking control leaked into publication workflow: ' + needle)
           print('Andromeda flight-selection publication control pins verified; PR supplier calls=0')
           PY
