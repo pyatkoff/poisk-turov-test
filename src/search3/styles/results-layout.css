@@ -42,6 +42,14 @@ margin:0;background:#f5f7fb;color:#17233b;
 & :is(.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-rating-filter,.search3-sea-filter){flex:1 1 185px}
 & :is(.search3-hotel-filter,.search3-budget-filter,.search3-category-filter,.search3-meal-filter,.search3-operator-filter,.search3-region-filter,.search3-rating-filter,.search3-sea-filter)[hidden]{display:none}
 & :is(.search3-category-filter,.search3-meal-filter){display:grid;gap:8px}
+& .search3-budget-filter{display:grid;gap:6px;color:#526078;font-size:13px;font-weight:600}
+& .search3-budget-range{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+& .search3-budget-range>label{display:grid;gap:5px;font-size:12px}
+& .search3-budget-range input{font-variant-numeric:tabular-nums}
+& .search3-budget-filter>small{font-size:12px;line-height:1.4;font-weight:400;color:#8a3030}
+& .search3-budget-filter>small:empty{display:none}
+& .search3-mobile-filter-panel__footer{padding:0 12px 12px}
+& .search3-filter-results{width:100%;min-height:46px;font-weight:700}
 & .search3-filter-presets{display:flex;flex-wrap:wrap;gap:6px}
 & .search3-filter-presets[hidden]{display:none}
 & .search3-filter-presets>button{flex:1 1 auto;min-height:44px;padding:7px 9px;border-color:#c4cfeb;border-radius:9px;color:#2743cb;font-size:13px;font-weight:600}
