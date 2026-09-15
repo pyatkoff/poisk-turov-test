@@ -1,18 +1,15 @@
-name: MATCH provider direct local geography apply v1
+name: MATCH operator current anchor review v4
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-provider-direct-local-geo-apply-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-operator-current-anchor-review-1971-v4, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-provider-direct-local-geo-apply-1971-20260915-v1
-  REVIEW_OPERATION_ID: hotel-match-provider-direct-local-geo-review-1971-20260915-v1
-  REVIEW_RESULT_SHA256: 21cba84edaa85375cffb527eaedb28173922e67e8495cf29687ef2aeedef2a5e
-  PLAN_COUNT: '58'
+  OPERATION_ID: hotel-match-operator-current-anchor-review-1971-20260915-v4
 jobs:
-  apply:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 36
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 37
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -21,24 +18,13 @@ jobs:
       - name: Exact source tests and guards
         run: |
           set -euo pipefail
-          files=(
-            scripts/diagnostics/hotel_match_live_residual_current_review.php
-            scripts/diagnostics/hotel_match_state_country_consensus.php
-            scripts/diagnostics/hotel_match_state_accepted_country_consensus.php
-            scripts/diagnostics/hotel_match_provider_geo_consensus_review.php
-            scripts/diagnostics/hotel_match_provider_geo_label_consensus_review.php
-            scripts/diagnostics/hotel_match_provider_direct_local_geo_review.php
-            scripts/diagnostics/hotel_match_accepted_name_bridge_review.php
-            scripts/diagnostics/hotel_match_provider_geo_consensus_apply.php
-            scripts/diagnostics/hotel_match_provider_direct_local_geo_apply.php
-            tests/hotel_match_provider_direct_local_geo_apply_test.php
-          )
+          files=(scripts/diagnostics/hotel_match_operator_pending_local_bridge.php scripts/diagnostics/hotel_match_operator_current_anchor_review.php scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php tests/hotel_match_operator_current_anchor_review_v4_test.php)
           for f in "${files[@]}"; do php -l "$f"; done
-          php tests/hotel_match_provider_direct_local_geo_apply_test.php
-          test "$(git hash-object scripts/diagnostics/hotel_match_provider_direct_local_geo_apply.php)" = d34172960fbee094256fab7ecbac1e7d4222a1ba
-          test "$(git hash-object tests/hotel_match_provider_direct_local_geo_apply_test.php)" = 6ae60bd12e95f06a15f95bf9a303b732fb487ce1
-          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_provider_direct_local_geo_apply.php
-          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_provider_direct_local_geo_apply.php|awk '{print $1}')" >> "$GITHUB_ENV"
+          php tests/hotel_match_operator_current_anchor_review_v4_test.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php)" = cf8fc15ab42b4d4fcc6f8562e459288701f0d6a1
+          test "$(git hash-object tests/hotel_match_operator_current_anchor_review_v4_test.php)" = e96017861b48afef8a69350e4e8322bb78884b48
+          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php
+          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_operator_current_anchor_review_v4.php|awk '{print $1}')" >> "$GITHUB_ENV"
       - name: Reserve before SSH or DB
         run: |
           set -euo pipefail
@@ -46,20 +32,15 @@ jobs:
           python3 - <<'PY'
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          p.write_text(json.dumps({
-            'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],
-            'review_operation_id':os.environ['REVIEW_OPERATION_ID'],'review_result_sha256':os.environ['REVIEW_RESULT_SHA256'],'planned_rows':int(os.environ['PLAN_COUNT']),
-            'state':'reserved_before_db_access','mode':'server_current_guarded_provider_direct_local_geo_apply',
-            'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])
-          },sort_keys=True,indent=2)+'\n')
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'state':'reserved_before_db_access','mode':'server_current_read_only_operator_315_342_anchor_recheck','supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'mapping_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-provider-direct-local-geo-apply-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-provider-direct-local-geo-apply-1971-20260915-v1/
+          name: match-operator-current-anchor-review-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-operator-current-anchor-review-1971-20260915-v4/
           if-no-files-found: error
           retention-days: 90
-      - name: Server CURRENT guarded direct local geography apply
+      - name: Server CURRENT operator anchor review
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -72,13 +53,11 @@ jobs:
           chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
           ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$U@$H"
           trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
-          review="\$HOME/.anytoour-match/operations/$REVIEW_OPERATION_ID/result.json"; remote="\$HOME/.anytoour-match/operations/$OPERATION_ID"
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; test -f $review; printf '%s  %s\n' '$REVIEW_RESULT_SHA256' $review | sha256sum -c -; umask 077; p=$remote; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
-          for f in hotel_match_live_residual_current_review.php hotel_match_state_country_consensus.php hotel_match_state_accepted_country_consensus.php hotel_match_provider_geo_consensus_review.php hotel_match_provider_geo_label_consensus_review.php hotel_match_provider_direct_local_geo_review.php hotel_match_accepted_name_bridge_review.php hotel_match_provider_geo_consensus_apply.php hotel_match_provider_direct_local_geo_apply.php; do
-            ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"
-          done
+          remote="\$HOME/.anytoour-match/operations/$OPERATION_ID"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          for f in hotel_match_operator_pending_local_bridge.php hotel_match_operator_current_anchor_review.php hotel_match_operator_current_anchor_review_v4.php; do ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"; done
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_provider_direct_local_geo_apply.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_operator_current_anchor_review_v4.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C $remote -czf - ." > "$out/server-operation.tgz"
           set -e
@@ -88,17 +67,17 @@ jobs:
           python3 - <<'PY'
           import hashlib,json,os,pathlib
           root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
-          raw=s.joinpath('result.json').read_bytes(); r=json.loads(raw); rec=json.loads(s.joinpath('receipt.json').read_text()); d=hashlib.sha256(raw).hexdigest(); planned=int(os.environ['PLAN_COUNT'])
-          written=int(r.get('written',-1)); holds=int(r.get('holds_count',-1)); zero=['supplier_calls','tourvisor_calls','external_calls','booking_calls','operator_5_writes']
-          ok=(r.get('state')=='completed_committed' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('review_result_sha256')==os.environ['REVIEW_RESULT_SHA256'] and int(r.get('planned',-1))==planned and written>=0 and holds>=0 and written+holds==planned and int(r.get('mapping_writes',-1))==written and len(r.get('post_commit_readback') or [])==written and all(int(r.get(k,-1))==0 for k in zero) and rec.get('result_sha256')==d and rec.get('readback_verified') is True and int(rec.get('post_commit_rows',-1))==written)
-          gate={'verified':ok,'planned':planned,'validated':r.get('validated'),'written':written,'holds_count':holds,'written_by_rule':r.get('written_by_rule'),'coverage_before':r.get('coverage_before'),'coverage_after':r.get('coverage_after'),'result_sha256':d}
+          raw=s.joinpath('result.json').read_bytes(); r=json.loads(raw); rec=json.loads(s.joinpath('receipt.json').read_text()); d=hashlib.sha256(raw).hexdigest()
+          zero=['supplier_calls','tourvisor_calls','external_calls','booking_calls','db_writes','mapping_writes','operator_5_writes']
+          ok=(r.get('state')=='completed_read_only' and r.get('operation_id')==os.environ['OPERATION_ID'] and int(r.get('safe_count',-1))>=0 and int(r.get('safe_count',-1))+int(r.get('holds_count',-1))==int(r.get('examined',-2)) and all(int(r.get(k,-1))==0 for k in zero) and rec.get('result_sha256')==d and rec.get('readback_verified') is True)
+          gate={'verified':ok,'examined':r.get('examined'),'safe_count':r.get('safe_count'),'safe_by_operator':r.get('safe_by_operator'),'holds_count':r.get('holds_count'),'hold_reasons':r.get('hold_reasons'),'result_sha256':d}
           root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
           if not ok: raise SystemExit(5)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-provider-direct-local-geo-apply-v1-result
-          path: ${{ runner.temp }}/hotel-match-provider-direct-local-geo-apply-1971-20260915-v1/
+          name: match-operator-current-anchor-review-v4-result
+          path: ${{ runner.temp }}/hotel-match-operator-current-anchor-review-1971-20260915-v4/
           if-no-files-found: warn
           retention-days: 90
