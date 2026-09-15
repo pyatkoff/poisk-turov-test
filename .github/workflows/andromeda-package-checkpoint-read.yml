@@ -8,7 +8,7 @@ permissions:
   issues: read
   pull-requests: read
 concurrency:
-  group: ${{ (github.actor == 'pyatkoff' && github.event.sender.id == 226193297 && github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.number == 996 && !github.event.issue.pull_request && github.event.comment.body == '/inspect-andromeda-package-checkpoint-1717') && 'anytoour-andromeda-package-checkpoint-read' || format('andromeda-package-checkpoint-ignored-{0}', github.run_id) }}
+  group: ${{ (github.actor == 'pyatkoff' && github.event.sender.id == 226193297 && github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.issue.number == 2530 && !github.event.issue.pull_request && github.event.comment.body == '/inspect-andromeda-package-checkpoint-1717') && 'anytoour-andromeda-package-checkpoint-read' || format('andromeda-package-checkpoint-ignored-{0}', github.run_id) }}
   cancel-in-progress: false
 jobs:
   inspect:
@@ -16,7 +16,7 @@ jobs:
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
       github.event_name == 'issue_comment' && github.event.action == 'created' &&
-      github.event.issue.number == 996 && !github.event.issue.pull_request &&
+      github.event.issue.number == 2530 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.body == '/inspect-andromeda-package-checkpoint-1717'
     runs-on: ubuntu-latest
@@ -41,7 +41,7 @@ jobs:
             if (process.env.GITHUB_RUN_ATTEMPT !== '1') throw new Error('Do not replay even a recovery read without reviewing its retained artifact.');
             if (context.actor !== 'pyatkoff' || context.payload.sender?.id !== owner || process.env.GITHUB_TRIGGERING_ACTOR !== 'pyatkoff') throw new Error('Owner invocation required.');
             if (context.repo.owner !== 'pyatkoff' || context.repo.repo !== 'poisk-turov-test' || context.ref !== 'refs/heads/main') throw new Error('Repository/ref mismatch.');
-            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 996 ||
+            if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' || context.payload.issue?.number !== 2530 ||
                 context.payload.issue?.pull_request || context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) throw new Error('Exact owner recovery-read command required.');
             const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review the control before reading.');
