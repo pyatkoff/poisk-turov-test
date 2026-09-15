@@ -80,7 +80,7 @@ async function checkLargeList(page,width){
   assert.equal(await list.locator('input[name=v2flight]').count(),89,'all supplier choices retained');
   assert.equal(await list.locator('input:visible').count(),1,'large list initially shows the selected flight');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
-  assert.match(await toggle.textContent(),/89/,'disclosure announces the total');
+  assert.match(await toggle.textContent(),/88/,'disclosure announces the exact alternative count');
   assert.ok((await toggle.boundingBox()).height>=44,'disclosure has a touch target');
   const collapsedHeight=(await root.locator('.tour-flights').boundingBox()).height;
   assert.ok(collapsedHeight<1600,'large-list closed height does not grow with89 alternatives');
@@ -156,7 +156,8 @@ async function checkOfferJourney(page,width){
       await card.locator('.direct-tour[data-tid="'+id+'"]').click();
       await root.locator('.search3-flight-continue button').waitFor();
       assert.equal(await page.evaluate(()=>window.V2TourController.currentTour.id),id,'selected identity matches the clicked complete offer');
-      assert.equal(await root.locator('.facts>div').filter({hasText:'Номер'}).locator('b').innerText(),room,'room comes from the selected offer');
+      const expectedRoom=await page.evaluate(value=>window.V2Results.roomLabel({roomType:value}),room);
+      assert.equal(await root.locator('.facts>div').filter({hasText:'Номер'}).locator('b').innerText(),expectedRoom,'room comes from the selected offer through the shared display label');
       assert.equal(await root.locator('.facts>div').filter({hasText:'Питание'}).locator('b').innerText(),'Всё включено','meal comes from the same selected offer');
       assert.equal((await root.locator('.selected-price').innerText()).replace(/\D/g,''),String(price),'selected price matches the same offer');
       await root.locator('.search3-flight-continue button').click();
@@ -326,17 +327,25 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
       assert.equal(await page.locator('#selectedTour .selected-price-confidence').count(),0,'legacy price-confidence note is not constructed');
       assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]').count(),6,'every flight radio remains available');
-      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),6,'every flight radio remains visible');
+      const flightToggle=page.locator('#selectedTour .search3-flight-toggle');
+      assert.equal(await flightToggle.count(),1,'multiple flights use one canonical disclosure');
+      assert.equal(await flightToggle.getAttribute('aria-expanded'),'false','alternative flights start collapsed');
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),1,'only the selected exact flight starts visible');
       assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'selected flight exposes both directions');
       assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'unselected flight details stay compact');
       assert.equal(await page.locator('#selectedTour .selected-lead-cta:visible').count(),0,'duplicate top lead CTA is hidden in Search3');
       assert.equal(await page.locator('#selectedTour .search3-flight-continue button:visible').count(),1,'one visible Search3 handoff CTA remains');
+      await flightToggle.click();
+      await page.waitForFunction(()=>document.querySelector('#selectedTour .search3-flight-toggle')?.getAttribute('aria-expanded')==='true');
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),6,'disclosure exposes every original flight radio');
       await page.locator('#selectedTour .flight-variant').nth(1).locator('input[name="v2flight"]').click();
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="1"]')?.classList.contains('is-selected'));
       assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'radio switch expands the new selection');
       assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'radio switch collapses the previous selection');
       await page.locator('#selectedTour .flight-variant').first().locator('input[name="v2flight"]').click();
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="0"]')?.classList.contains('is-selected'));
+      await flightToggle.click();
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),1,'collapse returns to the selected exact flight');
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
@@ -379,7 +388,16 @@ async function run(browser, width, previous) {
         // Card/disclosure/optional-field wrappers are intentionally removed. Do
         // not pretend their old pixel tree is the new design contract: retain
         // exact facts, prices, lead fields/required flags and stage transitions.
-        if(JSON.stringify(a.contract)!==JSON.stringify(b.contract)) evidence.differences.push({width,phase,before:a.contract,after:b.contract});
+        const beforeContract=JSON.parse(JSON.stringify(a.contract)),afterContract=JSON.parse(JSON.stringify(b.contract));
+        const beforeRoom=beforeContract.facts.find(fact=>fact[0]==='Номер'),afterRoom=afterContract.facts.find(fact=>fact[0]==='Номер');
+        if(!beforeRoom||!afterRoom||beforeRoom[1]!=='STANDARD LAND VIEW'||afterRoom[1]!=='Стандарт · территория') {
+          evidence.differences.push({width,phase,error:'reviewed room display changed outside the exact alias contract',beforeRoom,afterRoom});
+        } else afterRoom[1]=beforeRoom[1];
+        const beforeFuel=beforeContract.facts.find(fact=>fact[0]==='Топливный сбор'),afterFuel=afterContract.facts.find(fact=>fact[0]==='Топливный сбор');
+        if(!beforeFuel||!afterFuel||beforeFuel[1]!=='Уточняется по рейсу'||afterFuel[1]!=='уточняется') {
+          evidence.differences.push({width,phase,error:'reviewed unknown-fuel display changed outside its exact contract',beforeFuel,afterFuel});
+        } else afterFuel[1]=beforeFuel[1];
+        if(JSON.stringify(beforeContract)!==JSON.stringify(afterContract)) evidence.differences.push({width,phase,before:a.contract,after:b.contract});
         if(b.rootWidth<=0||b.rootWidth>width+2) evidence.differences.push({width,phase,error:'selected content is not bounded and visible'});
         if(b.overflow) evidence.differences.push({width,phase,error:'horizontal overflow'});
       }

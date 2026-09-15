@@ -60,7 +60,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     document: { readyState: 'loading', addEventListener() {}, querySelector() { return null; } }
   });
   const results = rendererWindow.V2Results;
-  const tour = { id: 'meal-shape-check', price: 125000, meal: { id: 7, fullName: 'All Inclusive' } };
+  const tour = { id: 'meal-shape-check', price: 125000, meal: { id: 7, fullName: 'All Inclusive' }, roomType: 'STANDARD LAND VIEW' };
   assert.equal(typeof results.mealIdentity, 'function', 'renderer exposes one canonical meal identity for summary and result facets');
   assert.equal(JSON.stringify([
     results.mealIdentity({ meal: { name: 'AI', fullName: 'Всё включено' } }),
@@ -97,6 +97,14 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     'supplier fullName-only meal appears in the tour facts');
   assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'Всё включено',
     'representative tour context uses the same meal normalization');
+  assert.equal(JSON.stringify(results.roomIdentity(tour)), JSON.stringify({ key: 'room:standard-land-view', label: 'Стандарт · территория' }),
+    'one reviewed room alias has a stable customer-facing identity');
+  assert.equal(results.roomLabel({ roomType: 'Standard room' }), 'Стандарт');
+  assert.equal(results.roomLabel({ roomType: 'FAMILY SUITE WITH TWO BEDROOMS AND SIDE SEA VIEW' }), 'Семейный люкс · 2 спальни · боковой вид на море');
+  assert.equal(results.roomLabel({ roomType: 'EXECUTIVE SEA VIEW WITH BALCONY' }), 'EXECUTIVE SEA VIEW WITH BALCONY',
+    'unreviewed supplier room text remains verbatim');
+  assert.match(results.tourRow(tour), /<small>Номер<\/small><b>Стандарт · территория<\/b>/,
+    'result facts use the shared room display label');
   for (const meal of ['Всё включено', { russianName: 'Всё включено', fullName: 'All Inclusive' },
     { fullRussianName: 'Всё включено', fullName: 'All Inclusive' },
     { name: 'Всё включено', fullName: 'All Inclusive' }]) {
@@ -194,7 +202,9 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     assert.equal(results.priceContext({ price: sample.price, tours: [sample] }), item.label);
     const current = await selectedMeal(sample), standalone = await selectedMeal(sample, false);
     assert.ok(current.html.includes('<span>Питание</span><b>' + (item.label || '—') + '</b>'), 'selected fact uses the same visible label');
+    assert.ok(current.html.includes('<span>Номер</span><b>Стандарт · территория</b>'), 'selected facts use the same room display label');
     assert.equal(current.payload.meal, item.payload, 'existing lead meal value remains unchanged');
+    assert.equal(current.payload.roomType, tour.roomType, 'existing lead room value remains unchanged');
     assert.deepEqual(current.payload, standalone.payload, 'display helper does not change any lead field');
     assert.equal(current.payload.price, tour.price, 'display normalization preserves price');
     assert.equal(current.payload.tourId, tour.id, 'display normalization preserves selected identity');
@@ -206,5 +216,10 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   assert.doesNotMatch(escaped.html, /<img/);
   assert.ok(results.tourRow(unsafe).includes('&lt;img src=x onerror=&quot;bad()&quot;&gt;'), 'expanded supplier label is escaped in result facts');
   assert.equal(escaped.payload.meal, 'RO', 'unsafe display label never enters the lead mapping');
-  console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1 renderer_full_name=1 shared_display=1 selected_display=1 payload_unchanged=1');
+  const unsafeRoom = Object.freeze({ ...tour, roomType: '<img src=x onerror="bad()">' });
+  const escapedRoom = await selectedMeal(unsafeRoom);
+  assert.ok(escapedRoom.html.includes('&lt;img src=x onerror=&quot;bad()&quot;&gt;'), 'unknown room display remains escaped');
+  assert.doesNotMatch(escapedRoom.html, /<img/);
+  assert.equal(escapedRoom.payload.roomType, unsafeRoom.roomType, 'escaped display never changes the raw lead room value');
+  console.log('SEARCH3_MEAL_OWNER_OK catalog=1 url_restore=1 reset_preservation=1 renderer_full_name=1 shared_display=1 selected_display=1 room_display=1 payload_unchanged=1');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -272,7 +272,7 @@ async function checkJourney(browser, width) {
     assert.equal(await shortlist.locator('.search3-shortlist__common .search3-shortlist-item__facts>div').count(), 6, 'six identical displayed facts move to one shared group');
     const offerFacts = shortlist.locator('.search3-shortlist-item .search3-shortlist-item__facts');
     assert.deepEqual(await offerFacts.evaluateAll(nodes => nodes.map(node => node.children.length)), [1, 1, 1], 'each offer keeps only its differing room fact');
-    assert.deepEqual(await offerFacts.locator('dd').allTextContents(), ['STANDARD', 'FAMILY', 'DELUXE'], 'different exact room facts remain attached to their offers');
+    assert.deepEqual(await offerFacts.locator('dd').allTextContents(), ['Стандарт', 'Семейный', 'Делюкс'], 'different exact room facts retain their offer identity through the shared display labels');
     assert.equal(await shortlist.locator('.search3-shortlist-item__price').count(), 3, 'historical price remains per offer in differences view');
     assert.equal(await shortlist.locator('.search3-shortlist-item__actions').count(), 3, 'exact actions remain per offer in differences view');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false, 'differences view creates no horizontal overflow');
@@ -283,8 +283,8 @@ async function checkJourney(browser, width) {
     assert.deepEqual(await offerFacts.evaluateAll(nodes => nodes.map(node => node.children.length)), [7, 7, 7], 'one action restores every exact condition per offer');
 
     const snapshots = await shortlist.locator('.search3-shortlist-item').evaluateAll(nodes => nodes.map(node => ({ offerId: node.dataset.offerId, text: node.textContent.replace(/\s+/g, ' ').trim() })));
-    assert.match(snapshots[0].text, /STANDARD/); assert.match(snapshots[0].text, /Всё включено/); assert.match(snapshots[0].text.replace(/\s/g, ''), /120000₽/);
-    assert.match(snapshots[1].text, /FAMILY/); assert.match(snapshots[1].text, /Всё включено/); assert.match(snapshots[1].text.replace(/\s/g, ''), /125000₽/);
+    assert.match(snapshots[0].text, /Стандарт/); assert.match(snapshots[0].text, /Всё включено/); assert.match(snapshots[0].text.replace(/\s/g, ''), /120000₽/);
+    assert.match(snapshots[1].text, /Семейный/); assert.match(snapshots[1].text, /Всё включено/); assert.match(snapshots[1].text.replace(/\s/g, ''), /125000₽/);
     assert.doesNotMatch(snapshots.slice(0, 2).map(item => item.text).join(' '), /Без питания|90000/, 'excluded RO snapshot is never synthesized into comparison');
     assert.match(compact(await shortlist.innerText()), /сохран|историч/i, 'saved price is labelled as a historical snapshot');
     const storedItems = await page.evaluate(() => window.Search3Shortlist.items());
@@ -359,7 +359,7 @@ async function checkJourney(browser, width) {
     await choose.focus(); await choose.press('Enter');
     const selected = page.locator('#selectedTour');
     await selected.locator('.search3-flight-continue button').waitFor();
-    assert.equal(await selected.locator('.facts>div').filter({ hasText: 'Номер' }).locator('b').innerText(), 'STANDARD');
+    assert.equal(await selected.locator('.facts>div').filter({ hasText: 'Номер' }).locator('b').innerText(), 'Стандарт');
     assert.equal((await selected.locator('.selected-price').innerText()).replace(/\D/g, ''), '120000', 'selection rechecks and uses the exact current offer price');
     assert.deepEqual(await page.evaluate(() => window.__shortlistCalls), [['tour', 'offer-standard', 731], ['flights', 'offer-standard', 731]], 'shortlist selection uses only the existing detail/flights path');
     await selected.locator(':scope > .back-results').click();
@@ -511,9 +511,9 @@ async function checkSearchRecovery(browser, width) {
 async function checkDisplayIdentity(browser, width) {
   const { context, page, errors, posts } = await openPage(browser, width);
   const aliases = [
-    { ...standard, id: 'alias-a', date: '2026-09-12', meal: { name: 'AI' }, operator: 'ANEX TOUR' },
-    { ...standard, id: 'alias-b', price: 125000, date: '12.09.2026', meal: { fullName: 'Всё включено' }, operator: 'Анекс' },
-    { ...standard, id: 'alias-c', price: 130000, date: '2026-09-12T04:30:00Z', meal: { fullName: 'All Inclusive' }, operator: 'ANEX' }
+    { ...standard, id: 'alias-a', date: '2026-09-12', meal: { name: 'AI' }, roomType: 'STANDARD', operator: 'ANEX TOUR' },
+    { ...standard, id: 'alias-b', price: 125000, date: '12.09.2026', meal: { fullName: 'Всё включено' }, roomType: 'Standard room', operator: 'Анекс' },
+    { ...standard, id: 'alias-c', price: 130000, date: '2026-09-12T04:30:00Z', meal: { fullName: 'All Inclusive' }, roomType: 'Стандартный номер', operator: 'ANEX' }
   ];
   const source = [{ ...hotel, price: 120000, tours: aliases }];
   const requests = [], record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
@@ -525,9 +525,10 @@ async function checkDisplayIdentity(browser, width) {
     await openComparison(page, width);
     const shortlist = page.locator('.search3-shortlist');
     const before = await page.evaluate(() => ({ records: window.Search3Shortlist.items(), stored: localStorage.getItem(window.Search3Shortlist.storageKey) }));
-    assert.deepEqual(before.records.map(item => [item.date, item.meal, item.operator]), aliases.map(item => [item.date, item.meal.fullName || item.meal.name, item.operator]), 'saved snapshots retain original supplier labels');
+    assert.deepEqual(before.records.map(item => [item.date, item.meal, item.room, item.operator]), aliases.map(item => [item.date, item.meal.fullName || item.meal.name, item.roomType, item.operator]), 'saved snapshots retain original supplier labels');
     assert.equal(await shortlist.locator('.search3-shortlist__differences').innerText(), 'Различаются: цена при сохранении.', 'equivalent names and displayed dates do not create false differences');
     assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts > div').filter({ has: page.locator('dt', { hasText: /^Питание$/ }) }).locator('dd').allTextContents(), ['Всё включено', 'Всё включено', 'Всё включено'], 'comparison displays one Russian meal label while saved originals remain intact');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts > div').filter({ has: page.locator('dt', { hasText: /^Номер$/ }) }).locator('dd').allTextContents(), ['Стандарт', 'Стандарт', 'Стандарт'], 'comparison displays one reviewed Russian room label while saved originals remain intact');
     assert.equal(await shortlist.locator('dt').evaluateAll(nodes => nodes.some(node => node.textContent.includes('отличается'))), false, 'full view does not incorrectly mark equivalent facts');
     const toggle = shortlist.locator('.search3-shortlist-view-toggle');
     await toggle.focus(); await toggle.press('Enter');
