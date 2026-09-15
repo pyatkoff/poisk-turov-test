@@ -11,6 +11,7 @@ on:
       - 'v2/api-andromeda-quote-preview.php'
       - 'v2/api-andromeda-search3-preview.php'
       - 'tests/andromeda-selected-quote-smoke.php'
+      - 'tests/andromeda-flight-selection-continuation-smoke.php'
       - 'tests/andromeda-price-observation-smoke.php'
       - 'tests/andromeda-quote-attempt-state-test.php'
       - '.github/workflows/andromeda-search3-quote-check.yml'
@@ -35,6 +36,7 @@ jobs:
           php -l app/integrations/andromeda-quote-attempt-state.php
           php -l v2/api-andromeda-quote-preview.php
           php tests/andromeda-selected-quote-smoke.php
+          php tests/andromeda-flight-selection-continuation-smoke.php
           php tests/andromeda-price-observation-smoke.php
           php tests/andromeda-quote-attempt-state-test.php
       - name: Enforce read-only boundary
