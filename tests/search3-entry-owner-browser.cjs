@@ -132,7 +132,8 @@ async function checkLocalHistory(page) {
     assert.deepEqual(states[4].state, { localHistoryFixture: true }, 'same-URL Forward reaches the local state');
     assert.equal(states[5].url, before.url);
     assert.deepEqual(states[5].state, before.state);
-    assert.deepEqual(states.map(state => state.historyPops), [1, 2, 3, 4, 5, 6], 'the single lifecycle popstate owner emits every same-query history transition once');
+    const historyPopCounts = states.map(state => state.historyPops);
+    assert.deepEqual(historyPopCounts, [1, 2, 3, 4, 5, 6], 'the single lifecycle popstate owner emits every same-query history transition once; actual=' + JSON.stringify(historyPopCounts));
     assert.deepEqual(documents, [], 'fragment and same-query navigation sends no document request');
     await page.evaluate(() => {
       const audit = window.__localHistoryAudit;
