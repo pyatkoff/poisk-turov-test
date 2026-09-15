@@ -11,7 +11,18 @@ declare(strict_types=1);
 function v2_data_db_config(): array
 {
     $privateConfig = dirname(__DIR__) . '/config.php';
-    if (is_file($privateConfig)) require_once $privateConfig;
+    if (is_file($privateConfig)) {
+        require_once $privateConfig;
+    } else {
+        // Isolated Search3 previews intentionally do not copy private config.
+        // Reuse the canonical site's private v2 config from DOCUMENT_ROOT so
+        // explicitly allowlisted read-only data endpoints can use the same DB.
+        $docRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), "/\\");
+        $sitePrivateConfig = $docRoot !== '' ? $docRoot . '/v2/config.php' : '';
+        if ($sitePrivateConfig !== '' && $sitePrivateConfig !== $privateConfig && is_file($sitePrivateConfig)) {
+            require_once $sitePrivateConfig;
+        }
+    }
 
     $env = static function (string $name): string {
         return trim((string)getenv($name));
