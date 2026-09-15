@@ -527,6 +527,7 @@ async function checkDisplayIdentity(browser, width) {
     const before = await page.evaluate(() => ({ records: window.Search3Shortlist.items(), stored: localStorage.getItem(window.Search3Shortlist.storageKey) }));
     assert.deepEqual(before.records.map(item => [item.date, item.meal, item.operator]), aliases.map(item => [item.date, item.meal.fullName || item.meal.name, item.operator]), 'saved snapshots retain original supplier labels');
     assert.equal(await shortlist.locator('.search3-shortlist__differences').innerText(), 'Различаются: цена при сохранении.', 'equivalent names and displayed dates do not create false differences');
+    assert.deepEqual(await shortlist.locator('.search3-shortlist-item__facts > div').filter({ has: page.locator('dt', { hasText: /^Питание$/ }) }).locator('dd').allTextContents(), ['Всё включено', 'Всё включено', 'Всё включено'], 'comparison displays one Russian meal label while saved originals remain intact');
     assert.equal(await shortlist.locator('dt').evaluateAll(nodes => nodes.some(node => node.textContent.includes('отличается'))), false, 'full view does not incorrectly mark equivalent facts');
     const toggle = shortlist.locator('.search3-shortlist-view-toggle');
     await toggle.focus(); await toggle.press('Enter');

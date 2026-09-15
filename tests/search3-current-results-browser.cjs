@@ -259,8 +259,8 @@ async function checkExpandedDensity(page, width, previous) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { fullName: 'Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
-    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'), sample('b-bb', 142000, { fullName: 'Breakfast' }, '2026-09-15'), sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16'), sample('b-request', 162000, { fullName: 'On Request' }, '2026-09-19')] },
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
+    { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'), sample('b-bb', 142000, { fullName: 'Bed & Breakfast' }, '2026-09-15'), sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16'), sample('b-request', 162000, { fullName: 'On Request' }, '2026-09-19')] },
     { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Room only' }, '2026-09-13'), sample('c-fb', 152000, { fullName: 'Полный пансион' }, '2026-09-17'), sample('c-sc', 157000, { fullName: 'Самообслуживание' }, '2026-09-18')] }
   ];
   const supplierRequests = [];
@@ -284,13 +284,18 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await field.isVisible(), true, 'complete loaded meals expose the local facet');
     assert.deepEqual(await select.locator('option').evaluateAll(nodes => nodes.map(node => [node.value, node.textContent])), [
       ['', 'Любое питание'], ['meal:room-only', 'Без питания'], ['meal:all-inclusive', 'Всё включено'],
-      ['meal:breakfast', 'Завтрак'], ['meal:on-request', 'По запросу'], ['meal:full-board', 'Полный пансион'],
+      ['meal:breakfast', 'Завтрак'], ['meal:soft-all-inclusive', 'Мягкое всё включено'], ['meal:on-request', 'По запросу'], ['meal:full-board', 'Полный пансион'],
       ['meal:half-board', 'Полупансион'], ['meal:self-catering', 'Самообслуживание'],
-      ['meal:ultra-all-inclusive', 'Ультра всё включено'], ['meal:soft-all-inclusive', 'Soft AI']
+      ['meal:ultra-all-inclusive', 'Ультра всё включено']
     ], 'supplier synonyms collapse while AI, UAI and Soft AI remain separate customer-facing choices');
     assert.equal(await mealPreset.isVisible(), true, 'a truthful existing all-inclusive option exposes one quick choice');
     assert.ok((await mealPreset.boundingBox()).height >= 44, 'meal quick choice keeps a full touch target');
     assert.deepEqual(await visible(), ['meal-c', 'meal-a', 'meal-b']);
+    await select.selectOption('meal:breakfast');
+    assert.deepEqual(await visible(), ['meal-a', 'meal-b'], 'code-description and English breakfast share the existing local facet');
+    assert.deepEqual(await page.locator('#results .hotel-card:visible .tour-facts').allTextContents(), ['ПитаниеЗавтракНомерSTANDARD LAND VIEW · DBL', 'ПитаниеЗавтракНомерSTANDARD LAND VIEW · DBL'], 'filtered exact offers use the same Russian meal label and preserve room/placement');
+    assert.deepEqual((await page.locator('#results .hotel-card:visible .tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))), [140000, 142000], 'display normalization preserves exact offer prices');
+    if (!previous) await page.locator('#results').screenshot({ path: path.join(output, `meal-labels-${width}.png`), animations: 'disabled' });
     await select.selectOption('meal:ultra-all-inclusive');
     assert.deepEqual(await visible(), ['meal-a'], 'UAI remains independently selectable instead of entering the AI bucket');
     assert.equal(await page.locator('#results [data-hotel-id=meal-a] .direct-tour').getAttribute('data-tid'), 'a-uai');
@@ -509,6 +514,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal((await snapshot(page)).overflow, false, width + ': completed hotel offers fit the viewport');
     if (!previous) await page.screenshot({ path: path.join(output, `andromeda-complete-${width}.png`), fullPage: true });
     assert.equal(await card.locator('.tour-row').count(), 3, 'one common disclosure replaces the grouped representative with exact provider variants and retains Tourvisor');
+    assert.ok((await card.locator('.tour-facts').allTextContents()).every(text => text.startsWith('ПитаниеВсё включено')), 'raw Andromeda AI and localized Tourvisor meal display the same existing Russian identity');
     assert.deepEqual((await card.locator('.tour-row .hotel-price').allTextContents()).map(text => Number(text.replace(/[^\d]/g, ''))).sort((a, b) => a - b), [155000, 156000, 165000], 'the unified presentation preserves each exact offer price');
     assert.equal(await card.locator('.direct-tour').count(), 1, 'only the existing Tourvisor offer remains selectable');
     assert.equal(await card.locator('.tour-secondary-facts').filter({ hasText: 'Андромеда' }).count(), 2, 'expanded provider variants remain visibly attributed');
@@ -536,7 +542,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     await card.locator('.provider-detail').filter({ hasText: 'Подтверждённый тестовый отель' }).waitFor();
     assert.equal(await detailToggle.getAttribute('aria-expanded'), 'true', 'provider detail disclosure exposes its open state');
     assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
-    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · AI · <script>номер<\/script> · DBL/);
+    assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · DBL/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
     assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
     assert.match(await card.locator('.provider-detail').innerText(), /Бронирование пока недоступно/);

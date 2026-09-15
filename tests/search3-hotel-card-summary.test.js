@@ -47,14 +47,14 @@ for(const tours of [multi.tours,[...multi.tours].reverse()]){
   assert.match(html,/hotel-offers-summary/);
   assert.match(html,/от 62(?:\s| )?400/);
   assert.match(html,/Показать варианты · 3/);
-  assert.doesNotMatch(html,/class="tour-row"|data-tid=|direct-tour|data-operator-brand=|16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|9 ноч\.|10 ноч\.|Завтраки|Всё включено|FUN&SUN|ANEX|Чартер|Регулярный рейс/);
+  assert.doesNotMatch(html,/class="tour-row"|data-tid=|direct-tour|data-operator-brand=|16\.09\.2026|17\.09\.2026|18\.09\.2026|7 ноч\.|9 ноч\.|10 ноч\.|Завтрак|Всё включено|FUN&SUN|ANEX|Чартер|Регулярный рейс/);
 }
-assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтраки');
+assert.equal(api.priceContext(multi),'16.09.2026 · 7 ноч. · Завтрак');
 // The collapsed aggregate reads the canonical hotel-level minimum and never invents tour conditions around it.
 for(const [price,label] of [[61000,'61'],[999999,'999'],[undefined,'62'],[null,'62'],[0,'62'],[-1,'62'],['unknown','62']]){
   const html=api.toursHtml({...multi,price});
   assert.match(html,new RegExp('от '+label));
-  assert.doesNotMatch(html,/data-tid=|16\.09\.2026|Завтраки|FUN&SUN|Чартер/);
+  assert.doesNotMatch(html,/data-tid=|16\.09\.2026|Завтрак|FUN&SUN|Чартер/);
 }
 // Readiness remains per concrete offer and is not projected onto the hotel aggregate.
 for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider:'andromeda'},{provider:'ANDROMEDA',selectionEnabled:true}]){
@@ -79,7 +79,7 @@ assert.match(compact,/alt="Туроператор: FUN&amp;SUN"/,'operator remai
 assert.match(compact,/<small>Перелёт<\/small><b>Чартер<\/b>/);
 assert.match(compact,/16\.09\.2026/);
 assert.match(compact,/7 ноч\./);
-assert.match(compact,/Завтраки/);
+assert.match(compact,/<b>Завтрак<\/b>/);
 assert.match(compact,/62(?:\s| )?400/);
 const incomplete={...multi.tours[0],date:'',nights:undefined,meal:'',operator:'',isCharter:undefined};
 const incompleteCollapsed=api.toursHtml({...multi,tours:[incomplete,multi.tours[1]]});

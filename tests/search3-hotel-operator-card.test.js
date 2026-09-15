@@ -15,7 +15,7 @@ const hotel=freeze({id:'hotel',name:'Проверочный отель',price:62
 const original=JSON.stringify(hotel);
 const summary=api.toursHtml(hotel);
 assert.match(summary,/hotel-offers-summary/);
-assert.doesNotMatch(summary,/class="tour-row"|data-tid=|data-operator-brand=|Итого за тур|16\.09\.2026|7 ноч\.|Завтраки|Чартер/,'collapsed multi-offer hotel must not borrow one tour conditions or actions');
+assert.doesNotMatch(summary,/class="tour-row"|data-tid=|data-operator-brand=|Итого за тур|16\.09\.2026|7 ноч\.|Завтрак|Чартер/,'collapsed multi-offer hotel must not borrow one tour conditions or actions');
 assert.equal((summary.match(/class="hotel-price"/g)||[]).length,1);
 assert.match(summary,/от 62(?:\s| )?400/);
 assert.match(summary,/Показать варианты · 2/);
@@ -25,7 +25,7 @@ for(const offer of [tour,other]){
   assert.match(row,new RegExp(' · '+offer.nights+' ноч\\.'));
   assert.ok(row.includes('data-tid="'+offer.id+'"'));
   assert.ok(row.includes(api.money(offer.price)));
-  assert.ok(row.includes(offer.meal.fullName));
+  assert.ok(row.includes('<b>'+(offer===tour?'Завтрак':'Всё включено')+'</b>'),'known meals use the common Russian display label');
   assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
   assert.match(row,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/,'room and placement stay together as one exact offer fact');

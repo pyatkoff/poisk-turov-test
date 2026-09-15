@@ -74,7 +74,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   ]), JSON.stringify([
     { key: 'meal:all-inclusive', label: 'Всё включено' },
     { key: 'meal:ultra-all-inclusive', label: 'Ультра всё включено' },
-    { key: 'meal:soft-all-inclusive', label: 'Soft AI' },
+    { key: 'meal:soft-all-inclusive', label: 'Мягкое всё включено' },
   ]), 'AI, UAI and Soft AI retain distinct identities');
   assert.equal(JSON.stringify([
     results.mealIdentity({ meal: 'HB' }),
@@ -93,9 +93,9 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
     { key: 'meal:label:breakfast and dinner', label: 'Breakfast and dinner' },
     { key: 'meal:label:not all inclusive', label: 'Not all inclusive' },
   ]), 'ambiguous, extended and negated supplier labels are not guessed into a broader meal family');
-  assert.match(results.tourRow(tour), /<small>Питание<\/small><b>All Inclusive<\/b>/,
+  assert.match(results.tourRow(tour), /<small>Питание<\/small><b>Всё включено<\/b>/,
     'supplier fullName-only meal appears in the tour facts');
-  assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'All Inclusive',
+  assert.equal(results.priceContext({ price: tour.price, tours: [tour] }), 'Всё включено',
     'representative tour context uses the same meal normalization');
   for (const meal of ['Всё включено', { russianName: 'Всё включено', fullName: 'All Inclusive' },
     { fullRussianName: 'Всё включено', fullName: 'All Inclusive' },
@@ -165,14 +165,23 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   }
 
   const cases = [
+    { meal: 'BB', label: 'Завтрак', payload: '' },
+    { meal: 'Bed & Breakfast', label: 'Завтрак', payload: '' },
+    { meal: { name: 'BB', fullName: 'BB - Только завтрак' }, label: 'Завтрак', payload: 'BB' },
+    { meal: { name: 'AI', fullName: 'AI — Всё включено' }, label: 'Всё включено', payload: 'AI' },
+    { meal: 'BB - Полупансион', label: 'BB - Полупансион', payload: '' },
+    { meal: 'BB - Breakfast and dinner', label: 'BB - Breakfast and dinner', payload: '' },
+    { meal: 'HB+ - Полупансион', label: 'HB+ - Полупансион', payload: '' },
+    { meal: 'Soft AI', label: 'Мягкое всё включено', payload: '' },
+    { meal: 'UAI', label: 'Ультра всё включено', payload: '' },
     { meal: { name: 'RO', fullName: 'Без питания' }, label: 'Без питания', payload: 'RO' },
     { meal: { name: 'HB+', fullName: 'Полупансион плюс' }, label: 'Полупансион плюс', payload: 'HB+' },
     { meal: { fullName: 'Всё включено' }, label: 'Всё включено', payload: '' },
-    { meal: { russianName: 'Завтраки', name: 'BB', fullName: 'Bed & Breakfast' }, label: 'Завтраки', payload: 'Завтраки' },
-    { meal: { fullRussianName: 'Завтраки', name: 'BB', fullName: 'Bed & Breakfast' }, label: 'Завтраки', payload: 'Завтраки' },
+    { meal: { russianName: 'Завтраки', name: 'BB', fullName: 'Bed & Breakfast' }, label: 'Завтрак', payload: 'Завтраки' },
+    { meal: { fullRussianName: 'Завтраки', name: 'BB', fullName: 'Bed & Breakfast' }, label: 'Завтрак', payload: 'Завтраки' },
     { meal: { name: 'Всё включено', fullName: 'All Inclusive' }, label: 'Всё включено', payload: 'Всё включено' },
     { meal: { name: 'Lunch', fullName: 'Другой текст поставщика' }, label: 'Lunch', payload: 'Lunch' },
-    { meal: { name: 'RO', fullName: '   ' }, label: 'RO', payload: 'RO' },
+    { meal: { name: 'RO', fullName: '   ' }, label: 'Без питания', payload: 'RO' },
     { meal: { id: 7 }, label: '', payload: '' },
     { meal: null, label: '', payload: '' },
     { meal: 'Всё включено', label: 'Всё включено', payload: '' }
@@ -181,7 +190,7 @@ vm.runInNewContext(source, { window, document, console, fetch, URLSearchParams, 
   for (const item of cases) {
     const sample = Object.freeze({ ...tour, meal: item.meal && typeof item.meal === 'object' ? Object.freeze(item.meal) : item.meal });
     const before = JSON.stringify(sample);
-    assert.equal(results.mealLabel(sample), item.label, 'display normalization uses supplier labels without inventing meal IDs');
+    assert.equal(results.mealLabel(sample), item.label, 'known meal display reuses the existing identity; unknown qualifiers remain intact');
     assert.equal(results.priceContext({ price: sample.price, tours: [sample] }), item.label);
     const current = await selectedMeal(sample), standalone = await selectedMeal(sample, false);
     assert.ok(current.html.includes('<span>Питание</span><b>' + (item.label || '—') + '</b>'), 'selected fact uses the same visible label');
