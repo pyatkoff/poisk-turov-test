@@ -26,7 +26,7 @@ jobs:
       github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
       ((github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'publish-andromeda-surcharge-runtime-1717-v5') ||
        (github.event_name == 'issue_comment' && github.event.action == 'created' &&
-        github.event.issue.number == 996 && !github.event.issue.pull_request &&
+        github.event.issue.number == 2530 && !github.event.issue.pull_request &&
         github.event.comment.user.id == 226193297 &&
         github.event.comment.body == '/publish-andromeda-surcharge-runtime-1717-v5'))
     runs-on: ubuntu-latest
@@ -48,9 +48,9 @@ jobs:
             if (context.eventName === 'workflow_dispatch') {
               if (context.payload.inputs?.confirmation !== 'publish-andromeda-surcharge-runtime-1717-v5') throw new Error('Confirmation mismatch.');
             } else if (context.eventName !== 'issue_comment' || context.payload.action !== 'created' ||
-                       context.payload.issue?.number !== 996 || context.payload.issue?.pull_request ||
+                       context.payload.issue?.number !== 2530 || context.payload.issue?.pull_request ||
                        context.payload.comment?.user?.id !== owner || context.payload.comment?.body !== command) {
-              throw new Error('Exact created owner command in issue996 required.');
+              throw new Error('Exact created owner command in issue2530 required.');
             }
             const {data: main} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
             if (main.object.sha !== context.sha) throw new Error('Main advanced; review rather than replay.');
@@ -624,7 +624,7 @@ jobs:
                 || ($store['generation'] ?? null) !== 17171215 || ($store['search_ref'] ?? null) !== $parts[1]
                 || ($store['created_at'] ?? null) !== (int)$parts[2] || ($store['snapshot']['page'] ?? null) !== 1
                 || ($first['criteria'] ?? null) !== $criteria || hash('sha256', json_encode($criteria, JSON_THROW_ON_ERROR)) !== ($record['criteria_sha256'] ?? null)) throw new RuntimeException('archive_search_mismatch');
-            foreach (['CHECKIN_BEG'=>'20261215','CHECKIN_END'=>'20261215','ADULT'=>'2','CHILD'=>'1','AGES'=>'8','NIGHTS_FROM'=>'7','NIGHTS_TILL'=>'7','OPERATORS'=>'5','PAGE'=>'1'] as $key=>$wanted) {
+            foreach (['CHECKIN_BEG'=>'20261215','CHECKIN_END'=>'20261215','ADULT'=>'2','CHILD'=>'1','AGES'=>'8','NIGHTS_FROM'=>7,'NIGHTS_TILL'=>7,'OPERATORS'=>'5','PAGE'=>'1'] as $key=>$wanted) {
                 if ((!is_int($criteria[$key] ?? null) && !is_string($criteria[$key] ?? null)) || (string)$criteria[$key] !== $wanted) throw new RuntimeException('archive_search_mismatch');
             }
             if (isset($criteria['HOTELS']) || $store['created_at'] < $start || $store['created_at'] > $finished) throw new RuntimeException('archive_search_mismatch');
