@@ -80,7 +80,7 @@ const vm = require('node:vm');
   const collapsed = focusableTour(17);
   collapsed.hidden = true;
   const document = {
-    body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
+    body: { classList: { contains(name) { return name === 'search3-candidate' || name === 'search3-selected-open'; } } },
     cookie: '',
     contains(node) { return !!(node && node.connected); },
     getElementById(id) { return id === 'selectedTour' ? selected : id === 'results' ? results : null; },
