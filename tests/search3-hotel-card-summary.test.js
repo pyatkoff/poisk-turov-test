@@ -121,4 +121,8 @@ assert.match(localHtml,/Об отеле/,'trusted local details have one native 
 assert.match(localHtml,/&lt;b&gt;Проверенное описание&lt;\/b&gt;/,'local description remains escaped text');
 assert.match(localHtml,/Песчаный пляж · Бассейн[\s\S]*Wi-Fi[\s\S]*Всё включено/,'object-shaped local characteristics are presented instead of discarded');
 assert.doesNotMatch(localHtml,/<b>Проверенное описание<\/b>/,'local description cannot inject markup');
+const inlineImage=api.hotelMainHtml({id:'fixture',name:'Fixture',picturelink:'data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22/%3E'});
+assert.match(inlineImage,/class="hotel-photo hotel-gallery"/,'bounded image data URI fixtures retain the established card geometry');
+const unsafeImage=api.hotelMainHtml({id:'unsafe',name:'Unsafe',picturelink:'javascript:alert(1)'});
+assert.doesNotMatch(unsafeImage,/javascript:/,'non-image and executable URL schemes never reach image markup');
 console.log('SEARCH3_HOTEL_CARD_SUMMARY_OK collapsed_hotel_level=1 compact_exact_offer_rows=1 local_gallery_details=1 source_unchanged=1');
