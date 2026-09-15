@@ -33,18 +33,12 @@ assert.match(
   'list/grid controls are emitted only for the legacy presentation'
 );
 
-assert.ok(localFilters.includes('Источник предложения') && localFilters.includes('Все источники'),
-  'Search3 exposes provider/source as an already-loaded result facet');
 assert.ok(localFilters.includes('Туроператор') && localFilters.includes('Все туроператоры'),
-  'provider/source remains distinct from tour operator');
-assert.match(localFilters, /function providerKey\(t\)\{const value=String\(t&&t\.provider\|\|'tourvisor'\)/,
-  'local provider facet normalizes only retained offer source identity');
-assert.match(localFilters, /key=providerKey\(t\),label=api\.providerName\(t\)/,
-  'provider labels reuse canonical renderer display semantics');
-assert.match(localFilters, /providerKey\(t\)===provider/,
-  'provider selection intersects on the retained offer');
-assert.match(localFilters, /providerSelect\.addEventListener\('change',\(\)=>window\.V2Results\.rerender\(\)\)/,
-  'provider changes rerender already-loaded results locally');
+  'tour operator remains the customer-facing source decision facet');
+for (const technicalCopy of ['Источник предложения','Все источники','Источник: ','search3-provider-filter','providerSelect','providerKey']) {
+  assert.equal(localFilters.includes(technicalCopy),false,
+    `customer filters do not expose provider provenance or retain its obsolete handler: ${technicalCopy}`);
+}
 
 assert.ok(localFilters.includes('Курорт / регион') && localFilters.includes('Все курорты'),
   'Search3 exposes a resort/region decision facet when loaded hotel geography is complete');
@@ -56,8 +50,8 @@ assert.ok(localFilters.includes('matchesRegion=!facets.region||facets.regions[in
   'region selection filters only the current loaded hotel set');
 assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)"),
   'region changes stay inside the local result filter owner');
-assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,providerField,ratingField,seaField];}'),
-  'desktop and mobile share decision-first filter order: hotel, resort, stars, meal, budget, operator, source, rating, sea');
+assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,ratingField,seaField];}'),
+  'desktop and mobile share decision-first filter order without a provider/source control');
 
 {
   const listeners = new Map();
