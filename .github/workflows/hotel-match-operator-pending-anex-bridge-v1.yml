@@ -1,15 +1,15 @@
-name: MATCH explicit country consensus CURRENT v2
+name: MATCH proven-country geography CURRENT v3
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-state-country-consensus-1971-v2, cancel-in-progress: false}
+concurrency: {group: match-state-country-consensus-1971-v3, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-state-country-consensus-1971-20260915-v2
+  OPERATION_ID: hotel-match-state-country-consensus-1971-20260915-v3
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 15
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 16
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -23,69 +23,55 @@ jobs:
           php -l tests/hotel_match_state_country_consensus_test.php
           php tests/hotel_match_state_country_consensus_test.php
           test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = e93113da264b9bb1a17d0cb65287b4d1dc5b476b
-          test "$(git hash-object scripts/diagnostics/hotel_match_state_country_consensus.php)" = 611d30b68616cbb7b7b8598dee72412375a57a43
-          test "$(git hash-object tests/hotel_match_state_country_consensus_test.php)" = ad596d77c50c83b1b349d31681671a75392e4d83
+          test "$(git hash-object scripts/diagnostics/hotel_match_state_country_consensus.php)" = 2a443380b28e3a4267650d988e524971b77f56c3
+          test "$(git hash-object tests/hotel_match_state_country_consensus_test.php)" = eb176b9e7391e013752790d15a1e63fe44437508
           ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_state_country_consensus.php
           ! grep -Eiq '\b(INSERT INTO|UPDATE|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_state_country_consensus.php
-          sha="$(sha256sum scripts/diagnostics/hotel_match_state_country_consensus.php | awk '{print $1}')"
-          dep="$(sha256sum scripts/diagnostics/hotel_match_live_residual_current_review.php | awk '{print $1}')"
-          printf 'SOURCE_SHA256=%s\nDEPENDENCY_SHA256=%s\n' "$sha" "$dep" >> "$GITHUB_ENV"
+          printf 'SOURCE_SHA256=%s\nDEPENDENCY_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_state_country_consensus.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_live_residual_current_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
       - name: Reserve exact read-only operation before SSH or DB
         run: |
           set -euo pipefail
-          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
-          cp scripts/diagnostics/hotel_match_state_country_consensus.php "$out/source.php"
-          cp scripts/diagnostics/hotel_match_live_residual_current_review.php "$out/resolver.php"
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"; cp scripts/diagnostics/hotel_match_state_country_consensus.php "$out/source.php"; cp scripts/diagnostics/hotel_match_live_residual_current_review.php "$out/resolver.php"
           python3 - <<'PY'
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'source_git_blob':'611d30b68616cbb7b7b8598dee72412375a57a43','resolver_sha256':os.environ['DEPENDENCY_SHA256'],'resolver_git_blob':'e93113da264b9bb1a17d0cb65287b4d1dc5b476b','state':'reserved_before_db_access','mode':'server_current_read_only_explicit_country_consensus','minimum_marker_votes':5,'minimum_winner_share':0.98,'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'source_git_blob':'2a443380b28e3a4267650d988e524971b77f56c3','resolver_sha256':os.environ['DEPENDENCY_SHA256'],'resolver_git_blob':'e93113da264b9bb1a17d0cb65287b4d1dc5b476b','state':'reserved_before_db_access','mode':'server_current_read_only_proven_country_geography','minimum_marker_votes':5,'minimum_winner_share':0.98,'country_geography_strip_only_after_consensus':True,'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])}
           p.write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-state-country-consensus-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-state-country-consensus-1971-20260915-v2/
+          name: match-state-country-consensus-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-state-country-consensus-1971-20260915-v3/
           if-no-files-found: error
           retention-days: 90
-      - name: Server-CURRENT read-only consensus and readback
+      - name: Server-CURRENT read-only geography pass and readback
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: |
           set -euo pipefail
-          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
-          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
-          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
-          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
-          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
-          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"; test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"; trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
           remote_op="\$HOME/.anytoour-match/operations/$OPERATION_ID"
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote_op; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; cat > $remote_op/source/hotel_match_live_residual_current_review.php; test \"\$(sha256sum $remote_op/source/hotel_match_live_residual_current_review.php | awk '{print \$1}')\" = '$DEPENDENCY_SHA256'; sync" < scripts/diagnostics/hotel_match_live_residual_current_review.php
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; cat > $remote_op/source/hotel_match_state_country_consensus.php; test \"\$(sha256sum $remote_op/source/hotel_match_state_country_consensus.php | awk '{print \$1}')\" = '$SOURCE_SHA256'; sync" < scripts/diagnostics/hotel_match_state_country_consensus.php
-          set +e
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php $remote_op/source/hotel_match_state_country_consensus.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
-          rc=$?
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=$remote_op; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
-          set -e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; cat > $remote_op/source/hotel_match_live_residual_current_review.php; test \"\$(sha256sum $remote_op/source/hotel_match_live_residual_current_review.php|awk '{print \$1}')\" = '$DEPENDENCY_SHA256'; sync" < scripts/diagnostics/hotel_match_live_residual_current_review.php
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; cat > $remote_op/source/hotel_match_state_country_consensus.php; test \"\$(sha256sum $remote_op/source/hotel_match_state_country_consensus.php|awk '{print \$1}')\" = '$SOURCE_SHA256'; sync" < scripts/diagnostics/hotel_match_state_country_consensus.php
+          set +e; ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php $remote_op/source/hotel_match_state_country_consensus.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"; rc=$?; ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=$remote_op; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?; set -e
           test $trc -eq 0 -a -s "$out/server-operation.tgz"; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"; export REMOTE_RC="$rc"
           python3 - <<'PY'
           import hashlib,json,os,pathlib
-          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
-          if not s.joinpath('result.json').exists(): raise SystemExit('NO_RESULT_READBACK')
-          raw=s.joinpath('result.json').read_bytes(); result=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()) if s.joinpath('receipt.json').exists() else {}; digest=hashlib.sha256(raw).hexdigest(); inferred=result.get('inferred_states') or {}
-          consensus_ok=bool(inferred) and all(int(v.get('winner') or 0)>=5 and float(v.get('share') or 0)>=0.98 and int(v.get('multi_country_rows') or 0)==0 and int(v.get('winner') or 0)<=int(v.get('total_marked') or 0) for v in inferred.values())
-          ok=(int(os.environ['REMOTE_RC'])==0 and result.get('state')=='completed_read_only' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and result.get('server_current') is True and result.get('db_writes')==result.get('mapping_writes')==result.get('supplier_calls')==result.get('tourvisor_calls')==result.get('external_calls')==result.get('booking_calls')==0 and consensus_ok and receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True)
-          gate={'operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['REMOTE_RC']),'verified':ok,'state':result.get('state'),'pending_andromeda':result.get('pending_andromeda'),'inferred_states':inferred,'candidate_count':result.get('candidate_count'),'route_counts':result.get('route_counts'),'reason_counts':result.get('reason_counts'),'result_sha256':digest,'supplier_calls':result.get('supplier_calls'),'tourvisor_calls':result.get('tourvisor_calls'),'mapping_writes':result.get('mapping_writes'),'no_replay':True}
-          root.joinpath('workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2,ensure_ascii=False)+'\n'); print(json.dumps(gate,sort_keys=True,ensure_ascii=False))
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=root/'server';raw=s.joinpath('result.json').read_bytes();r=json.loads(raw);rec=json.loads(s.joinpath('receipt.json').read_text());d=hashlib.sha256(raw).hexdigest();inf=r.get('inferred_states') or {}
+          consensus=bool(inf) and all(int(v.get('winner') or 0)>=5 and float(v.get('share') or 0)>=.98 and int(v.get('multi_country_rows') or 0)==0 for v in inf.values())
+          ok=(int(os.environ['REMOTE_RC'])==0 and r.get('state')=='completed_read_only' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('source_sha')==os.environ['GITHUB_SHA'] and r.get('server_current') is True and r.get('db_writes')==r.get('mapping_writes')==r.get('supplier_calls')==r.get('tourvisor_calls')==r.get('external_calls')==r.get('booking_calls')==0 and consensus and rec.get('result_sha256')==d and rec.get('readback_verified') is True and rec.get('no_replay') is True)
+          gate={'operation_id':os.environ['OPERATION_ID'],'verified':ok,'remote_exit':int(os.environ['REMOTE_RC']),'pending_andromeda':r.get('pending_andromeda'),'inferred_states':inf,'candidate_count':r.get('candidate_count'),'route_counts':r.get('route_counts'),'reason_counts':r.get('reason_counts'),'result_sha256':d,'mapping_writes':r.get('mapping_writes'),'no_replay':True};root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n');print(json.dumps(gate,ensure_ascii=False,sort_keys=True));
           if not ok: raise SystemExit(5)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-state-country-consensus-v2-result
-          path: ${{ runner.temp }}/hotel-match-state-country-consensus-1971-20260915-v2/
+          name: match-state-country-consensus-v3-result
+          path: ${{ runner.temp }}/hotel-match-state-country-consensus-1971-20260915-v3/
           if-no-files-found: warn
           retention-days: 90
