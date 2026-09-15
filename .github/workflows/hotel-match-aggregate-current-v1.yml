@@ -1,0 +1,30 @@
+name: MATCH aggregate CURRENT v1
+on:
+  push:
+    branches: [ops/match-aggregate-current-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-aggregate-current-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-aggregate-current-1971-v1, cancel-in-progress: false}
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}', fetch-depth: 1}
+      - name: Inspect immutable mass-review seed
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          p=pathlib.Path('reports/hotel-match-identity-graph-mass-review-20260913.json')
+          r=json.loads(p.read_text())
+          print('TOP_KEYS', sorted(r.keys()))
+          for k,v in r.items():
+            if isinstance(v,list):
+              print('LIST',k,'len',len(v),'sample_type',type(v[0]).__name__ if v else None)
+              if v:
+                print('SAMPLE',k,json.dumps(v[0],ensure_ascii=False,sort_keys=True)[:4000])
+            elif isinstance(v,dict): print('DICT',k,'keys',list(v)[:30])
+            else: print('SCALAR',k,repr(v))
+          PY
