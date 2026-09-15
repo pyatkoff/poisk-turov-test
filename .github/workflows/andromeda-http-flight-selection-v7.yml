@@ -1,0 +1,157 @@
+name: Run checked Andromeda HTTP flight-selection v7
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-http-flight-selection-v7.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: anytoour-andromeda-http-flight-selection-v7
+  cancel-in-progress: false
+
+jobs:
+  control-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bbac027346293863e40345151786197467e40d59
+          path: source
+          persist-credentials: false
+      - name: Run exact offline v7 regression
+        run: |
+          python3 -m py_compile \
+            source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py \
+            source/scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py \
+            source/tests/andromeda_http_flight_selection_e2e_v7_test.py
+          python3 -B source/tests/andromeda_http_flight_selection_e2e_v7_test.py
+      - name: Verify immutable v7 contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('source/scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py')
+          text=p.read_text()
+          required=[
+            'andromeda-http-flight-selection-e2e-1717-v7-turkey-2026-12-22-2a-9n',
+            '3275b3e8b1f9bfe50cc0ce521beaa43602a408bf',
+            '"dateFrom": "2026-12-22"',
+            '"nightsFrom": 9',
+            '"adults": 2',
+            '"childs": []',
+            '"supplier_auth"',
+            '"quote_state"',
+            '"internal"',
+          ]
+          for needle in required:
+            if needle not in text:
+              raise SystemExit('v7 source contract missing: '+needle)
+          for forbidden in ('bron_ticket','booking(', 'supplier_uid', 'supplier_offer_id'):
+            if forbidden in text:
+              raise SystemExit('forbidden live authority in v7 source: '+forbidden)
+          print('v7 source contract OK; supplier calls in PR=0')
+          PY
+
+  run-v7:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 1717 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/run-andromeda-http-flight-selection-e2e-1717-v7'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Require unique owner command and exact checked provenance
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/run-andromeda-http-flight-selection-e2e-1717-v7';
+            const sourceHead='bbac027346293863e40345151786197467e40d59';
+            const sourceMerge='a6e56d75f366718c9c69143c85369a30a28d9347';
+            const runtimeSource='3275b3e8b1f9bfe50cc0ce521beaa43602a408bf';
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1') throw new Error('NO_REPLAY: inspect the first v7 result.');
+            if(context.payload.sender?.id!==owner || context.actor!=='pyatkoff' || process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('Owner invocation required.');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if(context.payload.issue?.number!==1717 || context.payload.issue?.pull_request || context.payload.comment?.body!==command) throw new Error('Exact fresh #1717 v7 command required.');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:1717,per_page:100});
+            const matches=comments.filter(c=>c.body===command && c.user?.id===owner && c.author_association==='OWNER');
+            if(matches.length!==1 || matches[0].id!==context.payload.comment.id) throw new Error('Duplicate/edited v7 owner command rejected.');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('Main advanced; do not execute stale v7 control.');
+            const {data:sourcePr}=await github.rest.pulls.get({...context.repo,pull_number:2557});
+            if(!sourcePr.merged || sourcePr.head.sha!==sourceHead || sourcePr.merge_commit_sha!==sourceMerge || sourcePr.base.ref!=='feature/anex-search-adapter-20260907') throw new Error('v7 source provenance mismatch.');
+            const {data:sourceCi}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34975964844});
+            if(sourceCi.head_sha!==sourceHead || sourceCi.status!=='completed' || sourceCi.conclusion!=='success') throw new Error('v7 focused CI not green.');
+            const {data:security}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34975964945});
+            if(security.head_sha!==sourceHead || security.status!=='completed' || security.conclusion!=='success') throw new Error('v7 source Security not green.');
+            const {data:runtimePr}=await github.rest.pulls.get({...context.repo,pull_number:2551});
+            if(!runtimePr.merged || runtimePr.head.sha!==runtimeSource || runtimePr.merge_commit_sha!=='83569490acbd9f629236b0de85cdda14f39f2c9d') throw new Error('classifier source provenance mismatch.');
+            const {data:runtimePublish}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:34974339093});
+            if(runtimePublish.head_sha!=='69a8a7a6a5938f5410a6a545953e8b588aa8c62c'||runtimePublish.status!=='completed'||runtimePublish.conclusion!=='success'||runtimePublish.run_attempt!==1) throw new Error('classifier runtime publication not green.');
+            const {data:receipt}=await github.rest.actions.getArtifact({...context.repo,artifact_id:10398214813});
+            if(receipt.expired!==false || receipt.workflow_run?.id!==34974339093 || receipt.digest!=='sha256:a2be474b7ec3875e6c2876a855a94e6798de8e562051fba3c9f541499d2c2481') throw new Error('classifier publication receipt mismatch.');
+            for(const [path,sha] of [
+              ['scripts/diagnostics/andromeda_http_flight_selection_e2e.py','b85e4f60016de0948c9038e2d51ef8d59830b10e'],
+              ['scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py','e3a76604755c0f5b2fa09c9aa81d2f1b49017338'],
+              ['tests/andromeda_http_flight_selection_e2e_v7_test.py','a97127851c914e4fecab76eb39433274a2e80a02']]){
+              const {data:file}=await github.rest.repos.getContent({...context.repo,path,ref:sourceHead});
+              if(Array.isArray(file)||file.sha!==sha) throw new Error('v7 source blob mismatch: '+path);
+            }
+      - uses: actions/checkout@v4
+        with:
+          ref: bbac027346293863e40345151786197467e40d59
+          path: source
+          persist-credentials: false
+      - name: Re-run exact offline v7 regression
+        run: |
+          python3 -m py_compile \
+            source/scripts/diagnostics/andromeda_http_flight_selection_e2e.py \
+            source/scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py \
+            source/tests/andromeda_http_flight_selection_e2e_v7_test.py
+          python3 -B source/tests/andromeda_http_flight_selection_e2e_v7_test.py
+      - name: Execute one immutable real HTTPS v7 flow
+        run: |
+          mkdir -p "$RUNNER_TEMP/andromeda-http-flight-selection-v7"
+          python3 -B source/scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py \
+            | tee "$RUNNER_TEMP/andromeda-http-flight-selection-v7/result.json"
+      - name: Preserve v7 result before classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-http-flight-selection-v7-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-http-flight-selection-v7/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require verified quote or classified terminal 502
+        run: |
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'andromeda-http-flight-selection-v7/result.json'
+          d=json.loads(p.read_text())
+          if d.get('operation')!='andromeda-http-flight-selection-e2e-1717-v7-turkey-2026-12-22-2a-9n':
+            raise SystemExit('v7 operation mismatch; DO NOT replay')
+          if d.get('booking_calls')!=0 or d.get('mapping_writes')!=0:
+            raise SystemExit('v7 authority boundary failed; DO NOT replay')
+          if d.get('status')=='complete':
+            q=d.get('quote_observation') or {}
+            if d.get('outcome')!='served_quote_compared' or d.get('final_quote_state')!='quote_verified' or q.get('final_price_verified') is not True:
+              raise SystemExit('v7 complete result failed final quote contract; DO NOT replay')
+            print(json.dumps(d,sort_keys=True)); raise SystemExit(0)
+          allowed={'supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'}
+          if d.get('status')=='unknown' and d.get('failure_category') in allowed:
+            print(json.dumps(d,sort_keys=True)); raise SystemExit(0)
+          raise SystemExit('v7 terminal result is unclassified; preserve artifact and DO NOT replay')
+          PY
