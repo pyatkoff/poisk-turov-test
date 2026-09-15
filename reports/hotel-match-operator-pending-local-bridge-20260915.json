@@ -1,0 +1,62 @@
+{
+  "schema": "match-pending-local-progress/1",
+  "issue": 1971,
+  "pr": 2469,
+  "claim": 5671665768,
+  "result_comment": 5671771568,
+  "implementation_sha": "41305f8f9c37f97be605762067e253400f02f189",
+  "source_blob": "b06c8a40cc3b306aede352dc6de789adf77fd99f",
+  "test_blob": "1c5bb69d81cfa5e766eb61597da96423ff80d5fc",
+  "unchanged_dependency_blob": "4c1b3a1113a522a78529c631884eab20b70c48f6",
+  "input_sha256": "34338419421f373d194e0d863828d0bc8a1e61bd11fd34d4d0ded11dcd17ffec",
+  "pending_native_input_rows": 145,
+  "saved_accepted_anchors": 14,
+  "maximum_prepared_promotions": 26,
+  "candidate_split": {"operator_315": 14, "operator_342": 12},
+  "state": "source_prepared_execution_blocked_before_workflow_commit",
+  "planned_operation_id": "hotel-match-operator-pending-local-bridge-1971-20260915-v1",
+  "live_operation_reserved": false,
+  "execution_workflow_created": false,
+  "database_calls": 0,
+  "mapping_writes": 0,
+  "supplier_calls": 0,
+  "blocker": "OpenAI tool safety blocked creation of credential-bearing SSH/DB execution workflow; subsequent file read returned404. No retry, repackaged launch or alternative execution attempted.",
+  "checks": {
+    "php_lint": "PASS",
+    "local_ascii_fixture_checks": 25,
+    "local_mbstring_available": false,
+    "local_test_scope": "Copied subset of already-read pinned helper plus local ASCII-only mb_strtolower test double, not a production fallback",
+    "hosted_exact_dependency_tests": "NOT RUN",
+    "security_run": 34904913921,
+    "security_result": "success",
+    "uncommitted_workflow_yaml_duplicate_keys": "PASS",
+    "uncommitted_workflow_inline_python_blocks_compiled": 3
+  },
+  "public_page_evidence": [
+    {
+      "publisher": "Biblio Globus",
+      "url": "https://www.bgoperator.ru/price.shtml?action=shw&code=102610157233&flt=100410000047&tid=26",
+      "former_name_chain": ["Le Jardin", "Sunrise Aster", "Sunrise Azalea Aqua Park Resort"],
+      "basis": "Current title names Azalea as former Aster; operator notice on the same page names Aster as former Le Jardin",
+      "page_code": "102610157233",
+      "saved_native_key": "610157233",
+      "limit": "No general numeric-prefix conversion or new DB mapping inferred"
+    },
+    {
+      "publisher": "Perdikia Hotels",
+      "url": "https://www.perdikiahotels.com/",
+      "distinct_properties": ["Perdikia Hill / Ovacik", "Perdikia Beach / Oludeniz"],
+      "basis": "Separate named hotel entries with different contacts on the chain website",
+      "limit": "Shared chain domain does not identify an individual hotel; no supplier-native numeric key independently bound"
+    }
+  ],
+  "int_url_handoff": {
+    "active_claim": 5671596571,
+    "storage_hint_comment": 5671682843,
+    "existing_column": "andromeda_search_hotel_observations.hotel_url",
+    "column_population_verified": false,
+    "paired_url_proof_count": 0,
+    "duplicate_supplier_probe": false
+  },
+  "production_changed": false
+}
