@@ -74,7 +74,7 @@ const compareSandbox = {
   ]
 };
 vm.createContext(compareSandbox);
-vm.runInContext(`${displayDateSource}; ${functionLine('comparisonIdentity')}; ${functionLine('compareState')}; const state = compareState(); this.values = { labels: state.labels, keys: Array.from(state.different), minimumPrice: state.minimumPrice };`, compareSandbox);
+vm.runInContext(`${displayDateSource}; ${functionLine('placement')}; ${functionLine('comparisonIdentity')}; ${functionLine('compareState')}; const state = compareState(); this.values = { labels: state.labels, keys: Array.from(state.different), minimumPrice: state.minimumPrice };`, compareSandbox);
 assert.deepEqual(Array.from(compareSandbox.values.labels), ['отель', 'курорт', 'номер', 'цена при сохранении'], 'comparison summary names only saved dimensions that actually differ');
 assert.deepEqual(Array.from(compareSandbox.values.keys), ['hotel', 'region', 'room', 'price'], 'common meal/date/night/party/operator values are not falsely marked as differences');
 assert.equal(compareSandbox.values.minimumPrice, 120000, 'minimum comparison price is derived only from saved historical snapshots');
@@ -92,6 +92,8 @@ assert.deepEqual(compare([
   { ...same, date: '2026-09-12T04:30:00Z', meal: 'All Inclusive', operator: 'ANEX' }
 ]), { keys: [], common: ['date', 'nights', 'party', 'meal', 'room', 'placement', 'operator'] }, 'equivalent displayed dates, reviewed meal and operator aliases do not create false differences');
 assert.deepEqual(compare([same, { ...same, room: 'Standard room' }, { ...same, room: 'Стандартный номер' }]).keys, [], 'reviewed room aliases do not create false differences');
+assert.deepEqual(compare([same, { ...same, placement: 'dbl' }, { ...same, placement: 'DBL ' }]).keys, [], 'reviewed placement aliases use the same displayed comparison identity');
+assert.deepEqual(compare([same, { ...same, placement: 'supplier special' }]).keys, ['placement'], 'unknown placement values remain distinct');
 const poolView = { ...same, room: 'Standard Pool View' };
 assert.deepEqual(compare([poolView, { ...same, room: 'Стандарт · вид на бассейн' }]).keys, [], 'the reviewed pool-view labels compare as the same room description');
 for (const room of ['STANDARD', 'STANDARD LAND VIEW', 'STANDARD SEA VIEW', 'STANDARD POOL VIEW WITH PRIVATE POOL']) {
