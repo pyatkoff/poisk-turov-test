@@ -1,0 +1,43 @@
+{
+  "column_contract": {
+    "anex_card_hotelcode_from_saved_tv_candidate": ["anex_hotel_id", "live_search_count", "country_id", "saved_tourvisor_id", "unique_date_support", "saved_status"],
+    "default": ["anex_hotel_id", "live_search_count", "country_id"],
+    "no_replay_already_mapped": ["anex_hotel_id", "live_search_count", "country_id", "mapped_targets"],
+    "server_current_native_identity_reconcile": ["anex_hotel_id", "live_search_count", "country_id", "tourvisor_local_id", "occupied_by_other", "reverse_anex_occupants"]
+  },
+  "guards": {
+    "current_recheck_before_any_write": true,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "no_replay": true,
+    "post_commit_per_row_readback": true,
+    "preserve_manual_exclusions_conflicts_mappings": true,
+    "provider_call_owner": "PR #2412",
+    "provider_calls": 0
+  },
+  "lanes": {
+    "anex_card_hotelcode_from_captured_detail": [[42927,49,1],[37719,27,1]],
+    "anex_card_hotelcode_from_saved_tv_candidate": [[28882,54,4,43528,6,"duplicate_provider_family_hold"],[32743,54,4,43528,6,"duplicate_provider_family_hold"],[32880,54,4,17443,1,"single_date_candidate_with_collision_guard"],[44573,54,4,59085,3,"repeatable_saved_tv_candidate_only"],[32692,50,4,70291,1,"single_date_candidate_only"],[32745,46,4,70943,9,"repeatable_saved_tv_candidate_only"],[30424,3,4,17617,4,"repeatable_saved_tv_candidate_only"]],
+    "cross_provider_bridge_then_operatorlink": [[16330,62,4],[34680,60,4],[32783,54,4],[35275,53,4],[44939,52,4],[44413,49,4],[32572,22,4],[835,8,1],[5215,5,1],[32355,4,4],[32567,3,4],[33110,3,4],[15072,2,4],[9384,1,4],[20470,1,4],[29556,1,1],[32937,1,4],[34961,1,4],[37985,1,4]],
+    "no_replay_already_mapped": [[4158,39,1,[37412]],[1767,8,1,[182]],[1768,6,1,[183]],[44138,2,4,[53531]]],
+    "server_current_native_identity_reconcile": [[28933,3,4,17390,false,[]],[27777,1,4,17561,false,[]],[29430,1,4,71266,true,[32809]]],
+    "tourvisor_operatorlink_detail_then_anex_card_hotelcode": [[23894,61,4],[45225,55,4],[43984,53,4],[16605,52,4],[19226,48,1],[37048,47,1],[1361,46,1],[28396,33,1],[36906,32,1],[780,30,1],[1771,27,1],[1655,25,1],[30600,24,1],[37012,24,1],[37885,15,4],[44562,10,1],[1772,8,1],[28563,7,1],[30599,7,1],[32724,7,4],[4131,6,1],[32686,6,4],[1328,5,1],[29446,5,4],[990,3,1],[45226,3,4],[1769,2,1],[8550,2,4],[32742,2,4],[34804,2,4],[39389,2,4],[43077,2,4],[43850,2,1],[44139,2,4],[45166,2,1],[45249,2,1],[45259,2,1],[45330,2,1],[8319,1,4],[8355,1,4],[8366,1,4],[8460,1,4],[8537,1,4],[8538,1,4],[8666,1,4],[9126,1,4],[10115,1,4],[11241,1,4],[11756,1,4],[12143,1,4],[12901,1,4],[14812,1,4],[15046,1,4],[21696,1,4],[29036,1,4],[29332,1,4],[29557,1,1],[31515,1,4],[32822,1,4],[34858,1,4],[35319,1,4],[35511,1,4],[35898,1,4],[37344,1,4],[37538,1,4],[39875,1,4]]
+  },
+  "provenance": {
+    "current_operation_id": "hotel-match-pr2412-anex-current-1971-20260915-v1",
+    "current_source_sha": "f21869e0d4fa10d7adf5371ea44b4ac138c04aca",
+    "native_operation_id": "hotel-match-tv-operatorlink-card-follow-1971-20260915-v2",
+    "occupancy_operation_id": "hotel-match-tv-operatorlink-target-occupancy-1971-20260915-v1",
+    "saved_saturation_report": "reports/hotel-match-saved-tourvisor-saturation-20260913.json"
+  },
+  "schema": "hotel-match-pr2412-current-next-evidence/2",
+  "status": "prepared_only_not_write_authority",
+  "summary": {
+    "already_mapped_no_replay": 4,
+    "current_unresolved": 97,
+    "lane_counts": {"anex_card_hotelcode_from_captured_detail":2,"anex_card_hotelcode_from_saved_tv_candidate":7,"cross_provider_bridge_then_operatorlink":19,"no_replay_already_mapped":4,"server_current_native_identity_reconcile":3,"tourvisor_operatorlink_detail_then_anex_card_hotelcode":66},
+    "lane_live_frequency": {"anex_card_hotelcode_from_captured_detail":76,"anex_card_hotelcode_from_saved_tv_candidate":315,"cross_provider_bridge_then_operatorlink":383,"no_replay_already_mapped":55,"server_current_native_identity_reconcile":5,"tourvisor_operatorlink_detail_then_anex_card_hotelcode":691},
+    "rows_total": 101,
+    "unresolved_live_frequency_sum": 1470
+  }
+}
