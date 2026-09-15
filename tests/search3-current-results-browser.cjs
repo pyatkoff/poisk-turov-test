@@ -522,7 +522,7 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await card.locator('.tour-row,.direct-tour,[data-andromeda-expand]').count(), 0, 'a grouped seed does not expose a premature exact row or a separate source button');
     await card.locator('.hotel-details').waitFor();
     assert.deepEqual(hotelDetails.requests, ['21477'], 'one local hotel id loads its trusted details exactly once');
-    assert.equal(await card.locator('.hotel-photo img').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
+    assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477.svg', 'supplier-only offer uses the exact-ID local catalog photo');
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
     assert.equal(await card.locator('.hotel-gallery-thumb').count(), 3, 'local hotel details expose a bounded gallery in the canonical card');
     const hotelInfo = card.locator('.hotel-details');
@@ -534,9 +534,9 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
     assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
     await hotelInfo.locator('summary').press('Enter');
-    await card.locator('.hotel-photo img').scrollIntoViewIfNeeded();
-    await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-photo img'); return img && img.complete && img.naturalWidth > 0; });
-    await card.locator('.hotel-photo img').evaluate(img => img.decode());
+    await card.locator('.hotel-gallery-main').scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-gallery-main'); return img && img.complete && img.naturalWidth > 0; });
+    await card.locator('.hotel-gallery-main').evaluate(img => img.decode());
     if (!previous) await card.screenshot({ path: path.join(output, `catalog-hotel-${width}.png`), animations: 'disabled' });
     await page.evaluate(hotel => window.V2Results.render([hotel], { empty: true }), tvHotel);
     if (width >= 1025) {
