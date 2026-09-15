@@ -10,7 +10,6 @@ final class AnyTourAndromedaClient {
 }
 require_once __DIR__.'/../app/integrations/andromeda-claim-actions.php';
 require_once __DIR__.'/../app/integrations/andromeda-selected-quote.php';
-require_once __DIR__.'/../app/integrations/andromeda-flight-selection.php';
 
 $money=static fn(string $amount):array => [['buyerClaimMoney'=>[['net'=>$amount,'currency'=>'RUB']]]];
 $package=[
