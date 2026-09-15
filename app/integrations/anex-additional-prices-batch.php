@@ -4,9 +4,9 @@ declare(strict_types=1);
 /**
  * Build a server-only AdditionalPricesDaily batch plan for visible retained direct-ANEX offers.
  *
- * The planner performs no supplier transport. It only validates retained concrete-offer context,
- * bounds the batch to six browser-visible offers, and deduplicates identical
- * program/date/nights/currency contexts so one future supplier read can serve several offers.
+ * Supplier transport still needs one concrete nights value, but day identity is program/date/currency.
+ * The first retained nights value is request provenance; all offers sharing the day reuse the same
+ * context only after the supplier evidence is validated by the existing reader.
  */
 function anytour_anex_additional_prices_batch_plan(array $items, array $state): array
 {
@@ -38,15 +38,12 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
         $savedEntry = $savedOffers[$offerRef] ?? null;
         $offer = is_array($savedEntry) ? ($savedEntry['offer'] ?? null) : null;
         $knownRow = $known[$offerRef] ?? null;
-        if (!is_array($savedEntry) || !is_array($offer) || !is_array($knownRow)) {
-            throw new InvalidArgumentException('ANEX_INVALID_SESSION');
-        }
+        if (!is_array($savedEntry) || !is_array($offer) || !is_array($knownRow)) throw new InvalidArgumentException('ANEX_INVALID_SESSION');
         if (($offer['offer_key'] ?? null) !== $offerRef || ($offer['kind'] ?? null) !== 'concrete'
             || ($knownRow['kind'] ?? null) !== 'concrete'
             || ($knownRow['hotel_external_id'] ?? null) !== ($offer['hotel']['external_id'] ?? null)
-            || ($offer['hotel']['local_id'] ?? null) !== $localHotelId) {
-            throw new InvalidArgumentException('ANEX_INVALID_SESSION');
-        }
+            || ($offer['hotel']['local_id'] ?? null) !== $localHotelId) throw new InvalidArgumentException('ANEX_INVALID_SESSION');
+
         $tour = $savedEntry['supplier_tour_program_id'] ?? null;
         $currency = $savedEntry['supplier_currency_id'] ?? null;
         $checkin = $offer['checkin'] ?? null;
@@ -54,10 +51,9 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
         if (!is_string($tour) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $tour)
             || !is_string($currency) || !preg_match('/\A[1-9][0-9]{0,17}\z/D', $currency)
             || !is_string($checkin) || !preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $checkin)
-            || !is_int($nights) || $nights < 1 || $nights > 60) {
-            throw new InvalidArgumentException('ANEX_ADDITIONAL_CONTEXT_UNAVAILABLE');
-        }
-        $digest = hash('sha256', implode("\0", [$tour, $currency, $checkin, (string) $nights]));
+            || !is_int($nights) || $nights < 1 || $nights > 60) throw new InvalidArgumentException('ANEX_ADDITIONAL_CONTEXT_UNAVAILABLE');
+
+        $digest = hash('sha256', implode("\0", [$tour, $currency, $checkin]));
         if (!isset($contexts[$digest])) {
             $contexts[$digest] = [
                 'context_digest' => $digest,
@@ -65,94 +61,44 @@ function anytour_anex_additional_prices_batch_plan(array $items, array $state): 
                 'supplier_currency_id' => $currency,
                 'checkin' => $checkin,
                 'nights' => $nights,
+                'observed_nights' => [$nights],
             ];
+        } elseif (!in_array($nights, $contexts[$digest]['observed_nights'], true)) {
+            $contexts[$digest]['observed_nights'][] = $nights;
+            sort($contexts[$digest]['observed_nights'], SORT_NUMERIC);
         }
-        $offers[] = [
-            'offer_ref' => $offerRef,
-            'local_hotel_id' => $localHotelId,
-            'context_digest' => $digest,
-        ];
+        $offers[] = ['offer_ref'=>$offerRef,'local_hotel_id'=>$localHotelId,'context_digest'=>$digest,'nights'=>$nights];
     }
-
-    return [
-        'requested_offers' => count($offers),
-        'unique_contexts' => count($contexts),
-        'offers' => $offers,
-        'contexts' => array_values($contexts),
-    ];
+    return ['requested_offers'=>count($offers),'unique_contexts'=>count($contexts),'offers'=>$offers,'contexts'=>array_values($contexts)];
 }
 
-/**
- * Execute each unique private context at most once.
- *
- * `$reader` receives one private planner context and must return already-validated public-safe
- * evidence. The executor itself never performs transport. New contexts are persisted as unknown
- * before invoking the reader; unknown/reserved attempts are not replayed, while completed evidence
- * is reused without a reader call. A shared same-day APD unknown is also a durable no-replay fact:
- * it affects only that context and must not turn the whole visible-card batch into a supplier error.
- */
 function anytour_anex_additional_prices_batch_execute(array $plan, array &$state, callable $reader, callable $checkpoint): array
 {
-    $contexts = $plan['contexts'] ?? null;
-    $offers = $plan['offers'] ?? null;
-    if (!is_array($contexts) || !is_array($offers)
-        || ($plan['requested_offers'] ?? null) !== count($offers)
-        || ($plan['unique_contexts'] ?? null) !== count($contexts)
-        || count($offers) < 1 || count($offers) > 6 || count($contexts) < 1 || count($contexts) > 6) {
-        throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
-    }
-    if (!is_array($state['additional_prices'] ?? null)) $state['additional_prices'] = [];
-
-    $results = [];
+    $contexts=$plan['contexts']??null; $offers=$plan['offers']??null;
+    if (!is_array($contexts)||!is_array($offers)||($plan['requested_offers']??null)!==count($offers)||($plan['unique_contexts']??null)!==count($contexts)
+        || count($offers)<1||count($offers)>6||count($contexts)<1||count($contexts)>6) throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
+    if (!is_array($state['additional_prices']??null)) $state['additional_prices']=[];
+    $results=[];
     foreach ($contexts as $context) {
-        $digest = is_array($context) ? ($context['context_digest'] ?? null) : null;
-        if (!is_string($digest) || !preg_match('/\A[a-f0-9]{64}\z/D', $digest)) {
-            throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
-        }
-        $attempt = $state['additional_prices'][$digest] ?? null;
-        if (is_array($attempt) && ($attempt['status'] ?? null) === 'complete' && is_array($attempt['evidence'] ?? null)) {
-            $results[$digest] = ['status' => 'complete', 'cached' => true, 'evidence' => $attempt['evidence']];
-            continue;
-        }
-        if ($attempt !== null) {
-            $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null];
-            continue;
-        }
-        $state['additional_prices'][$digest] = ['status' => 'unknown'];
-        $checkpoint($state, $digest);
-        try {
-            $evidence = $reader($context);
-        } catch (RuntimeException $error) {
-            if ($error->getMessage() === 'ANEX_B2B_DAILY_UNKNOWN') {
-                $results[$digest] = ['status' => 'unknown', 'cached' => true, 'evidence' => null];
-                continue;
-            }
+        $digest=is_array($context)?($context['context_digest']??null):null;
+        if (!is_string($digest)||!preg_match('/\A[a-f0-9]{64}\z/D',$digest)) throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
+        $attempt=$state['additional_prices'][$digest]??null;
+        if (is_array($attempt)&&($attempt['status']??null)==='complete'&&is_array($attempt['evidence']??null)) { $results[$digest]=['status'=>'complete','cached'=>true,'evidence'=>$attempt['evidence']]; continue; }
+        if ($attempt!==null) { $results[$digest]=['status'=>'unknown','cached'=>true,'evidence'=>null]; continue; }
+        $state['additional_prices'][$digest]=['status'=>'unknown']; $checkpoint($state,$digest);
+        try { $evidence=$reader($context); } catch (RuntimeException $error) {
+            if ($error->getMessage()==='ANEX_B2B_DAILY_UNKNOWN') { $results[$digest]=['status'=>'unknown','cached'=>true,'evidence'=>null]; continue; }
             throw $error;
         }
         if (!is_array($evidence)) throw new RuntimeException('ANEX_INVALID_ADDITIONAL_PRICES');
-        $state['additional_prices'][$digest] = ['status' => 'complete', 'evidence' => $evidence];
-        $results[$digest] = ['status' => 'complete', 'cached' => false, 'evidence' => $evidence];
+        $state['additional_prices'][$digest]=['status'=>'complete','evidence'=>$evidence,'observed_nights'=>$context['observed_nights']??[$context['nights']]];
+        $results[$digest]=['status'=>'complete','cached'=>false,'evidence'=>$evidence];
     }
-
-    $publicOffers = [];
+    $publicOffers=[];
     foreach ($offers as $item) {
-        $digest = is_array($item) ? ($item['context_digest'] ?? null) : null;
-        if (!is_string($digest) || !isset($results[$digest])
-            || !is_string($item['offer_ref'] ?? null) || !is_int($item['local_hotel_id'] ?? null)) {
-            throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
-        }
-        $publicOffers[] = [
-            'offer_ref' => $item['offer_ref'],
-            'local_hotel_id' => $item['local_hotel_id'],
-            'context_digest' => $digest,
-            'status' => $results[$digest]['status'],
-            'additional_prices' => $results[$digest]['evidence'],
-        ];
+        $digest=is_array($item)?($item['context_digest']??null):null;
+        if (!is_string($digest)||!isset($results[$digest])||!is_string($item['offer_ref']??null)||!is_int($item['local_hotel_id']??null)) throw new InvalidArgumentException('ANEX_INVALID_ADDITIONAL_BATCH_PLAN');
+        $publicOffers[]=['offer_ref'=>$item['offer_ref'],'local_hotel_id'=>$item['local_hotel_id'],'context_digest'=>$digest,'status'=>$results[$digest]['status'],'additional_prices'=>$results[$digest]['evidence']];
     }
-
-    return [
-        'requested_offers' => count($publicOffers),
-        'unique_contexts' => count($results),
-        'offers' => $publicOffers,
-    ];
+    return ['requested_offers'=>count($publicOffers),'unique_contexts'=>count($results),'offers'=>$publicOffers];
 }
