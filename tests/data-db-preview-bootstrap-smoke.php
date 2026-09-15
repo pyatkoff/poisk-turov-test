@@ -2,12 +2,11 @@
 declare(strict_types=1);
 
 $root = sys_get_temp_dir() . '/anytour-data-db-preview-' . bin2hex(random_bytes(6));
-$configDir = $root . '/v2';
-if (!mkdir($configDir, 0700, true) && !is_dir($configDir)) {
+if (!mkdir($root, 0700, true) && !is_dir($root)) {
     throw new RuntimeException('failed to create temporary document root');
 }
 
-$configPath = $configDir . '/config.php';
+$configPath = $root . '/config.php';
 $configSource = <<<'PHP'
 <?php
 define('ANYTOUR_DATA_DSN', 'mysql:host=preview-db.example;port=3307;dbname=anytour_preview;charset=utf8mb4');
@@ -33,6 +32,5 @@ try {
     echo "ANYTOUR_DATA_DB_PREVIEW_BOOTSTRAP_OK\n";
 } finally {
     @unlink($configPath);
-    @rmdir($configDir);
     @rmdir($root);
 }
