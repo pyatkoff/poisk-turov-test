@@ -43,8 +43,8 @@ jobs:
               "pull_number: 2521",
               "for (const run_id of [34954869668, 34954869779])",
               "ref: 4208ec723433ec469a2e49671c29f618f309dd6a",
-              "ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}",
-              "ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}",
+              "ANYTOOUR_DEPLOY_HOST: $" + "{{ secrets.ANYTOOUR_DEPLOY_HOST }}",
+              "ANYTOOUR_DEPLOY_USER: $" + "{{ secrets.ANYTOOUR_DEPLOY_USER }}",
               "result.get('booking_calls') != 0",
               "result.get('calc_calls') != 1",
           ]
