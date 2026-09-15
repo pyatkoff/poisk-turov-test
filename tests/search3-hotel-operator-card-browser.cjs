@@ -15,7 +15,7 @@ module.exports=async function checkOperatorCards(page,width,output){
     {...base,id:'brand-anex-9',nights:9,price:70300,operator:'Анекс'},
     {...base,id:'brand-intourist-10',date:'2026-09-18',nights:10,price:77200,meal:{name:'AI',fullName:'Всё включено'},operator:'НТК Интурист',isCharter:false},
     {...base,id:'brand-biblio-7',nights:7,price:65500,meal:{name:'HB',fullName:'Полупансион'},operator:'Библио-Глобус'},
-    {...base,id:'brand-local-8',date:'2026-09-17',nights:8,price:68900,meal:{name:'AI',fullName:'Всё включено'},operator:'LOCAL OPERATOR',isCharter:false},
+    {...base,id:'brand-pegas-8',date:'2026-09-17',nights:8,price:68900,meal:{name:'AI',fullName:'Всё включено'},operator:'Pegas Touristik',isCharter:false},
     {...base,id:'brand-coral-7',nights:7,price:78200,meal:{name:'AI',fullName:'Всё включено'},operator:'CORAL TRAVEL',isCharter:false},
     {...base,id:'brand-sunmar-9',date:'2026-09-18',nights:9,price:78700,meal:{name:'HB',fullName:'Полупансион'},operator:'Санмар'}
   ];
@@ -100,14 +100,14 @@ module.exports=async function checkOperatorCards(page,width,output){
       }else assert.equal(await badge.innerText(),identity.label,'unknown operator retains its visible name');
     }
     const loadedLogos=[];
-    for(const brand of ['funsun','anex','intourist','biblio-globus','coral','sunmar']){
+    for(const brand of ['funsun','anex','intourist','biblio-globus','coral','sunmar','pegas']){
       const logo=card.locator('[data-operator-brand="'+brand+'"] .hotel-operator-logo').first();
       await logo.scrollIntoViewIfNeeded();
       await logo.evaluate(img=>img.decode());
       assert.equal(await logo.evaluate(img=>img.complete&&img.naturalWidth>0),true,'visible original '+brand+' artwork loads');
       const artwork=await logo.evaluate(img=>({src:new URL(img.currentSrc).pathname,width:img.naturalWidth,height:img.naturalHeight,objectFit:getComputedStyle(img).objectFit,renderedWidth:img.getBoundingClientRect().width,renderedHeight:img.getBoundingClientRect().height}));
-      if(brand==='coral'||brand==='sunmar'){
-        const [file,sourceWidth,sourceHeight]=brand==='coral'?['coral.png',352,212]:['sunmar.svg',89,51];
+      if(brand==='coral'||brand==='sunmar'||brand==='pegas'){
+        const [file,sourceWidth,sourceHeight]=brand==='coral'?['coral.png',352,212]:brand==='sunmar'?['sunmar.svg',89,51]:['pegas.png',500,105];
         assert.ok(artwork.src.endsWith('/assets/operator-logos/'+file),'new operator loads its local original asset');
         assert.equal(artwork.width,sourceWidth,'original '+brand+' intrinsic width is preserved');
         assert.equal(artwork.height,sourceHeight,'original '+brand+' intrinsic height is preserved');
@@ -116,7 +116,7 @@ module.exports=async function checkOperatorCards(page,width,output){
       }
       loadedLogos.push({brand,...artwork});
     }
-    assert.deepEqual([...new Set(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)))].sort(),['anex','biblio-globus','coral','funsun','intourist','sunmar']);
+    assert.deepEqual([...new Set(await card.locator('[data-operator-brand]').evaluateAll(nodes=>nodes.map(node=>node.dataset.operatorBrand)))].sort(),['anex','biblio-globus','coral','funsun','intourist','pegas','sunmar']);
     assert.equal(await card.locator('.hotel-operator:not([data-operator-brand]) img').count(),0,'unknown operators keep a text fallback');
     const mobileComposition=[];
     if(width===375){
@@ -143,7 +143,7 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         mobileComposition.push({width:inspectedWidth,rows});
         await card.locator('.tour-row').first().screenshot({path:path.join(output,`operator-card-mobile-action-${inspectedWidth}.png`),animations:'disabled'});
-        if(inspectedWidth===375||inspectedWidth===430)for(const brand of ['coral','sunmar'])await card.locator('.tour-row').filter({has:page.locator('[data-operator-brand="'+brand+'"]')}).screenshot({path:path.join(output,`operator-card-${brand}-${inspectedWidth}.png`),animations:'disabled'});
+        if(inspectedWidth===375||inspectedWidth===430)for(const brand of ['coral','sunmar','pegas'])await card.locator('.tour-row').filter({has:page.locator('[data-operator-brand="'+brand+'"]')}).screenshot({path:path.join(output,`operator-card-${brand}-${inspectedWidth}.png`),animations:'disabled'});
       }
       await page.setViewportSize(viewport);
     }
@@ -171,7 +171,7 @@ module.exports=async function checkOperatorCards(page,width,output){
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
         desktopComposition.push({width:inspectedWidth,rows});
         await card.screenshot({path:path.join(output,`operator-card-composition-${inspectedWidth}.png`),animations:'disabled'});
-        if(inspectedWidth===1024||inspectedWidth===1440)for(const brand of ['coral','sunmar'])await card.locator('.tour-row').filter({has:page.locator('[data-operator-brand="'+brand+'"]')}).screenshot({path:path.join(output,`operator-card-${brand}-${inspectedWidth}.png`),animations:'disabled'});
+        if(inspectedWidth===1024||inspectedWidth===1440)for(const brand of ['coral','sunmar','pegas'])await card.locator('.tour-row').filter({has:page.locator('[data-operator-brand="'+brand+'"]')}).screenshot({path:path.join(output,`operator-card-${brand}-${inspectedWidth}.png`),animations:'disabled'});
       }
       await page.setViewportSize(viewport);
     }
@@ -241,6 +241,6 @@ module.exports=async function checkOperatorCards(page,width,output){
     assert.equal(await operatorField.isVisible(),false,'two spellings of one operator do not invent a second facet choice');
     assert.deepEqual(sent,[],'local disclosure sends no supplier, lead, or other mutation requests');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false);
-    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus','coral','sunmar'],loadedLogos,exact_nights:[7,10,8,9,7,8,9,10,7,8,7,9],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:12,operatorChoices,aliasMatches:[2,2,0,0],providerFacet:false,sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
+    fs.writeFileSync(path.join(output,`operator-card-${width}.json`),JSON.stringify({width,collapsedComposition,mobileComposition,desktopComposition,collapsed_operator:null,collapsed_exact_offer:null,hotel_level_only:true,compact_exact_offer_rows:true,known_logo_coverage:['funsun','anex','intourist','biblio-globus','coral','sunmar','pegas'],loadedLogos,exact_nights:[7,10,8,9,7,8,9,10,7,8,7,9],meal_variants:3,flight_variants:['charter','regular'],exact_offer_count:12,operatorChoices,aliasMatches:[2,2,0,0],providerFacet:false,sourceUnchanged:true,incompleteReset:true,supplier_calls:0,leads:0,fixture:true,physical_safari:'deferred'},null,2)+'\n');
   }finally{page.off('request',listener);}
 };

@@ -1,6 +1,7 @@
 /* Current reset UI: actual renderer, native header, and raw/served JS parity.
  * Retired custom disclosures, drawers and pixel dimensions are not fabricated. */
 const assert = require('node:assert/strict');
+const withFuel = require('./fixtures/search3-andromeda-fuel.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
@@ -119,10 +120,11 @@ async function checkToolbarLayout(page, width, previous) {
   return { closed, opened };
 }
 async function checkMinimumReadiness(page, width, previous) {
+  // Generic selection readiness; real SAMO admission is exercised through its HTTP projection below.
   const makeTour = (id, price, extra = {}) => ({ ...tour, id, price, ...extra });
   const items = [
-    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена с проверкой', price: 80000, tours: [makeTour('minimum-andromeda', 80000, { provider: 'andromeda' }), makeTour('minimum-selectable', 95000)] },
-    { ...hotels[0], id: 'minimum-mixed', name: 'Одна цена — разные условия выбора', price: 85000, tours: [makeTour('mixed-andromeda', 85000, { provider: 'andromeda' }), makeTour('mixed-selectable', 85000)] },
+    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена с проверкой', price: 80000, tours: [makeTour('minimum-check-offer', 80000, { selectionEnabled: false }), makeTour('minimum-selectable', 95000)] },
+    { ...hotels[0], id: 'minimum-mixed', name: 'Одна цена — разные условия выбора', price: 85000, tours: [makeTour('mixed-check-offer', 85000, { selectionEnabled: false }), makeTour('mixed-selectable', 85000)] },
     { ...hotels[0], id: 'minimum-ready', name: 'Вариант с доступным выбором', price: 90000, tours: [makeTour('ready-minimum', 90000), makeTour('expensive-check', 110000, { selectionEnabled: false })] }
   ];
   const requests = [];
@@ -152,9 +154,9 @@ async function checkMinimumReadiness(page, width, previous) {
     const labels = await cards.evaluateAll(nodes => nodes.map(node => ({ id: node.dataset.hotelId, price: node.querySelector('.hotel-offers-summary .hotel-price').textContent, note: node.querySelector('.tour-selection-note')?.textContent || '' })));
     const toggle = checked.locator('.tour-more-toggle');
     await toggle.focus(); await toggle.press('Enter');
-    assert.equal(await checked.locator('[data-tid="minimum-andromeda"]').count(), 0, 'unverified minimum still cannot create a select action');
+    assert.equal(await checked.locator('[data-tid="minimum-check-offer"]').count(), 0, 'unverified minimum still cannot create a select action');
     assert.equal(await checked.locator('[data-tid="minimum-selectable"]').isVisible(), true, 'more expensive selectable offer keeps its existing action');
-    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором проверим цену и рейсы/i);
+    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором нужна проверка/i);
     if (!previous) await checked.screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
     await checked.locator('.tour-more-toggle').press('Enter');
     assert.equal(await checked.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'collapse retains the existing disclosure focus');
@@ -302,7 +304,7 @@ async function checkExpandedDensity(page, width, previous) {
 async function checkMealFacet(page, width, previous) {
   const sample = (id, price, meal, date) => ({ ...tour, id, price, meal, date });
   const items = [
-    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-andromeda-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'andromeda', selectionEnabled: false }] },
+    { id: 'meal-a', name: 'Отель А', price: 90000, rating: 5, category: 5, tours: [sample('a-ro', 90000, { name: 'RO', fullName: 'Без питания' }, '2026-09-10'), sample('a-bb', 140000, { name: 'BB', fullName: 'BB - Только завтрак' }, '2026-09-15'), sample('a-hb', 145000, { fullName: 'Полупансион' }, '2026-09-16'), sample('a-fb', 150000, { fullName: 'Full Board' }, '2026-09-17'), sample('a-sc', 155000, { fullName: 'Self Catering' }, '2026-09-18'), sample('a-request', 160000, { fullName: 'По запросу' }, '2026-09-19'), sample('a-ai-extra', 125000, { fullName: 'Всё включено' }, '2026-09-14'), sample('a-ai', 120000, { name: 'AI', fullName: 'Всё включено' }, '2026-09-12'), sample('a-uai', 135000, { name: 'UAI', fullName: 'Ультра всё включено' }, '2026-09-14'), sample('a-soft-ai', 138000, { name: 'Soft AI', fullName: 'Мягкое всё включено' }, '2026-09-14'), { ...sample('a-anex-ai', 130000, { name: 'AI' }, '2026-09-14'), provider: 'anex', selectionEnabled: false }] },
     { id: 'meal-b', name: 'Отель Б', price: 100000, rating: 4, category: 4, tours: [sample('b-ai', 100000, { fullName: 'Всё включено' }, '2026-09-11'), sample('b-bb', 142000, { fullName: 'Bed & Breakfast' }, '2026-09-15'), sample('b-hb', 147000, { fullName: 'Half Board' }, '2026-09-16'), sample('b-request', 162000, { fullName: 'On Request' }, '2026-09-19')] },
     { id: 'meal-c', name: 'Отель В', price: 80000, rating: 3, category: 3, tours: [sample('c-ro', 80000, { fullName: 'Room only' }, '2026-09-13'), sample('c-fb', 152000, { fullName: 'Полный пансион' }, '2026-09-17'), sample('c-sc', 157000, { fullName: 'Самообслуживание' }, '2026-09-18')] }
   ];
@@ -390,7 +392,7 @@ async function checkMealFacet(page, width, previous) {
     assert.equal(await a.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'meal disclosure keeps keyboard focus after replacing its contents');
     assert.equal(await a.locator('.direct-tour').first().getAttribute('data-tid'), 'a-ai', 'expanded representative choice keeps its original tour ID');
     assert.deepEqual(await a.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), ['a-ai', 'a-ai-extra'], 'expansion keeps AI aliases without reintroducing UAI or Soft AI');
-    assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent Andromeda AI remains visible but cannot enter the Tourvisor selection controller');
+    assert.equal(await a.locator('.tour-selection-note').count(), 1, 'equivalent direct-provider AI remains visible but cannot enter the Tourvisor selection controller');
     assert.doesNotMatch(await a.locator('.hotel-tours').innerText(), /Без питания|90000/);
     assert.equal(await a.locator('.hotel-price').first().innerText().then(text => text.replace(/\s/g, '')), '120000₽', 'expanded meal offers start with the same matching price');
     await a.locator('.tour-more-toggle').press('Space');
@@ -499,13 +501,15 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
   };
   const searchParams = { departureId: '1', countryId: '1', dateFrom: '2026-09-18', dateTo: '2026-09-18', nightsFrom: '8', nightsTo: '8', adults: '2', childs: [], currency: 'RUB' };
   const start = async (generation, baseHotels = [tvHotel]) => {
-    await page.evaluate(({ generation, searchParams, baseHotels }) => {
+    await page.evaluate(({ generation, searchParams, baseHotels, unconfirmedOnly }) => {
+      if (unconfirmedOnly) { const done = event => { if (event.detail.provider === 'andromeda' && event.detail.generation === generation && event.detail.status === 'complete') { window.__fuelProviderComplete = generation; window.removeEventListener('v2:provider-status', done); } }; window.addEventListener('v2:provider-status', done); }
       Object.defineProperty(window.V2SearchLifecycle, 'generation', { configurable: true, get: () => generation });
       Object.defineProperty(window.V2SearchLifecycle, 'snapshot', { configurable: true, get: () => ({ ...searchParams }) });
       window.dispatchEvent(new CustomEvent('v2:search-reset', { detail: { generation } }));
       window.V2Results.render(baseHotels, { empty: true });
-    }, { generation, searchParams, baseHotels });
-    await page.locator('#results .hotel-card[data-hotel-id="21477"] .tour-more-toggle').waitFor();
+    }, { generation, searchParams, baseHotels, unconfirmedOnly: control.unconfirmedOnly });
+    if (control.unconfirmedOnly) await page.waitForFunction(generation => window.__fuelProviderComplete === generation, generation);
+    else await page.locator('#results .hotel-card[data-hotel-id="21477"] .tour-more-toggle').waitFor();
   };
   const waitForExpansion = status => page.waitForFunction(status => window.V2Results.state.items.some(hotel => String(hotel.id) === '21477' && hotel.andromedaExpansion?.status === status), status);
   control.enabled = true;
@@ -513,6 +517,20 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
   control.quoteRequests.length = 0;
   control.failSecond = false;
   try {
+    control.unconfirmedOnly = true;
+    await start(71);
+    const rejectedCard = page.locator('#results .hotel-card[data-hotel-id="21477"]');
+    assert.equal(await rejectedCard.locator('.hotel-price').innerText().then(t=>t.replace(/\s/g,'')), '165000₽', 'unconfirmed cheap SAMO offer cannot reduce the visible hotel minimum');
+    assert.equal(await rejectedCard.locator('[data-andromeda-detail],.tour-more-toggle').count(), 0, 'unconfirmed offers cannot expose tour/detail actions');
+    assert.equal(await rejectedCard.locator('.direct-tour').getAttribute('data-tid'), 'tv-andromeda-control', 'Tourvisor offer remains intact');
+    assert.doesNotMatch(await rejectedCard.innerText(), /НЕПОДТВЕРЖДЁННЫЙ/);
+    assert.equal((await snapshot(page)).overflow, false);
+    if (!previous) await rejectedCard.screenshot({path:path.join(output,`fuel-unconfirmed-hidden-${width}.png`),animations:'disabled'});
+    await page.evaluate(() => window.V2Results.render([], {empty:true}));
+    assert.equal(await page.locator('#results .hotel-card').count(), 0, 'SAMO-only hotel with no fuel evidence stays out of results');
+    assert.equal(control.quoteRequests.length, 0, 'rejection never probes or calculates a quote');
+    control.unconfirmedOnly = false;
+    control.requests.length = 0;
     await start(73);
     const card = page.locator('#results .hotel-card[data-hotel-id="21477"]');
     await page.evaluate(() => window.V2Results.render([], { empty: true }));
@@ -604,7 +622,9 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await detailToggle.evaluate(node => node === document.activeElement), true, 'provider detail keeps keyboard focus after rerender');
     assert.match(await card.locator('.provider-detail').innerText(), /ANEX · 2026-09-18 · 8 ноч\. · 2 взр\. · Всё включено · <script>номер<\/script> · Двухместное/);
     assert.equal(await card.locator('.provider-detail script').count(), 0, 'supplier detail strings are escaped instead of becoming markup');
-    assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
+    assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]000 ₽/, 'details retain the accepted inclusive listing amount instead of an endpoint base amount');
+    assert.match(await card.locator('.provider-detail').innerText(), /Топливный сбор учтён/);
+    assert.doesNotMatch(await card.locator('.provider-detail').innerText(), /может потребовать доплаты/);
     assert.match(await card.locator('.provider-detail').innerText(), /Перед выбором проверим актуальную стоимость и рейсы/);
     assert.doesNotMatch(await card.locator('.provider-detail').innerText(), /Андромед|Источник|Бронирование пока недоступно/);
     assert.deepEqual(control.requests.map(request => request.action || 'search'), ['search', 'hotel_offers', 'hotel_offers', 'offer_detail'], 'details add one explicit saved-offer request only');
@@ -820,6 +840,8 @@ async function run(browser, width, previous) {
         catalog: { hotel_id: 21477, source: 'tourvisor', image_url: 'https://catalog.example/hotel-21477.svg', subregion: 'Наама-Бей', sea_distance: null },
         andromeda_content: { source: 'andromeda', region: 'Шарм-эль-Шейх' },
         tours: [{ provider: 'andromeda', offer_ref: offerRef, offer_context: context, listing_price_ref: 'listing_' + 'e'.repeat(64), price: { amount: input.action === 'hotel_offers' ? String(154000 + input.page * 1000) : '155079.00', currency: 'RUB' }, checkin: '2026-09-18', nights: 8, meal: 'AI', room: input.action === 'hotel_offers' ? 'ROOM ' + input.page : 'GROUPED ROOM', placement: '2 ADL', operator: 'ANEX' }] };
+      const unconfirmed = {...hotel.tours[0], offer_ref:'offer_'+'f'.repeat(64), offer_context:{...context,offer_ref:'offer_'+'f'.repeat(64)}, price:{amount:'1',currency:'RUB'}, room:'НЕПОДТВЕРЖДЁННЫЙ'};
+      hotel.tours = andromeda.unconfirmedOnly ? [unconfirmed] : [withFuel(hotel.tours[0]),unconfirmed];
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', generation: input.generation, page: input.page, pages_count: input.action === 'hotel_offers' ? 2 : 1, grouped: input.action === 'hotel_offers' ? false : true, hotels: [hotel] } }) });
     }
     if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
