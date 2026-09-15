@@ -1,15 +1,15 @@
-name: MATCH coordinate-first CURRENT review v2
+name: MATCH coordinate-first CURRENT review v3
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-coordinate-current-review-1971-v2, cancel-in-progress: false}
+concurrency: {group: match-coordinate-current-review-1971-v3, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-coordinate-current-review-1971-20260915-v2
+  OPERATION_ID: hotel-match-coordinate-current-review-1971-20260915-v3
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 22
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 23
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -27,8 +27,8 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = e93113da264b9bb1a17d0cb65287b4d1dc5b476b
           test "$(git hash-object scripts/diagnostics/hotel_match_state_country_consensus.php)" = 2a443380b28e3a4267650d988e524971b77f56c3
           test "$(git hash-object scripts/diagnostics/hotel_match_state_accepted_country_consensus.php)" = 97d39cdd7817e024139bd7e962cc8496c5c9ea58
-          test "$(git hash-object scripts/diagnostics/hotel_match_coordinate_current_review.php)" = 57505d8ab19197d5a41e26266aa9e99f90b8bf56
-          test "$(git hash-object tests/hotel_match_coordinate_current_review_test.php)" = c93aafbbad4945c4cf57556e3d10b6f9be00e05b
+          test "$(git hash-object scripts/diagnostics/hotel_match_coordinate_current_review.php)" = 47e7bc64680505f4df06e5c557d90b9fe76c1227
+          test "$(git hash-object tests/hotel_match_coordinate_current_review_test.php)" = 25847a8d32e7c16988a11966fe0e3bc311edfac8
           ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_coordinate_current_review.php
           ! grep -Eiq '\b(INSERT INTO|UPDATE|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_coordinate_current_review.php
           printf 'SOURCE_SHA256=%s\nCOUNTRY_SHA256=%s\nSTATE_SHA256=%s\nRESOLVER_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_coordinate_current_review.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_state_accepted_country_consensus.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_state_country_consensus.php|awk '{print $1}')" "$(sha256sum scripts/diagnostics/hotel_match_live_residual_current_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
@@ -43,8 +43,8 @@ jobs:
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-coordinate-current-review-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-coordinate-current-review-1971-20260915-v2/
+          name: match-coordinate-current-review-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-coordinate-current-review-1971-20260915-v3/
           if-no-files-found: error
           retention-days: 90
       - name: Server CURRENT read-only coordinate review
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-coordinate-current-review-v2-result
-          path: ${{ runner.temp }}/hotel-match-coordinate-current-review-1971-20260915-v2/
+          name: match-coordinate-current-review-v3-result
+          path: ${{ runner.temp }}/hotel-match-coordinate-current-review-1971-20260915-v3/
           if-no-files-found: warn
           retention-days: 90
