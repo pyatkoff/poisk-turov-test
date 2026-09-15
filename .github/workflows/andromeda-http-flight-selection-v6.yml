@@ -73,7 +73,7 @@ jobs:
           ]
           for needle in required:
             if needle not in text: raise SystemExit('v6 readback pin missing: '+needle)
-          live=text.split('      - name: Inspect sealed v6 filesystem state',1)[1]
+          live=text.rsplit('\n      - name: Inspect sealed v6 filesystem state\n',1)[1]
           for forbidden in ('AnyTourAndromedaClient','anytour_andromeda_quote_continue','curl_',
                             'file_put_contents','fopen(','unlink(','rename(','copy(','touch(',
                             'shell_exec','passthru(','system('):
