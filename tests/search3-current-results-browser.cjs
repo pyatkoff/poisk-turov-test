@@ -739,7 +739,12 @@ async function run(browser, width, previous) {
         await new Promise(resolve => { andromeda.held.release = resolve; andromeda.held.onStart(); });
       }
       if (input.action === 'hotel_offers' && andromeda.failSecond && input.page === 2) return route.abort('failed');
-      if (input.action === 'offer_detail') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', offer_context: input.offer_context, hotel: 'Подтверждённый тестовый отель', operator: 'ANEX', room: '<script>номер<\/script>', placement: 'DBL', checkin: '2026-09-18', nights: 8, adults: 2, children: 0, meal: 'AI', price: { amount: '155079.00', currency: 'RUB' } } }) });
+      if (input.action === 'offer_detail') {
+        assert.deepEqual(Object.keys(input.offer_context).sort(), ['generation', 'offer_ref', 'page', 'provider', 'search_ref'], 'saved detail uses the strict public identity, not the browser scope envelope');
+        assert.equal(input.hotel_scope.local_id, 21477, 'expanded detail keeps its local hotel scope at the request root');
+        assert.equal(input.hotel_scope.seed.generation, input.generation);
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', local_id: 21477, offer_context: input.offer_context, hotel: 'Подтверждённый тестовый отель', operator: 'ANEX', room: '<script>номер<\/script>', placement: 'DBL', checkin: '2026-09-18', nights: 8, adults: 2, children: 0, meal: 'AI', price: { amount: '155079.00', currency: 'RUB' } } }) });
+      }
       const offerRef = 'offer_' + String(input.action === 'hotel_offers' ? input.page : 9).repeat(64);
       const seed = { provider: 'andromeda', search_ref: 'd'.repeat(64), generation: input.generation, page: 1, offer_ref: 'offer_' + '9'.repeat(64) };
       const context = input.action === 'hotel_offers'
