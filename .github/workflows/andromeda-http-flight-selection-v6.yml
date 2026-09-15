@@ -24,6 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
           ref: 642c38113820859e3a09eaa12c233c3a790ac787
           path: source
           persist-credentials: false
@@ -53,6 +57,28 @@ jobs:
           for forbidden in ('bron_ticket','booking(', 'supplier_uid'):
             if forbidden in t: raise SystemExit('forbidden live authority in v6 source: '+forbidden)
           print('v6 exact source contract OK; supplier calls in PR=0')
+          PY
+      - name: Verify terminal readback is filesystem-only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('.github/workflows/andromeda-http-flight-selection-v6.yml').read_text()
+          required=[
+            "github.event.comment.body == '/inspect-andromeda-http-flight-selection-e2e-1717-v6'",
+            'const sourceRun=34969426693;',
+            'const sourceArtifact=10396477196;',
+            'sha256:3c08adfb060a325b0b4a17900493ff357f875e7e192d64c80bcb4131f33ed1ee',
+            "'supplier_calls'=>0", "'database_reads'=>0", "'database_writes'=>0",
+            "'filesystem_writes'=>0", "'booking_calls'=>0", "'operation_replayed'=>false",
+          ]
+          for needle in required:
+            if needle not in text: raise SystemExit('v6 readback pin missing: '+needle)
+          live=text.rsplit('\n      - name: Inspect sealed v6 filesystem state\n',1)[1]
+          for forbidden in ('AnyTourAndromedaClient','anytour_andromeda_quote_continue','curl_',
+                            'file_put_contents','fopen(','unlink(','rename(','copy(','touch(',
+                            'shell_exec','passthru(','system('):
+            if forbidden in live: raise SystemExit('v6 readback may perform an operation: '+forbidden)
+          print('v6 terminal readback is filesystem-only; PR supplier calls=0')
           PY
 
   run-v6:
@@ -133,3 +159,138 @@ jobs:
             raise SystemExit('v6 final evidence contract failed; DO NOT replay')
           print(json.dumps(d,sort_keys=True))
           PY
+
+  inspect-v6-terminal:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 1717 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/inspect-andromeda-http-flight-selection-e2e-1717-v6'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Bind readback to exact terminal v6 run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/inspect-andromeda-http-flight-selection-e2e-1717-v6';
+            const sourceRun=34969426693;
+            const sourceArtifact=10396477196;
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1') throw new Error('Inspect retained readback artifact; do not rerun blindly.');
+            if(context.actor!=='pyatkoff'||context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('Owner invocation required.');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if(context.payload.issue?.number!==1717||context.payload.issue?.pull_request||context.payload.comment?.body!==command) throw new Error('Exact #1717 v6 readback command required.');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:1717,per_page:100});
+            const matches=comments.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER');
+            if(matches.length!==1||matches[0].id!==context.payload.comment.id) throw new Error('Duplicate/edited v6 readback command rejected.');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('Main advanced; review rather than reading stale control.');
+            const {data:run}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:sourceRun});
+            if(run.head_sha!=='d31b2c5ede346362f4cb8e705ec8dca42cb293a0'||run.event!=='issue_comment'||run.status!=='completed'||run.conclusion!=='failure'||run.run_attempt!==1) throw new Error('Terminal v6 run provenance mismatch.');
+            const {data:artifact}=await github.rest.actions.getArtifact({...context.repo,artifact_id:sourceArtifact});
+            if(artifact.expired!==false||artifact.workflow_run?.id!==sourceRun||artifact.workflow_run?.head_sha!==run.head_sha||artifact.digest!=='sha256:3c08adfb060a325b0b4a17900493ff357f875e7e192d64c80bcb4131f33ed1ee') throw new Error('Terminal v6 receipt mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Inspect sealed v6 filesystem state
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          from anex_search3_owner_decisions import ssh_php
+          source=r'''
+          error_reporting(0); ini_set('display_errors','0'); ini_set('log_errors','0');
+          $out=['status'=>'blocked','supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,
+              'filesystem_writes'=>0,'booking_calls'=>0,'operation_replayed'=>false];
+          function v6_read($path,$limit){
+              if(!is_file($path)||is_link($path)||filesize($path)>$limit) throw new RuntimeException('checkpoint_file_invalid');
+              $value=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);
+              if(!is_array($value)) throw new RuntimeException('checkpoint_json_invalid'); return $value;
+          }
+          function v6_money($value){
+              if(!is_array($value)||!is_string($value['amount']??null)||!is_string($value['currency']??null)) return null;
+              return ['amount'=>$value['amount'],'currency'=>$value['currency']];
+          }
+          try{
+              $root=realpath(getcwd());
+              if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('project_invalid');
+              $searches=dirname($root,2).'/.anytoour-andromeda/searches';
+              if(!is_dir($searches)||is_link($searches)||!is_readable($searches)) throw new RuntimeException('search_checkpoint_directory_invalid');
+              $from=strtotime('2026-09-15T12:30:00Z'); $to=strtotime('2026-09-15T12:34:30Z'); $matches=[];
+              foreach((glob($searches.'/*-quote-v1.json')?:[]) as $path){
+                  if(!is_file($path)||is_link($path)) continue; $mtime=filemtime($path); if($mtime<$from||$mtime>$to) continue;
+                  try{$envelope=v6_read($path,524288);}catch(Throwable $ignored){continue;}
+                  $state=$envelope['state']??null; if(!is_array($state)||($state['status']??null)!=='completed'||!is_array($state['result']??null)) continue;
+                  $quote=$state['result'];
+                  if(($quote['provider']??null)!=='andromeda'||($quote['local_id']??null)!==59444||($quote['state']??null)!=='flight_selection_required'
+                      ||v6_money($quote['search_price']??null)!==['amount'=>'115886','currency'=>'RUB']) continue;
+                  $matches[]=[$path,$quote];
+              }
+              if(count($matches)!==1) throw new RuntimeException('initial_quote_checkpoint_not_unique');
+              [$initialPath,$quote]=$matches[0]; $suffix='-quote-v1.json'; $prefix=substr($initialPath,0,-strlen($suffix));
+              $flightEnvelope=v6_read($prefix.'-quote-flight-state-v1.json',3000000);
+              $continuation=v6_read($prefix.'-quote-flight-v1.json',131072);
+              $flightState=$flightEnvelope['state']??null; $continuationState=$continuation['state']??null;
+              if(!is_array($flightState)||($flightState['provider']??null)!=='andromeda'||!is_array($flightState['claim']??null)||!is_array($flightState['items']??null)) throw new RuntimeException('flight_state_invalid');
+              if(!is_array($continuationState)||!in_array($continuationState['status']??null,['reserved','unknown','completed'],true)) throw new RuntimeException('continuation_checkpoint_invalid');
+              $itemDirections=['0'=>0,'1'=>0]; $publicRefs=[];
+              foreach($flightState['items'] as $ref=>$record){
+                  if(!is_string($ref)||!preg_match('/^flight_[a-f0-9]{32}$/D',$ref)||!is_array($record)) throw new RuntimeException('flight_item_invalid');
+                  $d=(string)($record['direction']??''); if(!isset($itemDirections[$d])) throw new RuntimeException('flight_direction_invalid'); ++$itemDirections[$d];
+              }
+              foreach(($quote['flights']??[]) as $row){if(is_array($row)&&is_string($row['flight_ref']??null)) $publicRefs[$row['flight_ref']]=true;}
+              $privateRefMatches=0; foreach(array_keys($flightState['items']) as $ref) if(isset($publicRefs[$ref])) ++$privateRefMatches;
+              $doc=$flightState['claim']['claimDocument'][0]??null; if(!is_array($doc)) throw new RuntimeException('claim_document_invalid');
+              $claimDirections=['0'=>0,'1'=>0,'other'=>0]; $claimTransportCount=0;
+              foreach(($doc['transports']??[]) as $block){
+                  if(!is_array($block)||!is_array($block['transport']??null)) continue;
+                  foreach($block['transport'] as $transport){
+                      if(!is_array($transport)) continue; ++$claimTransportCount; $d=(string)($transport['direction']??'');
+                      if(isset($claimDirections[$d])) ++$claimDirections[$d]; else ++$claimDirections['other'];
+                  }
+              }
+              $out['status']='inspected';
+              $out['initial_quote']=['attempt_status'=>'completed','state'=>$quote['state']??null,
+                  'flight_selection_required'=>$quote['flight_selection_required']??null,
+                  'flights_count'=>is_array($quote['flights']??null)?count($quote['flights']):null,
+                  'search_price'=>v6_money($quote['search_price']??null),'package_price'=>v6_money($quote['package_price']??null),
+                  'final_price'=>($quote['final_price']??null)===null?null:v6_money($quote['final_price'])];
+              $out['flight_state']=['items_count'=>count($flightState['items']),'item_directions'=>$itemDirections,
+                  'public_refs_matching_private_items'=>$privateRefMatches,'claim_transport_count'=>$claimTransportCount,
+                  'claim_transport_directions'=>$claimDirections,
+                  'append_outbound_would_find_existing_direction'=>$claimDirections['0']>0,
+                  'append_return_would_find_existing_direction'=>$claimDirections['1']>0];
+              $out['continuation']=['attempt_status'=>$continuationState['status']??null,
+                  'has_result'=>is_array($continuationState['result']??null)];
+          }catch(Throwable $error){$out['reason']=preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$error->getMessage())?$error->getMessage():'inspection_failed';}
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          '''
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-v6-terminal-readback'; out.mkdir(mode=0o700)
+          try:
+              result=ssh_php(source,{},maximum_bytes=65536)
+          except Exception:
+              (out/'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','operation_replayed':False})+'\n'); raise
+          (out/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          zeros=['supplier_calls','database_reads','database_writes','filesystem_writes','booking_calls']
+          if result.get('status')!='inspected' or result.get('operation_replayed') is not False or any(result.get(k)!=0 for k in zeros):
+              raise SystemExit('v6 terminal inspection incomplete; operation was not replayed')
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - name: Preserve sanitized v6 terminal readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-v6-terminal-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-v6-terminal-readback/result.json
+          if-no-files-found: error
+          retention-days: 14
