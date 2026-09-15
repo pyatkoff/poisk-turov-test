@@ -153,7 +153,27 @@ function anytour_andromeda_quote_unknown(string $checkpoint, string $lockPath, a
     }
 }
 
-function anytour_andromeda_quote_supplier(array $config): array
+/** Validate one already-private supplier session without making a request. */
+function anytour_andromeda_quote_retained_session(array $flightState): array
+{
+    $session = $flightState['session'] ?? null;
+    if (!is_array($session)) throw new RuntimeException('ANDROMEDA_FLIGHT_SESSION_INVALID');
+    $check = new AnyTourAndromedaClient(
+        static function (): never { throw new LogicException('NO_NETWORK'); }, true, true);
+    try {
+        $check->restorePrivateSession($session);
+    } catch (Throwable $error) {
+        throw new RuntimeException('ANDROMEDA_FLIGHT_SESSION_INVALID');
+    }
+    $restored = $check->privateSession();
+    if ($restored === [] || ($restored['sid'] ?? null) !== ($session['sid'] ?? null)
+        || ($restored['expires'] ?? null) !== ($session['expires'] ?? null)) {
+        throw new RuntimeException('ANDROMEDA_FLIGHT_SESSION_INVALID');
+    }
+    return $restored;
+}
+
+function anytour_andromeda_quote_supplier(array $config, ?array $retainedSession = null): array
 {
     $budgetDirectory = dirname($config['catalog_path']);
     $transport = new AnyTourAndromedaTransport(false, true);
@@ -163,7 +183,11 @@ function anytour_andromeda_quote_supplier(array $config): array
             return $transport($url, $options);
         }, true, true
     );
-    $client->login($config['username'], $config['password']);
+    if ($retainedSession === null) {
+        $client->login($config['username'], $config['password']);
+    } else {
+        $client->restorePrivateSession($retainedSession);
+    }
     $sid = $client->privateSession()['sid'] ?? null;
     if (!is_string($sid)) throw new RuntimeException('ANDROMEDA_LOGIN_REQUIRED');
     return [$client, new AnyTourAndromedaClaimActions($sid,
@@ -184,12 +208,15 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
 
     try {
         [$client, $actions] = anytour_andromeda_quote_supplier($config);
-        $retain = static function(array $claim, array $options) use ($flightState, $meta): array {
+        $retain = static function(array $claim, array $options) use ($flightState, $meta, $client): array {
             if (file_exists($flightState) || is_link($flightState)) {
                 throw new RuntimeException('ANDROMEDA_FLIGHT_STATE_CHANGED');
             }
+            $privateSession = $client->privateSession();
+            if ($privateSession === []) throw new RuntimeException('ANDROMEDA_FLIGHT_SESSION_INVALID');
             $built = AnyTourAndromedaFlightSelection::buildState(
                 $claim, $options, $meta['context_sha256']);
+            $built['state']['session'] = $privateSession;
             anytour_andromeda_search3_save($flightState, ['state' => $built['state']]);
             $written = anytour_andromeda_quote_read($flightState, 3000000);
             if (array_keys($written) !== ['state'] || ($written['state'] ?? null) !== $built['state']) {
@@ -228,6 +255,8 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
     if (array_keys($flightEnvelope) !== ['state'] || !is_array($flightEnvelope['state'] ?? null)) {
         throw new RuntimeException('ANDROMEDA_FLIGHT_STATE_INVALID');
     }
+    // Validate the exact supplier session which produced get_flights before reserving a continuation.
+    $retainedSession = anytour_andromeda_quote_retained_session($flightEnvelope['state']);
     $selection = $request['flight_selection'] ?? null;
     if (!is_array($selection)) throw new InvalidArgumentException('ANDROMEDA_FLIGHT_SELECTION_INVALID');
     $resolvedSelection = AnyTourAndromedaFlightSelection::select(
@@ -248,7 +277,7 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
     $attempt = $reserved['attempt'];
 
     try {
-        [, $actions] = anytour_andromeda_quote_supplier($config);
+        [, $actions] = anytour_andromeda_quote_supplier($config, $retainedSession);
         $result = AnyTourAndromedaSelectedQuote::continueWithFlights(
             $resolved, $resolvedSelection['claim'], $resolvedSelection['selected'], $actions);
         $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
