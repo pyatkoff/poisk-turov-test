@@ -1,42 +1,801 @@
 {
   "column_contract": {
-    "anex_card_hotelcode_from_saved_tv_candidate": ["anex_hotel_id", "live_search_count", "country_id", "saved_tourvisor_id", "unique_date_support", "saved_status"],
-    "default": ["anex_hotel_id", "live_search_count", "country_id"],
-    "no_replay_already_mapped": ["anex_hotel_id", "live_search_count", "country_id", "mapped_targets"],
-    "server_current_native_identity_reconcile": ["anex_hotel_id", "live_search_count", "country_id", "tourvisor_local_id", "occupied_by_other", "reverse_anex_occupants"]
+    "default": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id"
+    ],
+    "direct_hotellist_safe_current_recheck": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id",
+      "local_id",
+      "run_id",
+      "operation_id"
+    ],
+    "guarded_hold_no_auto": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id",
+      "reason"
+    ],
+    "native_identity_current_reconcile": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id",
+      "tourvisor_local_id",
+      "occupied_by_other",
+      "reverse_anex_occupants"
+    ],
+    "no_replay_already_mapped": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id",
+      "mapped_targets"
+    ],
+    "official_native_hotelcode_needs_local_bridge": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id",
+      "candidate_local_id",
+      "existing_provider_bridges"
+    ],
+    "saved_tv_candidate_then_anex_card_hotelcode": [
+      "anex_hotel_id",
+      "live_search_count",
+      "country_id",
+      "saved_tourvisor_id",
+      "unique_date_support",
+      "saved_status"
+    ]
+  },
+  "cross_source_findings": {
+    "new_collision_guards": [
+      {
+        "anex_ids": [
+          28933,
+          32686
+        ],
+        "local_id": 17390,
+        "reason": "native operatorLink evidence supports ANEX 28933 while official-photo candidate evidence for distinct unresolved ANEX 32686 also targets local 17390; do not auto-accept either until provider-family identity is resolved"
+      },
+      {
+        "anex_ids": [
+          31508,
+          32692
+        ],
+        "local_id": 70291,
+        "reason": "CURRENT/native operatorLink has ANEX 31508 already mapped to local 70291 while official native hotelCode confirms distinct unresolved ANEX 32692 with candidate 70291; hold 32692"
+      },
+      {
+        "anex_ids": [
+          32809,
+          29430
+        ],
+        "local_id": 71266,
+        "reason": "native identity 29430→71266 observed but CURRENT reverse occupancy is ANEX 32809; hold 29430"
+      },
+      {
+        "anex_hotel_id": 1361,
+        "local_id": 125,
+        "reason": "proposal 1361 targets local 125, but direct Tourvisor detail for local 125 returned native ANEX 5167 already mapped; proposal remains contradicted"
+      },
+      {
+        "anex_hotel_id": 32743,
+        "candidate_local_ids": [
+          43528,
+          129511
+        ],
+        "reason": "saved Tourvisor candidate and official-photo enriched candidate disagree; 43528 also has duplicate-provider family ANEX 28882"
+      },
+      {
+        "anex_hotel_id": 32745,
+        "candidate_local_ids": [
+          70943,
+          85422
+        ],
+        "reason": "saved Tourvisor candidate and official-photo enriched candidate disagree"
+      }
+    ],
+    "strongest_triple_evidence": [
+      {
+        "action": "fresh CURRENT guarded recheck; aggregate only",
+        "anex_hotel_id": 19226,
+        "evidence": [
+          "direct Tourvisor operatorLink/HOTELLIST SAFE",
+          "official native ANEX hotelCode confirmed",
+          "existing Andromeda bridge 2000119581"
+        ],
+        "live_search_count": 48,
+        "local_id": 14140
+      }
+    ]
   },
   "guards": {
     "current_recheck_before_any_write": true,
     "database_writes": 0,
     "mapping_writes": 0,
     "no_replay": true,
+    "notes": [
+      "direct HOTELLIST SAFE evidence is evidence authority only, not write authority",
+      "official native hotelCode proves ANEX source identity only; it does not by itself prove a local target",
+      "rows in guarded_hold_no_auto must not be auto-accepted without stronger independent evidence",
+      "completed Tourvisor/detail operations are immutable NO-REPLAY; do not repeat the same date/detail merely to reproduce evidence"
+    ],
     "post_commit_per_row_readback": true,
     "preserve_manual_exclusions_conflicts_mappings": true,
     "provider_call_owner": "PR #2412",
     "provider_calls": 0
   },
   "lanes": {
-    "anex_card_hotelcode_from_captured_detail": [[42927,49,1],[37719,27,1]],
-    "anex_card_hotelcode_from_saved_tv_candidate": [[28882,54,4,43528,6,"duplicate_provider_family_hold"],[32743,54,4,43528,6,"duplicate_provider_family_hold"],[32880,54,4,17443,1,"single_date_candidate_with_collision_guard"],[44573,54,4,59085,3,"repeatable_saved_tv_candidate_only"],[32692,50,4,70291,1,"single_date_candidate_only"],[32745,46,4,70943,9,"repeatable_saved_tv_candidate_only"],[30424,3,4,17617,4,"repeatable_saved_tv_candidate_only"]],
-    "cross_provider_bridge_then_operatorlink": [[16330,62,4],[34680,60,4],[32783,54,4],[35275,53,4],[44939,52,4],[44413,49,4],[32572,22,4],[835,8,1],[5215,5,1],[32355,4,4],[32567,3,4],[33110,3,4],[15072,2,4],[9384,1,4],[20470,1,4],[29556,1,1],[32937,1,4],[34961,1,4],[37985,1,4]],
-    "no_replay_already_mapped": [[4158,39,1,[37412]],[1767,8,1,[182]],[1768,6,1,[183]],[44138,2,4,[53531]]],
-    "server_current_native_identity_reconcile": [[28933,3,4,17390,false,[]],[27777,1,4,17561,false,[]],[29430,1,4,71266,true,[32809]]],
-    "tourvisor_operatorlink_detail_then_anex_card_hotelcode": [[23894,61,4],[45225,55,4],[43984,53,4],[16605,52,4],[19226,48,1],[37048,47,1],[1361,46,1],[28396,33,1],[36906,32,1],[780,30,1],[1771,27,1],[1655,25,1],[30600,24,1],[37012,24,1],[37885,15,4],[44562,10,1],[1772,8,1],[28563,7,1],[30599,7,1],[32724,7,4],[4131,6,1],[32686,6,4],[1328,5,1],[29446,5,4],[990,3,1],[45226,3,4],[1769,2,1],[8550,2,4],[32742,2,4],[34804,2,4],[39389,2,4],[43077,2,4],[43850,2,1],[44139,2,4],[45166,2,1],[45249,2,1],[45259,2,1],[45330,2,1],[8319,1,4],[8355,1,4],[8366,1,4],[8460,1,4],[8537,1,4],[8538,1,4],[8666,1,4],[9126,1,4],[10115,1,4],[11241,1,4],[11756,1,4],[12143,1,4],[12901,1,4],[14812,1,4],[15046,1,4],[21696,1,4],[29036,1,4],[29332,1,4],[29557,1,1],[31515,1,4],[32822,1,4],[34858,1,4],[35319,1,4],[35511,1,4],[35898,1,4],[37344,1,4],[37538,1,4],[39875,1,4]]
+    "captured_detail_then_anex_card_hotelcode": [
+      [
+        42927,
+        49,
+        1
+      ],
+      [
+        37719,
+        27,
+        1
+      ]
+    ],
+    "cross_provider_bridge_then_operatorlink": [
+      [
+        16330,
+        62,
+        4
+      ],
+      [
+        34680,
+        60,
+        4
+      ],
+      [
+        32783,
+        54,
+        4
+      ],
+      [
+        44939,
+        52,
+        4
+      ],
+      [
+        44413,
+        49,
+        4
+      ],
+      [
+        32572,
+        22,
+        4
+      ],
+      [
+        835,
+        8,
+        1
+      ],
+      [
+        5215,
+        5,
+        1
+      ],
+      [
+        32355,
+        4,
+        4
+      ],
+      [
+        33110,
+        3,
+        4
+      ],
+      [
+        15072,
+        2,
+        4
+      ],
+      [
+        9384,
+        1,
+        4
+      ],
+      [
+        20470,
+        1,
+        4
+      ],
+      [
+        29556,
+        1,
+        1
+      ],
+      [
+        37985,
+        1,
+        4
+      ]
+    ],
+    "direct_hotellist_safe_current_recheck": [
+      [
+        45225,
+        55,
+        4,
+        153743,
+        34975303871,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v12-turkey-b1"
+      ],
+      [
+        19226,
+        48,
+        1,
+        14140,
+        34991201014,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v17-egypt"
+      ],
+      [
+        36906,
+        32,
+        1,
+        21636,
+        34991201014,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v17-egypt"
+      ],
+      [
+        780,
+        30,
+        1,
+        464,
+        34991201014,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v17-egypt"
+      ],
+      [
+        1771,
+        27,
+        1,
+        190,
+        34991560269,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v18-egypt"
+      ],
+      [
+        1772,
+        8,
+        1,
+        191,
+        34991560269,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v18-egypt"
+      ],
+      [
+        28563,
+        7,
+        1,
+        73342,
+        34991201014,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v17-egypt"
+      ],
+      [
+        45226,
+        3,
+        4,
+        163543,
+        34975303871,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v12-turkey-b1"
+      ],
+      [
+        1769,
+        2,
+        1,
+        186,
+        34991560269,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v18-egypt"
+      ],
+      [
+        43850,
+        2,
+        1,
+        151784,
+        34972881808,
+        "hotel-match-old-tv-hotellist-mass-1971-20260914-v10-egypt"
+      ],
+      [
+        8366,
+        1,
+        4,
+        17595,
+        34985943661,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v15-turkey-b2"
+      ],
+      [
+        14812,
+        1,
+        4,
+        5535,
+        34975303871,
+        "hotel-match-old-tv-hotellist-mass-1971-20260915-v12-turkey-b1"
+      ]
+    ],
+    "guarded_hold_no_auto": [
+      [
+        32743,
+        54,
+        4,
+        "official native ANEX identity exists, but saved Tourvisor candidate points to local 43528 while enriched candidate points to local 129511; also duplicate provider family with ANEX 28882 on TV 43528"
+      ],
+      [
+        32692,
+        50,
+        4,
+        "official native hotelCode confirms ANEX 32692, but local 70291 is CURRENT-mapped/native-observed as ANEX 31508; target occupancy/provider-family conflict"
+      ],
+      [
+        37048,
+        47,
+        1,
+        "direct HOTELLIST observed same proposed pair 37048→97122 but strict semantic corroboration failed"
+      ],
+      [
+        1361,
+        46,
+        1,
+        "operatorLink detail for local 125 observed native ANEX 5167, not proposal 1361; qualifier conflict also present"
+      ],
+      [
+        32745,
+        46,
+        4,
+        "official native ANEX identity exists, but saved Tourvisor candidate points to local 70943 while enriched candidate points to local 85422; conflicting candidate targets"
+      ],
+      [
+        30600,
+        24,
+        1,
+        "meaningful qualifier conflict in enriched CURRENT evidence; do not auto-accept"
+      ],
+      [
+        4131,
+        6,
+        1,
+        "direct HOTELLIST identity 4131→488 observed but meaningful qualifier conflict"
+      ],
+      [
+        32686,
+        6,
+        4,
+        "official native hotelCode confirms ANEX 32686 with candidate local 17390, while card detail for the discovery path observed ANEX 32771 on local 43550 and separate native evidence points ANEX 28933 to local 17390; unresolved provider-family/target conflict"
+      ],
+      [
+        1328,
+        5,
+        1,
+        "direct HOTELLIST identity 1328→128 observed but meaningful qualifier conflict"
+      ],
+      [
+        28933,
+        3,
+        4,
+        "native operatorLink identity points 28933→17390 with empty CURRENT occupancy, but official-photo candidate for distinct unresolved ANEX 32686 also points to local 17390; provider-family collision must be resolved first"
+      ],
+      [
+        9126,
+        1,
+        4,
+        "numeric conflict in enriched CURRENT evidence; do not auto-accept"
+      ],
+      [
+        29430,
+        1,
+        4,
+        "native operatorLink identity 29430→71266 observed, but CURRENT target 71266 is occupied by ANEX 32809"
+      ],
+      [
+        29557,
+        1,
+        1,
+        "direct HOTELLIST identity 29557→73343 observed but meaningful qualifier conflict"
+      ]
+    ],
+    "native_identity_current_reconcile": [
+      [
+        27777,
+        1,
+        4,
+        17561,
+        false,
+        []
+      ]
+    ],
+    "no_replay_already_mapped": [
+      [
+        4158,
+        39,
+        1,
+        [
+          37412
+        ]
+      ],
+      [
+        1767,
+        8,
+        1,
+        [
+          182
+        ]
+      ],
+      [
+        1768,
+        6,
+        1,
+        [
+          183
+        ]
+      ],
+      [
+        44138,
+        2,
+        4,
+        [
+          53531
+        ]
+      ]
+    ],
+    "official_native_hotelcode_needs_local_bridge": [
+      [
+        32880,
+        54,
+        4,
+        17443,
+        []
+      ],
+      [
+        35275,
+        53,
+        4,
+        81810,
+        []
+      ],
+      [
+        16605,
+        52,
+        4,
+        115500,
+        []
+      ],
+      [
+        44562,
+        10,
+        1,
+        159,
+        []
+      ],
+      [
+        32724,
+        7,
+        4,
+        17586,
+        []
+      ],
+      [
+        32567,
+        3,
+        4,
+        82420,
+        [
+          "anex:35881",
+          "andromeda:2000073754"
+        ]
+      ],
+      [
+        32742,
+        2,
+        4,
+        132803,
+        []
+      ],
+      [
+        32822,
+        1,
+        4,
+        82758,
+        []
+      ],
+      [
+        32937,
+        1,
+        4,
+        76112,
+        [
+          "anex:32423,32653",
+          "andromeda:2000068342"
+        ]
+      ],
+      [
+        34961,
+        1,
+        4,
+        27553,
+        [
+          "anex:34082",
+          "andromeda:325422"
+        ]
+      ]
+    ],
+    "saved_tv_candidate_then_anex_card_hotelcode": [
+      [
+        28882,
+        54,
+        4,
+        43528,
+        6,
+        "duplicate_provider_family_hold"
+      ],
+      [
+        44573,
+        54,
+        4,
+        59085,
+        3,
+        "repeatable_saved_tv_candidate_only"
+      ],
+      [
+        30424,
+        3,
+        4,
+        17617,
+        4,
+        "repeatable_saved_tv_candidate_only"
+      ]
+    ],
+    "tourvisor_operatorlink_detail_then_anex_card_hotelcode": [
+      [
+        23894,
+        61,
+        4
+      ],
+      [
+        43984,
+        53,
+        4
+      ],
+      [
+        28396,
+        33,
+        1
+      ],
+      [
+        1655,
+        25,
+        1
+      ],
+      [
+        37012,
+        24,
+        1
+      ],
+      [
+        37885,
+        15,
+        4
+      ],
+      [
+        30599,
+        7,
+        1
+      ],
+      [
+        29446,
+        5,
+        4
+      ],
+      [
+        990,
+        3,
+        1
+      ],
+      [
+        8550,
+        2,
+        4
+      ],
+      [
+        34804,
+        2,
+        4
+      ],
+      [
+        39389,
+        2,
+        4
+      ],
+      [
+        43077,
+        2,
+        4
+      ],
+      [
+        44139,
+        2,
+        4
+      ],
+      [
+        45166,
+        2,
+        1
+      ],
+      [
+        45249,
+        2,
+        1
+      ],
+      [
+        45259,
+        2,
+        1
+      ],
+      [
+        45330,
+        2,
+        1
+      ],
+      [
+        8319,
+        1,
+        4
+      ],
+      [
+        8355,
+        1,
+        4
+      ],
+      [
+        8460,
+        1,
+        4
+      ],
+      [
+        8537,
+        1,
+        4
+      ],
+      [
+        8538,
+        1,
+        4
+      ],
+      [
+        8666,
+        1,
+        4
+      ],
+      [
+        10115,
+        1,
+        4
+      ],
+      [
+        11241,
+        1,
+        4
+      ],
+      [
+        11756,
+        1,
+        4
+      ],
+      [
+        12143,
+        1,
+        4
+      ],
+      [
+        12901,
+        1,
+        4
+      ],
+      [
+        15046,
+        1,
+        4
+      ],
+      [
+        21696,
+        1,
+        4
+      ],
+      [
+        29036,
+        1,
+        4
+      ],
+      [
+        29332,
+        1,
+        4
+      ],
+      [
+        31515,
+        1,
+        4
+      ],
+      [
+        34858,
+        1,
+        4
+      ],
+      [
+        35319,
+        1,
+        4
+      ],
+      [
+        35511,
+        1,
+        4
+      ],
+      [
+        35898,
+        1,
+        4
+      ],
+      [
+        37344,
+        1,
+        4
+      ],
+      [
+        37538,
+        1,
+        4
+      ],
+      [
+        39875,
+        1,
+        4
+      ]
+    ]
   },
   "provenance": {
     "current_operation_id": "hotel-match-pr2412-anex-current-1971-20260915-v1",
     "current_source_sha": "f21869e0d4fa10d7adf5371ea44b4ac138c04aca",
-    "native_operation_id": "hotel-match-tv-operatorlink-card-follow-1971-20260915-v2",
+    "direct_hotellist_runs": [
+      34972881808,
+      34975303871,
+      34985943661,
+      34991201014,
+      34991560269
+    ],
+    "native_current_operation_id": "hotel-match-tv-operatorlink-current-reconcile-1971-20260915-v1",
+    "native_operatorlink_operation_id": "hotel-match-tv-operatorlink-card-follow-1971-20260915-v2",
     "occupancy_operation_id": "hotel-match-tv-operatorlink-target-occupancy-1971-20260915-v1",
+    "photo_enriched_artifact_id": 10351108943,
+    "photo_enriched_operation_id": "hotel-match-manual-live-photo-enriched-1971-20260914-v2",
+    "photo_enriched_run_id": 34852305996,
     "saved_saturation_report": "reports/hotel-match-saved-tourvisor-saturation-20260913.json"
   },
-  "schema": "hotel-match-pr2412-current-next-evidence/2",
+  "schema": "hotel-match-pr2412-current-next-evidence/3",
   "status": "prepared_only_not_write_authority",
   "summary": {
     "already_mapped_no_replay": 4,
     "current_unresolved": 97,
-    "lane_counts": {"anex_card_hotelcode_from_captured_detail":2,"anex_card_hotelcode_from_saved_tv_candidate":7,"cross_provider_bridge_then_operatorlink":19,"no_replay_already_mapped":4,"server_current_native_identity_reconcile":3,"tourvisor_operatorlink_detail_then_anex_card_hotelcode":66},
-    "lane_live_frequency": {"anex_card_hotelcode_from_captured_detail":76,"anex_card_hotelcode_from_saved_tv_candidate":315,"cross_provider_bridge_then_operatorlink":383,"no_replay_already_mapped":55,"server_current_native_identity_reconcile":5,"tourvisor_operatorlink_detail_then_anex_card_hotelcode":691},
+    "direct_hotellist_safe_current_recheck": {
+      "live_frequency": 216,
+      "rows": 12
+    },
+    "guarded_hold_no_auto": {
+      "live_frequency": 290,
+      "rows": 13
+    },
+    "official_native_hotelcode_needs_local_bridge": {
+      "live_frequency": 184,
+      "rows": 10
+    },
+    "remaining_next_action": {
+      "captured_detail": 2,
+      "cross_provider_bridge": 15,
+      "native_identity_reconcile": 1,
+      "saved_tv_candidate": 3,
+      "tourvisor_operatorlink_detail": 41
+    },
     "rows_total": 101,
     "unresolved_live_frequency_sum": 1470
   }
