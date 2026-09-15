@@ -16,7 +16,7 @@ assert.match(sourceSha || '', /^[a-f0-9]{40}$/, 'comparison geometry requires ex
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360"><path fill="#9ac7df" d="M0 0h600v360H0z"/></svg>');
 const hotel = { id: 'offer-hotel', name: 'Отель с вариантами номера', country: { name: 'Турция' }, region: { name: 'Анталья' }, category: 5, picturelink: picture };
 const offer = (id, price, roomType, meal, hotelValue = hotel) => ({
-  id, source: 'tourvisor', price, date: '2026-09-12', nights: 9,
+  id, source: 'tourvisor', price, fuelCharge: 0, date: '2026-09-12', nights: 9,
   meal: { name: meal === 'AI' ? 'AI' : 'RO', fullName: meal === 'AI' ? 'Всё включено' : 'Без питания' },
   roomType, placement: 'DBL', operator: { name: 'TEST OPERATOR' }, adults: 2, childs: 0,
   hotel: hotelValue
