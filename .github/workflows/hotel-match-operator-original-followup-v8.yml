@@ -21,24 +21,25 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_batch.php)" = b0b2f9930363ad9a32dd4906bcc38a771bf2e3e4
           test "$(git hash-object app/integrations/andromeda-client.php)" = 7f2a444904e25f8abf1b50b70879b1650984800c
           test "$(git hash-object app/integrations/andromeda-transport.php)" = 162e33d3f1997ec7e73e1ef276c586d4732f8957
+          php -l scripts/diagnostics/hotel_match_operator_original_batch.php
+          php tests/hotel_match_operator_original_test.php
           python3 - <<'PY'
           from pathlib import Path
           p=Path('scripts/diagnostics/hotel_match_operator_original_batch.php')
           raw=p.read_text()
           replacements=[
-            ("const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v2';", "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v8';"),
-            ("'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'", "'17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'"),
-            ("array_shift($queries);", "foreach($queries as &$q){$q['params']['CHECKIN_BEG']='20260929';$q['params']['CHECKIN_END']='20260929';AnyTourAndromedaClient::validatePriceParams($q['params']);}unset($q);"),
+            ("const MOB_OP='hotel-match-operator-original-batch-1971-20260915-v2';", "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v8';", 1),
+            ("'faaf39bf979dec33199765cbdf756b1b68c320fc4ca6135386dc0122ceee70ed'", "'17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf'", 2),
+            ("array_shift($queries);", "foreach($queries as &$q){$q['params']['CHECKIN_BEG']='20260929';$q['params']['CHECKIN_END']='20260929';AnyTourAndromedaClient::validatePriceParams($q['params']);}unset($q);", 1),
           ]
-          for old,new in replacements:
-            assert raw.count(old)==1, (old, raw.count(old))
+          for old,new,count in replacements:
+            assert raw.count(old)==count, (old, raw.count(old), count)
             assert new not in raw
             raw=raw.replace(old,new)
           p.write_text(raw)
           PY
           grep -Fx "const MOB_OP='hotel-match-operator-original-followup-1971-20260915-v8';" scripts/diagnostics/hotel_match_operator_original_batch.php
           php -l scripts/diagnostics/hotel_match_operator_original_batch.php
-          php tests/hotel_match_operator_original_test.php
           sha256sum scripts/diagnostics/hotel_match_operator_original_batch.php | awk '{print $1}' > "$RUNNER_TEMP/runtime-script-sha256"
       - name: Restore hash-pinned evidence inputs
         env: {GH_TOKEN: '${{ github.token }}'}
