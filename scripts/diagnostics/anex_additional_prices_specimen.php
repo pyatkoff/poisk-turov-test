@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-const ANEX_ADDITIONAL_SPECIMEN_OPERATION = 'anex-additional-prices-778-nights-20260915-v11';
+const ANEX_ADDITIONAL_SPECIMEN_OPERATION = 'anex-additional-prices-778-14n-20260915-v12';
 const ANEX_ADDITIONAL_SPECIMEN_TOUR = 778;
 const ANEX_ADDITIONAL_SPECIMEN_DATE = '2026-10-18';
-const ANEX_ADDITIONAL_SPECIMEN_NIGHTS = [10, 14];
+const ANEX_ADDITIONAL_SPECIMEN_NIGHTS = [14];
 const ANEX_ADDITIONAL_SPECIMEN_CURRENCY = 3;
 
 function anytour_anex_additional_specimen_decimal($value): ?string
