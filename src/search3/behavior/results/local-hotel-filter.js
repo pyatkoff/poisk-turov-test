@@ -79,7 +79,7 @@ function bindPresets(group,select){
 }
 function showResults(){
   mobilePanel.open=false;
-  requestAnimationFrame(()=>{const card=cards().find(node=>!node.hidden),target=results.querySelector('.search3-local-empty')||(card&&card.querySelector('.hotel-title'))||results,temporary=!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}(card||target).scrollIntoView({block:'start'});if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});});
+  requestAnimationFrame(()=>{const card=cards().find(node=>!node.hidden),target=results.querySelector('.search3-local-empty')||(card&&card.querySelector('.hotel-title'))||results,temporary=!target.hasAttribute('tabindex');if(temporary)target.setAttribute('tabindex','-1');try{target.focus({preventScroll:true});}catch(error){target.focus();}(card||target).scrollIntoView({block:'start',behavior:'instant'});if(temporary)target.addEventListener('blur',()=>target.removeAttribute('tabindex'),{once:true});});
 }
 function ensure(){
   if(field)return;

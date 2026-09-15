@@ -154,7 +154,7 @@ async function checkBudgetRange(page, width, previous) {
       await page.waitForFunction(()=>document.activeElement?.matches('#results .hotel-title'));
       assert.equal(await panel.getAttribute('open'),null,'bottom action closes the same native filter disclosure');
       const heading=await card.locator('.hotel-title').boundingBox();
-      assert.ok(heading.y>=0&&heading.y+heading.height<=await page.evaluate(()=>innerHeight),'return shows the matching hotel in the viewport');
+      assert.ok(heading.y>=0&&heading.y+heading.height<=await page.evaluate(()=>innerHeight),'return shows the matching hotel in the viewport: '+JSON.stringify({width,previous,heading}));
       if(!previous&&[375,390,720].includes(width)) await page.screenshot({path:path.join(output,`budget-results-${width}.png`),animations:'disabled'});
       await panel.locator('summary').click();
     }
