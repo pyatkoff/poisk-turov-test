@@ -2,19 +2,19 @@
 declare(strict_types=1);
 
 /** One immutable P0/P1 proof: retained PRICE -> saved surcharge -> served response -> verified quote. */
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v3-egypt-2026-12-20-3a-10n';
-const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '6c174898ebf4876ae024f7173d53e1f6dc4837f7';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION = 'andromeda-search-surcharge-e2e-1717-v4-egypt-2026-12-27-2a2c5-11-8n';
+const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE = '067bba00e664b0f76d7239d72306f8fb70252f00';
 const ANYTOUR_ANDROMEDA_SURCHARGE_E2E_MIN_HEADROOM = 100;
 
 function anytour_andromeda_surcharge_e2e_request(): array
 {
     return [
-        'generation' => 17171220,
+        'generation' => 17171227,
         'page' => 1,
         'params' => [
             'countryId' => '1', 'departureId' => '1',
-            'dateFrom' => '2026-12-20', 'dateTo' => '2026-12-20',
-            'nightsFrom' => 10, 'nightsTo' => 10, 'adults' => 3, 'childs' => [],
+            'dateFrom' => '2026-12-27', 'dateTo' => '2026-12-27',
+            'nightsFrom' => 8, 'nightsTo' => 8, 'adults' => 2, 'childs' => [5, 11],
             'meal' => '', 'hotelCategory' => '', 'hotelIds' => [], 'regionIds' => [],
             'subregionIds' => [], 'operatorIds' => [], 'currency' => 'RUB',
         ],
