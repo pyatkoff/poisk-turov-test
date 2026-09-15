@@ -1093,7 +1093,7 @@ async function run(browser, width, previous) {
     assert.equal(await card.locator('.hotel-best-offer').count(), 0, 'card does not repeat the representative tour price');
     assert.equal(await card.locator('.hotel-price').count(), 1, 'collapsed card exposes one authoritative total');
     assert.match(await card.locator('.hotel-decision-rating').innerText(), /Рейтинг 5/, 'hotel score is not confused with star category');
-    assert.match(await page.locator('#resultSummary').innerText(), /цены указаны за весь тур/, 'result summary explains price scope');
+    assert.match(await page.locator('#resultSummary').innerText(), /цены из текущего поиска/, 'result summary does not promise universal final-price readiness');
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'collapsed multi-offer hotel has no concrete row, Select, or Compare');
     assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapsed multi-offer hotel has one hotel-level summary owner');
     assert.ok((await card.locator('.tour-more-toggle').boundingBox()).height >= 44, 'real disclosure action retains a full touch target');
