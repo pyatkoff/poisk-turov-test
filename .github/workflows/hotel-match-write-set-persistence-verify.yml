@@ -1,0 +1,103 @@
+name: MATCH committed write-set persistence verify
+run-name: MATCH verify 89 committed mappings still persist #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - '.github/workflows/hotel-match-write-set-persistence-verify.yml'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-write-set-persistence-verify-1971-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-write-set-persistence-verify-1971-20260911-v1
+jobs:
+  verify:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reserve immutable read operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          Path(os.environ['STATE'],'reservation.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_source_artifacts_and_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_committed_write_set_persistence_read_only','source_artifacts':[10191656567,10191911838],'expected_total_writes':89,'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True},sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-write-set-persistence-verify-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-write-set-persistence-verify-1971-20260911-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Download immutable committed results
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SRC="$RUNNER_TEMP/source-results"; mkdir -p "$SRC/coord" "$SRC/former"
+          gh api -H 'Accept: application/vnd.github+json' "/repos/$GITHUB_REPOSITORY/actions/artifacts/10191656567/zip" > "$SRC/coord.zip"
+          gh api -H 'Accept: application/vnd.github+json' "/repos/$GITHUB_REPOSITORY/actions/artifacts/10191911838/zip" > "$SRC/former.zip"
+          unzip -q "$SRC/coord.zip" -d "$SRC/coord"
+          unzip -q "$SRC/former.zip" -d "$SRC/former"
+          test -s "$SRC/coord/result.json"; test -s "$SRC/former/result.json"
+      - name: Verify CURRENT DB rows against committed receipts
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import base64,hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];src=Path(os.environ['RUNNER_TEMP'])/'source-results'
+          coord=json.loads((src/'coord/result.json').read_text());former=json.loads((src/'former/result.json').read_text())
+          anex={}; andromeda={}
+          for result in (coord,former):
+              for k,v in (result.get('anex_rows') or {}).items(): anex[str(k)]={'target':int(v['target']),'digest':str(v['source_row_digest'])}
+              for k,v in (result.get('andromeda_rows') or {}).items(): andromeda[str(k)]={'target':int(v['target']),'digest':str(v['evidence_sha256'])}
+          if len(anex)!=28 or len(andromeda)!=61: raise RuntimeError(f'expected_write_set_size:{len(anex)}:{len(andromeda)}')
+          expected={'anex':anex,'andromeda':andromeda};payload=base64.b64encode(json.dumps(expected,separators=(',',':')).encode()).decode()
+          php=r'''$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $dbHelper;$db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');$db->exec('START TRANSACTION READ ONLY');$expected=json_decode(base64_decode('__PAYLOAD__'),true,512,JSON_THROW_ON_ERROR);$drift=[];$okA=0;$okD=0;$qa=$db->prepare('SELECT catalog_hotel_id,source_row_digest,enabled FROM anex_hotel_search_mappings WHERE anex_hotel_id=?');foreach($expected['anex'] as $id=>$e){$qa->execute([(int)$id]);$a=$qa->fetch(PDO::FETCH_ASSOC);if(!$a||(int)$a['catalog_hotel_id']!==(int)$e['target']||(int)$a['enabled']!==1||!hash_equals((string)$e['digest'],(string)$a['source_row_digest'])){$drift[]=['provider'=>'anex','external_id'=>(string)$id,'expected'=>$e,'actual'=>$a?:null];}else{$okA++;}}$qd=$db->prepare("SELECT local_hotel_id,decision_status,evidence_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id=?");foreach($expected['andromeda'] as $id=>$e){$qd->execute([(string)$id]);$a=$qd->fetch(PDO::FETCH_ASSOC);if(!$a||(int)$a['local_hotel_id']!==(int)$e['target']||(string)$a['decision_status']!=='accepted'||!hash_equals((string)$e['digest'],(string)$a['evidence_sha256'])){$drift[]=['provider'=>'andromeda','external_id'=>(string)$id,'expected'=>$e,'actual'=>$a?:null];}else{$okD++;}}$db->commit();echo json_encode(['status'=>'completed','operation_id'=>'__OP__','database_writes'=>0,'supplier_calls'=>0,'expected_anex'=>count($expected['anex']),'expected_andromeda'=>count($expected['andromeda']),'verified_anex'=>$okA,'verified_andromeda'=>$okD,'drift_count'=>count($drift),'drift'=>$drift],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),"\n";'''.replace('__PAYLOAD__',payload).replace('__OP__',os.environ['OPERATION_ID'])
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-persistence-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(php)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              p=subprocess.run(cmd,text=True,capture_output=True,timeout=420,env=clean)
+          try:r=json.loads(p.stdout)
+          except Exception: raise RuntimeError('unparseable:'+p.stderr[-1200:])
+          (state/'result.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=os.environ['OPERATION_ID'] or r.get('database_writes')!=0 or r.get('supplier_calls')!=0: raise RuntimeError('verify_contract_failed')
+          raw=(state/'result.json').read_bytes();receipt={'operation_id':os.environ['OPERATION_ID'],'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'result_sha256':hashlib.sha256(raw).hexdigest(),'source_artifacts':[10191656567,10191911838],'expected_total':89,'verified_total':int(r['verified_anex'])+int(r['verified_andromeda']),'drift_count':int(r['drift_count']),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          if r['drift_count']==0:text=f"MATCH #1971 CURRENT persistence check `{os.environ['OPERATION_ID']}`: all **89/89** mappings committed in this run still match their durable receipt targets/digests/statuses — ANEX **{r['verified_anex']}/28**, Andromeda **{r['verified_andromeda']}/61**. The lower aggregate Andromeda/triple coverage in the later snapshot therefore comes from other inventory churn, not loss/overwrite of this run's write set. DB writes **0**, supplier calls **0**."
+          else:text=f"MATCH #1971 **writer-coordination blocker** from `{os.environ['OPERATION_ID']}`: only **{int(r['verified_anex'])+int(r['verified_andromeda'])}/89** committed mappings still match durable targets/digests/statuses; drifted **{r['drift_count']}** rows. No further MATCH writer should run until these CURRENT rows are reconciled. DB writes **0**, supplier calls **0**."
+          (state/'summary.md').write_text(text+'\n');print(json.dumps(receipt,sort_keys=True))
+          PYTHON
+      - name: Preserve verification
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-write-set-persistence-verify-v1-result
+          path: ${{ runner.temp }}/hotel-match-write-set-persistence-verify-1971-20260911-v1/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"

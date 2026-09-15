@@ -1,0 +1,112 @@
+name: MATCH current DB strict review v4
+run-name: MATCH fresh strict CURRENT-DB review #1971 v4
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - '.github/workflows/hotel-match-current-strict-review-v4.yml'
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: match-current-db-strict-review-1971-v4
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-current-strict-review-1971-20260911-v4
+jobs:
+  review:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify source and read-only transform
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_current_strict_review.php
+          python3 -B tests/hotel_match_current_strict_review_source_test.py
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          s=Path('scripts/diagnostics/hotel_match_current_strict_review.php').read_text()
+          assert "hotel-match-current-strict-review-1971-20260911-v3" in s
+          assert 'START TRANSACTION READ ONLY' in s
+          assert "'database_writes'=>0" in s and "'supplier_calls'=>0" in s
+          print('v3 planner source remains read-only; runtime transform will only replace immutable operation id')
+          PYTHON
+      - name: Reserve immutable read operation
+        run: |
+          set -euo pipefail
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$STATE"; export STATE
+          python3 - <<'PYTHON'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['STATE'])/'reservation.json'
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'state':'reserved_before_ssh','run_id':int(os.environ['GITHUB_RUN_ID']),'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),'source_sha':os.environ['GITHUB_SHA'],'mode':'current_db_consistent_snapshot_strict_read_only','database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'no_replay':True},sort_keys=True)+'\n')
+          PYTHON
+      - name: Preserve reservation before live read
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-strict-review-1971-20260911-v4-reservation
+          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v4/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read current DB and prepare package
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import hashlib,json,os,shlex,subprocess,tempfile
+          from pathlib import Path
+          state=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']
+          def body(path):
+              s=Path(path).read_text(encoding='utf-8')
+              if s.startswith('<?php'): s=s[len('<?php'):]
+              return s.replace('declare(strict_types=1);','',1)
+          helper=body('scripts/diagnostics/hotel_full_catalog_reconcile.php')
+          planner=body('scripts/diagnostics/hotel_match_current_bulk_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_full_catalog_reconcile.php';\n",'',1)
+          strict=body('scripts/diagnostics/hotel_match_current_strict_review.php').replace("if (!defined('FC_LIBRARY_ONLY')) define('FC_LIBRARY_ONLY', true);\nrequire_once __DIR__ . '/hotel_match_current_bulk_review.php';\n",'',1)
+          old='hotel-match-current-strict-review-1971-20260911-v3'; new=os.environ['OPERATION_ID']
+          if strict.count(old)!=1: raise RuntimeError('unexpected_operation_literal_count')
+          strict=strict.replace(old,new,1)
+          wrapper=r'''$root=realpath(getcwd());if(!$root||basename($root)!=='anytoour.ru')throw new RuntimeException('root');$dbHelper=realpath($root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php'));if(!$dbHelper||strpos($dbHelper,$root.DIRECTORY_SEPARATOR)!==0)throw new RuntimeException('db_helper');require_once $dbHelper;$db=v2_data_db();echo fc_json(msr_review($db,MSR_OPERATION)),"\n";'''
+          code="define('FC_LIBRARY_ONLY',true);\n"+helper+"\n"+planner+"\n"+strict+"\n"+wrapper
+          req=('ANYTOOUR_DEPLOY_SSH_KEY','ANYTOOUR_DEPLOY_HOST','ANYTOOUR_DEPLOY_USER');host=os.environ[req[1]].strip();user=os.environ[req[2]].strip();keytext=os.environ[req[0]].strip()
+          if not host or not user or not keytext: raise RuntimeError('ssh_secret_missing')
+          with tempfile.TemporaryDirectory(prefix='match-strict-v4-',dir=os.environ.get('RUNNER_TEMP')) as tmp:
+              key=Path(tmp)/'key';key.write_text(keytext.rstrip()+'\n');key.chmod(0o600);known=Path(tmp)/'known_hosts'
+              cmd=['ssh','-T','-i',str(key),'-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=accept-new','-o','UserKnownHostsFile='+str(known),'-o','ConnectTimeout=15','-l',user,host,'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0 -r '+shlex.quote(code)]
+              clean={k:v for k,v in os.environ.items() if k not in req and not k.startswith('ANEX_') and not k.startswith('ANDROMEDA_')}
+              try:p=subprocess.run(cmd,text=True,capture_output=True,timeout=420,env=clean)
+              except subprocess.TimeoutExpired:
+                  (state/'blocker.json').write_text(json.dumps({'operation_id':new,'status':'failed','reason':'ssh_read_timeout','database_writes':0,'supplier_calls':0})+'\n');raise
+          try:r=json.loads(p.stdout)
+          except Exception:
+              (state/'blocker.json').write_text(json.dumps({'operation_id':new,'status':'failed','reason':'live_output_unparseable','exit_code':p.returncode,'stderr_tail':p.stderr[-1200:],'database_writes':0,'supplier_calls':0},ensure_ascii=False)+'\n');raise RuntimeError('unparseable')
+          (state/'review.json').write_text(json.dumps(r,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+          if p.returncode!=0 or r.get('status')!='completed' or r.get('operation_id')!=new or r.get('database_writes')!=0 or r.get('supplier_calls')!=0:
+              raise RuntimeError('strict_review_not_completed')
+          raw=(state/'review.json').read_bytes();receipt={'operation_id':new,'state':'completed_read_only','run_id':int(os.environ['GITHUB_RUN_ID']),'source_sha':os.environ['GITHUB_SHA'],'review_sha256':hashlib.sha256(raw).hexdigest(),'database_writes':0,'supplier_calls':0,'historical_operations_replayed':False,'consistent_snapshot':True,'no_replay':True,'counts':r['counts'],'coverage':r['coverage'],'examined':r['examined']};(state/'receipt.json').write_text(json.dumps(receipt,ensure_ascii=False,sort_keys=True)+'\n')
+          c=r['counts'];cov=r['coverage'];ex=r['examined'];text=(f"MATCH #1971 fresh strict CURRENT-DB package `{new}` completed **read-only / NO-REPLAY** after the latest MATCH writes. Safe candidates **{c['safe_candidates']}** = strict/current **{c['strict_current_rule']}** + Andromeda pending→ANEX+Tourvisor bridge **{c['cross_provider_anex_tourvisor']}** + ANEX unresolved→Andromeda+Tourvisor bridge **{c['cross_provider_andromeda_tourvisor']}**; provider split ANEX **{c['candidate_anex']}**, Andromeda **{c['candidate_andromeda']}**. Unsafe fuzzy demoted **{c['unsafe_fuzzy_demoted']}**, blocked **{c['blocked']}**. Examined Andromeda pending core8 **{ex['andromeda_pending_examined']}**, ANEX observed **{ex['anex_observed_examined']}**, staging-only **{ex['anex_staging_examined']}**. Missing-third inventory: ANEX+TV only **{c['anex_tv_only_core8']}**, Andromeda+TV only **{c['andromeda_tv_only_core8']}**. Coverage: ANEX links {cov['anex_links']}, ANEX unique local {cov['anex_unique_local']}, Andromeda unique local {cov['andromeda_unique_local']}, triple {cov['all_three']}. DB writes **0**, supplier calls **0**. Any writer must be a separate NEW server-current operation.");(state/'summary.md').write_text(text+'\n');print(json.dumps({'counts':c,'coverage':cov,'examined':ex},sort_keys=True))
+          PYTHON
+      - name: Preserve package and receipt
+        if: always()
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotel-match-current-strict-review-1971-20260911-v4-result
+          path: ${{ runner.temp }}/hotel-match-current-strict-review-1971-20260911-v4/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Record result
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          STATE="$RUNNER_TEMP/$OPERATION_ID"; printf ' Artifact `%s`.\n' "$ARTIFACT_ID" >> "$STATE/summary.md"; gh issue comment 1971 --repo "$GITHUB_REPOSITORY" --body-file "$STATE/summary.md"
