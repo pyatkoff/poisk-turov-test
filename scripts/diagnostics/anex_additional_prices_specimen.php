@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-const ANEX_ADDITIONAL_SPECIMEN_OPERATION = 'anex-additional-prices-778-date-20260915-v8';
+const ANEX_ADDITIONAL_SPECIMEN_OPERATION = 'anex-additional-prices-778-date-20260915-v9';
 const ANEX_ADDITIONAL_SPECIMEN_TOUR = 778;
-const ANEX_ADDITIONAL_SPECIMEN_DATE = '2026-09-27';
+const ANEX_ADDITIONAL_SPECIMEN_DATE = '2026-10-04';
 const ANEX_ADDITIONAL_SPECIMEN_NIGHTS = 7;
 const ANEX_ADDITIONAL_SPECIMEN_CURRENCY = 3;
 
@@ -141,8 +141,6 @@ function anytour_anex_additional_specimen_run(array $input): array
         'mapping_writes' => 0,
     ];
     try {
-        // Explicit cache directory keeps the real runtime no-replay/cache behavior while
-        // isolating this evidence context from unrelated PHP test processes.
         $client = new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN, null, $private . '/apd-daily-cache-v1');
         $payload = $client->additionalPricesDaily($criteria);
         $result['additional_prices_requests'] = $client->requestsMade();
