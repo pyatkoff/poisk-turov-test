@@ -261,7 +261,7 @@ async function checkExpandedDensity(page, width, previous) {
       assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, expected).map(value => value.id), 'progressive disclosure retains exact offer identity and order');
       assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.slice(0, expected).map(value => value.price), 'progressive disclosure retains exact supplier prices');
       if (expected < 10) {
-        assert.equal(await card.locator('.tour-list-more').evaluate(node => node === document.activeElement), true, 'the remaining disclosure retains keyboard focus');
+        assert.equal(await card.locator('.tour-list-more').evaluate(node => node === document.activeElement), true, `disclosure at ${expected} offers retains keyboard focus; active=${await page.evaluate(() => document.activeElement?.outerHTML.slice(0,250))}`);
         assert.equal(await card.locator('.hotel-offers-more small').innerText(), `Показано ${expected} из 10`);
       } else {
         assert.equal(await card.locator('.tour-list-more').count(), 0, 'the disclosure is removed when every offer is visible');
@@ -275,6 +275,7 @@ async function checkExpandedDensity(page, width, previous) {
         assert.equal(saved.observedPrice, item.tours[5].price, 'comparison retains the exact newly revealed offer price');
         await card.locator('.search3-shortlist-toggle[data-offer-id="density-5"]').click();
         assert.equal(await page.evaluate(() => window.Search3Shortlist.items().some(item => item.offerId === 'density-5')), false, 'comparison can remove the newly revealed offer');
+        await page.waitForFunction(() => document.activeElement?.matches('.search3-shortlist-toggle[data-offer-id="density-5"]'));
       }
     }
     await card.locator('.tour-more-toggle').focus();
