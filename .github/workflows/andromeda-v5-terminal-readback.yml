@@ -48,7 +48,8 @@ jobs:
           for needle in required:
               if text.count(needle) < 1:
                   raise SystemExit('terminal readback pin missing: ' + needle)
-          live = text.split('      - name: Inspect only retained filesystem evidence', 1)[1]
+          marker = '      - name: Inspect only retained filesystem ' + 'evidence'
+          live = text.split(marker, 1)[1]
           forbidden = [
               'anytour_andromeda_quote_run', 'AnyTourAndromedaClient', 'new PDO', 'curl_',
               'file_put_contents', 'fopen(', 'mkdir(', 'unlink(', 'rename(', 'copy(', 'touch(',
