@@ -246,11 +246,13 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
           const flightChoices = [...grid.querySelectorAll('.toggle-row .toggle')].map(rect);
           return { fields, flightChoices };
         });
-        if (width >= 1100) {
+        if (width > 700) {
           const rowTops = [...new Set(advancedGeometry.fields.map(field => field.top))];
-          assert.equal(rowTops.length, 2, `${width}: wide advanced filters use two balanced rows`);
-          assert.deepEqual(rowTops.map(top => advancedGeometry.fields.filter(field => field.top === top).length), [3, 3], `${width}: every advanced row contains three aligned groups`);
-          assert.ok(advancedGeometry.fields.every(field => field.width >= 280 && field.height <= 80), `${width}: advanced controls stay readable without stretched 123px cells`);
+          const columns = width < 900 ? 2 : 3;
+          const expectedRows = Array(6 / columns).fill(columns);
+          assert.equal(rowTops.length, expectedRows.length, `${width}: intermediate and wide advanced filters use deliberate balanced rows`);
+          assert.deepEqual(rowTops.map(top => advancedGeometry.fields.filter(field => field.top === top).length), expectedRows, `${width}: every advanced row contains the same number of aligned groups`);
+          assert.ok(advancedGeometry.fields.every(field => field.width >= 280 && field.height <= 80), `${width}: advanced controls stay readable without a narrow orphan or stretched cell`);
           assert.equal(new Set(advancedGeometry.flightChoices.map(choice => choice.top)).size, 1, `${width}: direct and charter choices share one row`);
           assert.ok(advancedGeometry.flightChoices.every(choice => choice.height >= 44), `${width}: flight choices retain 44px targets`);
         }
@@ -264,7 +266,7 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
         fs.writeFileSync(path.join(output, `entry-accessibility-${width}.json`), JSON.stringify({ width, closedAx, openAx }, null, 2) + '\n');
         await accessibility.detach();
         assert.deepEqual(errors, []);
-        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ source_sha: sourceSha, width, party, budget, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
+        fs.writeFileSync(path.join(output, `journey-${width}.json`), JSON.stringify({ source_sha: sourceSha, width, party, budget, advancedGeometry, blocked, errors, supplier_requests_sent: 0, lead_sent: 0, physical_safari: 'deferred' }, null, 2) + '\n');
       } finally { await page.close(); }
     }
   } finally { await browser.close(); }
