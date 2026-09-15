@@ -1,0 +1,566 @@
+{
+  "schema": "spelling-geo-delta-plan/1",
+  "operation_id": "hotel-match-spelling-geo-delta-1971-20260915-v1",
+  "claim_comment_id": 5686624661,
+  "planned_count": 104,
+  "parent_result_sha256": "b51edba926e5e8c974b04d12adb23e5c3029691716641ea52e929b268b47e074",
+  "prepared_only": true,
+  "db_committed": false,
+  "eligible_rows": [
+    {
+      "external_hotel_id": "2000096111",
+      "local_id": 124723,
+      "reason": "exact_primary_alias_and_independent_geo"
+    },
+    {
+      "external_hotel_id": "2000025411",
+      "local_id": 37401,
+      "source_names": [
+        "Kleopatra Blue Hawaii"
+      ],
+      "local_name": "KLEOPATRA BLUE HAWAI",
+      "country_id": 4,
+      "evidence_sha256": "1bd762910389d8b42d57b98295ad0bd83b694dea093b14614b6a7d20e3a0f0b3",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9473684210526316,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.13736842105263158,
+      "matched_forms": {
+        "source": {
+          "compact": "kleopatrabluehawaii",
+          "tokens": [
+            "kleopatra",
+            "blue",
+            "hawaii"
+          ],
+          "raw": "Kleopatra Blue Hawaii"
+        },
+        "local": {
+          "compact": "kleopatrabluehawai",
+          "tokens": [
+            "kleopatra",
+            "blue",
+            "hawai"
+          ],
+          "raw": "KLEOPATRA BLUE HAWAI"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "7",
+          "anchors": 205,
+          "countries": {
+            "4": 205
+          },
+          "regions": {
+            "19": 205
+          },
+          "subregions": {
+            "190": 17,
+            "188": 30,
+            "185": 71,
+            "191": 18,
+            "184": 15,
+            "186": 5,
+            "189": 13,
+            "192": 7,
+            "187": 6
+          },
+          "country_id": 4,
+          "scope": "region",
+          "scope_id": 19
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000026882",
+      "local_id": 38324,
+      "source_names": [
+        "Inn Residence Serviced Suites"
+      ],
+      "local_name": "INN RESIDENCE SERVICES SUITES",
+      "country_id": 2,
+      "evidence_sha256": "1bff1ef9a9c2558d93ccd556955f37cddb092481678ed35a187cdb4285aa4f2a",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9615384615384616,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.1515384615384615,
+      "matched_forms": {
+        "source": {
+          "compact": "innresidenceservicedsuites",
+          "tokens": [
+            "inn",
+            "residence",
+            "serviced",
+            "suites"
+          ],
+          "raw": "Inn Residence Serviced Suites"
+        },
+        "local": {
+          "compact": "innresidenceservicessuites",
+          "tokens": [
+            "inn",
+            "residence",
+            "services",
+            "suites"
+          ],
+          "raw": "INN RESIDENCE SERVICES SUITES"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "147",
+          "anchors": 268,
+          "countries": {
+            "2": 268
+          },
+          "regions": {
+            "7": 268
+          },
+          "subregions": {
+            "68": 24,
+            "435": 29,
+            "437": 19,
+            "438": 22,
+            "436": 10,
+            "69": 37,
+            "440": 27,
+            "439": 3
+          },
+          "country_id": 2,
+          "scope": "region",
+          "scope_id": 7
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000039252",
+      "local_id": 8119,
+      "source_names": [
+        "Beach Republic The Residence"
+      ],
+      "local_name": "BEACH REPUBLIC THE RESIDENCES",
+      "country_id": 2,
+      "evidence_sha256": "66cb7c9989fb0f0e0c999519c07f56f3cf541bd5f4a2b5d867b57816c38889bb",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9615384615384616,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.1515384615384615,
+      "matched_forms": {
+        "source": {
+          "compact": "beachrepublictheresidence",
+          "tokens": [
+            "beach",
+            "republic",
+            "the",
+            "residence"
+          ],
+          "raw": "Beach Republic The Residence"
+        },
+        "local": {
+          "compact": "beachrepublictheresidences",
+          "tokens": [
+            "beach",
+            "republic",
+            "the",
+            "residences"
+          ],
+          "raw": "BEACH REPUBLIC THE RESIDENCES"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "2000006676",
+          "anchors": 142,
+          "countries": {
+            "2": 142
+          },
+          "regions": {
+            "9": 142
+          },
+          "subregions": {
+            "82": 50,
+            "79": 16,
+            "81": 13,
+            "80": 27
+          },
+          "country_id": 2,
+          "scope": "region",
+          "scope_id": 9
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000046302",
+      "local_id": 24730,
+      "source_names": [
+        "Muthumuni Ayurveda Beach Resort"
+      ],
+      "local_name": "AHYORA BEACH RESORT (EX. MUTHUMUNI AYURWEDA BEACH RESORT)",
+      "country_id": 12,
+      "evidence_sha256": "bac8f96c47afdb30241116e1e29445730636ab5d7158f9bb4a060ee963582cfc",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9545454545454546,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.14454545454545453,
+      "matched_forms": {
+        "source": {
+          "compact": "muthumuniayurvedabeach",
+          "tokens": [
+            "muthumuni",
+            "ayurveda",
+            "beach"
+          ],
+          "raw": "Muthumuni Ayurveda Beach Resort"
+        },
+        "local": {
+          "compact": "muthumuniayurwedabeach",
+          "tokens": [
+            "muthumuni",
+            "ayurweda",
+            "beach"
+          ],
+          "raw": " MUTHUMUNI AYURWEDA BEACH RESORT)"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "2000006871",
+          "anchors": 7,
+          "countries": {
+            "12": 7
+          },
+          "regions": {
+            "53": 7
+          },
+          "subregions": {
+            "377": 7
+          },
+          "country_id": 12,
+          "scope": "subregion",
+          "scope_id": 377
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000071112",
+      "local_id": 68167,
+      "source_names": [
+        "Nostalji Cave Suite Hotel"
+      ],
+      "local_name": "NOSTALJI CAVE SUIT HOTEL",
+      "country_id": 4,
+      "evidence_sha256": "9fc307ebe44df08a90de5ec388a86c3c268f3933a07c451d339328a3a4f6cc82",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9411764705882353,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.13117647058823523,
+      "matched_forms": {
+        "source": {
+          "compact": "nostaljicavesuite",
+          "tokens": [
+            "nostalji",
+            "cave",
+            "suite"
+          ],
+          "raw": "Nostalji Cave Suite Hotel"
+        },
+        "local": {
+          "compact": "nostaljicavesuit",
+          "tokens": [
+            "nostalji",
+            "cave",
+            "suit"
+          ],
+          "raw": "NOSTALJI CAVE SUIT HOTEL"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "2000008451",
+          "anchors": 14,
+          "countries": {
+            "4": 14
+          },
+          "regions": {
+            "599": 14
+          },
+          "subregions": {
+            "407": 8,
+            "406": 1
+          },
+          "country_id": 4,
+          "scope": "region",
+          "scope_id": 599
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000072957",
+      "local_id": 81705,
+      "source_names": [
+        "Bougaivillea Boutique Villa"
+      ],
+      "local_name": "BOUGAINVILLEA BOUTIQUE VILLA",
+      "country_id": 12,
+      "evidence_sha256": "e9fbe0165909beb38995bac73d275ce8a797e6076ed1edbebaf6b16f1ebbac5e",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9615384615384616,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.1515384615384615,
+      "matched_forms": {
+        "source": {
+          "compact": "bougaivilleaboutiquevilla",
+          "tokens": [
+            "bougaivillea",
+            "boutique",
+            "villa"
+          ],
+          "raw": "Bougaivillea Boutique Villa"
+        },
+        "local": {
+          "compact": "bougainvilleaboutiquevilla",
+          "tokens": [
+            "bougainvillea",
+            "boutique",
+            "villa"
+          ],
+          "raw": "BOUGAINVILLEA BOUTIQUE VILLA"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "7061",
+          "anchors": 19,
+          "countries": {
+            "12": 19
+          },
+          "regions": {
+            "55": 19
+          },
+          "subregions": {
+            "379": 19
+          },
+          "country_id": 12,
+          "scope": "subregion",
+          "scope_id": 379
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000084803",
+      "local_id": 103965,
+      "source_names": [
+        "Mirissa Ocean Breeze"
+      ],
+      "local_name": "MIRISSA OCEAN BREEEZE HOTEL",
+      "country_id": 12,
+      "evidence_sha256": "bb8a0d7fb83bb6b6351e4e376b5398e5e7ce3e23b5ca5775c496991267712002",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9473684210526316,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.13736842105263158,
+      "matched_forms": {
+        "source": {
+          "compact": "mirissaoceanbreeze",
+          "tokens": [
+            "mirissa",
+            "ocean",
+            "breeze"
+          ],
+          "raw": "Mirissa Ocean Breeze"
+        },
+        "local": {
+          "compact": "mirissaoceanbreeeze",
+          "tokens": [
+            "mirissa",
+            "ocean",
+            "breeeze"
+          ],
+          "raw": "MIRISSA OCEAN BREEEZE HOTEL"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "14070",
+          "anchors": 41,
+          "countries": {
+            "12": 41
+          },
+          "regions": {
+            "55": 41
+          },
+          "subregions": {
+            "387": 41
+          },
+          "country_id": 12,
+          "scope": "subregion",
+          "scope_id": 387
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "2000089169",
+      "local_id": 111767,
+      "source_names": [
+        "Richlane Residence"
+      ],
+      "local_name": "RICHLANE RESIDENCES",
+      "country_id": 16,
+      "evidence_sha256": "5f67ec24c2b32537487b7ae78a96839d8607ec363df617c6626e013590fa3b91",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9444444444444444,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.13444444444444437,
+      "matched_forms": {
+        "source": {
+          "compact": "richlaneresidence",
+          "tokens": [
+            "richlane",
+            "residence"
+          ],
+          "raw": "Richlane Residence"
+        },
+        "local": {
+          "compact": "richlaneresidences",
+          "tokens": [
+            "richlane",
+            "residences"
+          ],
+          "raw": "RICHLANE RESIDENCES"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "4782",
+          "anchors": 99,
+          "countries": {
+            "16": 99
+          },
+          "regions": {
+            "245": 99
+          },
+          "subregions": [],
+          "country_id": 16,
+          "scope": "region",
+          "scope_id": 245
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "374817",
+      "local_id": 24467,
+      "source_names": [
+        "Sanmira Renaissance"
+      ],
+      "local_name": "SANMIRA RENNAISSANCE",
+      "country_id": 12,
+      "evidence_sha256": "bb45410f4186dcfbbb5709ade33b3a2edb24f66578bd6efaaa296262d3518a3a",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9473684210526316,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.13736842105263158,
+      "matched_forms": {
+        "source": {
+          "compact": "sanmirarenaissance",
+          "tokens": [
+            "sanmira",
+            "renaissance"
+          ],
+          "raw": "Sanmira Renaissance"
+        },
+        "local": {
+          "compact": "sanmirarennaissance",
+          "tokens": [
+            "sanmira",
+            "rennaissance"
+          ],
+          "raw": "SANMIRA RENNAISSANCE"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "7029",
+          "anchors": 105,
+          "countries": {
+            "12": 105
+          },
+          "regions": {
+            "593": 105
+          },
+          "subregions": [],
+          "country_id": 12,
+          "scope": "region",
+          "scope_id": 593
+        }
+      ]
+    },
+    {
+      "external_hotel_id": "60458",
+      "local_id": 808,
+      "source_names": [
+        "Sunshine Hotel & Residences"
+      ],
+      "local_name": "SUNSHINE HOTEL & RESIDENCE",
+      "country_id": 2,
+      "evidence_sha256": "849f2d742ee399b691f842be17d3fc368a5f057ae3db73d0b23b20b012ebc877",
+      "reason": "single_letter_spelling_and_countrywide_margin_and_current_geo",
+      "score": 0.9444444444444444,
+      "runner_up_upper_bound": 0.81,
+      "margin_lower_bound": 0.13444444444444437,
+      "matched_forms": {
+        "source": {
+          "compact": "sunshineresidences",
+          "tokens": [
+            "sunshine",
+            "residences"
+          ],
+          "raw": "Sunshine Hotel & Residences"
+        },
+        "local": {
+          "compact": "sunshineresidence",
+          "tokens": [
+            "sunshine",
+            "residence"
+          ],
+          "raw": "SUNSHINE HOTEL & RESIDENCE"
+        }
+      },
+      "geo_anchors": [
+        {
+          "field": "townKey",
+          "value": "147",
+          "anchors": 268,
+          "countries": {
+            "2": 268
+          },
+          "regions": {
+            "7": 268
+          },
+          "subregions": {
+            "68": 24,
+            "435": 29,
+            "437": 19,
+            "438": 22,
+            "436": 10,
+            "69": 37,
+            "440": 27,
+            "439": 3
+          },
+          "country_id": 2,
+          "scope": "region",
+          "scope_id": 7
+        }
+      ]
+    }
+  ]
+}

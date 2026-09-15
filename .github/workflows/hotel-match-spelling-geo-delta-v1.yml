@@ -1,0 +1,97 @@
+name: MATCH spelling variants guarded CURRENT delta
+on:
+  push:
+    branches: [ops/match-spelling-geo-delta-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-spelling-geo-delta-v1.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-andromeda-catalog-writer, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-spelling-geo-delta-1971-20260915-v1
+jobs:
+  current-intake:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Obtain immutable CURRENT evidence for offline regression only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fLsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10399374647/zip" -o "$RUNNER_TEMP/current.zip"
+          python3 - <<'PY'
+          import hashlib,os,pathlib,zipfile
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])
+          raw=(p/'current.zip').read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='f1795b19d81e134f3ff2d1845bb9835a0e6548ddf91806c0df410bb9e0930dbc'
+          with zipfile.ZipFile(p/'current.zip') as z:
+              result=z.read('server/result.json')
+          assert hashlib.sha256(result).hexdigest()=='b51edba926e5e8c974b04d12adb23e5c3029691716641ea52e929b268b47e074'
+          (p/'current.json').write_bytes(result)
+          PY
+      - name: Verify pinned helpers and offline classification before reservation
+        run: |
+          set -euo pipefail
+          python3 scripts/diagnostics/hotel_match_spelling_geo_delta_bundle.py "$RUNNER_TEMP/residual.php"
+          php -l "$RUNNER_TEMP/residual.php"
+          python3 tests/hotel_match_spelling_geo_delta_test.py "$RUNNER_TEMP/current.json"
+      - name: Reserve before SSH or database access
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5686624661,'queue_issue':1971,'purpose':'One aggregate CURRENT pass over104 dossiers, sealed11 spelling/exact identities only; SERIALIZABLE, preserved evidence, per-row readback','bundle_sha256':__import__('hashlib').sha256(pathlib.Path(os.environ['RUNNER_TEMP'],'residual.php').read_bytes()).hexdigest(),'parent_current_run_id':34977365649,'candidate_dossier_sha256':'719943413e6bf60752b72b81b0bef33aea4c7d57ce5e43efe62ec08896462984','maximum_database_writes':11,'planned_rows':104,'plan_sha256':'484917b24869d5f231d71c13827e0d1e9a7c0f7040be976b0381c6160dbc5fad','supplier_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-residual52-apply-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-spelling-geo-delta-1971-20260915-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Revalidate CURRENT and commit only unchanged passing identities
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/residual.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified']
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,receipt))
+          assert r['plan_sha256']=='484917b24869d5f231d71c13827e0d1e9a7c0f7040be976b0381c6160dbc5fad'
+          assert r['written']==len(r['post_commit_readback'])==receipt['written']==r['db_writes']==r['mapping_writes']
+          plan=json.loads(pathlib.Path('reports/hotel-match-spelling-geo-delta-plan-20260915.json').read_text())
+          allowed={x['external_hotel_id']:x['local_id'] for x in plan['eligible_rows']}
+          assert len({x['external_hotel_id'] for x in r['post_commit_readback']})==r['written']
+          assert all(x['supplier_namespace']=='andromeda_catalog' and x['decision_status']=='accepted' and allowed[x['external_hotel_id']]==x['local_hotel_id'] for x in r['post_commit_readback'])
+          gate={'operation_id':os.environ['OPERATION_ID'],'state':r['state'],'result_sha256':digest,'planned':r['planned_count'],'written':r['written'],'readback_verified':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n');print(json.dumps(gate))
+          assert os.environ['REMOTE_RC']=='0' and r['state']=='completed_committed' and r['supplier_calls']==r['tourvisor_calls']==r['operator_5_writes']==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-residual52-apply-v1-result
+          path: ${{ runner.temp }}/hotel-match-spelling-geo-delta-1971-20260915-v1/
+          if-no-files-found: warn
+          retention-days: 90
