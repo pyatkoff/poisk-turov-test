@@ -1,15 +1,15 @@
-name: MATCH provider geo label consensus review v1
+name: MATCH provider geo category consensus review v1
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-provider-geo-label-consensus-review-1971-v1, cancel-in-progress: false}
+concurrency: {group: match-provider-geo-category-consensus-review-1971-v1, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-provider-geo-label-consensus-review-1971-20260915-v1
+  OPERATION_ID: hotel-match-provider-geo-category-consensus-review-1971-20260915-v1
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 33
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 34
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -24,14 +24,15 @@ jobs:
             scripts/diagnostics/hotel_match_state_accepted_country_consensus.php
             scripts/diagnostics/hotel_match_provider_geo_consensus_review.php
             scripts/diagnostics/hotel_match_provider_geo_label_consensus_review.php
-            tests/hotel_match_provider_geo_label_consensus_review_test.php
+            scripts/diagnostics/hotel_match_provider_geo_category_consensus_review.php
+            tests/hotel_match_provider_geo_category_consensus_review_test.php
           )
           for f in "${files[@]}"; do php -l "$f"; done
-          php tests/hotel_match_provider_geo_label_consensus_review_test.php
-          test "$(git hash-object scripts/diagnostics/hotel_match_provider_geo_label_consensus_review.php)" = 1350552ec5f4dfc936b3996a969d871d41322181
-          test "$(git hash-object tests/hotel_match_provider_geo_label_consensus_review_test.php)" = eb7ef5887ae7335244573711428f271ce206faad
-          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_provider_geo_label_consensus_review.php
-          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_provider_geo_label_consensus_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
+          php tests/hotel_match_provider_geo_category_consensus_review_test.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_provider_geo_category_consensus_review.php)" = 53ff13a0274bc6b34d2dd327f617e1d488ac15ff
+          test "$(git hash-object tests/hotel_match_provider_geo_category_consensus_review_test.php)" = 6edb12939be43f61752e379901247181afa58341
+          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_provider_geo_category_consensus_review.php
+          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_provider_geo_category_consensus_review.php|awk '{print $1}')" >> "$GITHUB_ENV"
       - name: Reserve before SSH or DB
         run: |
           set -euo pipefail
@@ -40,23 +41,19 @@ jobs:
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
           p.write_text(json.dumps({
-            'operation_id':os.environ['OPERATION_ID'],
-            'source_sha':os.environ['GITHUB_SHA'],
-            'source_sha256':os.environ['SOURCE_SHA256'],
-            'state':'reserved_before_db_access',
-            'mode':'server_current_read_only_provider_geo_label_consensus',
-            'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,
-            'db_writes':0,'mapping_writes':0,'operator_5_writes':0,
+            'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],
+            'state':'reserved_before_db_access','mode':'server_current_read_only_provider_geo_category_consensus',
+            'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'mapping_writes':0,'operator_5_writes':0,
             'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])
           },sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-provider-geo-label-consensus-review-v1-reservation
-          path: ${{ runner.temp }}/hotel-match-provider-geo-label-consensus-review-1971-20260915-v1/
+          name: match-provider-geo-category-consensus-review-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-provider-geo-category-consensus-review-1971-20260915-v1/
           if-no-files-found: error
           retention-days: 90
-      - name: Server CURRENT read-only geography label review
+      - name: Server CURRENT read-only geography plus category review
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -71,11 +68,11 @@ jobs:
           trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
           remote="\$HOME/.anytoour-match/operations/$OPERATION_ID"
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
-          for f in hotel_match_live_residual_current_review.php hotel_match_state_country_consensus.php hotel_match_state_accepted_country_consensus.php hotel_match_provider_geo_consensus_review.php hotel_match_provider_geo_label_consensus_review.php; do
+          for f in hotel_match_live_residual_current_review.php hotel_match_state_country_consensus.php hotel_match_state_accepted_country_consensus.php hotel_match_provider_geo_consensus_review.php hotel_match_provider_geo_label_consensus_review.php hotel_match_provider_geo_category_consensus_review.php; do
             ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"
           done
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_provider_geo_label_consensus_review.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_provider_geo_category_consensus_review.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C $remote -czf - ." > "$out/server-operation.tgz"
           set -e
@@ -88,14 +85,14 @@ jobs:
           raw=s.joinpath('result.json').read_bytes(); r=json.loads(raw); rec=json.loads(s.joinpath('receipt.json').read_text()); d=hashlib.sha256(raw).hexdigest()
           zero=['supplier_calls','tourvisor_calls','external_calls','booking_calls','db_writes','mapping_writes','operator_5_writes']
           ok=(r.get('state')=='completed_read_only' and r.get('operation_id')==os.environ['OPERATION_ID'] and all(int(r.get(k,-1))==0 for k in zero) and rec.get('result_sha256')==d and rec.get('readback_verified') is True)
-          gate={'verified':ok,'accepted_andromeda_rows':r.get('accepted_andromeda_rows'),'pending_andromeda_rows':r.get('pending_andromeda_rows'),'usable_geo_labels':r.get('usable_geo_labels'),'pending_with_usable_geo_label':r.get('pending_with_usable_geo_label'),'candidate_count':r.get('candidate_count'),'candidate_live_frequency_sum':r.get('candidate_live_frequency_sum'),'route_counts':r.get('route_counts'),'reason_counts':r.get('reason_counts'),'pending_geo_label_field_counts':r.get('pending_geo_label_field_counts'),'result_sha256':d}
+          gate={'verified':ok,'accepted_andromeda_rows':r.get('accepted_andromeda_rows'),'pending_andromeda_rows':r.get('pending_andromeda_rows'),'usable_numeric_geo':r.get('usable_numeric_geo'),'usable_geo_labels':r.get('usable_geo_labels'),'usable_category_tokens':r.get('usable_category_tokens'),'rejected_category_tokens':r.get('rejected_category_tokens'),'pending_with_geo':r.get('pending_with_geo'),'pending_with_category_consensus':r.get('pending_with_category_consensus'),'pending_with_geo_and_category':r.get('pending_with_geo_and_category'),'pending_category_field_counts':r.get('pending_category_field_counts'),'candidate_count':r.get('candidate_count'),'candidate_live_frequency_sum':r.get('candidate_live_frequency_sum'),'route_counts':r.get('route_counts'),'reason_counts':r.get('reason_counts'),'result_sha256':d}
           root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
           if not ok: raise SystemExit(5)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-provider-geo-label-consensus-review-v1-result
-          path: ${{ runner.temp }}/hotel-match-provider-geo-label-consensus-review-1971-20260915-v1/
+          name: match-provider-geo-category-consensus-review-v1-result
+          path: ${{ runner.temp }}/hotel-match-provider-geo-category-consensus-review-1971-20260915-v1/
           if-no-files-found: warn
           retention-days: 90
