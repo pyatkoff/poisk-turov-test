@@ -14,7 +14,7 @@ fs.mkdirSync(output, { recursive: true });
 const names = JSON.parse(execFileSync('php', ['-r', 'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'], { cwd: root, encoding: 'utf8' }));
 const raw = names.map(name => fs.readFileSync(path.join(root, 'v2', name), 'utf8')).join('\n;\n');
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300"><path fill="#9ac7df" d="M0 0h600v300H0z"/></svg>');
-const tour = { id: 'current-tour', price: 148500.6, date: '2026-09-12', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
+const tour = { id: 'current-tour', price: 148500.6, fuelCharge: { value: 0 }, date: '2026-09-12', nights: 9, meal: { name: 'AI', fullName: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL', operator: { name: 'TEST OPERATOR' } };
 const hotels = [
   { id: 'expensive', name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' }, price: tour.price, rating: 5, category: 5, seaDistance: 100, picturelink: picture, tours: [{ ...tour, id: 'other-tour', price: 159000, operator: { name: 'OTHER OPERATOR' } }, tour, { ...tour, id: 'third-tour', price: 155000, operator: { name: 'OTHER OPERATOR' } }] },
   { id: 'cheap', name: 'Второй отель', price: 90000, rating: 4, category: 4, seaDistance: 800, picturelink: picture, tours: [{ ...tour, id: 'cheap-tour', price: 90000, operator: { name: 'OTHER OPERATOR' } }] }
@@ -121,9 +121,10 @@ async function checkToolbarLayout(page, width, previous) {
 async function checkMinimumReadiness(page, width, previous) {
   const makeTour = (id, price, extra = {}) => ({ ...tour, id, price, ...extra });
   const items = [
-    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена с проверкой', price: 80000, tours: [makeTour('minimum-andromeda', 80000, { provider: 'andromeda' }), makeTour('minimum-selectable', 95000)] },
+    { ...hotels[0], id: 'minimum-check', name: 'Минимальная цена только со сбором', price: 80000, tours: [makeTour('minimum-without-fuel', 80000, { fuelCharge: null }), makeTour('minimum-selectable', 95000), makeTour('minimum-second-ready', 105000)] },
     { ...hotels[0], id: 'minimum-mixed', name: 'Одна цена — разные условия выбора', price: 85000, tours: [makeTour('mixed-andromeda', 85000, { provider: 'andromeda' }), makeTour('mixed-selectable', 85000)] },
-    { ...hotels[0], id: 'minimum-ready', name: 'Вариант с доступным выбором', price: 90000, tours: [makeTour('ready-minimum', 90000), makeTour('expensive-check', 110000, { selectionEnabled: false })] }
+    { ...hotels[0], id: 'minimum-ready', name: 'Вариант с доступным выбором', price: 90000, tours: [makeTour('ready-minimum', 90000), makeTour('expensive-check', 110000, { selectionEnabled: false })] },
+    { ...hotels[0], id: 'minimum-without-ready-offers', name: 'Нет итоговой цены', price: 70000, tours: [makeTour('only-missing-fuel', 70000, { fuelCharge: null })] }
   ];
   const requests = [];
   const record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
@@ -132,13 +133,15 @@ async function checkMinimumReadiness(page, width, previous) {
     await page.evaluate(items => {
       window.Search3LocalHotelFilter.reset();
       window.__minimumReadinessSource = items;
-      window.V2Results.render(items);
-      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items } }));
+      const ready = window.V2Results.render(items);
+      window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: ready } }));
     }, items);
     const cards = page.locator('#results .hotel-card');
     const checked = page.locator('.hotel-card[data-hotel-id="minimum-check"]');
     const mixed = page.locator('.hotel-card[data-hotel-id="minimum-mixed"]');
     const ready = page.locator('.hotel-card[data-hotel-id="minimum-ready"]');
+    assert.equal(await cards.count(), 3, 'a hotel with no offer carrying an explicit fuel charge is absent from customer results');
+    assert.equal(await page.locator('.hotel-card[data-hotel-id="minimum-without-ready-offers"]').count(), 0, 'an invalid-only hotel cannot affect result count or minimums');
     for (const card of [checked, mixed, ready]) {
       assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle,.tour-selection-note').count(), 0, 'collapsed hotel does not project one offer readiness or action');
       assert.equal(await card.locator('.hotel-offers-summary').count(), 1, 'collapsed hotel exposes one neutral minimum summary');
@@ -150,11 +153,13 @@ async function checkMinimumReadiness(page, width, previous) {
       assert.equal(geometry.overflow, false);
     }
     const labels = await cards.evaluateAll(nodes => nodes.map(node => ({ id: node.dataset.hotelId, price: node.querySelector('.hotel-offers-summary .hotel-price').textContent, note: node.querySelector('.tour-selection-note')?.textContent || '' })));
+    assert.equal(await checked.locator('.hotel-offers-summary .hotel-price').innerText().then(text => text.replace(/\s/g, '')), 'от95000₽', 'hotel minimum ignores the cheaper offer without a fuel charge');
+    assert.equal(await checked.locator('.tour-more-toggle').innerText(), 'Показать варианты · 2', 'offer count includes only final-price-ready choices');
     const toggle = checked.locator('.tour-more-toggle');
     await toggle.focus(); await toggle.press('Enter');
-    assert.equal(await checked.locator('[data-tid="minimum-andromeda"]').count(), 0, 'unverified minimum still cannot create a select action');
+    assert.equal(await checked.locator('[data-tid="minimum-without-fuel"]').count(), 0, 'an offer without an explicit fuel charge has no customer action');
     assert.equal(await checked.locator('[data-tid="minimum-selectable"]').isVisible(), true, 'more expensive selectable offer keeps its existing action');
-    assert.match(await checked.locator('.tour-row').first().innerText(), /перед выбором нужна проверка/);
+    assert.equal(await checked.locator('.tour-row').count(), 2, 'only final-price-ready offers remain available');
     if (!previous) await checked.screenshot({ path: path.join(output, `minimum-readiness-${width}.png`), animations: 'disabled' });
     await checked.locator('.tour-more-toggle').press('Enter');
     assert.equal(await checked.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'collapse retains the existing disclosure focus');
