@@ -91,6 +91,8 @@ assert.deepEqual(compare([
   { ...same, date: '12.09.2026', meal: 'Всё включено', operator: 'Анекс' },
   { ...same, date: '2026-09-12T04:30:00Z', meal: 'All Inclusive', operator: 'ANEX' }
 ]), { keys: [], common: ['date', 'nights', 'party', 'meal', 'room', 'placement', 'operator'] }, 'equivalent displayed dates, reviewed meal and operator aliases do not create false differences');
+assert.deepEqual(compare([same, { ...same, room: 'Standard room' }, { ...same, room: 'Стандартный номер' }]).keys, [], 'reviewed room aliases do not create false differences');
+assert.deepEqual(compare([same, { ...same, room: 'EXECUTIVE SEA VIEW WITH BALCONY' }]).keys, ['room'], 'unknown extended room names remain distinct');
 for (const meal of ['UAI', 'Soft AI', 'Not all inclusive', 'Premium All Inclusive']) {
   assert.deepEqual(compare([same, { ...same, meal }]).keys, ['meal'], meal + ' retains its distinct conditions');
 }
