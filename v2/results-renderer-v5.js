@@ -38,13 +38,13 @@ return identities[family]||{key:'meal:label:'+normalized,label};
 }
 function rawRoomLabel(t){return textValue(t&&(t.roomType!==undefined?t.roomType:t.room)).replace(/\s+/g,' ').trim();}
 const roomAliases=[
-  {key:'standard',label:'Стандартный номер',aliases:['standard','standard room','стандарт','стандартный номер']},
-  {key:'standard-land-view',label:'Стандартный номер · вид на территорию',aliases:['standard land view','standard room land view','стандартный номер вид на территорию','стандартный номер · вид на территорию']},
-  {key:'standard-sea-view',label:'Стандартный номер · вид на море',aliases:['standard sea view','standard room sea view','стандартный номер вид на море','стандартный номер · вид на море']},
-  {key:'standard-side-sea-view',label:'Стандартный номер · боковой вид на море',aliases:['standard side sea view','standard room side sea view','стандартный номер боковой вид на море','стандартный номер · боковой вид на море']},
-  {key:'superior',label:'Улучшенный номер',aliases:['superior','superior room','улучшенный номер']},
-  {key:'family',label:'Семейный номер',aliases:['family','family room','семейный номер']},
-  {key:'deluxe',label:'Номер делюкс',aliases:['deluxe','deluxe room','номер делюкс']},
+  {key:'standard',label:'Стандарт',aliases:['standard','standard room','стандарт','стандартный номер']},
+  {key:'standard-land-view',label:'Стандарт · вид на территорию',aliases:['standard land view','standard room land view','стандартный номер вид на территорию','стандартный номер · вид на территорию','стандарт вид на территорию','стандарт · вид на территорию']},
+  {key:'standard-sea-view',label:'Стандарт · вид на море',aliases:['standard sea view','standard room sea view','стандартный номер вид на море','стандартный номер · вид на море','стандарт вид на море','стандарт · вид на море']},
+  {key:'standard-side-sea-view',label:'Стандарт · боковой вид на море',aliases:['standard side sea view','standard room side sea view','стандартный номер боковой вид на море','стандартный номер · боковой вид на море','стандарт боковой вид на море','стандарт · боковой вид на море']},
+  {key:'superior',label:'Улучшенный',aliases:['superior','superior room','улучшенный','улучшенный номер']},
+  {key:'family',label:'Семейный',aliases:['family','family room','семейный','семейный номер']},
+  {key:'deluxe',label:'Делюкс',aliases:['deluxe','deluxe room','делюкс','номер делюкс']},
   {key:'junior-suite',label:'Полулюкс',aliases:['junior suite','полулюкс']},
   {key:'suite',label:'Люкс',aliases:['suite','suite room','люкс']},
   {key:'family-suite',label:'Семейный люкс',aliases:['family suite','семейный люкс']},
