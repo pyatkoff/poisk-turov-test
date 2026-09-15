@@ -6,17 +6,17 @@ require __DIR__ . '/../app/integrations/andromeda-price-observation.php';
 require __DIR__ . '/../app/integrations/andromeda-search-surcharge.php';
 
 $request = anytour_andromeda_surcharge_e2e_request();
-if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v4-egypt-2026-12-27-2a2c5-11-8n'
+if (ANYTOUR_ANDROMEDA_SURCHARGE_E2E_OPERATION !== 'andromeda-search-surcharge-e2e-1717-v5-turkey-2026-12-13-2a-7n'
     || ANYTOUR_ANDROMEDA_SURCHARGE_E2E_RUNTIME_SOURCE !== '067bba00e664b0f76d7239d72306f8fb70252f00'
-    || ($request['generation'] ?? null) !== 17171227
-    || ($request['params']['countryId'] ?? null) !== '1'
+    || ($request['generation'] ?? null) !== 17171213
+    || ($request['params']['countryId'] ?? null) !== '4'
     || ($request['params']['departureId'] ?? null) !== '1'
-    || ($request['params']['dateFrom'] ?? null) !== '2026-12-27'
-    || ($request['params']['dateTo'] ?? null) !== '2026-12-27'
-    || ($request['params']['nightsFrom'] ?? null) !== 8
-    || ($request['params']['nightsTo'] ?? null) !== 8
+    || ($request['params']['dateFrom'] ?? null) !== '2026-12-13'
+    || ($request['params']['dateTo'] ?? null) !== '2026-12-13'
+    || ($request['params']['nightsFrom'] ?? null) !== 7
+    || ($request['params']['nightsTo'] ?? null) !== 7
     || ($request['params']['adults'] ?? null) !== 2
-    || ($request['params']['childs'] ?? null) !== [5, 11]
+    || ($request['params']['childs'] ?? null) !== []
     || ($request['params']['meal'] ?? null) !== ''
     || ($request['andromeda_operator_ids'] ?? null) !== ['5']) {
     throw new RuntimeException('scenario changed');
@@ -189,4 +189,4 @@ if ($record === false || $quoteCall === false || $record >= $quoteCall) {
     throw new RuntimeException('verified listing evidence delayed until after quote');
 }
 
-echo "Andromeda surcharge E2E: new family cohort + served listing to verified quote contract passed\n";
+echo "Andromeda surcharge E2E: new Turkey cohort + served listing to verified quote contract passed\n";
