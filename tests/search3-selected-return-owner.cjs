@@ -119,6 +119,7 @@ const vm = require('node:vm');
       }
     },
     addEventListener(name, handler) { windowEvents.set(name, handler); },
+    setTimeout(handler) { frames.push(handler); },
     dispatchEvent(event) {
       if (event.type === 'v2:tour-returned') returned.push(event.detail);
       if (event.type === 'v2:flight-selected') flightEvents.push(event.detail);
