@@ -1,0 +1,86 @@
+name: MATCH legacy Tourvisor read-only discovery v2
+on:
+  push:
+    branches: [match/manual-live-review-queue-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_legacy_tourvisor_probe_v2.py'
+      - '.github/workflows/hotel-match-legacy-tourvisor-probe-v2.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-legacy-tv-discovery-1971-20260914-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-legacy-tv-discovery-1971-20260914-v2
+  OUT: /tmp/match-legacy-tv-discovery-1971-v2
+jobs:
+  current-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Offline scope checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B scripts/diagnostics/hotel_match_legacy_tourvisor_probe_v2.py --self-test
+          python3 -m py_compile scripts/diagnostics/hotel_match_legacy_tourvisor_probe_v2.py
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_legacy_tourvisor_probe_v2.py
+          ! grep -Eiq '(urllib\.request|requests\.(get|post|request)|httpx\.|aiohttp|socket\.|curl[[:space:]]|wget[[:space:]])' scripts/diagnostics/hotel_match_legacy_tourvisor_probe_v2.py
+      - name: CURRENT symlink-aware legacy-path discovery
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/match-legacy-tv-key-v2"; known="$RUNNER_TEMP/match-legacy-tv-known-v2"; sock="$RUNNER_TEMP/match-legacy-tv-v2.sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' python3 -" < scripts/diagnostics/hotel_match_legacy_tourvisor_probe_v2.py > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def load(name):
+              try:return json.loads((out/name).read_text())
+              except Exception:return {}
+          result=load('result.json'); receipt=load('receipt.json'); reservation=load('reservation.json')
+          rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest() if (out/'result.json').exists() else None
+          ok=(int(os.environ['RC'])==0 and result.get('status')=='read_only_complete' and result.get('operation_id')==os.environ['OPERATION_ID']
+              and reservation.get('state')=='reserved_before_db_access' and reservation.get('source_sha')==os.environ['GITHUB_SHA']
+              and receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh
+              and all(result.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls')))
+          disc=result.get('discovery') or {}
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':ok,'remote_exit':int(os.environ['RC']),
+                'legacy_evidence_present':result.get('legacy_evidence_present'),'next_gate':result.get('next_gate'),
+                'files_examined':disc.get('files_examined'),'dirs_examined':disc.get('dirs_examined'),'scan_errors':disc.get('scan_errors'),
+                'matching_files':disc.get('matching_files'),'candidate_pair_files':disc.get('candidate_pair_files'),
+                'live_unresolved_anex_count':(result.get('current') or {}).get('live_unresolved_anex_count'),
+                'result_sha256':rh,'supplier_calls':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-legacy-tv-discovery-v2-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          retention-days: 90

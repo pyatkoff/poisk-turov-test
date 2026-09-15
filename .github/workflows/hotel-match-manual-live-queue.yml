@@ -1,0 +1,76 @@
+name: MATCH saved ANEX handles CURRENT v3
+on:
+  push:
+    branches: [match/manual-live-review-queue-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_saved_tv_tour_handles.py'
+      - '.github/workflows/hotel-match-manual-live-queue.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-saved-tv-tour-handles-1971-20260915-v3
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-saved-tv-tour-handles-1971-20260915-v3
+  OUT: /tmp/match-saved-tv-tour-handles-1971-v3
+jobs:
+  current-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Offline exact-source checks
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_saved_tv_tour_handles.py)" = 3bbd49bbff83c4fa2d11bbd9ac1a50baa2ab19d0
+          python3 -B scripts/diagnostics/hotel_match_saved_tv_tour_handles.py --self-test
+          python3 -m py_compile scripts/diagnostics/hotel_match_saved_tv_tour_handles.py
+          ! grep -Eiq '(curl|wget|requests\.|urllib\.request|api\.tourvisor|parser\.anextour|gateway\.samo)' scripts/diagnostics/hotel_match_saved_tv_tour_handles.py
+      - name: CURRENT saved observation read with immutable reservation/readback
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/match-saved-key"; known="$RUNNER_TEMP/match-saved-known"; sock="$RUNNER_TEMP/match-saved.sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' python3 -" < scripts/diagnostics/hotel_match_saved_tv_tour_handles.py > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def load(name):
+              try:return json.loads((out/name).read_text())
+              except Exception:return {}
+          r=load('result.json'); receipt=load('receipt.json'); reservation=load('reservation.json')
+          rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest() if (out/'result.json').exists() else None
+          eh=hashlib.sha256((out/'evidence.json').read_bytes()).hexdigest() if (out/'evidence.json').exists() else None
+          ok=(int(os.environ['RC'])==0 and r.get('state')=='read_only_complete' and r.get('operation_id')==os.environ['OPERATION_ID'] and r.get('target_count')==97 and reservation.get('state')=='reserved_before_db_access' and reservation.get('source_sha')==os.environ['GITHUB_SHA'] and receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh and receipt.get('evidence_sha256')==eh and all(r.get(k)==0 for k in ('database_writes','mapping_writes','supplier_calls','tourvisor_calls','booking_calls')))
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':ok,'remote_exit':int(os.environ['RC']),'target_count':r.get('target_count'),'unique_candidate_local_ids':r.get('unique_candidate_local_ids'),'saved_operator13_rows_read':r.get('saved_operator13_rows_read'),'targets_with_saved_anex_handles':r.get('targets_with_saved_anex_handles'),'live_frequency_with_saved_anex_handles':r.get('live_frequency_with_saved_anex_handles'),'route_counts':r.get('route_counts'),'result_sha256':rh,'evidence_sha256':eh,'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True,indent=2)+'\n');print(json.dumps(gate,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-saved-tv-tour-handles-v3-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          if-no-files-found: warn
+          retention-days: 90
