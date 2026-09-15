@@ -80,7 +80,7 @@ async function checkLargeList(page,width){
   assert.equal(await list.locator('input[name=v2flight]').count(),89,'all supplier choices retained');
   assert.equal(await list.locator('input:visible').count(),1,'large list initially shows the selected flight');
   assert.equal(await toggle.getAttribute('aria-expanded'),'false');
-  assert.match(await toggle.textContent(),/89/,'disclosure announces the total');
+  assert.match(await toggle.textContent(),/88/,'disclosure announces the exact alternative count');
   assert.ok((await toggle.boundingBox()).height>=44,'disclosure has a touch target');
   const collapsedHeight=(await root.locator('.tour-flights').boundingBox()).height;
   assert.ok(collapsedHeight<1600,'large-list closed height does not grow with89 alternatives');
