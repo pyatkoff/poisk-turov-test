@@ -11,8 +11,10 @@ permissions:
   contents: read
   actions: read
 
+# This workflow uses a dedicated control-plane queue. The publisher itself owns the
+# cross-workflow server writer lock (`grouped-search-update.lock`) and durable rollback.
 concurrency:
-  group: anytoour-andromeda-detail-publication
+  group: anytoour-andromeda-flight-selection-runtime-publication
   cancel-in-progress: false
 
 jobs:
@@ -36,8 +38,9 @@ jobs:
               raise SystemExit('publish job boundary missing or duplicated')
           live = text.split(marker, 1)[1]
           required = [
+              "group: anytoour-andromeda-flight-selection-runtime-publication",
               "github.event.issue.number == 2530",
-              "github.event.comment.body == '/publish-andromeda-quote-failure-category-runtime-1717-v2'",
+              "github.event.comment.body == '/publish-andromeda-quote-failure-category-runtime-1717-v3'",
               "const runtimeHead = '3275b3e8b1f9bfe50cc0ce521beaa43602a408bf';",
               "const runtimeMerge = '83569490acbd9f629236b0de85cdda14f39f2c9d';",
               "pull_number: 2551",
@@ -47,9 +50,14 @@ jobs:
               "ref: 23dd08a985eb58ed93652d97b60dac6c4145020c",
               "RUNTIME_SOURCE_SHA: 3275b3e8b1f9bfe50cc0ce521beaa43602a408bf",
           ]
-          for needle in required:
+          # concurrency is intentionally outside the live publish block; verify it separately.
+          if text.count(required[0]) != 1:
+              raise SystemExit('dedicated publication concurrency pin missing or duplicated')
+          for needle in required[1:]:
               if live.count(needle) != 1:
                   raise SystemExit('publication control pin missing or duplicated: ' + needle)
+          if 'group: anytoour-andromeda-detail-publication' in text:
+              raise SystemExit('shared issue-comment fan-out concurrency group must not remain')
           trigger = text.split('\npermissions:', 1)[0]
           if '\n  workflow_dispatch:' in trigger or '\n  push:' in trigger:
               raise SystemExit('manual-dispatch/push trigger is not allowed')
@@ -68,7 +76,7 @@ jobs:
       github.event.issue.number == 2530 && !github.event.issue.pull_request &&
       github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/publish-andromeda-quote-failure-category-runtime-1717-v2'
+      github.event.comment.body == '/publish-andromeda-quote-failure-category-runtime-1717-v3'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -77,7 +85,7 @@ jobs:
         with:
           script: |
             const owner = 226193297;
-            const command = '/publish-andromeda-quote-failure-category-runtime-1717-v2';
+            const command = '/publish-andromeda-quote-failure-category-runtime-1717-v3';
             const runtimeHead = '3275b3e8b1f9bfe50cc0ce521beaa43602a408bf';
             const runtimeMerge = '83569490acbd9f629236b0de85cdda14f39f2c9d';
             const publisherHead = '64706822fc54f4d4423ea6bbd0ad966144151387';
