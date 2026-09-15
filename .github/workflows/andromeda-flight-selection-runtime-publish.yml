@@ -50,8 +50,9 @@ jobs:
               "ref: 23dd08a985eb58ed93652d97b60dac6c4145020c",
               "RUNTIME_SOURCE_SHA: 3275b3e8b1f9bfe50cc0ce521beaa43602a408bf",
           ]
-          # concurrency is intentionally outside the live publish block; verify it separately.
-          if text.count(required[0]) != 1:
+          # concurrency is intentionally outside the live publish block; verify only the YAML header.
+          header = text.split('\njobs:', 1)[0]
+          if header.count(required[0]) != 1:
               raise SystemExit('dedicated publication concurrency pin missing or duplicated')
           for needle in required[1:]:
               if live.count(needle) != 1:
