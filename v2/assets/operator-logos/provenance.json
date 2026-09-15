@@ -32,6 +32,28 @@
       "source": "https://pix.intourist.ru/assets/images/loader-logo.png",
       "sha256": "9d1271f78c393e2dfd3c0e79d6f6b40c5fefd56de185896fb6e0150ddfc96913",
       "size": 10759
+    },
+    {
+      "file": "coral.png",
+      "source": "https://b2ccdn.coral.ge/content/companylogos/coral_travel_16062025081842.png",
+      "source_page": "https://www.coral.ge/en/chvens-shesaxeb/",
+      "acquired_at": "2026-09-15",
+      "sha256": "7ac4247961b69f2632c026b92bae2cdce590543f6db30396ee3cc6b44347c3eb",
+      "size": 9808,
+      "artwork_modified": false
+    },
+    {
+      "file": "sunmar.svg",
+      "source": "https://franchsunmar.ru/css/headercopy.css",
+      "source_page": "https://franchsunmar.ru/",
+      "source_selector": ".header__logo background-image",
+      "acquired_at": "2026-09-15",
+      "source_sha256": "2d43006dac77dcf902dcefaf512a86feb7a6b98d9397b129b5b55bfa78f79ca9",
+      "source_size": 22152,
+      "sha256": "cfef34e6e0dc5e6f51a9b1618371996dfc1ef2e0fde57155b29502054e520d7b",
+      "size": 11099,
+      "byte_transform": "Lossless percent-decoding of the SVG data URL from the official header stylesheet; artwork unchanged.",
+      "artwork_modified": false
     }
   ]
 }
