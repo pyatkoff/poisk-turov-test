@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+putenv('MATCH_LIVE_V8_RECONCILE_TEST_LIBRARY=1');
+require_once __DIR__.'/../scripts/diagnostics/hotel_match_live_v8_current_reconcile.php';
+function tv8(bool $ok,string $msg):void{if(!$ok)throw new RuntimeException($msg);}
+$rows=[];for($i=1;$i<=MLV8_SEED_COUNT;$i++)$rows[]=['provider'=>'andromeda','external_hotel_id'=>(string)(1000+$i),'search_count'=>$i===1?591:1,'last_seen_utc'=>'2026-09-14 23:00:00','source_name'=>'X'];$raw=json_encode(['rows'=>$rows],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);$seed=mlv8_seed($raw,hash('sha256',$raw));tv8(count($seed)===90,'seed count');tv8(array_sum(array_column($seed,'search_count'))===680,'seed frequency');
+$s=$seed['1001'];$accepted=['decision_status'=>'accepted','local_hotel_id'=>55,'evidence_sha256'=>str_repeat('a',64)];$r=mlv8_route_current($s,$accepted);tv8(($r['route']??'')==='resolved_current'&&(int)$r['local_hotel_id']===55,'accepted route');$pending=['decision_status'=>'pending','local_hotel_id'=>null,'evidence_sha256'=>str_repeat('b',64)];$r=mlv8_route_current($s,$pending,['route'=>'auto_accept_candidate','reason'=>'unique_exact_name_or_alias','target'=>77,'frequency'=>0]);tv8(($r['route']??'')==='auto_accept_candidate'&&(int)$r['frequency']===591,'pending classified with pinned frequency');$r=mlv8_route_current($s,null);tv8(($r['route']??'')==='current_identity_missing','missing route');
+$src=(string)file_get_contents(__DIR__.'/../scripts/diagnostics/hotel_match_live_v8_current_reconcile.php');foreach(['START TRANSACTION READ ONLY',"decision_status='accepted'",'mlar5_classify(','seed_sha256',"'operator_5_writes'=>0","'mapping_writes'=>0"] as $needle)tv8(str_contains($src,$needle),'source guard '.$needle);tv8(!preg_match('/(?:curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\(|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)/i',$src),'read only no external');
+echo "MATCH_LIVE_V8_CURRENT_RECONCILE_TEST_OK\n";
