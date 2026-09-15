@@ -49,7 +49,8 @@ jobs:
           for needle in required:
               if live.count(needle) != 1:
                   raise SystemExit('live control pin missing or duplicated: ' + needle)
-          if 'workflow_dispatch:' in text or '\n  push:' in text:
+          trigger = text.split('\npermissions:', 1)[0]
+          if '\n  workflow_dispatch:' in trigger or '\n  push:' in trigger:
               raise SystemExit('manual-dispatch/push trigger is not allowed in this one-shot control')
           print('Andromeda v5 owner control pins verified; PR supplier calls=0')
           PY
@@ -115,7 +116,7 @@ jobs:
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
+          ANYTOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
           PYTHONPATH: helper/scripts/diagnostics
         run: |
           python3 - <<'PY'
