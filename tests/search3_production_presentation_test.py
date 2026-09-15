@@ -122,6 +122,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("renderer.render(list,{empty:!!terminal})", lifecycle)
         self.assertIn("loadResults(id,run,25,false)", lifecycle)
         self.assertIn("loadResults(id,run,100,true)", lifecycle)
+        self.assertEqual(lifecycle.count("window.addEventListener('popstate'"), 1)
+        self.assertIn("new CustomEvent('v2:search-history-pop'", lifecycle)
         search3_js = json.loads(subprocess.check_output([
             'php', '-r',
             'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'
@@ -278,6 +280,26 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original_export = b'window.V2TourController={selectTour,get currentTour(){return currentTour;},version:4};'
                 self.assertEqual(source.count(provider_export), 1, 'one canonical provider selection entry')
                 source = source.replace(provider_export, original_export, 1)
+                # Reviewed Search3-only selected history seam. The canonical
+                # lifecycle remains the only real popstate owner; the controller
+                # owns only its retained selected DOM and return focus.
+                history_header = b",selectedHistoryActive=false;\nconst selectedHistoryKey='anytourSearch3SelectedTour';"
+                self.assertEqual(source.count(history_header), 1, 'one selected history state owner')
+                source = source.replace(history_header, b';', 1)
+                history_helpers_start = source.index(b'function historyTourId(state){')
+                history_helpers_end = source.index(b'function mealName(t){', history_helpers_start)
+                self.assertGreater(history_helpers_end, history_helpers_start, 'selected history helpers remain bounded before display helpers')
+                source = source[:history_helpers_start] + source[history_helpers_end:]
+                reviewed_history_entry = b'rememberSelectedHistory(tid);'
+                self.assertEqual(source.count(reviewed_history_entry), 1, 'one protected Tourvisor selected history entry')
+                source = source.replace(reviewed_history_entry, b'', 1)
+                self.assertEqual(source.count(b'returnFromSelected(root)'), 2, 'two selected return actions traverse the selected history entry')
+                source = source.replace(b'returnFromSelected(root)', b'returnToResults(root)')
+                history_listener = b"window.addEventListener('v2:search-history-pop',e=>{const root=selected(),requested=historyTourId(e&&e.detail&&e.detail.state);if(requested){selectedHistoryActive=true;restoreSelected(root);return;}if(!selectedHistoryActive)return;selectedHistoryActive=false;if(root&&!root.hidden)returnToResults(root);});\n"
+                self.assertEqual(source.count(history_listener), 1, 'one controller listener for lifecycle-owned same-query history')
+                source = source.replace(history_listener, b'', 1)
+                self.assertEqual(source.count(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;"), 1)
+                source = source.replace(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;", b"window.addEventListener('v2:search-reset',()=>{leadDraft=null;", 1)
                 # Reviewed selected placement display only. The result renderer
                 # carries its canonical label through the existing action while
                 # the detail object and lead payload retain their raw values.

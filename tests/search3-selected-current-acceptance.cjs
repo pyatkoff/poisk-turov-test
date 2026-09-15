@@ -432,6 +432,14 @@ async function checkLeadRecovery(page, width) {
     return value;
   };
   await openOffer(first.id);
+  const historyCalls = await page.evaluate(() => window.__leadRecovery.calls.length);
+  await page.goBack();
+  await page.waitForFunction(id => document.getElementById('selectedTour').hidden && document.activeElement?.dataset.tid === id, first.id);
+  assert.equal(await page.evaluate(() => window.__leadRecovery.calls.length), historyCalls, 'Browser Back returns to loaded results without a supplier request');
+  await page.goForward();
+  await page.waitForFunction(id => !document.getElementById('selectedTour').hidden && window.V2TourController.currentTour?.id === id, first.id);
+  assert.equal(await page.evaluate(() => window.__leadRecovery.calls.length), historyCalls, 'Browser Forward restores retained selected-tour DOM without a supplier request');
+  assert.equal(await page.locator('#selectedTour').getAttribute('aria-hidden'), null, 'Browser Forward restores selected tour to the accessibility tree');
   const selectedPlacement = await root.locator('.facts > div').filter({ hasText: 'Размещение' }).locator('b').innerText();
   assert.equal(selectedPlacement, 'Двухместное + ребёнок', 'selected tour keeps the canonical listing placement instead of repeating party composition from detail');
   const form = root.locator('.lead-form');

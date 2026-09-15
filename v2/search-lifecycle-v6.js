@@ -52,7 +52,7 @@ async function boot(){catalogs.renderChildAges();try{await catalogs.init();}catc
 form.addEventListener('input',e=>{if(e.target&&e.target.matches('input,textarea')){e.target.removeAttribute('aria-invalid');markDirty('parameters_input');}});
 form.addEventListener('change',e=>{if(e.target&&e.target.matches('input,select,textarea'))e.target.removeAttribute('aria-invalid');if(e.target&&e.target.name==='child_count')delete e.target.dataset.invalidHydratedCount;markDirty('parameters_changed');Promise.resolve(catalogs.handleChange(e)).catch(err=>console.warn('catalog change',err));});
 form.addEventListener('submit',e=>{e.preventDefault();e.stopImmediatePropagation();submit();},true);
-window.addEventListener('popstate',()=>{if(document.body&&document.body.classList.contains('search3-candidate')&&window.location.pathname+window.location.search!==historySearch)window.location.reload();});
+window.addEventListener('popstate',()=>{if(!(document.body&&document.body.classList.contains('search3-candidate')))return;if(window.location.pathname+window.location.search!==historySearch){window.location.reload();return;}window.dispatchEvent(new CustomEvent('v2:search-history-pop',{detail:{state:window.history&&window.history.state||null}}));});
 boot();
 window.V2SearchLifecycle={submit,params,validate,markDirty,hydrateUrlState,normalizeRestoreQuery,restorationUrl,get restoreQuery(){return searchId&&searchSnapshot&&!dirty?searchRestoreQuery:'';},get searchId(){return searchId;},get generation(){return generation;},get dirty(){return dirty;},get pending(){return searchPending;},get snapshot(){return cloneSnapshot(searchSnapshot);},version:6};
 })();

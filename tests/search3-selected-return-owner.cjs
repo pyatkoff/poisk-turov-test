@@ -10,6 +10,8 @@ const vm = require('node:vm');
   const frames = [];
   const returned = [];
   const flightEvents = [];
+  const selectedEvents = [];
+  const restoredEvents = [];
   const pendingTours = new Map();
   const pendingFlights = new Map();
   let deferResponses = false;
@@ -120,6 +122,8 @@ const vm = require('node:vm');
     dispatchEvent(event) {
       if (event.type === 'v2:tour-returned') returned.push(event.detail);
       if (event.type === 'v2:flight-selected') flightEvents.push(event.detail);
+      if (event.type === 'v2:tour-selected') selectedEvents.push(event.detail);
+      if (event.type === 'v2:selected-tour-opened') restoredEvents.push(event.detail);
     }
   };
   vm.runInNewContext(source, {
@@ -210,6 +214,52 @@ const vm = require('node:vm');
   assert.equal(failed.disabled, false, 'failed request re-enables its source action');
   assert.equal(failed.textContent, 'Повторить загрузку тура', 'failed request restores the exact retry label');
   assert.match(selected.innerHTML, /Не удалось загрузить выбранный тур: fixture failure/);
+
+  tourShouldFail = false;
+  const historyEntries = [{ state: { searchFixture: true }, url: 'https://example.test/poisk-turov/?from=1' }];
+  let historyIndex = 0;
+  window.location = { href: historyEntries[0].url };
+  window.history = {
+    get state() { return historyEntries[historyIndex].state; },
+    pushState(state, unused, url) {
+      historyEntries.splice(historyIndex + 1);
+      historyEntries.push({ state, url });
+      historyIndex++;
+    },
+    replaceState(state, unused, url) { historyEntries[historyIndex] = { state, url }; },
+    back() {
+      if (!historyIndex) return;
+      historyIndex--;
+      windowEvents.get('v2:search-history-pop')({ detail: { state: this.state } });
+    },
+    forward() {
+      if (historyIndex >= historyEntries.length - 1) return;
+      historyIndex++;
+      windowEvents.get('v2:search-history-pop')({ detail: { state: this.state } });
+    }
+  };
+  const historySource = focusableTour(19);
+  historySource.textContent = 'Выбрать тур';
+  click({ target: historySource, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(historyEntries.length, 2, 'selection adds one same-URL browser history entry');
+  assert.equal(window.history.state.anytourSearch3SelectedTour, '19', 'selected entry retains the exact offer identity');
+  const historyBack = action('back-results');
+  click({ target: historyBack, preventDefault() {}, stopPropagation() {}, stopImmediatePropagation() {} });
+  assert.equal(historyIndex, 0, 'the visible return action traverses to the existing result entry');
+  assert.equal(selected.hidden, true, 'Browser Back closes selected tour instead of leaving Search3');
+  frames.shift()();
+  assert.equal(historySource.focuses, 1, 'Browser Back restores focus to the exact offer action');
+  window.history.forward();
+  assert.equal(selected.hidden, false, 'Browser Forward restores the retained selected-tour DOM');
+  assert.equal(selectedAttributes.has('aria-hidden'), false, 'Browser Forward restores selected tour to the accessibility tree');
+  assert.equal(restoredEvents.length, 1, 'Browser Forward emits the scoped retained-DOM event once');
+  assert.equal(restoredEvents[0].history, true);
+  assert.equal(selectedEvents.length, 2, 'Browser Forward does not emit a duplicate tour-selected analytics event');
+  window.history.back();
+  frames.shift()();
+  delete window.history;
+  delete window.location;
 
   deferResponses = true;
   tourShouldFail = false;
