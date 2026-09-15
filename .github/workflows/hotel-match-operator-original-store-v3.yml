@@ -1,0 +1,181 @@
+name: MATCH operator original CURRENT store v3 delta33
+on:
+  push:
+    branches: [ops/match-operator-original-store-1971-20260915-v3]
+    paths: [.github/workflows/hotel-match-operator-original-store-v3.yml]
+permissions: {contents: read, actions: read}
+concurrency: {group: match-operator-original-store-1971-v3, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-operator-original-store-1971-20260915-v3
+  INPUT_OPERATION_ID: hotel-match-operator-original-batch-aggregate-1971-20260915-v3
+  EXPECTED_DELTA_SHA256: 0b4bbd32dca23c0a5ec73dad5b47afe3cd0e5307d4cb557d59a8425dc3776dcb
+jobs:
+  store:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}', fetch-depth: 1}
+      - name: Reconcile sealed supplier facts against sealed CURRENT snapshot
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_original_store.php)" = 3c58ea618fc1a6abf353742b5aaaa2765f4247a1
+          php -l scripts/diagnostics/hotel_match_operator_original_store.php
+          php tests/hotel_match_operator_original_test.php
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
+          python3 - <<'PY'
+          import hashlib,io,json,os,pathlib,subprocess,zipfile,collections
+          root=pathlib.Path(os.environ['RUNNER_TEMP']); out=root/os.environ['OPERATION_ID']; repo=os.environ['GITHUB_REPOSITORY']
+          sources=[
+            ('v4',10386624999,'6919fae1692fa63e02c5a1135e7d9059569653f727bf13d6c925173f335b0c45','7b014c80828aab32ba68148b079731ce7a61deb039d9eb39bbd64a54d889fa57','hotel-match-operator-original-batch-1971-20260915-v4'),
+            ('v6',10387099703,'b58e7274f76789181d9dba9f8cf8d55e4178e9e32e12ab46b1dcdada2885a39f','555d2627d5e5485ea01a339c7934c2a6064a515f2ca18d1a1da537a03e290995','hotel-match-operator-original-batch-1971-20260915-v6'),
+            ('v7',10388067365,'eceb0cb57fb7d57ca75285663e28c0ee23afe77cdf91742983e41fb8d77e9b25','81654eb1473386b568aa89e855eb5ed4be881e50f87cbb553dfa5e488fe4a0b3','hotel-match-operator-original-batch-1971-20260915-v7')]
+          current=(10388671215,'3f962ad1afa7140be29a6d4c3bb5ee9af452a351c044b2fbcd3d0f31eafc49f1','17b9618c691e8e9abe581b365e53787813948c0ffe7d4df5665116aaf6f511cf')
+          parent_docs={}; provenance=[]
+          def getzip(aid,zipsha):
+              p=subprocess.run(['gh','api',f'repos/{repo}/actions/artifacts/{aid}/zip'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,check=True,timeout=120)
+              assert hashlib.sha256(p.stdout).hexdigest()==zipsha
+              return zipfile.ZipFile(io.BytesIO(p.stdout))
+          for name,aid,zsha,rsha,op in sources:
+              with getzip(aid,zsha) as z:
+                  raw=z.read('result.json')
+              assert hashlib.sha256(raw).hexdigest()==rsha
+              doc=json.loads(raw); assert doc['operation_id']==op and doc['state'] in ('stopped_no_retry','completed')
+              assert doc['database_writes']==doc['mapping_writes']==doc['tourvisor_calls']==doc['all_calls']==doc['booking_calls']==0
+              parent_docs[name]=doc; provenance.append({'name':name,'artifact_id':aid,'zip_sha256':zsha,'result_sha256':rsha,'operation_id':op,'state':doc['state']})
+          aid,zsha,rsha=current
+          with getzip(aid,zsha) as z:
+              raw=z.read('server/result.json')
+          assert hashlib.sha256(raw).hexdigest()==rsha
+          cur=json.loads(raw); assert cur['operation_id']=='hotel-match-operator-original-current-1971-20260915-v3' and cur['state']=='completed_read_only'
+          assert cur['database_writes']==cur['supplier_calls']==0 and len(cur['existing_operator_rows'])==782 and cur['target_count']==8588
+          current_keys={(r['supplier_namespace'].split('_',1)[1],str(r['external_hotel_id']).lower()) for r in cur['existing_operator_rows']}
+          targets={str(t['andromeda_hotel_id']):t for t in cur['targets']}
+          facts={}; origins={}; proofs={}
+          for name,doc in parent_docs.items():
+              for p in doc['pages']:
+                  proofs[(name,p['request_sha256'])]=p
+              prev=doc['plan_summary']['previous_request']; proofs[(name,prev['request_sha256'])]=prev
+              for f in doc['facts']:
+                  k=(str(f['operator_key']),str(f['native_hotel_id']).lower(),str(f['andromeda_hotel_id']))
+                  if k not in facts: facts[k]=f; origins[k]=name
+          assert len(facts)==815
+          selected=[]
+          for k,f in facts.items():
+              op,native,aid=k
+              if (op,native) in current_keys: continue
+              t=targets.get(aid)
+              assert t and t['decision_status']=='accepted' and t['local_hotel_id'] is not None
+              selected.append((origins[k],f,t))
+          assert len(selected)==33
+          split=collections.Counter(str(f['operator_key']) for _,f,_ in selected); countries=collections.Counter(int(f['country_id']) for _,f,_ in selected)
+          assert split=={'5':15,'315':10,'342':8} and countries=={1:16,4:17}
+          minimal=sorted([{'operator_key':str(f['operator_key']),'native_hotel_id':str(f['native_hotel_id']),'andromeda_hotel_id':str(f['andromeda_hotel_id']),'local_hotel_id':int(t['local_hotel_id']),'country_id':int(f['country_id'])} for _,f,t in selected],key=lambda x:(x['operator_key'],x['native_hotel_id'].lower(),x['andromeda_hotel_id']))
+          delta_raw=json.dumps(minimal,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+          assert hashlib.sha256(delta_raw).hexdigest()==os.environ['EXPECTED_DELTA_SHA256']
+          selected.sort(key=lambda x:(str(x[1]['operator_key']),str(x[1]['native_hotel_id']).lower(),str(x[1]['andromeda_hotel_id'])))
+          pages=[]; page_seen=set()
+          for name,f,t in selected:
+              p=proofs[(name,f['request_sha256'])]
+              assert f['response_sha256']==p['response_sha256']
+              key=(p['request_sha256'],p['response_sha256'])
+              if key not in page_seen:
+                  pages.append(p); page_seen.add(key)
+          assert pages and all(any(f['request_sha256']==p['request_sha256'] for p in pages) for _,f,_ in selected)
+          synthetic={
+              'operation_id':os.environ['INPUT_OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'completed',
+              'plan_summary':{'previous_request':pages[0],'parent_operations':provenance,'current_snapshot':{'artifact_id':current[0],'zip_sha256':current[1],'result_sha256':current[2]}},
+              'supplier_calls':0,'price_calls':0,'http_calls':[],'pages':pages,'facts':[f for _,f,_ in selected],
+              'unique_pair_count':33,'database_writes':0,'mapping_writes':0,'tourvisor_calls':0,'all_calls':0,'booking_calls':0,'no_replay':True}
+          raw=(json.dumps(synthetic,ensure_ascii=False,indent=4,separators=(',', ': '))+'\n').encode()
+          out.joinpath('input.json').write_bytes(raw)
+          out.joinpath('provenance.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'input_operation_id':os.environ['INPUT_OPERATION_ID'],'current_snapshot':{'artifact_id':current[0],'zip_sha256':current[1],'result_sha256':current[2]},'parents':provenance,'all_unique_facts':815,'current_native_rows':782,'delta_rows':33,'operator_split':dict(split),'country_split':{str(k):v for k,v in countries.items()},'delta_identity_sha256':os.environ['EXPECTED_DELTA_SHA256']},ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          out.joinpath('input-sha256.txt').write_text(hashlib.sha256(raw).hexdigest()+'\n')
+          print(json.dumps({'all_unique_facts':815,'current_native_rows':782,'delta_rows':33,'operator_split':dict(split),'proof_pages':len(pages),'input_sha256':hashlib.sha256(raw).hexdigest()},sort_keys=True))
+          PY
+      - name: Bind tested CURRENT writer to immutable delta input
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path('scripts/diagnostics/hotel_match_operator_original_store.php'); s=p.read_text()
+          replacements={
+            "const MOS_OP='hotel-match-operator-original-store-1971-20260915-v2';":f"const MOS_OP='{os.environ['OPERATION_ID']}';",
+            "const MOS_INPUT_OP='hotel-match-operator-original-batch-1971-20260915-v2';":f"const MOS_INPUT_OP='{os.environ['INPUT_OPERATION_ID']}';",
+            "const MOS_INPUT_SOURCE='0ba983e53ba3cef37f4400828d5efe9d2530381e';":f"const MOS_INPUT_SOURCE='{os.environ['GITHUB_SHA']}';"}
+          for old,new in replacements.items():
+              assert s.count(old)==1 and new not in s
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          php -l scripts/diagnostics/hotel_match_operator_original_store.php
+          php -r 'define("MOS_LIBRARY_ONLY",true);require "scripts/diagnostics/hotel_match_operator_original_store.php";$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/".getenv("OPERATION_ID")."/input.json"),true,64,JSON_THROW_ON_ERROR);$g=mos_groups($x);if(count($g)!==33)throw new RuntimeException("group_count");$c=[];foreach($g as $r)$c[(string)$r["operator_key"]]=($c[(string)$r["operator_key"]]??0)+1;if(($c["5"]??0)!==15||($c["315"]??0)!==10||($c["342"]??0)!==8||isset($c["115"])||count($c)!==3)throw new RuntimeException("operator_split");echo "sealed delta 33 groups PASS\n";'
+          ! grep -Eiq '(gateway\.samo|api\.anextour|tourvisor|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_operator_original_store.php
+          sha256sum scripts/diagnostics/hotel_match_operator_original_store.php | awk '{print $1}' > "$RUNNER_TEMP/$OPERATION_ID/runtime-script-sha256.txt"
+      - name: Reserve exact store operation before SSH or DB
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; raw=out.joinpath('input.json').read_bytes(); inputsha=hashlib.sha256(raw).hexdigest()
+          assert inputsha==out.joinpath('input-sha256.txt').read_text().strip()
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':int(os.environ['GITHUB_RUN_ID']),'state':'reserved_before_db_access','input_operation_id':os.environ['INPUT_OPERATION_ID'],'input_result_sha256':inputsha,'input_groups':33,'delta_identity_sha256':os.environ['EXPECTED_DELTA_SHA256'],'database_writes':0,'supplier_calls':0,'tourvisor_calls':0,'booking_calls':0,'no_replay':True}
+          out.joinpath('reservation.json').write_text(json.dumps(r,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-operator-original-store-v3-reservation
+          path: |
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v3/reservation.json
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v3/input.json
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v3/provenance.json
+            ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v3/runtime-script-sha256.txt
+          if-no-files-found: error
+          retention-days: 90
+      - name: Server-CURRENT guarded append and post-COMMIT readback
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; inputsha="$(cat "$out/input-sha256.txt")"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -s \"\$p/reservation.json\"; test ! -e \"\$p/input.json\"; cat > \"\$p/input.json\"; h=\$(sha256sum \"\$p/input.json\" | awk '{print \$1}'); test \"\$h\" = '$inputsha'; sync" < "$out/input.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_INPUT_SHA='$inputsha' php" < scripts/diagnostics/hotel_match_operator_original_store.php > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0 -a -s "$out/server-operation.tgz"; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc" INPUT_SHA="$inputsha"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']; s=root/'server'
+          if not s.joinpath('result.json').exists():
+              state='unknown' if s.joinpath('unknown.json').exists() else 'no_result'
+              root.joinpath('workflow-readback.json').write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'verified':False,'state':state,'remote_exit':int(os.environ['REMOTE_RC']),'no_replay':True},sort_keys=True)+'\n')
+              raise SystemExit('NO_RESULT_READBACK')
+          raw=s.joinpath('result.json').read_bytes(); result=json.loads(raw); receipt=json.loads(s.joinpath('receipt.json').read_text()) if s.joinpath('receipt.json').exists() else {}; digest=hashlib.sha256(raw).hexdigest()
+          ok=(receipt.get('result_sha256')==digest and receipt.get('readback_verified') is True and receipt.get('no_replay') is True and result.get('state')=='completed_committed' and result.get('operation_id')==os.environ['OPERATION_ID'] and result.get('source_sha')==os.environ['GITHUB_SHA'] and result.get('source_result_sha256')==os.environ['INPUT_SHA'] and result.get('source_pairs')==33 and result.get('native_groups')==33 and result.get('supplier_calls')==0 and int(os.environ['REMOTE_RC'])==0)
+          if ok:
+              ok=(len(result.get('post_commit_readback') or [])==result.get('native_rows_written')==receipt.get('post_commit_native_rows') and len(result.get('anex_post_commit_readback') or [])==result.get('anex_mappings_written')==receipt.get('post_commit_anex_rows') and result.get('native_rows_written',0)+len(result.get('holds') or [])==33)
+          gate={'operation_id':os.environ['OPERATION_ID'],'remote_exit':int(os.environ['REMOTE_RC']),'verified':ok,'state':result.get('state'),'native_groups':result.get('native_groups'),'native_rows_written':result.get('native_rows_written'),'anex_mappings_written':result.get('anex_mappings_written'),'by_operator':result.get('by_operator'),'holds':len(result.get('holds') or []),'hold_details':result.get('holds'),'coverage_before':result.get('coverage_before'),'coverage_after':result.get('coverage_after'),'result_sha256':digest,'no_replay':True}
+          root.joinpath('workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n'); print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(5)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-operator-original-store-v3-result
+          path: ${{ runner.temp }}/hotel-match-operator-original-store-1971-20260915-v3/
+          if-no-files-found: warn
+          retention-days: 90
