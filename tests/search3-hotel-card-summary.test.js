@@ -70,7 +70,7 @@ for(const flags of [{selectionEnabled:false},{selection_enabled:false},{provider
 }
 // Exact offer rows keep decision-critical differences, but do not repeat search-level/internal context.
 const compact=api.tourRow({...multi.tours[0],roomType:'STANDARD',placement:'DBL',adults:2,childs:1,provider:'tourvisor'});
-assert.match(compact,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/);
+assert.match(compact,/<small>Номер<\/small><b>Стандартный номер · DBL<\/b>/);
 assert.match(compact,/<small>Источник<\/small><b>Tourvisor<\/b>/,'expanded exact offer keeps provider source distinct from tour operator');
 assert.doesNotMatch(compact,/<small>(?:Туристы|Размещение)<\/small>/,'expanded rows do not repeat search party or a second placement field');
 assert.doesNotMatch(compact,/<small>Оператор<\/small>/,'known operator does not repeat a caption beside its logo');
