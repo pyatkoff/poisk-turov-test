@@ -530,6 +530,7 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.equal(await hotelInfo.evaluate(node => node.open), true, 'hotel description opens through the native keyboard disclosure');
     assert.match(await hotelInfo.innerText(), /Локальное описание отеля[\s\S]*Наама-Бей[\s\S]*Открытый бассейн[\s\S]*Wi-Fi/, 'trusted local description and characteristics are available before choosing an offer');
     assert.ok((await hotelInfo.locator('summary').boundingBox()).height >= 44, 'hotel details disclosure keeps a full touch target');
+    if (!previous) await card.screenshot({ path: path.join(output, `catalog-hotel-details-${width}.png`), animations: 'disabled' });
     await card.locator('.hotel-gallery-thumb').nth(1).click();
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
     assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
