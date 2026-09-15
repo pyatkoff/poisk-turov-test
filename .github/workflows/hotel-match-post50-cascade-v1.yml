@@ -1,0 +1,93 @@
+name: MATCH post50 CURRENT bridge cascade
+on:
+  push:
+    branches: [ops/match-residual52-apply-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-post50-cascade-v1.yml]
+permissions: {contents: read}
+concurrency: {group: match-post50-cascade-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-post50-cascade-1971-20260915-v1
+jobs:
+  current-intake:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Verify pinned helpers and offline classification before reservation
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/hotel_match_provider_geo_consensus_review_test.php
+          php -d allow_url_fopen=0 tests/hotel_match_state_accepted_country_consensus_test.php
+          php -d allow_url_fopen=0 tests/hotel_match_live_residual_current_review_test.php
+          python3 - <<'PY'
+          import hashlib,os,pathlib
+          p=pathlib.Path('scripts/diagnostics/hotel_match_live_residual_current_review.php');raw=p.read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='39092786a76de75be1746975b9d113352b0960bf2a3816f093250ec1610ee5a3'
+          s=raw.decode()
+          def once(a,b):
+           global s
+           assert s.count(a)==1,a
+           s=s.replace(a,b,1)
+          once('hotel-match-live-residual-current-review-1971-20260915-v4',os.environ['OPERATION_ID'])
+          once('$root=realpath(getcwd());', '''$parentDir=$home.'/.anytoour-match/operations/hotel-match-residual52-apply-1971-20260915-v1';$parentRaw=(string)file_get_contents($parentDir.'/result.json');$parentReceipt=mcr_evidence((string)file_get_contents($parentDir.'/receipt.json'));if(hash('sha256',$parentRaw)!=='2adfcb28a54e17f3efc1ee44582d6abe5e2d7bb888e27e1adc3ee3f2357f3ff2'||($parentReceipt['state']??'')!=='completed_committed'||($parentReceipt['readback_verified']??false)!==true)throw new RuntimeException('parent_receipt');$parent=mcr_evidence($parentRaw);if(count($parent['post_commit_readback']??[])!==50)throw new RuntimeException('parent_count');$root=realpath(getcwd());''')
+          once('$catalogById=[];', '''$now=[];foreach($identityRows as $rr)if($rr['supplier_namespace']==='andromeda_catalog')$now[(string)$rr['external_hotel_id']]=$rr;foreach($parent['post_commit_readback'] as $prior){$rr=$now[(string)$prior['external_hotel_id']]??[];if(($rr['decision_status']??'')!=='accepted'||(int)($rr['local_hotel_id']??0)!==(int)$prior['local_hotel_id']||($rr['evidence_sha256']??'')!==$prior['evidence_sha256'])throw new RuntimeException('parent_row_changed');}$catalogById=[];''')
+          once("'core8_countries'=>$coreIds", "'parent_apply_readback_verified'=>50,'accepted_andromeda_count'=>count($accepted),'core8_countries'=>$coreIds")
+          assert 'START TRANSACTION READ ONLY' in s
+          pathlib.Path(os.environ['RUNNER_TEMP'],'residual.php').write_text(s)
+          PY
+          php -l "$RUNNER_TEMP/residual.php"
+      - name: Reserve before SSH or database access
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5680902157,'queue_issue':1971,'purpose':'Post50 CURRENT bridge cascade and parent accepted-row readback; no write or supplier calls','bundle_sha256':__import__('hashlib').sha256(pathlib.Path(os.environ['RUNNER_TEMP'],'residual.php').read_bytes()).hexdigest(),'parent_apply_run_id':34974455599,'candidate_dossier_sha256':'9291e4d74a1c74ac78b17a2ec0e7f8722c019b35183525453c68e83ec515ab3d','database_writes':0,'supplier_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-post50-cascade-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-post50-cascade-1971-20260915-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read remaining pending and active core8 names aliases geography once
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/residual.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified']
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,receipt))
+          assert r['parent_apply_readback_verified']==50
+          gate={'operation_id':os.environ['OPERATION_ID'],'state':r['state'],'result_sha256':digest,'population':r['population'],'parent_apply_readback_verified':50,'preliminary_candidates':r['auto_accept_candidate_count'],'readback_verified':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n');print(json.dumps(gate))
+          assert os.environ['REMOTE_RC']=='0' and r['state']=='completed_read_only' and r['db_writes']==r['supplier_calls']==r['mapping_writes']==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-post50-cascade-v1-result
+          path: ${{ runner.temp }}/hotel-match-post50-cascade-1971-20260915-v1/
+          if-no-files-found: warn
+          retention-days: 90
