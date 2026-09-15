@@ -74,6 +74,8 @@ assert.match(compact,/<small>Номер<\/small><b>Стандарт · Двух�
 assert.doesNotMatch(compact,/Источник|Tourvisor/,'expanded exact offer keeps provider provenance out of customer copy');
 assert.doesNotMatch(compact,/<small>(?:Туристы|Размещение)<\/small>/,'expanded rows do not repeat search party or a second placement field');
 assert.equal(api.roomLabel({roomType:'economy room'}),'Эконом','common supplier room code has a customer-facing label');
+assert.equal(api.roomLabel({roomType:'promo room'}),'Промо','common promotional room code has a customer-facing label');
+assert.equal(api.roomLabel({roomType:'supplier special room'}),'supplier special room','unknown supplier room label remains verbatim');
 assert.equal(api.placementLabel('DBL + CHD'),'Двухместное + ребёнок','common placement codes have a customer-facing label');
 assert.equal(api.placementLabel('DBL + 2 CHD'),'Двухместное + 2 ребёнка','placement aliases keep exact child count');
 assert.equal(api.placementLabel('Villa with private pool'),'Villa with private pool','unknown supplier placement remains verbatim');
