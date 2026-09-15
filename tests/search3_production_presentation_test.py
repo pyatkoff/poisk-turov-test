@@ -289,6 +289,13 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original = b"esc(mealName(t)||'\xe2\x80\x94')"
                 self.assertEqual(source.count(display), 1, 'one reviewed meal display expression')
                 source = source.replace(display, original, 1)
+                # Reviewed room display only. The raw roomType remains in the
+                # offer and lead payload; reverse the exact selected-tour call
+                # before comparing the frozen controller/business digest.
+                room_display = b"room=window.V2Results&&typeof window.V2Results.roomLabel==='function'?window.V2Results.roomLabel(t):displayText(t.roomType)"
+                room_original = b"room=displayText(t.roomType)"
+                self.assertEqual(source.count(room_display), 1, 'one reviewed selected room display expression')
+                source = source.replace(room_display, room_original, 1)
                 # Reviewed selected-tour date display only. The supplier ISO value
                 # remains unchanged in state and the lead payload; reversing these
                 # two exact fragments recovers the protected controller.
