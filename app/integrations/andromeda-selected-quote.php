@@ -53,8 +53,7 @@ final class AnyTourAndromedaSelectedQuote
             }
             foreach (['0', '1'] as $direction) {
                 $item = $choice['private'][$direction];
-                $claim = self::appendTransport($claim, $item);
-                $claim = $actions->changeService($claim, $item['uid']);
+                $claim = self::applyTransportSelection($claim, $item, $actions);
             }
             $selectedFlights = self::selectedFlights($claim);
             if (array_keys($selectedFlights) !== [0, 1]) {
@@ -94,8 +93,7 @@ final class AnyTourAndromedaSelectedQuote
                 || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $item['uid']) !== 1) {
                 throw new InvalidArgumentException('ANDROMEDA_FLIGHT_SELECTION_INVALID');
             }
-            $claim = self::appendTransport($claim, $item);
-            $claim = $actions->changeService($claim, $item['uid']);
+            $claim = self::applyTransportSelection($claim, $item, $actions);
         }
         $selectedFlights = self::selectedFlights($claim);
         if (array_keys($selectedFlights) !== [0, 1]) {
@@ -350,22 +348,43 @@ final class AnyTourAndromedaSelectedQuote
         return $public;
     }
 
-    private static function appendTransport(array $claim, array $item): array
+    /** Apply official Andromeda add/replace semantics for one selected flight direction. */
+    private static function applyTransportSelection(array $claim, array $item,
+        AnyTourAndromedaClaimActions $actions): array
     {
         $doc = self::document($claim);
         $selected = [];
+        $sameDirection = [];
+        $direction = (string)($item['direction'] ?? '');
         foreach (($doc['transports'] ?? []) as $block) {
             if (!is_array($block) || !is_array($block['transport'] ?? null)) continue;
-            foreach ($block['transport'] as $transport) if (is_array($transport)) $selected[] = $transport;
-        }
-        foreach ($selected as $transport) {
-            if ((string)($transport['direction'] ?? '') === (string)($item['direction'] ?? '')) {
-                throw new RuntimeException('ANDROMEDA_FLIGHT_ALREADY_SELECTED');
+            foreach ($block['transport'] as $transport) {
+                if (!is_array($transport)) continue;
+                $selected[] = $transport;
+                $index = count($selected) - 1;
+                if (($transport['type'] ?? null) === 'ttAvia'
+                    && (string)($transport['direction'] ?? '') === $direction) {
+                    $sameDirection[] = $index;
+                }
             }
         }
+        if (count($sameDirection) > 1) {
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+        }
+        if ($sameDirection !== []) {
+            $index = $sameDirection[0];
+            $oldUid = $selected[$index]['uid'] ?? null;
+            if (!is_string($oldUid) || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $oldUid) !== 1) {
+                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            }
+            if ($oldUid === $item['uid']) return $claim;
+            $selected[$index] = $item;
+            $claim['claimDocument'][0]['transports'] = [['transport' => array_values($selected)]];
+            return $actions->changeService($claim, $item['uid'], $oldUid);
+        }
         $selected[] = $item;
-        $claim['claimDocument'][0]['transports'] = [['transport' => $selected]];
-        return $claim;
+        $claim['claimDocument'][0]['transports'] = [['transport' => array_values($selected)]];
+        return $actions->changeService($claim, $item['uid']);
     }
 
     private static function selectedFlights(array $claim): array
