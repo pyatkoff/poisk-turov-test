@@ -31,6 +31,10 @@ jobs:
           from pathlib import Path
           p = Path('.github/workflows/andromeda-served-quote-v5-control.yml')
           text = p.read_text()
+          marker = '  surcharge-e2e-v5:\n'
+          if text.count(marker) != 1:
+              raise SystemExit('live job boundary missing or duplicated')
+          live = text.split(marker, 1)[1]
           required = [
               "github.event.issue.number == 1717",
               "github.event.comment.body == '/run-andromeda-surcharge-e2e-1717-v5'",
@@ -43,8 +47,8 @@ jobs:
               "result.get('calc_calls') != 1",
           ]
           for needle in required:
-              if text.count(needle) != 1:
-                  raise SystemExit('control pin missing or duplicated: ' + needle)
+              if live.count(needle) != 1:
+                  raise SystemExit('live control pin missing or duplicated: ' + needle)
           if 'workflow_dispatch:' in text or '\n  push:' in text:
               raise SystemExit('manual-dispatch/push trigger is not allowed in this one-shot control')
           print('Andromeda v5 owner control pins verified; PR supplier calls=0')
@@ -111,7 +115,7 @@ jobs:
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOUR_DEPLOY_HOST }}
-          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOUR_DEPLOY_USER }}
           PYTHONPATH: helper/scripts/diagnostics
         run: |
           python3 - <<'PY'
