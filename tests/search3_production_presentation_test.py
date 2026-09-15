@@ -122,6 +122,8 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("renderer.render(list,{empty:!!terminal})", lifecycle)
         self.assertIn("loadResults(id,run,25,false)", lifecycle)
         self.assertIn("loadResults(id,run,100,true)", lifecycle)
+        self.assertEqual(lifecycle.count("window.addEventListener('popstate'"), 1)
+        self.assertIn("new CustomEvent('v2:search-history-pop'", lifecycle)
         search3_js = json.loads(subprocess.check_output([
             'php', '-r',
             'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("js", "search3"));'
@@ -253,7 +255,11 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 # Reviewed provider receipt handoff only. Reverse the exact
                 # Andromeda selection seam before applying the older display
                 # reversals and comparing the frozen Tourvisor controller.
-                current_source = b"function currentSource(){if(usable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const selector of ['.direct-tour','[data-andromeda-select]'])for(const button of document.querySelectorAll(selector)){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&usable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(usable(revealed)){sourceButton=revealed;return revealed;}return null;}"
+                transition_source = b"function available(node){return!!(node&&document.contains(node)&&!node.disabled&&!node.hidden&&node.getAttribute('aria-hidden')!=='true');}\nfunction usable(node){return available(node)&&(typeof node.getClientRects!=='function'||node.getClientRects().length>0);}\nfunction sourceUsable(node){return usable(node)||(document.body.classList.contains('search3-selected-open')&&available(node));}"
+                original_usable = b"function usable(node){if(!(node&&document.contains(node)&&!node.disabled))return false;if(node.hidden||node.getAttribute('aria-hidden')==='true')return false;return typeof node.getClientRects!=='function'||node.getClientRects().length>0;}"
+                self.assertEqual(source.count(transition_source), 1, 'one selected-to-results transition availability seam')
+                source = source.replace(transition_source, original_usable, 1)
+                current_source = b"function currentSource(){if(sourceUsable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const selector of ['.direct-tour','[data-andromeda-select]'])for(const button of document.querySelectorAll(selector)){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&sourceUsable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(sourceUsable(revealed)){sourceButton=revealed;return revealed;}return null;}"
                 original_source = b"function currentSource(){if(usable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const button of document.querySelectorAll('.direct-tour')){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&usable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(usable(revealed)){sourceButton=revealed;return revealed;}return null;}"
                 self.assertEqual(source.count(current_source), 1, 'one provider-aware result return lookup')
                 source = source.replace(current_source, original_source, 1)
@@ -278,6 +284,32 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 original_export = b'window.V2TourController={selectTour,get currentTour(){return currentTour;},version:4};'
                 self.assertEqual(source.count(provider_export), 1, 'one canonical provider selection entry')
                 source = source.replace(provider_export, original_export, 1)
+                # Reviewed Search3-only selected history seam. The canonical
+                # lifecycle remains the only real popstate owner; the controller
+                # owns only its retained selected DOM and return focus.
+                history_header = b",selectedHistoryActive=false;\nconst selectedHistoryKey='anytourSearch3SelectedTour';"
+                self.assertEqual(source.count(history_header), 1, 'one selected history state owner')
+                source = source.replace(history_header, b';', 1)
+                settled_focus = b'requestAnimationFrame(()=>window.setTimeout(()=>{'
+                self.assertEqual(source.count(settled_focus), 1, 'one history-traversal focus settling seam')
+                source = source.replace(settled_focus, b'requestAnimationFrame(()=>{', 1)
+                settled_focus_close = b'}},80));emit(\'tour-returned\''
+                self.assertEqual(source.count(settled_focus_close), 1, 'one history-traversal focus settling close')
+                source = source.replace(settled_focus_close, b'}});emit(\'tour-returned\'', 1)
+                history_helpers_start = source.index(b'function historyTourId(state){')
+                history_helpers_end = source.index(b'function mealName(t){', history_helpers_start)
+                self.assertGreater(history_helpers_end, history_helpers_start, 'selected history helpers remain bounded before display helpers')
+                source = source[:history_helpers_start] + source[history_helpers_end:]
+                reviewed_history_entry = b'rememberSelectedHistory(tid);'
+                self.assertEqual(source.count(reviewed_history_entry), 1, 'one protected Tourvisor selected history entry')
+                source = source.replace(reviewed_history_entry, b'', 1)
+                self.assertEqual(source.count(b'returnFromSelected(root)'), 2, 'two selected return actions traverse the selected history entry')
+                source = source.replace(b'returnFromSelected(root)', b'returnToResults(root)')
+                history_listener = b"window.addEventListener('v2:search-history-pop',e=>{const root=selected(),requested=historyTourId(e&&e.detail&&e.detail.state);if(requested){selectedHistoryActive=true;restoreSelected(root);return;}if(!selectedHistoryActive)return;selectedHistoryActive=false;if(root&&!root.hidden)returnToResults(root);});\n"
+                self.assertEqual(source.count(history_listener), 1, 'one controller listener for lifecycle-owned same-query history')
+                source = source.replace(history_listener, b'', 1)
+                self.assertEqual(source.count(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;"), 1)
+                source = source.replace(b"window.addEventListener('v2:search-reset',()=>{clearSelectedHistory();leadDraft=null;", b"window.addEventListener('v2:search-reset',()=>{leadDraft=null;", 1)
                 # Reviewed selected placement display only. The result renderer
                 # carries its canonical label through the existing action while
                 # the detail object and lead payload retain their raw values.

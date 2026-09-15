@@ -432,6 +432,17 @@ async function checkLeadRecovery(page, width) {
     return value;
   };
   await openOffer(first.id);
+  const historyCalls = await page.evaluate(() => window.__leadRecovery.calls.length);
+  await page.goBack();
+  await page.waitForFunction(() => document.getElementById('selectedTour').hidden);
+  await page.waitForTimeout(500);
+  const historyReturnState = await page.evaluate(() => ({ activeTid: document.activeElement?.dataset.tid || '', activeTag: document.activeElement?.tagName || '', sourceTid: document.querySelector('#results .direct-tour:focus')?.dataset.tid || '' }));
+  assert.equal(historyReturnState.activeTid, String(first.id), 'Browser Back restores exact source-offer focus: ' + JSON.stringify(historyReturnState));
+  assert.equal(await page.evaluate(() => window.__leadRecovery.calls.length), historyCalls, 'Browser Back returns to loaded results without a supplier request');
+  await page.goForward();
+  await page.waitForFunction(id => !document.getElementById('selectedTour').hidden && window.V2TourController.currentTour?.id === id, first.id);
+  assert.equal(await page.evaluate(() => window.__leadRecovery.calls.length), historyCalls, 'Browser Forward restores retained selected-tour DOM without a supplier request');
+  assert.equal(await page.locator('#selectedTour').getAttribute('aria-hidden'), null, 'Browser Forward restores selected tour to the accessibility tree');
   const selectedPlacement = await root.locator('.facts > div').filter({ hasText: 'Размещение' }).locator('b').innerText();
   assert.equal(selectedPlacement, 'Двухместное + ребёнок', 'selected tour keeps the canonical listing placement instead of repeating party composition from detail');
   const form = root.locator('.lead-form');

@@ -96,7 +96,8 @@ async function checkLocalHistory(page) {
       const field = form.elements.price_from, original = field.value;
       field.value = String(Number(original || 0) + 1);
       field.dispatchEvent(new Event('input', { bubbles: true }));
-      window.__localHistoryAudit = { lifecycle, form, original, api: window.V2Runtime.api, calls: 0, traversals: 0 };
+      window.__localHistoryAudit = { lifecycle, form, original, api: window.V2Runtime.api, calls: 0, traversals: 0, historyPops: [] };
+      window.addEventListener('v2:search-history-pop', event => window.__localHistoryAudit?.historyPops.push(event.detail?.state ?? null));
       window.V2Runtime.api = async () => { window.__localHistoryAudit.calls++; throw new Error('Unexpected local-history supplier call'); };
       const before = { url: location.href, state: history.state, params: lifecycle.params(), generation: lifecycle.generation, dirty: lifecycle.dirty };
       history.pushState({ localHistoryFixture: true }, '', location.href);
@@ -104,6 +105,7 @@ async function checkLocalHistory(page) {
       return before;
     });
     await page.waitForFunction(() => location.hash === '#search3-history-check');
+    const historyPopBaseline = await page.evaluate(() => window.__localHistoryAudit.historyPops.length);
     const states = [];
     // Native fragment Back/Forward, then a same-URL history.state Back/Forward.
     // Finish on the original entry so subsequent different-query checks keep their meaning.
@@ -115,7 +117,7 @@ async function checkLocalHistory(page) {
         });
         const audit = window.__localHistoryAudit;
         audit.traversals++;
-        return { url: location.href, state: history.state, sameDocument: audit.form === document.getElementById('tourSearch'), sameLifecycle: audit.lifecycle === window.V2SearchLifecycle, params: window.V2SearchLifecycle.params(), generation: window.V2SearchLifecycle.generation, dirty: window.V2SearchLifecycle.dirty, calls: audit.calls };
+        return { url: location.href, state: history.state, sameDocument: audit.form === document.getElementById('tourSearch'), sameLifecycle: audit.lifecycle === window.V2SearchLifecycle, params: window.V2SearchLifecycle.params(), generation: window.V2SearchLifecycle.generation, dirty: window.V2SearchLifecycle.dirty, calls: audit.calls, historyPops: audit.historyPops.length };
       }, direction));
     }
     for (const state of states) {
@@ -131,6 +133,8 @@ async function checkLocalHistory(page) {
     assert.deepEqual(states[4].state, { localHistoryFixture: true }, 'same-URL Forward reaches the local state');
     assert.equal(states[5].url, before.url);
     assert.deepEqual(states[5].state, before.state);
+    const historyPopCounts = states.map(state => state.historyPops);
+    assert.deepEqual(historyPopCounts, [1, 2, 3, 4, 5, 6].map(count => count + historyPopBaseline), 'the single lifecycle popstate owner emits every same-query history transition once; baseline=' + historyPopBaseline + ' actual=' + JSON.stringify(historyPopCounts));
     assert.deepEqual(documents, [], 'fragment and same-query navigation sends no document request');
     await page.evaluate(() => {
       const audit = window.__localHistoryAudit;
