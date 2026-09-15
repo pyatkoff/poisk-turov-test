@@ -1,0 +1,385 @@
+{
+  "schema": "residual52-pinned-plan/1",
+  "operation_id": "hotel-match-residual52-apply-1971-20260915-v1",
+  "prepared_only": true,
+  "inputs": [
+    {
+      "operation_id": "hotel-match-residual-guards-1971-20260915-v1",
+      "source_sha": "b301f6d7cd12cfba7ad5ea803f621cbefa3157c0",
+      "result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337",
+      "count": 43
+    },
+    {
+      "operation_id": "hotel-match-core8-cold-compact-guards-1971-20260915-v1",
+      "source_sha": "3a3deb505f073c69d96fed28957f9629fac00313",
+      "result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b",
+      "count": 9
+    }
+  ],
+  "rows": [
+    {
+      "external_hotel_id": "105542",
+      "local_id": 24928,
+      "country_id": 2,
+      "evidence_sha256": "079d79927d6fb0f23f1d90a334b6c12a89a1933fb0865961c1a7a20805cc0ffd",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "152924",
+      "local_id": 23276,
+      "country_id": 2,
+      "evidence_sha256": "03cb319a8c52cb20352ee24f2d3465282b11f4cbfef782665fc188b5d944e0a9",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "196770",
+      "local_id": 548,
+      "country_id": 2,
+      "evidence_sha256": "01486bc450bdb48efb26f96df6a651e9ca29b51e90c966cbda813e44ed22bcbc",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000021605",
+      "local_id": 27477,
+      "country_id": 9,
+      "evidence_sha256": "4d6a8f8ffada95295fe19f945b3bc9a329b23dcafdc496e46c2456c5cd696714",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000021659",
+      "local_id": 24862,
+      "country_id": 2,
+      "evidence_sha256": "2d7862c4b80136f11b2252b30848663f96469d36b28d149946e3f0f635bc3ce9",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000021726",
+      "local_id": 24722,
+      "country_id": 2,
+      "evidence_sha256": "dddc5eeb7f75dee9066faea4c8a07c82c1142e57dcc52964ff4c714ee7f95cbe",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000023340",
+      "local_id": 32338,
+      "country_id": 16,
+      "evidence_sha256": "94a5d1b6f89e1143ecb51960ee97c16505a56562dcdb871cad8c0984d1cb0e2d",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000023444",
+      "local_id": 22601,
+      "country_id": 2,
+      "evidence_sha256": "03d0feecfa57f80a6b521d53fd3f29f98cd589f64cffece41c5307b55470f391",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000023886",
+      "local_id": 33668,
+      "country_id": 12,
+      "evidence_sha256": "8ade72c8595b445abb1bc48247cd3a906fc2bed1f76f0ffe0a212ec37f812353",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000030231",
+      "local_id": 43656,
+      "country_id": 12,
+      "evidence_sha256": "87d5537632e1c15b2a1a302d962dbe60953bc65682518d585fe8ec0e38c86dd0",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000039634",
+      "local_id": 7841,
+      "country_id": 2,
+      "evidence_sha256": "b90780746688b184c7d0417e8aa4794f9b25f17ca7bea5363b939b3f7e8794f9",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000039948",
+      "local_id": 4301,
+      "country_id": 2,
+      "evidence_sha256": "e4efb9b0fbc0f4a5bbcc4b9ab5837cc6fc761982ff8b0468df507919fb427e84",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000045513",
+      "local_id": 64066,
+      "country_id": 12,
+      "evidence_sha256": "3524c482aabeaf62eb8f9dd318e4cf1e1d66128cfb5200a0118ef77dc7ba1111",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000045514",
+      "local_id": 64075,
+      "country_id": 12,
+      "evidence_sha256": "f040a18a7cd8ada08909a772b482cfa8b7f0a0916b61415de8feacd215c90df3",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000046294",
+      "local_id": 56869,
+      "country_id": 12,
+      "evidence_sha256": "bae1734e793ec576fd504569555c782c943bce7633e905569a02663461a94fe3",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000053600",
+      "local_id": 50650,
+      "country_id": 16,
+      "evidence_sha256": "b473edd15bac421629f56031f98de4352c9b91747484890fd38386c53a9fcd41",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000053622",
+      "local_id": 47125,
+      "country_id": 16,
+      "evidence_sha256": "eeff7c0e367033d36023961b710650452a85f29576552b6e2d0555dcbe3cb220",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000054689",
+      "local_id": 72298,
+      "country_id": 16,
+      "evidence_sha256": "8a01e3c1c77dcf7ecc6861566e308affbba68bca252ebcfefd743cdf8468ec60",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000056748",
+      "local_id": 74106,
+      "country_id": 16,
+      "evidence_sha256": "e21b88fc0bbdfb3292af1faf454a8e6944994744c520e184758d9ba4e24e41e9",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000059960",
+      "local_id": 4963,
+      "country_id": 16,
+      "evidence_sha256": "e71de240cd9866c756700431b51236805e5e94c77ac3ffabbb21329e5a35026b",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000060462",
+      "local_id": 69420,
+      "country_id": 16,
+      "evidence_sha256": "2bc628743dd467d466e7b28db925094e2bc17eb60fb2485479b5bba75cfd8f36",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000062548",
+      "local_id": 72865,
+      "country_id": 4,
+      "evidence_sha256": "62a68c78644e3f5fc0f5cdb8989257e32387bf4bb14fc62092704f90993bf4fd",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000071932",
+      "local_id": 78269,
+      "country_id": 2,
+      "evidence_sha256": "485b7bab70935f414de68e2b8c9a99f1ce0640e9f5106716876ea715a57784d9",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000072953",
+      "local_id": 81596,
+      "country_id": 12,
+      "evidence_sha256": "cf546d88b57981313818d56e9aae3a0e9bd9cabe82dd76a4bb5b44773b448200",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000073019",
+      "local_id": 61618,
+      "country_id": 16,
+      "evidence_sha256": "b7ceaedf9347ef7d956d330b1f2ee37e59edf6c8df4d0ffc4b9064ddc16123d3",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000084859",
+      "local_id": 100896,
+      "country_id": 2,
+      "evidence_sha256": "bb33fc25a942535c707b858dc2b9547f2d8eb87aca0d264fe8cccece50f1a94a",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000084876",
+      "local_id": 96233,
+      "country_id": 2,
+      "evidence_sha256": "9f5d01bbce27baa33a530d110ac93ce9e2205adfd2f5882663bca0727d11d064",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000085173",
+      "local_id": 103980,
+      "country_id": 16,
+      "evidence_sha256": "2614cbaf3645af0c26c72eea7c2812d2ecd3b25f7e741de1b08636c637c3668d",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000085185",
+      "local_id": 65160,
+      "country_id": 16,
+      "evidence_sha256": "9f09bc823f3b6b00f078dcab80c24830aba5a867855c67611b3bf390acbe7198",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000086056",
+      "local_id": 108634,
+      "country_id": 16,
+      "evidence_sha256": "8c51645dcb3b1fbacb0ffb383fb97b4f5b838edc7ceeafbec50e6d5cc7c6a830",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000088368",
+      "local_id": 79076,
+      "country_id": 16,
+      "evidence_sha256": "d1f75a36a39fef08e9ab3e567d1a9ea14927413c3c1f31161efd60429b79821b",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000088703",
+      "local_id": 103223,
+      "country_id": 16,
+      "evidence_sha256": "a76f67adde02144a1778e5692fd0a6fd6dd4a310c2ef77cd0781b592e7aeac76",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000088723",
+      "local_id": 116763,
+      "country_id": 16,
+      "evidence_sha256": "bf36ae691e1c119b4df032d200a08696928683777beca6df6a5079a58327dccb",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000089134",
+      "local_id": 103280,
+      "country_id": 16,
+      "evidence_sha256": "1c7265035f0ce9588e7167ddc13b522c670aef47046ffc5debc9ea7ad660cd91",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000090603",
+      "local_id": 103222,
+      "country_id": 16,
+      "evidence_sha256": "3a483e82783c602ae937e3b087b3c45413b32ad1db03d35cdf03d31458e3a7ca",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000095293",
+      "local_id": 119474,
+      "country_id": 2,
+      "evidence_sha256": "632ffadb0dc3bab0395dcec1673492f1aef6f4c2bb906680f8db4fa6e089caa2",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000103141",
+      "local_id": 114181,
+      "country_id": 16,
+      "evidence_sha256": "6ff414c79df9d8350b3aa7fa289305de94f7383f831c1a682f1f9064668effa5",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000104585",
+      "local_id": 126945,
+      "country_id": 2,
+      "evidence_sha256": "19e9ab0551173e1c11fb833c7f76700bb165ff0d6bf30aa98dbbe156cc9bc7a1",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000106511",
+      "local_id": 128339,
+      "country_id": 16,
+      "evidence_sha256": "4ca2107eecd4bc24a293661c6ad65d480527243b079b1f704005e24169b72e26",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "2000106636",
+      "local_id": 130335,
+      "country_id": 16,
+      "evidence_sha256": "3657abc79ef7f458adc4ce76dc39a9b0782ca38e9ff34cfca87b4bdfd510443e",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000120258",
+      "local_id": 158911,
+      "country_id": 12,
+      "evidence_sha256": "6f5a46190e8db2fc058646879a37749f17eb7bab997939a5ebbf24453101022b",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "2000123055",
+      "local_id": 100321,
+      "country_id": 2,
+      "evidence_sha256": "09e4fe32f15035aaa6fd6aae00423fc6c2203839e047a4043cb2de2aca49ff48",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "202818",
+      "local_id": 7827,
+      "country_id": 2,
+      "evidence_sha256": "f6176e79dd75337c490c66bdb9681a51f8a5a4f1e1c27056e225175fb242b7f3",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "316519",
+      "local_id": 4365,
+      "country_id": 2,
+      "evidence_sha256": "bf03bd07203ba06719141389bbe5efdda50a2321436241541a2efd3470401d64",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "335001",
+      "local_id": 24861,
+      "country_id": 2,
+      "evidence_sha256": "be42b9c445358d49e12b3d34d0058a923ce8aeee2eb235b46619cbf282923a18",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "355393",
+      "local_id": 7449,
+      "country_id": 16,
+      "evidence_sha256": "2a9a306bdfecca9edec77a26bb866b2b368dbdad57c444a367145d9923fce7f0",
+      "source_result_sha256": "258b17be9ab4729e324ecccea721c47411cb67ab09f3e317b481b1995280049b"
+    },
+    {
+      "external_hotel_id": "406644",
+      "local_id": 12191,
+      "country_id": 2,
+      "evidence_sha256": "793177cfa0b134945a1f67a14cba1f04064c989a77f63c6f7f445f0f5ca5a92e",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "418737",
+      "local_id": 13827,
+      "country_id": 9,
+      "evidence_sha256": "528d4eaf4da3d0e2cc8c3959f9884559e2a8626fe88e71bbaeee08dcde5513e5",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "42234",
+      "local_id": 7843,
+      "country_id": 2,
+      "evidence_sha256": "e5144430204a4d86afd033810c4714e0dffe92cfa061eda1da7ebcdb9b36c340",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "471514",
+      "local_id": 22731,
+      "country_id": 2,
+      "evidence_sha256": "2b241b149442772dc84064d4413b29b5a8e087c18b322eff0700ad9c04826411",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "507828",
+      "local_id": 24865,
+      "country_id": 2,
+      "evidence_sha256": "a9eaf4a0cfd5004bbfd6b7196b727ee35f7502156a9d0b163c30a32aed7f6dbf",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    },
+    {
+      "external_hotel_id": "544533",
+      "local_id": 24945,
+      "country_id": 9,
+      "evidence_sha256": "84c997105d1639b540b150a29367741c9b535fe303316985c3043797f85bb114",
+      "source_result_sha256": "0a7f816a521267c708009b3722b58cb651421bb5ba9f3e8d841b04e185cab337"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+name: MATCH residual52 guarded CURRENT apply
+on:
+  push:
+    branches: [ops/match-residual52-apply-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-residual52-apply-v1.yml]
+permissions: {contents: read}
+concurrency: {group: match-andromeda-catalog-writer, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-residual52-apply-1971-20260915-v1
+jobs:
+  current-intake:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Verify pinned helpers and offline classification before reservation
+        run: |
+          set -euo pipefail
+          php -d allow_url_fopen=0 tests/hotel_match_provider_geo_consensus_review_test.php
+          php -d allow_url_fopen=0 tests/hotel_match_state_accepted_country_consensus_test.php
+          php -d allow_url_fopen=0 tests/hotel_match_live_residual_current_review_test.php
+          python3 scripts/diagnostics/hotel_match_residual52_apply_bundle.py "$RUNNER_TEMP/residual.php"
+          php -l "$RUNNER_TEMP/residual.php"
+          python3 tests/hotel_match_residual52_apply_test.py
+      - name: Reserve before SSH or database access
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];p.mkdir(mode=0o700)
+          d={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'state':'reserved_before_db_access','coordination_issue':2530,'claim_comment_id':5680818694,'queue_issue':1971,'purpose':'One guarded CURRENT apply of disjoint52 pending andromeda_catalog candidates; SERIALIZABLE, preserved evidence, per-row readback','bundle_sha256':__import__('hashlib').sha256(pathlib.Path(os.environ['RUNNER_TEMP'],'residual.php').read_bytes()).hexdigest(),'parent_current_run_id':34965710062,'candidate_dossier_sha256':'9291e4d74a1c74ac78b17a2ec0e7f8722c019b35183525453c68e83ec515ab3d','maximum_database_writes':52,'planned_rows':52,'plan_sha256':'9eb82d75127de06ed84fa021ec7ddf8558a34558582d748da5deb22928052f32','supplier_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(d,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-residual52-apply-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-residual52-apply-1971-20260915-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Revalidate CURRENT and commit only unchanged passing identities
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=300 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -e; umask 077; p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; mkdir \"\$p\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < "$RUNNER_TEMP/residual.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C \"\$HOME/.anytoour-match/operations/$OPERATION_ID\" -czf - ." > "$out/server-operation.tgz" 2>> "$out/remote-stderr.txt"; trc=$?
+          set -e
+          test $trc -eq 0; mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          export REMOTE_RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID'];s=p/'server'
+          r=json.loads((s/'result.json').read_text());receipt=json.loads((s/'receipt.json').read_text());digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert receipt['result_sha256']==digest and receipt['readback_verified']
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert all(x['operation_id']==os.environ['OPERATION_ID'] and x['source_sha']==os.environ['GITHUB_SHA'] for x in (r,receipt))
+          assert r['plan_sha256']=='9eb82d75127de06ed84fa021ec7ddf8558a34558582d748da5deb22928052f32'
+          assert r['written']==len(r['post_commit_readback'])==receipt['written']==r['db_writes']==r['mapping_writes']
+          plan=json.loads(pathlib.Path('reports/hotel-match-residual52-apply-plan-20260915.json').read_text())
+          allowed={x['external_hotel_id']:x['local_id'] for x in plan['rows']}
+          assert len({x['external_hotel_id'] for x in r['post_commit_readback']})==r['written']
+          assert all(x['supplier_namespace']=='andromeda_catalog' and x['decision_status']=='accepted' and allowed[x['external_hotel_id']]==x['local_hotel_id'] for x in r['post_commit_readback'])
+          gate={'operation_id':os.environ['OPERATION_ID'],'state':r['state'],'result_sha256':digest,'planned':r['planned_count'],'written':r['written'],'readback_verified':True}
+          (p/'workflow-readback.json').write_text(json.dumps(gate,sort_keys=True)+'\n');print(json.dumps(gate))
+          assert os.environ['REMOTE_RC']=='0' and r['state']=='completed_committed' and r['supplier_calls']==r['tourvisor_calls']==r['operator_5_writes']==0
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-residual52-apply-v1-result
+          path: ${{ runner.temp }}/hotel-match-residual52-apply-1971-20260915-v1/
+          if-no-files-found: warn
+          retention-days: 90
