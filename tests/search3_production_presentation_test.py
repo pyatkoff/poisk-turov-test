@@ -286,6 +286,12 @@ class Search3HalfSizeResetTest(unittest.TestCase):
                 history_header = b",selectedHistoryActive=false;\nconst selectedHistoryKey='anytourSearch3SelectedTour';"
                 self.assertEqual(source.count(history_header), 1, 'one selected history state owner')
                 source = source.replace(history_header, b';', 1)
+                settled_focus = b'requestAnimationFrame(()=>requestAnimationFrame(()=>{'
+                self.assertEqual(source.count(settled_focus), 1, 'one history-traversal focus settling seam')
+                source = source.replace(settled_focus, b'requestAnimationFrame(()=>{', 1)
+                settled_focus_close = b'}}));emit(\'tour-returned\''
+                self.assertEqual(source.count(settled_focus_close), 1, 'one history-traversal focus settling close')
+                source = source.replace(settled_focus_close, b'}});emit(\'tour-returned\'', 1)
                 history_helpers_start = source.index(b'function historyTourId(state){')
                 history_helpers_end = source.index(b'function mealName(t){', history_helpers_start)
                 self.assertGreater(history_helpers_end, history_helpers_start, 'selected history helpers remain bounded before display helpers')
