@@ -282,6 +282,12 @@ $assert($runtime['offers'][1]['additional_prices']['party_surcharge']['amount'] 
 $assert($runtime['offers'][2]['additional_prices']['party_surcharge']['amount'] === '4000'
     && $runtime['offers'][2]['additional_prices']['search_plus_additional']['amount'] === '124000',
     'second APD context is applied to its retained offer');
+$assert($runtime['offers'][0]['finalPriceReady'] === true
+    && $runtime['offers'][0]['finalPrice'] === '102000'
+    && $runtime['offers'][0]['price'] === '102000'
+    && $runtime['offers'][1]['finalPrice'] === '112000'
+    && $runtime['offers'][2]['finalPrice'] === '124000',
+    'applied direct-ANEX surcharge is exposed as the customer-ready listing price');
 $assert($runtime['offers'][0]['additional_prices']['fuel_equivalence_verified'] === false
     && $runtime['offers'][0]['additional_prices']['final_price_verified'] === false,
     'batch does not claim Tourvisor fuel equivalence or final quote');
@@ -295,8 +301,10 @@ $cachedRuntime = anytour_anex_search3_additional_batch($runtimeRequest, $runtime
 $assert($factoryCalls === 2 && count($transportCalls) === 2 && $runtimeCheckpoints === 2,
     'repeating completed visible batch is fully supplier-free');
 $assert($cachedRuntime['offers'][0]['additional_prices']['search_plus_additional']['amount'] === '102000'
-    && $cachedRuntime['offers'][2]['additional_prices']['search_plus_additional']['amount'] === '124000',
-    'cached endpoint response reapplies per-offer arithmetic');
+    && $cachedRuntime['offers'][2]['additional_prices']['search_plus_additional']['amount'] === '124000'
+    && $cachedRuntime['offers'][0]['finalPriceReady'] === true
+    && $cachedRuntime['offers'][0]['price'] === '102000',
+    'cached endpoint response reapplies the same ready per-offer price without supplier replay');
 
 $runtimeUnknown = $runtimeState;
 $sharedDigest = hash('sha256', implode("\0", ['2637', '1', '2026-10-05', '7']));
@@ -311,6 +319,14 @@ $assert($unknownRuntime['offers'][0]['status'] === 'additional_prices_unknown'
     && $unknownRuntime['offers'][1]['status'] === 'additional_prices_unknown'
     && $unknownRuntime['offers'][2]['status'] === 'additional_prices',
     'unknown shared context affects only its visible offers');
+$assert($unknownRuntime['offers'][0]['finalPriceReady'] === false
+    && $unknownRuntime['offers'][0]['finalPrice'] === null
+    && $unknownRuntime['offers'][0]['price'] === null
+    && $unknownRuntime['offers'][1]['finalPriceReady'] === false
+    && $unknownRuntime['offers'][1]['price'] === null
+    && $unknownRuntime['offers'][2]['finalPriceReady'] === true
+    && $unknownRuntime['offers'][2]['price'] === '124000',
+    'unknown APD stays fail-closed while independently completed offers remain price-ready');
 
 $changedResolver = static function (string $namespace, $external): ?int {
     if ((string) $external === '8102') return 999;

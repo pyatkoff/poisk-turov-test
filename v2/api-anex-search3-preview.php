@@ -565,10 +565,20 @@ function anytour_anex_search3_additional_batch(array $request, array &$state, ca
     foreach ($batch['offers'] as $item) {
         $key = $item['offer_ref'];
         $complete = ($item['status'] ?? null) === 'complete' && is_array($item['additional_prices'] ?? null);
+        $application = $complete
+            ? anytour_anex_search3_additional_application($item['additional_prices'], $offersByRef[$key]) : null;
+        $readyAmount = is_array($application)
+            && ($application['application_state'] ?? null) === 'applied'
+            && is_array($application['search_plus_additional'] ?? null)
+            && ($application['search_plus_additional']['currency'] ?? null) === 'RUB'
+            && is_string($application['search_plus_additional']['amount'] ?? null)
+            && preg_match('/\A(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?\z/D', $application['search_plus_additional']['amount'])
+            && preg_match('/[1-9]/', $application['search_plus_additional']['amount'])
+                ? $application['search_plus_additional']['amount'] : null;
         $public[] = ['offer_ref' => $key, 'local_hotel_id' => $item['local_hotel_id'],
             'status' => $complete ? 'additional_prices' : 'additional_prices_unknown',
-            'additional_prices' => $complete
-                ? anytour_anex_search3_additional_application($item['additional_prices'], $offersByRef[$key]) : null];
+            'finalPriceReady' => $readyAmount !== null, 'finalPrice' => $readyAmount, 'price' => $readyAmount,
+            'additional_prices' => $application];
     }
     return array_replace($reply, ['status' => 'additional_prices_batch', 'offers' => $public]);
 }
