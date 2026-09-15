@@ -37,7 +37,8 @@ jobs:
             "'claim_action_limit_bytes'=>2097152",
           ]:
             if needle not in text: raise SystemExit('v7 readback pin missing: '+needle)
-          live=text.split('      - name: Inspect sealed v7 filesystem state',1)[1]
+          marker='      - name: '+'Inspect sealed v7 filesystem state'
+          live=text.split(marker,1)[1]
           for forbidden in ('AnyTourAndromedaClient','AnyTourAndromedaClaimActions','curl_',
                             'file_put_contents','fopen(','unlink(','rename(','copy(','touch(',
                             'shell_exec','passthru(','system('):
