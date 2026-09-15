@@ -554,7 +554,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     await quoteButton.click();
     const selectButton = card.locator('[data-andromeda-select]').first();
     await selectButton.waitFor();
-    assert.match(await card.locator('[data-andromeda-quote-panel]').innerText(), /Цена изменилась и подтверждена: 157[\u00a0 ]345,25 ₽/,
+    assert.match(await card.locator('[data-andromeda-quote-panel]').innerText(), /Цена изменилась и подтверждена: 157[\u00a0 ]345,25[\u00a0 ]₽/,
       'the changed supplier price is explicit before selection');
     assert.equal(control.quoteRequests.length, 1, 'one explicit action performs one authoritative quote request');
     assert.equal(control.quoteRequests[0].listing_price_ref, 'listing_' + 'e'.repeat(64), 'quote retains the exact listed-price receipt');
