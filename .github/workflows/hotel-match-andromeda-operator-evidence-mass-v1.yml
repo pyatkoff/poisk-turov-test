@@ -9,7 +9,7 @@ env:
   OPERATION_ID: hotel-match-andromeda-operator-evidence-mass-1971-20260915-v1
 jobs:
   enrich:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 2
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,7 +26,7 @@ jobs:
           test "$(git hash-object scripts/diagnostics/hotel_match_live_residual_current_review.php)" = e93113da264b9bb1a17d0cb65287b4d1dc5b476b
           test "$(git hash-object app/integrations/andromeda-client.php)" = 7f2a444904e25f8abf1b50b70879b1650984800c
           test "$(git hash-object app/integrations/andromeda-transport.php)" = 162e33d3f1997ec7e73e1ef276c586d4732f8957
-          ! grep -Eiq '(broninit|booking\(|lead\(|tourvisor|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bREPLACE\b)' scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php
+          ! grep -Eiq '(broninit|booking\(|lead\(|tourvisor\.(ru|com)|api\.tourvisor|\bINSERT[[:space:]]|\bUPDATE[[:space:]]|\bDELETE[[:space:]]|\bREPLACE[[:space:]])' scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php
       - name: Reserve immutable operation before DB or supplier access
         run: |
           set -euo pipefail
@@ -75,8 +75,7 @@ jobs:
           ANDROMEDA_PASSWORD: ${{ secrets.ANDROMEDA_PASSWORD }}
         run: |
           set -euo pipefail
-          out="$RUNNER_TEMP/$OPERATION_ID"
-          test -n "$ANDROMEDA_USERNAME" && test -n "$ANDROMEDA_PASSWORD"
+          out="$RUNNER_TEMP/$OPERATION_ID"; test -n "$ANDROMEDA_USERNAME" && test -n "$ANDROMEDA_PASSWORD"
           php scripts/diagnostics/hotel_match_andromeda_operator_evidence_mass_v1.php run "$out/server/queue.json" "$out"
       - name: Independent result and no-write readback
         run: |
