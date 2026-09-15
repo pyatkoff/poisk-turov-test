@@ -25,7 +25,7 @@ jobs:
           t=Path('.github/workflows/andromeda-post-changeservice-money-v1.yml').read_text()
           for x in ["issue.number == 2530","/run-andromeda-post-changeservice-money-1717-v1","andromeda-post-changeservice-money-1717-v1-egypt-2026-12-22-2a-9n","'calc_calls'=>0","'booking_calls'=>0","'mapping_writes'=>0","changeservice_calls","freight_external","34990259472"]:
               assert x in t,x
-          live=t.split("php=r'''",1)[1].split("'''",1)[0]
+          live=t.rsplit("php=r'''",1)[1].split("'''",1)[0]
           for forbidden in ["->calc(","bron_ticket","action=bron","action=bron_ticket"]:
               assert forbidden not in live,forbidden
           php='\n'.join(line[10:] if line.startswith('          ') else line for line in live.splitlines())
