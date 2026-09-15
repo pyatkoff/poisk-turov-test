@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /* MATCH-only server-CURRENT promotion. No supplier/Tourvisor/network access. */
-const OPB_OP='hotel-match-operator-pending-anex-bridge-1971-20260915-v1';
+const OPB_OP='hotel-match-operator-pending-anex-bridge-1971-20260915-v2';
 const OPB_POLICY='owner_exact_and_strong_20260908';
 const OPB_NS='operator_5';
 function opb_json(array $x):string{return json_encode($x,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";}
