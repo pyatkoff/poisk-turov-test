@@ -1,0 +1,51 @@
+name: MATCH core8 cold compact evidence v1
+on:
+  push:
+    branches:
+      - ops/match-core8-cold-coordinate-evidence-1971-20260915-v1
+    paths:
+      - scripts/diagnostics/hotel_match_core8_cold_coordinate_evidence.py
+      - scripts/diagnostics/hotel_match_core8_cold_compact_evidence.py
+      - tests/hotel_match_core8_cold_compact_evidence_test.py
+      - .github/workflows/hotel-match-core8-cold-compact-evidence-v1.yml
+permissions: {contents: read, actions: read}
+jobs:
+  offline-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Unit-test compact and token-order guards
+        run: python3 tests/hotel_match_core8_cold_compact_evidence_test.py
+      - name: Download immutable completed CURRENT artifact without replay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10394524643/zip > /tmp/current.zip
+      - name: Build disjoint 1243-row compact identity dossier
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/match-cold-compact"
+          python3 scripts/diagnostics/hotel_match_core8_cold_compact_evidence.py \
+            /tmp/current.zip \
+            reports/hotel-match-core8-residual-names-20260915.json \
+            "$RUNNER_TEMP/match-cold-compact/report.json" | tee "$RUNNER_TEMP/match-cold-compact/summary.json"
+          sha256sum "$RUNNER_TEMP/match-cold-compact/report.json" | tee "$RUNNER_TEMP/match-cold-compact/report.sha256"
+          python3 - <<'PY'
+          import json,os
+          p=os.path.join(os.environ['RUNNER_TEMP'],'match-cold-compact','report.json')
+          r=json.load(open(p))
+          assert r['state']=='prepared_not_safe'
+          assert r['input_residual_rows']==1399
+          assert r['excluded_active_residual_guard_ids']==156
+          assert r['examined_cold_rows']==1243
+          assert r['database_writes']==r['supplier_calls']==r['tourvisor_calls']==0
+          assert all(x['auto_accept'] is False for x in r['dossiers'])
+          PY
+      - name: Preserve prepared-only compact evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-core8-cold-compact-${{ github.run_id }}
+          path: ${{ runner.temp }}/match-cold-compact/
+          if-no-files-found: error
+          retention-days: 30
