@@ -50,7 +50,7 @@ assert.ok(localFilters.includes('matchesRegion=!facets.region||facets.regions[in
   'region selection filters only the current loaded hotel set');
 assert.ok(localFilters.includes("regionSelect.addEventListener('change',apply)"),
   'region changes stay inside the local result filter owner');
-assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,budgetField,operatorField,ratingField,seaField];}'),
+assert.ok(localFilters.includes('function fields(){return[field,regionField,categoryField,mealField,nightsField,flightField,budgetField,operatorField,ratingField,seaField];}'),
   'desktop and mobile share decision-first filter order without a provider/source control');
 assert.ok(localFilters.includes('known/total>=minimum') && localFilters.includes('numericCoverage(ratings,.95)'),
   'guest-rating availability uses an explicit high-coverage policy instead of requiring every hotel to be complete');

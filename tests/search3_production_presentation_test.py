@@ -33,7 +33,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         # Current product plan permits useful UX growth after the completed half-size reset.
         # Keep a finite measured envelope for the same eight assets, not the historical 2x ratio.
         # Budget range + native mobile return: 89925B -> 92323B (+2398B), no added asset/owner.
-        self.assertLessEqual(total, 93000, 'eight presentation assets stay within the reviewed 93KB envelope')
+        self.assertLessEqual(total, 95000, 'eight presentation assets stay within the reviewed 95KB envelope including local nights/flight facets')
 
     def test_reset_css_owners_and_native_selected_bound(self):
         assets = self.source['assets']
