@@ -1,0 +1,57 @@
+name: MATCH Tourvisor operatorLink follow preflight v1
+on:
+  push:
+    branches: [ops/match-tv-operatorlink-card-follow-1971-20260915-v1]
+    paths: [.github/workflows/hotel-match-tv-operatorlink-card-follow-preflight-v1.yml]
+permissions: {contents: read}
+concurrency: {group: match-tv-operatorlink-card-follow-preflight-1971-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-tv-operatorlink-card-follow-preflight-1971-20260915-v1
+jobs:
+  preflight:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false, ref: '${{ github.sha }}'}
+      - name: Zero-supplier server preflight
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"; key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          cat > "$out/probe.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          const OP='hotel-match-tv-operatorlink-card-follow-preflight-1971-20260915-v1';
+          function j(array $x):string{return json_encode($x,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);}
+          function w(string $p,array $x):string{$r=j($x)."\n";$f=fopen($p,'x');fwrite($f,$r);fflush($f);fclose($f);return hash('sha256',$r);}
+          $sha=(string)getenv('MATCH_SOURCE_SHA');$root=(string)realpath(getcwd());if(!preg_match('/^[0-9a-f]{40}$/',$sha)||$root===''||basename($root)!=='anytoour.ru')throw new RuntimeException('guard');
+          $base=rtrim((string)getenv('HOME'),'/').'/.anytoour-match/operations';$dir=$base.'/'.OP;if(!is_dir($base)||file_exists($dir)||!mkdir($dir,0700))throw new RuntimeException('operation_exists');
+          w($dir.'/reservation.json',['operation_id'=>OP,'source_sha'=>$sha,'state'=>'reserved_before_runtime_read','supplier_calls'=>0,'database_connections'=>0,'database_writes'=>0,'no_replay'=>true]);
+          $cfg='';foreach([$root.'/v2/config.php',$root.'/config.php'] as $p)if(is_file($p)){$cfg=$p;break;}if($cfg!=='')require_once $cfg;
+          $r=['operation_id'=>OP,'source_sha'=>$sha,'status'=>'completed','php_version'=>PHP_VERSION,'v2_client_exists'=>is_file($root.'/v2/data/tourvisor-client-v1.php'),'data_client_exists'=>is_file($root.'/data/tourvisor-client-v1.php'),'v2_config_exists'=>is_file($root.'/v2/config.php'),'root_config_exists'=>is_file($root.'/config.php'),'default_credential_present'=>defined('TOURVISOR_JWT')&&trim((string)TOURVISOR_JWT)!=='','anex_credential_present'=>defined('TOURVISOR_ANEX_JWT')&&trim((string)TOURVISOR_ANEX_JWT)!=='','curl_https_constant_present'=>defined('CURLPROTO_HTTPS'),'supplier_calls'=>0,'database_connections'=>0,'database_queries'=>0,'database_writes'=>0,'mapping_writes'=>0,'token_values_recorded'=>false,'no_replay'=>true];
+          $h=w($dir.'/result.json',$r);w($dir.'/receipt.json',['operation_id'=>OP,'source_sha'=>$sha,'state'=>'completed','result_sha256'=>$h,'readback_verified'=>hash('sha256',(string)file_get_contents($dir.'/result.json'))===$h,'supplier_calls'=>0,'database_writes'=>0,'no_replay'=>true]);echo j($r)."\n";
+          PHP
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi; chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=180 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" "$U@$H"
+          trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=0 -d log_errors=0" < "$out/probe.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; tar -C \"\$p\" -czf - ." > "$out/server-operation.tgz"
+          mkdir "$out/server"; tar -xzf "$out/server-operation.tgz" -C "$out/server"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/ 'server'; r=json.loads((p/'result.json').read_text()); q=json.loads((p/'receipt.json').read_text())
+          assert q['readback_verified'] is True and q['result_sha256']==hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert r['supplier_calls']==r['database_connections']==r['database_queries']==r['database_writes']==r['mapping_writes']==0 and r['token_values_recorded'] is False
+          print(json.dumps(r,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-operatorlink-card-follow-preflight-v1
+          path: ${{ runner.temp }}/hotel-match-tv-operatorlink-card-follow-preflight-1971-20260915-v1/
+          retention-days: 90
