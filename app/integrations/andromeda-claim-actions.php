@@ -1,6 +1,20 @@
 <?php
 declare(strict_types=1);
 
+/** Fixed-message supplier rejection with bounded, non-raw diagnostic facts. */
+final class AnyTourAndromedaSupplierException extends RuntimeException
+{
+    public function __construct(private array $diagnosticFacts)
+    {
+        parent::__construct('ANDROMEDA_SUPPLIER_ERROR');
+    }
+
+    public function diagnosticFacts(): array
+    {
+        return $this->diagnosticFacts;
+    }
+}
+
 /**
  * Bounded POST-only Andromeda claim actions used after broninit.
  * No booking action exists in this class.
@@ -77,12 +91,94 @@ final class AnyTourAndromedaClaimActions
         $reply = json_decode($response['body'], true, 64, JSON_THROW_ON_ERROR);
         if (!is_array($reply)) throw new RuntimeException('ANDROMEDA_INVALID_RESPONSE');
         $this->rejectSessionEcho($reply);
-        if (array_key_exists('error', $reply)) throw new RuntimeException('ANDROMEDA_SUPPLIER_ERROR');
+        if (array_key_exists('error', $reply)) {
+            throw new AnyTourAndromedaSupplierException(self::supplierErrorFacts($reply['error']));
+        }
         if (!isset($reply['claimDocument']) || !is_array($reply['claimDocument'])
             || array_keys($reply['claimDocument']) !== [0] || !is_array($reply['claimDocument'][0])) {
             throw new RuntimeException('ANDROMEDA_INVALID_CLAIM_RESPONSE');
         }
         return $reply;
+    }
+
+    /**
+     * Classify a supplier rejection without retaining raw supplier text.
+     * The facts are diagnostic-only and never participate in money arithmetic.
+     */
+    private static function supplierErrorFacts(mixed $error): array
+    {
+        $encoded = json_encode($error, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $facts = [
+            'source' => 'andromeda_claim_error',
+            'shape' => match (true) {
+                is_array($error) => 'array',
+                is_string($error) => 'string',
+                is_int($error) => 'integer',
+                is_float($error) => 'float',
+                is_bool($error) => 'boolean',
+                $error === null => 'null',
+                default => 'other',
+            },
+            'error_sha256' => hash('sha256', $encoded),
+            'reason_category' => self::supplierErrorCategory($error),
+        ];
+
+        $code = null;
+        $codeKey = null;
+        if (is_int($error)) {
+            $code = (string)$error;
+            $codeKey = 'error';
+        } elseif (is_string($error) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $error) === 1) {
+            $code = $error;
+            $codeKey = 'error';
+        } elseif (is_array($error)) {
+            foreach (['code', 'errorCode', 'error_code', 'status', 'type'] as $key) {
+                if (!array_key_exists($key, $error)) continue;
+                $value = $error[$key];
+                if (is_int($value)) $value = (string)$value;
+                if (is_string($value) && preg_match('/^[A-Za-z0-9_.:-]{1,64}$/D', $value) === 1) {
+                    $code = $value;
+                    $codeKey = $key;
+                    break;
+                }
+            }
+        }
+        if ($code !== null) {
+            $facts['code'] = $code;
+            $facts['code_field'] = $codeKey;
+        }
+        return $facts;
+    }
+
+    private static function supplierErrorCategory(mixed $error): string
+    {
+        $rules = [
+            'flight_or_freight' => '/(?:flight|freight|avia|airline|airfare|рейс|перел[её]т|авиа)/iu',
+            'auth_or_session' => '/(?:auth|login|credential|session|password|sid|авториз|логин|сесс)/iu',
+            'claim_or_package' => '/(?:claim|package|booking|заявк|пакет|брони)/iu',
+            'service' => '/(?:service|услуг)/iu',
+            'price_or_fare' => '/(?:price|cost|fare|tariff|цен|тариф)/iu',
+            'date_or_time' => '/(?:date|time|дата|время)/iu',
+            'hotel' => '/(?:hotel|отел)/iu',
+        ];
+        foreach ($rules as $category => $pattern) {
+            if (self::supplierErrorContains($error, $pattern, 0)) return $category;
+        }
+        return 'unclassified';
+    }
+
+    private static function supplierErrorContains(mixed $value, string $pattern, int $depth): bool
+    {
+        if ($depth > 3) return false;
+        if (is_string($value)) return preg_match($pattern, $value) === 1;
+        if (!is_array($value)) return false;
+        $seen = 0;
+        foreach ($value as $key => $item) {
+            if (++$seen > 24) break;
+            if (is_string($key) && preg_match($pattern, $key) === 1) return true;
+            if (self::supplierErrorContains($item, $pattern, $depth + 1)) return true;
+        }
+        return false;
     }
 
     private function curl(string $url, string $post): array
