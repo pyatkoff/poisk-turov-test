@@ -26,7 +26,8 @@ jobs:
           t=Path('.github/workflows/andromeda-v8-money-readback.yml').read_text()
           for x in ["issue.number == 2530","/inspect-andromeda-v8-money-facts-1717-v1","sourceRun=34991136031","sourceArtifact=10406065920","9a9af940b7a2c170dd82bfdedc25cc6628fd921b75094c1278c12f6e54c0333c","glob($searches.'/*-quote-v1.json')","'supplier_calls'=>0","'operation_replayed'=>false"]:
             assert x in t,x
-          live=t.split('      - name: Read retained quote checkpoint',1)[1]
+          marker='      - name: Read retained quote '+'checkpoint'
+          live=t.split(marker,1)[1]
           for x in ['AnyTourAndromedaClient','curl_','new PDO','file_put_contents','fopen(','unlink(','rename(','bron_ticket']:
             assert x not in live,x
           assert '\n  workflow_dispatch:' not in t.split('\npermissions:',1)[0]
