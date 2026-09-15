@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-const ANEX_ADDITIONAL_SPECIMEN_OPERATION = 'anex-additional-prices-778-date-20260915-v10';
+const ANEX_ADDITIONAL_SPECIMEN_OPERATION = 'anex-additional-prices-778-nights-20260915-v11';
 const ANEX_ADDITIONAL_SPECIMEN_TOUR = 778;
 const ANEX_ADDITIONAL_SPECIMEN_DATE = '2026-10-18';
-const ANEX_ADDITIONAL_SPECIMEN_NIGHTS = 7;
+const ANEX_ADDITIONAL_SPECIMEN_NIGHTS = [10, 14];
 const ANEX_ADDITIONAL_SPECIMEN_CURRENCY = 3;
 
 function anytour_anex_additional_specimen_decimal($value): ?string
@@ -107,23 +107,27 @@ function anytour_anex_additional_specimen_run(array $input): array
         throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_TOKEN');
     }
 
+    $criteriaSet = [];
+    foreach (ANEX_ADDITIONAL_SPECIMEN_NIGHTS as $nights) {
+        $criteriaSet[] = [
+            'page' => 1,
+            'pageSize' => 10,
+            'tour' => ANEX_ADDITIONAL_SPECIMEN_TOUR,
+            'dateBeg' => ANEX_ADDITIONAL_SPECIMEN_DATE,
+            'nights' => $nights,
+            'currency' => ANEX_ADDITIONAL_SPECIMEN_CURRENCY,
+        ];
+    }
+
     umask(0077);
     $directory = $private . '/' . ANEX_ADDITIONAL_SPECIMEN_OPERATION;
     if (!@mkdir($directory, 0700)) throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_NO_REPLAY');
-    $criteria = [
-        'page' => 1,
-        'pageSize' => 10,
-        'tour' => ANEX_ADDITIONAL_SPECIMEN_TOUR,
-        'dateBeg' => ANEX_ADDITIONAL_SPECIMEN_DATE,
-        'nights' => ANEX_ADDITIONAL_SPECIMEN_NIGHTS,
-        'currency' => ANEX_ADDITIONAL_SPECIMEN_CURRENCY,
-    ];
     $reservation = json_encode([
         'state' => 'unknown_reserved',
         'replay_allowed' => false,
         'operation_id' => ANEX_ADDITIONAL_SPECIMEN_OPERATION,
         'source_sha' => $input['source_sha'],
-        'criteria' => $criteria,
+        'criteria' => $criteriaSet,
     ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n";
     if (file_put_contents($directory . '/reservation.json', $reservation, LOCK_EX) !== strlen($reservation)) {
         throw new RuntimeException('ANEX_ADDITIONAL_SPECIMEN_RESERVATION');
@@ -135,17 +139,23 @@ function anytour_anex_additional_specimen_run(array $input): array
         'source_sha' => $input['source_sha'],
         'observed_at' => gmdate('c'),
         'supplier_replay_allowed' => false,
-        'criteria' => $criteria,
+        'criteria' => $criteriaSet,
         'additional_prices_requests' => 0,
+        'additional_prices_by_nights' => [],
         'booking_calls' => 0,
         'mapping_writes' => 0,
     ];
     try {
         $client = new AnyTourAnexAdditionalPricesClient(ANEX_B2B_TOKEN, null, $private . '/apd-daily-cache-v1');
-        $payload = $client->additionalPricesDaily($criteria);
-        $result['additional_prices_requests'] = $client->requestsMade();
-        $result['request_diagnostics'] = $client->lastRequestDiagnostics();
-        $result['additional_prices'] = anytour_anex_additional_specimen_fact($payload, $criteria);
+        foreach ($criteriaSet as $criteria) {
+            $payload = $client->additionalPricesDaily($criteria);
+            $result['additional_prices_requests'] = $client->requestsMade();
+            $result['additional_prices_by_nights'][] = [
+                'nights' => $criteria['nights'],
+                'request_diagnostics' => $client->lastRequestDiagnostics(),
+                'additional_prices' => anytour_anex_additional_specimen_fact($payload, $criteria),
+            ];
+        }
         $result['status'] = 'completed';
     } catch (Throwable $e) {
         $message = $e->getMessage();
