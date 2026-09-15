@@ -442,7 +442,7 @@ async function checkMealFacet(page, width, previous) {
   } finally { page.off('request', record); }
 }
 async function checkAndromedaExpansion(page, width, previous, control) {
-  let offerComposition;
+  let offerComposition, selectedQuote;
   const tvHotel = {
     id: 21477,
     name: 'Movenpick Resort',
@@ -467,6 +467,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
   const waitForExpansion = status => page.waitForFunction(status => window.V2Results.state.items.some(hotel => String(hotel.id) === '21477' && hotel.andromedaExpansion?.status === status), status);
   control.enabled = true;
   control.requests.length = 0;
+  control.quoteRequests.length = 0;
   control.failSecond = false;
   try {
     await start(73);
@@ -547,6 +548,56 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.match(await card.locator('.provider-detail').innerText(), /155[\u00a0 ]079 ₽/);
     assert.match(await card.locator('.provider-detail').innerText(), /Бронирование пока недоступно/);
     assert.deepEqual(control.requests.map(request => request.action || 'search'), ['search', 'hotel_offers', 'hotel_offers', 'offer_detail'], 'details add one explicit saved-offer request only');
+    const quoteButton = card.locator('[data-andromeda-quote]').first();
+    await quoteButton.waitFor();
+    assert.ok((await quoteButton.boundingBox()).height >= 44, 'explicit quote verification keeps a full touch target');
+    await quoteButton.click();
+    const selectButton = card.locator('[data-andromeda-select]').first();
+    await selectButton.waitFor();
+    assert.match(await card.locator('[data-andromeda-quote-panel]').innerText(), /Цена изменилась и подтверждена: 157[\u00a0 ]345,25 ₽/,
+      'the changed supplier price is explicit before selection');
+    assert.equal(control.quoteRequests.length, 1, 'one explicit action performs one authoritative quote request');
+    assert.equal(control.quoteRequests[0].listing_price_ref, 'listing_' + 'e'.repeat(64), 'quote retains the exact listed-price receipt');
+    assert.equal(control.quoteRequests[0].offer_context.offer_ref, 'offer_' + '1'.repeat(64), 'quote retains the exact offer identity');
+    await page.evaluate(() => {
+      window.__andromedaSelectedRuntimeCalls = [];
+      window.V2Runtime.api = (...args) => { window.__andromedaSelectedRuntimeCalls.push(args); throw new Error('Andromeda selection must not call Tourvisor'); };
+    });
+    await selectButton.click();
+    const selected = page.locator('#selectedTour');
+    await selected.locator('.provider-lead-handoff').waitFor();
+    selectedQuote = await selected.evaluate(node => ({
+      text: node.innerText.replace(/\s+/g, ' ').trim(),
+      price: node.querySelector('.selected-price')?.textContent.replace(/\s+/g, ' ').trim(),
+      flights: node.querySelectorAll('.flight-segment').length,
+      leadForms: node.querySelectorAll('.lead-form').length,
+      continueActions: node.querySelectorAll('.search3-flight-continue').length,
+      overflow: document.documentElement.scrollWidth > innerWidth + 2,
+      current: {
+        provider: window.V2TourController.currentTour?.provider,
+        price: window.V2TourController.currentTour?.price,
+        localId: window.V2TourController.currentTour?.providerSelection?.localId,
+        generation: window.V2TourController.currentTour?.providerSelection?.generation,
+        page: window.V2TourController.currentTour?.providerSelection?.page,
+        offerRef: window.V2TourController.currentTour?.providerSelection?.offerRef,
+        listingPriceRef: window.V2TourController.currentTour?.providerSelection?.listingPriceRef
+      },
+      tourvisorCalls: window.__andromedaSelectedRuntimeCalls
+    }));
+    assert.match(selectedQuote.price, /157 345,25 ₽/, 'canonical selected header uses the verified final price');
+    assert.match(selectedQuote.text, /AT 101 · класс ECONOM/);
+    assert.match(selectedQuote.text, /Передача менеджеру пока недоступна для этого источника/);
+    assert.equal(selectedQuote.flights, 2, 'verified outbound and return flights use the canonical selected presentation');
+    assert.equal(selectedQuote.leadForms, 0, 'unsafe Tourvisor lead form is absent for an Andromeda receipt');
+    assert.equal(selectedQuote.continueActions, 0, 'no false continue-to-lead action is added');
+    assert.equal(selectedQuote.overflow, false, width + ': verified provider selection fits the viewport');
+    assert.deepEqual(selectedQuote.current, { provider: 'andromeda', price: 157345.25, localId: 21477, generation: 73, page: 1,
+      offerRef: 'offer_' + '1'.repeat(64), listingPriceRef: 'listing_' + 'e'.repeat(64) }, 'canonical selected state retains the frozen provider receipt');
+    assert.deepEqual(selectedQuote.tourvisorCalls, [], 'provider selection calls neither Tourvisor tour nor flights');
+    assert.equal(control.quoteRequests.length, 1, 'selected presentation does not replay the quote');
+    if (!previous) await selected.screenshot({ path: path.join(output, `andromeda-selected-${width}.png`), animations: 'disabled' });
+    await selected.locator('.back-results').click();
+    assert.equal(await selectButton.evaluate(node => node === document.activeElement), true, 'return restores focus to the exact provider selection action');
     await detailToggle.click();
     assert.equal(await card.locator('.provider-detail').count(), 0, 'detail action closes the disclosure');
     await detailToggle.click();
@@ -643,7 +694,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
     assert.equal(await loadingCard.locator('.tour-row').count(), 2, 'the same action reveals the two completed exact offers from a single grouped seed');
     assert.equal(await loadingCard.locator('.direct-tour').count(), 0, 'loading through the common action preserves provider selection guards');
     assert.deepEqual(control.requests.map(request => [request.action || 'search', request.page]), [['search', 1], ['hotel_offers', 1], ['hotel_offers', 2]], 'opening, closing during loading and reopening use only the original scoped requests');
-    return offerComposition;
+    return { offers: offerComposition, selectedQuote };
   } finally {
     if (control.held?.release) control.held.release();
     control.held = null;
@@ -653,7 +704,7 @@ async function checkAndromedaExpansion(page, width, previous, control) {
 }
 async function run(browser, width, previous) {
   const page = await browser.newPage({ viewport: { width, height: 1000 } }), errors = [];
-  const andromeda = { enabled: false, failSecond: false, requests: [], held: null };
+  const andromeda = { enabled: false, failSecond: false, requests: [], quoteRequests: [], held: null };
   const catalog = { recover: false, requests: [] };
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', async route => {
@@ -666,6 +717,19 @@ async function run(browser, width, previous) {
     if (catalog.recover && /\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'countries') {
       catalog.requests.push('countries');
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 4, russianName: 'Турция' }]) });
+    }
+    if (andromeda.enabled && url.pathname.endsWith('/api-andromeda-quote-preview.php')) {
+      const input = JSON.parse(request.postData() || '{}');
+      andromeda.quoteRequests.push(input);
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: {
+        schema_version: 1, provider: 'andromeda', local_id: 21477, selection_enabled: true, booking_enabled: false,
+        state: 'quote_verified', quote_state: 'verified', final_price: { amount: '157345.25', currency: 'RUB' },
+        final_price_verified: true, flight_selection_required: false,
+        flights: [
+          { direction: '0', name: 'AT 101', datebeg: '2026-09-18 09:30', dateend: '2026-09-18 14:00', class: 'ECONOM', departure: { town: 'Москва', port: 'SVO' }, arrival: { town: 'Шарм-эль-Шейх', port: 'SSH' } },
+          { direction: '1', name: 'AT 102', datebeg: '2026-09-26 16:00', dateend: '2026-09-26 20:30', class: 'ECONOM', departure: { town: 'Шарм-эль-Шейх', port: 'SSH' }, arrival: { town: 'Москва', port: 'SVO' } }
+        ]
+      } }) });
     }
     if (andromeda.enabled && url.pathname.endsWith('/api-andromeda-search3-preview.php')) {
       const input = JSON.parse(request.postData() || '{}');
@@ -683,7 +747,7 @@ async function run(browser, width, previous) {
       const hotel = { local_id: 21477, name: 'Movenpick Resort', provider: 'andromeda', mapping_status: 'resolved', country: 'Египет', region: 'Шарм-эль-Шейх', category: 4, rating: 4.7,
         catalog: { hotel_id: 21477, source: 'tourvisor', image_url: 'https://catalog.example/hotel-21477.svg', subregion: 'Наама-Бей', sea_distance: null },
         andromeda_content: { source: 'andromeda', region: 'Шарм-эль-Шейх' },
-        tours: [{ provider: 'andromeda', offer_ref: offerRef, offer_context: context, price: { amount: input.action === 'hotel_offers' ? String(154000 + input.page * 1000) : '155079.00', currency: 'RUB' }, checkin: '2026-09-18', nights: 8, meal: 'AI', room: input.action === 'hotel_offers' ? 'ROOM ' + input.page : 'GROUPED ROOM', placement: '2 ADL', operator: 'ANEX' }] };
+        tours: [{ provider: 'andromeda', offer_ref: offerRef, offer_context: context, listing_price_ref: 'listing_' + 'e'.repeat(64), price: { amount: input.action === 'hotel_offers' ? String(154000 + input.page * 1000) : '155079.00', currency: 'RUB' }, checkin: '2026-09-18', nights: 8, meal: 'AI', room: input.action === 'hotel_offers' ? 'ROOM ' + input.page : 'GROUPED ROOM', placement: '2 ADL', operator: 'ANEX' }] };
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: { provider: 'andromeda', generation: input.generation, page: input.page, pages_count: input.action === 'hotel_offers' ? 2 : 1, grouped: input.action === 'hotel_offers' ? false : true, hotels: [hotel] } }) });
     }
     if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();

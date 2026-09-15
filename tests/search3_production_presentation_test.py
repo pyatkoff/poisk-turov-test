@@ -249,6 +249,34 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         ):
             source = (ROOT / 'v2' / name).read_bytes()
             if name == 'tour-controller-v4.js':
+                # Reviewed provider receipt handoff only. Reverse the exact
+                # Andromeda selection seam before applying the older display
+                # reversals and comparing the frozen Tourvisor controller.
+                current_source = b"function currentSource(){if(usable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const selector of ['.direct-tour','[data-andromeda-select]'])for(const button of document.querySelectorAll(selector)){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&usable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(usable(revealed)){sourceButton=revealed;return revealed;}return null;}"
+                original_source = b"function currentSource(){if(usable(sourceButton))return sourceButton;if(!sourceTourId)return null;for(const button of document.querySelectorAll('.direct-tour')){if(String(button.dataset&&button.dataset.tid||'')===sourceTourId&&usable(button)){sourceButton=button;return button;}}const renderer=window.V2Results,revealed=renderer&&typeof renderer.revealOfferAlternatives==='function'?renderer.revealOfferAlternatives(sourceTourId):null;if(usable(revealed)){sourceButton=revealed;return revealed;}return null;}"
+                self.assertEqual(source.count(current_source), 1, 'one provider-aware result return lookup')
+                source = source.replace(current_source, original_source, 1)
+                provider_class = ",f.plane,f.className?'класс '+f.className:''".encode()
+                self.assertEqual(source.count(provider_class), 1, 'one provider flight class display')
+                source = source.replace(provider_class, b',f.plane', 1)
+                lead_start = source.index(b'function leadSectionHtml(t){')
+                tour_start = source.index(b'function tourHtml(t,tid){', lead_start)
+                self.assertGreater(tour_start, lead_start, 'provider lead guard precedes the canonical tour renderer')
+                source = source[:lead_start] + source[tour_start:]
+                lead_form = ('<form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div>'
+                             '<div class="lead-fields"><label>Имя<input name="name" maxlength="120" autocomplete="name"></label><label>Телефон<input name="phone" type="tel" required maxlength="40" autocomplete="tel" placeholder="+7 999 123-45-67"></label></div>'
+                             '<label>Комментарий<textarea name="comment" maxlength="1000" rows="3" placeholder="Необязательно"></textarea></label>\'+consentHtml()+\'<button type="submit" class="primary">Отправить заявку</button><p class="lead-message" aria-live="polite"></p></form>').encode()
+                provider_lead_call = b'</div>\'+leadSectionHtml(t);}'
+                self.assertEqual(source.count(provider_lead_call), 1, 'one provider-aware lead handoff')
+                source = source.replace(provider_lead_call, b'</div>' + lead_form + b"';}", 1)
+                helper_start = source.index(b'function providerMoment(value){')
+                select_start = source.index(b'async function selectTour(tid,button){', helper_start)
+                self.assertGreater(select_start, helper_start, 'provider receipt helpers precede the protected Tourvisor selector')
+                source = source[:helper_start] + source[select_start:]
+                provider_export = b'window.V2TourController={selectTour,selectProviderQuote,get currentTour(){return currentTour;},version:4};'
+                original_export = b'window.V2TourController={selectTour,get currentTour(){return currentTour;},version:4};'
+                self.assertEqual(source.count(provider_export), 1, 'one canonical provider selection entry')
+                source = source.replace(provider_export, original_export, 1)
                 # Reviewed offer handoff and in-memory editor draft only.
                 self.assertEqual(source.count("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode()), 1)
                 source = source.replace("window.addEventListener('v2:search-reset',()=>{leadDraft=null;tourGeneration++;".encode(), "window.addEventListener('v2:search-reset',()=>{tourGeneration++;".encode(), 1)

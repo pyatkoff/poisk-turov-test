@@ -22,7 +22,11 @@ class PublisherTest(unittest.TestCase):
     def test_source_asset_contains_verified_quote_module(self):
         data=(ROOT/mod.SOURCE_FILE).read_text()
         self.assertIn('search3-selected-flow-v2',data)
-        self.assertIn('api-andromeda-quote-preview.php',data)
+        self.assertIn('AnyTourAndromedaProvider',data)
+        self.assertIn('.verifyQuote',data)
         self.assertIn('Проверить цену и рейсы',data)
+        self.assertIn('Выбрать подтверждённый тур',data)
+        self.assertNotIn('api-andromeda-quote-preview.php',data)
+        self.assertNotIn('root.fetch(',data)
 
 if __name__=='__main__': unittest.main()
