@@ -15,6 +15,8 @@ on:
       - 'tests/andromeda-price-observation-smoke.php'
       - 'tests/andromeda-quote-attempt-state-test.php'
       - 'tests/andromeda-quote-failure-category-test.php'
+      - 'scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py'
+      - 'tests/andromeda_http_flight_selection_e2e_v7_test.py'
       - '.github/workflows/andromeda-search3-quote-check.yml'
 permissions:
   contents: read
@@ -41,6 +43,8 @@ jobs:
           php tests/andromeda-price-observation-smoke.php
           php tests/andromeda-quote-attempt-state-test.php
           php tests/andromeda-quote-failure-category-test.php
+          python3 -m py_compile scripts/diagnostics/andromeda_http_flight_selection_e2e_v7.py tests/andromeda_http_flight_selection_e2e_v7_test.py
+          python3 -B tests/andromeda_http_flight_selection_e2e_v7_test.py
       - name: Enforce read-only boundary
         run: |
           ! grep -RE "action['\"]?[[:space:]]*=>[[:space:]]*['\"]bron['\"]|action=bron(?:&|$)|bron_ticket|booking_enabled[[:space:]]*=>[[:space:]]*true" app/integrations/andromeda-claim-actions.php app/integrations/andromeda-selected-quote.php app/integrations/andromeda-price-observation.php app/integrations/andromeda-quote-attempt-state.php v2/api-andromeda-quote-preview.php
