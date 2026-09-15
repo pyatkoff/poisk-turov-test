@@ -1,0 +1,71 @@
+{
+  "kind": "match_pr2412_anex_current_queue",
+  "scope": "MATCH_ONLY",
+  "queue_issue": 1971,
+  "coordination_issue": 2530,
+  "source_pr": 2412,
+  "prepared_at_utc": "2026-09-15T17:00:00Z",
+  "execution_operation_id": "hotel-match-pr2412-anex-current-1971-20260915-v1",
+  "execution_state": "prepared_not_executed",
+  "non_positional_rule": "tourvisor discovery source ids MUST NOT be positionally paired with deduplicated Tourvisor hotelIds/target_keys; accept identity only from direct operatorLink/HOTELLIST/native evidence or another independent guard chain",
+  "counts": {
+    "physical_anex_rows": 101,
+    "tourvisor_discovery_source_only": 75,
+    "explicit_candidate_quality_pairs": 21,
+    "explicit_captured_pairs": 5,
+    "verified_operatorlink_native_rows": 9,
+    "verified_clean_unmapped_accumulated": 2,
+    "verified_target_occupied_hold": 1,
+    "verified_already_mapped": 2,
+    "verified_native_missing_current_source_hold": 4
+  },
+  "tourvisor_discovery_source_ids": [19226,37048,1361,28396,36906,780,1771,1655,30600,37012,44562,1772,28563,30599,4131,1328,990,1769,43850,45166,45249,45259,45330,29557,23894,45225,32880,44573,43984,16605,32692,32745,37885,32724,29446,32686,28933,30424,45226,32742,29036,34804,39389,43077,44138,44139,8550,10115,11241,11756,12143,12901,14812,15046,21696,27777,29332,29430,31515,35319,32822,34858,35511,35898,37344,37538,39875,8319,8355,8366,8460,8537,8538,8666,9126],
+  "explicit_candidate_quality_pairs": [
+    {"anex_hotel_id":16330,"catalog_hotel_id":28426},
+    {"anex_hotel_id":34680,"catalog_hotel_id":37404},
+    {"anex_hotel_id":28882,"catalog_hotel_id":129511},
+    {"anex_hotel_id":32743,"catalog_hotel_id":129511},
+    {"anex_hotel_id":32783,"catalog_hotel_id":54633},
+    {"anex_hotel_id":35275,"catalog_hotel_id":81810},
+    {"anex_hotel_id":44939,"catalog_hotel_id":77557},
+    {"anex_hotel_id":44413,"catalog_hotel_id":21838},
+    {"anex_hotel_id":32572,"catalog_hotel_id":68169},
+    {"anex_hotel_id":835,"catalog_hotel_id":196},
+    {"anex_hotel_id":5215,"catalog_hotel_id":121626},
+    {"anex_hotel_id":32355,"catalog_hotel_id":21838},
+    {"anex_hotel_id":32567,"catalog_hotel_id":82420},
+    {"anex_hotel_id":33110,"catalog_hotel_id":104168},
+    {"anex_hotel_id":15072,"catalog_hotel_id":77400},
+    {"anex_hotel_id":20470,"catalog_hotel_id":101227},
+    {"anex_hotel_id":29556,"catalog_hotel_id":15693},
+    {"anex_hotel_id":32937,"catalog_hotel_id":76112},
+    {"anex_hotel_id":34961,"catalog_hotel_id":27553},
+    {"anex_hotel_id":37985,"catalog_hotel_id":77759},
+    {"anex_hotel_id":9384,"catalog_hotel_id":77574}
+  ],
+  "explicit_captured_pairs": [
+    {"anex_hotel_id":42927,"catalog_hotel_id":131347,"historical_state":"contradiction_hold"},
+    {"anex_hotel_id":4158,"catalog_hotel_id":37412,"historical_state":"direct_identity"},
+    {"anex_hotel_id":37719,"catalog_hotel_id":132075,"historical_state":"qualifier_hold"},
+    {"anex_hotel_id":1767,"catalog_hotel_id":182,"historical_state":"direct_identity"},
+    {"anex_hotel_id":1768,"catalog_hotel_id":183,"historical_state":"direct_identity"}
+  ],
+  "verified_operatorlink_native_evidence": [
+    {"native_anex_hotel_id":31508,"tourvisor_hotel_id":70291,"status":"already_mapped_current","reverse_occupants":[31508]},
+    {"native_anex_hotel_id":32771,"tourvisor_hotel_id":43550,"status":"already_mapped_current","reverse_occupants":[32470,32771]},
+    {"native_anex_hotel_id":28933,"tourvisor_hotel_id":17390,"status":"clean_unmapped_accumulate_for_mass_write","current_live_search_count":3,"reverse_occupants":[]},
+    {"native_anex_hotel_id":27777,"tourvisor_hotel_id":17561,"status":"clean_unmapped_accumulate_for_mass_write","current_live_search_count":1,"reverse_occupants":[]},
+    {"native_anex_hotel_id":29430,"tourvisor_hotel_id":71266,"status":"hold_target_occupied","reverse_occupants":[32809]},
+    {"native_anex_hotel_id":804,"tourvisor_hotel_id":159,"status":"hold_missing_current_anex_source_identity","reverse_occupants":[]},
+    {"native_anex_hotel_id":477,"tourvisor_hotel_id":293,"status":"hold_missing_current_anex_source_identity","reverse_occupants":[]},
+    {"native_anex_hotel_id":4266,"tourvisor_hotel_id":83106,"status":"hold_missing_current_anex_source_identity","reverse_occupants":[]},
+    {"native_anex_hotel_id":839,"tourvisor_hotel_id":129,"status":"hold_missing_current_anex_source_identity","reverse_occupants":[]}
+  ],
+  "verified_runs": [
+    {"workflow_run_id":34998416071,"operation_id":"hotel-match-tv-operatorlink-card-follow-1971-20260915-v2","state":"SUCCESS_NO_REPLAY"},
+    {"workflow_run_id":34998842547,"operation_id":"hotel-match-tv-operatorlink-current-reconcile-1971-20260915-v1","state":"SUCCESS_NO_REPLAY"},
+    {"workflow_run_id":34999122234,"operation_id":"hotel-match-tv-operatorlink-target-occupancy-1971-20260915-v1","state":"SUCCESS_NO_REPLAY","result_sha256":"53c3b9e1a85f17442f6a0ee51bfbe41bb9323c83635b60b14b9c086ebc92f936"}
+  ],
+  "next_safe_action": "execute the prepared 101-row server-CURRENT read-only reconciliation as one new immutable operation; then aggregate only newly safe identities into a large guarded write with current-state checks and post-COMMIT per-row readback",
+  "writes": {"provider_calls":0,"tourvisor_calls":0,"database_writes":0,"mapping_writes":0}
+}
