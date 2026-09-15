@@ -1,0 +1,39 @@
+name: INT final-price readiness contract
+
+on:
+  push:
+    branches:
+      - 'int/final-price-readiness-contract-20260915'
+    paths:
+      - '.github/workflows/final-price-readiness-contract.yml'
+      - 'app/integrations/three-provider-money-facts.php'
+      - 'app/integrations/three-provider-search-handoff.php'
+      - 'tests/three-provider-final-price-readiness-test.php'
+  pull_request:
+    branches:
+      - 'feature/anex-search-adapter-20260907'
+    paths:
+      - '.github/workflows/final-price-readiness-contract.yml'
+      - 'app/integrations/three-provider-money-facts.php'
+      - 'app/integrations/three-provider-search-handoff.php'
+      - 'tests/three-provider-final-price-readiness-test.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-price-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Lint provider-neutral money handoff
+        run: |
+          php -l app/integrations/three-provider-money-facts.php
+          php -l app/integrations/three-provider-search-handoff.php
+          php -l tests/three-provider-final-price-readiness-test.php
+      - name: Verify fail-closed customer final-price readiness
+        run: php tests/three-provider-final-price-readiness-test.php
