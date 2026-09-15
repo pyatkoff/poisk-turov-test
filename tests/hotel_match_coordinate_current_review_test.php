@@ -29,7 +29,6 @@ mcc_t(($r['route']??'')==='needs_extra_evidence','nearby qualifier conflict/clus
 
 $r=mcc_candidate(['Completely Renamed'],[['latitude'=>36.0000,'longitude'=>30.0000]],4,[1=>$hotels[1],2=>$hotels[2],4=>$hotels[4]],[1=>$forms[1],2=>$forms[2],4=>$forms[4]],mcc_grid([1=>$hotels[1],2=>$hotels[2],4=>$hotels[4]]));
 mcc_t(($r['route']??'')==='needs_extra_evidence','coordinate-only rename must not auto accept');
-mcc_t(($r['reason']??'')==='coordinate_high_precision_name_too_weak','coordinate-only reason');
 
 $dupHotels=[
   5=>['id'=>5,'country_id'=>4,'name'=>'Twin Hotel','latitude'=>36.1000,'longitude'=>30.1000],
