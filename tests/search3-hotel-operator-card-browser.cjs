@@ -69,12 +69,16 @@ module.exports=async function checkOperatorCards(page,width,output){
     await card.screenshot({path:path.join(output,`operator-card-collapsed-${width}.png`),animations:'disabled'});
     await toggle.focus();await toggle.press('Enter');
     assert.equal(await card.locator('.hotel-trip-summary').count(),0,'expanded detail is exact offers, not another nested aggregate');
-    assert.equal(await card.locator('.tour-row').count(),10);
+    assert.equal(await card.locator('.tour-row').count(),3,'operator examples start with three exact offers');
+    assert.equal(await toggle.evaluate(node=>node===document.activeElement),true);
+    for(const count of [6,9,10]){
+      await card.locator('.tour-list-more').click();
+      assert.equal(await card.locator('.tour-row').count(),count,'all operator examples remain reachable through bounded disclosure');
+    }
     await page.waitForFunction(()=>document.querySelectorAll('[data-hotel-id="brand-hotel"] .search3-shortlist-toggle').length===10);
     await page.waitForFunction(()=>{const img=document.querySelector('[data-hotel-id="brand-hotel"] .hotel-operator-logo');return img&&img.complete&&img.naturalWidth>0;});
     assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(),'10 вариантов');
     assert.equal(await toggle.getAttribute('aria-expanded'),'true');
-    assert.equal(await toggle.evaluate(node=>node===document.activeElement),true);
     for(let index=0;index<offers.length;index++){
       const offer=offers[index],action=card.locator('.direct-tour[data-tid="'+offer.id+'"]'),row=action.locator('xpath=ancestor::div[contains(@class,"tour-row")]');
       assert.equal(await row.locator('.direct-tour').getAttribute('data-tid'),offer.id);

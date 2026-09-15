@@ -179,6 +179,9 @@ async function checkExactOfferParty(page, width, previous) {
   assert.equal(await card.locator('.hotel-price').innerText().then(text=>text.replace(/\s/g,'')),'от71000₽','collapsed party sample exposes only the hotel minimum');
   assert.doesNotMatch(await card.locator('.hotel-tours').innerText(),/2 взрослых|1 ребёнок|2 ребёнка/,'collapsed hotel does not borrow an exact offer party');
   await card.locator('.tour-more-toggle').click();
+  assert.equal(await card.locator('.tour-row').count(),3,'the first party examples follow the bounded initial disclosure');
+  await card.locator('.tour-list-more').click();
+  assert.equal(await card.locator('.tour-row').count(),parties.length,'all party examples remain reachable through the next disclosure');
   const rows=card.locator('.tour-row');
   for(let index=0;index<parties.length;index++){
     const row=rows.nth(index);
@@ -194,8 +197,8 @@ async function checkExactOfferParty(page, width, previous) {
 }
 
 async function checkExpandedDensity(page, width, previous) {
-  // The owner supplied a physical-iPhone capture with ten offers. Reproduce
-  // that density in the current owner without calling a supplier or a lead.
+  // The owner supplied a physical-iPhone capture with 260 offers. Ten cover
+  // initial, intermediate and final disclosure steps without supplier calls.
   const item = { ...hotels[0], id: 'density-ten', price: 61372, tours: Array.from({ length: 10 }, (_, index) => ({ ...tour, id: 'density-' + index, price: 61372 + index * 1000, adults: 2, childs: 0, isCharter: true })) };
   const requests = [], record = request => { if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(new URL(request.url()).pathname)) requests.push(request.url()); };
   page.on('request', record);
@@ -204,6 +207,8 @@ async function checkExpandedDensity(page, width, previous) {
     await page.evaluate(item => {
       window.Search3LocalHotelFilter.reset();
       window.__densityOriginal = item;
+      window.__densitySearchId = window.V2Runtime.state.searchId;
+      window.V2Runtime.setSearchId(707);
       window.V2Results.render([item]);
       window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [item] } }));
     }, item);
@@ -215,9 +220,14 @@ async function checkExpandedDensity(page, width, previous) {
     await card.locator('.tour-more-toggle').press('Enter');
     assert.equal(await card.locator('.hotel-trip-summary,.hotel-summary-total').count(), 0, 'expanded comparison has no aggregate facts or total');
     assert.equal(await card.locator('.hotel-offers-heading>strong').innerText(), '10 вариантов', 'one grammatically correct count belongs to the comparison header');
-    assert.equal(await card.locator('.hotel-price').count(), 10, 'one exact price per offer, no duplicate minimum');
-    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.map(value => value.id), 'all exact offer actions retain their original identity and order');
-    assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.map(value => value.price), 'each displayed price remains the original supplier amount');
+    assert.equal(await card.locator('.hotel-price').count(), 3, 'the first decision view shows three exact offers instead of the whole long list');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, 3).map(value => value.id), 'the representative offer and first alternatives retain their identity and order');
+    assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.slice(0, 3).map(value => value.price), 'the first displayed prices remain the original supplier amounts');
+    assert.equal(await card.locator('.tour-list-more').innerText(), 'Показать ещё 3');
+    assert.equal(await card.locator('.hotel-offers-more small').innerText(), 'Показано 3 из 10');
+    await card.locator('.search3-shortlist-toggle').nth(2).waitFor();
+    assert.equal(await card.locator('.search3-shortlist-toggle').count(), 3, 'the initial alternatives remain available for comparison');
+    assert.ok((await card.locator('.tour-list-more').boundingBox()).height >= 44, 'progressive disclosure keeps a full touch target');
     await page.mouse.move(0, 0);
     for (const inspectedWidth of width === 375 ? [375, 390] : [width]) {
       if (inspectedWidth !== width) await page.setViewportSize({ width: inspectedWidth, height: page.viewportSize().height });
@@ -241,17 +251,49 @@ async function checkExpandedDensity(page, width, previous) {
         await page.screenshot({ path: path.join(output, `card-density-${inspectedWidth}.png`), animations: 'disabled' });
       }
     }
+    for (const expected of [6, 9, 10]) {
+      const more = card.locator('.tour-list-more');
+      await more.focus();
+      await more.press('Enter');
+      assert.equal(await card.locator('.tour-row').count(), expected, 'each local disclosure adds one bounded offer step');
+      await card.locator('.search3-shortlist-toggle').nth(expected - 1).waitFor();
+      assert.deepEqual(await card.locator('.search3-shortlist-toggle').evaluateAll(nodes => nodes.map(node => node.dataset.offerId)), item.tours.slice(0, expected).map(value => value.id), 'newly revealed offers retain their exact Compare actions');
+      assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, expected).map(value => value.id), 'progressive disclosure retains exact offer identity and order');
+      assert.deepEqual(await card.locator('.tour-action>.hotel-price').allTextContents().then(values => values.map(value => Number(value.replace(/\D/g, '')))), item.tours.slice(0, expected).map(value => value.price), 'progressive disclosure retains exact supplier prices');
+      if (expected < 10) {
+        assert.equal(await card.locator('.tour-list-more').evaluate(node => node === document.activeElement), true, `disclosure at ${expected} offers retains keyboard focus; active=${await page.evaluate(() => document.activeElement?.outerHTML.slice(0,250))}`);
+        assert.equal(await card.locator('.hotel-offers-more small').innerText(), `Показано ${expected} из 10`);
+      } else {
+        assert.equal(await card.locator('.tour-list-more').count(), 0, 'the disclosure is removed when every offer is visible');
+        assert.equal(await card.locator('.tour-row').nth(9).locator('.direct-tour').evaluate(node => node === document.activeElement), true, 'the final disclosure moves focus to the first newly revealed offer');
+      }
+      if (expected === 6) {
+        const compare = card.locator('.search3-shortlist-toggle').nth(5);
+        await compare.click();
+        const saved = await page.evaluate(() => window.Search3Shortlist.items().find(item => item.offerId === 'density-5'));
+        assert.ok(saved, 'a newly revealed offer can be added to comparison');
+        assert.equal(saved.observedPrice, item.tours[5].price, 'comparison retains the exact newly revealed offer price');
+        await card.locator('.search3-shortlist-toggle[data-offer-id="density-5"]').click();
+        assert.equal(await page.evaluate(() => window.Search3Shortlist.items().some(item => item.offerId === 'density-5')), false, 'comparison can remove the newly revealed offer');
+        await page.waitForFunction(() => document.activeElement?.matches('.search3-shortlist-toggle[data-offer-id="density-5"]'));
+      }
+    }
     await card.locator('.tour-more-toggle').focus();
     await card.locator('.tour-more-toggle').press('Space');
     assert.equal(await card.locator('.tour-row,.direct-tour,.search3-shortlist-toggle').count(), 0, 'collapse returns to hotel-level choice without a borrowed concrete offer');
     assert.equal(await card.locator('.hotel-offers-summary .hotel-price').count(), 1);
     assert.match(await card.locator('.hotel-offers-summary .hotel-price').innerText(), /^от\s/);
     assert.equal(await card.locator('.tour-more-toggle').evaluate(node => node === document.activeElement), true, 'replacement disclosure keeps keyboard focus');
+    assert.equal(await page.evaluate(() => window.V2Results.revealOfferAlternatives('density-8')?.dataset.tid), 'density-8', 'saved exact offer reveal opens far enough to expose its original action');
+    assert.equal(await card.locator('.tour-row').count(), 9, 'saved offer reveal does not expose unrelated trailing offers');
+    assert.deepEqual(await card.locator('.direct-tour').evaluateAll(nodes => nodes.map(node => node.dataset.tid)), item.tours.slice(0, 9).map(value => value.id));
+    await card.locator('.tour-more-toggle').click();
     assert.deepEqual(await page.evaluate(() => window.__densityOriginal), item, 'density changes never mutate the input offers');
     assert.deepEqual(requests, [], 'local expansion and collapse make no supplier or lead request');
     return measurements;
   } finally {
     if (page.viewportSize().width !== width) await page.setViewportSize({ width, height: page.viewportSize().height });
+    await page.evaluate(() => window.V2Runtime.setSearchId(window.__densitySearchId));
     page.off('request', record);
   }
 }
