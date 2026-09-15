@@ -125,7 +125,8 @@ readiness_reject(static function () use ($anex, $anexRetained, $anexCurrent, $no
     AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer($anex, $anexRetained, $anexCurrent, $now, $tampered);
 });
 
-// Andromeda uses the same already-approved neutral estimator; 3 x 7185.60 = 21556.80.
+// Andromeda estimate remains visible as money evidence but cannot be promoted to finalPriceReady.
+// Live v8 proved search/package 185125 -> calc 199390 even with selected transport markup 0 EUR.
 [$andromeda, $andromedaRetained, $andromedaCurrent] = readiness_setup(readiness_raw(
     'andromeda',
     3,
@@ -137,11 +138,27 @@ $andromedaPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($
 $andromedaReady = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
     $andromeda, $andromedaRetained, $andromedaCurrent, $now, $andromedaPriced
 );
-readiness_check($andromedaReady['finalPriceReady'] === true);
-readiness_check($andromedaReady['finalPrice'] === '166346.80' && $andromedaReady['price'] === '166346.80');
+readiness_check($andromedaReady['finalPriceReady'] === false);
+readiness_check($andromedaReady['finalPrice'] === null && $andromedaReady['price'] === null);
 readiness_check($andromedaReady['money']['search_price_with_surcharge']['amount'] === '166346.80');
 readiness_check($andromedaReady['money']['search_price']['amount'] === '144790');
 readiness_check($andromedaReady['final_price_verified'] === false);
+
+// Even a syntactically valid zero surcharge estimate cannot make Andromeda listing money final.
+[$andromedaZero, $andromedaZeroRetained, $andromedaZeroCurrent] = readiness_setup(readiness_raw(
+    'andromeda',
+    3,
+    null,
+    [['kind' => 'fuel_adult', 'amount' => '0', 'currency' => 'RUB', 'source' => 'andromeda_additional']],
+    '185125'
+));
+$andromedaZeroPriced = AnyTourThreeProviderMoneyFacts::withSearchSurchargeEstimate($andromedaZero['money'], 3, 0);
+$andromedaZeroReady = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
+    $andromedaZero, $andromedaZeroRetained, $andromedaZeroCurrent, $now, $andromedaZeroPriced
+);
+readiness_check($andromedaZeroPriced['search_price_with_surcharge']['amount'] === '185125');
+readiness_check($andromedaZeroReady['finalPriceReady'] === false
+    && $andromedaZeroReady['finalPrice'] === null && $andromedaZeroReady['price'] === null);
 
 $andromedaUnknown = AnyTourThreeProviderSearchHandoff::fromCustomerSearchOffer(
     $andromeda, $andromedaRetained, $andromedaCurrent, $now
@@ -156,7 +173,7 @@ readiness_reject(static function () use ($andromeda, $andromedaRetained, $androm
 });
 
 // Browser-safe DTO still excludes private supplier/search/offer references.
-foreach ([$tvReady, $anexReady, $andromedaReady] as $dto) {
+foreach ([$tvReady, $anexReady, $andromedaReady, $andromedaZeroReady] as $dto) {
     $json = json_encode($dto, JSON_THROW_ON_ERROR);
     readiness_check(strpos($json, 'private-') === false);
     readiness_check(strpos($json, 'supplier_offer_id') === false && strpos($json, 'claiminc') === false);
