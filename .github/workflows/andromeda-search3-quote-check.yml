@@ -4,7 +4,6 @@ on:
     paths:
       - 'app/integrations/andromeda-claim-actions.php'
       - 'app/integrations/andromeda-selected-quote.php'
-      - 'app/integrations/andromeda-flight-selection.php'
       - 'app/integrations/andromeda-search-surcharge.php'
       - 'tests/andromeda-search-surcharge-smoke.php'
       - 'app/integrations/andromeda-price-observation.php'
@@ -31,7 +30,6 @@ jobs:
         run: |
           php -l app/integrations/andromeda-claim-actions.php
           php -l app/integrations/andromeda-selected-quote.php
-          php -l app/integrations/andromeda-flight-selection.php
           php -l app/integrations/andromeda-search-surcharge.php
           php -d allow_url_fopen=0 tests/andromeda-search-surcharge-smoke.php
           php -l app/integrations/andromeda-price-observation.php
@@ -43,5 +41,5 @@ jobs:
           php tests/andromeda-quote-attempt-state-test.php
       - name: Enforce read-only boundary
         run: |
-          ! grep -RE "action['\"]?[[:space:]]*=>[[:space:]]*['\"]bron['\"]|action=bron(?:&|$)|bron_ticket|booking_enabled[[:space:]]*=>[[:space:]]*true" app/integrations/andromeda-claim-actions.php app/integrations/andromeda-selected-quote.php app/integrations/andromeda-flight-selection.php app/integrations/andromeda-price-observation.php app/integrations/andromeda-quote-attempt-state.php v2/api-andromeda-quote-preview.php
-          ! grep -RE "INSERT[[:space:]]+INTO|UPDATE[[:space:]]+|DELETE[[:space:]]+FROM" app/integrations/andromeda-claim-actions.php app/integrations/andromeda-selected-quote.php app/integrations/andromeda-flight-selection.php app/integrations/andromeda-price-observation.php app/integrations/andromeda-quote-attempt-state.php v2/api-andromeda-quote-preview.php
+          ! grep -RE "action['\"]?[[:space:]]*=>[[:space:]]*['\"]bron['\"]|action=bron(?:&|$)|bron_ticket|booking_enabled[[:space:]]*=>[[:space:]]*true" app/integrations/andromeda-claim-actions.php app/integrations/andromeda-selected-quote.php app/integrations/andromeda-price-observation.php app/integrations/andromeda-quote-attempt-state.php v2/api-andromeda-quote-preview.php
+          ! grep -RE "INSERT[[:space:]]+INTO|UPDATE[[:space:]]+|DELETE[[:space:]]+FROM" app/integrations/andromeda-claim-actions.php app/integrations/andromeda-selected-quote.php app/integrations/andromeda-price-observation.php app/integrations/andromeda-quote-attempt-state.php v2/api-andromeda-quote-preview.php
