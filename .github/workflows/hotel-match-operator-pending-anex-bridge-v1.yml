@@ -1,15 +1,16 @@
-name: MATCH operator current anchor review v2
+name: MATCH operator current anchor review v3
 on:
   push:
     branches: [match/price-hotels-original-1971-20260914]
     paths: [.github/workflows/hotel-match-operator-pending-anex-bridge-v1.yml]
 permissions: {contents: read, actions: read}
-concurrency: {group: match-operator-current-anchor-review-1971-v2, cancel-in-progress: false}
+concurrency: {group: match-operator-current-anchor-review-1971-v3, cancel-in-progress: false}
 env:
-  OPERATION_ID: hotel-match-operator-current-anchor-review-1971-20260915-v2
+  OPERATION_ID: hotel-match-operator-current-anchor-review-1971-20260915-v3
+  PREVIOUS_OPERATION_ID: hotel-match-operator-current-anchor-review-1971-20260915-v2
 jobs:
   review:
-    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 29
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 30
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -18,31 +19,49 @@ jobs:
       - name: Exact source tests and read-only guards
         run: |
           set -euo pipefail
-          php -l scripts/diagnostics/hotel_match_operator_pending_local_bridge.php
-          php -l scripts/diagnostics/hotel_match_operator_current_anchor_review.php
-          php -l scripts/diagnostics/hotel_match_operator_current_anchor_review_v2.php
-          php -l tests/hotel_match_operator_current_anchor_review_test.php
+          for f in scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php scripts/diagnostics/hotel_match_operator_pending_local_bridge.php scripts/diagnostics/hotel_match_operator_current_anchor_review.php scripts/diagnostics/hotel_match_operator_current_anchor_review_v3.php tests/hotel_match_operator_current_anchor_review_test.php; do php -l "$f"; done
           php tests/hotel_match_operator_current_anchor_review_test.php
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_pending_anex_bridge.php)" = aa909bdaa791bde4c50cb2d376852b52ba588fb9
           test "$(git hash-object scripts/diagnostics/hotel_match_operator_pending_local_bridge.php)" = b06c8a40cc3b306aede352dc6de789adf77fd99f
           test "$(git hash-object scripts/diagnostics/hotel_match_operator_current_anchor_review.php)" = 9b54f4d0fda19cb1066da8c4b63acd35c4e72a4d
-          test "$(git hash-object scripts/diagnostics/hotel_match_operator_current_anchor_review_v2.php)" = e7466c29d38bf53a3da79b6be388940388a01cbb
+          test "$(git hash-object scripts/diagnostics/hotel_match_operator_current_anchor_review_v3.php)" = 52e43a0df5e6c138cfe3e906fb1a2d94af098795
           test "$(git hash-object tests/hotel_match_operator_current_anchor_review_test.php)" = f1dcfa51fe71a05bc7d4bd9bd5fef9647c1d08d5
-          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_operator_current_anchor_review_v2.php
-          ! grep -Eiq '\b(INSERT INTO|UPDATE|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_operator_current_anchor_review_v2.php
-          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_operator_current_anchor_review_v2.php|awk '{print $1}')" >> "$GITHUB_ENV"
-      - name: Reserve before SSH or DB
+          ! grep -Eiq '(https?://|curl_|fsockopen|stream_socket_client|broninit|booking\(|lead\()' scripts/diagnostics/hotel_match_operator_current_anchor_review_v3.php
+          ! grep -Eiq '\b(INSERT INTO|UPDATE|DELETE FROM|REPLACE INTO|ALTER TABLE|DROP TABLE|CREATE TABLE|TRUNCATE TABLE)\b' scripts/diagnostics/hotel_match_operator_current_anchor_review_v3.php
+          printf 'SOURCE_SHA256=%s\n' "$(sha256sum scripts/diagnostics/hotel_match_operator_current_anchor_review_v3.php|awk '{print $1}')" >> "$GITHUB_ENV"
+      - name: Reconcile v2 server operation files only
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          H: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          U: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/k-prev"; known="$RUNNER_TEMP/known-prev"
+          test -n "$KEY_VALUE" && test -n "$H" && test -n "$U"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -T "$U@$H" "set -euo pipefail; p=\$HOME/.anytoour-match/operations/$PREVIOUS_OPERATION_ID; test -f \"\$p/reservation.json\"; test ! -e \"\$p/result.json\"; test ! -e \"\$p/receipt.json\"; test ! -e \"\$p/failure.json\"; python3 - \"\$p/reservation.json\" <<'PY'
+import json,sys
+p=sys.argv[1]; r=json.load(open(p));
+assert r.get('operation_id')=='hotel-match-operator-current-anchor-review-1971-20260915-v2'
+assert r.get('state')=='reserved_before_db_access'
+assert int(r.get('db_writes',-1))==0
+print('PREVIOUS_RESERVED_NO_RESULT_NO_RECEIPT_NO_FAILURE')
+PY"
+          rm -f "$key" "$known"
+      - name: Reserve v3 before DB access
         run: |
           set -euo pipefail
           out="$RUNNER_TEMP/$OPERATION_ID"; mkdir -m 700 "$out"
           python3 - <<'PY'
           import json,os,pathlib
           p=pathlib.Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
-          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'state':'reserved_before_db_access','mode':'server_current_read_only_operator_anchor_review','operators':['315','342'],'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
+          p.write_text(json.dumps({'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'source_sha256':os.environ['SOURCE_SHA256'],'previous_operation_id':os.environ['PREVIOUS_OPERATION_ID'],'previous_state':'reserved_no_result_no_receipt_no_failure','state':'reserved_before_db_access','mode':'server_current_read_only_operator_anchor_review','operators':['315','342'],'supplier_calls':0,'tourvisor_calls':0,'external_calls':0,'booking_calls':0,'db_writes':0,'operator_5_writes':0,'no_replay':True,'run_id':int(os.environ['GITHUB_RUN_ID'])},sort_keys=True,indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: match-operator-current-anchor-review-v2-reservation
-          path: ${{ runner.temp }}/hotel-match-operator-current-anchor-review-1971-20260915-v2/
+          name: match-operator-current-anchor-review-v3-reservation
+          path: ${{ runner.temp }}/hotel-match-operator-current-anchor-review-1971-20260915-v3/
           if-no-files-found: error
           retention-days: 90
       - name: Server CURRENT read-only operator anchor review
@@ -60,9 +79,9 @@ jobs:
           trap 'ssh -S "$sock" -O exit "$U@$H" >/dev/null 2>&1 || true; rm -f "$key" "$known"' EXIT
           remote="\$HOME/.anytoour-match/operations/$OPERATION_ID"
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "set -euo pipefail; umask 077; p=$remote; mkdir -p \"\$p/source\"; test ! -e \"\$p/reservation.json\"; cat > \"\$p/reservation.json\"; sync" < "$out/reservation.json"
-          for f in hotel_match_operator_pending_local_bridge.php hotel_match_operator_current_anchor_review.php hotel_match_operator_current_anchor_review_v2.php; do ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"; done
+          for f in hotel_match_operator_pending_anex_bridge.php hotel_match_operator_pending_local_bridge.php hotel_match_operator_current_anchor_review.php hotel_match_operator_current_anchor_review_v3.php; do ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cat > $remote/source/$f" < "scripts/diagnostics/$f"; done
           set +e
-          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_operator_current_anchor_review_v2.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
+          ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d display_errors=1 $remote/source/hotel_match_operator_current_anchor_review_v3.php" > "$out/remote-stdout.txt" 2> "$out/remote-stderr.txt"
           rc=$?
           ssh -S "$sock" -T -o ControlMaster=no "$U@$H" "tar -C $remote -czf - ." > "$out/server-operation.tgz"
           set -e
@@ -83,7 +102,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: match-operator-current-anchor-review-v2-result
-          path: ${{ runner.temp }}/hotel-match-operator-current-anchor-review-1971-20260915-v2/
+          name: match-operator-current-anchor-review-v3-result
+          path: ${{ runner.temp }}/hotel-match-operator-current-anchor-review-1971-20260915-v3/
           if-no-files-found: warn
           retention-days: 90
