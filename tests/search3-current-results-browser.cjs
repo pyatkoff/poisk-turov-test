@@ -526,14 +526,18 @@ async function checkAndromedaExpansion(page, width, previous, control, hotelDeta
     assert.match(await card.locator('.hotel-place').innerText(), /Наама-Бей/, 'local subregion reaches the card');
     assert.equal(await card.locator('.hotel-gallery-thumb').count(), 3, 'local hotel details expose a bounded gallery in the canonical card');
     const hotelInfo = card.locator('.hotel-details');
+    assert.match(await card.locator('.hotel-description-summary').innerText(), /Локальное описание отеля/, 'trusted local description is readable before opening the hotel disclosure');
+    assert.equal(await hotelInfo.locator('summary').innerText(), 'Подробнее об отеле', 'hotel disclosure promises complete local details');
     await hotelInfo.locator('summary').press('Enter');
     assert.equal(await hotelInfo.evaluate(node => node.open), true, 'hotel description opens through the native keyboard disclosure');
+    assert.equal(await card.locator('.hotel-description-summary').isVisible(), false, 'the clamped summary does not duplicate the open full description');
     assert.match(await hotelInfo.innerText(), /Локальное описание отеля[\s\S]*Наама-Бей[\s\S]*Открытый бассейн[\s\S]*Wi-Fi/, 'trusted local description and characteristics are available before choosing an offer');
     assert.ok((await hotelInfo.locator('summary').boundingBox()).height >= 44, 'hotel details disclosure keeps a full touch target');
     await card.locator('.hotel-gallery-thumb').nth(1).click();
     assert.equal(await card.locator('.hotel-gallery-main').getAttribute('src'), 'https://catalog.example/hotel-21477-2.svg', 'gallery changes the main local photo without changing the offer');
     assert.equal(await card.locator('.hotel-gallery-thumb').nth(1).getAttribute('aria-pressed'), 'true', 'gallery exposes the selected photo state');
     await hotelInfo.locator('summary').press('Enter');
+    assert.equal(await card.locator('.hotel-description-summary').isVisible(), true, 'closing details restores the concise hotel summary');
     await card.locator('.hotel-gallery-main').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => { const img = document.querySelector('[data-hotel-id="21477"] .hotel-gallery-main'); return img && img.complete && img.naturalWidth > 0; });
     await card.locator('.hotel-gallery-main').evaluate(img => img.decode());
