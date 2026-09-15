@@ -2,20 +2,21 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { chromium } = require('playwright');
+const { chromium, webkit } = require('playwright');
+const nativeDateWebkit = process.env.SEARCH3_NATIVE_DATE_WEBKIT === '1';
 const base = process.env.SEARCH3_VISUAL_BASE;
 assert.ok(base && new URL(base).hostname === '127.0.0.1', 'requires the isolated local artifact server');
 assert.ok(process.env.SEARCH3_RESULTS_OUTPUT, 'requires retained evidence');
 const sourceSha = process.env.SEARCH3_SOURCE_SHA;
 assert.match(sourceSha || '', /^[0-9a-f]{40}$/, 'requires the exact checked source SHA');
-const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, 'native-form');
+const output = path.join(process.env.SEARCH3_RESULTS_OUTPUT, nativeDateWebkit ? 'native-date-webkit' : 'native-form');
 fs.mkdirSync(output, { recursive: true });
-const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 1200, 1366, 1440, 1600];
+const widths = nativeDateWebkit ? [320, 350, 375, 390, 430, 760] : [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199, 1200, 1366, 1440, 1600];
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await (nativeDateWebkit ? webkit : chromium).launch({ headless: true });
   try {
     for (const width of widths) {
-      const page = await browser.newPage({ viewport: { width, height: 1000 } });
+      const page = await browser.newPage({ viewport: { width, height: 1000 }, ...(nativeDateWebkit ? { locale:'ru-RU', isMobile:true, hasTouch:true } : {}) });
       const blocked = [], errors = [];
       page.on('pageerror', error => errors.push(String(error)));
       await page.route('**/*', route => {
@@ -30,6 +31,32 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
         assert.equal((await page.goto(base + '/poisk-turov/?count_people=3&child_count=1&child_age%5B%5D=8&daysFrom=7&daysTill=10', { waitUntil: 'domcontentloaded' })).status(), 200);
         await page.waitForFunction(() => document.forms.tourSearch?.dataset.search3Ready === '1' && document.forms.tourSearch.dataset.catalogSource && window.V2SearchLifecycle);
         await page.evaluate(() => document.fonts.ready);
+        if (nativeDateWebkit) {
+          const dates = page.locator('#tourSearch .search-group--dates input');
+          await dates.nth(0).fill('2026-09-16');
+          await dates.nth(1).fill('2026-09-29');
+          await dates.nth(0).focus();
+          await page.keyboard.press('Tab');
+          assert.equal(await dates.nth(1).evaluate(node => node === document.activeElement), true, 'native date fields remain keyboard reachable');
+          const native = await dates.evaluateAll(nodes => nodes.map(node => {
+            const r=node.getBoundingClientRect(),field=node.parentElement.getBoundingClientRect(),s=getComputedStyle(node);
+            return {type:node.type,value:node.value,submitted:new FormData(node.form).get(node.name),appearance:s.appearance,fontSize:parseFloat(s.fontSize),height:r.height,left:r.left,right:r.right,fieldLeft:field.left,fieldRight:field.right};
+          }));
+          for (const [i,item] of native.entries()) {
+            assert.equal(item.type,'date','native picker and ISO date semantics remain intact');
+            assert.equal(item.value,i===0?'2026-09-16':'2026-09-29');
+            assert.equal(item.submitted,item.value,'the form keeps exact ISO dates');
+            assert.equal(item.appearance,'none','WebKit uses the controlled date box');
+            assert.ok(item.height>=43.5&&item.height<=44.5&&item.fontSize>=16,`${width}: native dates keep the same readable 44px target`);
+            assert.ok(item.left>=item.fieldLeft-1&&item.right<=item.fieldRight+1,`${width}: date stays inside its grid field`);
+          }
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth>innerWidth+1),false,`${width}: Russian mobile WebKit form has no horizontal overflow`);
+          await page.locator('#tourSearch .search-group--dates').screenshot({path:path.join(output,`dates-${width}.png`),animations:'disabled'});
+          await page.locator('#tourSearch').screenshot({path:path.join(output,`form-${width}.png`),animations:'disabled'});
+          assert.deepEqual(errors,[]);
+          fs.writeFileSync(path.join(output,`dates-${width}.json`),JSON.stringify({source_sha:sourceSha,width,browser:'webkit',locale:'ru-RU',native,blocked,errors,supplier_requests_sent:0,lead_sent:0,physical_iphone:'not_measured'},null,2)+'\n');
+          continue;
+        }
         const state = await page.evaluate(() => {
           const box = node => { const r = node.getBoundingClientRect(), s = getComputedStyle(node); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height, fontSize: parseFloat(s.fontSize), position: s.position }; };
           const form = document.forms.tourSearch, preferences = form.querySelector('.search-preferences');
@@ -270,5 +297,5 @@ const widths = [320, 350, 375, 430, 760, 761, 1024, 1025, 1099, 1100, 1101, 1199
       } finally { await page.close(); }
     }
   } finally { await browser.close(); }
-  console.log(`SEARCH3_SERVED_ENTRY_GEOMETRY_OK source=${sourceSha} widths=${widths.join(',')} party_states=${widths.length * 4} lead_sent=0`);
+  console.log(`SEARCH3_SERVED_ENTRY_GEOMETRY_OK source=${sourceSha} browser=${nativeDateWebkit?'webkit':'chromium'} widths=${widths.join(',')} party_states=${nativeDateWebkit?0:widths.length * 4} lead_sent=0`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

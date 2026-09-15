@@ -9,6 +9,9 @@ display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;pa
 & .search-group legend{padding:0;margin-bottom:8px;color:#17233b;font-size:14px;font-weight:700}
 & .field>span{display:block;font-size:14px;color:#526078;margin-bottom:6px}
 & .field :is(input:not([type=checkbox]),select){display:block;box-sizing:border-box;width:100%;min-width:0;height:44px!important;min-height:44px!important;padding:10px 12px;border:1px solid #dbe2ed;border-radius:10px;background-color:#fff;font-size:16px!important;line-height:22px}
+/* Keep the native date picker while removing iOS's intrinsic button geometry. */
+& .field input[type=date]{appearance:none;-webkit-appearance:none;max-width:100%}
+& .field input[type=date]::-webkit-date-and-time-value{min-width:0;text-align:left}
 & .field select{appearance:none;-webkit-appearance:none;padding-right:36px;background-image:linear-gradient(45deg,transparent 50%,#526078 50%),linear-gradient(135deg,#526078 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat}
 @media(forced-colors:active){& .field select{appearance:auto;-webkit-appearance:auto;background-image:none}}
 & .search-section-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;font-size:18px;font-weight:700}
