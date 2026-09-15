@@ -28,7 +28,7 @@ for(const offer of [tour,other]){
   assert.ok(row.includes('<b>'+(offer===tour?'Завтрак':'Всё включено')+'</b>'),'known meals use the common Russian display label');
   assert.match(row,new RegExp(offer.isCharter?'Чартер':'Регулярный рейс'));
   assert.equal((row.match(/class="hotel-price"/g)||[]).length,1);
-  assert.match(row,/<small>Номер<\/small><b>STANDARD · DBL<\/b>/,'room and placement stay together as one exact offer fact');
+  assert.match(row,/<small>Номер<\/small><b>Стандартный номер · DBL<\/b>/,'reviewed room label and raw placement stay together as one exact offer fact');
   assert.match(row,/<small>Источник<\/small><b>Tourvisor<\/b>/,'exact offer keeps provider source distinct from tour operator');
   assert.doesNotMatch(row,/<small>(?:Туристы|Размещение)<\/small>/,'exact offer does not repeat search party or a second placement field');
   assert.doesNotMatch(row,/<small>Оператор<\/small>|class="hotel-operator-name"/,'known operator is represented by its logo without duplicate visible captions');
