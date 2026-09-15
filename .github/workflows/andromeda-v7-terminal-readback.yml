@@ -1,0 +1,192 @@
+name: Inspect terminal Andromeda v7 quote state
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/andromeda-v7-terminal-readback.yml'
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+jobs:
+  control-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify readback is sealed and filesystem-only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('.github/workflows/andromeda-v7-terminal-readback.yml').read_text()
+          for needle in [
+            "github.event.comment.body == '/inspect-andromeda-http-flight-selection-e2e-1717-v7'",
+            'const sourceRun=34976423065;',
+            'const sourceArtifact=10399656436;',
+            'sha256:e0fa9abd5a0d7f5049c152ebf6f01a6498d2ad6608d03fa058fe98516139e67a',
+            "'supplier_calls'=>0", "'database_reads'=>0", "'database_writes'=>0",
+            "'filesystem_writes'=>0", "'booking_calls'=>0", "'operation_replayed'=>false",
+            "'claim_action_limit_bytes'=>2097152",
+          ]:
+            if needle not in text: raise SystemExit('v7 readback pin missing: '+needle)
+          live=text.split('      - name: Inspect sealed v7 filesystem state',1)[1]
+          for forbidden in ('AnyTourAndromedaClient','AnyTourAndromedaClaimActions','curl_',
+                            'file_put_contents','fopen(','unlink(','rename(','copy(','touch(',
+                            'shell_exec','passthru(','system('):
+            if forbidden in live: raise SystemExit('v7 readback may perform an operation: '+forbidden)
+          print('v7 terminal readback is filesystem-only; supplier calls=0')
+          PY
+
+  inspect-v7-terminal:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.event.sender.id == 226193297 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 1717 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == '/inspect-andromeda-http-flight-selection-e2e-1717-v7'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Bind readback to exact terminal v7 run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner=226193297;
+            const command='/inspect-andromeda-http-flight-selection-e2e-1717-v7';
+            const sourceRun=34976423065;
+            const sourceArtifact=10399656436;
+            if(process.env.GITHUB_RUN_ATTEMPT!=='1') throw new Error('Read retained state; do not rerun.');
+            if(context.actor!=='pyatkoff'||context.payload.sender?.id!==owner||process.env.GITHUB_TRIGGERING_ACTOR!=='pyatkoff') throw new Error('Owner invocation required.');
+            if(context.repo.owner!=='pyatkoff'||context.repo.repo!=='poisk-turov-test'||context.ref!=='refs/heads/main') throw new Error('Repository/ref mismatch.');
+            if(context.payload.issue?.number!==1717||context.payload.issue?.pull_request||context.payload.comment?.body!==command) throw new Error('Exact #1717 v7 readback command required.');
+            const comments=await github.paginate(github.rest.issues.listComments,{...context.repo,issue_number:1717,per_page:100});
+            const matches=comments.filter(c=>c.body===command&&c.user?.id===owner&&c.author_association==='OWNER');
+            if(matches.length!==1||matches[0].id!==context.payload.comment.id) throw new Error('Duplicate/edited v7 readback command rejected.');
+            const {data:main}=await github.rest.git.getRef({...context.repo,ref:'heads/main'});
+            if(main.object.sha!==context.sha) throw new Error('Main advanced; review rather than reading stale control.');
+            const {data:run}=await github.rest.actions.getWorkflowRun({...context.repo,run_id:sourceRun});
+            if(run.head_sha!=='7920531e5769611dafd487687adbda41b38a22d8'||run.event!=='issue_comment'||run.status!=='completed'||run.conclusion!=='success'||run.run_attempt!==1) throw new Error('Terminal v7 run provenance mismatch.');
+            const {data:artifact}=await github.rest.actions.getArtifact({...context.repo,artifact_id:sourceArtifact});
+            if(artifact.expired!==false||artifact.workflow_run?.id!==sourceRun||artifact.workflow_run?.head_sha!==run.head_sha||artifact.digest!=='sha256:e0fa9abd5a0d7f5049c152ebf6f01a6498d2ad6608d03fa058fe98516139e67a') throw new Error('Terminal v7 receipt mismatch.');
+      - uses: actions/checkout@v4
+        with:
+          ref: 95fa11f5a1cb7e18c905c9760a1eae7f2c0ee7aa
+          path: helper
+          persist-credentials: false
+      - name: Inspect sealed v7 filesystem state
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PYTHONPATH: helper/scripts/diagnostics
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          from anex_search3_owner_decisions import ssh_php
+          source=r'''
+          error_reporting(0); ini_set('display_errors','0'); ini_set('log_errors','0');
+          $out=['status'=>'blocked','supplier_calls'=>0,'database_reads'=>0,'database_writes'=>0,
+              'filesystem_writes'=>0,'booking_calls'=>0,'operation_replayed'=>false,'claim_action_limit_bytes'=>2097152];
+          function v7_read($path,$limit){
+              if(!is_file($path)||is_link($path)||filesize($path)>$limit) throw new RuntimeException('checkpoint_file_invalid');
+              $value=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);
+              if(!is_array($value)) throw new RuntimeException('checkpoint_json_invalid'); return $value;
+          }
+          function v7_money($value){
+              if(!is_array($value)||!is_string($value['amount']??null)||!is_string($value['currency']??null)) return null;
+              return ['amount'=>$value['amount'],'currency'=>$value['currency']];
+          }
+          function v7_json_bytes($value){return strlen(json_encode($value,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));}
+          function v7_append($claim,$item){
+              $doc=$claim['claimDocument'][0]??null; if(!is_array($doc)) throw new RuntimeException('claim_document_invalid');
+              $selected=[];
+              foreach(($doc['transports']??[]) as $block){
+                  if(!is_array($block)||!is_array($block['transport']??null))continue;
+                  foreach($block['transport'] as $transport)if(is_array($transport))$selected[]=$transport;
+              }
+              foreach($selected as $transport)if((string)($transport['direction']??'')===(string)($item['direction']??''))throw new RuntimeException('existing_direction');
+              $selected[]=$item; $claim['claimDocument'][0]['transports']=[['transport'=>$selected]]; return $claim;
+          }
+          try{
+              $root=realpath(getcwd());
+              if(PHP_SAPI!=='cli'||!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('project_invalid');
+              $searches=dirname($root,2).'/.anytoour-andromeda/searches';
+              if(!is_dir($searches)||is_link($searches)||!is_readable($searches)) throw new RuntimeException('search_checkpoint_directory_invalid');
+              $from=strtotime('2026-09-15T13:39:30Z'); $to=strtotime('2026-09-15T13:41:00Z'); $matches=[];
+              foreach((glob($searches.'/*-quote-v1.json')?:[]) as $path){
+                  if(!is_file($path)||is_link($path))continue; $mtime=filemtime($path); if($mtime<$from||$mtime>$to)continue;
+                  try{$envelope=v7_read($path,524288);}catch(Throwable $ignored){continue;}
+                  $state=$envelope['state']??null; if(!is_array($state)||($state['status']??null)!=='completed'||!is_array($state['result']??null))continue;
+                  $quote=$state['result'];
+                  if(($quote['provider']??null)!=='andromeda'||($quote['local_id']??null)!==59105||($quote['state']??null)!=='flight_selection_required'
+                      ||v7_money($quote['search_price']??null)!==['amount'=>'98914','currency'=>'RUB'])continue;
+                  $matches[]=[$path,$quote];
+              }
+              if(count($matches)!==1) throw new RuntimeException('initial_quote_checkpoint_not_unique');
+              [$initialPath,$quote]=$matches[0]; $suffix='-quote-v1.json'; $prefix=substr($initialPath,0,-strlen($suffix));
+              $flightEnvelope=v7_read($prefix.'-quote-flight-state-v1.json',4000000);
+              $continuation=v7_read($prefix.'-quote-flight-v1.json',131072);
+              $flightState=$flightEnvelope['state']??null; $continuationState=$continuation['state']??null;
+              if(!is_array($flightState)||($flightState['provider']??null)!=='andromeda'||!is_array($flightState['claim']??null)||!is_array($flightState['items']??null))throw new RuntimeException('flight_state_invalid');
+              if(!is_array($continuationState)||!in_array($continuationState['status']??null,['reserved','unknown','completed'],true))throw new RuntimeException('continuation_checkpoint_invalid');
+              $first=['0'=>null,'1'=>null]; $publicRefs=[]; $publicDirections=['0'=>0,'1'=>0];
+              foreach(($quote['flights']??[]) as $row){
+                  if(!is_array($row))continue; $d=(string)($row['direction']??''); $ref=$row['flight_ref']??null;
+                  if(isset($publicDirections[$d])&&is_string($ref)){++$publicDirections[$d];$publicRefs[$ref]=true;if($first[$d]===null)$first[$d]=$ref;}
+              }
+              if(!is_string($first['0'])||!is_string($first['1']))throw new RuntimeException('public_selection_missing');
+              $itemDirections=['0'=>0,'1'=>0]; $privateRefMatches=0;
+              foreach($flightState['items'] as $ref=>$record){
+                  if(!is_string($ref)||!is_array($record))throw new RuntimeException('flight_item_invalid');
+                  $d=(string)($record['direction']??''); if(!isset($itemDirections[$d]))throw new RuntimeException('flight_direction_invalid'); ++$itemDirections[$d];
+                  if(isset($publicRefs[$ref]))++$privateRefMatches;
+              }
+              $outbound=$flightState['items'][$first['0']]['item']??null; $return=$flightState['items'][$first['1']]['item']??null;
+              if(!is_array($outbound)||!is_array($return)||(string)($outbound['direction']??'')!=='0'||(string)($return['direction']??'')!=='1')throw new RuntimeException('selected_item_invalid');
+              $claim=$flightState['claim']; $doc=$claim['claimDocument'][0]??null; if(!is_array($doc))throw new RuntimeException('claim_document_invalid');
+              $claimDirections=['0'=>0,'1'=>0,'other'=>0]; $claimTransportCount=0;
+              foreach(($doc['transports']??[]) as $block){
+                  if(!is_array($block)||!is_array($block['transport']??null))continue;
+                  foreach($block['transport'] as $transport){if(!is_array($transport))continue;++$claimTransportCount;$d=(string)($transport['direction']??'');if(isset($claimDirections[$d]))++$claimDirections[$d];else++$claimDirections['other'];}
+              }
+              $originalBytes=v7_json_bytes($claim); $outboundClaim=v7_append($claim,$outbound); $outboundBytes=v7_json_bytes($outboundClaim);
+              $bothClaim=v7_append($outboundClaim,$return); $bothBytes=v7_json_bytes($bothClaim); $limit=2097152;
+              $out['status']='inspected';
+              $out['initial_quote']=['state'=>$quote['state']??null,'flights_count'=>is_array($quote['flights']??null)?count($quote['flights']):null,'search_price'=>v7_money($quote['search_price']??null)];
+              $out['flight_state']=['items_count'=>count($flightState['items']),'item_directions'=>$itemDirections,'public_directions'=>$publicDirections,
+                  'public_refs_matching_private_items'=>$privateRefMatches,'claim_transport_count'=>$claimTransportCount,'claim_transport_directions'=>$claimDirections,
+                  'claim_json_bytes'=>$originalBytes,'outbound_appended_claim_json_bytes'=>$outboundBytes,'both_appended_claim_json_bytes'=>$bothBytes,
+                  'first_change_local_oversize'=>$outboundBytes>$limit,'echo_style_second_change_local_oversize'=>$bothBytes>$limit];
+              $out['continuation']=['attempt_status'=>$continuationState['status']??null,'has_result'=>is_array($continuationState['result']??null)];
+          }catch(Throwable $error){$out['reason']=preg_match('/^[A-Za-z0-9_.:-]{1,96}$/D',$error->getMessage())?$error->getMessage():'inspection_failed';}
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),"\n";
+          '''
+          out=pathlib.Path(os.environ['RUNNER_TEMP'])/'andromeda-v7-terminal-readback'; out.mkdir(mode=0o700)
+          try:
+              result=ssh_php(source,{},maximum_bytes=65536)
+          except Exception:
+              (out/'result.json').write_text(json.dumps({'status':'inspection_unconfirmed','operation_replayed':False})+'\n'); raise
+          (out/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          zeros=['supplier_calls','database_reads','database_writes','filesystem_writes','booking_calls']
+          if result.get('status')!='inspected' or result.get('operation_replayed') is not False or any(result.get(k)!=0 for k in zeros):
+              raise SystemExit('v7 terminal inspection incomplete; operation was not replayed')
+          print(json.dumps(result,sort_keys=True))
+          PY
+      - name: Preserve sanitized v7 readback
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andromeda-v7-terminal-readback-${{ github.run_id }}
+          path: ${{ runner.temp }}/andromeda-v7-terminal-readback/result.json
+          if-no-files-found: error
+          retention-days: 14
