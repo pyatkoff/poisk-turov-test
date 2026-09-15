@@ -1,0 +1,5 @@
+# Search3 preview: expose only the existing read-only local hotel-details DTO.
+# The parent preview .htaccess still denies every other PHP file in this directory.
+<Files "hotel-details-read-v1.php">
+  Require all granted
+</Files>
