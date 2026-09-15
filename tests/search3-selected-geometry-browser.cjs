@@ -327,17 +327,25 @@ async function run(browser, width, previous) {
       assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
       assert.equal(await page.locator('#selectedTour .selected-price-confidence').count(),0,'legacy price-confidence note is not constructed');
       assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]').count(),6,'every flight radio remains available');
-      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),6,'every flight radio remains visible');
+      const flightToggle=page.locator('#selectedTour .search3-flight-toggle');
+      assert.equal(await flightToggle.count(),1,'multiple flights use one canonical disclosure');
+      assert.equal(await flightToggle.getAttribute('aria-expanded'),'false','alternative flights start collapsed');
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),1,'only the selected exact flight starts visible');
       assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'selected flight exposes both directions');
       assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'unselected flight details stay compact');
       assert.equal(await page.locator('#selectedTour .selected-lead-cta:visible').count(),0,'duplicate top lead CTA is hidden in Search3');
       assert.equal(await page.locator('#selectedTour .search3-flight-continue button:visible').count(),1,'one visible Search3 handoff CTA remains');
+      await flightToggle.click();
+      await page.waitForFunction(()=>document.querySelector('#selectedTour .search3-flight-toggle')?.getAttribute('aria-expanded')==='true');
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),6,'disclosure exposes every original flight radio');
       await page.locator('#selectedTour .flight-variant').nth(1).locator('input[name="v2flight"]').click();
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="1"]')?.classList.contains('is-selected'));
       assert.equal(await page.locator('#selectedTour .flight-variant.is-selected .flight-segment:visible').count(),2,'radio switch expands the new selection');
       assert.equal(await page.locator('#selectedTour .flight-variant:not(.is-selected) .flight-segment:visible').count(),0,'radio switch collapses the previous selection');
       await page.locator('#selectedTour .flight-variant').first().locator('input[name="v2flight"]').click();
       await page.waitForFunction(()=>document.querySelector('#selectedTour .flight-variant[data-flight-index="0"]')?.classList.contains('is-selected'));
+      await flightToggle.click();
+      assert.equal(await page.locator('#selectedTour .flight-variant input[name="v2flight"]:visible').count(),1,'collapse returns to the selected exact flight');
     }
     await page.locator('#selectedTour .search3-flight-continue button').click();
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
