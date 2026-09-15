@@ -178,7 +178,7 @@ async function checkLongFlightPrice(page, width) {
   await settle(page);
   const prices = await checkFlightPriceLines(root, width);
   const facts = await checkSelectedFacts(root, width);
-  assert.equal(facts.cells.find(cell => cell.label.text === 'Номер').value.text, item.roomType, 'long room conditions stay complete');
+  assert.equal(facts.cells.find(cell => cell.label.text === 'Номер').value.text, 'Семейный люкс · 2 спальни · боковой вид на море', 'reviewed long room conditions stay complete in Russian');
   assert.equal(facts.cells.find(cell => cell.label.text === 'Оператор').value.text, item.operator.name, 'long operator identity stays complete');
   if (width <= 375) assert.ok(facts.height <= (width === 320 ? 580 : 520), width + ': long facts use compact spacing while all text remains visible');
   assert.equal(prices[0].text.replace(/\s/g, ''), 'Стоимостьтура:1234567,89₽', 'single-flight decimal amount stays exact');
@@ -250,7 +250,7 @@ async function run(browser, width) {
     assert.equal(columnCount(detail.factColumns), expected.fact_columns, `selected fact columns at ${width}`);
     assert.deepEqual(detail.facts.map(item => item.label), contract.required_fact_labels, 'selected facts stay complete and ordered');
     assert.deepEqual(detail.facts.map(item => item.value), ['Москва', '05.10.2026', '9', '2 взр. + 1 дет.', 'Всё включено',
-      'STANDARD LAND VIEW', 'DBL + CHD', 'ANEX Tour', 'Чартер', 'без доплаты'], 'spacing never changes the exact selected conditions');
+      'Стандартный номер · вид на территорию', 'DBL + CHD', 'ANEX Tour', 'Чартер', 'без доплаты'], 'spacing keeps exact selected conditions with reviewed Russian display labels');
     const factGeometry = await checkSelectedFacts(root, width);
     if (width <= 375) assert.ok(factGeometry.height <= 360, width + ': mobile selected facts improve on the 411px measured baseline without shrinking or hiding text');
     await root.locator('.facts').screenshot({ path: path.join(output, 'selected-facts-' + width + '.png'), animations: 'disabled' });
