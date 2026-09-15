@@ -117,7 +117,8 @@ const localHtml=api.hotelMainHtml({id:21477,name:'Supplier name',picturelink:'ht
 assert.match(localHtml,/Локальный отель/,'local hotel name owns the hotel card');
 assert.match(localHtml,/hotel-gallery-thumb/,'local gallery is available before offer selection');
 assert.match(localHtml,/Показать фото 2/,'gallery keeps a named keyboard action');
-assert.match(localHtml,/Об отеле/,'trusted local details have one native disclosure');
+assert.match(localHtml,/class="hotel-description-summary">&lt;b&gt;Проверенное описание&lt;\/b&gt;<\/p>/,'trusted local description is visible in the collapsed hotel presentation');
+assert.match(localHtml,/Подробнее об отеле/,'trusted local details have one clearly labelled native disclosure');
 assert.match(localHtml,/&lt;b&gt;Проверенное описание&lt;\/b&gt;/,'local description remains escaped text');
 assert.match(localHtml,/Песчаный пляж · Бассейн[\s\S]*Wi-Fi[\s\S]*Всё включено/,'object-shaped local characteristics are presented instead of discarded');
 assert.doesNotMatch(localHtml,/<b>Проверенное описание<\/b>/,'local description cannot inject markup');
